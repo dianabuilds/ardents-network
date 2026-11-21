@@ -57,8 +57,3 @@ func scopeUnit(unit string) bool {
 	_, _, valid := workerScope(unit)
 	return valid
 }
-
-func workerMatches(unit string, pid, uid uint32) bool {
-	actualPID, actualUID, valid := workerScope(unit)
-	return valid && actualPID == pid && actualUID == uid
-}

@@ -92,12 +92,7 @@ func TestInstallationNativeProcessSelfCredentialBoundary(t *testing.T) {
 			}
 			t.Fatal("actual non-root foreign executable was not refused", err)
 		}
-		if pin, err := Retain(t.Context(), expected); pin != nil || !errors.Is(err, errInput) {
-			if pin != nil {
-				pin.Close()
-			}
-			t.Fatal("service account acquired privileged predecessor custody", err)
-		}
+
 		foreign := expected
 		foreign.PID = uint32(os.Getppid())
 		if pin, err := RetainSelf(t.Context(), foreign); pin != nil || !errors.Is(err, errInput) {
@@ -236,44 +231,5 @@ func TestInstallationNativeProcessRefusesOrdinaryProcImitationAndClosesOriginal(
 	}
 	if err := retained.Observe(t.Context()); err == nil {
 		t.Fatal("closed descriptor became process evidence")
-	}
-}
-
-func TestInstallationNativeProcessRetainRefusesForeignExecutable(t *testing.T) {
-	directory := nativeDirectory(t)
-	executable, err := os.Executable()
-	if err != nil {
-		t.Fatal(err)
-	}
-	identity, err := os.Stat(executable)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := Expected{PID: uint32(os.Getpid()), UID: 65534, GID: 65534,
-		Invocation: [16]byte{1}, InstallationRoot: directory,
-		Generation: strings.Repeat("a", 64), ProgramIdentity: identity}
-	// The actual current process and actual program inode do not make the
-	// test executable the fixed generation program or its qualified invocation.
-	retained, err := Retain(t.Context(), expected)
-	if retained != nil {
-		retained.Close()
-		t.Fatal("foreign actual executable became installed process evidence")
-	}
-	if !errors.Is(err, errBinding) {
-		t.Fatal("foreign executable was not refused at identity", err)
-	}
-	cancelled, cancel := context.WithCancel(t.Context())
-	cancel()
-	if retained, err := Retain(cancelled, expected); retained != nil || !errors.Is(err, context.Canceled) {
-		if retained != nil {
-			retained.Close()
-		}
-		t.Fatal("cancelled caller acquired process custody", err)
-	}
-	if retained, err := Retain(nil, expected); retained != nil || !errors.Is(err, errInput) {
-		if retained != nil {
-			retained.Close()
-		}
-		t.Fatal("nil caller acquired process custody", err)
 	}
 }

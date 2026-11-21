@@ -14,31 +14,10 @@ import (
 type managerValue = systemd.Value
 type managerProperties = systemd.Properties
 
-// Stopped configuration admission is not a running MainPID/InvocationID proof,
-// a qualified worker or capability-profile repair. Both known manager profiles
-// retain their current parent-lifetime refusal; no newer profile is admitted.
-func VerifyFreshStopped(version string, unit, service managerProperties, request Configuration, generationDigest string) error {
-	if err := VerifyConfiguration(version, unit, service, request, generationDigest); err != nil {
-		return err
-	}
-	if !systemd.Matches(unit, "ActiveState", "s", "inactive") || !systemd.Matches(unit, "SubState", "s", "dead") ||
-		!systemd.Matches(service, "MainPID", "u", uint32(0)) {
-		return ErrBinding
-	}
-	return verifyStoppedEndpointExec(service, request.InstallationRoot, generationDigest)
-}
-
-// Configuration is shared by stopped and live observations, while each caller
-// separately requires its exact process state. It grants no invocation proof.
-func VerifyConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest string) error {
-	return verifyEndpointConfiguration(version, unit, service, request, generationDigest, nil)
-}
-
 // VerifyPlatformConfiguration admits the platform-managed Endpoint unit whose sole
 // ExecStartPre is the original privileged platform check (F-25 pre-start trust
 // transfer). It grants no installation, start, replacement or recovery authority;
-// the runtime remains the sole domain admission owner. The transitional native
-// configuration (VerifyConfiguration) keeps ExecStartPre empty and is unchanged.
+// the runtime remains the sole domain admission owner.
 func VerifyPlatformConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest, checkProgram, manifest, pin string) error {
 	return verifyEndpointConfiguration(version, unit, service, request, generationDigest, []string{checkProgram, "platform", "check", manifest, pin})
 }
@@ -96,11 +75,7 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 			return ErrBinding
 		}
 	}
-	if preExec == nil {
-		if !systemd.Matches(service, "ExecStartPre", "a(sasbttttuii)", []any{}) {
-			return ErrBinding
-		}
-	} else if !platformPreExecMatches(service, preExec) {
+	if !platformPreExecMatches(service, preExec) {
 		return ErrBinding
 	}
 	families, found := service["RestrictAddressFamilies"]
@@ -117,21 +92,6 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 	}
 	_, err := endpointExecObservation(service, request.InstallationRoot, generationDigest)
 	return err
-}
-
-func verifyStoppedEndpointExec(properties managerProperties, root, generationDigest string) error {
-	parts, err := endpointExecObservation(properties, root, generationDigest)
-	if err != nil {
-		return err
-	}
-	// Fresh initial provisioning has never started this command. Retained process
-	// timestamps or a nonzero PID are not evidence of a stopped fresh operation.
-	for _, part := range parts[3:] {
-		if !systemd.Matches(managerProperties{"value": {Type: "t", Data: part}}, "value", "t", uint64(0)) {
-			return ErrBinding
-		}
-	}
-	return nil
 }
 
 // platformPreExecMatches requires exactly one privileged ExecStartPre whose argv is
@@ -173,45 +133,10 @@ func endpointExecObservation(properties managerProperties, root, generationDiges
 	return entries[0], nil
 }
 
-func Invocation(unit, service managerProperties) (uint32, [16]byte, error) {
-	var pid uint32
-	var invocation [16]byte
-	main := service["MainPID"]
-	value := unit["InvocationID"]
-	var parts []json.RawMessage
-	if main.Type != "u" || systemd.Decode(main.Data, &pid) != nil || pid == 0 ||
-		value.Type != "ay" || systemd.Decode(value.Data, &parts) != nil || len(parts) != len(invocation) {
-		return 0, invocation, ErrBinding
-	}
-	for index, part := range parts {
-		var number uint8
-		if systemd.Decode(part, &number) != nil ||
-			!systemd.Matches(managerProperties{"value": {Type: "y", Data: part}}, "value", "y", number) {
-			return 0, [16]byte{}, ErrBinding
-		}
-		invocation[index] = number
-	}
-	if invocation == [16]byte{} {
-		return 0, invocation, ErrBinding
-	}
-	return pid, invocation, nil
-}
-
-// This validates typed live observations against the original identity. Native
-// process bytes, credentials and kernel scope still require separate checks.
-func VerifyRunning(version string, unit, service managerProperties, request Configuration, generationDigest string, pid uint32, invocation [16]byte) error {
-	if err := VerifyConfiguration(version, unit, service, request, generationDigest); err != nil {
-		return err
-	}
-	return verifyRunningInvocation(unit, service, request, generationDigest, pid, invocation)
-}
-
 // VerifyPlatformRunning admits the running platform-managed Endpoint invocation
 // whose sole ExecStartPre is the original privileged F-25 platform check. It
-// verifies the same complete confinement and the same exact running process as
-// VerifyRunning; only the admitted pre-start binding differs (platform check
-// versus the transitional empty ExecStartPre). It grants no installation, start,
-// replacement or recovery authority.
+// verifies the complete confinement and exact running process. It grants no
+// installation, start, replacement or recovery authority.
 func VerifyPlatformRunning(version string, unit, service managerProperties, request Configuration, generationDigest string, pid uint32, invocation [16]byte, checkProgram, manifest, pin string) error {
 	if err := VerifyPlatformConfiguration(version, unit, service, request, generationDigest, checkProgram, manifest, pin); err != nil {
 		return err
@@ -249,109 +174,6 @@ func verifyRunningInvocation(unit, service managerProperties, request Configurat
 		}
 	}
 	if !systemd.Matches(managerProperties{"value": {Type: "u", Data: parts[7]}}, "value", "u", pid) {
-		return ErrBinding
-	}
-	return nil
-}
-
-// A retained stopped predecessor may have historical execution clocks/PID and
-// exit status. They are typed observations, not a current process or successful
-// execution proof. Fresh initial provisioning keeps its never-started rule.
-func VerifyQuiescent(version string, unit, service managerProperties, request Configuration, generationDigest string) error {
-	if err := VerifyConfiguration(version, unit, service, request, generationDigest); err != nil {
-		return err
-	}
-	if !systemd.Matches(unit, "ActiveState", "s", "inactive") || !systemd.Matches(unit, "SubState", "s", "dead") ||
-		!systemd.Matches(service, "MainPID", "u", uint32(0)) {
-		return ErrBinding
-	}
-	parts, err := endpointExecObservation(service, request.InstallationRoot, generationDigest)
-	if err != nil {
-		return err
-	}
-	for index := 3; index < len(parts); index++ {
-		value := managerValue{Data: parts[index]}
-		var expected any
-		switch {
-		case index < 7:
-			var number uint64
-			if systemd.Decode(value.Data, &number) != nil {
-				return ErrBinding
-			}
-			value.Type, expected = "t", number
-		case index == 7:
-			var number uint32
-			if systemd.Decode(value.Data, &number) != nil {
-				return ErrBinding
-			}
-			value.Type, expected = "u", number
-		default:
-			var number int32
-			if systemd.Decode(value.Data, &number) != nil {
-				return ErrBinding
-			}
-			value.Type, expected = "i", number
-		}
-		if !systemd.Matches(managerProperties{"value": value}, "value", value.Type, expected) {
-			return ErrBinding
-		}
-	}
-	return nil
-}
-
-// VerifyStoppedAttempt observes physical termination of an attempted start.
-// A successful Stop may leave a failed service in failed/failed. This separate
-// check retains that failure; it grants no fresh provisioning, recovery or
-// running admission. The caller still joins original scopes and activation.
-func VerifyStoppedAttempt(version string, unit, service managerProperties, request Configuration, generationDigest string) error {
-	if err := VerifyNoJob(unit); err != nil {
-		return err
-	}
-	if systemd.Matches(unit, "ActiveState", "s", "inactive") {
-		return VerifyQuiescent(version, unit, service, request, generationDigest)
-	}
-	if err := VerifyConfiguration(version, unit, service, request, generationDigest); err != nil {
-		return err
-	}
-	if !systemd.Matches(unit, "ActiveState", "s", "failed") || !systemd.Matches(unit, "SubState", "s", "failed") ||
-		!systemd.Matches(service, "MainPID", "u", uint32(0)) {
-		return ErrBinding
-	}
-	parts, err := endpointExecObservation(service, request.InstallationRoot, generationDigest)
-	if err != nil {
-		return err
-	}
-	var clocks [4]uint64
-	for index := range clocks {
-		if systemd.Decode(parts[index+3], &clocks[index]) != nil || clocks[index] == 0 ||
-			!systemd.Matches(managerProperties{"clock": {Type: "t", Data: parts[index+3]}}, "clock", "t", clocks[index]) {
-			return ErrBinding
-		}
-	}
-	if clocks[2] < clocks[0] || clocks[3] < clocks[1] {
-		return ErrBinding
-	}
-	var pid uint32
-	var code, status int32
-	if systemd.Decode(parts[7], &pid) != nil || pid == 0 ||
-		!systemd.Matches(managerProperties{"pid": {Type: "u", Data: parts[7]}}, "pid", "u", pid) ||
-		systemd.Decode(parts[8], &code) != nil || systemd.Decode(parts[9], &status) != nil || status <= 0 ||
-		!systemd.Matches(managerProperties{"code": {Type: "i", Data: parts[8]}}, "code", "i", code) ||
-		!systemd.Matches(managerProperties{"status": {Type: "i", Data: parts[9]}}, "status", "i", status) {
-		return ErrBinding
-	}
-	result := ""
-	switch code {
-	case 1:
-		result = "exit-code"
-	case 2:
-		result = "signal"
-	case 3:
-		result = "core-dump"
-	default:
-		return ErrBinding
-	}
-	if !systemd.Matches(service, "Result", "s", result) {
 		return ErrBinding
 	}
 	return nil
@@ -412,28 +234,6 @@ func verifyActivationSocketState(unit, socket managerProperties, role, active, s
 		if !systemd.Matches(socket, name, "a(sasbttttuii)", []any{}) {
 			return ErrBinding
 		}
-	}
-	return nil
-}
-
-func VerifyStoppedUnit(body, unit string) error {
-	expected := map[string]string{"LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "FragmentPath": "/etc/systemd/system/" + unit, "DropInPaths": ""}
-	if unit == "ardents-endpoint.service" {
-		expected["MainPID"] = "0"
-	} else if unit != "ardents-text-reader.socket" && unit != "ardents-text-publisher.socket" {
-		return ErrBinding
-	}
-	seen := make(map[string]bool)
-	for _, line := range strings.Split(strings.TrimSuffix(body, "\n"), "\n") {
-		key, value, found := strings.Cut(line, "=")
-		wanted, known := expected[key]
-		if !found || !known || seen[key] || value != wanted {
-			return ErrBinding
-		}
-		seen[key] = true
-	}
-	if len(seen) != len(expected) {
-		return ErrBinding
 	}
 	return nil
 }

@@ -42,13 +42,8 @@ func (a Authorization) Targets() (release.Authorization, release.Authorization) 
 	return a.program, a.generation
 }
 
-// Descriptor and Resource expose detached exact bytes, never reusable authority.
+// Descriptor exposes detached exact bytes, never reusable authority.
 func (a Authorization) Descriptor() []byte { return bytes.Clone(a.descriptor) }
-
-func (a Authorization) Resource(name string) ([]byte, bool) {
-	b, ok := a.resources[name]
-	return bytes.Clone(b), ok
-}
 
 // InitialFacts reports the independent initial-pin provenance retained only by
 // AuthenticateInitial. These detached facts grant no native effect authority.

@@ -123,25 +123,6 @@
       },
       {
         "symbols": [
-          "internal/successor/installation/directory.CreateRoot",
-          "internal/successor/installation/directory.rootBirthParent",
-          "internal/successor/installation/directory.rootBirthAccess",
-          "internal/successor/installation/directory.RootBirth.record",
-          "internal/successor/installation/directory.RootBirth.observeParent",
-          "internal/successor/installation/directory.RootBirth.syncParent",
-          "internal/successor/installation/directory.RootBirth.Observe",
-          "internal/successor/installation/directory.RootBirth.Identity",
-          "internal/successor/installation/directory.RootBirth.Deliver",
-          "internal/successor/installation/directory.RootBirth.SealRoot",
-          "internal/successor/installation/directory.RootBirth.Close"
-        ],
-        "classification": "retired transitional initial-installation root birth; retained native mechanism test coverage",
-        "rationale": "directory.CreateRoot/RootBirth retained one original root-owned directory birth/delivery/seal for the transitional initial stopped installations. The Source, Forwarding, JOIN and Descriptor initial-installation orchestration all retired (#604 stage 1.6 and #604 FJD stage D, ADR-0125); installation/descriptor/initial_birth_linux.go was the last production caller, so this mechanism has no remaining production consumer. The platform-led lifecycles initialize their roots through the canonical platform path, not this transitional birth. It is retained as reviewed mechanism code because the genuine installation_native test directory/root_birth_native_linux_test.go exercises original root-owned birth, delivery/seal, cancellation and substitution refusal. The shared directory.New/Matches creation mechanism remains production-live through installation/endpoint and is not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
-        "owner": "Product Owner and Codex; Installation directory owner",
-        "retirement": "Remove this allowance when its genuine native mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
-      },
-      {
-        "symbols": [
           "internal/successor/enrollment.ValidateInfrastructureInventory"
         ],
         "classification": "retired transitional role selected-generation validation; retained canonical inventory mechanism test coverage",
@@ -367,19 +348,31 @@
       },
       {
         "symbols": [
+          "cmd/ardents-next.candidateReleaseInputs",
+          "internal/successor/enrollment.Candidate.Facts",
+          "internal/successor/enrollment.Candidate.File",
+          "internal/successor/enrollment.Candidate.MetadataNames",
+          "internal/successor/enrollment.Candidate.Names",
+          "internal/successor/enrollment.ReadCandidate",
           "internal/successor/enrollment.ValidateProtectedGeneration",
+          "internal/successor/installation.AuthenticateCandidate",
+          "internal/successor/installation.AuthenticateInitial",
           "internal/successor/installation.Authorization.InitialFacts",
           "internal/successor/installation.Authorization.Resources",
+          "internal/successor/installation.CoherentTargets",
+          "internal/successor/installation.authenticate",
           "internal/successor/installation/cgroup.parseEvents",
           "internal/successor/installation/cgroup.scopeUnit",
-          "internal/successor/installation/cgroup.workerMatches",
           "internal/successor/installation/cgroup.workerScope",
-          "internal/successor/installation/completion.Encode",
-          "internal/successor/installation/completion.canonicalFrame",
           "internal/successor/installation/endpoint.ReadOwnedRequest",
+          "internal/successor/installation/endpoint.Request.BundleRoot",
+          "internal/successor/installation/endpoint.Request.ManifestSHA256",
+          "internal/successor/installation/endpoint.Request.ReferenceTime",
+          "internal/successor/installation/endpoint.Request.ReleaseHistoryRoot",
           "internal/successor/installation/endpoint.assembleGeneration",
           "internal/successor/installation/endpoint.canonicalDigest",
           "internal/successor/installation/endpoint.canonicalJSON",
+          "internal/successor/installation/endpoint.canonicalPath",
           "internal/successor/installation/endpoint.decodeCanonical",
           "internal/successor/installation/endpoint.decodeInstallationRequest",
           "internal/successor/installation/endpoint.digestBytes",
@@ -390,19 +383,12 @@
           "internal/successor/installation/endpoint.mutableRoots",
           "internal/successor/installation/endpoint.observeTarget",
           "internal/successor/installation/endpoint.pathsOverlap",
-          "internal/successor/installation/endpoint.recoverBoundGeneration",
-          "internal/successor/installation/endpoint.recoveryGeneration",
           "internal/successor/installation/endpoint.renderEndpointUnit",
           "internal/successor/installation/endpoint.successorContinuity",
           "internal/successor/installation/endpoint.targetObservation.observation",
           "internal/successor/installation/endpoint.unitPath",
           "internal/successor/installation/endpoint.writableDirectories",
-          "internal/successor/installation/fixedfile.ReplacementPrefixAllowed",
           "internal/successor/installation/generation.Names",
-          "internal/successor/installation/journal.Bytes",
-          "internal/successor/installation/journal.Next",
-          "internal/successor/installation/journal.canonicalDigest",
-          "internal/successor/installation/journal.canonicalJSON",
           "internal/successor/installation/process.credentials",
           "internal/successor/installation/process.invocationMatches",
           "internal/successor/installation/process.startClock",
@@ -413,29 +399,22 @@
           "internal/successor/installation/systemd.Matches",
           "internal/successor/installation/systemd.observeJSONValue",
           "internal/successor/installation/unit.EndpointTemplate.Render",
-          "internal/successor/installation/unit.Invocation",
           "internal/successor/installation/unit.PrepareEndpointTemplate",
-          "internal/successor/installation/unit.VerifyConfiguration",
-          "internal/successor/installation/unit.VerifyFreshStopped",
           "internal/successor/installation/unit.VerifyListeningSocket",
           "internal/successor/installation/unit.VerifyNoJob",
-          "internal/successor/installation/unit.VerifyQuiescent",
-          "internal/successor/installation/unit.VerifyRunning",
-          "internal/successor/installation/unit.VerifyStoppedAttempt",
           "internal/successor/installation/unit.VerifyStoppedSocket",
-          "internal/successor/installation/unit.VerifyStoppedUnit",
           "internal/successor/installation/unit.canonicalDigest",
           "internal/successor/installation/unit.endpointExecObservation",
           "internal/successor/installation/unit.quoteUnitPath",
           "internal/successor/installation/unit.unitPath",
           "internal/successor/installation/unit.verifyActivationSocketState",
           "internal/successor/installation/unit.verifyRunningInvocation",
-          "internal/successor/installation/unit.verifyStoppedEndpointExec"
+          "internal/successor/release.OpenRetained"
         ],
-        "classification": "portable Installation rules behind actual Linux installation consumers",
-        "rationale": "The installed owner is now installation/endpoint. Authorization.InitialFacts is consumed by endpoint/initial_preparation_linux.go before account effects; Authorization.Resources is consumed by endpoint/generation_binding.go for assembly and fresh-proof recovery. Their immutable pair remains in portable installation; both methods are unreachable only in Windows production because native initial preparation and installed binding effects refuse there. Linux ardents-next installation provision, check, recover-initial, upgrade-installed and recover-installed reach these exact portable rules through genuine Enrollment/Release composition and native Installation owners. The generation inventory, full-preimage prefix checks, journal grammar, original process/scope and typed unit predicates have actual Linux production callers. After request extraction, root canonicalDigest and decodeCanonical remain generation/binding/journal validators reached through native provisioning and inspection; decodeInstallationRequest and mutableRoots are reached by inspectGeneration, assembleGeneration and native recovery, and pathsOverlap by renderEndpointUnit through writableDirectories. ReadOwnedRequest in initial_preparation_linux.go and successor_transition_linux.go reaches request.ReadOwned and its private native reader; the former root readOwnedRequest identity is retired. Portable request.Decode independently reaches the extracted declaration codec on both platforms, so those codec functions require no allowance. VerifyStoppedAttempt is reached by installedCandidate.observeQuiescent through verifyStoppedAttemptProperties in manager_binding_linux.go, preserving failed-start cleanup separately from fresh/recovery admission. Template rendering is reached by assembleGeneration and inspectGeneration through unit_configuration.go: PrepareEndpointTemplate retains checked original bytes before root expectedUnit/writableDirectories admission, and EndpointTemplate.Render consumes those admitted paths. Root expectedUnit also supplies the actual native manager predicates. The former root quoteUnitPath identity is retired; private quoteUnitPath/unitPath now belong to the unit renderer. These exact operations remain unreachable in Windows production because native installation refuses. The native root start barrier and independent non-root startup inspection consume completion.Encode and its shared canonicalFrame grammar. Linux endpoint start-installed calls OpenStartup, which joins completion.Connect, Wait and Close under its original deadline and independently reobserves the installed invocation before returning plans to genuine Source and qualified permission-preparation composition. Windows refuses native installation and cannot supply root-owned custody, UID/inode or system-manager evidence. Only exact Windows production-unreachable symbols appear in this allowance; Linux OpenStartup and its private non-root completion exchange have genuine production callers. The checker and exact comparison remain unchanged; these entries establish platform reachability only, not successful installed startup or qualification.",
-        "owner": "Installation and Enrollment; docs/technical/endpoint-service-runtime.md and internal/successor/installation/README.md",
-        "retirement": "Remove each exact Windows entry when a separately accepted genuine Windows installation consumer reaches it, or when its owning operation is removed. Preserve exact production results and empty Windows/Linux test results."
+        "classification": "portable Endpoint artifact and configuration checks behind Linux platform delivery",
+        "rationale": "Linux platform stage-endpoint and startup consume exact native request, Enrollment/Release and generation proofs, require checked account, process and systemd observations, and retain existing floors through signed replacement. Windows has no native Endpoint delivery. The listed portable rules remain tested, and none grants Windows installed support.",
+        "owner": "Platform Endpoint delivery and Enrollment/Release",
+        "retirement": "Remove each exact entry when its owner retires or a genuine supported Windows delivery caller reaches it."
       },
       {
         "symbols": [
@@ -1299,7 +1278,6 @@
       {
         "symbols": [
           "internal/successor/installation.Authorization.Descriptor",
-          "internal/successor/installation.Authorization.Resource",
           "internal/successor/installation.Authorization.Targets"
         ],
         "classification": "Linux-native successor composition, no Windows production path (internal/successor/installation)",
@@ -1309,7 +1287,6 @@
       },
       {
         "symbols": [
-          "internal/successor/installation/endpoint.DecodeRequest",
           "internal/successor/installation/endpoint.retainRequest"
         ],
         "classification": "Linux-native successor composition, no Windows production path (internal/successor/installation/endpoint)",

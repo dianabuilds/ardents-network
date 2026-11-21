@@ -28,10 +28,10 @@ var errEndpointEnrollInstalledRetired = errors.New("endpoint enroll-installed is
 var errEndpointHeadlessRetired = errors.New("endpoint headless is retired; use ardents-next endpoint start-installed under the platform unit")
 var errEndpointUserUnitRetired = errors.New("endpoint user-unit is retired; use ardents-next platform unit")
 var errEndpointInstalledUserUnitRetired = errors.New("endpoint installed-user-unit is retired; use ardents-next platform unit")
-var errEndpointReplaceRetired = errors.New("endpoint replace is retired; use ardents-next installation upgrade-installed")
+var errEndpointReplaceRetired = errors.New("endpoint replace is retired; use ardents-next platform stage-endpoint")
 var errEndpointRollbackRetired = errors.New("endpoint rollback is retired; the successor Endpoint lifecycle is forward-only")
-var errEndpointReplacementSelfTestRetired = errors.New("endpoint replacement-self-test is retired; use ardents-next installation upgrade-installed")
-var errEndpointReplacementRecoveryRetired = errors.New("endpoint replacement-recovery is retired; use ardents-next installation recover-installed")
+var errEndpointReplacementSelfTestRetired = errors.New("endpoint replacement-self-test is retired; use ardents-next platform stage-endpoint")
+var errEndpointReplacementRecoveryRetired = errors.New("endpoint replacement-recovery is retired; use platform delivery after verified clean shutdown")
 
 // The persisted ardents-alpha-enrollment-input-v1 document form is retired
 // (ADR-0127, #647): the bundle root and independently delivered manifest pin
@@ -81,7 +81,7 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	if len(arguments) == 3 && arguments[1] == "withdraw" {
 		return runHeadlessAdministration(ctx, arguments[1], arguments[2], output)
 	}
-	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll (retired; use ardents-next platform delivery)|enroll-installed (retired; use ardents-next platform delivery)|headless (retired; use ardents-next endpoint start-installed)|open <application-socket> <target-link> <input-file> <output-file> (retired; refuses before effects)|publish <administration-socket> (retired; use ardents-text publish <administration-socket> <document-file>)|withdraw <administration-socket>|user-unit (retired; use ardents-next platform unit)|installed-user-unit (retired; use ardents-next platform unit)|replacement-self-test (retired)|replacement-recovery (retired)|replace (retired; use ardents-next installation upgrade-installed)|rollback (retired; forward-only)>")
+	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll (retired; use ardents-next platform delivery)|enroll-installed (retired; use ardents-next platform delivery)|headless (retired; use ardents-next endpoint start-installed)|open <application-socket> <target-link> <input-file> <output-file> (retired; refuses before effects)|publish <administration-socket> (retired; use ardents-text publish <administration-socket> <document-file>)|withdraw <administration-socket>|user-unit (retired; use ardents-next platform unit)|installed-user-unit (retired; use ardents-next platform unit)|replacement-self-test (retired)|replacement-recovery (retired)|replace (retired; use ardents-next platform stage-endpoint)|rollback (retired; forward-only)>")
 }
 
 // runEnrollmentCheck is an already-running command's bounded local diagnosis

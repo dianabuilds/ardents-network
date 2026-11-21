@@ -9,16 +9,14 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
 
 // Startup retains independently observed installed bytes, the original service
-// process and manager after the root exchange. It conveys no Release, Job or
+// process and platform manager. It conveys no Release, Job or
 // Service authority. Composition must obtain those rights from their owners.
 type Startup struct {
 	lifetime *startupLifetime
@@ -31,24 +29,12 @@ type startupLifetime struct {
 	result     error
 }
 
-// OpenStartup observes this actual non-root installed invocation and reobserves
-// it before yielding any plans. The transitional root guarded-start retains a
-// private start-guard.json intent and awaits this participant's bounded completion
-// exchange; OpenStartup joins that exchange. Platform-led delivery (ADR-0125) has
-// no root start operation: systemd owns start, the ExecStartPre platform check
-// transferred accepted current-program identity before this invocation, and the
-// participant validates itself against the platform without a root ACK. The
-// retained start-guard.json presence selects the mode; both paths keep the same
-// independent generation, account, invocation and manager observation.
+// OpenStartup observes this actual non-root invocation and its original
+// artifact, account and platform manager before yielding plans.
 func OpenStartup(ctx context.Context, directory string) (*Startup, error) {
 	inspection, err := openStartupInspection(ctx, directory)
 	if err != nil {
 		return nil, err
-	}
-	if !inspection.platformLed {
-		if err := inspection.awaitRootCompletion(); err != nil {
-			return nil, errors.Join(err, inspection.close())
-		}
 	}
 	return &Startup{lifetime: &startupLifetime{inspection: inspection}}, nil
 }
@@ -134,19 +120,17 @@ func (s *Startup) Close() error {
 // retains transition authorization; this owner never opens its writer lease.
 // The original caller, process and sealed snapshot live until physical close.
 type startupInspection struct {
-	ctx                 context.Context
-	root                *os.Root
-	identity            os.FileInfo
-	files               *installedFiles
-	checked             inspectedGeneration
-	snapshot            *generation.Snapshot
-	invocation          *process.Invocation
-	id                  [16]byte
-	manager             string // original unique bus owner, never rebound
-	platformLed         bool   // no root guarded-start intent; systemd owns start
-	terminal            error
-	completion          *completion.Exchange
-	completionAttempted bool
+	ctx        context.Context
+	root       *os.Root
+	identity   os.FileInfo
+	files      *installedFiles
+	checked    inspectedGeneration
+	snapshot   *generation.Snapshot
+	invocation *process.Invocation
+	id         [16]byte
+	manager    string // original unique bus owner, never rebound
+
+	terminal error
 }
 
 func openStartupInspection(ctx context.Context, directory string) (result *startupInspection, returnedErr error) {
@@ -184,15 +168,8 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 			result = nil
 		}
 	}()
-	// The transitional root guarded-start retains its private start intent before
-	// manager start; its absence selects platform-led delivery (systemd owns start,
-	// no root completion exchange). Only root can create that private record, so a
-	// caller cannot select the mode by writing it.
-	if _, guardErr := s.root.Lstat("start-guard.json"); guardErr != nil {
-		if !errors.Is(guardErr, os.ErrNotExist) {
-			return nil, errors.Join(ErrBinding, guardErr)
-		}
-		s.platformLed = true
+	if err := refusePlatformTransitionRecords(directory); err != nil {
+		return nil, err
 	}
 	selectedRaw, err := s.files.read(ctx, filepath.Join(directory, "selection.json"), 4<<10, 0640, native.Gid)
 	if err != nil {
@@ -220,7 +197,7 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 	if err := s.files.observeAccountAndRoots(s.checked); err != nil {
 		return nil, err
 	}
-	if err := s.files.inspectFixedResources(ctx, s.checked, s.platformLed); err != nil {
+	if err := s.files.inspectFixedResources(ctx, s.checked); err != nil {
 		return nil, err
 	}
 	// This second opening is retained by startup itself, independently of the
@@ -336,15 +313,11 @@ func (s *startupInspection) observeManager() error {
 		return ErrBinding
 	}
 	for _, round := range observation.Rounds {
-		if s.platformLed {
-			checkProgram, manifest, pin, err := platformCheckBinding(round.EndpointService)
-			if err != nil {
-				return err
-			}
-			if err := verifyPlatformRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id, checkProgram, manifest, pin); err != nil {
-				return err
-			}
-		} else if err := verifyRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id); err != nil {
+		checkProgram, manifest, pin, err := platformCheckBinding(round.EndpointService)
+		if err != nil {
+			return err
+		}
+		if err := verifyPlatformRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id, checkProgram, manifest, pin); err != nil {
 			return err
 		}
 		if err := verifyBoundActivationSocket(round.ReaderUnit, round.ReaderSocket, "reader"); err != nil {
@@ -365,10 +338,6 @@ func (s *startupInspection) close() error {
 	if s == nil {
 		return nil
 	}
-	if s.completion != nil {
-		s.terminal = errors.Join(s.terminal, s.completion.Close())
-		s.completion = nil
-	}
 	if s.invocation != nil {
 		s.terminal = errors.Join(s.terminal, s.invocation.Close())
 		s.invocation = nil
@@ -382,47 +351,4 @@ func (s *startupInspection) close() error {
 		s.root = nil
 	}
 	return s.terminal
-}
-
-// This joins only the guarded local exchange and final original observations.
-// It does not mint a runtime permit or substitute for the actual new consumer.
-func (s *startupInspection) awaitRootCompletion() (returnedErr error) {
-	if s == nil || s.ctx == nil || s.completionAttempted {
-		return ErrInput
-	}
-	if err := s.observe(); err != nil {
-		return err
-	}
-	s.completionAttempted = true
-	defer func() {
-		if returnedErr != nil {
-			s.terminal = errors.Join(s.terminal, returnedErr)
-		}
-	}()
-	frame, err := installationCompletionFrame(s.checked.selected, s.id)
-	if err != nil {
-		return err
-	}
-	// The root successor operation has its own two-minute bound. This local
-	// exchange cannot prolong an earlier caller deadline or turn its bounded
-	// socket into the post-ACK participant lifetime.
-	exchangeContext, cancel := context.WithTimeout(s.ctx, 2*time.Minute)
-	defer cancel()
-	s.completion, err = completion.Connect(exchangeContext, s.files.directory, s.identity, s.checked.binding.GID, [160]byte(frame))
-	if err != nil {
-		return err
-	}
-	if err := s.observe(); err != nil {
-		return err
-	}
-	if err := s.completion.Wait(); err != nil {
-		return err
-	}
-	if err := s.completion.Close(); err != nil {
-		return err
-	}
-	s.completion = nil
-	// Root cleanup may remove its guard/socket after ACK. The selected bytes,
-	// sealed snapshot, self invocation and manager must still be the originals.
-	return s.observe()
 }

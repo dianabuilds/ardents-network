@@ -134,6 +134,11 @@ func verifyStageReleaseMetadata(ctx context.Context, verifier *release.Verifier,
 }
 
 func reportSoftwareDeliveryFailure(ctx context.Context, out io.Writer, err error) int {
-	outcome, code := softwareDeliveryFailure(ctx, err)
-	return enrollmentReport(out, outcome, code)
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+		return enrollmentReport(out, "installation-canceled", 130)
+	}
+	if errors.Is(err, release.ErrTrustUnavailable) {
+		return enrollmentReport(out, "installation-trust-unavailable", 1)
+	}
+	return enrollmentReport(out, "installation-refused", 1)
 }

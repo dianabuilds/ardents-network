@@ -30,7 +30,7 @@ rollback/replacement-self-test/replacement-recovery` now return typed
 retirement refusals before input or root effects; the canonical delivery,
 preparation and forward-only replacement/recovery composition lives in
 `ardents-next` (platform, endpoint construct-plan/prepare-history/
-start-installed, installation upgrade-installed/recover-installed). The
+start-installed, platform stage-endpoint). The
 read-only `endpoint enrollment-check` diagnostic and the `endpoint withdraw`
 Administration Interface client remain. Renaming a Portable event to C0
 readiness would still leave the missing trust transfer unresolved; retirement

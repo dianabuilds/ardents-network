@@ -378,39 +378,11 @@ physical cleanup failure closes local generation admission. Private Descriptor
 publication, registration and JOIN/Service operations refuse. This bounded
 consumer establishes neither Service readiness nor installed startup acceptance.
 
-### Protected installation commands — qualification incomplete
+### Protected Endpoint platform delivery
 
-The isolated new consumer `ardents-next installation upgrade-installed --request
-<file>` retains one original replacement lifetime and uses Candidate plus complete
-retained Release history, with two fresh proofs. It joins its original predecessor
-before replacement and attempts guarded fixed-unit start. A full ACK followed by
-failure retains `installed-started-recovery-required` and a nonzero exit status.
-The accepting new installed runtime and complete interrupted successor recovery are absent;
-no successful installed start, Service readiness or qualification follows from
-the command's presence. Physical cleanup may continue beyond its two-minute
-replacement bound; a timeout is not joined completion.
-
-`ardents-next installation recover-installed <installation-root>
-<canonical-UTC-reference-time>` recovers terminal completion of
-the still-running exact successor. That path requires the archived intent, complete
-original removal/replacement provenance, independent process/manager observations
-and two fresh floor-compatible proofs. It finishes original guard removal and
-archives the retained first transition failure without another ACK, Start or
-Stop. A separate pending path admits a complete `generation-staged` prefix
-before fixed replacement: exact previous selection/resources, sealed candidate,
-original directory birth and a closed journal precede fresh proofs and resync.
-It then performs original predecessor join, replacement/selection/reload and
-guarded start. Other prefixes, including existing transition failures, still
-return `installation-repair-required`. Full ACK survives late errors with
-`installed-started-recovery-required` and nonzero exit.
-Successful command composition and filesystem controls do not establish a
-positive installed recovery; the genuine new runtime consumer remains required.
-
-The duplicate `ardents endpoint provision`, `installation-check`,
-`start-installed`, `upgrade-installed` and `recover-installed` commands are retired
-before input or root effects. Their implementation has been removed; existing
-roots and data remain. The retained new native commands belong to the transitional
-`ardents-next` implementation under ADR-0125.
+The transitional `ardents-next installation` command family is retired.
+Platform commands own trust initialization, signed generation staging and
+pre-start verification. Existing installation data remains on disk.
 
 Before first Endpoint runtime, the actual runtime principal runs
 `ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE SIGNED_PROFILE`.
@@ -429,11 +401,6 @@ the role child directory. Shared Entry and each role Interior also open retained
 Missing histories cannot trigger initialization. Hosting is initialized separately
 after this preparation; Service preparation remains separate. This command requires Linux;
 other platforms refuse before reading the declaration.
-
-Detached `ardents-next installation authenticate-initial` and
-`authenticate-candidate`, including `--request` forms, are retired. The actual
-provision/replacement/recovery operation obtains and retains its own proofs;
-a printed authentication result grants no continuation.
 
 `ardents` is the Endpoint and Network State command adapter.
 
@@ -495,8 +462,8 @@ still determine whether the launch can accept work.
 | `endpoint enroll <bundle-root> <manifest-sha256>` | Return `endpoint enroll is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
 | `endpoint enroll-installed <package-enrollment.json>` | Return `endpoint enroll-installed is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the enrollment or causing any effect (#617 S3.5). |
 | `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Return `endpoint user-unit is retired; use ardents-next platform unit` (respectively `endpoint installed-user-unit is retired; use ardents-next platform unit`) at command dispatch before rendering any unit. The per-user `systemd --user` profile is retired; platform delivery owns the system unit (#617 S3.5). |
-| `endpoint replace <replacement-bundle>` | Return `endpoint replace is retired; use ardents-next installation upgrade-installed` at command dispatch before reading the bundle or causing any effect. The successor Endpoint lifecycle is forward-only (#617 S3.5). |
-| `endpoint replacement-recovery` | Return `endpoint replacement-recovery is retired; use ardents-next installation recover-installed` at command dispatch before reading any replacement state (#617 S3.5). |
+| `endpoint replace <replacement-bundle>` | Return `endpoint replace is retired; use ardents-next platform stage-endpoint` at command dispatch before reading the bundle or causing any effect. The successor Endpoint lifecycle is forward-only (#617 S3.5). |
+| `endpoint replacement-recovery` | Return `endpoint replacement-recovery is retired; use platform delivery after verified clean shutdown` at command dispatch before reading any replacement state (#617 S3.5). |
 | `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Return `endpoint rollback is retired; the successor Endpoint lifecycle is forward-only` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
 | `entry recipient <entry-import-plan.json>` | Return `entry Invite command is retired; the closed Entry set has no operator import surface` at command dispatch before interpreting the remaining arguments, reading the plan file, or creating any root. It never prints a recipient key; no Invite root reader, converter, or deleter remains (ADR-0106). |
 | `entry import <entry-import-plan.json>` | Return the same retirement refusal at command dispatch before any argument interpretation or filesystem effect. Existing Invite roots stay on disk byte-for-byte; the closed Entry set root refuses them by marker and allowed-name inspection (ADR-0106). |

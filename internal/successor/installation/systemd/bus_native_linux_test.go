@@ -90,40 +90,6 @@ func TestInstallationNativeManagerRefusesMissingOrCancelledCaller(t *testing.T) 
 
 // Every public fixed mechanism refuses before opening a subprocess when the
 // original caller is missing or already cancelled. No system manager is faked.
-func TestInstallationNativeControlRefusesBeforeSubprocess(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	observations := []struct {
-		name string
-		run  func(context.Context) (string, error)
-	}{
-		{"Endpoint state", func(ctx context.Context) (string, error) { return State(ctx, "ardents-endpoint.service") }},
-		{"socket state", func(ctx context.Context) (string, error) { return State(ctx, "ardents-text-reader.socket") }},
-		{"instances", Instances}, {"units", Units}, {"version", Version},
-	}
-	for _, observation := range observations {
-		if body, err := observation.run(nil); body != "" || !errors.Is(err, ErrInput) {
-			t.Fatal(observation.name, "missing caller admitted", body, err)
-		}
-		if body, err := observation.run(ctx); body != "" || !errors.Is(err, context.Canceled) {
-			t.Fatal(observation.name, "cancelled caller admitted", body, err)
-		}
-	}
-	for _, effect := range []func(context.Context) error{Reload, Start, Stop} {
-		if err := effect(nil); !errors.Is(err, ErrInput) {
-			t.Fatal("missing caller admitted effect", err)
-		}
-		if err := effect(ctx); !errors.Is(err, context.Canceled) {
-			t.Fatal("cancelled caller admitted effect", err)
-		}
-	}
-	for _, unit := range []string{"", "foreign.service", "ardents-endpoint.service\nforeign.service", "ardents-text-reader@1.service"} {
-		if body, err := State(t.Context(), unit); body != "" || !errors.Is(err, ErrInput) {
-			t.Fatal("foreign unit admitted", body, err)
-		}
-	}
-}
-
 func TestInstallationNativeManagerOutputRetainsFiniteBound(t *testing.T) {
 	var output boundedManagerOutput
 	if written, err := output.Write(make([]byte, (64<<10)-1)); err != nil || written != (64<<10)-1 {

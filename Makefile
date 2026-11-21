@@ -355,22 +355,6 @@ execution-escape-check:
 execution-recovery-check:
 	sh ./tests/qualification/execution-recovery/run-ubuntu.sh -timeout=2m
 
-.PHONY: execution-installed-check
-.PHONY: execution-installed-pair-check
-execution-installed-pair-check:
-	sh tests/qualification/execution-installed/run-pair.sh -timeout=8m
-
-.PHONY: execution-installed-timing-check
-execution-installed-timing-check:
-	sh tests/qualification/execution-installed/run-pair.sh timing -timeout=15m
-
-.PHONY: execution-installed-publication-check
-execution-installed-publication-check:
-	sh tests/qualification/execution-installed/run-ubuntu.sh service-publication -timeout=4m
-
-execution-installed-check:
-	sh ./tests/qualification/execution-installed/run-ubuntu.sh -timeout=4m
-
 .PHONY: text-role-durable-state-capture
 text-role-durable-state-capture:
 	@test "$$(go env GOOS)" = linux || (echo "text-role-durable-state-capture requires Linux"; exit 1)
@@ -404,11 +388,8 @@ installation-native-compile-check:
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-directory-native.test" ./internal/successor/installation/directory
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/successor/installation/cgroup
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/successor/installation/systemd
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-journal-native.test" ./internal/successor/installation/journal
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/successor/installation/process
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/successor/installation/generation
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-completion-native.test" ./internal/successor/installation/completion
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-fixedfile-native.test" ./internal/successor/installation/fixedfile
 
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check

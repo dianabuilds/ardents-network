@@ -5,10 +5,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
+
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,33 +24,6 @@ func installationFixtureInputs(bundle enrollment.Bundle, ref time.Time) (release
 	in, ok := initialReleaseInputs(bundle, ref)
 	in.Local.Architecture = "amd64"
 	return in, ok
-}
-
-func TestInstallationProvisionOriginalCancellationBeforeInputOrFloors(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out bytes.Buffer
-	if code := runInstallation(ctx, []string{"provision", "--request", filepath.Join(t.TempDir(), "absent-request")}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
-		t.Fatal("provision lost pre-effect original cancellation", code, out.String())
-	}
-}
-
-func TestInstallationCheckOriginalCancellationBeforeInputOrFloors(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out bytes.Buffer
-	if code := runInstallation(ctx, []string{"check", filepath.Join(t.TempDir(), "absent-installation")}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
-		t.Fatal("check lost pre-effect original cancellation", code, out.String())
-	}
-}
-
-func TestInstallationRecoveryOriginalCancellationBeforeInputOrFloors(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out bytes.Buffer
-	if code := runInstallation(ctx, []string{"recover-initial", filepath.Join(t.TempDir(), "absent-installation"), "2030-01-02T03:04:05Z"}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
-		t.Fatal("recovery lost pre-effect original cancellation", code, out.String())
-	}
 }
 
 func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
@@ -89,14 +62,14 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 		t.Fatal("fresh generation proof missing after shared floors committed")
 	}
 	programDecision.Digest[0] ^= 1
-	resource, ok := initial.Resource("ardents-linux-amd64")
+	resource, ok := initial.Resources()["ardents-linux-amd64"]
 	if !ok {
 		t.Fatal("program resource missing")
 	}
 	resource[0] ^= 1
 	descriptor := initial.Descriptor()
 	descriptor[0] ^= 1
-	actualResource, _ := initial.Resource("ardents-linux-amd64")
+	actualResource := initial.Resources()["ardents-linux-amd64"]
 	actualDescriptor := initial.Descriptor()
 	resourceDigest, descriptorDigest := sha256.Sum256(actualResource), sha256.Sum256(actualDescriptor)
 	programDecision, _ = p.AcceptedDecision()
@@ -329,52 +302,21 @@ func TestInstallationOriginalCancellationAtPairHandoffRetainsFloors(t *testing.T
 	}
 }
 
-func TestInstallationSuccessorCommandRefusesBeforeTrust(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out bytes.Buffer
-	if code := runInstallation(ctx, []string{"upgrade-installed", "--request", "/missing-request"}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
-		t.Fatal("successor command lost original cancellation", code, out.String())
-	}
-	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "installation", "upgrade-installed", "--request", filepath.Join(t.TempDir(), "absent.json"))
-	output, err := cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(output), "installation-refused") {
-		t.Fatalf("actual successor consumer absent or accepting: %v %s", err, output)
-	}
-}
-
-func TestInstallationSuccessorRecoveryCommandRefusesBeforeTrust(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out bytes.Buffer
-	if code := runInstallation(ctx, []string{"recover-installed", "/missing-installation", "2030-01-02T03:04:05Z"}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
-		t.Fatal("recovery renewed canceled acquisition", code, out.String())
-	}
-	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "installation", "recover-installed", filepath.Join(t.TempDir(), "absent"), "2030-01-02T03:04:05Z")
-	output, err := cmd.CombinedOutput()
-	// Linux refuses missing native custody; other platforms refuse the native
-	// profile. Both must reach the actual new consumer before any trust effects.
-	if err == nil || !strings.Contains(string(output), "installation-") || strings.Contains(string(output), "invalid-input") || strings.Contains(string(output), "installed-recovered-started") {
-		t.Fatalf("actual recovery consumer absent or accepting: %v %s", err, output)
-	}
-}
-
 // Retired detached authentication must refuse before reading inputs or creating
 // Release history. The live delivery operation obtains its own private pair.
-func TestInstallationDetachedAuthenticationIsNotACommand(t *testing.T) {
-	history := filepath.Join(t.TempDir(), "history")
-	for _, args := range [][]string{
-		{"authenticate-initial", "/absent", strings.Repeat("0", 64), history, "2030-01-02T03:04:05Z"},
-		{"authenticate-candidate", "/absent", history, "2030-01-02T03:04:05Z"},
-		{"authenticate-initial", "--request", "/absent"},
-		{"authenticate-candidate", "--request", "/absent"},
-	} {
-		var out bytes.Buffer
-		if code := runInstallation(t.Context(), args, &out); code != 2 || !strings.Contains(out.String(), "invalid-input") {
-			t.Fatalf("retired authentication entered delivery: %d %s", code, out.String())
-		}
-	}
-	if _, err := os.Lstat(history); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("retired command touched history", err)
+
+// These verbs used to accept a path and could write Installation state.
+func TestTransitionalInstallationCommandsRefuseBeforeEffects(t *testing.T) {
+	for _, verb := range []string{"provision", "upgrade-installed", "recover-initial", "recover-installed", "check"} {
+		t.Run(verb, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "absent")
+			var out, diagnostic bytes.Buffer
+			if code := run(t.Context(), []string{"installation", verb, path}, &out, &diagnostic); code != 2 || out.Len() != 0 {
+				t.Fatalf("retired command returned %d: %s", code, out.String())
+			}
+			if _, err := os.Lstat(path); !os.IsNotExist(err) {
+				t.Fatalf("retired command touched input path: %v", err)
+			}
+		})
 	}
 }

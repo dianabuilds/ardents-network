@@ -2,7 +2,7 @@ package endpoint
 
 import (
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
+
 	"os"
 	"path/filepath"
 	"syscall"
@@ -88,21 +88,6 @@ func syncDirectDirectory(directory string) (returnedErr error) {
 }
 
 // Translate physical directory refusals without giving that Module admission.
-func directoryObservationError(err error) error {
-	if err == nil {
-		return nil
-	}
-	switch {
-	case errors.Is(err, directory.ErrInput):
-		return errors.Join(ErrInput, err)
-	case errors.Is(err, directory.ErrBinding):
-		return errors.Join(ErrBinding, err)
-	case errors.Is(err, directory.ErrNativeUnavailable):
-		return errors.Join(ErrNativeUnavailable, err)
-	default:
-		return err
-	}
-}
 
 // fileObservation is detached file identity and bytes, shared by staged writes
 // and independent installed reads. It owns no descriptor, lease or admission.

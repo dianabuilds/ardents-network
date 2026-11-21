@@ -836,46 +836,8 @@ not a qualified worker or installed Startup. Stock preparation tests separately
 check original coordination, copied/canceled handles, ordered multiplicity,
 foreign profile refusal and no allocation/presentation refunds.
 
-The separate `execution-installed-publication-check` selects
-`TestInstalledServicePublication` in the same tagged command binary with an
-independently selected Carrier and a separate fresh installation for each Carrier.
-Canonical installed commands initialize the non-exporting Instance and accept
-the fixture-approved public Credential. The actual dual-role participant obtains
-network-issued stock rather than test-preloaded batches, publishes a qualified
-snapshot through real REGISTER/Descriptor Store ACK and withdraws without
-replacing its original process. The exact profile, finite fixture allocations,
-independent pins and limits are owned by
-`tests/qualification/execution-installed/README.md`. This component supplies
-neither a two-Endpoint exchange nor final Connection acceptance.
-
-The separately selected `execution-installed-timing-check` retains canonical
-Installation-admitted participants through actual automatic Publication refresh
-and a second authenticated Text exchange. Its fifteen-minute checked profile,
-token-hour prerequisite, independent Store revision proof and original invocation
-checks belong to `tests/qualification/execution-installed/README.md`. Ordinary
-pair limits remain unchanged; this profile does not replace the separate precise
-ACK-delay/overlap Publication timing checks or complete interruption audit.
-
-The execution-installed-check target selects the root-native
-TestInstalledExecutionStartup with text_worker_installed. Its driver requires
-a fresh dedicated Ubuntu24/systemd255 manager without Ardents accounts or fixed
-resources. Actual installation provision and upgrade-installed consumers
-create these objects and start the canonical non-root participant program; the
-root test binary never becomes Endpoint MainPID. Genuine signed Epoch/profile
-intake, two actual State-owned TLS servers, the original Root completion exchange,
-qualified permission preparation and Stock import precede an original-invocation
-permission-accepted diagnostic. The independently observed original process and
-its AAI3 listener must match the same PID/UID/GID after explicit provider-budget
-initialization through the installed command. The socket probe submits no
-Service request and supplies no Job or authenticated stream. The original process and
-kernel scope must physically join before fixture infrastructure closes. The
-driver pins its test binary and nine-resource inventory independently and refuses
-missing prerequisites. Signing, Source and clock infrastructure has one fixture
-controller. An isolated manager and its outside driver share a cgroup namespace
-whose original PID1 is at `/init.scope`; a foreign outer-unit prefix is rejected
-by preflight before starting the four-minute test. This selected scenario grants
-no private Service readiness, complete
-recovery matrix, independent custody/time/family or whole-host qualification.
+The retired installed installer profiles are superseded by the platform-led
+launch, replacement and two-host journey qualifications documented below.
 
 `TestExecutionSignedInstalledResources` in the Linux command profile builds the
 actual canonical participant and Text programs, combines the seven maintained
@@ -2222,8 +2184,8 @@ Linux production exception or Windows runtime qualification. Local retirement
 notice tests preserve foreign, wrapped physical and cancellation cleanup causes.
 
 The same exact platform classification covers new Installation's portable
-assembly, inspection, journal and typed manager rules reached by genuine Linux
-`ardents-next installation provision/check` consumers. Windows refuses their
+assembly, inspection and typed manager rules reached by genuine Linux
+platform staging and startup consumers. Windows refuses their
 native effects. Their individual Windows entries grant no Linux allowance,
 successful installation or runtime qualification; both test projections must
 still be empty. The native custody representation is Linux-only, while portable
@@ -3132,52 +3094,13 @@ remains reachable in Linux production, while test analysis on both platforms
 requires an empty unreachable-function set. This does not qualify Windows
 durable composition; the checker and its exact comparison are unchanged.
 
-### New Installation generation authentication
+### Endpoint platform generation authentication
 
-The public successor handle has a real `installation upgrade-installed --request`
-consumer. Portable tests refuse detached handles and cancelled openings; the
-compiled command refuses unavailable native/request prerequisites before trust.
-The native copied-handle regression uses an actual writer descriptor and a
-cancelled original caller, with no successful Release/manager/startup substitute;
-it requires physical close, the shared one-use latch and retained cancellation.
-These refusal/lifetime checks do not prove a positive successor start or ACK.
-The accepting new installed runtime and explicit successor recovery/interruption
-matrix remain separate evidence obligations. Candidate process/scope lifetime
-lives in `candidate_linux.go`, independently of transition admission/staging.
-Its unchanged native missing-custody and unjoined-writer checks reside in
-`candidate_native_linux_test.go`, while transaction/selection checks stay with
-successor transition. Completion record and ACK sequencing share the candidate
-implementation; genuine accepting runtime remains a separate obligation.
-
-Fixed-unit behavior tests separately observe a completed failed start without
-turning failed manager state into fresh-stopped or recovery admission. They
-refuse live PID, queued/missing Job, changed protection/program, incomplete or
-reversed execution clocks, ambiguous result and noncanonical numbers. Candidate
-cleanup still repeats actual activation/worker/kernel observations; pure typed
-fixtures do not establish that a manager attempted, stopped or joined work.
-
-Completion grammar tests use independently spelled 160-byte frames, reject
-noncanonical/oversized digests and zero InvocationID, and retain detached return
-values. The root selection-schema refusal and exact byte oracle live with the
-native start barrier; both producers consume the completion Module grammar.
-These checks grant no accepting startup or installed evidence.
-
-Portable Installation checks consume genuine pinned Enrollment Bundle or
-untrusted Candidate snapshots and actual Release authorizations. Command
-integration tests independently assemble signed program/generation targets,
-authenticate both exact byte sets, exercise retained no-update evaluations,
-refuse cold candidate trust and compare private proof facts. Root, program,
-metadata substitution and duplicate metadata names must refuse before floor
-effects. Refusal of the second target, incoherent target facts and original
-cancellation at final handoff retain real already committed Release floors.
-
-`cmd/ardents-next/installation_test.go` runs these owner-backed cases under
-Windows/Linux race; the compiled selected Linux consumer also exercises initial
-and retained candidate authentication. Other hosts execute actual foreign-platform
-refusal before history creation. `internal/successor/release/retained_history_test.go`
-covers absent/empty history, genuinely committed Root-only history and complete
-reopen. These are byte authentication and native history checks, not installed
-journal, predecessor join, manager start or installed/privacy qualification.
+Initial staging requires the independent Enrollment pin and matching retained
+Release floors. Replacement uses a signed candidate and the exact stopped
+predecessor, refuses partial or uncertain state and retains domain history.
+Selected native platform launch and replacement profiles exercise those checks
+through actual systemd and socket-activated Worker lifetimes.
 
 ## Protected Endpoint platform-led pre-start native qualification
 
