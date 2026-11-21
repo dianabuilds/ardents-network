@@ -160,7 +160,7 @@ checks the fixed offline forward-signing purpose; it grants no Installation or
 runtime authority. `source_release_linux.go` remains the direct signing caller.
 | Directory | Declaration | Responsibility and consumer | Permitted imports |
 |---|---|---|---|
-| `internal/release/infrastructure` | `package infrastructure` | Prepares and verifies canonical infrastructure artifact descriptors and admits coherent Release pairs from original Enrollment snapshots. Control uses it for offline preparation and platform pre-start uses runtime authorization. | `internal/enrollment`, `internal/release`, standard library |
+| `internal/release/infrastructure` | `package infrastructure` | Prepares and verifies canonical infrastructure artifact descriptors and admits coherent Release pairs from original Enrollment snapshots. Control uses it for offline preparation. Platform pre-start uses runtime authorization. Source distribution inspection owns the independent history path check, Enrollment and joined Release verifier. The `ardents-next infrastructure authenticate-*` adapter supplies parsed inputs and renders the receipt. | `internal/enrollment`, `internal/release`, standard library |
 
 Platform launch composition is command-local; it introduces no Installation
 domain or new runtime supervisor. Exact additional import permissions:

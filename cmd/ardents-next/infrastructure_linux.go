@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -44,12 +43,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		}
 		return 0
 	}
-	// The transitional Source preflight and install-initial-stopped orchestration
-	// is retired (ADR-0125, #604); the platform-led Source lifecycle replaces it.
-	// The refusal fires before any input is read or any effect is attempted.
-	if args[0] == "preflight-initial" || args[0] == "preflight-candidate" || args[0] == "install-initial-stopped" {
-		return enrollmentReport(out, "source-orchestration-retired", 1)
-	}
 	initial := args[0] == "authenticate-initial"
 	if (initial && len(args) != 7) || (!initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
 		return 2
@@ -58,77 +51,27 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return 2
 	}
-	offset := 0
+
+	var result infrastructure.SourceReleaseInspection
 	if initial {
-		offset = 1
+		local := sourceReleaseEnvironment(args[4], args[5], ref)
+		result, err = infrastructure.InspectInitialSourceRelease(ctx, local, args[1], args[2], args[3])
+	} else {
+		local := sourceReleaseEnvironment(args[3], args[4], ref)
+		result, err = infrastructure.InspectCandidateSourceRelease(ctx, local, args[1], args[2])
 	}
-	history := args[2+offset]
-	if !independentInfrastructureHistory(args[1], history) {
+	switch {
+	case errors.Is(err, infrastructure.ErrSourceReleasePaths):
 		return enrollmentReport(out, "infrastructure-paths-refused", 2)
-	}
-	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: ref.UTC()}
-	var b enrollment.InfrastructureBundle
-	var c enrollment.InfrastructureCandidate
-	var files interface{ File(string) ([]byte, bool) }
-	if initial {
-		b, err = enrollment.VerifyInfrastructure(ctx, args[1], args[2])
-		files = b
-	} else {
-		c, err = enrollment.ReadInfrastructureCandidate(ctx, args[1])
-		files = c
-	}
-	if err != nil {
+	case errors.Is(err, infrastructure.ErrSourceReleaseInventory):
 		return enrollmentReport(out, "infrastructure-inventory-refused", 1)
-	}
-	root, _ := files.File("root.json")
-	program, _ := files.File(infrastructure.ProgramName)
-	descriptor, _ := files.File(infrastructure.DescriptorName)
-	template, _ := files.File(infrastructure.TemplateName)
-	d, err := infrastructure.ValidateResources(descriptor, program, template)
-	var f enrollment.InfrastructureFacts
-	if initial {
-		f, _ = b.Facts()
-	} else {
-		f, _ = c.Facts()
-	}
-	if err != nil || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion {
+	case errors.Is(err, infrastructure.ErrSourceReleaseArtifact):
 		return enrollmentReport(out, "infrastructure-artifact-refused", 1)
-	}
-	input := release.Inputs{RootBytes: root, Artifact: program, TargetPath: infrastructure.ProgramTarget, Local: local, Files: map[string][]byte{}}
-	for _, name := range []string{"timestamp.json", "snapshot.json", "targets.json"} {
-		input.Files["https://release.invalid/metadata/"+name], _ = files.File(name)
-	}
-	input.Files, err = release.StaticMetadataFiles(root, input.Files["https://release.invalid/metadata/timestamp.json"], input.Files["https://release.invalid/metadata/snapshot.json"], input.Files["https://release.invalid/metadata/targets.json"])
-	if err != nil {
+	case errors.Is(err, infrastructure.ErrSourceReleaseMetadata):
 		return enrollmentReport(out, "infrastructure-metadata-refused", 1)
-	}
-	var v *release.Verifier
-	if initial {
-		v, err = release.Open(history)
-	} else {
-		v, err = release.OpenRetained(history)
-	}
-	if err != nil {
+	case errors.Is(err, infrastructure.ErrSourceReleaseHistory):
 		return enrollmentReport(out, "infrastructure-release-unavailable", 1)
-	}
-	var a infrastructure.Authorization
-	if initial {
-		a, err = infrastructure.AuthenticateInitial(ctx, v, b, input)
-	} else {
-		a, err = infrastructure.AuthenticateCandidate(ctx, v, c, input)
-	}
-	if err == nil {
-		err = a.Check(ctx, v)
-	}
-	p, g := a.Targets()
-	pd, pok := p.AcceptedDecision()
-	gd, gok := g.AcceptedDecision()
-	_, hasInitial := a.InitialFacts()
-	if err == nil && (!pok || !gok || hasInitial != initial) {
-		err = infrastructure.ErrAuthorization
-	}
-	err = errors.Join(err, v.Close(), ctx.Err())
-	if err != nil {
+	case err != nil:
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
 	}
 	receipt, e := json.Marshal(struct {
@@ -138,40 +81,22 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		ProgramSHA256     string          `json:"program_sha256"`
 		DescriptorSHA256  string          `json:"descriptor_sha256"`
 		TemplateSHA256    string          `json:"template_sha256"`
-	}{"authenticated-source-artifact", pd.Outcome, gd.Outcome, fmt.Sprintf("%x", sha256.Sum256(a.Program())), fmt.Sprintf("%x", sha256.Sum256(a.Descriptor())), fmt.Sprintf("%x", sha256.Sum256(a.Template()))})
+	}{
+		Outcome:           "authenticated-source-artifact",
+		ProgramOutcome:    result.ProgramOutcome,
+		GenerationOutcome: result.GenerationOutcome,
+		ProgramSHA256:     hex.EncodeToString(result.ProgramSHA256[:]),
+		DescriptorSHA256:  hex.EncodeToString(result.DescriptorSHA256[:]),
+		TemplateSHA256:    hex.EncodeToString(result.TemplateSHA256[:]),
+	})
 	if e != nil || writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
 		return 1
 	}
 	return 0
 }
 
-// Immutable distribution and mutable Release history cannot contain one another.
-// Direct ancestor checks also refuse a differently spelled symlink alias before
-// Release opens its independently owned native lease or creates any directory.
-func independentInfrastructureHistory(distribution, history string) bool {
-	if !absoluteAdmissionPath(distribution) || !absoluteAdmissionPath(history) {
-		return false
-	}
-	contains := func(parent, child string) bool {
-		rel, err := filepath.Rel(parent, child)
-		return err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))))
-	}
-	if contains(distribution, history) || contains(history, distribution) {
-		return false
-	}
-	for p := history; ; p = filepath.Dir(p) {
-		info, err := os.Lstat(p)
-		if err != nil && !os.IsNotExist(err) {
-			return false
-		}
-		if err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-			return false
-		}
-		if filepath.Dir(p) == p {
-			break
-		}
-	}
-	return true
+func sourceReleaseEnvironment(environment, network string, ref time.Time) release.LocalEnvironment {
+	return release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: environment, Network: network, RefTime: ref.UTC()}
 }
 
 // Public preparation borrows the existing original native input/output custody.

@@ -186,7 +186,11 @@ under accepted ADR-0123 through direct new owners in `ardents-next`:
 - `infrastructure prepare-inventory <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json`, after actual signed metadata are supplied.
 - `infrastructure authenticate-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time>` checks its actual executing artifact and two fresh Release proofs.
 - `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
-- `infrastructure preflight-initial`, `infrastructure preflight-candidate` and `infrastructure install-initial-stopped` are retired (#604 stage 1.6, ADR-0125). Each returns the refused receipt `source-orchestration-retired` before reading any input or attempting any effect. The [platform-led Source lifecycle](../operations/source-platform-lifecycle.md) replaces the transitional Source orchestration.
+
+The [platform-led Source lifecycle](../operations/source-platform-lifecycle.md)
+owns Source pre-start and installation. Former `infrastructure preflight-initial`,
+`infrastructure preflight-candidate` and `infrastructure install-initial-stopped`
+invocations return the standard unknown-operation exit code 2 before reading inputs.
 
 All paths are canonical absolute. Preparation retains root-controlled original
 files and private native-ext4 fresh output custody. Authentication refuses

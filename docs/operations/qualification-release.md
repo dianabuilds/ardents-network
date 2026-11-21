@@ -250,12 +250,9 @@ ADR-0120 releases and Endpoint inventories retain their scope.
 
 ## Source read-only native preflight
 
-Retired (#604 stage 1.6, ADR-0125). `infrastructure preflight-initial` and
-`preflight-candidate` return the refused receipt `source-orchestration-retired`
-before reading any input; the `ardents-source-preflight-v1` request grammar and
-the `source-preflight-linux` profile are removed with the transitional Source
-orchestration. The platform-led Source lifecycle replaces this admission path:
-the platform unit's mandatory `platform check` ExecStartPre gate and
+The platform-led Source lifecycle replaces the retired Source preflight
+commands and their request grammar and test profile (ADR-0125).
+The platform unit's mandatory `platform check` ExecStartPre gate and
 `source serve-retained` own pre-start admission. See the
 [operator procedure](source-platform-lifecycle.md). Retained
 `infrastructure authenticate-initial`/`authenticate-candidate` artifact
@@ -264,10 +261,9 @@ bootstrap receipt still requires its separate Product Owner acceptance.
 
 ## Initial stopped Source component
 
-Retired (#604 stage 1.6, ADR-0125). `ardents-node installation
-install-initial-stopped` returns a typed refusal before reading inputs or
-attempting any effect; the `source-stopped-linux` profile and the transitional
-stopped-installation journal machinery are removed. The platform-led Source
+The transitional stopped-installation journal and the `source-stopped-linux`
+profile retired under ADR-0125. ADR-0128 removed the old `ardents-node`
+command. The platform-led Source
 lifecycle owns first installation: `ardents-control source prepare-state`,
 `ardents-next platform initialize-trust`/`unit`, publication of the rendered
 `ardents-source.service` unit and `systemctl start ardents-source` with the

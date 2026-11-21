@@ -158,6 +158,12 @@ current transition remains with its technical owner until that transfer.
 
 ## Supporting mechanisms and composition
 
+Source artifact authentication in `internal/release/infrastructure` joins the
+Release verifier before returning inspection facts. Enrollment owns original
+distribution provenance and the initial pin. Release owns retained trust and
+floors. The independent inspection history is distinct from platform startup
+history. `ardents-next infrastructure` parses inputs and renders outcomes.
+
 Admission's pure issuer-profile leaf supplies public-only Control inspection.
 The command verifies independent Network/issuer/Node-key pins, canonical signed
 bytes and complete hourly cohorts, then reports the signed interval. The strict

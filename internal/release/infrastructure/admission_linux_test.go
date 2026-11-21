@@ -2,6 +2,8 @@ package infrastructure
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
@@ -47,5 +49,27 @@ func TestCoherenceIncludesCommonSafetyAndReference(t *testing.T) {
 		if coherentTarget(p, other, d, GenerationTarget) {
 			t.Fatal("incoherent pair accepted")
 		}
+	}
+}
+
+func TestSourceReleaseHistoryIsIndependent(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "distribution")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{dir, filepath.Dir(dir), filepath.Join(dir, "absent"), "relative-history"} {
+		if independentSourceReleaseHistory(dir, path) {
+			t.Fatal("overlap admitted", path)
+		}
+	}
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(dir, alias); err != nil {
+		t.Fatal(err)
+	}
+	if independentSourceReleaseHistory(dir, filepath.Join(alias, "history")) {
+		t.Fatal("symlink alias admitted")
+	}
+	if !independentSourceReleaseHistory(dir, filepath.Join(t.TempDir(), "separate")) {
+		t.Fatal("separate healthy history refused")
 	}
 }

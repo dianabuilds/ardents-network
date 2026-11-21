@@ -82,6 +82,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/enrollment/infrastructure_process_linux.go",
 			"internal/platform/systemd/infrastructure_unit_linux.go",
 			"internal/release/infrastructure/admission.go",
+			"internal/release/infrastructure/source_release_inspection_linux.go",
 			"internal/platform/cgroup/source_quiescence_linux.go",
 			"internal/network/state/source_inspection_linux.go",
 			"internal/network/state/inspection_state_linux.go",
