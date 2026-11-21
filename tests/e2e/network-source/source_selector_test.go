@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -34,4 +36,27 @@ func TestSourceSelectorRetiresBeforeRuntimeDiagnostics(t *testing.T) {
 			t.Fatalf("retired Source changed path %s: %v", path, err)
 		}
 	}
+}
+
+func buildProductCommand(t *testing.T, name string) string {
+	t.Helper()
+	if prebuilt := os.Getenv("ARDENTS_E2E_PRODUCT_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))); prebuilt != "" {
+		info, err := os.Lstat(prebuilt)
+		if err != nil || !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+			t.Fatalf("prebuilt product command %s is not a regular executable: %v", name, err)
+		}
+		return prebuilt
+	}
+	suffix := ""
+	if runtime.GOOS == "windows" {
+		suffix = ".exe"
+	}
+	path := filepath.Join(t.TempDir(), name+suffix)
+	command := exec.Command("go", "build", "-o", path, "./cmd/"+name)
+	command.Dir = filepath.Join("..", "..", "..")
+	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build %s: %v\n%s", name, err, output)
+	}
+	return path
 }
