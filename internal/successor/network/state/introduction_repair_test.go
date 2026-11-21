@@ -107,6 +107,54 @@ func TestIntroductionRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testi
 	}
 }
 
+// The runtime claims the original Introduction producer with the configured
+// member's NodeID and FamilyID (node/introduction_linux.go), which for any member
+// other than the epoch primary differs from the snapshot identity. The repair must
+// bind that genuine non-primary member fence, not refuse it against the snapshot
+// primary; a foreign identity with no accepted Candidate still refuses.
+func TestIntroductionRepairBindsNonPrimaryMember(t *testing.T) {
+	s, decision := newControlCommitFixture(t, false)
+	public, err := hex.DecodeString("c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.config.authorities = map[[32]byte]ed25519.PublicKey{sha256.Sum256(public): public}
+	s.config.threshold = 1
+	var memberID, memberFamily [32]byte
+	for _, candidate := range decision.Candidates {
+		if candidate.NodeID != decision.Snapshot.NodeID {
+			memberID, memberFamily = candidate.NodeID, candidate.FamilyID
+			break
+		}
+	}
+	if memberID == [32]byte{} {
+		t.Fatal("fixture has no non-primary accepted member")
+	}
+	now := s.config.clock()
+	facts := duty.NodeParticipation{Identity: memberID, FamilyID: memberFamily,
+		Assignment: "introduction", EpochUntil: now.Add(time.Hour), RecordUntil: now.Add(time.Hour)}
+	producer, err := duty.OpenNodeProducer(t.Context(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true}, facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := producer.Live(); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.storage.Close(); err != nil {
+		t.Fatal(err)
+	}
+	r, err := openIntroductionRepair(t.Context(), s.config)
+	if err != nil {
+		t.Fatal("repair refused a genuine non-primary member fence", err)
+	}
+	if r.producer == [32]byte{} {
+		t.Fatal("repair discovered no producer for the non-primary member")
+	}
+	if err := errors.Join(r.roles.Remove(r.producer), r.close()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestIntroductionRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 	for _, failure := range []string{"clean", "other-producer", "mismatched-duty", "missing-participation-pointer", "participation-stage", "participation-fifo", "state-stage", "floor-mismatch", "active-cycle", "pending", "exposure-history", "conflict", "corrupt-signed-generation", "clock"} {
 		t.Run(failure, func(t *testing.T) {
