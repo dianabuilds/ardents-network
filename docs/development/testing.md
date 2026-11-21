@@ -3431,11 +3431,14 @@ that participant:
   distinct declared principals and original InvocationIDs, and joined cleanup
   that restores both hosts to their pre-run state (namespaced Ardents artifacts
   only; a co-hosted website's containers and fixed ports are never touched).
-  Reading immediately after
-  publication keeps the exchange inside the publisher's initial route-context
-  lifetime; descriptor automatic-refresh timing across a long publish/read gap is
-  a stated residual (S2.3). Missing privileges, tools, residual state or an
-  unreachable fixture path are invalid environments, never a passing skip; the
+  It reads once after initial publication and again through the same Link after
+  automatic Descriptor refresh. The Store observer verifies exactly one new
+  revision, a fresh slot and recipient key, the original Publication digest,
+  and refusal by the predecessor while its signed Descriptor remains valid.
+  Both participants keep their original InvocationIDs through the second read
+  and withdrawal. Start with at least sixteen minutes left in the original
+  permission hour. Missing privileges, tools, residual state or an unreachable
+  fixture path are invalid environments, never a passing skip; the
   finite publication and bootstrap deadlines require a quiet controller host
   (concurrent heavy load is an invalid environment for the timing-sensitive
   exchange, not a reason to widen a product bound). It is not a `make quick-check`
