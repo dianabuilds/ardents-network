@@ -133,7 +133,7 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	expected := map[string]bool{
-		"./cmd/ardents":         true,
+		"./cmd/ardents-next":    true,
 		"./cmd/ardents-control": true,
 		"./cmd/ardents-custody": true,
 	}
@@ -142,7 +142,11 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 		if !expected[command] {
 			t.Fatalf("unexpected selected headless artifact %s", command)
 		}
-		path := filepath.Join(headlessRoot, filepath.Base(command)+"-"+platform+executableSuffix())
+		name := filepath.Base(command)
+		if name == "ardents-next" {
+			name = "ardents"
+		}
+		path := filepath.Join(headlessRoot, name+"-"+platform+executableSuffix())
 		raw, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read selected artifact %s: %v", command, err)

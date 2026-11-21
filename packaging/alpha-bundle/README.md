@@ -58,8 +58,8 @@ and `ardents-custody` artifacts outside the repository, then supplies the
 three exact executable byte strings to the deterministic
 inventory test. The test packs,
 unpacks, verifies, and byte-compares those artifacts; it does not substitute
-fixture text for executable bytes. The target passes the same Endpoint
-artifact to the selected enrollment and process scenarios.
+fixture text for executable bytes. The Endpoint artifact retains its signed filename and is built from
+`cmd/ardents-next`. The target passes the same Endpoint artifact to the selected enrollment and process scenarios.
 
 ```sh
 make headless-check

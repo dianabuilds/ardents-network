@@ -9,13 +9,6 @@ import (
 
 var errOfflineEpochNotCurrent = errors.New("offline Epoch is not yet current")
 
-// Accept verifies a complete offline decision before publishing current or pending
-// State. Only a Source wave may promote a retained pending Epoch.
-func (s *networkState) Accept(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (Snapshot, error) {
-	result, err := s.AcceptEpoch(ctx, epoch, inputs, encodedMaterials)
-	return result.Snapshot, err
-}
-
 // OfflineAcceptance distinguishes an accepted pending Epoch from a current
 // Epoch. Snapshot is the resulting State, including the existing current
 // Epoch when the supplied candidate was retained as pending.

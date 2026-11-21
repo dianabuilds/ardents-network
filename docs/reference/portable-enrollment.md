@@ -63,17 +63,16 @@ sha256sum --strict --check SHA256SUMS
 ```
 
 Any non-zero result stops the journey. Do not mark the artifact executable, run
-`ardents`, start a unit, or seek a workaround. The built-in
-`ardents endpoint enrollment-check` is deliberately absent from this procedure:
+the enrolled executable, start a unit, or seek a workaround. The built-in
+`ardents-next enrollment verify` is deliberately absent from this procedure:
 it can recheck the inventory before Endpoint readiness only after the artifact
 has already executed.
 
 ## Start (per-user route retired)
 
 The former per-user `endpoint user-unit` / `endpoint enroll` start procedure is
-retired (#617 S3.5); `ardents endpoint user-unit/enroll/enroll-installed/
-installed-user-unit/replace/rollback` return typed refusals before effects. The
-external verification above still applies before running a downloaded program.
+retired (#617 S3.5) and its command adapter has been removed. Verify the
+external pin above before running a downloaded program.
 
 First execution now uses platform delivery: `ardents-next platform unit` with
 `endpoint construct-plan` and `prepare-history`, then `ardents-next endpoint

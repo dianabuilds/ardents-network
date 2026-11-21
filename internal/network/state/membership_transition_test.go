@@ -45,7 +45,7 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 	defer owner.Close()
 	accept := func(signed networkfixture.Closed) {
 		t.Helper()
-		if _, err := owner.Accept(t.Context(), signed.Epoch.Raw, signed.Epoch.Inputs, signed.Epoch.Materials[:1]); err != nil {
+		if _, err := owner.AcceptEpoch(t.Context(), signed.Epoch.Raw, signed.Epoch.Inputs, signed.Epoch.Materials[:1]); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := owner.AcceptClosedProfile(signed.Profile); err != nil {

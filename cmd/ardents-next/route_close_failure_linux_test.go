@@ -45,7 +45,7 @@ func TestRouteCompiledHolderRetainsFailedPrefixClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = networkOwner.Accept(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
+	_, err = networkOwner.AcceptEpoch(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
 	if err == nil {
 		_, err = networkOwner.AcceptClosedProfile(bundle.Profile)
 	}

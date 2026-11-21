@@ -688,20 +688,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/closed_profile.go" && dependency == modulePath+"/internal/network/closedprofile" {
 			return true
 		}
-		// #493 Network State cutover: the offline acceptance adapter consumes the
-		// successor State owner. refresh-sources stays on the legacy H3-S governor
-		// pending its consequential re-scope (successor State never samples
-		// process resources and admits work through PermitWork).
-		if (source == "cmd/ardents/offline.go" || source == "cmd/ardents/config.go") && dependency == modulePath+"/internal/network/state" {
-			return true
-		}
-		// ADR-0127 (#647) enrollment-check cutover: the read-only bundle-root+pin
-		// diagnosis consumes the successor enrollment owner. The persisted
-		// v1-document form refuses before effects; this exact file admits no other
-		// successor dependency and no other old command gains an exception.
-		if source == "cmd/ardents/endpoint.go" && dependency == modulePath+"/internal/enrollment" {
-			return true
-		}
 		if source == "cmd/ardents-control/forwarding_profile_native_linux_test.go" && (dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
@@ -1208,7 +1194,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/endpoint/reader/reader_linux.go" || source == "internal/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if (source == "internal/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go" || source == "cmd/ardents-next/endpoint_replacement_worker_native_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
+	if source == "cmd/ardents-next/diagnostic_timeline.go" && local == "internal/diagnostics/timeline" {
+		return true
+	}
+	if (source == "internal/endpoint/participant_linux.go" || source == "cmd/ardents-next/endpoint_administration_client.go" || source == "cmd/ardents-next/installed_service_linux_test.go" || source == "cmd/ardents-next/endpoint_replacement_worker_native_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
 	if source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" || source == "cmd/ardents-next/text_command_installed_linux_test.go" {
@@ -1544,9 +1533,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Reader cannot own Publication", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/publication/runtime", false},
 		{"Publisher cannot import command composition", "internal/endpoint/publisher/publisher_linux.go", modulePath + "/cmd/ardents-next", false},
 		{"other binaries cannot acquire new funding", "cmd/ardents/main.go", modulePath + "/internal/endpoint/funding", false},
-		{"enrollment-check diagnosis uses new Enrollment", "cmd/ardents/endpoint.go", modulePath + "/internal/enrollment", true},
-		{"enrollment-check diagnosis has no Route runtime", "cmd/ardents/endpoint.go", modulePath + "/internal/route/role", false},
-		{"adjacent endpoint file has no enrollment exception", "cmd/ardents/main.go", modulePath + "/internal/enrollment", false},
+		{"enrollment verification uses Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
+		{"diagnostics uses the local timeline projector", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/diagnostics/timeline", true},
+		{"diagnostics cannot consume Route", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/route/transport", false},
+		{"withdraw uses the Application Administration client", "cmd/ardents-next/endpoint_administration_client.go", modulePath + "/internal/application/administration", true},
+		{"retired command has no Enrollment grant", "cmd/ardents/endpoint.go", modulePath + "/internal/enrollment", false},
 		{"funded Source uses real token grammar", "internal/endpoint/funding/source_linux.go", modulePath + "/internal/admission/token", true},
 		{"funded Source uses finite bootstrap", "internal/endpoint/funding/source_linux.go", modulePath + "/internal/route/bootstrap", true},
 		{"funded Source behavior selects real Carrier", "cmd/ardents-next/route_token_linux_test.go", modulePath + "/internal/route/transport", true},

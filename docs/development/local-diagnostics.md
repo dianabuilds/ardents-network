@@ -226,20 +226,11 @@ addresses, bodies, request/assignment digests and free-form reasons are omitted.
 Observed time is collector time; supplied owner UTC remains separate. It does
 not create cross-role trace IDs or infer a failing role from network timing.
 
-The explicit `ARDENTS_DEBUG_SOCKET` mode in `ardents` and `ardents-node` supplies
-current Go-runtime counters and private profile capture. This is a diagnostic
-process Interface, never an Application/Network Interface or an authority.
-Empty input creates no listener, goroutine, profiling rates or capture files.
-The canonical Source and Source Installation selectors bypass this optional
-setup: installed startup must precede runtime effects, and the retired
-`source --config` selector refuses without reading its plan or opening a debug
-socket. Their bounded outcome output supplies no raw profile or startup authority.
-Configured diagnostics refuse before work on unsupported platforms or unsafe
-placement. The parent must exist, be canonical without symlinks, owned by the
-process UID with mode 0700; the Unix socket has mode 0600. Existing paths are
-never removed to obtain admission. Cleanup removes only the socket object
-owned by that generation, retains errors, and joins an active capture.
-No TCP debug listener, automatic remote export or worker escape is introduced.
+The former commands exposed Go-runtime counters and profiles through a
+private `ARDENTS_DEBUG_SOCKET` listener. That listener retired with those
+entrypoints. The diagnostic tools still read captures and bounded Reader
+snapshots from the original builds. Current commands expose their bounded
+events through `ardents-next diagnostics timeline` and existing logs.
 
 ## Diagnostic lifecycle and bounds
 

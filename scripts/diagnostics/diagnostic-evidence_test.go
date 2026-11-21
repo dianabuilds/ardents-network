@@ -17,8 +17,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 )
 
 func TestEvidencePackagePreservesCommandFailureAndMissingOwner(t *testing.T) {
@@ -178,16 +176,8 @@ func TestEvidencePackageIncludesSelectedReaderObservationWithoutInventingAssocia
 	}
 	out := filepath.Join(private, "evidence.json")
 	socket := filepath.Join(private, "process.sock")
-	err := processdiag.Run(t.Context(), socket, func(ctx context.Context) error {
-		capture := processdiag.ReaderTrace(ctx)
-		operation := capture.Bind(ctx)
-		failure := errors.New("private-reader-message")
-		capture.Observe(processdiag.Admission, operation)(failure)
-		capture.Observe(processdiag.CallerJoin, operation)(nil)
-		capture.Finish(failure)
-		return dispatch([]string{"bundle", "-dir", source, "-out", out, "-connection-socket", socket})
-	})
-	if err != nil {
+	serveReaderFixture(t, socket, connectionSnapshotFixture)
+	if err := dispatch([]string{"bundle", "-dir", source, "-out", out, "-connection-socket", socket}); err != nil {
 		t.Fatal(err)
 	}
 	body, err := os.ReadFile(out)

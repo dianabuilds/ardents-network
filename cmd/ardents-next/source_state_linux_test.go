@@ -47,7 +47,7 @@ func sourceStateCustodyFixture(t *testing.T) (string, sourceServePlan) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, accepted := seed.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
+	_, accepted := seed.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
 	if err := errors.Join(accepted, seed.Close()); err != nil {
 		t.Fatal(err)
 	}
@@ -461,7 +461,7 @@ func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, acceptErr := seed.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
+	_, acceptErr := seed.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
 	if err := errors.Join(acceptErr, seed.Close()); err != nil {
 		t.Fatal(err)
 	}

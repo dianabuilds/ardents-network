@@ -155,7 +155,7 @@ func prepareForwardingIssuedStock(t *testing.T, parent string, vault *custody.Va
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Accept(t.Context(), bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
+	if _, err := owner.AcceptEpoch(t.Context(), bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := owner.AcceptClosedProfile(profileRaw); err != nil {

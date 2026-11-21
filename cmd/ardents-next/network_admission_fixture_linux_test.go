@@ -198,7 +198,7 @@ func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionF
 		}
 	})
 	f.accept = func(bundle networkfixture.Closed) error {
-		if _, err := owner.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
+		if _, err := owner.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
 			return err
 		}
 		_, err := owner.AcceptClosedProfile(bundle.Profile)

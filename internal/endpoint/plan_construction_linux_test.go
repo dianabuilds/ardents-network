@@ -62,7 +62,7 @@ func constructionReferenceState(t *testing.T, acceptProfile bool) (state.Config,
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = owner.Accept(context.Background(), signed.Epoch.Raw, signed.Epoch.Inputs, signed.Epoch.Materials)
+	_, err = owner.AcceptEpoch(context.Background(), signed.Epoch.Raw, signed.Epoch.Inputs, signed.Epoch.Materials)
 	if err == nil && acceptProfile {
 		_, err = owner.AcceptClosedProfile(signed.Profile)
 	}

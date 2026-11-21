@@ -46,11 +46,13 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
-	secondView, err := serving.Accept(context.Background(), second.epoch, second.inputs, second.materializations)
+	secondViewReceipt, err := serving.AcceptEpoch(context.Background(), second.epoch, second.inputs, second.materializations)
+	secondView := secondViewReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
-	thirdView, err := serving.Accept(context.Background(), third.epoch, third.inputs, third.materializations)
+	thirdViewReceipt, err := serving.AcceptEpoch(context.Background(), third.epoch, third.inputs, third.materializations)
+	thirdView := thirdViewReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}

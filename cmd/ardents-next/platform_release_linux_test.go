@@ -117,7 +117,7 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 		t.Fatal(err)
 	}
 	for _, epoch := range []networkfixture.Epoch{genesis, current} {
-		if _, err := owner.Accept(t.Context(), epoch.Raw, epoch.Inputs, epoch.Materials); err != nil {
+		if _, err := owner.AcceptEpoch(t.Context(), epoch.Raw, epoch.Inputs, epoch.Materials); err != nil {
 			_ = owner.Close()
 			t.Fatal(err)
 		}
@@ -220,7 +220,7 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 			_ = owner.Close()
 			t.Fatal("program change lost authenticated State", view, err)
 		}
-		if _, err := owner.Accept(t.Context(), genesis.Raw, genesis.Inputs, genesis.Materials); err == nil {
+		if _, err := owner.AcceptEpoch(t.Context(), genesis.Raw, genesis.Inputs, genesis.Materials); err == nil {
 			_ = owner.Close()
 			t.Fatal("program change reset Epoch floor")
 		}

@@ -31,7 +31,7 @@ func TestOfflineAcceptRejectsExpiredAtAcceptanceWithoutWriting(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	if _, err := store.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatalf("accept genesis: %v", err)
 	}
 	beforeCurrent, err := os.ReadFile(filepath.Join(root, "current"))
@@ -44,7 +44,7 @@ func TestOfflineAcceptRejectsExpiredAtAcceptanceWithoutWriting(t *testing.T) {
 	}
 
 	now = now.Add(2 * time.Hour)
-	if _, err := store.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations); err == nil {
+	if _, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations); err == nil {
 		t.Fatal("accepted successor expired at acceptance time")
 	}
 	afterCurrent, err := os.ReadFile(filepath.Join(root, "current"))
@@ -104,7 +104,7 @@ func TestOfflineAcceptClockJumpLeavesRuntimeAndRefreshUsable(t *testing.T) {
 		t.Fatal(err)
 	}
 	wallOffset = 10 * time.Minute
-	if _, err := owner.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err == nil || !strings.Contains(err.Error(), "clock confidence") {
+	if _, err := owner.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err == nil || !strings.Contains(err.Error(), "clock confidence") {
 		t.Fatalf("offline replay admitted a wall-only jump: %v", err)
 	}
 	wallOffset = 0
@@ -157,7 +157,8 @@ func TestOfflineAcceptRequiresBothClockBoundsAtValidFrom(t *testing.T) {
 			}
 			defer owner.Close()
 			wall = trial.wall
-			snapshot, err := owner.Accept(t.Context(), future.epoch, future.inputs, future.materializations)
+			snapshotReceipt, err := owner.AcceptEpoch(t.Context(), future.epoch, future.inputs, future.materializations)
+			snapshot := snapshotReceipt.Snapshot
 			if trial.wantCurrent {
 				if err != nil || snapshot.Digest != future.epochDigest || !snapshot.TrustedTime.IsZero() {
 					t.Fatalf("confirmed boundary: %+v, %v", snapshot, err)

@@ -2,9 +2,9 @@
 
 Status: **current maintained technical contract.** This document defines the
 bounded first-artifact verification contract. The maintained
-`endpoint enrollment-check` command boundary consumes
-`internal/successor/enrollment`. The current v3 inventory and refusal rules
-apply to the exact enrolled artifacts.
+`ardents-next enrollment verify` and `verify-headless` commands consume
+`internal/enrollment`. The pinned schema selects the inventory for the exact
+enrolled artifacts.
 
 ## Interface and ownership
 
@@ -82,15 +82,10 @@ Browser enrollment remains outside this verifier. An unknown schema returns
 a generic inventory error.
 
 The historical `ardents-alpha-enrollment-input-v1` persisted document is
-retired (ADR-0127, #647). Its former consumers — the three-argument
-`endpoint enrollment-check <alpha-enrollment.json>` local diagnosis and
-`ardents-control inspect-bundle` — return typed before-effect refusals, the
-v1-document parser is removed, and the per-user `endpoint enroll` /
-`endpoint user-unit` start path that once invoked it was already retired
-(#617 S3.5). Existing documents stay on disk byte-for-byte with no reader,
-converter, or deleter. The four-argument bundle-root+pin form is the sole
-`enrollment-check` input; new C0 enrollment and platform delivery receive the
-bundle root and independently delivered pin as separate arguments.
+retired (ADR-0127, #647). Its diagnosis was removed with the old CLI.
+`ardents-control inspect-bundle` returns its typed refusal. Existing
+documents stay on disk byte-for-byte. `ardents-next enrollment verify` and
+platform delivery take the bundle root and independent pin separately.
 
 ## Acceptance sequence
 
@@ -147,11 +142,9 @@ either scope. Companion bytes remain outside Release metadata.
 
 ### Isolated new owner
 
-`internal/successor/enrollment` owns a separately implemented initial portable
-verification flow consumed by `ardents-next enrollment verify` and
-`verify-headless` and by the read-only `ardents endpoint enrollment-check`
-bundle-root+pin diagnostic (ADR-0127), each taking only Bundle Root and
-independent manifest pin. Each command obtains its own original executable
+`internal/enrollment` owns initial portable verification. Both
+`ardents-next enrollment verify` and `verify-headless` take Bundle Root and
+the independent manifest pin. Each command obtains its own original executable
 path from the OS. These are read-only initial verification consumers, not a
 new supported distribution or installed runtime; the enrollment-check
 diagnostic renders only authenticated initial facts and grants no readiness.

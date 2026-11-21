@@ -17,7 +17,8 @@ func TestFreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := owner.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations)
+	acceptedReceipt, err := owner.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations)
+	accepted := acceptedReceipt.Snapshot
 	if err != nil {
 		_ = owner.Close()
 		t.Fatal(err)
@@ -65,7 +66,7 @@ func TestRetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = owner.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err = owner.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatal(err)
 	}
 	if err = owner.Close(); err != nil {
@@ -76,7 +77,7 @@ func TestRetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor(t *testing.
 		if err != nil {
 			t.Fatal("retained signed owner refused", err)
 		}
-		if _, err = owner.Accept(t.Context(), next.epoch, next.inputs, next.materializations); err != nil {
+		if _, err = owner.AcceptEpoch(t.Context(), next.epoch, next.inputs, next.materializations); err != nil {
 			t.Fatal(err)
 		}
 		view, err := owner.Current()
@@ -92,7 +93,7 @@ func TestRetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor(t *testing.
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	if _, err = owner.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err == nil {
+	if _, err = owner.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err == nil {
 		t.Fatal("retained reopen reset the successor floor")
 	}
 }

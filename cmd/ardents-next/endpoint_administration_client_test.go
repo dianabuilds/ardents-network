@@ -67,8 +67,8 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	var output bytes.Buffer
-	if err := runHeadlessAdministration(ctx, "withdraw", socket, &output); err != nil {
-		t.Fatal(err)
+	if code := run(ctx, []string{"endpoint", "withdraw", socket}, &output, io.Discard); code != 0 {
+		t.Fatalf("withdraw exit = %d", code)
 	}
 	observed := <-result
 	<-peerDone

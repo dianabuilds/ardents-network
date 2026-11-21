@@ -89,7 +89,7 @@ func sourceEnvironmentWithMaterial(t *testing.T, genesis, successor fixture, mat
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installed.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := installed.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatal(err)
 	}
 	if err := installed.Close(); err != nil {

@@ -54,7 +54,7 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := endpoint.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := endpoint.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatalf("accept installed genesis: %v", err)
 	}
 	if err := endpoint.Close(); err != nil {
@@ -408,7 +408,7 @@ func sourceEnvironment(t *testing.T, genesis, firstValue, secondValue fixture) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installed.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := installed.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatal(err)
 	}
 	if err := installed.Close(); err != nil {
@@ -456,11 +456,11 @@ func openTestSourceAtIndex(t *testing.T, value fixture, address string, server t
 	if header.Number == 1 {
 		genesis = value
 	}
-	if _, err := store.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatal(err)
 	}
 	if value.epochDigest != genesis.epochDigest {
-		if _, err := store.Accept(context.Background(), value.epoch, value.inputs, value.materializations); err != nil {
+		if _, err := store.AcceptEpoch(context.Background(), value.epoch, value.inputs, value.materializations); err != nil {
 			t.Fatal(err)
 		}
 	}

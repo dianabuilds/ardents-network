@@ -8,8 +8,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 )
 
-func runHeadlessAdministration(ctx context.Context, operation, socket string, output io.Writer) error {
-	result, err := administration.Request(ctx, socket, administration.Operation(operation))
+func withdrawEndpoint(ctx context.Context, socket string, output io.Writer) error {
+	result, err := administration.Request(ctx, socket, administration.Withdraw)
 	if err != nil {
 		return err
 	}

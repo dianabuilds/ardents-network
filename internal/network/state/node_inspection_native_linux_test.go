@@ -105,7 +105,7 @@ func nodeInspectionNativeFixture(t *testing.T, opened bool) (state.Config, state
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Accept(t.Context(), built.Raw, inputs, built.Materials); err != nil {
+	if _, err := owner.AcceptEpoch(t.Context(), built.Raw, inputs, built.Materials); err != nil {
 		_ = owner.Close()
 		t.Fatal(err)
 	}

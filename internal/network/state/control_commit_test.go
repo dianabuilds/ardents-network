@@ -103,7 +103,7 @@ func TestFailedNewConflictControlCommitRetiresPriorDecision(t *testing.T) {
 			t.Fatalf("%s Source response after failed conflict: %+v", operation, response)
 		}
 	}
-	if _, err := s.Accept(context.Background(), nil, nil, nil); err == nil {
+	if _, err := s.AcceptEpoch(context.Background(), nil, nil, nil); err == nil {
 		t.Fatal("retired owner admitted another offline candidate")
 	}
 	if _, err := s.Refresh(context.Background()); err == nil {
@@ -282,7 +282,7 @@ func newVerifiedConflictFixture(t *testing.T, pending bool) (*networkState, netw
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
-	if _, err := s.Accept(context.Background(), genesis.Raw, genesis.Inputs, genesis.Materials[:1]); err != nil {
+	if _, err := s.AcceptEpoch(context.Background(), genesis.Raw, genesis.Inputs, genesis.Materials[:1]); err != nil {
 		t.Fatalf("accept signed genesis: %v", err)
 	}
 	if !pending {

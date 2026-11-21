@@ -527,7 +527,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, acceptErr := seed.Accept(ctx, stand.network.Epoch, stand.network.Inputs, stand.network.Materials)
+		_, acceptErr := seed.AcceptEpoch(ctx, stand.network.Epoch, stand.network.Inputs, stand.network.Materials)
 		closeErr := seed.Close()
 		if acceptErr != nil || closeErr != nil {
 			t.Fatal(acceptErr, closeErr)

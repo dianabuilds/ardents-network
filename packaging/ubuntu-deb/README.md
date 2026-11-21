@@ -1,13 +1,13 @@
 # Ubuntu `.deb` packaging
 
-This builder packages the `ardents` executable and static enrollment files for
+This builder packages the executable built from `cmd/ardents-next` and static enrollment files for
 Ubuntu `amd64`. The `make package-e2e` profile checks the installed package
 contents and verifies that a user-owned state marker survives upgrade, removal,
 and purge.
 
 `make package-ubuntu-deb` runs `build.sh` with these environment variables:
 
-- `ARDENTS_PACKAGE_PROGRAM`: the exact Linux `amd64` `ardents` executable;
+- `ARDENTS_PACKAGE_PROGRAM`: the exact Linux `amd64` executable built from `cmd/ardents-next`;
 - `ARDENTS_PACKAGE_STATIC_ROOT`: the independently pinned static enrollment
   directory containing `SHA256SUMS`, `RELEASE`, the Release root, and metadata.
   Supply the executable separately through `ARDENTS_PACKAGE_PROGRAM`.
@@ -33,5 +33,5 @@ and Release state, and service units live outside the package's payload.
 
 Verify a distributed `.deb` against its independently delivered digest before
 running `dpkg -i`. Endpoint startup follows the
-[platform delivery procedure](../../docs/reference/commands.md#ardents), which
+[platform delivery procedure](../../docs/reference/commands.md#protected-endpoint-platform-delivery), which
 uses `ardents-next` and performs its own artifact and Release checks.

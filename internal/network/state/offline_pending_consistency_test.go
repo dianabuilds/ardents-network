@@ -43,7 +43,7 @@ func TestOfflineAcceptRejectsCandidateConflictingWithPendingEpoch(t *testing.T) 
 		t.Fatalf("open pending root offline: %v", err)
 	}
 	t.Cleanup(func() { _ = opened.Close() })
-	if _, err := opened.Accept(context.Background(), conflicting.epoch, conflicting.inputs, conflicting.materializations); err == nil || !strings.Contains(err.Error(), "pending") {
+	if _, err := opened.AcceptEpoch(context.Background(), conflicting.epoch, conflicting.inputs, conflicting.materializations); err == nil || !strings.Contains(err.Error(), "pending") {
 		t.Fatalf("conflicting offline accept returned %v", err)
 	}
 	if err := opened.Close(); err != nil {
@@ -59,7 +59,7 @@ func TestOfflineAcceptRejectsCandidateConflictingWithPendingEpoch(t *testing.T) 
 	if err != nil || !current.Conflicting || current.Epoch != genesisEpoch {
 		t.Fatalf("reopened conflict snapshot=%+v err=%v", current, err)
 	}
-	if _, err := restarted.Accept(context.Background(), pending.epoch, pending.inputs, pending.materializations); err == nil || !strings.Contains(err.Error(), "persistent") {
+	if _, err := restarted.AcceptEpoch(context.Background(), pending.epoch, pending.inputs, pending.materializations); err == nil || !strings.Contains(err.Error(), "persistent") {
 		t.Fatalf("accept after durable conflict returned %v", err)
 	}
 }
@@ -143,7 +143,8 @@ func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testin
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	repeated, err := reopened.Accept(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	repeatedReceipt, err := reopened.AcceptEpoch(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	repeated := repeatedReceipt.Snapshot
 	if err != nil || repeated.Digest != genesis.epochDigest || repeated.PendingDigest != pending.epochDigest || !repeated.TrustedTime.IsZero() {
 		t.Fatalf("offline replay promoted or lost the pending Epoch: %+v, %v", repeated, err)
 	}
@@ -151,7 +152,8 @@ func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testin
 	if err != nil || activated.Digest != pending.epochDigest || activated.PendingEpoch != 0 || activated.SourceAttempts != 2 {
 		t.Fatalf("complete Source wave did not activate the retained Epoch: %+v, %v", activated, err)
 	}
-	replayed, err := reopened.Accept(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	replayedReceipt, err := reopened.AcceptEpoch(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	replayed := replayedReceipt.Snapshot
 	if err != nil || activated.TrustedTime.IsZero() || !replayed.TrustedTime.Equal(activated.TrustedTime) {
 		t.Fatalf("offline replay changed the Source's trusted floor: before=%v after=%v err=%v", activated.TrustedTime, replayed.TrustedTime, err)
 	}
@@ -277,7 +279,7 @@ func installGenesis(t *testing.T, config state.Config, genesis fixture) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installed.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := installed.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		_ = installed.Close()
 		t.Fatal(err)
 	}

@@ -36,7 +36,7 @@ func TestSelectedStateRefusesFrozenRetiredProfileWithoutPublication(t *testing.T
 		t.Fatal(err)
 	}
 	defer store.Close()
-	if _, err := store.Accept(context.Background(), epoch, inputs, [][]byte{material}); err == nil {
+	if _, err := store.AcceptEpoch(context.Background(), epoch, inputs, [][]byte{material}); err == nil {
 		t.Fatal("selected state accepted the frozen retired profile")
 	}
 	if _, err := store.Current(); err == nil {

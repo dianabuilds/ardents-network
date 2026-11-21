@@ -7,17 +7,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
-
-	processdiag "github.com/dianabuilds/ardents-network/internal/diagnostics/process"
 )
 
 func reportFixture(t *testing.T, exit int) string {
@@ -538,10 +539,9 @@ func TestConnectionJoinedRequiresReleaseAfterSuccessfulActivation(t *testing.T) 
 	}
 }
 
-// Exercise the real diagnostic owner/socket and all consumers. The recorder
-// phases below are component inputs, not a simulated production Reader Open;
-// endpoint tests separately exercise the admitted launch and real Service route.
-func TestLiveReaderSocketUsesSameProjectionInCLIFileAndPanel(t *testing.T) {
+// The collector can read a selected Reader socket from earlier builds.
+// Independent snapshots exercise its CLI, private output, and panel.
+func TestReaderSocketFixtureUsesSameProjectionInCLIFileAndPanel(t *testing.T) {
 	for _, ending := range []string{"completed", "canceled"} {
 		t.Run(ending, func(t *testing.T) {
 			private := t.TempDir()
@@ -549,93 +549,101 @@ func TestLiveReaderSocketUsesSameProjectionInCLIFileAndPanel(t *testing.T) {
 				t.Fatal(err)
 			}
 			socket := filepath.Join(private, "process.sock")
-			err := processdiag.Run(t.Context(), socket, func(ctx context.Context) error {
-				waiting, err := readConnectionObservation(ctx, socket)
-				if err != nil || waiting.State != "waiting" || waiting.Outcome != "" {
-					return errors.New("enabled waiting owner was not projected")
-				}
-				capture := processdiag.ReaderTrace(ctx)
-				operation := capture.Bind(ctx)
-				capture.Observe(processdiag.Admission, operation)(nil)
-				capture.Observe(processdiag.Activation, operation)(nil)
-				bounded, cancel := context.WithTimeout(operation, 2*time.Second)
-				defer cancel()
-				finish := capture.Observe(processdiag.WorkerActivation, bounded)
-				active, err := readConnectionObservation(ctx, socket)
-				if err != nil || active.State != "active" || active.Outcome != "" {
-					return errors.New("active owner was not projected")
-				}
-				var outcome error
-				if ending == "canceled" {
-					cancel()
-					outcome = context.Canceled
-				}
-				finish(outcome)
-				capture.Observe(processdiag.CallerJoin, operation)(nil)
-				capture.Observe(processdiag.SessionRelease, operation)(nil)
-				capture.Finish(outcome)
-				observation, err := readConnectionObservation(ctx, socket)
-				if err != nil {
-					return err
-				}
-				if observation.State != "joined" || observation.Outcome != ending || observation.Association != "selected-owner-socket; command-run-association-unproven" || len(observation.Missing) == 0 {
-					return errors.New("terminal owner projection lost outcome or missing-stage limits")
-				}
-				foundBudget, foundStop := false, false
-				for _, record := range observation.Records {
-					if record.Stage == "worker-activation" && record.State == "started" && record.Budget != nil && *record.Budget > 0 && *record.Budget <= int64(2*time.Second) {
-						foundBudget = true
-					}
-					if record.Stage == "worker-activation" && record.ContextStop == "canceled" {
-						foundStop = true
-					}
-				}
-				if !foundBudget || foundStop != (ending == "canceled") {
-					return errors.New("actual budget or Context stop lost in consumer")
-				}
-				if err := connectionCommand([]string{"-socket", socket, "-json"}); err != nil {
-					return err
-				}
-				out := filepath.Join(private, "reader.json")
-				if err := snapshotCommand([]string{"-socket", socket, "-kind", "connection", "-out", out}); err != nil {
-					return err
-				}
-				body, err := os.ReadFile(out)
-				if err != nil {
-					return err
-				}
-				var saved connectionObservation
-				if err := json.Unmarshal(body, &saved); err != nil || !reflect.DeepEqual(saved, observation) {
-					return errors.New("CLI snapshot differs from live projection")
-				}
-				info, err := os.Stat(out)
-				if err != nil || info.Mode().Perm() != 0600 {
-					return errors.New("snapshot is not owner private")
-				}
-				if err := snapshotCommand([]string{"-socket", socket, "-kind", "connection", "-out", out}); err == nil {
-					return errors.New("snapshot overwrote existing evidence")
-				}
-				response := httptest.NewRecorder()
-				handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/connection", nil))
-				var panel connectionObservation
-				if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || json.Unmarshal(response.Body.Bytes(), &panel) != nil || !reflect.DeepEqual(panel, observation) {
-					return errors.New("panel differs from CLI projection")
-				}
-				stopped, stop := context.WithCancel(ctx)
-				stop()
-				if _, err := readConnectionObservation(stopped, socket); err == nil {
-					return errors.New("consumer ignored canceled request")
-				}
-				return nil
-			})
+			var snapshot atomic.Value
+			snapshot.Store([]byte(`{"schema":"ardents-reader-trace-v1","state":"waiting","lost_records":0,"record_limit":64,"records":[]}`))
+			closeSocket := serveReaderFixture(t, socket, func() []byte { return snapshot.Load().([]byte) })
+			waiting, err := readConnectionObservation(t.Context(), socket)
+			if err != nil || waiting.State != "waiting" || waiting.Outcome != "" {
+				t.Fatalf("waiting snapshot: %+v %v", waiting, err)
+			}
+			snapshot.Store([]byte(`{"schema":"ardents-reader-trace-v1","state":"active","lost_records":0,"record_limit":64,"records":[{"stage":"worker-activation","state":"started","elapsed_ns":0,"remaining_budget_ns":2000000000}]}`))
+			active, err := readConnectionObservation(t.Context(), socket)
+			if err != nil || active.State != "active" || active.Outcome != "" {
+				t.Fatalf("active snapshot: %+v %v", active, err)
+			}
+			contextStop, expectedStop := "", ""
+			if ending == "canceled" {
+				contextStop = `,"context_stop":"canceled"`
+				expectedStop = ending
+			}
+			snapshot.Store([]byte(`{"schema":"ardents-reader-trace-v1","state":"joined","outcome":"` + ending + `","lost_records":0,"record_limit":64,"records":[{"stage":"worker-activation","state":"started","elapsed_ns":0,"remaining_budget_ns":2000000000},{"stage":"worker-activation","state":"` + ending + `","elapsed_ns":2,"duration_ns":2` + contextStop + `},{"stage":"caller-join","state":"started","elapsed_ns":3},{"stage":"caller-join","state":"completed","elapsed_ns":4,"duration_ns":1}]}`))
+			observation, err := readConnectionObservation(t.Context(), socket)
+			if err != nil || observation.State != "joined" || observation.Outcome != ending || observation.Association != "selected-owner-socket; command-run-association-unproven" || len(observation.Missing) == 0 {
+				t.Fatalf("terminal snapshot: %+v %v", observation, err)
+			}
+			if len(observation.Records) != 4 || observation.Records[0].Budget == nil || *observation.Records[0].Budget != int64(2*time.Second) || observation.Records[1].ContextStop != expectedStop {
+				t.Fatal("budget or context stop lost")
+			}
+			if err := connectionCommand([]string{"-socket", socket, "-json"}); err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(private, "reader.json")
+			if err := snapshotCommand([]string{"-socket", socket, "-kind", "connection", "-out", out}); err != nil {
+				t.Fatal(err)
+			}
+			body, err := os.ReadFile(out)
 			if err != nil {
 				t.Fatal(err)
 			}
+			var saved connectionObservation
+			if err := json.Unmarshal(body, &saved); err != nil || !reflect.DeepEqual(saved, observation) {
+				t.Fatal("CLI snapshot differs from live projection")
+			}
+			info, err := os.Stat(out)
+			if err != nil || info.Mode().Perm() != 0600 {
+				t.Fatal("snapshot is not owner private")
+			}
+			if err := snapshotCommand([]string{"-socket", socket, "-kind", "connection", "-out", out}); err == nil {
+				t.Fatal("snapshot overwrote existing evidence")
+			}
+			response := httptest.NewRecorder()
+			handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/connection", nil))
+			var panel connectionObservation
+			if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || json.Unmarshal(response.Body.Bytes(), &panel) != nil || !reflect.DeepEqual(panel, observation) {
+				t.Fatal("panel differs from CLI projection")
+			}
+			stopped, stop := context.WithCancel(t.Context())
+			stop()
+			if _, err := readConnectionObservation(stopped, socket); err == nil {
+				t.Fatal("consumer ignored canceled request")
+			}
+			closeSocket()
 			unavailable := httptest.NewRecorder()
 			handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(unavailable, httptest.NewRequest(http.MethodGet, "/connection", nil))
 			if unavailable.Code != http.StatusServiceUnavailable || strings.Contains(unavailable.Body.String(), socket) {
-				t.Fatal("retired owner presented as live or disclosed socket path")
+				t.Fatal("closed fixture presented as live or disclosed socket path")
 			}
 		})
 	}
+}
+
+func serveReaderFixture(t *testing.T, socket string, snapshot func() []byte) func() {
+	t.Helper()
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(socket, 0600); err != nil {
+		listener.Close()
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /connection", func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := w.Write(snapshot()); err != nil {
+			t.Error(err)
+		}
+	})
+	server := &http.Server{Handler: mux}
+	done := make(chan error, 1)
+	go func() { done <- server.Serve(listener) }()
+	closeSocket := sync.OnceFunc(func() {
+		if err := server.Close(); err != nil {
+			t.Error(err)
+		}
+		if err := <-done; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			t.Error(err)
+		}
+	})
+	t.Cleanup(closeSocket)
+	return closeSocket
 }

@@ -53,7 +53,7 @@ plans (F-27), `endpoint prepare-history` initializes the first histories, and
 `endpoint start-installed` runs the participant under the system unit. The
 successor Endpoint lifecycle is forward-only; rollback has no successor
 translation. The read-only `ardents endpoint enrollment-check` diagnostic and the
-`ardents endpoint withdraw` Administration Interface client remain. Existing
+`ardents-next endpoint withdraw` Administration Interface client remain. Existing
 per-user roots and floors remain retained evidence. Their contents grant no
 authority for automatic migration.
 
@@ -1548,15 +1548,10 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 ## Local process debugging
 
-The command adapter can explicitly enable the owner-private process Interface
-with `ARDENTS_DEBUG_SOCKET` under the
-[local diagnostic contract](../development/local-diagnostics.md). It supplies
-runtime counters and finite profile/trace requests without modifying Route,
-State authority, peer selection, Application privileges or worker confinement.
-Empty input creates no diagnostic resources; configured admission failures
-precede product dispatch and diagnostic cleanup is joined to command outcome.
-The diagnostic interface reports process observations; existing owner events
-remain the source of readiness and typed product failure.
+Use bounded command events and `ardents-next diagnostics timeline` for local
+investigation. Older builds exposed an owner-private `ARDENTS_DEBUG_SOCKET`.
+The [diagnostic owner](../development/local-diagnostics.md) describes retained
+capture formats and their handling.
 
 Installation's `request` Module owns canonical local declarations and independent
 original root-owned request-file reobservation. Its detached `Document` data and

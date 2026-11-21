@@ -48,7 +48,7 @@ func TestExternalWorkRefusalStopsOpenedIntakeAndAllowsClose(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = owner.Close() })
 	refused.Store(true)
-	_, epochErr := owner.Accept(t.Context(), value.epoch, value.inputs, value.materializations)
+	_, epochErr := owner.AcceptEpoch(t.Context(), value.epoch, value.inputs, value.materializations)
 	_, profileErr := owner.AcceptClosedProfile(nil)
 	_, runtimeErr := owner.CurrentRuntime()
 	_, refreshErr := owner.Refresh(t.Context())

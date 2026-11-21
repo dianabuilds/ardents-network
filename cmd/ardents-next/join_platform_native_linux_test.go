@@ -290,7 +290,7 @@ func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Accept(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
+	if _, err := owner.AcceptEpoch(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
 		_ = owner.Close()
 		t.Fatal(err)
 	}

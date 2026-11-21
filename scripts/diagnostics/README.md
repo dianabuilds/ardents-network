@@ -24,8 +24,8 @@ socket debug workflow is Linux-native, not a qualified Windows-native listener.
 | Preserve a reproduction for another local agent? | Use the [private package](#private-reproduction-evidence-package) with selected profile/trace/command receipts; retain the original failed outcome and gaps. |
 | Check whether collection itself failed? | Read runtime/capture receipts and monitor delivery/cleanup status separately from the supervised command outcome. |
 
-Enable `ARDENTS_DEBUG_SOCKET` only for the explicitly owned reproduction and
-stop the diagnostic process/viewer afterwards. Ordinary monitoring enables no
+Use `ARDENTS_DEBUG_SOCKET` only when reproducing the original diagnostic
+build. Stop its process and viewer afterwards. Ordinary monitoring enables no
 profile sampling or debug socket. Start trace before the operation and retain
 it through joined cleanup; missing boundaries or dropped records are partial
 captures. Reader task association applies only inside that trace. CPU/heap
@@ -293,8 +293,9 @@ Loki/Grafana receive them. Ordinary monitoring enables no debug socket or profil
 
 ## Live network process debug mode
 
-`ardents` accepts the explicit `ARDENTS_DEBUG_SOCKET`
-environment variable. Without it there are no diagnostic effects. Set it
+The historical debug captures below used commands with explicit
+`ARDENTS_DEBUG_SOCKET` support. Reproduce them from their original source
+revision. Without it there are no diagnostic effects. Set it
 separately for each process; the absolute socket parent must already exist,
 be owned by that process UID with 0700 permissions and contain no symlink.
 The socket is 0600, bounded, local-only and removed by joined shutdown.
@@ -453,7 +454,7 @@ Docker Desktop is not a substitute for one.
 
 ## Existing specialized observations
 
-Run `ardents diagnostics timeline` with the existing bounded stdin interface
+Run `ardents-next diagnostics timeline` with the existing bounded stdin interface
 for its exact human-readable Node/Source/Endpoint projection. The common package
 recognizes those schemas for its own fixed metrics. For isolated Role state,
 use the existing `make text-role-durable-state-capture` with its explicit Linux
@@ -524,9 +525,9 @@ not a diagnosis of a specific Node or a change to product resource guards.
 
 ## Observe one owned Reader Connection
 
-Enable the existing process diagnostics with ARDENTS_DEBUG_SOCKET set to a
-canonical absolute Unix socket in an existing directory owned by that process
-UID with mode 0700. The first eligible Reader Open in the first ten minutes is
+For an original build with Reader socket support, set `ARDENTS_DEBUG_SOCKET`
+to a canonical absolute path inside an existing directory owned by that
+process UID with mode 0700. The first eligible Reader Open in the first ten minutes is
 retained in memory, up to 64 fixed-category records. No automatic rearm, Target
 selection or product retry is added. Run these commands under the socket's owner:
 

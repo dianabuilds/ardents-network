@@ -306,7 +306,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 		}
 		timer.Stop()
 	case "successor":
-		if _, err := owner.Accept(t.Context(), plan.Successor.Epoch.Raw, plan.Successor.Epoch.Inputs, plan.Successor.Epoch.Materials); err != nil {
+		if _, err := owner.AcceptEpoch(t.Context(), plan.Successor.Epoch.Raw, plan.Successor.Epoch.Inputs, plan.Successor.Epoch.Materials); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := owner.AcceptClosedProfile(plan.Successor.Profile); err != nil {

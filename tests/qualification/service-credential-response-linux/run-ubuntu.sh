@@ -75,8 +75,8 @@ export GOFLAGS=-mod=readonly
 export GOPROXY=off
 export GOCACHE="$scratch/go-build"
 
-if ! GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "$scratch/ardents" ./cmd/ardents; then
-	invalid 'Linux amd64 ardents cross-build failed; the selected Go toolchain or module cache is unavailable'
+if ! GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "$scratch/ardents-next" ./cmd/ardents-next; then
+	invalid 'Linux amd64 ardents-next cross-build failed; the selected Go toolchain or module cache is unavailable'
 fi
 if ! GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -buildvcs=false -o "$scratch/ardents-custody" ./cmd/ardents-custody; then
 	invalid 'Linux amd64 ardents-custody cross-build failed; the selected Go toolchain or module cache is unavailable'
@@ -94,7 +94,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --platform linux/amd64 --network none --read-
 	--security-opt no-new-privileges --pids-limit 64 --memory 768m --cpus 1 \
 	--user "$user_id:$group_id" --mount "type=bind,src=$docker_mount_source,dst=/work,readonly" \
 	--tmpfs /tmp:rw,nosuid,nodev,size=512m,mode=1777 --workdir /work \
-	-e TMPDIR=/tmp -e ARDENTS_E2E_PRODUCT_ARDENTS=/work/ardents \
+	-e TMPDIR=/tmp -e ARDENTS_E2E_PRODUCT_ARDENTS_NEXT=/work/ardents-next \
 	-e ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY=/work/ardents-custody \
 	golang:1.26.8 /work/service-credential-response.test \
 	-test.run '^TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit$' -test.count=1 -test.v -test.timeout="$test_timeout"

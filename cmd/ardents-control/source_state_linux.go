@@ -135,7 +135,7 @@ func prepareObservedSourceState(ctx context.Context, planPath, bundlePath string
 	if _, err = owner.Current(); !errors.Is(err, state.ErrNoCurrentGeneration) {
 		return errors.Join(errSourceControlInput, err)
 	}
-	if _, err = owner.Accept(ctx, bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
+	if _, err = owner.AcceptEpoch(ctx, bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
 		return err
 	}
 	if afterAccept != nil {

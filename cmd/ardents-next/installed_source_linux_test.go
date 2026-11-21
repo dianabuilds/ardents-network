@@ -107,7 +107,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, acceptErr := seed.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
+		_, acceptErr := seed.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
 		closeErr := seed.Close()
 		if acceptErr != nil || closeErr != nil {
 			t.Fatal(acceptErr, closeErr)
@@ -124,7 +124,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 			}
 		})
 		advance = append(advance, func(next networkfixture.Closed) error {
-			_, err := serving.Accept(t.Context(), next.Epoch.Raw, next.Epoch.Inputs, next.Epoch.Materials)
+			_, err := serving.AcceptEpoch(t.Context(), next.Epoch.Raw, next.Epoch.Inputs, next.Epoch.Materials)
 			return err
 		})
 		rootPath := filepath.Join(dir, name+".pem")

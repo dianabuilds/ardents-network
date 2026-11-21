@@ -29,7 +29,8 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 		t.Fatalf("open empty state: %v", err)
 	}
 
-	snapshot, err := store.Accept(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	snapshotReceipt, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	snapshot := snapshotReceipt.Snapshot
 	if err != nil {
 		t.Fatalf("accept genesis: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestAcceptRejectsWrongMaterializationWithoutWriting(t *testing.T) {
 		t.Fatalf("open state: %v", err)
 	}
 	defer store.Close()
-	if _, err := store.Accept(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations); err == nil {
+	if _, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations); err == nil {
 		t.Fatal("accept succeeded with a corrupt proof")
 	}
 	if _, err := os.Stat(filepath.Join(root, "current")); !os.IsNotExist(err) {
@@ -187,7 +188,8 @@ func TestOpenFailsClosedWhenNonEmptyRootLacksCurrentPointer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := store.Accept(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	acceptedReceipt, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	accepted := acceptedReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,10 +245,11 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatalf("accept genesis: %v", err)
 	}
-	want, err := store.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	wantReceipt, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	want := wantReceipt.Snapshot
 	if err != nil {
 		t.Fatalf("accept successor: %v", err)
 	}
@@ -318,11 +321,13 @@ func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := store.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
+	firstReceipt, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
+	first := firstReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := store.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	secondReceipt, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	second := secondReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +362,8 @@ func TestOpenRequiresDistributionJournalForActiveEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := store.Accept(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	acceptedReceipt, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
+	accepted := acceptedReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}

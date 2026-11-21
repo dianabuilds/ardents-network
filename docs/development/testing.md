@@ -1874,8 +1874,8 @@ timeouts and required checks remain unchanged; cancellation is an incomplete
 gate, never a passing result.
 
 The duplicate legacy Endpoint installer and its root-only component tests are
-retired. `cmd/ardents` retains unit no-effect refusal and genuine signed
-Enrollment/Release pair verification. Remaining native installation components
+retired. The active `ardents-next` command owns Enrollment and Release
+verification. Remaining native installation components
 retain their explicitly selected root profile and do not inherit qualification
 from the retired package.
 The selected prerequisite test fails under a non-root UID; an ordinary
@@ -2198,14 +2198,14 @@ own Publisher launch method. These entries confer no Linux allowance, and both
 test projections must remain empty. The public verifier's newly reached Windows
 functions are removed from its older exact platform entry.
 
-The headless command inventory declares the four-command Network artifact lane;
+The headless command inventory declares the three-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the explicit [`ownership.json`](ownership.json) registry, exact
 qualification/artifact-lane ownership, and every maintained package and suite.
 
 The AAI2 retirement closure receipt has source `go list -deps -json`, profile
-`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, and command `./cmd/ardents`. Its scope
+`GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, and command `./cmd/ardents-next`. Its scope
 is limited to repository-owned production Go files in that one Linux command
 dependency closure. The architecture gate rejects the removed
 `internal/application/interfacev1/connection` dependency and every exact
@@ -2921,8 +2921,9 @@ private live process mode, event/resource collection, race/profile separation,
 source identity, failure/loss and privilege limits. `make diagnostics-build`
 is explicit setup; `make diagnostics-check` exercises the Linux collector.
 The Linux architecture deterministic profile runs that collector's meaningful
-negative/terminal evidence tests without Docker. Process diagnostic behavior
-belongs to `internal/diagnostics/process` in the deterministic/race profile.
+negative/terminal evidence tests without Docker. Heap dump verification
+belongs to `internal/diagnostics/process`. Standalone collector tests read
+independent Unix-socket fixtures for the historical Reader snapshot schema.
 
 Forwarding's fresh named metadata controls exercise actual no-follow parent
 opens, inode substitution, a writerless FIFO, wrong directory kind and lost
@@ -2931,9 +2932,8 @@ field and permit ordinary access-time changes; directory-content changes remain
 permitted without changing its identity or access. The actual byte/mtime
 restoration control also checks the newly opened named descriptor's ctime.
 These physical/metadata checks supply no accepting Startup or domain authority.
-The live Unix Interface is explicitly enabled by `ARDENTS_DEBUG_SOCKET` only
-for Endpoint/Node commands; it supplies no worker-confinement or Network
-readiness qualification. Product runtime dependencies are unchanged.
+The historical Reader socket format remains readable by the diagnostic
+collector after the runtime listener retirement.
 
 The deterministic inventory has an explicit Linux-only supplement in
 `tests/profiles/deterministic-linux-packages.txt` for Endpoint introduction,

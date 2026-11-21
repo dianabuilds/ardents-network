@@ -80,7 +80,7 @@ func testClosedProfileRoleJoinCase(t *testing.T, uncertain bool) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	if _, err := store.Accept(context.Background(), epoch.Raw, epoch.Inputs, epoch.Materials[:1]); err != nil {
+	if _, err := store.AcceptEpoch(context.Background(), epoch.Raw, epoch.Inputs, epoch.Materials[:1]); err != nil {
 		t.Fatalf("accept signed Epoch: %v", err)
 	}
 	issuerEntry := closedProfileNode{nodeID: issuer.NodeID, recordDigest: sha256.Sum256(issuer.Raw),

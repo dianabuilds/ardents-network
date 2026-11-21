@@ -126,7 +126,7 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 	}
 	// A fresh but unauthenticated State is incomplete and cannot be reopened
 	// retained. Never relax that requirement to manufacture first-start success.
-	if _, err := network.Accept(ctx, bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
+	if _, err := network.AcceptEpoch(ctx, bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
 		return err
 	}
 	if _, err := network.AcceptClosedProfile(profile); err != nil {

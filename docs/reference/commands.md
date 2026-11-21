@@ -287,7 +287,7 @@ Every command fails closed on malformed, unavailable, or unqualified input.
 Its bounded input belongs to the owning Module; a plan is not an ambient
 configuration format or an authority source.
 
-## `ardents`
+## `ardents-next`
 
 ### Public Network preparation in the isolated command
 
@@ -446,36 +446,26 @@ as the fixed Endpoint system unit, reload systemd, and start that unit.
 Its pre-start check and the Endpoint's original runtime observations
 still determine whether the launch can accept work.
 
+### Local operator commands
+
 | Route | Purpose |
 |---|---|
-| `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile ardents-route-v3 --closed-profile-authority HEX [--closed-profile PATH]` | Accept one complete authenticated offline Network State generation through the successor State owner. The live State selects only the closed Route profile (`ardents-route-v3`) and requires its pinned closed-profile authority; retired-profile Epochs are refused, not published. When `--closed-profile` is supplied, the command accepts that signed profile **after** committing the Epoch; a profile refusal does not undo the accepted generation. Success emits one `ardents-state-event-v1` `generation-accepted` JSON event, with `closed_profile_sha256` when the profile was also accepted. |
-| `accept-closed-profile --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --profile ardents-route-v3 --closed-profile-authority HEX --closed-profile PATH` | Submit one signed `ARDCPR03` only to an already accepted State root under its explicit pinned closed-profile signer. It neither accepts an Epoch nor contacts Source. An exact retry is harmless; a different valid digest records durable conflict and makes the closed profile unavailable. It emits one `ardents-state-event-v1` `closed-profile-accepted` JSON event containing only the State generation, Epoch and profile digest. |
-| `refresh-sources --state-root PATH --source-plan PATH [--once|--resume]` | Return `refresh-sources is retired; the platform-led runtime owns automatic Source refresh` at command dispatch before reading the plan, opening the State root, or causing network work. The legacy source-plan decoder, credential loader and resource-event output are removed; the successor State owner never samples process resources and the platform-led runtime owns automatic Source refresh, so the standalone command has no successor translation (#493). |
-| `diagnostics timeline` | Read app JSON lines or journalctl JSON from standard input and stream a local timeline of Node, Source, and Endpoint events. It reads no authority root, contacts no peer, and saves no history. |
-| `service-instance initialize --config PATH` | Create or reopen one host-owned Service Instance generation from an `ardents-service-instance-initialize-v1` plan whose `request_file` names one new public output, and emit its stable public request plus `request_sha256` for the independently transferred custody ceremony. The command exposes neither private key, Service Authority, Credential, Target, Route, nor Browser state. |
-| `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
-| `endpoint headless <headless-runtime.json>` | Return `endpoint headless is retired; use ardents-next endpoint start-installed under the platform unit` at command dispatch before reading the plan or opening any runtime resource. The protected text participant now starts through `ardents-next endpoint start-installed` under the platform unit; the former v1/v2 headless composition is removed. The exact v1 refusal and retained-data boundary remain defined by the [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement). |
-| `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Return `endpoint open is retired` before opening either file, dialing the local socket, or causing Endpoint/Network work. The AAI2 codec/server/client and exclusive Endpoint adapter are absent; no generic AAI3 translation or fallback is selected. |
-| `endpoint publish <administration-socket>` | Return `endpoint publish is retired; use ardents-text publish <administration-socket> <document-file>` before dialing the Administration socket or starting Endpoint/Network work. Use `ardents-text publish /absolute/path/to/administration.sock /absolute/path/to/document` for snapshot publication. |
-| `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
-| `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory through the successor enrollment verifier (ADR-0127). It renders only authenticated initial facts and does not authenticate first execution. |
-| `endpoint enroll <bundle-root> <manifest-sha256>` | Return `endpoint enroll is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
-| `endpoint enroll-installed <package-enrollment.json>` | Return `endpoint enroll-installed is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the enrollment or causing any effect (#617 S3.5). |
-| `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Return `endpoint user-unit is retired; use ardents-next platform unit` (respectively `endpoint installed-user-unit is retired; use ardents-next platform unit`) at command dispatch before rendering any unit. The per-user `systemd --user` profile is retired; platform delivery owns the system unit (#617 S3.5). |
-| `endpoint replace <replacement-bundle>` | Return `endpoint replace is retired; use ardents-next platform stage-endpoint` at command dispatch before reading the bundle or causing any effect. The successor Endpoint lifecycle is forward-only (#617 S3.5). |
-| `endpoint replacement-recovery` | Return `endpoint replacement-recovery is retired; use platform delivery after verified clean shutdown` at command dispatch before reading any replacement state (#617 S3.5). |
-| `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Return `endpoint rollback is retired; the successor Endpoint lifecycle is forward-only` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
-| `entry recipient <entry-import-plan.json>` | Return `entry Invite command is retired; the closed Entry set has no operator import surface` at command dispatch before interpreting the remaining arguments, reading the plan file, or creating any root. It never prints a recipient key; no Invite root reader, converter, or deleter remains (ADR-0106). |
-| `entry import <entry-import-plan.json>` | Return the same retirement refusal at command dispatch before any argument interpretation or filesystem effect. Existing Invite roots stay on disk byte-for-byte; the closed Entry set root refuses them by marker and allowed-name inspection (ADR-0106). |
-| `name encode <name>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before interpreting the argument; ADR-0113 retired the local canonical encoder with its package. |
-| `name resolve <input-file> <name> <context-hex>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before validating the remaining arguments, reading input, opening State, constructing or using HTTP/OHTTP transport, writing output, or changing Namespace state. |
-| `name control <input-file> <operation-file> <context-hex>` | Return the same retirement refusal at command dispatch before validating the remaining arguments or reading the operation; no control operation, Namespace mutation, migration, or fallback is selected. |
+| `network accept-epoch --config PATH` | Verify signed Epoch, inputs and materializations with the Network State owner. Reports whether the accepted Epoch is current or pending. The bounded JSON uses `network`, `epoch`, `inputs` and `materials`. |
+| `network accept-profile --config PATH` | Submit a signed `ARDCPR03` to an existing State root using `network` and `profile` in a bounded JSON plan. An exact retry is harmless. A different valid digest records durable conflict. |
+| `enrollment verify <bundle-root> <manifest-sha256>` / `enrollment verify-headless <bundle-root> <manifest-sha256>` | Recheck the running executable and the pinned inventory. Use `verify-headless` to require the headless companions specified by the descriptor schema. Establish first-execution trust using the external pin procedure. |
+| `diagnostics timeline` | Read app or journalctl JSON lines from standard input and project bounded local runtime events. |
+| `endpoint withdraw <administration-socket>` | Send a withdrawal request to the local Administration socket and render its bounded receipt. The Publisher must expose that socket to the authorized local caller. |
+
+The Network intake plans pin the State root, Network ID, authorities,
+threshold, profile signer and an independent clock-observation file. Submit the
+profile after accepting the Epoch. The two operations have separate receipts
+and State transitions.
 
 The diagnostic timeline accepts the bounded runtime schemas from Node,
 Source, and the headless Endpoint. For a live local view, pipe an authorized
 journal stream into it, for example:
 
-    journalctl -f -o json | ardents diagnostics timeline
+    journalctl -f -o json | ardents-next diagnostics timeline
 
 Each tab-separated row is occurrence time (UTC), clock origin (event or journal),
 owner, journal process ID, role, Carrier, kind, state, and quoted bounded reason. It preserves input order.
@@ -487,50 +477,9 @@ types fail, while absent optional fields remain unavailable. The projection
 omits Network IDs, destinations, addresses, permission commitments, tokens,
 document bytes, and all other fields. It is a local navigation view of existing
 events, not an authority source, telemetry export, or complete Route trace.
-An Endpoint fatal return after event output is acquired adds
-`headless-runtime-failed` with a `startup` or
-`running` category. The local command error remains on stderr; the timeline
-does not include its wrapped details.
-
-`endpoint headless` is retired at command dispatch before opening any
-plan-owned runtime resource; the protected text participant starts through
-`ardents-next endpoint start-installed` under the platform unit. The exact v1
-refusal and retained-data boundary remain defined by the
-[Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement).
-The former v1/v2 participant process composition has been removed; refusal does
-not retain a hidden fallback or migration runtime.
-Generic `endpoint open` is separately selected for
-[effect-free retirement](../technical/endpoint-service-runtime.md#generic-connection-command-retirement).
-Service Administration remains selected and is not carried by the removed AAI2
-or by the protected text AAI3 Connection.
-The architecture inventory independently guards this exact retirement through
-the [bounded closure receipt](../development/testing.md#reachability-audit),
-whose exact scope is owned by Testing.
-
-The old Name operator network adapters have their own selected
-[retirement boundary](../product/scope.md).
-ADR-0113 subsequently retired `name encode` itself and deleted the canonical
-Naming wire grammar with its package; the whole `name` verb family now
-refuses, and protected Service Name access is still not delivered. The
-command dispatch enforces the refusal, and the command-owned HTTP/OHTTP
-plan, State-view, receipt, operation, and encoder adapters are absent. ADR-0105 subsequently removed the whole
-Namespace subsystem and its never-command-exposed custody operations; an old
-Namespace root stays on disk untouched with no read path at all.
-
-The current State and source event schemas are coordinated C0 command outputs:
-there is no H3 reader or compatibility window. Resource observations are
-Module diagnostics, not a capacity or hosting claim.
-
-The three-argument v1 form `endpoint enrollment-check <alpha-enrollment.json>`
-is retired (ADR-0127, #647): it returns `endpoint enrollment-check
-<alpha-enrollment.json> is retired; use endpoint enrollment-check <bundle-root>
-<manifest-sha256>` at command dispatch before reading the document or touching
-the bundle. The v1-document parser is removed; existing persisted documents
-stay on disk byte-for-byte with no reader or converter. The three-argument
-`endpoint enroll` and `endpoint user-unit` forms are retired at command
-dispatch like their two-argument forms (#617 S3.5); no per-user restart or
-migration-unit render path remains. New units use the independently delivered
-manifest pin argument through platform delivery.
+The former `cmd/ardents` CLI, its retired routes and its persisted enrollment
+document reader have been removed. Published artifact names and pins retain
+their original identities.
 
 ## `ardents-node`
 

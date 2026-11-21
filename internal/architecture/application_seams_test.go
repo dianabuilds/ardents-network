@@ -46,30 +46,24 @@ func TestArdentsLinuxClosureRetiresAAI2(t *testing.T) {
 	wantReceipt := commandClosureReceipt{
 		Source:     "go list -deps -json",
 		Profile:    "GOOS=linux GOARCH=amd64 CGO_ENABLED=0",
-		Command:    "./cmd/ardents",
-		ScopeLimit: "repository-owned production Go files in the Linux cmd/ardents dependency closure",
+		Command:    "./cmd/ardents-next",
+		ScopeLimit: "repository-owned production Go files in the Linux cmd/ardents-next dependency closure",
 	}
 	if receipt.Source != wantReceipt.Source || receipt.Profile != wantReceipt.Profile ||
 		receipt.Command != wantReceipt.Command || receipt.ScopeLimit != wantReceipt.ScopeLimit {
 		t.Fatalf("receipt = %+v", receipt)
 	}
-	// The withdraw Administration Interface client remains in cmd/ardents. The
-	// protected text participant (internal/application/connection) is retired
-	// from this command to the platform-led ardents-next system-unit composition
-	// (ADR-0125, #617 S3.5); the AAI2 forbidden-dependency enforcement is
-	// unchanged.
-	if !receipt.Dependencies[ardentsModulePath+"/internal/application/administration"] {
-		t.Errorf("Linux %s closure does not retain the Administration Interface", receipt.Command)
-	}
-	if receipt.Dependencies[ardentsModulePath+"/internal/application/connection"] {
-		t.Errorf("Linux %s closure retains the retired protected text participant connection", receipt.Command)
+	for _, seam := range []string{"administration", "connection"} {
+		if !receipt.Dependencies[ardentsModulePath+"/internal/application/"+seam] {
+			t.Errorf("Linux %s closure does not retain the Application %s Interface", receipt.Command, seam)
+		}
 	}
 }
 
 func TestArdentsLinuxClosureGateRejectsRetiredAAI2Fixture(t *testing.T) {
 	root := t.TempDir()
 	writeApplicationClosureFixture(t, root, "go.mod", "module github.com/dianabuilds/ardents-network\n\ngo 1.26\n")
-	writeApplicationClosureFixture(t, root, "cmd/ardents/main.go", `package main
+	writeApplicationClosureFixture(t, root, "cmd/ardents-next/main.go", `package main
 
 import _ "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
 
@@ -100,7 +94,7 @@ func TestArdentsLinuxClosureSeparatesGoDiagnosticsFromJSON(t *testing.T) {
 	t.Setenv("GOFLAGS", "-x")
 	root := t.TempDir()
 	writeApplicationClosureFixture(t, root, "go.mod", "module github.com/dianabuilds/ardents-network\n\ngo 1.26\n")
-	writeApplicationClosureFixture(t, root, "cmd/ardents/main.go", "package main\n\nfunc main() {}\n")
+	writeApplicationClosureFixture(t, root, "cmd/ardents-next/main.go", "package main\n\nfunc main() {}\n")
 	if _, err := validateArdentsLinuxClosure(t.Context(), root); err != nil {
 		t.Fatal(err)
 	}
@@ -121,8 +115,8 @@ func inspectArdentsLinuxClosure(ctx context.Context, root string) (commandClosur
 	receipt := commandClosureReceipt{
 		Source:       "go list -deps -json",
 		Profile:      "GOOS=linux GOARCH=amd64 CGO_ENABLED=0",
-		Command:      "./cmd/ardents",
-		ScopeLimit:   "repository-owned production Go files in the Linux cmd/ardents dependency closure",
+		Command:      "./cmd/ardents-next",
+		ScopeLimit:   "repository-owned production Go files in the Linux cmd/ardents-next dependency closure",
 		Dependencies: make(map[string]bool),
 	}
 	listContext, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -225,8 +219,8 @@ func sourceContainsIdentifier(root, directory, name, identifier string) (string,
 
 func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	root := repositoryRoot(t)
-	if listedDirectImports(t, root, "./cmd/ardents")[retiredAAI2ConnectionPath] {
-		t.Error("./cmd/ardents directly imports the retired generic AAI2 Connection client")
+	if listedDirectImports(t, root, "./cmd/ardents-next")[retiredAAI2ConnectionPath] {
+		t.Error("./cmd/ardents-next directly imports the retired generic AAI2 Connection client")
 	}
 
 	connection := ardentsModulePath + "/internal/application/connection"
@@ -234,8 +228,8 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	if !listedDependencies(t, root, "./cmd/ardents-text")[connection] {
 		t.Error("./cmd/ardents-text does not use the selected protected text Connection Module")
 	}
-	if !listedDependencies(t, root, "./cmd/ardents")[administration] {
-		t.Error("./cmd/ardents does not use the shared Application Administration Module")
+	if !listedDependencies(t, root, "./cmd/ardents-next")[administration] {
+		t.Error("./cmd/ardents-next does not use the shared Application Administration Module")
 	}
 
 	// Inspect the installed server closure even when the test runs on macOS or Windows.

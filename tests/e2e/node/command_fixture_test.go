@@ -44,25 +44,25 @@ func buildCommand(t *testing.T, name string) string {
 }
 
 func TestBuildCommandUsesDeclaredPrebuiltProductExecutable(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "ardents-artifact")
+	path := filepath.Join(t.TempDir(), "ardents-next-artifact")
 	if err := os.WriteFile(path, []byte("exact prebuilt product command\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ARDENTS_E2E_PRODUCT_ARDENTS", path)
-	if observed := buildCommand(t, "ardents"); observed != path {
+	t.Setenv("ARDENTS_E2E_PRODUCT_ARDENTS_NEXT", path)
+	if observed := buildCommand(t, "ardents-next"); observed != path {
 		t.Fatalf("prebuilt product command = %q, want %q", observed, path)
 	}
 }
 
 func TestBuildCommandUsesDeclaredPrebuiltExecutable(t *testing.T) {
 	root := t.TempDir()
-	path := filepath.Join(root, "ardents")
+	path := filepath.Join(root, "ardents-next")
 	if err := os.WriteFile(path, []byte("exact prebuilt test command\n"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ARDENTS_E2E_PRODUCT_ARDENTS", "")
+	t.Setenv("ARDENTS_E2E_PRODUCT_ARDENTS_NEXT", "")
 	t.Setenv("ARDENTS_E2E_COMMAND_ROOT", root)
-	if observed := buildCommand(t, "ardents"); observed != path {
+	if observed := buildCommand(t, "ardents-next"); observed != path {
 		t.Fatalf("prebuilt command = %q, want %q", observed, path)
 	}
 }

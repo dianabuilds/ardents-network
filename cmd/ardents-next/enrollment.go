@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
@@ -41,7 +42,10 @@ func runEnrollment(ctx context.Context, args []string, out io.Writer) int {
 		}
 		return enrollmentReport(out, outcome, code)
 	}
-	facts, _ := bundle.Facts()
+	facts, ok := bundle.Facts()
+	if !ok || facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return enrollmentReport(out, "binding-mismatch", 1)
+	}
 	programBytes, ok := bundle.File(facts.Artifact)
 	if !ok {
 		return enrollmentReport(out, "unavailable", 1)

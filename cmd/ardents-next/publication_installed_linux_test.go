@@ -77,7 +77,7 @@ func runInstalledPublisher(t *testing.T, carrier transport.CarrierProfile) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = seed.Accept(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
+	_, err = seed.AcceptEpoch(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
 	if err == nil {
 		_, err = seed.AcceptClosedProfile(bundle.Profile)
 	}

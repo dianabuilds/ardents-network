@@ -366,7 +366,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, acceptErr := seed.Accept(ctx, network.Epoch, network.Inputs, network.Materials)
+		_, acceptErr := seed.AcceptEpoch(ctx, network.Epoch, network.Inputs, network.Materials)
 		closeErr := seed.Close()
 		if acceptErr != nil || closeErr != nil {
 			t.Fatal(acceptErr, closeErr)

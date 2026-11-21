@@ -60,7 +60,7 @@ func TestRouteCompiledCommandJoinTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				_, err = owner.Accept(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
+				_, err = owner.AcceptEpoch(ctx, bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials)
 				if err == nil {
 					_, err = owner.AcceptClosedProfile(bundle.Profile)
 				}

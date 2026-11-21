@@ -152,7 +152,7 @@ func nativeDescriptorOperationChild(t *testing.T, path string) {
 	nativeIssuerWaitMarker(t, plan.Signals, "stop", 20*time.Second)
 	changedAuthority := p.Fault == "pre-spend-successor" || p.Fault == "pre-spend-process-loss"
 	if p.Fault == "pre-spend-successor" {
-		if _, err := owner.Accept(t.Context(), p.Successor.Epoch.Raw, p.Successor.Epoch.Inputs, p.Successor.Epoch.Materials); err != nil {
+		if _, err := owner.AcceptEpoch(t.Context(), p.Successor.Epoch.Raw, p.Successor.Epoch.Inputs, p.Successor.Epoch.Materials); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := owner.AcceptClosedProfile(p.Successor.Profile); err != nil {

@@ -1,13 +1,9 @@
 # Endpoint command end to end
 
-This package builds the real `ardents` command and runs it against exact
-artifacts placed in synthetic closed-alpha bundles. It proves that the
-four-argument `endpoint enrollment-check <bundle-root> <manifest-sha256>`
-accepts an independently pinned, exact local inventory through the successor
-enrollment verifier with a byte-identical diagnostic output contract, and
-refuses a changed manifest before parsing it. The historical persisted
-`ardents-alpha-enrollment-input-v1` document form returns its typed retirement
-refusal before reading the document or touching the bundle (ADR-0127, #647).
+This package runs the real `ardents-next enrollment verify-headless` command
+against an independently pinned v4 bundle. It checks that the exact running
+Endpoint artifact is accepted and that a changed manifest fails before parsing.
+The Endpoint archive filename remains `ardents-<platform>`.
 
 The per-user Portable Endpoint lifecycle process evidence formerly here
 (`endpoint enroll`/`enroll-installed` readiness and release floors, the
@@ -28,6 +24,5 @@ evidence for the post-execution Enrollment Pin handoff; it is not an external
 first-execution verifier, alpha provenance, a participant-contact proof, a
 network source, or a qualification of a released artifact.
 
-For an explicitly cross-compiled Linux qualification only, the test runner may
-provide the matching command through `ARDENTS_E2E_COMMAND`; ordinary local and
-CI runs leave it unset and build the command from the current checkout.
+The headless profile passes the exact prebuilt Endpoint artifact through
+`ARDENTS_E2E_COMMAND`. Ordinary local runs build it from the current checkout.

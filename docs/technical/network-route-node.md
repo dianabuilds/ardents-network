@@ -1423,15 +1423,10 @@ end-to-end Service session. Those remain Endpoint and Route client obligations.
 
 ## Local process debugging
 
-The command adapter can explicitly enable the owner-private process Interface
-with `ARDENTS_DEBUG_SOCKET` under the
-[local diagnostic contract](../development/local-diagnostics.md). It supplies
-runtime counters and finite profile/trace requests without modifying Route,
-State authority, peer selection, Application privileges or worker confinement.
-Empty input creates no diagnostic resources; configured admission failures
-precede product dispatch and diagnostic cleanup is joined to command outcome.
-The diagnostic interface reports process observations; existing owner events
-remain the source of readiness and typed product failure.
+Use bounded command events and `ardents-next diagnostics timeline` for local
+investigation. Older builds exposed an owner-private `ARDENTS_DEBUG_SOCKET`.
+The [diagnostic owner](../development/local-diagnostics.md) describes retained
+capture formats and their handling.
 
 
 ## Platform-managed infrastructure launch

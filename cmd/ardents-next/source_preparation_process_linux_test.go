@@ -175,7 +175,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	}
 	altered := bytes.Clone(bundle.Epoch.Raw)
 	altered[len(altered)-1] ^= 1
-	if _, e := owner.Accept(t.Context(), altered, bundle.Epoch.Inputs, bundle.Epoch.Materials); e == nil {
+	if _, e := owner.AcceptEpoch(t.Context(), altered, bundle.Epoch.Inputs, bundle.Epoch.Materials); e == nil {
 		t.Fatal("TLS replaced signed State verification")
 	}
 	if _, e := owner.CurrentRuntime(); e != nil {

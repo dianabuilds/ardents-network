@@ -41,7 +41,21 @@ func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) > 0 && args[0] == "publication" {
 		return runPublication(ctx, args[1:], out)
 	}
+	if len(args) > 0 && args[0] == "diagnostics" {
+		return runDiagnostics(ctx, args[1:], os.Stdin, out, diagnostic)
+	}
 	if len(args) > 0 && args[0] == "endpoint" {
+		if len(args) > 1 && args[1] == "withdraw" {
+			if len(args) != 3 {
+				fmt.Fprintln(diagnostic, "usage: ardents-next endpoint withdraw <administration-socket>")
+				return 2
+			}
+			if err := withdrawEndpoint(ctx, args[2], out); err != nil {
+				fmt.Fprintln(diagnostic, err)
+				return 1
+			}
+			return 0
+		}
 		return runInstalledEndpoint(ctx, args[1:], diagnostic)
 	}
 	if len(args) > 0 && args[0] == "execution" {

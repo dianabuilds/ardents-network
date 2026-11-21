@@ -129,15 +129,6 @@
         "rationale": "ValidateInfrastructureInventory checks the closed seven-file infrastructure byte grammar against caller-supplied immutable images and returns copied declarations/digests. Its production consumers were the transitional JOIN/Descriptor selected-generation validation in the retired installation orchestration (#604 FJD stage D, ADR-0125); the retained prepare-inventory producers use PrepareInfrastructureInventory and the retained predecessor/candidate admission uses VerifyInfrastructure/ReadInfrastructureCandidate, so this validator has no remaining production caller. It is retained as reviewed mechanism code because genuine kept Linux tests exercise its exact canonical-byte equality, foreign-role and mutated-inventory refusal: enrollment/infrastructure_inventory_test.go and enrollment/descriptor_inventory_linux_test.go. The shared parseInfrastructureInventory/PrepareInfrastructureInventory helpers remain production-live and are not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
         "owner": "Product Owner and Codex; Enrollment inventory owner",
         "retirement": "Remove this allowance when its genuine mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
-      },
-      {
-        "symbols": [
-          "internal/diagnostics/process.ReaderTrace"
-        ],
-        "classification": "private diagnostic report fixtures",
-        "rationale": "Private diagnostic parser and listener tests use ReaderTrace to create bounded observations for the retained report schemas.",
-        "owner": "Product Owner and Codex; diagnostics",
-        "retirement": "Remove the exact entries when diagnostic schema tests no longer use the capture helpers or an admitted capture profile invokes them."
       }
     ],
     "windows-amd64": [
@@ -458,16 +449,6 @@
         "rationale": "Real Linux ardents-next startRouteBootstrap, routeIssuerPreparation and Receiver bootstrap/ordinary dispatch reach these exact issuer, immutable child restriction, bounded queue/output and joined retirement functions. Linux production analysis verifies their reachability. Windows refuses before opening native selection, receiving and issuing roots; portable codecs, bootstrap limits and typed physical lifetime tests do not grant Windows durable composition. Both-platform test analysis must still report no unreachable functions; this entry changes neither the checker nor its test requirement.",
         "owner": "Route issuer, bootstrap, channel, Prefix, JOIN and receiving composition; docs/technical/successor-route-prefix.md",
         "retirement": "Remove each exact Windows allowance when a genuine supported Windows durable composition reaches it, or when its owning operation is removed. Preserve exact Windows/Linux production and empty test closure checks."
-      },
-      {
-        "symbols": [
-          "internal/diagnostics/process.ConnectionTrace.snapshot",
-          "internal/diagnostics/process.ReaderTrace"
-        ],
-        "classification": "platform-specific Reader diagnostics",
-        "rationale": "The Linux socket handler reads snapshots. Windows refuses configured process diagnostics before work. Portable diagnostic tests use ReaderTrace to generate bounded report inputs.",
-        "owner": "Product Owner and Codex",
-        "retirement": "Remove this Windows allowance if Reader diagnostics gains a maintained Windows socket/runtime consumer, or remove these symbols with the Linux Reader observation contract."
       },
       {
         "symbols": [

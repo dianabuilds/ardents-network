@@ -188,7 +188,7 @@ func nativeIssuerOperationChild(t *testing.T, path string) {
 	}
 	nativeIssuerWaitMarker(t, plan.Signals, "stop", 20*time.Second)
 	if p.Fault == "post-result-successor" {
-		if _, err := stateOwner.Accept(t.Context(), p.Successor.Epoch.Raw, p.Successor.Epoch.Inputs, p.Successor.Epoch.Materials); err != nil {
+		if _, err := stateOwner.AcceptEpoch(t.Context(), p.Successor.Epoch.Raw, p.Successor.Epoch.Inputs, p.Successor.Epoch.Materials); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := stateOwner.AcceptClosedProfile(p.Successor.Profile); err != nil {

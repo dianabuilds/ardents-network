@@ -40,7 +40,8 @@ func TestServingSourceDutyTracksAcceptedSuccessor(t *testing.T) {
 		t.Fatalf("initial Source duty after its Epoch = %t, %v; want held until Close", conflict, err)
 	}
 
-	advanced, err := serving.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	advancedReceipt, err := serving.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	advanced := advancedReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestServingSourceDutyProtectsRealResponseAfterEpochExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installed.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := installed.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		_ = installed.Close()
 		t.Fatal(err)
 	}
@@ -172,7 +173,7 @@ func TestServingSourceDutyRejectsConflictingSuccessor(t *testing.T) {
 	if err := roles.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := serving.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations); !errors.Is(err, duty2.ErrLocalRoleConflict) {
+	if _, err := serving.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations); !errors.Is(err, duty2.ErrLocalRoleConflict) {
 		t.Fatalf("conflicting Source successor accepted: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(config.Root, "generations", hex.EncodeToString(successor.epochDigest[:]))); !os.IsNotExist(err) {
@@ -240,7 +241,7 @@ func TestServingSourceRetiresWhenDutyRootDisappears(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	if _, err := serving.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations); err == nil {
+	if _, err := serving.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations); err == nil {
 		t.Fatal("successor accepted without local Source duty root")
 	}
 	if _, err := serving.Current(); err == nil {
@@ -256,7 +257,7 @@ func installedServingSourceConfig(t *testing.T, genesis fixture) state2.Config {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := installed.Accept(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
+	if _, err := installed.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		_ = installed.Close()
 		t.Fatal(err)
 	}
@@ -311,7 +312,8 @@ func TestServingSourceDutyKeepsOpeningRoleRootAfterChdir(t *testing.T) {
 	}
 
 	t.Chdir(laterDirectory)
-	advanced, err := serving.Accept(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	advancedReceipt, err := serving.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	advanced := advancedReceipt.Snapshot
 	if err != nil {
 		_ = serving.Close()
 		t.Fatalf("accept after working directory changed: %v", err)

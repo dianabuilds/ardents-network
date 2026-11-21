@@ -80,10 +80,10 @@ func TestClosedOfflineCurrentConflictPersistsOnlyAuthenticatedEvidence(t *testin
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = owner.Close() })
-			if _, err := owner.Accept(context.Background(), genesis.Raw, genesis.inputs, genesis.Materials); err != nil {
+			if _, err := owner.AcceptEpoch(context.Background(), genesis.Raw, genesis.inputs, genesis.Materials); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := owner.Accept(context.Background(), test.input.Raw, test.input.inputs, test.input.Materials); err == nil {
+			if _, err := owner.AcceptEpoch(context.Background(), test.input.Raw, test.input.inputs, test.input.Materials); err == nil {
 				t.Fatal("invalid or conflicting evidence was accepted")
 			}
 			view, err := owner.Current()
@@ -101,7 +101,7 @@ func TestClosedOfflineCurrentConflictPersistsOnlyAuthenticatedEvidence(t *testin
 			if err != nil || view.Conflicting != test.conflict || view.Digest != genesis.Digest {
 				t.Fatalf("reopen lost identity/conflict: epoch=%d conflict=%t err=%v", view.Epoch, view.Conflicting, err)
 			}
-			_, err = owner.Accept(context.Background(), successor.Raw, successor.inputs, successor.Materials)
+			_, err = owner.AcceptEpoch(context.Background(), successor.Raw, successor.inputs, successor.Materials)
 			if test.conflict && err == nil {
 				t.Fatal("successor erased retained conflict")
 			}
@@ -123,7 +123,7 @@ func TestClosedIntakeRefusesRetiredSchemasBeforeCommit(t *testing.T) {
 			t.Fatal(err)
 		}
 		epoch := buildClosedIntakeEpoch(t, network, authority, 1, [32]byte{}, version, now.Add(-time.Minute), now.Add(time.Hour))
-		_, err = store.Accept(context.Background(), epoch.Raw, epoch.inputs, epoch.Materials)
+		_, err = store.AcceptEpoch(context.Background(), epoch.Raw, epoch.inputs, epoch.Materials)
 		if !errors.Is(err, state2.ErrLegacyEpochIntake) {
 			t.Fatalf("v%d closed Accept = %v", version, err)
 		}
@@ -149,7 +149,8 @@ func TestClosedIntakeRefusesRetiredSchemasBeforeCommit(t *testing.T) {
 	}
 	defer store.Close()
 	epoch := buildClosedIntakeEpoch(t, network, authority, 1, [32]byte{}, 3, now.Add(-time.Minute), now.Add(time.Hour))
-	snapshot, err := store.Accept(context.Background(), epoch.Raw, epoch.inputs, epoch.Materials)
+	snapshotReceipt, err := store.AcceptEpoch(context.Background(), epoch.Raw, epoch.inputs, epoch.Materials)
+	snapshot := snapshotReceipt.Snapshot
 	if err != nil || snapshot.Epoch != 1 || snapshot.Generation != hex.EncodeToString(epoch.Digest[:]) {
 		t.Fatalf("v3 closed Accept = %+v, %v", snapshot, err)
 	}
@@ -240,7 +241,8 @@ func TestClosedIntakeKeepsAuthenticatedOldPredecessorChain(t *testing.T) {
 	}
 	// The retained chain still extends through the sole pinned schema.
 	fourth := buildClosedIntakeEpoch(t, network, authority, 4, third.Digest, 3, from, until)
-	accepted, err := store.Accept(context.Background(), fourth.Raw, fourth.inputs, fourth.Materials)
+	acceptedReceipt, err := store.AcceptEpoch(context.Background(), fourth.Raw, fourth.inputs, fourth.Materials)
+	accepted := acceptedReceipt.Snapshot
 	if err != nil || accepted.Epoch != 4 {
 		t.Fatalf("successor Accept over old predecessors = %+v, %v", accepted, err)
 	}
@@ -258,7 +260,7 @@ func TestClosedIntakeSourceChokePointCoversBothResultForms(t *testing.T) {
 	defer store.Close()
 	from, until := now.Add(-time.Minute), now.Add(time.Hour)
 	current := buildClosedIntakeEpoch(t, network, authority, 1, [32]byte{}, 3, from, until)
-	if _, err := store.Accept(context.Background(), current.Raw, current.inputs, current.Materials); err != nil {
+	if _, err := store.AcceptEpoch(context.Background(), current.Raw, current.inputs, current.Materials); err != nil {
 		t.Fatal(err)
 	}
 	// Reuse form: the exact retained current bytes stay a valid wave result.

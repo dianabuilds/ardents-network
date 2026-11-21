@@ -42,7 +42,7 @@ func TestOfflineValidationFailsClosed(t *testing.T) {
 				t.Fatalf("open state: %v", err)
 			}
 			defer store.Close()
-			if _, err := store.Accept(context.Background(), value.epoch, value.inputs, value.materializations); err == nil {
+			if _, err := store.AcceptEpoch(context.Background(), value.epoch, value.inputs, value.materializations); err == nil {
 				t.Fatal("invalid offline state was accepted")
 			}
 			if _, err := os.Stat(filepath.Join(root, "current")); !os.IsNotExist(err) {
@@ -66,7 +66,8 @@ func TestOpenFailsOnCorruptCurrentGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot, err := store.Accept(context.Background(), value.epoch, value.inputs, value.materializations)
+	snapshotReceipt, err := store.AcceptEpoch(context.Background(), value.epoch, value.inputs, value.materializations)
+	snapshot := snapshotReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -59,7 +59,7 @@ func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := owner.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
+				if _, err := owner.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
 					t.Fatal(err)
 				}
 				if _, err := owner.AcceptClosedProfile(bundle.Profile); err != nil {
@@ -223,7 +223,7 @@ func testRouteCompiledCommand(t *testing.T, introduction bool, refill ...bool) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := owner.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
+				if _, err := owner.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
 					t.Fatal(err)
 				}
 				if _, err := owner.AcceptClosedProfile(bundle.Profile); err != nil {
