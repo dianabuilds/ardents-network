@@ -41,7 +41,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	bundle, pin, program := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, authority, 1, 1)
 	reference := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	history := filepath.Join(t.TempDir(), "floors")
-	verified, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: bundle, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+	verified, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: bundle, ExecutablePath: program, ManifestSHA256: pin})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	}
 	candidateResources["ardents-endpoint.service"] = append([]byte("# signed successor fixture\n"), candidateResources["ardents-endpoint.service"]...)
 	candidateRoot, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, candidateResources, authority, 2, 2)
-	candidate, err := enrollment.ReadCandidate(t.Context(), candidateRoot, enrollment.Headless)
+	candidate, err := enrollment.ReadCandidate(t.Context(), candidateRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	if _, err := endpointrelease.AuthenticateCandidate(t.Context(), verifier, candidate, next); err != nil {
 		t.Fatal(err)
 	}
-	old, err := enrollment.ReadCandidate(t.Context(), bundle, enrollment.Headless)
+	old, err := enrollment.ReadCandidate(t.Context(), bundle)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(bundle, "ardents-text-linux-amd64"), changed, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: bundle, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless}); err == nil {
+	if _, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: bundle, ExecutablePath: program, ManifestSHA256: pin}); err == nil {
 		t.Fatal("accepted substituted actual worker")
 	}
 }

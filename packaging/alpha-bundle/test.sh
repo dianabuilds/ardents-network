@@ -1,14 +1,13 @@
 #!/bin/sh
 set -eu
 
-if [ "$#" -ne 4 ]; then
-  echo 'usage: test.sh <platform> <ardents-artifact> <ardents-control-artifact> <ardents-custody-artifact>' >&2
+if [ "$#" -ne 3 ]; then
+  echo 'usage: test.sh <platform> <ardents-artifact> <ardents-custody-artifact>' >&2
   exit 2
 fi
 ARDENTS_HEADLESS_PLATFORM=$1
 ARDENTS_HEADLESS_ENDPOINT=$2
-ARDENTS_HEADLESS_CONTROL=$3
-ARDENTS_HEADLESS_CUSTODY=$4
+ARDENTS_HEADLESS_CUSTODY=$3
 
 repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 artifact_name() {
@@ -25,16 +24,14 @@ mkdir "$static_root"
 chmod 700 "$static_root"
 platform=$ARDENTS_HEADLESS_PLATFORM
 endpoint_name=$(artifact_name ardents "$platform")
-control_name=$(artifact_name ardents-control "$platform")
 custody_name=$(artifact_name ardents-custody "$platform")
 test -f "$ARDENTS_HEADLESS_ENDPOINT"
-test -f "$ARDENTS_HEADLESS_CONTROL"
 test -f "$ARDENTS_HEADLESS_CUSTODY"
-for name in 1.root.json 1.snapshot.json 1.targets.json catalog.ac1 catalog.pub compatibility.ac1 compatibility.pub corpus.pub network.ac1 network.pub release.ac1 release.pub timestamp.json; do
+for name in 1.root.json 1.snapshot.json 1.targets.json timestamp.json; do
   printf '%s\n' "$name" > "$static_root/$name"
 done
 cat > "$static_root/RELEASE" <<EOF
-schema=ardents-closed-alpha-enrollment-v4
+schema=ardents-closed-alpha-enrollment-v5
 cohort=alpha-test
 release=usable-alpha-test-1
 platform=$platform
@@ -43,16 +40,6 @@ network=alpha-test
 target_path=ardents/linux-amd64/endpoint
 artifact=$endpoint_name
 trusted_root=1.root.json
-control_catalog=catalog.ac1
-disclosure_root=catalog.pub
-control_release=release.ac1
-control_network=network.ac1
-control_compatibility=compatibility.ac1
-control_release_root=release.pub
-control_network_root=network.pub
-control_compatibility_root=compatibility.pub
-corpus_authority=corpus.pub
-control_artifact=$control_name
 EOF
 
 build() {
@@ -60,7 +47,6 @@ build() {
   ARDENTS_ALPHA_BUNDLE_RELEASE=usable-alpha-test-1 \
   ARDENTS_ALPHA_BUNDLE_PLATFORM="$platform" \
   ARDENTS_ALPHA_BUNDLE_ENDPOINT="$ARDENTS_HEADLESS_ENDPOINT" \
-  ARDENTS_ALPHA_BUNDLE_CONTROL="$ARDENTS_HEADLESS_CONTROL" \
   ARDENTS_ALPHA_BUNDLE_CUSTODY="$ARDENTS_HEADLESS_CUSTODY" \
   ARDENTS_ALPHA_BUNDLE_TEXT="${protected_text:-}" \
   ARDENTS_ALPHA_BUNDLE_STATIC_ROOT="$static_root" \
@@ -73,11 +59,19 @@ build "$scratch/first.tar.gz"
 build "$scratch/second.tar.gz"
 cmp -s "$scratch/first.tar.gz" "$scratch/second.tar.gz"
 
+cp "$static_root/RELEASE" "$scratch/current-release"
+sed '1s/enrollment-v5$/enrollment-v4/' "$scratch/current-release" > "$static_root/RELEASE"
+if build "$scratch/retired.tar.gz"; then
+  echo 'alpha bundle accepted a retired descriptor' >&2
+  exit 1
+fi
+test ! -e "$scratch/retired.tar.gz"
+cp "$scratch/current-release" "$static_root/RELEASE"
+
 tar -xzf "$scratch/first.tar.gz" -C "$scratch"
 bundle="$scratch/ardents-alpha-usable-alpha-test-1-$platform"
 
 cmp -s "$ARDENTS_HEADLESS_ENDPOINT" "$bundle/$endpoint_name"
-cmp -s "$ARDENTS_HEADLESS_CONTROL" "$bundle/$control_name"
 cmp -s "$ARDENTS_HEADLESS_CUSTODY" "$bundle/$custody_name"
 
 if grep -Eq '^browser_entry_(artifact|extension)=' "$bundle/RELEASE" ||
@@ -114,18 +108,8 @@ if [ "$(tar -tzf "$scratch/first.tar.gz")" != "$(printf '%s\n' \
   "ardents-alpha-usable-alpha-test-1-$platform/1.targets.json" \
   "ardents-alpha-usable-alpha-test-1-$platform/RELEASE" \
   "ardents-alpha-usable-alpha-test-1-$platform/SHA256SUMS" \
-  "ardents-alpha-usable-alpha-test-1-$platform/$control_name" \
   "ardents-alpha-usable-alpha-test-1-$platform/$custody_name" \
   "ardents-alpha-usable-alpha-test-1-$platform/$endpoint_name" \
-  "ardents-alpha-usable-alpha-test-1-$platform/catalog.ac1" \
-  "ardents-alpha-usable-alpha-test-1-$platform/catalog.pub" \
-  "ardents-alpha-usable-alpha-test-1-$platform/compatibility.ac1" \
-  "ardents-alpha-usable-alpha-test-1-$platform/compatibility.pub" \
-  "ardents-alpha-usable-alpha-test-1-$platform/corpus.pub" \
-  "ardents-alpha-usable-alpha-test-1-$platform/network.ac1" \
-  "ardents-alpha-usable-alpha-test-1-$platform/network.pub" \
-  "ardents-alpha-usable-alpha-test-1-$platform/release.ac1" \
-  "ardents-alpha-usable-alpha-test-1-$platform/release.pub" \
   "ardents-alpha-usable-alpha-test-1-$platform/timestamp.json" | LC_ALL=C sort)" ]; then
   echo 'alpha bundle archive inventory changed' >&2
   exit 1
@@ -177,7 +161,7 @@ ardents-text.conf"
   mkdir "$protected_unpack"
   tar -xzf "$scratch/protected-first.tar.gz" -C "$protected_unpack"
   protected_bundle="$protected_unpack/ardents-alpha-usable-alpha-test-1-$platform"
-  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 26
+  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 16
   (cd "$protected_bundle" && sha256sum --strict --check SHA256SUMS)
   cmp -s "$static_root/protected-endpoint.json" "$protected_bundle/protected-endpoint.json"
   printf 'substitution\n' > "$static_root/ardents-text.conf"
@@ -194,9 +178,9 @@ ardents-text.conf"
   test ! -e "$scratch/protected-partial.tar.gz"
 fi
 
-printf 'unexpected\n' > "$static_root/unexpected"
+printf 'retired catalog\n' > "$static_root/catalog.ac1"
 if build "$scratch/rejected.tar.gz" >/dev/null 2>&1; then
-  echo 'alpha bundle accepted an unlisted static input' >&2
+  echo 'alpha bundle accepted the retired catalog' >&2
   exit 1
 fi
 test ! -e "$scratch/rejected.tar.gz"

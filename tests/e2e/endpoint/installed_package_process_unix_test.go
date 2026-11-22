@@ -122,7 +122,6 @@ func packageEnrollmentBundle(t *testing.T, command string) (string, string) {
 	t.Helper()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	artifactName := "ardents-" + platform
-	controlName := "ardents-control-" + platform
 	custodyName := "ardents-custody-" + platform
 	artifact, err := os.ReadFile(command)
 	if err != nil {
@@ -136,14 +135,14 @@ func packageEnrollmentBundle(t *testing.T, command string) (string, string) {
 		t.Fatal(err)
 	}
 	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v4", "cohort=closed-cohort-1", "release=alpha-1", "platform=" + platform,
-		"environment=alpha", "network=alpha-network-1", "target_path=" + targetPath, "artifact=" + artifactName, "trusted_root=1.root.json", "control_catalog=catalog.ac1", "disclosure_root=catalog.pub", "control_release=release.ac1", "control_network=network.ac1", "control_compatibility=compatibility.ac1", "control_release_root=release.pub", "control_network_root=network.pub", "control_compatibility_root=compatibility.pub", "corpus_authority=corpus.pub", "control_artifact=" + controlName,
+		"schema=ardents-closed-alpha-enrollment-v5", "cohort=closed-cohort-1", "release=alpha-1", "platform=" + platform,
+		"environment=alpha", "network=alpha-network-1", "target_path=" + targetPath, "artifact=" + artifactName, "trusted_root=1.root.json",
 	}, "\n") + "\n"
-	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, controlName: []byte("control"), custodyName: []byte("custody"), "catalog.ac1": []byte("catalog"), "catalog.pub": []byte("key"), "release.ac1": []byte("release control"), "network.ac1": []byte("network control"), "compatibility.ac1": []byte("compatibility control"), "release.pub": []byte("release key"), "network.pub": []byte("network key"), "compatibility.pub": []byte("compatibility key"), "corpus.pub": []byte("corpus")}
+	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, custodyName: []byte("custody")}
 	for name, contents := range metadataFiles {
 		files[name] = contents
 	}
-	names := []string{"1.root.json", "1.snapshot.json", "1.targets.json", "RELEASE", artifactName, controlName, custodyName, "catalog.ac1", "catalog.pub", "compatibility.ac1", "compatibility.pub", "network.ac1", "network.pub", "release.ac1", "release.pub", "corpus.pub", "timestamp.json"}
+	names := []string{"1.root.json", "1.snapshot.json", "1.targets.json", "RELEASE", artifactName, custodyName, "timestamp.json"}
 	for _, name := range names {
 		mode := os.FileMode(0o600)
 		if name == artifactName {

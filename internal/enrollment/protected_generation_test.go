@@ -30,8 +30,6 @@ func protectedFixture(t *testing.T) (Request, map[string][]byte) {
 		t.Fatal(err)
 	}
 	files["protected-endpoint.json"] = []byte("{\"schema\":\"ardents-protected-endpoint-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"release\",\"release_version\":1,\"files\":" + string(raw) + "}\n")
-	files["ardents-node-linux-amd64"], files["ardents-custody-linux-amd64"] = []byte("node"), []byte("custody")
-	r.Scope = Headless
 	return r, files
 }
 
@@ -43,7 +41,7 @@ func TestProtectedCompleteGroupIsInitialProvenanceOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	facts, ok := bundle.Facts()
-	if !ok || !facts.Protected || !facts.Headless {
+	if !ok || !facts.Protected {
 		t.Fatalf("facts: %+v", facts)
 	}
 	for name, original := range files {

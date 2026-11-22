@@ -51,22 +51,12 @@ func TestHeadlessEvidenceNamesExistingPackageTests(t *testing.T) {
 	}
 }
 
-func TestHeadlessEvidenceBindsTheExactControlArtifact(t *testing.T) {
+func TestHeadlessEvidenceBindsTheExactBundleArtifacts(t *testing.T) {
 	root := repositoryRoot(t)
 	makefile := string(readProjectFile(t, root, "Makefile"))
-	// The ACA1 reader retired with ADR-0127 (#647); the exact control artifact
-	// stays bound through the retired-route before-effect refusal process test.
-	for _, required := range []string{
-		"headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))",
-		"TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact",
-	} {
-		if !strings.Contains(makefile, required) {
-			t.Errorf("headless evidence does not bind exact control artifact through %q", required)
-		}
-	}
-	controlTest := string(readProjectFile(t, root, "tests/e2e/endpoint/control_retirement_process_unix_test.go"))
-	if !strings.Contains(controlTest, `os.Getenv("ARDENTS_E2E_CONTROL")`) {
-		t.Fatal("selected control process test does not consume ARDENTS_E2E_CONTROL")
+	artifactInputs := `./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"`
+	if !strings.Contains(makefile, artifactInputs) {
+		t.Fatal("headless evidence must package the exact Endpoint and Authority Custody artifacts")
 	}
 }
 

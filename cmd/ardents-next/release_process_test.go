@@ -109,12 +109,12 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	if supplied, ok := resources[program]; protected && ok {
 		binary = supplied
 	}
-	control := "ardents-control-" + platform
+	custody := "ardents-custody-" + platform
 	if !protected && runtime.GOOS == "windows" {
 		program += ".exe"
 	}
 	if strings.HasPrefix(platform, "windows-") {
-		control += ".exe"
+		custody += ".exe"
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	expires := ref.Add(365 * 24 * time.Hour)
@@ -133,8 +133,6 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	rootBytes := authority.rootBytes
 	protectedFiles := map[string][]byte{program: binary}
 	if protected {
-		protectedFiles["ardents-node-linux-amd64"] = []byte("independent Node companion")
-		protectedFiles["ardents-custody-linux-amd64"] = []byte("independent Custody companion")
 		// Exact ADR-0119 names, independently spelled rather than projected
 		// from the consumer's exclusion list.
 		names := []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"}
@@ -218,13 +216,11 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v3\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\ncontrol_catalog=catalog.ac1\ndisclosure_root=catalog.pub\ncontrol_release=release.ac1\ncontrol_network=network.ac1\ncontrol_compatibility=compatibility.ac1\ncontrol_release_root=release.pub\ncontrol_network_root=network.pub\ncontrol_compatibility_root=compatibility.pub\ncorpus_authority=corpus.pub\ncontrol_artifact=%s\n", platform, targetPath, program, control)
-	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, "1.root.json": rootBytes, "timestamp.json": timestampBytes, fmt.Sprintf("%d.snapshot.json", metadataVersion): snapshotBytes, fmt.Sprintf("%d.targets.json", metadataVersion): targetBytes}
+	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v5\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\n", platform, targetPath, program)
+	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, custody: []byte("independent Custody companion"),
+		"1.root.json": rootBytes, "timestamp.json": timestampBytes, fmt.Sprintf("%d.snapshot.json", metadataVersion): snapshotBytes, fmt.Sprintf("%d.targets.json", metadataVersion): targetBytes}
 	for name, data := range protectedFiles {
 		files[name] = data
-	}
-	for _, name := range []string{"catalog.ac1", "catalog.pub", "release.ac1", "network.ac1", "compatibility.ac1", "release.pub", "network.pub", "compatibility.pub", "corpus.pub", control} {
-		files[name] = []byte("independent static companion " + name)
 	}
 	directory := filepath.Join(t.TempDir(), "bundle")
 	if err = os.Mkdir(directory, 0700); err != nil {
@@ -257,12 +253,12 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 
 func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
 	directory, pin, program := signedConsumerProfile(t, true)
-	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.General})
+	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin})
 	if err != nil {
 		t.Fatal(err)
 	}
 	facts, ok := bundle.Facts()
-	if !ok || !facts.Protected || !facts.Headless || len(bundle.Names()) != 27 {
+	if !ok || !facts.Protected || len(bundle.Names()) != 16 {
 		t.Fatal("fixture lacks genuinely verified protected inventory")
 	}
 	input, ok := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))

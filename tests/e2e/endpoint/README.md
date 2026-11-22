@@ -1,7 +1,7 @@
 # Endpoint command end to end
 
-This package runs the real `ardents-next enrollment verify-headless` command
-against an independently pinned v4 bundle. It checks that the exact running
+This package runs the real `ardents-next enrollment verify` command
+against an independently pinned v5 bundle. It checks that the exact running
 Endpoint artifact is accepted and that a changed manifest fails before parsing.
 The Endpoint archive filename remains `ardents-<platform>`.
 

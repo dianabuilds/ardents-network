@@ -29,7 +29,7 @@ func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Write
 		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: request.BundleRoot(), ExecutablePath: program,
-		ManifestSHA256: request.ManifestSHA256(), Scope: enrollment.Headless})
+		ManifestSHA256: request.ManifestSHA256()})
 	if err != nil {
 		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
@@ -90,7 +90,7 @@ func stagePlatformEndpointSuccessor(ctx context.Context, filename, previousManif
 	if err != nil || decl.ReleaseFloorRoot != previous.ReleaseRoot {
 		return errors.Join(errPlatformInput, err)
 	}
-	candidate, err := enrollment.ReadCandidate(ctx, request.BundleRoot(), enrollment.Headless)
+	candidate, err := enrollment.ReadCandidate(ctx, request.BundleRoot())
 	if err != nil {
 		return err
 	}

@@ -312,7 +312,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	// program bytes are the actual compiled consumer; the generation executable
 	// is the same bytes at the selected generation path.
 	stand.distribution, _, _ = signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, authority, 2, 2)
-	candidate, err := enrollment.ReadCandidate(ctx, stand.distribution, enrollment.Headless)
+	candidate, err := enrollment.ReadCandidate(ctx, stand.distribution)
 	if err != nil {
 		t.Fatal("enrolled candidate:", err)
 	}

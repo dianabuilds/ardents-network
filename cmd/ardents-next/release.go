@@ -27,7 +27,7 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return enrollmentReport(out, "release-unavailable", 1)
 	}
-	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2], Scope: enrollment.General})
+	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2]})
 	if err != nil {
 		return enrollmentReport(out, "enrollment-refused", 1)
 	}

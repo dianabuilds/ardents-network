@@ -14,11 +14,11 @@ type Candidate struct{ loaded *snapshot }
 // ReadCandidate checks the same bounded inventory and native file identities
 // as Verify, without accepting an initial pin or claiming the candidate is the
 // running executable. Authenticity and successor admission remain elsewhere.
-func ReadCandidate(ctx context.Context, root string, scope Scope) (Candidate, error) {
-	if ctx == nil || root == "" || (scope != General && scope != Headless) {
+func ReadCandidate(ctx context.Context, root string) (Candidate, error) {
+	if ctx == nil || root == "" {
 		return Candidate{}, ErrInput
 	}
-	s, err := loadSnapshot(ctx, root, scope, nil)
+	s, err := loadSnapshot(ctx, root, nil)
 	if err != nil {
 		return Candidate{}, err
 	}

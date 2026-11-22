@@ -14,14 +14,14 @@ forward-only lifecycle.
 
 ## Process boundaries
 
-New headless alpha bundles contain three participant and control binaries.
-Enrollment verifies earlier inventories according to their pinned schema.
-The installed text Application and qualification workers are separate process
-boundaries; they are not alpha-bundle artifacts.
+New headless alpha bundles contain the Endpoint and Authority Custody
+executables under [ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
+Protected Endpoint delivery adds the fixed text Application worker and its
+resources. The qualification worker has its own installed verification lane.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
-| Network participant | ardents-control | keep after contraction | Bounded closed-profile operator adapter and offline infrastructure preparation compositions; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
+| Offline infrastructure preparation | ardents-control | retained tooling | Bounded closed-profile operator adapter and offline infrastructure preparation and signing; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Network participant and domain composition | ardents-next | maintained | Network, Node and Endpoint composition. The signed Endpoint artifact retains the `ardents-<platform>` filename. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
@@ -41,7 +41,7 @@ Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 | Binary | Routes | Classification |
 |---|---|---|
 | ardents-next | network accept-epoch / accept-profile / inspect | bounded State intake and diagnostics |
-| ardents-next | enrollment verify / verify-headless | read-only initial artifact and pin verification |
+| ardents-next | enrollment verify | read-only initial artifact and pin verification |
 | ardents-next | endpoint withdraw | local Administration client |
 | ardents-next | diagnostics timeline | local projection of bounded runtime events from standard input |
 | ardents-control | prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |

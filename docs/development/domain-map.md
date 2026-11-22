@@ -132,7 +132,9 @@ not make them target domain boundaries or require another role installer.
 Alpha-bundle packaging obtains platform executable identities and static
 protected-generation validation from new Enrollment through its two thin Go
 script consumers. The same constructor binds the bundle verifier's companion
-names. This supporting producer seam supplies no initial-pin provenance,
+names. ADR-0130 limits the v5 bundle to the Endpoint and Authority Custody,
+Release metadata and the optional complete protected group. This supporting
+producer seam supplies no initial-pin provenance,
 Release permission, execution or domain-state ownership.
 
 The separate ADR-0120 Endpoint Release producer consumes new Enrollment's static

@@ -1,25 +1,21 @@
 package enrollment
 
-import "strings"
-
-const (
-	bundleSchemaV3 = "ardents-closed-alpha-enrollment-v3"
-	bundleSchemaV4 = "ardents-closed-alpha-enrollment-v4"
+import (
+	"strconv"
+	"strings"
 )
+
+const bundleSchema = "ardents-closed-alpha-enrollment-v5"
 
 type descriptor struct{ values map[string]string }
 
-// Both verified grammars have the same ordered fields. The pinned schema
-// selects an exact companion inventory after the RELEASE digest is verified.
+// The pinned RELEASE digest authenticates the sole supported descriptor.
 func parseDescriptor(raw []byte) (descriptor, error) {
 	if len(raw) == 0 || raw[len(raw)-1] != '\n' {
 		return descriptor{}, ErrInventory
 	}
 	lines := strings.Split(string(raw[:len(raw)-1]), "\n")
-	if lines[0] == "schema=ardents-closed-alpha-enrollment-v1" || lines[0] == "schema=ardents-closed-alpha-enrollment-v2" {
-		return descriptor{}, ErrLegacyEnrollmentDescriptor
-	}
-	keys := []string{"schema", "cohort", "release", "platform", "environment", "network", "target_path", "artifact", "trusted_root", "control_catalog", "disclosure_root", "control_release", "control_network", "control_compatibility", "control_release_root", "control_network_root", "control_compatibility_root", "corpus_authority", "control_artifact"}
+	keys := []string{"schema", "cohort", "release", "platform", "environment", "network", "target_path", "artifact", "trusted_root"}
 	if len(lines) != len(keys) {
 		return descriptor{}, ErrInventory
 	}
@@ -31,18 +27,13 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 		}
 		values[key] = parts[1]
 	}
-	schema := values["schema"]
-	if (schema != bundleSchemaV3 && schema != bundleSchemaV4) ||
-		values["control_release"] != "release.ac1" || values["control_network"] != "network.ac1" ||
-		values["control_compatibility"] != "compatibility.ac1" || values["control_release_root"] != "release.pub" ||
-		values["control_network_root"] != "network.pub" || values["control_compatibility_root"] != "compatibility.pub" ||
-		values["corpus_authority"] != "corpus.pub" || values["control_artifact"] != ExecutableArtifactName("ardents-control", values["platform"]) {
+	if values["schema"] != bundleSchema {
 		return descriptor{}, ErrInventory
 	}
-	seen := make(map[string]bool)
-	for _, key := range keys[7:] {
-		name := values[key]
-		if !validName(name) || name == "RELEASE" || name == "SHA256SUMS" || seen[name] {
+	custody := ExecutableArtifactName("ardents-custody", values["platform"])
+	seen := map[string]bool{"RELEASE": true, "SHA256SUMS": true, custody: true}
+	for _, name := range []string{values["artifact"], values["trusted_root"]} {
+		if !validName(name) || seen[name] {
 			return descriptor{}, ErrInventory
 		}
 		seen[name] = true
@@ -50,31 +41,60 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	return descriptor{values: values}, nil
 }
 
-func (d descriptor) bind(files map[string][]byte, scope Scope) (Facts, error) {
-	for _, key := range []string{"artifact", "trusted_root", "control_catalog", "disclosure_root", "control_release", "control_network", "control_compatibility", "control_release_root", "control_network_root", "control_compatibility_root", "corpus_authority", "control_artifact"} {
-		if _, ok := files[d.values[key]]; !ok {
+func (d descriptor) bind(files map[string][]byte) (Facts, error) {
+	platform, artifact := d.values["platform"], d.values["artifact"]
+	trustedRoot, release := d.values["trusted_root"], d.values["release"]
+	custody := ExecutableArtifactName("ardents-custody", platform)
+	static := map[string]bool{"RELEASE": true, artifact: true, trustedRoot: true, custody: true}
+	for name := range static {
+		if _, ok := files[name]; !ok {
 			return Facts{}, ErrInventory
 		}
 	}
-	_, node := files[ExecutableArtifactName("ardents-node", d.values["platform"])]
-	_, custody := files[ExecutableArtifactName("ardents-custody", d.values["platform"])]
-	switch d.values["schema"] {
-	case bundleSchemaV3:
-		if node != custody || (scope == Headless && !node) {
-			return Facts{}, ErrInventory
-		}
-	case bundleSchemaV4:
-		if node || !custody {
-			return Facts{}, ErrInventory
-		}
-	default:
-		return Facts{}, ErrInventory
-	}
-	protected, err := verifyProtected(files, d.values["platform"], d.values["artifact"], d.values["release"])
+	protected, err := verifyProtected(files, platform, artifact, release)
 	if err != nil {
 		return Facts{}, err
 	}
-	return Facts{Cohort: d.values["cohort"], Release: d.values["release"], Platform: d.values["platform"],
+	if protected {
+		static["protected-endpoint.json"] = true
+		for _, name := range protectedNames() {
+			static[name] = true
+		}
+	}
+	metadata := make(map[string]bool)
+	for name := range files {
+		if static[name] {
+			continue
+		}
+		role := releaseMetadataRole(name)
+		if role == "" || role != "root.json" && metadata[role] {
+			return Facts{}, ErrInventory
+		}
+		metadata[role] = true
+	}
+	for _, role := range []string{"timestamp.json", "snapshot.json", "targets.json"} {
+		if !metadata[role] {
+			return Facts{}, ErrInventory
+		}
+	}
+	return Facts{Cohort: d.values["cohort"], Release: release, Platform: platform,
 		Environment: d.values["environment"], Network: d.values["network"], TargetPath: d.values["target_path"],
-		Artifact: d.values["artifact"], TrustedRoot: d.values["trusted_root"], ControlCatalog: d.values["control_catalog"], DisclosureRoot: d.values["disclosure_root"], ControlArtifact: d.values["control_artifact"], Headless: custody, Protected: protected}, nil
+		Artifact: artifact, TrustedRoot: trustedRoot, Protected: protected}, nil
+}
+
+// Only direct TUF metadata names can cross from the frozen bundle to Release.
+func releaseMetadataRole(name string) string {
+	switch name {
+	case "timestamp.json", "snapshot.json", "targets.json":
+		return name
+	}
+	version, role, _ := strings.Cut(name, ".")
+	if role != "root.json" && role != "snapshot.json" && role != "targets.json" {
+		return ""
+	}
+	number, err := strconv.ParseInt(version, 10, 64)
+	if err == nil && number > 0 && strconv.FormatInt(number, 10) == version {
+		return role
+	}
+	return ""
 }

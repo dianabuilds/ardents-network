@@ -17,21 +17,21 @@ func TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest(t 
 	command := buildArdentsNext(t)
 	bundle, enrolledCommand, manifestPin := enrollmentBundle(t, command)
 
-	output, err := exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify-headless", bundle, manifestPin).CombinedOutput()
+	output, err := exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify", bundle, manifestPin).CombinedOutput()
 	if err != nil {
 		t.Fatalf("verify exact enrolled bundle: %v\n%s", err, output)
 	}
 	var receipt struct {
-		Outcome  string `json:"outcome"`
-		Headless bool   `json:"headless"`
+		Outcome string `json:"outcome"`
+		Files   int    `json:"files"`
 	}
-	if err := json.Unmarshal(output, &receipt); err != nil || receipt.Outcome != "verified-initial-bundle" || !receipt.Headless {
+	if err := json.Unmarshal(output, &receipt); err != nil || receipt.Outcome != "verified-initial-bundle" || receipt.Files != 7 {
 		t.Fatalf("headless enrollment result: %v %s", err, output)
 	}
 	if err := os.WriteFile(filepath.Join(bundle, "SHA256SUMS"), []byte("changed-before-parse\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output, err = exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify-headless", bundle, manifestPin).CombinedOutput()
+	output, err = exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify", bundle, manifestPin).CombinedOutput()
 	if err == nil || string(output) != "{\"outcome\":\"pin-mismatch\"}\n" {
 		t.Fatalf("changed manifest result: err=%v output=%s", err, output)
 	}
@@ -71,11 +71,9 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		t.Fatal(err)
 	}
 	artifactName := "ardents-" + runtime.GOOS + "-" + runtime.GOARCH
-	controlName := "ardents-control-" + runtime.GOOS + "-" + runtime.GOARCH
 	custodyName := "ardents-custody-" + runtime.GOOS + "-" + runtime.GOARCH
 	if runtime.GOOS == "windows" {
 		artifactName += ".exe"
-		controlName += ".exe"
 		custodyName += ".exe"
 	}
 	artifact, err := os.ReadFile(command)
@@ -86,7 +84,7 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	targetPath := "ardents/" + platform + "/endpoint"
 	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v4",
+		"schema=ardents-closed-alpha-enrollment-v5",
 		"cohort=closed-cohort-1",
 		"release=alpha-1",
 		"platform=" + platform,
@@ -95,37 +93,19 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		"target_path=" + targetPath,
 		"artifact=" + artifactName,
 		"trusted_root=1.root.json",
-		"control_catalog=catalog.ac1",
-		"disclosure_root=catalog.pub",
-		"control_release=release.ac1",
-		"control_network=network.ac1",
-		"control_compatibility=compatibility.ac1",
-		"control_release_root=release.pub",
-		"control_network_root=network.pub",
-		"control_compatibility_root=compatibility.pub",
-		"corpus_authority=corpus.pub",
-		"control_artifact=" + controlName,
 	}, "\n") + "\n"
 	files := map[string][]byte{
-		"1.root.json":       []byte("synthetic trusted root\n"),
-		"RELEASE":           []byte(descriptor),
-		"catalog.ac1":       []byte("catalog"),
-		"catalog.pub":       []byte("key"),
-		"release.ac1":       []byte("release control"),
-		"network.ac1":       []byte("network control"),
-		"compatibility.ac1": []byte("compatibility control"),
-		"release.pub":       []byte("release key"),
-		"network.pub":       []byte("network key"),
-		"compatibility.pub": []byte("compatibility key"),
-		"corpus.pub":        []byte("corpus authority\n"),
-		controlName:         []byte("separately manifested alpha control command"),
-		custodyName:         []byte("separately manifested authority custody command"),
-		artifactName:        artifact,
-		"timestamp.json":    []byte("synthetic metadata\n"),
+		"1.root.json":     []byte("synthetic trusted root\n"),
+		"RELEASE":         []byte(descriptor),
+		custodyName:       []byte("separately manifested authority custody command"),
+		artifactName:      artifact,
+		"timestamp.json":  []byte("synthetic metadata\n"),
+		"1.snapshot.json": []byte("synthetic snapshot\n"),
+		"1.targets.json":  []byte("synthetic targets\n"),
 	}
 	for name, contents := range files {
 		mode := os.FileMode(0o600)
-		if name == controlName || name == custodyName {
+		if name == custodyName {
 			mode = 0o700
 		}
 		if name != artifactName {

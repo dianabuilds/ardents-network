@@ -454,7 +454,7 @@ still determine whether the launch can accept work.
 |---|---|
 | `network accept-epoch --config PATH` | Verify signed Epoch, inputs and materializations with the Network State owner. Reports whether the accepted Epoch is current or pending. The bounded JSON uses `network`, `epoch`, `inputs` and `materials`. |
 | `network accept-profile --config PATH` | Submit a signed `ARDCPR03` to an existing State root using `network` and `profile` in a bounded JSON plan. An exact retry is harmless. A different valid digest records durable conflict. |
-| `enrollment verify <bundle-root> <manifest-sha256>` / `enrollment verify-headless <bundle-root> <manifest-sha256>` | Recheck the running executable and the pinned inventory. Use `verify-headless` to require the headless companions specified by the descriptor schema. Establish first-execution trust using the external pin procedure. |
+| `enrollment verify <bundle-root> <manifest-sha256>` | Recheck the running executable and the pinned v5 inventory, including the Authority Custody executable. Establish first-execution trust using the external pin procedure. |
 | `diagnostics timeline` | Read app or journalctl JSON lines from standard input and project bounded local runtime events. |
 | `endpoint withdraw <administration-socket>` | Send a withdrawal request to the local Administration socket and render its bounded receipt. The Publisher must expose that socket to the authorized local caller. |
 

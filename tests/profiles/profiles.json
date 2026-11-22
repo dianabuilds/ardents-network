@@ -636,7 +636,7 @@
       "id": "headless-network",
       "state": "active",
       "make_target": "headless-check",
-      "surface": "headless Network command build, bounded process journey, and enrollment-v4 artifact inventory",
+      "surface": "Endpoint and Authority Custody builds, bounded process journey, and enrollment-v5 artifact inventory",
       "prerequisites": [
         "Linux x86-64 host",
         "local process execution",
