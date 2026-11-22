@@ -81,7 +81,7 @@ func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 		return runRelease(ctx, args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "enrollment" {
-		return runEnrollment(ctx, args[1:], out)
+		return runEnrollmentCommand(ctx, args[1:], out, diagnostic)
 	}
 	if len(args) > 0 && args[0] == "route" {
 		return runRoute(ctx, args[1:], out, diagnostic)

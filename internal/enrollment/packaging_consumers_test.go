@@ -18,35 +18,29 @@ func TestPackagingConsumersPreserveArtifactAndProtectedInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	build := func(name string) string {
-		t.Helper()
-		binary := filepath.Join(t.TempDir(), name)
-		if runtime.GOOS == "windows" {
-			binary += ".exe"
-		}
-		cmd := exec.CommandContext(t.Context(), "go", "build", "-buildvcs=false", "-o", binary, "./scripts/"+name+".go")
-		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH)
-		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("build packaging consumer: %v\n%s", err, output)
-		}
-		return binary
+	program := filepath.Join(t.TempDir(), "ardents")
+	if runtime.GOOS == "windows" {
+		program += ".exe"
 	}
-	identity := build("enrollment-artifact-name")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-buildvcs=false", "-o", program, "./cmd/ardents-next")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build packaging consumer: %v\n%s", err, output)
+	}
 	for _, test := range []struct{ command, platform, want string }{
 		{"ardents", "linux-amd64", "ardents-linux-amd64\n"},
 		{"ardents", "windows-amd64", "ardents-windows-amd64.exe\n"},
 		{"ardents-custody", "windows-arm64", "ardents-custody-windows-arm64.exe\n"},
 		{"ardents-custody", "darwin-arm64", "ardents-custody-darwin-arm64\n"},
 	} {
-		output, err := exec.CommandContext(t.Context(), identity, test.command, test.platform).Output()
+		output, err := exec.CommandContext(t.Context(), program, "enrollment", "artifact-name", test.command, test.platform).Output()
 		if err != nil || string(output) != test.want {
 			t.Fatalf("artifact identity changed: %q / %v", output, err)
 		}
 	}
-	checker := build("protected-generation-check")
 	run := func(ctx context.Context, root, release string) error {
-		return exec.CommandContext(ctx, checker, root, filepath.Join(root, "ardents-linux-amd64"), filepath.Join(root, "ardents-text-linux-amd64"), release).Run()
+		return exec.CommandContext(ctx, program, "enrollment", "check-protected-generation", root, filepath.Join(root, "ardents-linux-amd64"), filepath.Join(root, "ardents-text-linux-amd64"), release).Run()
 	}
 	for _, failure := range []string{"none", "foreign-release", "changed-resource", "partial"} {
 		t.Run(failure, func(t *testing.T) {
