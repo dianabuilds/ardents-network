@@ -7,5 +7,10 @@ import (
 	"io"
 )
 
-func runSource(context.Context, []string, io.Writer, io.Writer) int       { return 2 }
-func runSourceRepair(context.Context, []string, io.Writer, io.Writer) int { return 2 }
+func runSource(_ context.Context, _ []string, _, diagnostic io.Writer) int {
+	return unsupportedPlatformRefusal(diagnostic, "source")
+}
+
+func runSourceRepair(_ context.Context, _ []string, _, diagnostic io.Writer) int {
+	return unsupportedPlatformRefusal(diagnostic, "source.repair-retained")
+}

@@ -7,4 +7,6 @@ import (
 	"io"
 )
 
-func runInfrastructure(context.Context, []string, io.Writer) int { return 2 }
+func runInfrastructure(_ context.Context, _ []string, out io.Writer) int {
+	return unsupportedPlatformRefusal(out, "infrastructure")
+}
