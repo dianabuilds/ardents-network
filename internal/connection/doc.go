@@ -18,4 +18,37 @@
 // original-key proposals and join old actors before atomic replay generations.
 // Genuine Text command consumers use those sources before Application handoff;
 // complete native/installed acceptance remains a separate evidence boundary.
+//
+// Navigation: README.md carries the extended owner contract; the wire
+// subpackage owns the closed v3 grammar and transcript proofs. Test naming
+// follows docs/development/repository-layout.md; all tests are package
+// connection behavior tests, and a test listed under several clusters
+// verifies each of them.
+//
+//   - stream: stream.go, stream_records.go, send_ledger.go, receive_ledger.go,
+//     terminal_exchange.go, terminal_tail.go, attachment_record_reader.go.
+//     Tests: stream_test.go, attachment_records_test.go, send_ledger_test.go,
+//     receive_ledger_test.go, receive_delivery_test.go,
+//     terminal_exchange_test.go, terminal_replay_boundaries_test.go,
+//     terminal_tail_test.go, attachment_record_reader_test.go,
+//     stream_retirement_seal_test.go.
+//   - binding: authenticated_attachment.go, recipient_binding.go,
+//     initiator_binding.go, instance_certificate.go, initial_flight.go,
+//     publisher_recipient.go. Tests: authenticated_attachment_test.go,
+//     recipient_binding_test.go, initiator_binding_test.go,
+//     instance_certificate_test.go, initial_flight_test.go,
+//     exporter_transcript_test.go.
+//   - auth: initiator_authentication.go, initiator_attachment.go,
+//     publisher_authentication.go. Tests: initiator_setup_test.go,
+//     initiator_lifetime_test.go.
+//   - source-seam: initiator_source.go (the sole network/reachability/route
+//     seam). Tests: initiator_source_test.go.
+//   - recovery: recovery_episode.go, publisher_recovery.go,
+//     initiator_replacement.go, initiator_replacement_commit.go,
+//     publisher_replacement.go, publisher_replacement_commit.go. Tests:
+//     recovery_episode_test.go, replacement_preflight_test.go,
+//     publisher_replacement_commit_test.go,
+//     publisher_replacement_retirement_test.go; the atomic ledger generation
+//     transfer is verified by the replacement cases of send_ledger_test.go
+//     and receive_ledger_test.go.
 package connection

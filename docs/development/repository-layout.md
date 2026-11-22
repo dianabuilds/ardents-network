@@ -241,8 +241,16 @@ starting conventions. Automated analysis augments design review.
 A Go file is an implementation navigation unit, not a Module. Its name states
 one responsibility or one responsibility plus an aspect: for example
 `compose_smoke.go`, `compose_evidence.go`, `tooling/role.go`, and
-`tooling/role_runtime.go`. Tests use the corresponding responsibility name.
-`doc.go` contains only the package comment.
+`tooling/role_runtime.go`. Tests use the corresponding responsibility name:
+`foo_test.go` verifies `foo.go`; when one source file carries several
+independent test responsibilities, each gets `foo_<behavior>_test.go`. A
+package-level behavior test that spans several source files carries an
+explicit behavior name instead of a source mirror, and the package `doc.go`
+records which responsibility cluster it verifies; a test may be listed under
+every cluster it verifies. Flat packages with many files keep a cluster
+navigation index (responsibility, files, tests) in `doc.go` so an operation
+can be found without scanning every file. `doc.go` contains only the package
+comment.
 
 - There is no fixed line limit for Go files, including tests. Choose file size
   according to responsibility and readability rather than a numerical budget.
