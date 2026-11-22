@@ -34,34 +34,21 @@ jobs:
           test "$(sudo -n id -u)" = 0
           test "$(findmnt -T /var/lib -n -o FSTYPE)" = ext4
           test -r /sys/fs/cgroup/cgroup.controllers
-          sudo -n systemctl start polkit.service
-          sudo -n systemctl is-active polkit.service
           if getent passwd ardents-endpoint >/dev/null; then
             exit 2
           fi
-          probe_uid=
-          for uid in $(seq 990 -1 100); do
-            if ! getent passwd "$uid" >/dev/null && ! getent group "$uid" >/dev/null; then
-              probe_uid=$uid
-              break
-            fi
-          done
-          test -n "$probe_uid"
           rule_parent=/usr/share/polkit-1/rules.d
           sudo -n namei -l "$rule_parent"
-          test "$(sudo -n stat -c %u "$rule_parent")" = 0
-          if ! sudo -n setpriv --reuid "$probe_uid" --regid "$probe_uid" --clear-groups test -x "$rule_parent"; then
-            printf 'Endpoint fixture uid %s cannot traverse public rule directory\n' "$probe_uid"
-            if command -v setfacl >/dev/null; then
-              sudo -n setfacl -m "u:$probe_uid:--x" "$rule_parent"
-            else
-              sudo -n chmod o+x "$rule_parent"
-            fi
-          fi
-          sudo -n setpriv --reuid "$probe_uid" --regid "$probe_uid" --clear-groups test -x "$rule_parent"
-          read -r owner mode <<<"$(sudo -n stat -c '%u %a' "$rule_parent")"
-          test "$owner" = 0
-          (( (8#$mode & 022) == 0 ))
+          for directory in /usr/share /usr/share/polkit-1 "$rule_parent"; do
+            test "$(sudo -n stat -c %u "$directory")" = 0
+            test ! -L "$directory"
+            sudo -n chmod go-w "$directory"
+            mode=$(sudo -n stat -c %a "$directory")
+            (( (8#$mode & 022) == 0 ))
+          done
+          sudo -n namei -l "$rule_parent"
+          sudo -n systemctl start polkit.service
+          sudo -n systemctl is-active polkit.service
           native_dir=$(sudo -n mktemp -d /ardents-reader-native.XXXXXX)
           trap 'sudo -n rm -rf "$native_dir"' EXIT
           go_cache=$(go env GOCACHE)
