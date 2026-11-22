@@ -27,7 +27,7 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	command, commandBytes := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	run := func(args ...string) []byte {
 		t.Helper()
-		child := exec.CommandContext(t.Context(), command, append([]string{"source"}, args...)...)
+		child := provisionCommand(t, command, append([]string{"source"}, args...)...)
 		raw, err := child.CombinedOutput()
 		if err != nil {
 			t.Fatal("actual initial preparation command", args[0], string(raw), err)
@@ -126,7 +126,7 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if err := os.Chmod(fixture, 0755); err != nil {
 		t.Fatal(err)
 	}
-	client := filepath.Join(fixture, "provision-infrastructure")
+	client := filepath.Join(fixture, "ardents")
 	if err := os.WriteFile(client, commandBytes, 0555); err != nil {
 		t.Fatal(err)
 	}

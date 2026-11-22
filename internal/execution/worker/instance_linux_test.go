@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestTextWorkerInventoryRetainsFailedAndActivatingInstances(t *testing.T) {
+func TestDocumentWorkerInventoryRetainsFailedAndActivatingInstances(t *testing.T) {
 	body := `[[["ardents-text-reader@0-12-997.service","","loaded","failed","failed","","/unit/a",0,"","/"],["ardents-text-reader@1-12-997.service","","loaded","activating","start","","/unit/b",0,"","/"]]]`
 	answer := value{Type: "a(ssssssouso)", Data: json.RawMessage(body)}
 	found, err := decodeInstances(textInventory, answer, "reader", "-12-997.service")
@@ -27,7 +27,7 @@ func TestTextWorkerInventoryRetainsFailedAndActivatingInstances(t *testing.T) {
 	}
 }
 
-func TestTextWorkerInventoryNeverChoosesAmongConcurrentActivations(t *testing.T) {
+func TestDocumentWorkerInventoryNeverChoosesAmongConcurrentActivations(t *testing.T) {
 	old := "ardents-text-reader@0-12-997.service"
 	fresh := "ardents-text-reader@1-12-997.service"
 	before := listing{old: {Active: "activating"}}
@@ -45,7 +45,7 @@ func TestTextWorkerInventoryNeverChoosesAmongConcurrentActivations(t *testing.T)
 	}
 }
 
-func TestTextWorkerInvocationRejectsUnknownBytesAndBase64(t *testing.T) {
+func TestDocumentWorkerInvocationRejectsUnknownBytesAndBase64(t *testing.T) {
 	valid := `[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`
 	for _, raw := range []string{`"AQAAAAAAAAAAAAAAAAAAAA=="`, `[1,null,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`, strings.Replace(valid, "[1,", "[256,", 1), strings.Replace(valid, "[1,", "[1.0,", 1), strings.Replace(valid, "[1,", "[-1,", 1), strings.Replace(valid, "[1,", "[0,", 1), `null`} {
 		var id [16]byte
@@ -59,7 +59,7 @@ func TestTextWorkerInvocationRejectsUnknownBytesAndBase64(t *testing.T) {
 	}
 }
 
-func TestTextWorkerInventoryWaitsForExactQueuedStart(t *testing.T) {
+func TestDocumentWorkerInventoryWaitsForExactQueuedStart(t *testing.T) {
 	const name = "ardents-text-reader@1-12-997.service"
 	const pending = `[[["ardents-text-reader@1-12-997.service","","loaded","inactive","dead","","/unit/a",42,"start","/org/freedesktop/systemd1/job/42"]]]`
 	for _, test := range []struct {
@@ -109,7 +109,7 @@ func TestStreamWorkerInventoryIsSeparateFromText(t *testing.T) {
 	}
 }
 
-func TestTextWorkerInventoryRetainsQueuedCandidate(t *testing.T) {
+func TestDocumentWorkerInventoryRetainsQueuedCandidate(t *testing.T) {
 	const old = "ardents-text-reader@0-12-997.service"
 	const fresh = "ardents-text-reader@1-12-997.service"
 	const other = "ardents-text-reader@2-12-997.service"

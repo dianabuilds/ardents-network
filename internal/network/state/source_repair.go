@@ -51,7 +51,7 @@ func openSourceRepair(ctx context.Context, resolved config) (_ *sourceRepair, re
 		return nil, err
 	}
 	r.roles = roles
-	if err = roles.CheckSourceProducer(sourceProducer("server", resolved.root), sourceServerDuty(*current)); err != nil {
+	if err = roles.CheckSourceProducer(sourceProducer("server", resolved.root), sourceServerDuty(current)); err != nil {
 		return nil, errors.Join(ErrSourceRepairUnavailable, err)
 	}
 	if err = ctx.Err(); err != nil {

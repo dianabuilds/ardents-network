@@ -283,7 +283,7 @@ imports a bounded snapshot and invokes `PublishSnapshot`; its bodyless
 retired by
 [ADR-0092](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0092-retire-generic-publisher-transit-chain.md).
 The `ardents endpoint publish` command refuses at dispatch before dialing its
-Administration socket and directs the operator to `ardents-text publish` with
+Administration socket and directs the operator to `ardents publish` with
 an explicit document file. The local bodyless protocol refusal remains intact.
 Snapshot Administration has one absolute 45-second publication deadline from
 request acceptance, including input and response. Header, body and EOF input
@@ -553,7 +553,7 @@ Shutdown aborts the context and joins startup and the retained run. The installe
 network profile now exercises snapshot and withdrawal through the real local
 Administration transport; that updated profile still requires execution on the
 qualified host. Local refusal tests do not establish installed publication.
-An explicit `ardents-text link` request consumes fresh Administration authority
+An explicit `ardents link` request consumes fresh Administration authority
 and projects the committed publication's canonical Target Link through that
 private local transport. Projection requires the current retained worker,
 acknowledged live registration and current publication Credential with the same

@@ -1,1 +1,1 @@
-./cmd/ardents-text
+./internal/application/document/worker

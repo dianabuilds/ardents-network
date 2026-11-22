@@ -8,7 +8,7 @@ import (
 // Run selects one original offline Release operation for a supported role.
 func Run(args []string, out io.Writer) error {
 	if len(args) < 2 {
-		return errors.New("usage: sign-infrastructure-release ROLE OPERATION [ARGUMENTS]")
+		return errors.New("usage: ardents infrastructure sign-release ROLE OPERATION [ARGUMENTS]")
 	}
 	role, operation, operationArgs := nodeReleaseRole(args[0]), args[1], args[2:]
 	if role == "source" {

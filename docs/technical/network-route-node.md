@@ -1751,7 +1751,7 @@ Epoch/profile on independent roots. `installation.go` and
 an installed serving Source. Native `scripts/node/run-*-native.sh` run pinned
 development processes; systemd-run does not create an immutable installed binding.
 `tests/profiles/headless-commands.txt`, `packaging/alpha-bundle/build.sh`,
-`scripts/protected-generation-check.go`, `scripts/sign-qualification-release.go`
+`ardents-next enrollment check-protected-generation`, `scripts/sign-qualification-release.go`
 and the qualification release operation retain their existing command/Endpoint
 inventories. They neither package nor sign the proposed infrastructure contract.
 Canonical `ardents-node` Source/Installation directly consume the new owners;
@@ -1764,7 +1764,7 @@ as a shortcut.
 
 The following is the accepted contract under ADR-0123, not an extension
 of any existing accepting parser. The product CLI runs Source, Node and Endpoint and owns the public
-inspection routes. `provision-infrastructure` and `sign-infrastructure-release`
+inspection routes. `ardents infrastructure provision` and `ardents infrastructure sign-release`
 own offline preparation and signing; `ardents-custody` keeps its separate
 Authority purpose. Infrastructure initial verification and native transition
 must consume their opaque provenance/proofs in the same original command

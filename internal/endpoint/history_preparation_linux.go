@@ -44,7 +44,7 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 	if err != nil {
 		return err
 	}
-	paths := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot}
+	paths := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot}
 	// These are only preparation targets, not an accepting runtime-plan check.
 	// They must not overlap one another or the declared independent clock file.
 	isolated := append(append([]string(nil), paths...), plan.TimeConfidenceFile)
@@ -176,7 +176,7 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 		if err := check(); err != nil {
 			return err
 		}
-		path := filepath.Join(plan.TextTokenRoot, name)
+		path := filepath.Join(plan.ApplicationTokenRoot, name)
 		// Exclusive child birth is the only fresh presentation-journal caller.
 		// An existing, missing-after-restart or partial child is never adopted.
 		if err := os.Mkdir(path, 0700); err != nil {

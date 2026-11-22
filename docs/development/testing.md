@@ -317,8 +317,9 @@ offline storage/preparation checks, not State, installed Issuer or bootstrap
 acceptance. Pure flag tests reject ambiguous IDs, intervals, paths and options
 before output creation.
 
-The offline cases in `make network-signing-check` use independently
-SHA-256-pinned executables. Provisioning takes
+The offline cases in `make network-signing-check` use the canonical static
+`ardents` executable, verified against the supplied SHA-256 pin. Use the same
+build for both operation groups. Provisioning takes
 `ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM` and its `_SHA256` pin.
 Release signing takes `ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM` and its
 `_SHA256` pin.
@@ -2548,7 +2549,7 @@ The maintained local profiles are:
   current enrolled-bundle and retired-route refusal regressions stay with
   `headless-evidence` and its owned package tests;
 - `text-worker-network`, invoked by `make text-worker-network-check`, exercises
-  genuine installed `ardents-text publish`, `link` and `read` against successor
+  genuine installed `ardents publish`, `ardents link` and `ardents read` against successor
   Reader and Publisher on one installed Endpoint. It requires empty, 64 KiB and
   4 MiB documents and a fresh read after elapsed refresh and predecessor refusal.
   Each case obtains the Service Credential through pinned `ardents-next` and
@@ -3395,7 +3396,7 @@ that participant:
   compiles it so native coverage counts.
 
 Supporting product defect repair (same change): the fixed worker
-inherited-descriptor audit (`internal/application/textdocument`) admits and
+inherited-descriptor audit (`internal/application/document`) admits and
 CLOSES a manager-passed resource-control descriptor of the worker's OWN unified
 cgroup — systemd 255 hands `cpu.max` to a resource-limited service without
 close-on-exec (default behavior for units carrying MemoryMax/TasksMax; systemd 249

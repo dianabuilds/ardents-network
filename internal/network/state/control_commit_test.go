@@ -309,7 +309,7 @@ func newVerifiedConflictFixture(t *testing.T, pending bool) (*networkState, netw
 	}
 	pendingDecision := verify(staged, now.Add(20*time.Second))
 	competingDecision := verify(competing, now)
-	if err := stageGeneration(s.storage, pendingDecision); err != nil {
+	if err := stageGeneration(s.storage, &pendingDecision); err != nil {
 		t.Fatal(err)
 	}
 	state := s.distribution
@@ -410,7 +410,7 @@ func TestActiveControlCommitFailureKeepsCorrectSourceDuty(t *testing.T) {
 					return failure
 				}
 			}
-			if err := s.commitActiveDecisionWithControl(successor, next, commit); !errors.Is(err, failure) {
+			if err := s.commitActiveDecisionWithControl(&successor, next, commit); !errors.Is(err, failure) {
 				t.Fatalf("active commit failure = %v, want %v", err, failure)
 			}
 			clock := s.config.clock
@@ -476,7 +476,7 @@ func newControlCommitFixture(t *testing.T, serving bool) (*networkState, epoch.D
 	s := &networkState{storage: storage, current: &decision,
 		config: config{root: root, networkID: networkID, clock: func() time.Time { return now }, observe: func() time.Time { return now }, anchorWall: now, anchorMono: time.Now(),
 			localRoles: filepath.Join(t.TempDir(), "roles"), sourceInfo: source.Details{Serving: serving}}}
-	if err := persistDecision(storage, decision, true); err != nil {
+	if err := persistDecision(storage, &decision, true); err != nil {
 		_ = storage.Close()
 		t.Fatal(err)
 	}

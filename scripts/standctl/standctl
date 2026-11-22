@@ -1,0 +1,437 @@
+#!/usr/bin/env python3
+"""Lease a Docker stand over SSH and run a Git revision with Docker Compose."""
+
+import argparse
+import getpass
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import shlex
+import socket
+import subprocess
+import sys
+import tempfile
+
+HOST_CODE = Path(__file__).resolve().with_name("host.py").read_bytes()
+VERSION = hashlib.sha256(HOST_CODE).hexdigest()
+NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_.-]*")
+TARGET = re.compile(r"(?:[a-zA-Z0-9_][a-zA-Z0-9_.-]*@)?[a-zA-Z0-9][a-zA-Z0-9_.:-]*")
+TOKEN = re.compile(r"[0-9a-f]{32}")
+UNREADY = 69
+BUSY = 75
+GIB = 1024**3
+GIT_LOCATION_ENV = {
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_DIR", "GIT_INDEX_FILE",
+    "GIT_NAMESPACE", "GIT_OBJECT_DIRECTORY", "GIT_PREFIX", "GIT_SHALLOW_FILE", "GIT_WORK_TREE",
+}
+
+INSTALL = """\
+import hashlib, os, pathlib, stat, sys, tempfile
+os.umask(0o077)
+root = pathlib.Path.home() / ".local/share/standctl"
+root.mkdir(mode=0o700, parents=True, exist_ok=True)
+if root.is_symlink() or root.stat().st_uid != os.getuid():
+    raise SystemExit("standctl directory must belong to the SSH user")
+root.chmod(0o700)
+version, socket = sys.argv[1:]
+source = sys.stdin.buffer.read()
+if hashlib.sha256(source).hexdigest() != version:
+    raise SystemExit("standctl host script checksum mismatch")
+if not stat.S_ISSOCK(pathlib.Path(socket).stat().st_mode):
+    raise SystemExit("Docker endpoint must be a local Unix socket")
+link = root / "docker.sock"
+try:
+    link.symlink_to(socket)
+except FileExistsError:
+    if not link.is_symlink() or os.readlink(link) != socket:
+        raise SystemExit("Docker socket is already configured with a different path")
+with tempfile.NamedTemporaryFile(dir=root, delete=False) as stage:
+    stage.write(source)
+    stage.flush()
+    os.fsync(stage.fileno())
+pathlib.Path(stage.name).replace(root / ("host-" + version + ".py"))
+"""
+
+
+class StandError(Exception):
+    pass
+
+
+def inventory(path):
+    try:
+        config = json.loads(path.read_text())
+    except FileNotFoundError as error:
+        raise StandError(
+            f"inventory not found at {path}; see scripts/standctl/README.md for setup"
+        ) from error
+    hosts = config["hosts"]
+    if not isinstance(hosts, dict) or not hosts:
+        raise StandError("inventory requires at least one host")
+    for name, host in hosts.items():
+        if not NAME.fullmatch(name) or not TARGET.fullmatch(host["ssh"]):
+            raise StandError(f"invalid inventory entry: {name!r}")
+        compose = Path(host.get("compose", "compose.yaml"))
+        if compose.is_absolute() or ".." in compose.parts:
+            raise StandError(f"{name}: Compose file must be relative to the Git root")
+        service = host.get("service", "runner")
+        if not NAME.fullmatch(service):
+            raise StandError(f"{name}: invalid default service name")
+        limits = host.get("cpu_limits", {})
+        if not isinstance(limits, dict) or any(
+            not NAME.fullmatch(service) or type(cpus) not in (float, int)
+            or not 0.01 <= cpus < float("inf")
+            for service, cpus in limits.items()
+        ):
+            raise StandError(f"{name}: invalid Compose CPU limits")
+        if not Path(host.get("docker_socket", "/var/run/docker.sock")).is_absolute():
+            raise StandError(f"{name}: Docker socket path must be absolute")
+        for setting in ("identity", "known_hosts"):
+            if setting in host:
+                host[setting] = str(path.parent / Path(host[setting]).expanduser())
+    requirements = config.get("requirements", {})
+    if not isinstance(requirements, dict):
+        raise StandError("requirements must be keyed by Compose service")
+    for service, minimums in requirements.items():
+        if not NAME.fullmatch(service) or not isinstance(minimums, dict):
+            raise StandError(f"invalid requirements for {service!r}")
+        for key, value in minimums.items():
+            if key == "image" and isinstance(value, str) and value and not value.startswith("-"):
+                continue
+            if key in ("cpus", "memory_gib") and type(value) is int and value >= 0:
+                continue
+            if key == "compose_cpus" and type(value) is int and value > 0:
+                continue
+            raise StandError(f"invalid {key!r} requirement for {service!r}")
+    return hosts, requirements
+
+
+def ssh(host, command, **kwargs):
+    args = [
+        "ssh", "-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=10",
+        "-o", "ServerAliveCountMax=2",
+    ]
+    if "identity" in host:
+        args += ["-o", "IdentitiesOnly=yes", "-i", str(Path(host["identity"]).expanduser())]
+    if "known_hosts" in host:
+        args += ["-o", "UserKnownHostsFile=" + str(Path(host["known_hosts"]).expanduser())]
+    if "port" in host:
+        args += ["-p", str(int(host["port"]))]
+    return subprocess.run([*args, "--", host["ssh"], command], **kwargs)
+
+
+def request(host, message, *, capture=False, stream=None):
+    command = 'python3 -I "$HOME/.local/share/standctl/host-' + VERSION + '.py"'
+    output = {"stdout": subprocess.PIPE} if capture else {}
+    if stream is not None:
+        return ssh(host, command, stdin=stream, **output)
+    return ssh(host, command, input=header(message), **output)
+
+
+def header(message):
+    encoded = json.dumps(message).encode() + b"\n"
+    if len(encoded) > 65536:
+        raise StandError("request is too large")
+    return encoded
+
+
+def selected(hosts, names):
+    for name in names or hosts:
+        if name not in hosts:
+            raise StandError(f"unknown stand: {name}")
+        yield name, hosts[name]
+
+
+def install(hosts, names):
+    failed = False
+    for name, host in selected(hosts, names):
+        command = shlex.join([
+            "python3", "-I", "-c", INSTALL, VERSION,
+            host.get("docker_socket", "/var/run/docker.sock"),
+        ])
+        result = ssh(host, command, input=HOST_CODE)
+        if not result.returncode:
+            result = request(host, {"action": "probe"}, capture=True)
+        if result.returncode:
+            print(f"{name}: install or Docker probe failed", file=sys.stderr)
+            failed = True
+        else:
+            print(f"{name}: Docker Compose {result.stdout.decode().strip()}")
+    return int(failed)
+
+
+def host_status(host):
+    result = request(host, {"action": "status"}, capture=True)
+    if result.returncode:
+        return None
+    return json.loads(result.stdout)
+
+
+def status(hosts, names):
+    failed = False
+    for name, host in selected(hosts, names):
+        entry = host_status(host)
+        if entry is None:
+            print(f"{name}\tunavailable")
+            failed = True
+        else:
+            details = " ".join(str(entry[key]) for key in ("owner", "commit", "since", "id") if key in entry)
+            print(f"{name}\t{entry['state']}\t{details}")
+    return int(failed)
+
+
+def run_requirements(host, requirements, args):
+    service = getattr(args, "service", None) or host.get("service", "runner")
+    defaults = requirements.get("default", {})
+    overrides = requirements.get(service, {})
+    required = {
+        "cpus": max(defaults.get("cpus", 0), overrides.get("cpus", 0), args.min_cpus),
+        "memory_gib": max(defaults.get("memory_gib", 0), overrides.get("memory_gib", 0), args.min_memory_gib),
+        "image": overrides.get("image", defaults.get("image")),
+    }
+    return {
+        "service": service,
+        "compose_cpus": overrides.get("compose_cpus", defaults.get("compose_cpus")),
+        "requirements": required,
+        "cpu_limits": host.get("cpu_limits", {}),
+    }
+
+
+def inspect_host(host, checks):
+    result = request(host, {"action": "doctor", **checks}, capture=True)
+    if result.returncode:
+        return {"state": "unavailable", "issues": ["SSH or host handler unavailable"]}
+    return json.loads(result.stdout)
+
+
+def doctor(hosts, requirements, args):
+    failed = False
+    for name, host in selected(hosts, args.host):
+        checks = run_requirements(host, requirements, args)
+        entry = inspect_host(host, checks)
+        issues = entry["issues"]
+        failed |= bool(issues)
+        label = "unready" if issues else "ready"
+        details = []
+        if "cpus" in entry:
+            details.append(
+                f"{entry['effective_cpus']:g}/{entry['cpus']} CPU, "
+                f"{entry['memory_bytes'] / GIB:.1f} GiB RAM"
+            )
+        if "compose" in entry:
+            details.append(f"Compose {entry['compose']}")
+        if "image_id" in entry:
+            details.append(f"{checks['requirements']['image']} {entry['image_id']}")
+        print(f"{name}\t{label}\t{entry['state']}\t{checks['service']}\t" + " | ".join(details + issues))
+    return int(failed)
+
+
+def git_at(location, *args, **kwargs):
+    env = {key: value for key, value in os.environ.items() if key not in GIT_LOCATION_ENV}
+    return subprocess.run(["git", "-C", str(location), *args], env=env, check=True, **kwargs)
+
+
+def source_revision(location, ref):
+    root = Path(git_at(
+        location, "rev-parse", "--show-toplevel", stdout=subprocess.PIPE, text=True,
+    ).stdout.rstrip("\n"))
+    commit = git_at(
+        root, "rev-parse", "--verify", "--end-of-options", ref + "^{commit}",
+        stdout=subprocess.PIPE, text=True,
+    ).stdout.strip()
+    return root, commit
+
+
+def acquire(hosts, requirements, args, commit):
+    for name, host in selected(hosts, [args.host] if args.host else []):
+        checks = run_requirements(host, requirements, args)
+        info = inspect_host(host, checks)
+        if info["issues"] or info["state"] != "free":
+            reason = ", ".join(info["issues"]) or info["state"]
+            print(f"{name}: {reason}", file=sys.stderr)
+            continue
+        token = secrets.token_hex(16)
+        reference = f"{name}:{token}"
+        print(f"standctl lease attempt: {reference}", file=sys.stderr, flush=True)
+        result = request(host, {
+            "action": "acquire", "token": token, "owner": args.owner,
+            "commit": commit, "compose": host.get("compose", "compose.yaml"),
+            **checks,
+        })
+        if result.returncode in (BUSY, UNREADY):
+            continue
+        if result.returncode:
+            raise StandError(f"acquisition unconfirmed for {reference}; check status before retrying")
+        return host, token, reference
+    raise StandError("no free Docker stand meets the run requirements")
+
+
+def make_archive(root, commit, archive):
+    git_at(root, "archive", "--format=tar", commit, stdout=archive)
+    size = archive.tell()
+    archive.seek(0)
+    sha256 = hashlib.sha256()
+    for chunk in iter(lambda: archive.read(256 * 1024), b""):
+        sha256.update(chunk)
+    archive.seek(0)
+    return size, sha256.hexdigest()
+
+
+def upload(host, token, archive, size, sha256):
+    with tempfile.TemporaryFile() as stream:
+        stream.write(header({
+            "action": "upload", "token": token, "size": size, "sha256": sha256,
+        }))
+        while chunk := archive.read(256 * 1024):
+            stream.write(chunk)
+        stream.seek(0)
+        result = request(host, None, stream=stream)
+    if result.returncode:
+        raise StandError("source upload failed")
+
+
+def service_args(host, command, service):
+    service = service or host.get("service", "runner")
+    args = ["run", "--rm", "-T"]
+    if host.get("command_as_entrypoint", False):
+        args += ["--entrypoint", command[0], "--", service, *command[1:]]
+    else:
+        args += ["--", service, *command]
+    return args
+
+
+def compose(host, token, args):
+    result = request(host, {"action": "compose", "token": token, "args": args}, capture=True)
+    if result.returncode:
+        raise StandError("Compose operation unconfirmed; use status and logs")
+    return json.loads(result.stdout)["exit_code"]
+
+
+def action(host, token, name):
+    if request(host, {"action": name, "token": token}).returncode:
+        raise StandError(f"{name} failed; use status and logs")
+
+
+def new_run(hosts, requirements, args, command):
+    location = Path(args.repo).expanduser() if args.repo else Path.cwd()
+    root, commit = source_revision(location, args.ref)
+    print(f"standctl source: {root} @ {commit}", file=sys.stderr)
+    with tempfile.TemporaryFile() as archive:
+        size, sha256 = make_archive(root, commit, archive)
+        if size > 1024**3:
+            raise StandError("Git archive exceeds 1 GiB")
+        host, token, reference = acquire(hosts, requirements, args, commit)
+        try:
+            upload(host, token, archive, size, sha256)
+        except StandError:
+            action(host, token, "release")
+            raise
+    if args.action == "acquire":
+        print(reference)
+        return 0
+    code = compose(host, token, service_args(host, command, args.service))
+    action(host, token, "logs")
+    action(host, token, "release")
+    return code
+
+
+def add_requirements_options(parser, *, with_service=True):
+    if with_service:
+        parser.add_argument("--service", help="select the Compose service whose requirements apply")
+    parser.add_argument("--min-cpus", type=int, default=0, help="minimum usable CPUs")
+    parser.add_argument("--min-memory-gib", type=int, default=0, help="minimum host RAM in GiB")
+
+
+def cli():
+    parser = argparse.ArgumentParser(description=__doc__)
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or "~/.config").expanduser()
+    if not config_home.is_absolute():
+        config_home = Path.home() / ".config"
+    default_inventory = config_home / "standctl" / "hosts.json"
+    parser.add_argument(
+        "--config", default=os.environ.get("STANDCTL_CONFIG") or str(default_inventory),
+        help="stand inventory (default: STANDCTL_CONFIG or the user configuration directory)",
+    )
+    subs = parser.add_subparsers(dest="action", required=True)
+    for name in ("install", "status", "doctor"):
+        sub = subs.add_parser(name)
+        sub.add_argument("host", nargs="*")
+        if name == "doctor":
+            add_requirements_options(sub)
+    for name in ("acquire", "run"):
+        sub = subs.add_parser(name)
+        sub.add_argument("--host", help="select a specific inventory entry")
+        sub.add_argument("--repo", help="Git checkout to archive (default: caller's worktree)")
+        sub.add_argument("--ref", default="HEAD", help="Git commit, branch, or tag in that checkout")
+        add_requirements_options(sub, with_service=name == "run")
+        sub.add_argument("--owner", default=os.environ.get(
+            "STANDCTL_OWNER", f"{getpass.getuser()}@{socket.gethostname()}:{os.getpid()}"))
+    for name in ("up", "ps", "exec", "logs", "release", "recover"):
+        sub = subs.add_parser(name)
+        sub.add_argument("lease")
+        if name == "recover":
+            sub.add_argument("--checked", action="store_true", required=True,
+                             help="confirm the previous worker and Docker operations have stopped")
+    argv = sys.argv[1:]
+    command = []
+    if "--" in argv:
+        index = argv.index("--")
+        command = argv[index + 1:]
+        argv = argv[:index]
+    args = parser.parse_args(argv)
+    if args.action in ("doctor", "run", "acquire"):
+        if getattr(args, "service", None) and not NAME.fullmatch(args.service):
+            parser.error("invalid Compose service name")
+        if args.min_cpus < 0 or args.min_memory_gib < 0:
+            parser.error("resource minimums must be nonnegative")
+    if args.action in ("run", "exec") and not command:
+        parser.error("supply a container command after --")
+    if command and args.action not in ("run", "exec"):
+        parser.error("only run and exec accept a container command")
+    return args, command
+
+
+def main():
+    args, command = cli()
+    config_path = Path(args.config).expanduser().resolve()
+    hosts, requirements = inventory(config_path)
+    if args.action == "install":
+        return install(hosts, args.host)
+    if args.action == "status":
+        return status(hosts, args.host)
+    if args.action == "doctor":
+        return doctor(hosts, requirements, args)
+    if args.action in ("run", "acquire"):
+        print(f"standctl inventory: {config_path}", file=sys.stderr)
+        return new_run(hosts, requirements, args, command)
+    name, separator, token = args.lease.partition(":")
+    if not separator or not TOKEN.fullmatch(token) or name not in hosts:
+        raise StandError("invalid lease reference")
+    host = hosts[name]
+    if args.action == "exec":
+        code = compose(host, token, ["exec", "-T", "--", host.get("service", "runner"), *command])
+        action(host, token, "logs")
+        return code
+    if args.action == "up":
+        return compose(host, token, ["up", "--detach", "--no-build", "--", host.get("service", "runner")])
+    if args.action == "ps":
+        # Status is captured in the lease log with other Compose output.
+        code = compose(host, token, ["ps", "--all"])
+        action(host, token, "logs")
+        return code
+    action(host, token, args.action)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except (StandError, OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+        print(f"standctl: {error}", file=sys.stderr)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        print("standctl: interrupted; check the lease with status before retrying", file=sys.stderr)
+        sys.exit(130)

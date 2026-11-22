@@ -484,7 +484,7 @@ func endpointPlatformNativeDeclaration(t *testing.T, stand *endpointPlatformNati
 			NetworkStateRoot:        filepath.Join(roles, "state"),
 			EntryStateRoot:          filepath.Join(roles, "entry"),
 			LocalRoleStateRoot:      filepath.Join(roles, "participation"),
-			TextTokenRoot:           filepath.Join(roles, "token"),
+			ApplicationTokenRoot:    filepath.Join(roles, "token"),
 			PublicationRoot:         filepath.Join(roles, "publication"),
 			ServiceInstanceRoot:     filepath.Join(roles, "instance"),
 			ApplicationSocket:       filepath.Join(run, "application.sock"),

@@ -35,6 +35,24 @@ func sourceNativePinnedProgram(t *testing.T, variable string) (string, []byte) {
 	return path, raw
 }
 
+func releaseCommand(t *testing.T, program string, args ...string) *exec.Cmd {
+	return exec.CommandContext(t.Context(), program, append([]string{"infrastructure", "sign-release"}, args...)...)
+}
+
+// The native test process is an actual executable of a different Go command.
+func foreignNativeProgram(t *testing.T) []byte {
+	t.Helper()
+	path, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
 // Fresh real signatures and actual canonical binaries exercise this closed
 // offline purpose. Fixture build/qualification declarations are controlled
 // inputs, not operational rebuild evidence or installed qualification.
@@ -49,7 +67,7 @@ func runInfrastructureFixtureCommand(t *testing.T, program string, args ...strin
 
 func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	parent := sourceArtifactNativeParent(t)
-	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM")
+	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM")
 	nextPath, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_NEXT_PROGRAM")
 	preparedTemplate, err := exec.CommandContext(t.Context(), nextPath, "platform", "template").Output()
 	if err != nil || !bytes.Equal(preparedTemplate, []byte(systemd.PlatformUnitTemplate)) {
@@ -69,7 +87,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 		t.Fatal(err)
 	}
 	keyRoot := filepath.Join(parent, "keys")
-	keyOutput, err := exec.CommandContext(t.Context(), command, "source", "prepare-release-keys", keyRoot).CombinedOutput()
+	keyOutput, err := releaseCommand(t, command, "source", "prepare-release-keys", keyRoot).CombinedOutput()
 	if err != nil {
 		t.Fatal("actual Source Release key birth", string(keyOutput), err)
 	}
@@ -161,7 +179,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	}
 	writePlan()
 	output, verification := filepath.Join(parent, "metadata"), filepath.Join(parent, "verification")
-	child := exec.CommandContext(t.Context(), command, "source", "sign-initial-release", planPath, keyRoot, output, verification)
+	child := releaseCommand(t, command, "source", "sign-initial-release", planPath, keyRoot, output, verification)
 	if out, err := child.CombinedOutput(); err != nil || !bytes.Contains(out, []byte(`"operation":"source.sign-initial-release"`)) {
 		t.Fatal("actual canonical Source signature operation", string(out), err)
 	}
@@ -243,7 +261,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	writePlan()
 	forwardOutput, forwardHistory := filepath.Join(parent, "forward-metadata"), filepath.Join(parent, "forward-verification")
 	forwardArgs := []string{planPath, keyRoot, forwardOutput, forwardHistory, previous}
-	forwardChild := exec.CommandContext(t.Context(), command, append([]string{"source", "sign-forward-release"}, forwardArgs...)...)
+	forwardChild := releaseCommand(t, command, append([]string{"source", "sign-forward-release"}, forwardArgs...)...)
 	if out, err := forwardChild.CombinedOutput(); err != nil || !bytes.Contains(out, []byte(`"operation":"source.sign-forward-release"`)) {
 		t.Fatal("canonical forward signing", string(out), err)
 	}
@@ -294,17 +312,18 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	writePlan()
 	// A real Control ELF cannot be substituted for the Source target, even with
 	// matching descriptor hashes and otherwise accepted fixture declarations.
-	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
+	foreignProgram := foreignNativeProgram(t)
+	if err := os.WriteFile(program, foreignProgram, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareRuntimeDescriptor("source", "one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
+	badDescriptor, err := infrastructure.PrepareRuntimeDescriptor("source", "one", 1, foreignProgram, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(descriptor, badDescriptor, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan.ProgramCustom, plan.GenerationCustom = custom(controlBytes), custom(badDescriptor)
+	plan.ProgramCustom, plan.GenerationCustom = custom(foreignProgram), custom(badDescriptor)
 	writePlan()
 	signed := false
 	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "wrong-program"), filepath.Join(parent, "wrong-verification")}, sourceReleaseInitial, func(string, *os.File) { signed = true }); err == nil || raw != nil || signed {

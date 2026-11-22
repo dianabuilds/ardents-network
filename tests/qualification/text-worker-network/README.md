@@ -9,7 +9,7 @@ Build the exact candidate outside Git with the selected Go toolchain,
     go test -c -tags text_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./cmd/ardents-next
     go build -trimpath -buildvcs=false -o "$candidate/ardents-next" ./cmd/ardents-next
     go build -trimpath -buildvcs=false -o "$candidate/ardents-custody" ./cmd/ardents-custody
-    go build -trimpath -buildvcs=false -o "$candidate/ardents-text" ./cmd/ardents-text
+    go build -trimpath -buildvcs=false -o "$candidate/ardents-text" ./internal/application/document/worker
 
 Install the first three independently pinned artifacts root-owned at
 `/usr/lib/ardents/qualification` with mode 0555. Install the ordinary Text
@@ -19,7 +19,7 @@ inactive `/run/systemd/system/ardents-endpoint.service` with no drop-ins and
 `RuntimeMaxSec=960s`. Use the ordinary lifecycle unit properties and this
 single entrypoint.
 
-    /usr/lib/ardents/qualification/execution-command.test -test.run=^TestInstalledTextCommandsThroughJoinedNetworkTCP$ -test.v -test.timeout=15m
+    /usr/lib/ardents/qualification/execution-command.test -test.run=^TestInstalledDocumentCommandsThroughJoinedNetworkTCP$ -test.v -test.timeout=15m
 
 Provide the independent `ARDENTS_RECOVERY_INSTANCE_SHA256` and
 `ARDENTS_RECOVERY_CUSTODY_SHA256` pins to the unit and the root runner.

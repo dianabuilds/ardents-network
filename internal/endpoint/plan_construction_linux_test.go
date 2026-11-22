@@ -148,7 +148,7 @@ func constructionSourceMember(address, serverName, identity, family, root, pin s
 func constructionDeclaration(base string) PlanDeclaration {
 	encoded := func(n byte) string { key := [32]byte{n}; return hex.EncodeToString(key[:]) }
 	return PlanDeclaration{NetworkStateRoot: filepath.Join(base, "state"), LocalRoleStateRoot: filepath.Join(base, "participation"),
-		TextTokenRoot: filepath.Join(base, "stock"), EntryStateRoot: filepath.Join(base, "route"),
+		ApplicationTokenRoot: filepath.Join(base, "stock"), EntryStateRoot: filepath.Join(base, "route"),
 		TimeConfidenceFile: filepath.Join(base, "clock"), ApplicationSocket: filepath.Join(base, "application.sock"),
 		AdministrationSocket: filepath.Join(base, "administration.sock"), PublicationRoot: filepath.Join(base, "publication"),
 		ServiceInstanceRoot: filepath.Join(base, "instance"),
@@ -186,7 +186,7 @@ func TestConstructPlansRendersAuthenticatedPreparation(t *testing.T) {
 		t.Fatalf("constructed source bytes do not decode to the declared plan: %v", err)
 	}
 	// The rendered plan feeds the genuine first preparation end to end.
-	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot} {
+	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
 		}

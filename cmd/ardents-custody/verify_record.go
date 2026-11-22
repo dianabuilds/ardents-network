@@ -54,24 +54,35 @@ func verifyRecord(ctx context.Context, arguments []string, output io.Writer, inp
 
 func commandBinding(environment, network, root, kind, identity string) (custody.AuthorityBinding, error) {
 	var binding custody.AuthorityBinding
-	for _, value := range []struct {
-		text string
-		dest []byte
-	}{
-		{environment, binding.Environment[:]},
-		{network, binding.Network[:]},
-		{root, binding.Root[:]},
-		{identity, binding.IDCommitment[:]},
-	} {
-		if err := decodeCommandCommitment(value.text, value.dest); err != nil {
-			return custody.AuthorityBinding{}, errors.New("custody operation requires lowercase SHA-256 commitments")
-		}
+	if decodeAuthorityCoordinates(&binding, environment, network, root) != nil || decodeCommandCommitment(identity, binding.IDCommitment[:]) != nil {
+		return custody.AuthorityBinding{}, errors.New("custody operation requires lowercase SHA-256 commitments")
 	}
 	binding.Kind = custody.AuthorityKind(kind)
 	if binding.Kind != custody.AuthorityService && binding.Kind != custody.AuthorityName && binding.Kind != custody.AuthorityAdmission {
 		return custody.AuthorityBinding{}, errors.New("custody operation kind must be service, name, or admission")
 	}
 	return binding, nil
+}
+
+func newAuthorityBinding(mode string, kind custody.AuthorityKind, environment, network, root string) (custody.AuthorityBinding, error) {
+	var binding custody.AuthorityBinding
+	if err := decodeAuthorityCoordinates(&binding, environment, network, root); err != nil {
+		return custody.AuthorityBinding{}, errors.New(mode + " requires lowercase public commitments")
+	}
+	binding.Kind = kind
+	return binding, nil
+}
+
+func decodeAuthorityCoordinates(binding *custody.AuthorityBinding, environment, network, root string) error {
+	for _, value := range []struct {
+		text string
+		dest []byte
+	}{{environment, binding.Environment[:]}, {network, binding.Network[:]}, {root, binding.Root[:]}} {
+		if err := decodeCommandCommitment(value.text, value.dest); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func decodeCommandCommitment(value string, destination []byte) error {

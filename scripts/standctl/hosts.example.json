@@ -1,0 +1,37 @@
+{
+  "hosts": {
+    "lab-a": {
+      "ssh": "ardents-lab@lab-a.example.invalid",
+      "identity": "keys/standctl",
+      "known_hosts": "known_hosts",
+      "docker_socket": "/run/user/1000/docker.sock",
+      "compose": "scripts/diagnostics/compose.yaml",
+      "service": "runner",
+      "command_as_entrypoint": true
+    },
+    "lab-b": {
+      "ssh": "ardents-lab@lab-b.example.invalid",
+      "identity": "keys/standctl",
+      "known_hosts": "known_hosts",
+      "docker_socket": "/run/user/1000/docker.sock",
+      "compose": "scripts/diagnostics/compose.yaml",
+      "service": "runner",
+      "command_as_entrypoint": true,
+      "cpu_limits": {
+        "runner": 2,
+        "online": 2
+      }
+    }
+  },
+  "requirements": {
+    "default": {
+      "cpus": 2,
+      "memory_gib": 3,
+      "image": "ardents-diagnostics:local",
+      "compose_cpus": 4
+    },
+    "gate": {
+      "cpus": 4
+    }
+  }
+}

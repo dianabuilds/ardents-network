@@ -8,7 +8,7 @@ import (
 // Run selects one fixed offline role and performs one provisioning operation.
 func Run(args []string, out io.Writer) error {
 	if len(args) < 2 {
-		return errors.New("usage: provision-infrastructure ROLE OPERATION [ARGUMENTS]")
+		return errors.New("usage: ardents infrastructure provision ROLE OPERATION [ARGUMENTS]")
 	}
 	role, operation, operationArgs := nodeProvisioningRole(args[0]), args[1], args[2:]
 	if role == "source" {

@@ -3,11 +3,10 @@
 Build the Linux offline operator entrypoints from the reviewed source:
 
 ```sh
-go build -trimpath -buildvcs=false -o provision-infrastructure ./cmd/provision-infrastructure
-go build -trimpath -buildvcs=false -o sign-infrastructure-release ./cmd/sign-infrastructure-release
+go build -trimpath -buildvcs=false -o ardents ./cmd/ardents-next
 ```
 
-`provision-infrastructure forwarding prepare-profile --network-id HEX32
+`ardents infrastructure provision forwarding prepare-profile --network-id HEX32
 --authority-key HEX32 --issuance-authority-key HEX32 --bundle ABSOLUTE_BUNDLE
 --token-inventory ABSOLUTE_PUBLIC_INVENTORY --duty NODE_HEX32:DOMAIN:SUBROLE
 --output FRESH_ABSOLUTE_DIRECTORY` prepares only the initial signed Epoch's
@@ -21,7 +20,7 @@ reviewed. The exact signed Epoch, canonical key cohorts, Record references,
 domain assignments and profile interval are verified before output. On protected
 root-owned ext4, fresh output contains `profile-plan.json` and `profile.unsigned`.
 
-`provision-infrastructure forwarding sign-profile PLAN PREPARED REVIEWED_SHA256 STATE_KEY
+`ardents infrastructure provision forwarding sign-profile PLAN PREPARED REVIEWED_SHA256 STATE_KEY
 FRESH_OUTPUT` rebuilds that exact original public preparation before reading
 the matching root-owned 0600 PKCS8 State key and writes only `profile.bin`.
 The frozen preparation reference allows five minutes of elapsed time and one
@@ -32,7 +31,7 @@ adoption or reset. Receipt SHA names the unsigned/signed artifact respectively;
 State acceptance, runtime authority and installed qualification remain false.
 State must independently authenticate and persist this profile before use.
 
-`provision-infrastructure forwarding prepare-token-keys --network-id HEX32
+`ardents infrastructure provision forwarding prepare-token-keys --network-id HEX32
 --issuer-node-id HEX32 --issuer-node-key HEX32 --start UTC_HOUR --end UTC_HOUR
 --output FRESH_ABSOLUTE_DIRECTORY` prepares one to six aligned UTC hours of
 offline Admission material. Each scalar option is required exactly once. The
@@ -47,7 +46,7 @@ profile or State-signed closed profile. Existing or partial output refuses
 without adoption or reset. Cancellation joins original Admission/native users;
 no installed Node/Issuer, token issuance or bootstrap acceptance occurs.
 
-Canonical Linux `provision-infrastructure forwarding prepare-state-key FRESH_PRIVATE_OUTPUT`
+Canonical Linux `ardents infrastructure provision forwarding prepare-state-key FRESH_PRIVATE_OUTPUT`
 creates a separate protected `state-key.pem` and returns only its public key.
 It grants no installed trust or State acceptance. `forwarding prepare-epoch`
 requires `--network-id`, `--authority-key`, `--assignment-seed`, `--node-id`,
@@ -74,7 +73,7 @@ cover the Epoch under its owning verifier. Receipts mark State acceptance,
 installed qualification and runtime authority false. There is no Source serving
 right, automatic successor, assignment redraw or output adoption.
 
-Canonical Linux `provision-infrastructure forwarding prepare-node-key FRESH_PRIVATE_OUTPUT`
+Canonical Linux `ardents infrastructure provision forwarding prepare-node-key FRESH_PRIVATE_OUTPUT`
 creates one protected `node-key.pem` and prints only its public key. It creates
 no NodeID, effective family, State authority or membership.
 `forwarding prepare-node-record` requires exactly `--network-id`, `--node-id`,
@@ -118,11 +117,11 @@ descriptor/inventory preparation remain available.
 The separate Linux Forwarding Release producers are:
 
 ```text
-sign-infrastructure-release forwarding prepare-release-keys FRESH_PRIVATE_OUTPUT
-sign-infrastructure-release forwarding prepare-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
-sign-infrastructure-release forwarding sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
-sign-infrastructure-release forwarding prepare-forward-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
-sign-infrastructure-release forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
+ardents infrastructure sign-release forwarding prepare-release-keys FRESH_PRIVATE_OUTPUT
+ardents infrastructure sign-release forwarding prepare-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
+ardents infrastructure sign-release forwarding sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents infrastructure sign-release forwarding prepare-forward-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
+ardents infrastructure sign-release forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
 ```
 
 Before initial signing, use the canonical `prepare-release-plan` producer above
@@ -698,10 +697,10 @@ and the operator publishes the fixed `ardents-source.service` unit. See the
 The separate closed initial Source key birth and signing forms are:
 
 ```text
-sign-infrastructure-release source prepare-release-keys FRESH_PRIVATE_OUTPUT
-sign-infrastructure-release source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
-sign-infrastructure-release source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
-sign-infrastructure-release source refresh-release-timestamp PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION CURRENT_DISTRIBUTION
+ardents infrastructure sign-release source prepare-release-keys FRESH_PRIVATE_OUTPUT
+ardents infrastructure sign-release source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents infrastructure sign-release source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
+ardents infrastructure sign-release source refresh-release-timestamp PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION CURRENT_DISTRIBUTION
 ```
 
 Key birth writes exactly five fresh distinct `release-key-1.pem` through
@@ -755,12 +754,12 @@ acceptance before installed execution.
 The fixed offline one-Record genesis chain is:
 
 ```text
-provision-infrastructure source prepare-initial-keys FRESH_PRIVATE_OUTPUT
-provision-infrastructure source prepare-initial-plan --network ID --node ID --node-key PUBLIC_KEY --state-key PUBLIC_KEY --family FAMILY --endpoint IP:PORT --valid-from UTC_TIME --valid-until UTC_TIME --assignment-seed SEED --domains DOMAIN[,DOMAIN...] --output FRESH_OUTPUT
-provision-infrastructure source prepare-initial-record PUBLIC_PLAN FRESH_OUTPUT
-provision-infrastructure source sign-initial-record PUBLIC_PLAN PREPARED_RECORD PREPARED_SHA256 NODE_PRIVATE_KEY FRESH_OUTPUT
-provision-infrastructure source prepare-initial-epoch PUBLIC_PLAN SIGNED_RECORD FRESH_OUTPUT
-provision-infrastructure source sign-initial-epoch PUBLIC_PLAN SIGNED_RECORD PREPARED_EPOCH PREPARED_SHA256 STATE_PRIVATE_KEY FRESH_OUTPUT
+ardents infrastructure provision source prepare-initial-keys FRESH_PRIVATE_OUTPUT
+ardents infrastructure provision source prepare-initial-plan --network ID --node ID --node-key PUBLIC_KEY --state-key PUBLIC_KEY --family FAMILY --endpoint IP:PORT --valid-from UTC_TIME --valid-until UTC_TIME --assignment-seed SEED --domains DOMAIN[,DOMAIN...] --output FRESH_OUTPUT
+ardents infrastructure provision source prepare-initial-record PUBLIC_PLAN FRESH_OUTPUT
+ardents infrastructure provision source sign-initial-record PUBLIC_PLAN PREPARED_RECORD PREPARED_SHA256 NODE_PRIVATE_KEY FRESH_OUTPUT
+ardents infrastructure provision source prepare-initial-epoch PUBLIC_PLAN SIGNED_RECORD FRESH_OUTPUT
+ardents infrastructure provision source sign-initial-epoch PUBLIC_PLAN SIGNED_RECORD PREPARED_EPOCH PREPARED_SHA256 STATE_PRIVATE_KEY FRESH_OUTPUT
 ```
 
 Key preparation creates exactly two distinct standard-library keys, named
@@ -896,18 +895,18 @@ The ACA1/ACA2 decisions remain historical evidence for their original inputs.
 
 ## Trusted text UI and workers
 
-`ardents-text link /absolute/path/to/administration.sock` explicitly presents
+`ardents link /absolute/path/to/administration.sock` explicitly presents
 the canonical Target Link of the currently committed text publication through
 the private Administration socket. It refuses an unavailable, uncommitted, or
 withdrawn publication; it neither publishes nor retries. The output is an
 interruptible terminal or pipe presentation and is absent from ordinary
 diagnostics.
 
-The local client command is `ardents-text read /absolute/path/to/connection.sock`.
+The local client command is `ardents read /absolute/path/to/connection.sock`.
 Use Linux terminal or pipe input/output; non-interruptible descriptors are refused.
 Enter one explicit Target Link on standard input and finish the line. The
 destination is not a command argument or diagnostic. The client sends one AAI3
-Target-Link request and one fixed text request, with a 30-second setup/exchange
+Target-Link request and one fixed text request, with a 60-second setup/exchange
 deadline after input. It prints the complete document only after successful
 terminal completion and joined local stream cleanup. C0/C1 controls other than
 LF/tab, ESC and Unicode bidi controls appear as local `\uXXXX` escapes. Links
@@ -922,14 +921,14 @@ Client conformance against a local test peer is not proof that the protected
 participant composition or installed Ubuntu workload is ready.
 
 The trusted publication client is
-`ardents-text publish /absolute/path/to/administration.sock /absolute/path/to/document`.
+`ardents publish /absolute/path/to/administration.sock /absolute/path/to/document`.
 On Linux it imports the selected regular UTF-8 file without following symlinks,
 rejects changing or oversized input, and sends only its bounded snapshot to the
 Administration owner. It returns success only after the owner confirms committed
 publication, including the actual Descriptor acknowledgement. It emits no
 document or path and does not retry. The Endpoint Administration owner launches
 the fixed Publisher worker with that snapshot and retains the publication after
-the command returns. Obtain its Target Link with `ardents-text link
+the command returns. Obtain its Target Link with `ardents link
 /absolute/path/to/administration.sock`; withdraw through `ardents endpoint
 withdraw /absolute/path/to/administration.sock`. These commands require the
 running text participant and its separately accepted Administration permission.
@@ -1102,7 +1101,7 @@ direct Product Owner acceptance before any installed execution. The historical
 transaction contracts remain superseded provenance in the
 [Node owner](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission).
 
-The canonical `provision-infrastructure join` offline producers remain
+The canonical `ardents infrastructure provision join` offline producers remain
 `prepare-state-key`, `prepare-node-key`, `prepare-node-record`,
 `sign-node-record`, `prepare-node-certificate`, `prepare-epoch`, `sign-epoch`,
 `prepare-token-keys`, `prepare-profile` and `sign-profile`. Each retains
@@ -1135,11 +1134,11 @@ ancestors):
 ```text
 ardents-next infrastructure prepare-runtime-descriptor descriptor ID VERSION PROGRAM TEMPLATE OUTPUT
 ardents-next infrastructure prepare-runtime-inventory descriptor DISTRIBUTION OUTPUT
-sign-infrastructure-release descriptor prepare-release-keys FRESH_PRIVATE_KEYS
-sign-infrastructure-release descriptor prepare-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
-sign-infrastructure-release descriptor prepare-forward-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
-sign-infrastructure-release descriptor sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
-sign-infrastructure-release descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
+ardents infrastructure sign-release descriptor prepare-release-keys FRESH_PRIVATE_KEYS
+ardents infrastructure sign-release descriptor prepare-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
+ardents infrastructure sign-release descriptor prepare-forward-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
+ardents infrastructure sign-release descriptor sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents infrastructure sign-release descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
 ```
 
 `descriptor prepare-template`, `prepare-request`, `prepare-plan`,
@@ -1166,7 +1165,7 @@ orchestration; a new-path Descriptor candidate build and release plan builder is
 a separate follow-up. The shared `build-forwarding-candidate.py` records remain
 the build-scope reference with no remaining role-specific plan preparer.
 
-The canonical `provision-infrastructure descriptor` offline network authority
+The canonical `ardents infrastructure provision descriptor` offline network authority
 producers remain `prepare-state-key`, `prepare-node-key`, `prepare-node-record`,
 `sign-node-record`, `prepare-node-certificate`, `prepare-epoch`, `sign-epoch`,
 `prepare-token-keys`, `prepare-profile` and `sign-profile`. Each retains

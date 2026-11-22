@@ -9,7 +9,11 @@ import (
 
 // commitPendingDecision writes the authenticated generation before the
 // control journal can name it. History reconciliation precedes this operation.
-func (s *networkState) commitPendingDecision(decision epoch.Decision, next distributionState) error {
+func (s *networkState) commitPendingDecision(decision *epoch.Decision, next distributionState) error {
+	if decision == nil {
+		// Preserve the historical zero-value staging refusal.
+		decision = &epoch.Decision{}
+	}
 	newPending := s.pendingDecision == nil
 	if newPending {
 		if err := stageGeneration(s.storage, decision); err != nil {
@@ -21,7 +25,9 @@ func (s *networkState) commitPendingDecision(decision epoch.Decision, next distr
 		return err
 	}
 	if newPending {
-		s.pendingDecision = &decision
+		// The staged decision is immutable; callers never mutate it after
+		// commit, so the pointer keeps the same owned facts.
+		s.pendingDecision = decision
 	}
 	return nil
 }

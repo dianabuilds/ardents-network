@@ -25,7 +25,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/publication"
@@ -147,7 +147,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), application.ReaderTimeout)
 				stream, err := application.Dial(ctx, filepath.Join(participant.base, "application", "reader"), application.Request{Destination: application.TargetLink, Value: command.Link})
 				if err == nil {
-					response.Body, err = textdocument.Read(ctx, stream)
+					response.Body, err = document.Read(ctx, stream)
 				}
 				cancel()
 				if err != nil {
@@ -527,7 +527,7 @@ func journeyBuildWorkerBinary(t *testing.T) []byte {
 		return raw
 	}
 	path := filepath.Join(t.TempDir(), "ardents-text-linux-amd64")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/cmd/ardents-text")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/internal/application/document/worker")
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build text worker: %v: %s", err, out)
@@ -957,7 +957,7 @@ func journeyPrebuildBinaries(t *testing.T, repoRoot string) (string, string) {
 		t.Fatalf("prebuild consumer: %v: %s", err, out)
 	}
 	text := filepath.Join(dir, "ardents-text")
-	worker := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", text, "./cmd/ardents-text")
+	worker := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", text, "./internal/application/document/worker")
 	worker.Dir = repoRoot
 	worker.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := worker.CombinedOutput(); err != nil {
@@ -1455,7 +1455,7 @@ func journeyCrossHostBinaries(t *testing.T, repoRoot string) (string, string, st
 	}
 	participant := build("journey.test", "./cmd/ardents-next", "test", "-c", "-tags=endpoint_pair_native,text_worker_installed", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	next := build("ardents-next", "./cmd/ardents-next", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
-	text := build("ardents-text", "./cmd/ardents-text", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
+	text := build("ardents-text", "./internal/application/document/worker", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	return participant, next, text
 }
 

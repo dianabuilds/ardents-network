@@ -12,7 +12,7 @@ func offlineOperatorFile(source string) bool {
 		return true
 	}
 	switch source {
-	case "cmd/provision-infrastructure/main.go", "cmd/sign-infrastructure-release/main.go",
+	case "cmd/ardents-next/infrastructure_operator.go",
 		"cmd/ardents-next/network_output_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "cmd/ardents-next/source_inspection_linux_test.go",
 		"cmd/ardents-next/offline_profile_inspection.go", "cmd/ardents-next/offline_profile_inspection_test.go":
@@ -169,16 +169,9 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "cmd/provision-infrastructure/main.go":
-		switch dependency {
-		case modulePath + "/internal/node/provisioning":
-			return true
-		}
-	case "cmd/sign-infrastructure-release/main.go":
-		switch dependency {
-		case modulePath + "/internal/release/infrastructure/signing":
-			return true
-		}
+	case "cmd/ardents-next/infrastructure_operator.go":
+		return dependency == modulePath+"/internal/node/provisioning" ||
+			dependency == modulePath+"/internal/release/infrastructure/signing"
 	}
 	return false
 }

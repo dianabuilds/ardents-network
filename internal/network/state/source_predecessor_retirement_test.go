@@ -16,7 +16,7 @@ import (
 func TestSourcePredecessorRetirementUpdatesOriginalProducer(t *testing.T) {
 	s, _ := newControlCommitFixture(t, true)
 	previous := duty.Duty{Identity: [32]byte{99}, Family: [32]byte{77}, Class: "direct-source", State: "live", NotAfter: s.config.clock().Add(time.Hour)}
-	current := sourceServerDuty(*s.current)
+	current := sourceServerDuty(s.current)
 	roles, err := duty.OpenOperation(t.Context(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock})
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,7 @@ func TestSourcePredecessorRetirementUpdatesOriginalProducer(t *testing.T) {
 
 func TestSourcePredecessorRetirementRefusesLostHistory(t *testing.T) {
 	s, _ := newControlCommitFixture(t, true)
-	s.servingPredecessors = []duty.Duty{sourceServerDuty(*s.current)}
+	s.servingPredecessors = []duty.Duty{sourceServerDuty(s.current)}
 	s.activeSource = 1
 	entries, err := os.ReadDir(s.config.localRoles)
 	if err != nil {

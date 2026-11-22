@@ -797,7 +797,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	source := installedConnectionInitiatorObserved(t, readerNetwork, readerOperation, link, readerEnd, readerObservation, installedReaderRecoveryStock{
 		expectCancellation: expectedCancellation, loseSource: sourceLoss, separateSource: sourceLoss || publisherSourceLoss,
 		reserveSource: recoveryStock, exhausted: stockLoss, expectedClose: sourceExpectedClose})
-	publisherContract, err := endpointpublisher.TextContract(publisherOperation)
+	publisherContract, err := endpointpublisher.DocumentContract(publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}

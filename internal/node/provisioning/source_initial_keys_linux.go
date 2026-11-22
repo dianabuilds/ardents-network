@@ -20,7 +20,7 @@ import (
 
 func runSourceInitialKeys(args []string, out io.Writer) error {
 	if len(args) != 1 {
-		return errors.New("usage: provision-infrastructure source prepare-initial-keys FRESH_PRIVATE_OUTPUT")
+		return errors.New("usage: ardents infrastructure provision source prepare-initial-keys FRESH_PRIVATE_OUTPUT")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

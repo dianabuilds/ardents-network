@@ -54,6 +54,10 @@ selected enrollment and process scenarios.
 make headless-check
 ```
 
+The packager runs the Enrollment operations from reviewed `cmd/ardents-next`
+source. The supplied programs are inputs to the builder. The packaging test
+also exercises the separate installed-program verification command.
+
 The printed archive digest is transport/provenance evidence. The Product Owner
 still delivers the digest of the **unpacked bundle's `SHA256SUMS`** as the Alpha
 Enrollment Pin through the declared authenticated direct message. Publish only

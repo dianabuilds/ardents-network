@@ -163,8 +163,8 @@ repository gates. Приёмка относится к точному исход
 полная цель Route остаётся отдельной и не закрывается этим результатом.
 
 `ExecutableArtifactName` — единственный конструктор имени артефакта для descriptor,
-metadata projection и действующей alpha-bundle packaging composition. Два тонких
-скрипта `enrollment-artifact-name.go` и `protected-generation-check.go` вызывают
-нового владельца; статическая проверка не выдаёт pin provenance или Release proof.
-Реальные compiled-script controls проверяют имена Linux/Windows/macOS, полный
+metadata projection и действующей alpha-bundle packaging composition. Упаковщик вызывает `ardents-next enrollment artifact-name` и
+`ardents-next enrollment check-protected-generation`. Статическая проверка
+проверяет только артефакты и их состав. Тесты собранной команды
+проверяют имена Linux/Windows/macOS, полный
 protected inventory и причинные отказы без перезаписи descriptor.

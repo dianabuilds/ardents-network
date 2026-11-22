@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestTextWorkerUnitBindingRequiresExactCollectionPolicy(t *testing.T) {
+func TestDocumentWorkerUnitBindingRequiresExactCollectionPolicy(t *testing.T) {
 	const name = "ardents-text-reader@1-2-3.service"
 	const cgroup = "/system.slice/" + name
 	unit := properties{
@@ -41,7 +41,7 @@ func TestTextWorkerUnitBindingRequiresExactCollectionPolicy(t *testing.T) {
 	}
 }
 
-func TestTextWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
+func TestDocumentWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
 	// systemd reports the effective native-architecture seccomp set. Ubuntu
 	// 24.04/systemd 255 on amd64 therefore omits the s390-only PCI syscalls
 	// even though @raw-io names them on architectures where they exist.
@@ -64,7 +64,7 @@ func TestTextWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
 	}
 }
 
-func TestTextWorkerSliceKeepsTheClosedOrdinaryCgroupRoot(t *testing.T) {
+func TestDocumentWorkerSliceKeepsTheClosedOrdinaryCgroupRoot(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		value *value

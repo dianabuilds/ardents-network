@@ -11,7 +11,7 @@ ARDENTS_HEADLESS_CUSTODY=$3
 
 repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 artifact_name() {
-  (cd "$repository" && go run ./scripts/enrollment-artifact-name.go "$1" "$2")
+  (cd "$repository" && go run ./cmd/ardents-next enrollment artifact-name "$1" "$2")
 }
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/ardents-alpha-bundle-test.XXXXXX")
 cleanup() {

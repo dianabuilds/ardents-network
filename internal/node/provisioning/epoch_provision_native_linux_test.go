@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,7 +31,7 @@ func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *te
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		output, err := exec.CommandContext(t.Context(), command, append([]string{string(role)}, args...)...).CombinedOutput()
+		output, err := provisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Epoch preparation refused", args[0], err, string(output))
 		}
@@ -114,7 +113,7 @@ func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *te
 	if material, err := os.ReadFile(filepath.Join(signedRoot, "material.bin")); err != nil || !bytes.Equal(material, bundle.Materials[0]) {
 		t.Fatal("public proof output differs", err)
 	}
-	if output, err := exec.CommandContext(t.Context(), command, string(role), "sign-epoch", planPath, preparedPath, digest(prepared), nodeKey, filepath.Join(parent, "wrong-key")).CombinedOutput(); err == nil || bytes.Contains(output, []byte(`"runtime_authority"`)) {
+	if output, err := provisionCommand(t, command, string(role), "sign-epoch", planPath, preparedPath, digest(prepared), nodeKey, filepath.Join(parent, "wrong-key")).CombinedOutput(); err == nil || bytes.Contains(output, []byte(`"runtime_authority"`)) {
 		t.Fatal("Node key admitted as State signer", err)
 	}
 	if _, err := os.Lstat(filepath.Join(parent, "wrong-key")); !errors.Is(err, os.ErrNotExist) {
@@ -142,7 +141,7 @@ func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *te
 	if after, err := os.Lstat(statePrivate); err != nil || !os.SameFile(before, after) || after.Mode() != before.Mode() || after.ModTime() != before.ModTime() {
 		t.Fatal("State key replaced", err)
 	}
-	if _, err := exec.CommandContext(t.Context(), command, string(role), "prepare-state-key", stateRoot).CombinedOutput(); err == nil {
+	if _, err := provisionCommand(t, command, string(role), "prepare-state-key", stateRoot).CombinedOutput(); err == nil {
 		t.Fatal("existing State key output adopted")
 	}
 }

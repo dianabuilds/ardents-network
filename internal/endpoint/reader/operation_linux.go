@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
@@ -38,7 +38,7 @@ func Begin(ctx context.Context, local *executionruntime.Owner, principal [32]byt
 	if err != nil {
 		return nil, errors.Join(err, worker.Close())
 	}
-	contract, err := operation.BindStreamContract(512, uint64(textdocument.MaximumBytes+13))
+	contract, err := operation.BindStreamContract(512, uint64(document.MaximumBytes+13))
 	if err != nil {
 		operation.Close()
 		return nil, errors.Join(err, worker.Close())

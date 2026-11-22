@@ -26,7 +26,7 @@ func TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t
 	program, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_DESCRIPTOR_NEXT_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := exec.CommandContext(t.Context(), command, append([]string{"descriptor"}, args...)...).CombinedOutput()
+		raw, err := releaseCommand(t, command, append([]string{"descriptor"}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Descriptor preparation", args[0], err, string(raw))
 		}
@@ -139,7 +139,7 @@ func TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t
 					badPrevious = previous
 				}
 				output, verification := filepath.Join(base, "denied-"+fault), filepath.Join(base, "denied-history-"+fault)
-				if raw, err := exec.CommandContext(t.Context(), command, "descriptor", "sign-forward-release", plan, badKeys, output, verification, badPrevious).CombinedOutput(); err == nil {
+				if raw, err := releaseCommand(t, command, "descriptor", "sign-forward-release", plan, badKeys, output, verification, badPrevious).CombinedOutput(); err == nil {
 					t.Fatal("foreign forward signature accepted", fault, string(raw))
 				}
 				for _, path := range []string{output, verification} {
