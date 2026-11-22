@@ -98,14 +98,14 @@ func openInstallation(config InstallationConfig, openEntries func(ClosedSetConfi
 	if err := initial.Check(initial.ObservedAt()); err != nil {
 		return nil, err
 	}
-	i := &Installation{root: root, network: initial.Profile().Network, current: config.Current, exclusions: append([]route.Member(nil), config.Exclusions...), borrowers: make(map[string]bool), done: make(chan struct{})}
+	i := &Installation{root: root, network: initial.ProfileBinding().Network, current: config.Current, exclusions: append([]route.Member(nil), config.Exclusions...), borrowers: make(map[string]bool), done: make(chan struct{})}
 	i.changed = sync.NewCond(&i.mu)
 	i.entries, err = openEntries(ClosedSetConfig{Root: root, NetworkID: i.network, Current: func() (ClosedSetView, error) {
 		view, err := i.observe()
 		if err != nil {
 			return ClosedSetView{}, err
 		}
-		return ClosedSetView{NetworkID: view.Profile().Network, Now: view.ObservedAt(), Candidates: selectionCandidates(view, 1, i.exclusions)}, nil
+		return ClosedSetView{NetworkID: view.ProfileBinding().Network, Now: view.ObservedAt(), Candidates: selectionCandidates(view, 1, i.exclusions)}, nil
 	}})
 	if err != nil {
 		return nil, err
@@ -130,7 +130,7 @@ func (i *Installation) observe() (network.RuntimeView, error) {
 	if err != nil {
 		return network.RuntimeView{}, err
 	}
-	if view.Profile().Network != i.network {
+	if view.ProfileBinding().Network != i.network {
 		return network.RuntimeView{}, errors.New("route installation Network changed")
 	}
 	if err := view.Check(view.ObservedAt()); err != nil {
@@ -194,7 +194,7 @@ func (i *Installation) borrow(config RoleConfig, opening closedSetOpening) (_ *O
 	if err != nil {
 		return nil, err
 	}
-	if before.Profile().ProfileBinding != after.Profile().ProfileBinding {
+	if before.ProfileBinding() != after.ProfileBinding() {
 		return nil, errors.New("route role opening authority changed")
 	}
 	o := &Owner{entries: i.entries, interior: interior, current: i.observe, domain: config.Domain, exclusions: append(append([]route.Member(nil), i.exclusions...), config.Exclusions...), installation: i, root: root, closeDone: make(chan struct{})}

@@ -157,7 +157,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			code = 1
 		}
 	}()
-	p := view.Profile()
+	p := view.ProfileBinding()
 	receiver := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
 	admissionOwner, err := receiving.Open(plan.SpendRoot, receiver, func() (receiving.Observation, error) { return authority.receiver(receiver, m.NotAfter()) })
 	if err != nil {
@@ -194,7 +194,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			}
 		}()
 	}
-	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, Introduction: introductionRegistry, Issue: issue, DescriptorStore: descriptorStore,
+	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p}, Certificate: certificate, Introduction: introductionRegistry, Issue: issue, DescriptorStore: descriptorStore,
 		ReserveBootstrap: func(ctx context.Context, end time.Time) (func() error, error) {
 			reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: end, HoldUntil: end.Add(5 * time.Second)})
 			if err != nil {

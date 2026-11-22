@@ -40,7 +40,7 @@ func (flow *Flow) challenges(class uint8, receivers [][32]byte) ([]token.ClosedT
 	if err != nil {
 		return nil, err
 	}
-	if view.Profile().Digest != flow.leg.Profile.Digest {
+	if view.ProfileBinding().Digest != flow.leg.Profile.Digest {
 		return nil, errors.New("original Source issuing profile changed")
 	}
 	result := make([]token.ClosedTokenContext, 0, len(receivers))
@@ -49,8 +49,8 @@ func (flow *Flow) challenges(class uint8, receivers [][32]byte) ([]token.ClosedT
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, token.ClosedTokenContext{NetworkID: view.Profile().Network,
-			ProfileDigest: view.Profile().Digest, IssuerNodeID: view.Profile().IssuerNodeID,
+		result = append(result, token.ClosedTokenContext{NetworkID: view.ProfileBinding().Network,
+			ProfileDigest: view.ProfileBinding().Digest, IssuerNodeID: view.IssuerNodeID(),
 			ReceiverNodeID: id, ReceiverDutyGeneration: member.DutyGeneration, Class: class,
 			WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)})
 	}

@@ -122,7 +122,7 @@ func listenJoin(ctx context.Context, config JoinConfig, retained bool) (_ *Join,
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
-	p := view.Profile()
+	p := view.ProfileBinding()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
 	openReceiving := receiving.Open
 	if retained {
@@ -186,7 +186,7 @@ func (f *joinInvocation) current() (network.RuntimeView, error) {
 	}
 	view, err := f.config.Authority.Current()
 	owner := "network"
-	if err == nil && view.Profile().ProfileBinding != f.config.Authority.Profile {
+	if err == nil && view.ProfileBinding() != f.config.Authority.Profile {
 		err = errors.New("original Join profile changed")
 	}
 	if err == nil {

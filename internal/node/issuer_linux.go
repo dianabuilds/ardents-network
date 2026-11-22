@@ -131,7 +131,7 @@ func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *I
 	if opened.Outcome != "opened" {
 		return nil, errors.Join(errors.New("original issuing roots unavailable"), f.issuing.Err())
 	}
-	profile := view.Profile()
+	profile := view.ProfileBinding()
 	binding := receiving.Receiver{NetworkID: profile.Network, StateGeneration: profile.Generation, StateDigest: profile.EpochDigest, ProfileDigest: profile.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
 	openReceiving := receiving.Open
 	if retained {
@@ -178,7 +178,7 @@ func (f *issuerInvocation) currentBase() (network.RuntimeView, error) {
 	}
 	view, err := f.config.Authority.Current()
 	owner := "network"
-	if err == nil && view.Profile().ProfileBinding != f.config.Authority.Profile {
+	if err == nil && view.ProfileBinding() != f.config.Authority.Profile {
 		err = errors.New("original Issuer profile changed")
 	}
 	if err == nil {

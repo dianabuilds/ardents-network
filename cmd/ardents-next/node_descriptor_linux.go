@@ -82,7 +82,7 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		listen = node.ListenDescriptorRetained
 	}
 	original, err := listen(ctx, node.DescriptorConfig{
-		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
+		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, DescriptorRoot: plan.DescriptorRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
 	})

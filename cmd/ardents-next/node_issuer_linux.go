@@ -72,7 +72,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		listen = node.ListenIssuerRetained
 	}
 	original, err := listen(ctx, node.IssuerConfig{
-		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
+		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey,
 		Issuance: issuer.Plan{AdmissionRoot: prepared.Admission.Root, AdmissionBinding: prepared.Admission.Binding, KeyRoot: prepared.Keys.Root, KeyBinding: prepared.Keys.Binding, ResultRoot: prepared.Root},

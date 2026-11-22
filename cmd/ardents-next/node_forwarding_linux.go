@@ -59,7 +59,7 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	if retained {
 		listen = node.ListenForwardingRetained
 	}
-	original, err := listen(ctx, node.ForwardingConfig{Authority: role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding}, ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination})
+	original, err := listen(ctx, node.ForwardingConfig{Authority: role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()}, ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination})
 	if err != nil {
 		return nodeStartupRefusal(out, err, owner.Close())
 	}

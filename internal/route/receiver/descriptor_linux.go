@@ -140,7 +140,7 @@ func (r *Receiver) descriptorIntroduction(hello ardp.Hello, proof reachability.D
 	if err != nil {
 		return err
 	}
-	if view.Profile().ProfileBinding != r.config.Authority.Profile || proof.ProfileDigest != hello.ProfileDigest || now.Before(proof.Introduction.NotBefore) || !now.Before(proof.Introduction.NotAfter) || proof.Introduction.NotAfter.After(local.NotAfter()) || proof.Introduction.NotAfter.After(view.Profile().NotAfter) {
+	if view.ProfileBinding() != r.config.Authority.Profile || proof.ProfileDigest != hello.ProfileDigest || now.Before(proof.Introduction.NotBefore) || !now.Before(proof.Introduction.NotAfter) || proof.Introduction.NotAfter.After(local.NotAfter()) || proof.Introduction.NotAfter.After(view.ProfileBinding().NotAfter) {
 		return errors.New("route Descriptor current profile or Introduction interval unavailable")
 	}
 	member, err := view.Member(proof.Introduction.Node, now)

@@ -148,6 +148,60 @@ func TestClosedRuntimeZeroAndCopiedFacts(t *testing.T) {
 	}
 }
 
+// currentMembershipLocked must return the exact view built from its single
+// trusted-time observation, not a second observation of the same immutable
+// state (audit NW-2 observe-once). The advancing clock makes a re-observation
+// detectable: a fresh sample would carry a later instant than the returned one.
+func TestClosedRuntimeSharesOneObservationWithTheReturnedView(t *testing.T) {
+	owner, raw := closedProfileStoreFixture(t)
+	if _, err := owner.AcceptClosedProfile(raw); err != nil {
+		t.Fatal(err)
+	}
+	base := owner.config.clock()
+	var calls int
+	owner.config.clock = func() time.Time { calls++; return base.Add(time.Duration(calls) * time.Second) }
+	owner.config.observe = owner.config.clock
+	owner.mu.RLock()
+	bound, observed, view, err := owner.currentMembershipLocked(owner.storage.LoadClosedProfile)
+	owner.mu.RUnlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.ObservedAt() != observed.Instant() {
+		t.Fatal("returned view does not share the single trusted observation")
+	}
+	same := bound.participants.Observe(observed.Instant()).Members()
+	returned := view.Members()
+	if len(returned) != len(same) {
+		t.Fatal("returned view membership differs from the bound observation")
+	}
+	for i := range same {
+		if returned[i] != same[i] {
+			t.Fatal("returned view membership differs from the bound observation")
+		}
+	}
+	if err := view.Check(view.ObservedAt()); err != nil {
+		t.Fatalf("shared observation is not current: %v", err)
+	}
+	// The witness path performs exactly one fresh observation (one wall and
+	// one independent sample) and shares it with the returned view; a second
+	// observation of the same immutable state would double the sample count.
+	before := calls
+	witness, err := owner.CurrentRuntimeWitness()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls-before != 2 {
+		t.Fatalf("witness path took %d clock samples, want one observation (2)", calls-before)
+	}
+	if witness.View().ProfileBinding() != view.ProfileBinding() {
+		t.Fatal("witness view identity differs from the accepted profile")
+	}
+	if err := witness.View().Check(witness.View().ObservedAt()); err != nil {
+		t.Fatalf("witness view is not current at its own observation: %v", err)
+	}
+}
+
 func TestClosedRuntimeIncompleteMemberIsLocal(t *testing.T) {
 	owner, raw := closedProfileStoreFixture(t)
 	if _, err := owner.AcceptClosedProfile(raw); err != nil {

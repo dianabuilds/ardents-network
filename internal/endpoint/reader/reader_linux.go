@@ -44,7 +44,7 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 	}
 	plan := owner.plan
 	plan.Deadline = time.Now().Add(admission.ForwardClass.Lifetime()).UTC().Truncate(time.Second)
-	if end := view.Profile().NotAfter; end.Before(plan.Deadline) {
+	if end := view.ProfileBinding().NotAfter; end.Before(plan.Deadline) {
 		plan.Deadline = end
 	}
 	if end, bounded := ctx.Deadline(); bounded && end.Before(plan.Deadline) {

@@ -16,7 +16,7 @@ func (leg Leg) IssuerDuty(view network.RuntimeView) (network.RetainedDuty, error
 	if err := leg.Check(view, now); err != nil {
 		return network.RetainedDuty{}, err
 	}
-	member, err := view.Member(view.Profile().IssuerNodeID, now)
+	member, err := view.Member(view.IssuerNodeID(), now)
 	if err != nil || !route.CarrierPermitted(member.CarrierProfile) || member.RoleDomain != 2 || member.Subrole != 6 {
 		return network.RetainedDuty{}, errors.Join(errors.New("exact current issuer unavailable"), err)
 	}

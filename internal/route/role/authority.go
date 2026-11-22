@@ -51,7 +51,7 @@ func (a Authority) observeMember() (network.RuntimeView, network.Member, error) 
 	if err != nil {
 		return network.RuntimeView{}, network.Member{}, err
 	}
-	if v.Profile().ProfileBinding != a.Profile {
+	if v.ProfileBinding() != a.Profile {
 		return network.RuntimeView{}, network.Member{}, errors.New("route profile changed")
 	}
 	if err = v.MatchDuty(a.Duty, time.Now()); err != nil {

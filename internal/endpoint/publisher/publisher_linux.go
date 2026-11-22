@@ -112,7 +112,7 @@ func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte)
 	}
 	plan := owner.routePlan
 	plan.Deadline = time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second)
-	if end := view.Profile().NotAfter; end.Before(plan.Deadline) {
+	if end := view.ProfileBinding().NotAfter; end.Before(plan.Deadline) {
 		plan.Deadline = end
 	}
 	if end, bounded := ctx.Deadline(); bounded && end.Before(plan.Deadline) {

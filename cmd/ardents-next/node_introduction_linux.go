@@ -82,7 +82,7 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		listen = node.ListenIntroductionRetained
 	}
 	original, err := listen(ctx, node.IntroductionConfig{
-		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
+		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, IntroductionRoot: plan.IntroductionRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
 	})

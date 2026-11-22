@@ -24,7 +24,7 @@ func (leg Leg) Check(view network.RuntimeView, now time.Time) error {
 	if now.Before(view.ObservedAt()) {
 		now = view.ObservedAt()
 	}
-	if !now.Before(leg.NotAfter) || view.Profile().ProfileBinding != leg.Profile || view.MatchDuty(leg.Entry, now) != nil || view.MatchDuty(leg.Interior, now) != nil {
+	if !now.Before(leg.NotAfter) || view.ProfileBinding() != leg.Profile || view.MatchDuty(leg.Entry, now) != nil || view.MatchDuty(leg.Interior, now) != nil {
 		return errors.New("retained Route authority unavailable")
 	}
 	first, err := view.Member(leg.Entry.NodeID, now)
