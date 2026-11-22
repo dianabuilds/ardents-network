@@ -404,19 +404,20 @@ func sourceEnvironment(t *testing.T, genesis, firstValue, secondValue fixture) (
 	addresses[1] = reserved[1]
 	second := openTestSource(t, secondValue, addresses[1], secondServer, clientAuthority.rootPEM, client.pin)
 	config := fixtureConfig(genesis, t.TempDir(), now)
+	config.Now = time.Time{}
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	installed, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer installed.Close()
 	if _, err := installed.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatal(err)
 	}
 	if err := installed.Close(); err != nil {
 		t.Fatal(err)
 	}
-	config.Now = time.Time{}
-	config.Clock = advancingVerificationClock(now)
-	config.ObserveClock = config.Clock
 	config.Source.Sources = [2]source.Source{
 		{Address: addresses[0], ServerName: "first-source.test", Identity: sha256.Sum256([]byte("first-source")),
 			Family: "first-source-family", EndpointHandle: "first-source-handle", RootPEM: firstAuthority.rootPEM, LeafKeyDigest: firstServer.pin},
@@ -443,11 +444,16 @@ func openTestSource(t *testing.T, value fixture, address string, server testCert
 
 func openTestSourceAtIndex(t *testing.T, value fixture, address string, server testCertificate, clientRoot []byte, clientPin [32]byte, materialIndex uint32) interface{ Close() error } {
 	t.Helper()
-	config := fixtureConfig(value, t.TempDir(), time.Unix(value.now, 0))
+	now := time.Unix(value.now, 0)
+	config := fixtureConfig(value, t.TempDir(), now)
+	config.Now = time.Time{}
+	config.Clock = advancingVerificationClock(now)
+	config.ObserveClock = config.Clock
 	store, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer store.Close()
 	genesis := newFixture(t)
 	header, err := epoch.Inspect(value.epoch)
 	if err != nil {
