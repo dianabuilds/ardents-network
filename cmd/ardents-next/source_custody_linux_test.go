@@ -12,11 +12,13 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 )
 
 // This fixture isolates native file custody. It grants no healthy State,
 // process protection, credential, transport or installed admission.
-func sourceCustodyFixture(t *testing.T) (string, sourceServePlan) {
+func sourceCustodyFixture(t *testing.T) (string, servingdeclaration.ServingDeclaration) {
 	t.Helper()
 	parent := t.TempDir()
 	paths := make([]string, 4)
@@ -30,7 +32,7 @@ func sourceCustodyFixture(t *testing.T) (string, sourceServePlan) {
 			t.Fatal(err)
 		}
 	}
-	plan := sourceServePlan{Network: &networkAuthorityPlan{Root: filepath.Join(parent, "state"), NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{2}, ClockObservationFile: filepath.Join(parent, "clock")},
+	plan := servingdeclaration.ServingDeclaration{Network: &servingdeclaration.ServingNetwork{Root: filepath.Join(parent, "state"), NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{2}, ClockObservationFile: filepath.Join(parent, "clock")},
 		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(parent, "participation"), Address: "127.0.0.1:12345", Certificate: paths[1], PrivateKey: paths[2], ClientRoot: paths[3], ClientPins: [][32]byte{{3}}}
 	raw, err := json.Marshal(plan)
 	if err != nil {

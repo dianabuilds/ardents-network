@@ -289,12 +289,17 @@ remain. No old Forwarding, JOIN or Descriptor runtime is used.
 | File `cmd/ardents-next/forwarding_repair_linux.go` | File `internal/network/state`; `internal/platform/systemd`; `internal/hosting`; `internal/processresource` |
 | File `cmd/ardents-next/join_repair_linux.go` | File `internal/network/state`; `internal/platform/systemd`; `internal/hosting`; `internal/processresource` |
 | File `cmd/ardents-next/descriptor_repair_linux.go` | File `internal/network/state`; `internal/platform/systemd`; `internal/hosting`; `internal/processresource` |
-| File `cmd/ardents-next/platform_linux.go` | File `internal/enrollment`; `internal/release`; `internal/release/infrastructure`; `internal/network/state` for original retained SourceInspection |
+| File `cmd/ardents-next/platform_linux.go` | File `internal/enrollment`; `internal/release`; `internal/release/infrastructure`; `internal/network/state` for original retained SourceInspection; `internal/network/source/servingdeclaration` for the original Source plan |
 | File `cmd/ardents-next/release.go` | Files `internal/enrollment` and `internal/release` for initial and candidate Release inputs used by both software delivery paths |
 | File `cmd/ardents-next/platform_endpoint_staging_linux.go` | File `internal/enrollment`; `internal/release/endpoint`; `internal/endpoint/launch`; `internal/release` for first-delivery floor verification and signed successor staging under the retained Release lease |
 | File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/enrollment`; `internal/release`; `internal/release/infrastructure`; `internal/network/state`; `internal/network/duty`; `tests/epochfixture/network`; `github.com/theupdateframework/go-tuf/v2/metadata` |
 | File `cmd/ardents-next/platform_unit_linux.go` | File `internal/platform/systemd` |
 | File `cmd/ardents-next/platform_linux_test.go` | File `internal/platform/systemd` |
+
+The Source CLI and its process fixtures consume `servingdeclaration` directly
+in the exact files listed by the import guard. File custody stays with the
+native adapters, and composition converts Source's embedded network
+declaration only where it builds the existing State configuration.
 
 `infrastructure/runtime_artifact_linux.go` retains a distinct
 `RuntimeAuthorization` for the six fixed Source/Node artifacts; native
