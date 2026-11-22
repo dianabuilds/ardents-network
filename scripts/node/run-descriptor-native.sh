@@ -37,6 +37,7 @@ TestNativeDescriptorOriginalAuthorityAndJoinTCP
 TestNativeDescriptorOriginalCommandFailureTCP
 TestNativeDescriptorPartialStartupRefusalsTCP
 TestNativeDescriptorPublishLookupAndReopenTCP
+TestNativeDescriptorRetainedLifecycle
 TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP
 TestNativeDescriptorUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeDescriptor' | grep '^TestNativeDescriptor' | sort)
@@ -55,3 +56,4 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUndercoverageBeforeSpendTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorRetainedLifecycle$' -test.timeout=3m

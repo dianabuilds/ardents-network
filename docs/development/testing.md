@@ -134,20 +134,19 @@ platform unit with its mandatory `platform check` ExecStartPre gate,
 `ardents-next forwarding repair-retained`. Retained native evidence is
 `TestNativeForwardingPlatformInstalledLifecycle` under the
 `forwarding_platform_native` build tag (the installed gate),
-`TestNativeNodeForwardingTCP` in `forwarding-process-linux`, and the separately
-selected `TestNativeForwardingRetainedLifecycle` retained-lifecycle evidence
-(`node_process_native`). Forwarding Release signing is preserved and cut over
-to the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`;
+`TestNativeNodeForwardingTCP` and `TestNativeForwardingRetainedLifecycle` in
+`forwarding-process-linux` (`node_process_native`). Forwarding Release signing
+is preserved and cut over to the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`;
 the retained signing controls below remain required. The shared candidate
 builder `build-forwarding-candidate.py` remains the build-scope reference for
 the retained JOIN/Descriptor cohorts; a new-path Forwarding candidate build and
 release plan builder is a separate follow-up, exactly as for Source (#604
 stage 1.6).
 
-JOIN platform-led retained evidence (#604 FJD stages A+B+C, ADR-0125) is
-separately selected. `TestNativeJoinRetainedLifecycle`
-(`node_process_native`) proves the fresh `--config` first launch creating the
-participation and receiving histories, joined cancellation with producer
+JOIN platform-led retained evidence (#604 FJD stages A+B+C, ADR-0125)
+includes `TestNativeJoinRetainedLifecycle` in `join-process-linux`
+(`node_process_native`). This test proves the fresh `--config` first launch
+creating the participation and receiving histories, joined cancellation with producer
 removal, retained `--retained-config` relaunch, and SIGKILL crash refusal (the
 next retained opening refuses before listening). Its lifecycle legs are
 single-unit: one JOIN pair member owns its own participation root and sole
@@ -167,10 +166,10 @@ These are fixture-authority component/acceptance evidence with one operator,
 not independent participants, whole-host privacy qualification or bootstrap
 acceptance.
 
-Descriptor platform-led retained evidence (#604 FJD stages A+B+C, ADR-0125) is
-separately selected. `TestNativeDescriptorRetainedLifecycle`
-(`node_process_native`) proves the fresh `--config` first launch creating the
-participation and receiving histories and the Store root, joined cancellation
+Descriptor platform-led retained evidence (#604 FJD stages A+B+C, ADR-0125)
+includes `TestNativeDescriptorRetainedLifecycle` in `descriptor-process-linux`
+(`node_process_native`). This test proves the fresh `--config` first launch
+creating the participation and receiving histories and the Store root, joined cancellation
 with producer removal, retained `--retained-config` relaunch, and SIGKILL crash
 refusal (the next retained opening refuses before listening; the Store flock
 lease dies with the process and, with no publication in flight, the retained
@@ -219,8 +218,7 @@ mandatory `platform check` ExecStartPre gate, `ardents-next node join
 --retained-config` and `ardents-next join repair-retained`. Retained native
 evidence is `TestNativeJoinPlatformInstalledLifecycle` under the
 `join_platform_native` build tag (the installed gate), the `TestNativeJoin*`
-workloads in `join-process-linux`, and the separately selected
-`TestNativeJoinRetainedLifecycle` retained-lifecycle evidence
+workloads in `join-process-linux`, including `TestNativeJoinRetainedLifecycle`
 (`node_process_native`). JOIN Release signing is preserved and cut over to the
 static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
 retained signing controls below remain required. The shared candidate builder
@@ -247,8 +245,7 @@ repair-retained`. Retained native evidence is
 `TestNativeDescriptorPlatformInstalledLifecycle` under the
 `descriptor_platform_native` build tag (the installed gate), the
 `TestNativeDescriptor*` workloads in `descriptor-process-linux`
-(`node-descriptor-check`), and the separately selected
-`TestNativeDescriptorRetainedLifecycle` retained-lifecycle evidence
+(`node-descriptor-check`), including `TestNativeDescriptorRetainedLifecycle`
 (`node_process_native`). Descriptor Release signing is preserved and cut over to
 the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
 retained `descriptor-forward-release-linux` signing lane and the
@@ -3730,9 +3727,8 @@ evidence is `TestNativeDescriptorPlatformInstalledLifecycle`
 (`descriptor_platform_native` installed gate), the `TestNativeDescriptor*`
 workloads in `descriptor-process-linux` (`make node-descriptor-check`,
 `node_process_native`, SHA-pinned `ARDENTS_NODE_NATIVE_COMMAND`/`_TEST`/
-`_RESOURCE_TEST`) and the separately selected
-`TestNativeDescriptorRetainedLifecycle` retained-lifecycle/SIGKILL evidence. The
-readiness oracle is the authenticated listener (`listening` event / TCP dial),
+`_RESOURCE_TEST`), including the retained-lifecycle/SIGKILL evidence in
+`TestNativeDescriptorRetainedLifecycle`. The readiness oracle is the authenticated listener (`listening` event / TCP dial),
 never publication readiness; genuine publish/lookup is separate workload
 evidence. These component/acceptance gates are not independent participants,
 whole-host privacy qualification or bootstrap acceptance.
