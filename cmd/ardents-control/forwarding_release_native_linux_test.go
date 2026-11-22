@@ -125,7 +125,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 		}
 		return raw
 	}
-	plan := forwardingReleasePlan{Schema: "ardents-forwarding-initial-release-plan-v1", Network: "one-network", Reference: now, Expires: now.Add(time.Hour), Program: program, Descriptor: descriptor, Template: template, ProgramCustom: custom(nextBytes), GenerationCustom: custom(descriptorBytes)}
+	plan := fixedNodeReleasePlan{Schema: "ardents-forwarding-initial-release-plan-v1", Network: "one-network", Reference: now, Expires: now.Add(time.Hour), Program: program, Descriptor: descriptor, Template: template, ProgramCustom: custom(nextBytes), GenerationCustom: custom(descriptorBytes)}
 	planPath := filepath.Join(parent, "plan")
 	writePlan := func() {
 		raw, err := json.Marshal(plan)
@@ -187,7 +187,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			metadataPath := filepath.Join(parent, "failed-"+cut)
 			verificationPath := metadataPath + "-verification"
 			fired := false
-			root, err := signForwardingReleasePurpose(ctx, []string{planPath, keyRoot, metadataPath, verificationPath}, forwardingReleaseInitial, func(stage string, file *os.File) {
+			root, err := signNodeReleasePurpose(forwardingReleaseRole, ctx, []string{planPath, keyRoot, metadataPath, verificationPath}, nodeReleaseInitial, func(stage string, file *os.File) {
 				if stage != cut || fired {
 					return
 				}
@@ -210,7 +210,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			if err != nil {
 				t.Fatal("partial output provenance lost", err)
 			}
-			if root, err := signForwardingReleasePurpose(t.Context(), []string{planPath, keyRoot, metadataPath, verificationPath}, forwardingReleaseInitial, nil); err == nil || len(root) != 0 {
+			if root, err := signNodeReleasePurpose(forwardingReleaseRole, t.Context(), []string{planPath, keyRoot, metadataPath, verificationPath}, nodeReleaseInitial, nil); err == nil || len(root) != 0 {
 				t.Fatal("partial output adopted as fresh signing")
 			}
 			after, err := os.Stat(metadataPath)
@@ -225,7 +225,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 		plan.Schema = bad
 		writePlan()
 		output := filepath.Join(parent, bad)
-		if _, err := signForwardingReleasePurpose(t.Context(), []string{planPath, keyRoot, output, output + "-verification"}, forwardingReleaseInitial, nil); err == nil {
+		if _, err := signNodeReleasePurpose(forwardingReleaseRole, t.Context(), []string{planPath, keyRoot, output, output + "-verification"}, nodeReleaseInitial, nil); err == nil {
 			t.Fatal("foreign purpose reached initial signing", bad)
 		}
 		if _, err := os.Lstat(output); !os.IsNotExist(err) {
@@ -245,7 +245,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	}
 	plan.ProgramCustom, plan.GenerationCustom = custom(controlBytes), custom(badDescriptor)
 	writePlan()
-	if _, err := signForwardingReleasePurpose(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "bad-program"), filepath.Join(parent, "bad-program-history")}, forwardingReleaseInitial, nil); err == nil {
+	if _, err := signNodeReleasePurpose(forwardingReleaseRole, t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "bad-program"), filepath.Join(parent, "bad-program-history")}, nodeReleaseInitial, nil); err == nil {
 		t.Fatal("Control executable signed as Node")
 	}
 }

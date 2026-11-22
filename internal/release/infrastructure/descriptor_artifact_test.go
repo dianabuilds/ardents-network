@@ -20,8 +20,8 @@ func TestDescriptorArtifactIndependentBytesAndRoleSeparation(t *testing.T) {
 	if _, err := ValidateDescriptorResources(want, program, template); err != nil {
 		t.Fatal(err)
 	}
-	for _, decode := range []func([]byte) (Declaration, error){DecodeDescriptor, DecodeForwardingDescriptor, DecodeJoinDescriptor} {
-		if _, err := decode(want); err == nil {
+	for _, role := range []string{"source", "forwarding", "join"} {
+		if _, err := ValidateRuntimeResources(role, want, program, template); err == nil {
 			t.Fatal("another invocation accepted Descriptor")
 		}
 	}
@@ -30,7 +30,7 @@ func TestDescriptorArtifactIndependentBytesAndRoleSeparation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := DecodeDescriptorArtifact(foreign); err == nil {
+		if _, err := ValidateRuntimeResources("descriptor", foreign, program, template); err == nil {
 			t.Fatal("Descriptor accepted another invocation")
 		}
 	}
@@ -39,12 +39,12 @@ func TestDescriptorArtifactIndependentBytesAndRoleSeparation(t *testing.T) {
 		{"\"release_version\":3", "\"release_version\":0"}, {"\"files\":", "\"extra\":0,\"files\":"},
 		{"\"platform\":", "\"platform\":\"linux-amd64\",\"platform\":"},
 	} {
-		if _, err := DecodeDescriptorArtifact([]byte(strings.Replace(string(want), mutation.before, mutation.after, 1))); err == nil {
+		if _, err := ValidateRuntimeResources("descriptor", []byte(strings.Replace(string(want), mutation.before, mutation.after, 1)), program, template); err == nil {
 			t.Fatal("foreign or noncanonical Descriptor accepted", mutation)
 		}
 	}
 	for _, raw := range [][]byte{nil, append(bytes.Clone(want), '\n'), bytes.TrimSpace(want), bytes.Repeat([]byte("x"), (16<<10)+1)} {
-		if _, err := DecodeDescriptorArtifact(raw); err == nil {
+		if _, err := ValidateRuntimeResources("descriptor", raw, program, template); err == nil {
 			t.Fatal("noncanonical Descriptor accepted")
 		}
 	}

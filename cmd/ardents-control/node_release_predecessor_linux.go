@@ -18,8 +18,9 @@ import (
 // Original public custody only. A predecessor's detached versions are used for
 // bounded arithmetic, then genuine coherent Release verification must succeed
 // before any forward signature. No Source signing purpose or installed trust
-// lease is reused by this distinct Join producer.
-type joinReleasePredecessor struct {
+// lease is reused by these fixed-role producers.
+type nodeReleasePredecessor struct {
+	role                                              nodeReleaseRole
 	files                                             map[string][]byte
 	root                                              *metadata.Metadata[metadata.RootType]
 	timestampVersion, snapshotVersion, targetsVersion int64
@@ -27,15 +28,16 @@ type joinReleasePredecessor struct {
 	candidate                                         enrollment.InfrastructureCandidate
 }
 
-func readJoinReleasePredecessor(inputs *sourceControlInputs, path string, plan joinReleasePlan, candidate []byte) (*joinReleasePredecessor, error) {
-	if plan.Schema != "ardents-join-forward-release-plan-v1" {
+func readNodeReleasePredecessor(role nodeReleaseRole, inputs *sourceControlInputs, path string, plan fixedNodeReleasePlan, candidateVersion int64) (*nodeReleasePredecessor, error) {
+	namesForRole, ok := role.artifacts()
+	if !ok || plan.Schema != role.schema(nodeReleaseForward) {
 		return nil, errSourceControlInput
 	}
 	directory, err := inputs.directory(path)
 	if err != nil {
 		return nil, err
 	}
-	names := []string{infrastructure.ProgramName, infrastructure.JoinTemplateName, infrastructure.JoinDescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
+	names := []string{infrastructure.ProgramName, namesForRole.template, namesForRole.descriptor, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
 	check := func() error {
 		if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
 			return err
@@ -54,7 +56,7 @@ func readJoinReleasePredecessor(inputs *sourceControlInputs, path string, plan j
 	if err := check(); err != nil {
 		return nil, err
 	}
-	p := &joinReleasePredecessor{files: map[string][]byte{}, check: check}
+	p := &nodeReleasePredecessor{role: role, files: map[string][]byte{}, check: check}
 	p.candidate, err = enrollment.ReadInfrastructureCandidate(inputs.ctx, path)
 	if err != nil {
 		return nil, err
@@ -69,13 +71,12 @@ func readJoinReleasePredecessor(inputs *sourceControlInputs, path string, plan j
 			return nil, err
 		}
 	}
-	previous, err := infrastructure.ValidateJoinResources(p.files[infrastructure.JoinDescriptorName], p.files[infrastructure.ProgramName], p.files[infrastructure.JoinTemplateName])
+	previous, err := infrastructure.ValidateRuntimeResources(string(role), p.files[namesForRole.descriptor], p.files[infrastructure.ProgramName], p.files[namesForRole.template])
 	if err != nil {
 		return nil, err
 	}
-	next, err := infrastructure.DecodeJoinDescriptor(candidate)
-	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
-		return nil, errors.Join(errSourceControlInput, err)
+	if candidateVersion <= previous.ReleaseVersion {
+		return nil, errSourceControlInput
 	}
 	p.root, err = metadata.Root().FromBytes(p.files["root.json"])
 	if err != nil {
@@ -98,7 +99,7 @@ func readJoinReleasePredecessor(inputs *sourceControlInputs, path string, plan j
 	return p, errors.Join(check(), inputs.checkProtected(), p.candidate.Check())
 }
 
-func (p *joinReleasePredecessor) matchKeys(ids []string) error {
+func (p *nodeReleasePredecessor) matchKeys(ids []string) error {
 	if len(p.root.Signed.Keys) != 5 || len(ids) != 5 || len(p.root.Signed.Roles) != len(metadata.TOP_LEVEL_ROLE_NAMES) {
 		return errSourceControlInput
 	}
@@ -121,16 +122,20 @@ func (p *joinReleasePredecessor) matchKeys(ids []string) error {
 	return nil
 }
 
-func (p *joinReleasePredecessor) authenticate(ctx context.Context, v *release.Verifier, plan joinReleasePlan) error {
+func (p *nodeReleasePredecessor) authenticate(ctx context.Context, v *release.Verifier, plan fixedNodeReleasePlan) error {
+	namesForRole, ok := p.role.artifacts()
+	if !ok || plan.Schema != p.role.schema(nodeReleaseForward) {
+		return errSourceControlInput
+	}
 	files, err := release.StaticMetadataFiles(p.files["root.json"], p.files["timestamp.json"], p.files["snapshot.json"], p.files["targets.json"])
 	if err != nil {
 		return err
 	}
 	var proofs []release.Authorization
-	for n, target := range []string{infrastructure.ProgramTarget, infrastructure.JoinGenerationTarget} {
+	for n, target := range []string{infrastructure.ProgramTarget, namesForRole.target} {
 		artifact := p.files[infrastructure.ProgramName]
 		if n == 1 {
-			artifact = p.files[infrastructure.JoinDescriptorName]
+			artifact = p.files[namesForRole.descriptor]
 		}
 		decision := v.Evaluate(ctx, release.Inputs{RootBytes: p.files["root.json"], Files: files, TargetPath: target, Artifact: artifact,
 			Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}})
@@ -143,11 +148,31 @@ func (p *joinReleasePredecessor) authenticate(ctx context.Context, v *release.Ve
 	if err := v.CheckAuthorizations(ctx, proofs...); err != nil {
 		return err
 	}
-	a, err := infrastructure.AuthenticateJoinCandidate(ctx, v, p.candidate, release.Inputs{RootBytes: p.files["root.json"], Files: files,
+	input := release.Inputs{RootBytes: p.files["root.json"], Files: files,
 		TargetPath: infrastructure.ProgramTarget, Artifact: p.files[infrastructure.ProgramName],
-		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}})
-	if err != nil {
-		return err
+		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}}
+	var checkAuthorization func(context.Context, *release.Verifier) error
+	switch p.role {
+	case forwardingReleaseRole:
+		authorization, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, p.candidate, input)
+		if err != nil {
+			return err
+		}
+		checkAuthorization = authorization.Check
+	case joinReleaseRole:
+		authorization, err := infrastructure.AuthenticateJoinCandidate(ctx, v, p.candidate, input)
+		if err != nil {
+			return err
+		}
+		checkAuthorization = authorization.Check
+	case descriptorReleaseRole:
+		authorization, err := infrastructure.AuthenticateDescriptorCandidate(ctx, v, p.candidate, input)
+		if err != nil {
+			return err
+		}
+		checkAuthorization = authorization.Check
+	default:
+		return errSourceControlInput
 	}
-	return errors.Join(a.Check(ctx, v), p.check(), p.candidate.Check())
+	return errors.Join(checkAuthorization(ctx, v), p.check(), p.candidate.Check())
 }
