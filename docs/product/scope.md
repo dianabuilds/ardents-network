@@ -144,7 +144,8 @@ controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
 The headless bundle delivers `ardents` and `ardents-custody`. Infrastructure
-preparation uses offline `ardents-control` tooling. Protected text execution
+public artifact preparation uses offline `ardents-next infrastructure`. The
+fixed Release plans and signing still use offline `ardents-control` tooling. Protected text execution
 uses the fixed `ardents-text` worker. Operator instructions must not
 require editing JSON, extracting test-fixture keys, knowing package names, or
 reading ADRs to discover command order.

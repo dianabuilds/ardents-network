@@ -102,8 +102,9 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/source_output_linux.go",
 			"cmd/ardents-control/source_inspection_linux.go",
 			"cmd/ardents-control/source_inspection_linux_test.go",
-			"cmd/ardents-control/source_artifact_linux.go",
-			"cmd/ardents-control/join_artifact_linux.go",
+			"cmd/ardents-next/infrastructure_linux.go",
+			"cmd/ardents-control/descriptor_command_linux.go",
+			"cmd/ardents-control/join_command_linux.go",
 			"cmd/ardents-control/join_release_keys_linux.go",
 			"cmd/ardents-control/infrastructure_release_keys_linux.go",
 			"cmd/ardents-control/join_release_plan_linux.go",
@@ -112,7 +113,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/join_release_predecessor_linux.go",
 			"cmd/ardents-control/join_release_plan_linux_test.go",
 			"internal/release/infrastructure/join_admission.go",
-			"cmd/ardents-control/forwarding_artifact_linux.go",
+			"cmd/ardents-control/forwarding_command_linux.go",
 			"cmd/ardents-control/source_artifact_output_linux.go",
 			"cmd/ardents-control/source_release_linux.go",
 			"cmd/ardents-control/source_release_predecessor_linux.go",
@@ -165,6 +166,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 			for _, name := range []string{
 				"internal/network/state/source_inspection_native_linux_test.go",
+				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 				"cmd/ardents-control/join_release_native_linux_test.go",
 				"cmd/ardents-control/join_forward_release_native_linux_test.go",
 				"internal/network/state/node_inspection_native_linux_test.go",
@@ -638,15 +640,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_release_plan_linux.go" && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
 		}
-		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release/infrastructure") {
-			return true
-		}
-		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release/infrastructure") {
-			return true
-		}
-		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release/infrastructure") {
-			return true
-		}
 		if (source == "cmd/ardents-control/join_release_plan_linux.go" || source == "cmd/ardents-control/join_release_native_linux_test.go") && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
 		}
@@ -666,9 +659,6 @@ func successorImportAllowed(source, dependency string) bool {
 			case modulePath + "/internal/enrollment", modulePath + "/internal/release/infrastructure", modulePath + "/internal/release", "github.com/theupdateframework/go-tuf/v2/metadata":
 				return true
 			}
-		}
-		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release/infrastructure") {
-			return true
 		}
 		if dependency == modulePath+"/internal/network/epoch" {
 			switch source {

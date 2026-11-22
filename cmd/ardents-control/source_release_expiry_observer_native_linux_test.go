@@ -57,9 +57,7 @@ func exerciseSourceReleaseExpiryObserver(t *testing.T, input sourceTimestampNati
 		}
 	}
 	inventory := filepath.Join(input.parent, "timestamp-wall-inventory")
-	if _, err := prepareSourceArtifact(t.Context(), []string{"prepare-inventory", distribution, inventory}, nil); err != nil {
-		t.Fatal(err)
-	}
+	runInfrastructureFixtureCommand(t, input.nextProgram, "prepare-inventory", distribution, inventory)
 	raw, err = os.ReadFile(filepath.Join(inventory, "infrastructure-enrollment.json"))
 	if err != nil {
 		t.Fatal(err)

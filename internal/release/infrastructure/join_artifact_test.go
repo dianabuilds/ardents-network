@@ -13,7 +13,7 @@ func TestJoinDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 	program, template := []byte("JOIN program"), []byte("JOIN unit")
 	p, u := sha256.Sum256(program), sha256.Sum256(template)
 	want := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"one\",\"release_version\":3,\"invocation\":\"join\",\"files\":{\"ardents-join.service\":\"%s\",\"ardents-node-linux-amd64\":\"%s\"}}\n", hex.EncodeToString(u[:]), hex.EncodeToString(p[:])))
-	got, err := PrepareJoinDescriptor("one", 3, program, template)
+	got, err := PrepareRuntimeDescriptor("join", "one", 3, program, template)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("independent JOIN bytes %q: %v", got, err)
 	}
@@ -25,8 +25,8 @@ func TestJoinDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 			t.Fatal("another invocation accepted JOIN")
 		}
 	}
-	for _, prepare := range []func(string, int64, []byte, []byte) ([]byte, error){PrepareDescriptor, PrepareForwardingDescriptor} {
-		foreign, err := prepare("one", 3, program, template)
+	for _, role := range []string{"source", "forwarding"} {
+		foreign, err := PrepareRuntimeDescriptor(role, "one", 3, program, template)
 		if err != nil {
 			t.Fatal(err)
 		}

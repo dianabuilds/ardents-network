@@ -88,7 +88,7 @@ func persistNetworkFiles(ctx context.Context, path string, artifacts []networkOu
 	}()
 	verify := func(o output) error {
 		info, e := o.file.Stat()
-		if e != nil || !os.SameFile(o.info, info) || !signingFileAllowed(info, true) {
+		if e != nil || !sameNetworkOutput(o.info, info) {
 			return errors.Join(errNetworkSigning, e)
 		}
 		saved := make([]byte, len(o.artifact.raw)+1)
@@ -105,7 +105,7 @@ func persistNetworkFiles(ctx context.Context, path string, artifacts []networkOu
 		}
 		linked, se := link.Stat()
 		e = errors.Join(se, link.Close())
-		if e != nil || !os.SameFile(o.info, linked) || !signingFileAllowed(linked, true) {
+		if e != nil || !sameNetworkOutput(o.info, linked) {
 			return errors.Join(errNetworkSigning, e)
 		}
 		return nil
@@ -119,7 +119,7 @@ func persistNetworkFiles(ctx context.Context, path string, artifacts []networkOu
 			return e
 		}
 		original, e := f.Stat()
-		if e != nil || !signingFileAllowed(original, true) {
+		if e != nil || !networkOutputAllowed(original, 0) {
 			return errors.Join(errNetworkSigning, e, f.Close())
 		}
 		if e = barrier("file-created", f); e != nil {
@@ -131,13 +131,17 @@ func persistNetworkFiles(ctx context.Context, path string, artifacts []networkOu
 		}
 		be := barrier("written", f)
 		se := f.Sync()
+		finished, ve := f.Stat()
+		if ve == nil && (!os.SameFile(original, finished) || !networkOutputAllowed(finished, int64(len(a.raw)))) {
+			ve = errNetworkSigning
+		}
 		// Capture a matching original reader before joining the writer Close.
 		r, re := openPreparationAt(d, a.name, syscall.O_RDONLY, 0)
 		ce := f.Close()
 		if r != nil {
-			outputs = append(outputs, output{a, r, original})
+			outputs = append(outputs, output{a, r, finished})
 		}
-		err = errors.Join(we, be, se, re, ce, barrier("closed", d))
+		err = errors.Join(we, be, se, ve, re, ce, barrier("closed", d))
 		if err != nil {
 			return err
 		}
@@ -181,4 +185,16 @@ func persistNetworkFiles(ctx context.Context, path string, artifacts []networkOu
 		return err
 	}
 	return errors.Join(inventory(), ctx.Err())
+}
+
+func networkOutputAllowed(info os.FileInfo, size int64) bool {
+	return signingFileAllowed(info, true) && info.Size() == size && info.Sys().(*syscall.Stat_t).Gid == 0
+}
+
+func sameNetworkOutput(original, current os.FileInfo) bool {
+	if !os.SameFile(original, current) || !networkOutputAllowed(current, original.Size()) {
+		return false
+	}
+	before, after := original.Sys().(*syscall.Stat_t), current.Sys().(*syscall.Stat_t)
+	return before.Ctim == after.Ctim && before.Mtim == after.Mtim
 }

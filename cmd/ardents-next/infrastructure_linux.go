@@ -29,6 +29,8 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return 130
 	}
 	if args[0] == "prepare-descriptor" || args[0] == "prepare-runtime-descriptor" || args[0] == "prepare-runtime-inventory" || args[0] == "prepare-inventory" {
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
 		raw, err := executeInfrastructurePreparation(ctx, args, nil)
 		if err != nil {
 			return enrollmentReport(out, "infrastructure-preparation-refused", 1)
@@ -105,6 +107,20 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 	if ctx == nil || os.Geteuid() != 0 || len(args) == 0 {
 		return nil, infrastructure.ErrInput
 	}
+	operation, args := args[0], args[1:]
+	invocation := "source"
+	if operation == "prepare-runtime-descriptor" || operation == "prepare-runtime-inventory" {
+		if len(args) == 0 {
+			return nil, infrastructure.ErrInput
+		}
+		invocation, args = args[0], args[1:]
+	}
+	switch invocation {
+	case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
+	default:
+		return nil, infrastructure.ErrInput
+	}
+	templateName, descriptorName := "ardents-"+invocation+".service", "infrastructure-"+invocation+".json"
 	var inputs []*signingInput
 	defer func() {
 		for i := len(inputs) - 1; i >= 0; i-- {
@@ -116,153 +132,139 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 		}
 	}()
 	read := func(path string, maximum int64) ([]byte, error) {
-		if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+		if !infrastructurePreparationPath(path) {
 			return nil, infrastructure.ErrInput
 		}
-		s, e := openSigningInput(ctx, path, maximum, false)
-		if e != nil {
-			return nil, e
+		input, err := openSigningInput(ctx, path, maximum, false)
+		if err != nil {
+			return nil, err
 		}
-		inputs = append(inputs, s)
-		return s.raw, nil
+		inputs = append(inputs, input)
+		if err := requirePreparationExt4(input.file); err != nil {
+			return nil, err
+		}
+		return input.raw, nil
+	}
+	var checkDistribution func() error
+	checkIdentities := func() error {
+		var err error
+		if checkDistribution != nil {
+			err = checkDistribution()
+		}
+		// A later content or directory read must not hide replacement of an
+		// earlier input before the result is handed back to the caller.
+		for _, input := range inputs {
+			err = errors.Join(err, input.checkIdentity(ctx))
+		}
+		return errors.Join(err, ctx.Err())
 	}
 	check := func() error {
-		var e error
-		for _, s := range inputs {
-			e = errors.Join(e, s.check(ctx))
+		var err error
+		for _, input := range inputs {
+			err = errors.Join(err, input.check(ctx))
 		}
-		return errors.Join(e, ctx.Err())
+		return errors.Join(err, checkIdentities())
 	}
 	var destination, name string
-	switch args[0] {
-	case "prepare-runtime-descriptor":
-		if len(args) != 7 {
+	switch operation {
+	case "prepare-descriptor", "prepare-runtime-descriptor":
+		if len(args) != 5 || !infrastructurePreparationPath(args[4]) {
 			return nil, infrastructure.ErrInput
 		}
-		version, e := strconv.ParseInt(args[3], 10, 64)
-		if e != nil || strconv.FormatInt(version, 10) != args[3] {
+		version, parseErr := strconv.ParseInt(args[1], 10, 64)
+		if parseErr != nil || strconv.FormatInt(version, 10) != args[1] {
 			return nil, infrastructure.ErrInput
 		}
-		program, e := read(args[4], 64<<20)
-		if e != nil {
-			return nil, e
+		program, readErr := read(args[2], 64<<20)
+		if readErr != nil {
+			return nil, readErr
 		}
-		template, e := read(args[5], 64<<20)
-		if e != nil {
-			return nil, e
+		template, readErr := read(args[3], 64<<20)
+		if readErr != nil {
+			return nil, readErr
 		}
-		result, err = infrastructure.PrepareRuntimeDescriptor(args[1], args[2], version, program, template)
-		destination, name = args[6], "infrastructure-"+args[1]+".json"
-	case "prepare-descriptor":
-		if len(args) != 6 {
-			return nil, infrastructure.ErrInput
+		result, err = infrastructure.PrepareRuntimeDescriptor(invocation, args[0], version, program, template)
+		if err != nil {
+			return nil, err
 		}
-		version, e := strconv.ParseInt(args[2], 10, 64)
-		if e != nil || strconv.FormatInt(version, 10) != args[2] {
-			return nil, infrastructure.ErrInput
-		}
-		program, e := read(args[3], 64<<20)
-		if e != nil {
-			return nil, e
-		}
-		template, e := read(args[4], 64<<20)
-		if e != nil {
-			return nil, e
-		}
-		result, err = infrastructure.PrepareDescriptor(args[1], version, program, template)
-		destination, name = args[5], infrastructure.DescriptorName
+		destination, name = args[4], descriptorName
 	case "prepare-inventory", "prepare-runtime-inventory":
-		invocation := "source"
-		if args[0] == "prepare-runtime-inventory" {
-			if len(args) != 4 {
-				return nil, infrastructure.ErrInput
-			}
-			invocation = args[1]
-			args = []string{args[0], args[2], args[3]}
-		}
-		switch invocation {
-		case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
-		default:
+		if len(args) != 2 || !infrastructurePreparationPath(args[0]) || !infrastructurePreparationPath(args[1]) ||
+			args[1] == args[0] || strings.HasPrefix(args[1], args[0]+"/") {
 			return nil, infrastructure.ErrInput
 		}
-		if len(args) != 3 || !absoluteAdmissionPath(args[1]) {
-			return nil, infrastructure.ErrInput
-		}
-		if args[2] == args[1] || strings.HasPrefix(args[2], args[1]+string(filepath.Separator)) {
-			return nil, infrastructure.ErrInput
-		}
-		p, e := openPreparationParent(args[1])
-		if e != nil {
-			return nil, e
+		distribution, openErr := openPreparationParent(args[0])
+		if openErr != nil {
+			return nil, openErr
 		}
 		defer func() {
-			err = errors.Join(err, p.close())
+			err = errors.Join(err, distribution.close())
 			if err != nil {
 				result = nil
 			}
 		}()
-		entries, e := p.parent().ReadDir(8)
-		if e != nil && e != io.EOF {
-			return nil, e
+		wanted := map[string]int64{
+			infrastructure.ProgramName: 64 << 20,
+			templateName:               64 << 20,
+			descriptorName:             16 << 10,
+			"root.json":                1 << 20,
+			"timestamp.json":           1 << 20,
+			"snapshot.json":            1 << 20,
+			"targets.json":             1 << 20,
 		}
-		if len(entries) != 7 {
-			return nil, infrastructure.ErrInput
-		}
-		templateName, descriptorName := "ardents-"+invocation+".service", "infrastructure-"+invocation+".json"
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, templateName: 64 << 20, descriptorName: 16 << 10, "root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
-		files := map[string][]byte{}
-		for _, entry := range entries {
-			limit, ok := wanted[entry.Name()]
-			if !ok {
-				return nil, infrastructure.ErrInput
+		checkDistribution = func() error {
+			if err := signingAncestors(distribution); err != nil {
+				return err
 			}
-			files[entry.Name()], e = read(filepath.Join(args[1], entry.Name()), limit)
-			if e != nil {
-				return nil, e
+			if _, err := distribution.parent().Seek(0, io.SeekStart); err != nil {
+				return err
 			}
-		}
-		var d infrastructure.Declaration
-		if json.Unmarshal(files[descriptorName], &d) != nil || d.Invocation != invocation {
-			return nil, infrastructure.ErrBinding
-		}
-		// A preparation inventory cannot silently bless different descriptor resources.
-		canonical, e := infrastructure.PrepareRuntimeDescriptor(invocation, d.ReleaseIdentity, d.ReleaseVersion, files[infrastructure.ProgramName], files[templateName])
-		if e != nil || string(canonical) != string(files[descriptorName]) {
-			return nil, infrastructure.ErrBinding
-		}
-		result, err = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, files)
-		destination, name = args[2], enrollment.InfrastructureInventoryName
-		originalCheck := check
-		check = func() error {
-			if e := originalCheck(); e != nil {
-				return e
+			names, err := distribution.parent().Readdirnames(8)
+			if (err != nil && err != io.EOF) || len(names) != len(wanted) {
+				return errors.Join(infrastructure.ErrBinding, err)
 			}
-			if e := p.check(); e != nil {
-				return e
-			}
-			if _, e := p.parent().Seek(0, io.SeekStart); e != nil {
-				return e
-			}
-			current, e := p.parent().ReadDir(8)
-			if (e != nil && e != io.EOF) || len(current) != 7 {
-				return infrastructure.ErrBinding
-			}
-			for _, entry := range current {
-				if _, ok := wanted[entry.Name()]; !ok {
+			for _, name := range names {
+				if _, ok := wanted[name]; !ok {
 					return infrastructure.ErrBinding
 				}
 			}
 			return nil
 		}
+		if err := checkDistribution(); err != nil {
+			return nil, err
+		}
+		files := make(map[string][]byte, len(wanted))
+		for name, limit := range wanted {
+			files[name], err = read(filepath.Join(args[0], name), limit)
+			if err != nil {
+				return nil, err
+			}
+		}
+		declaration, bindingErr := infrastructure.ValidateRuntimeResources(invocation, files[descriptorName], files[infrastructure.ProgramName], files[templateName])
+		if bindingErr != nil {
+			return nil, bindingErr
+		}
+		result, err = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{
+			Platform: declaration.Platform, ReleaseIdentity: declaration.ReleaseIdentity,
+			ReleaseVersion: declaration.ReleaseVersion, Invocation: declaration.Invocation,
+		}, files)
+		if err != nil {
+			return nil, err
+		}
+		destination, name = args[1], enrollment.InfrastructureInventoryName
 	default:
 		return nil, infrastructure.ErrInput
-	}
-	if err != nil {
-		return nil, err
 	}
 	if err = check(); err != nil {
 		return nil, err
 	}
-	err = persistNetworkFiles(ctx, destination, []networkOutputFile{{name: name, raw: result}}, false, check, observe)
-	return result, err
+	if err = persistNetworkFiles(ctx, destination, []networkOutputFile{{name: name, raw: result}}, false, check, observe); err != nil {
+		return nil, err
+	}
+	return result, checkIdentities()
+}
+
+func infrastructurePreparationPath(path string) bool {
+	return path != "/" && len(path) <= 4096 && !strings.ContainsRune(path, 0) &&
+		strings.Count(path, "/") < 128 && absoluteAdmissionPath(path)
 }

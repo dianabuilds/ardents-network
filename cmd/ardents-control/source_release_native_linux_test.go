@@ -38,6 +38,15 @@ func sourceNativePinnedProgram(t *testing.T, variable string) (string, []byte) {
 // Fresh real signatures and actual canonical binaries exercise this closed
 // offline purpose. Fixture build/qualification declarations are controlled
 // inputs, not operational rebuild evidence or installed qualification.
+func runInfrastructureFixtureCommand(t *testing.T, program string, args ...string) {
+	t.Helper()
+	command := exec.CommandContext(t.Context(), program, append([]string{"infrastructure"}, args...)...)
+	output, err := command.CombinedOutput()
+	if err != nil || !bytes.Contains(output, []byte(`"outcome":"infrastructure-public-prepared"`)) {
+		t.Fatalf("public infrastructure preparation %q: %v %s", args, err, output)
+	}
+}
+
 func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	parent := sourceArtifactNativeParent(t)
 	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_CONTROL_PROGRAM")
@@ -52,7 +61,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareDescriptor("one", 1, nextBytes, []byte(systemd.PlatformUnitTemplate))
+	descriptorBytes, err := infrastructure.PrepareRuntimeDescriptor("source", "one", 1, nextBytes, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,9 +208,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 		}
 	}
 	inventoryOutput := filepath.Join(parent, "previous-inventory")
-	if _, err := prepareSourceArtifact(t.Context(), []string{"prepare-inventory", previous, inventoryOutput}, nil); err != nil {
-		t.Fatal(err)
-	}
+	runInfrastructureFixtureCommand(t, nextPath, "prepare-inventory", previous, inventoryOutput)
 	inventoryRaw, err := os.ReadFile(filepath.Join(inventoryOutput, "infrastructure-enrollment.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -209,9 +216,9 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if err := os.WriteFile(filepath.Join(previous, "infrastructure-enrollment.json"), inventoryRaw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	exerciseSourceTimestampRefresh(t, sourceTimestampNativeInput{command: command, planPath: planPath, keys: keyRoot,
+	exerciseSourceTimestampRefresh(t, sourceTimestampNativeInput{command: command, nextProgram: nextPath, planPath: planPath, keys: keyRoot,
 		parent: parent, distribution: previous, plan: plan, program: nextBytes, descriptor: descriptorBytes})
-	forwardDescriptor, err := infrastructure.PrepareDescriptor("two", 2, nextBytes, preparedTemplate)
+	forwardDescriptor, err := infrastructure.PrepareRuntimeDescriptor("source", "two", 2, nextBytes, preparedTemplate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -290,7 +297,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareDescriptor("one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
+	badDescriptor, err := infrastructure.PrepareRuntimeDescriptor("source", "one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

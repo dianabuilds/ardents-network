@@ -13,7 +13,7 @@ func TestDescriptorArtifactIndependentBytesAndRoleSeparation(t *testing.T) {
 	program, template := []byte("Descriptor program"), []byte("Descriptor unit")
 	p, u := sha256.Sum256(program), sha256.Sum256(template)
 	want := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"one\",\"release_version\":3,\"invocation\":\"descriptor\",\"files\":{\"ardents-descriptor.service\":\"%s\",\"ardents-node-linux-amd64\":\"%s\"}}\n", hex.EncodeToString(u[:]), hex.EncodeToString(p[:])))
-	got, err := PrepareDescriptorArtifact("one", 3, program, template)
+	got, err := PrepareRuntimeDescriptor("descriptor", "one", 3, program, template)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("independent Descriptor bytes %q: %v", got, err)
 	}
@@ -25,8 +25,8 @@ func TestDescriptorArtifactIndependentBytesAndRoleSeparation(t *testing.T) {
 			t.Fatal("another invocation accepted Descriptor")
 		}
 	}
-	for _, prepare := range []func(string, int64, []byte, []byte) ([]byte, error){PrepareDescriptor, PrepareForwardingDescriptor, PrepareJoinDescriptor} {
-		foreign, err := prepare("one", 3, program, template)
+	for _, role := range []string{"source", "forwarding", "join"} {
+		foreign, err := PrepareRuntimeDescriptor(role, "one", 3, program, template)
 		if err != nil {
 			t.Fatal(err)
 		}

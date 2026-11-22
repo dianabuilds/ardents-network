@@ -91,15 +91,12 @@ receipts mark State acceptance, installed qualification and runtime authority
 false. These are fixed offline Node purposes, with no Source/Next backend,
 generic signer, exported private key or accepting State/process right.
 
-On Linux, canonical `ardents-control forwarding prepare-descriptor
+On Linux, `ardents-next infrastructure prepare-runtime-descriptor forwarding
 <release-identity> <positive-version> <program> <unit-template> <fresh-output>`
-writes `infrastructure-forwarding.json`. `ardents-control forwarding
-prepare-inventory <seven-file-directory> <fresh-output>` writes the separate
-`infrastructure-enrollment.json`; the input directory contains exactly the Node
-program, Forwarding template/descriptor and four Release metadata files. Both
-operations require root-controlled original inputs/ancestors and create exclusive
-protected output. Their public SHA-256 result confirms byte preparation only;
-it grants no signature, first-pin provenance, installation or runtime right.
+writes `infrastructure-forwarding.json`. The corresponding
+`infrastructure prepare-runtime-inventory forwarding` command consumes the
+exact seven-file distribution and writes `infrastructure-enrollment.json`.
+Both operations retain root-controlled originals through durable readback.
 `forwarding prepare-hosting`, `forwarding prepare-state`,
 `forwarding prepare-template`, `forwarding prepare-request` and
 `forwarding prepare-plan` were removed with the
@@ -177,11 +174,13 @@ signatures and diagnostic floors remain separate from the platform-led
 lifecycle's actual retained trust, forward program change and bootstrap
 acceptance. Existing partial output or diagnostic history is never reused.
 
-The Linux-amd64 component commands below implement the Source artifact boundary
-under accepted ADR-0123 through direct new owners in `ardents-next`:
+The Linux-amd64 infrastructure commands in `ardents-next` implement public
+artifact preparation and separate Source authentication under ADR-0123:
 
 - `infrastructure prepare-descriptor <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes `infrastructure-source.json`.
 - `infrastructure prepare-inventory <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json`, after actual signed metadata are supplied.
+- `infrastructure prepare-runtime-descriptor <role> <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes the exact descriptor for the selected role.
+- `infrastructure prepare-runtime-inventory <role> <seven-file-directory> <fresh-output>` writes the corresponding inventory. The fixed roles are `source`, `forwarding`, `issuer`, `descriptor`, `introduction` and `join`.
 - `infrastructure authenticate-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time>` checks its actual executing artifact and two fresh Release proofs.
 - `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
 
@@ -670,8 +669,8 @@ bootstrap/public receipts contain only their reviewed finite commitments and lim
 Canonical public Source artifact preparation uses:
 
 ```text
-ardents-control source prepare-descriptor RELEASE_ID VERSION PROGRAM TEMPLATE FRESH_OUTPUT
-ardents-control source prepare-inventory SEVEN_FILE_DISTRIBUTION FRESH_OUTPUT
+ardents-next infrastructure prepare-descriptor RELEASE_ID VERSION PROGRAM TEMPLATE FRESH_OUTPUT
+ardents-next infrastructure prepare-inventory SEVEN_FILE_DISTRIBUTION FRESH_OUTPUT
 ```
 
 These Linux root operations retain original protected native ext4 inputs and
@@ -1052,8 +1051,8 @@ background/output failure; real retained process and cleanup errors remain faile
 On Linux, root may run these separate bounded offline producers:
 
 ```text
-ardents-control join prepare-descriptor IDENTITY VERSION PROGRAM TEMPLATE OUTPUT
-ardents-control join prepare-inventory DISTRIBUTION OUTPUT
+ardents-next infrastructure prepare-runtime-descriptor join IDENTITY VERSION PROGRAM TEMPLATE OUTPUT
+ardents-next infrastructure prepare-runtime-inventory join DISTRIBUTION OUTPUT
 ```
 
 The first operation exclusively creates `OUTPUT/infrastructure-join.json`,
@@ -1063,9 +1062,9 @@ unit policy. The second requires exactly `ardents-node-linux-amd64`,
 `snapshot.json` and `targets.json`, checks descriptor/resource agreement and
 exclusively creates `OUTPUT/infrastructure-enrollment.json`. OUTPUT is a fresh
 protected directory outside the distribution; existing or partial output is
-refused. Original root-controlled regular inputs and ancestors remain checked
-through durable output and physical Close. Public receipts report the operation
-and output digest only.
+refused. Original root-controlled ext4 inputs and ancestors remain checked through
+durable output and physical Close. The receipt reports the preparation outcome
+and public output digest.
 
 Neither operation signs metadata, supplies an independently delivered initial
 pin, authenticates a Release, or admits installed JOIN execution. Source and
@@ -1167,13 +1166,13 @@ lifecycle (`ardents-next node descriptor --retained-config`,
 and the `installation/descriptor` package are removed; Descriptor was the last
 canonical installed role consumer.
 
-Linux canonical Control retains these fixed offline artifact/signing commands
+These are the fixed Linux offline preparation and signing commands
 (fresh OUTPUT directories; original inputs must have protected root-owned
 ancestors):
 
 ```text
-ardents-control descriptor prepare-artifact ID VERSION PROGRAM TEMPLATE OUTPUT
-ardents-control descriptor prepare-inventory DISTRIBUTION OUTPUT
+ardents-next infrastructure prepare-runtime-descriptor descriptor ID VERSION PROGRAM TEMPLATE OUTPUT
+ardents-next infrastructure prepare-runtime-inventory descriptor DISTRIBUTION OUTPUT
 ardents-control descriptor prepare-release-keys FRESH_PRIVATE_KEYS
 ardents-control descriptor prepare-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
 ardents-control descriptor prepare-forward-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
@@ -1190,7 +1189,7 @@ cutover the bound program is the static Linux-amd64 `ardents-next` binary and th
 bound template is that canonical platform unit template; the signer refuses a
 substituted program or template. The exact immutable resources are
 `infrastructure-descriptor.json` and `ardents-descriptor.service` alongside the
-program and four Release metadata files. `prepare-artifact` binds supplied
+program and four Release metadata files. `prepare-runtime-descriptor` binds supplied
 program/template bytes; it neither validates loaded unit policy nor signs
 metadata. `sign-forward-release` independently verifies the exact original signed
 predecessor and unchanged root/key purposes before raising

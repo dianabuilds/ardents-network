@@ -77,7 +77,7 @@ func TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t
 			t.Fatal(err)
 		}
 		descriptorDir := filepath.Join(base, "descriptor")
-		call("prepare-artifact", fmt.Sprintf("forward-%d", version), fmt.Sprint(version), program, template, descriptorDir)
+		runInfrastructureFixtureCommand(t, program, "prepare-runtime-descriptor", "descriptor", fmt.Sprintf("forward-%d", version), fmt.Sprint(version), program, template, descriptorDir)
 		descriptor := filepath.Join(descriptorDir, "infrastructure-descriptor.json")
 		programClaims, generationClaims := filepath.Join(base, "program-claims"), filepath.Join(base, "generation-claims")
 		write(programClaims, claims(version, nextBytes))
@@ -128,7 +128,7 @@ func TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t
 			write(filepath.Join(distribution, name), raw)
 		}
 		inventory := filepath.Join(base, "inventory")
-		call("prepare-inventory", distribution, inventory)
+		runInfrastructureFixtureCommand(t, program, "prepare-runtime-inventory", "descriptor", distribution, inventory)
 		write(filepath.Join(distribution, "infrastructure-enrollment.json"), read(filepath.Join(inventory, "infrastructure-enrollment.json")))
 		if version > 1 {
 			for _, fault := range []string{"same-predecessor", "changed-keys"} {

@@ -1561,22 +1561,20 @@
           "internal/release/infrastructure.DecodeDescriptorArtifact",
           "internal/release/infrastructure.DecodeForwardingDescriptor",
           "internal/release/infrastructure.DecodeJoinDescriptor",
-          "internal/release/infrastructure.PrepareDescriptor",
-          "internal/release/infrastructure.PrepareDescriptorArtifact",
-          "internal/release/infrastructure.PrepareForwardingDescriptor",
-          "internal/release/infrastructure.PrepareJoinDescriptor",
           "internal/release/infrastructure.PrepareRuntimeDescriptor",
           "internal/release/infrastructure.ValidateDescriptorResources",
           "internal/release/infrastructure.ValidateForwardingResources",
           "internal/release/infrastructure.ValidateJoinResources",
           "internal/release/infrastructure.ValidateResources",
+          "internal/release/infrastructure.ValidateRuntimeResources",
           "internal/release/infrastructure.decodeDescriptor",
           "internal/release/infrastructure.digest",
           "internal/release/infrastructure.prepareDescriptor",
-          "internal/release/infrastructure.runtimeNames"
+          "internal/release/infrastructure.runtimeNames",
+          "internal/release/infrastructure.validateResources"
         ],
         "classification": "Portable code used by current Linux command compositions",
-        "rationale": "Descriptor preparation and verification are portable. The authorized Control and platform deployment entry points currently consume them on Linux.",
+        "rationale": "Descriptor encoding and public resource validation are portable. The ardents-next public preparation and platform admission paths and the fixed Control Release signers use these codecs on Linux. Windows refuses those native operations before effects and still runs the portable codec tests.",
         "owner": "Infrastructure artifact codec",
         "retirement": "Remove the entry when a maintained Windows production caller reaches the function."
       }

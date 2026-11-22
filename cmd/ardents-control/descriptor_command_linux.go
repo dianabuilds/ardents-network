@@ -10,12 +10,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 type descriptorControlFailure struct{ cause error }
@@ -42,7 +38,7 @@ func runDescriptorControl(args []string, out io.Writer) error {
 		return runDescriptorReleaseSigning(args[1:], out)
 	case "sign-forward-release":
 		return runDescriptorReleasePurpose(args[1:], out, descriptorReleaseForward)
-	case "prepare-artifact", "prepare-inventory", "prepare-release-plan", "prepare-forward-release-plan":
+	case "prepare-release-plan", "prepare-forward-release-plan":
 	default:
 		return &descriptorControlFailure{errSourceControlInput}
 	}
@@ -50,7 +46,7 @@ func runDescriptorControl(args []string, out io.Writer) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	raw, err := prepareDescriptorArtifact(ctx, args, nil)
+	raw, err := writeDescriptorReleasePlan(ctx, args)
 	if err != nil {
 		return &descriptorControlFailure{err}
 	}
@@ -65,7 +61,7 @@ func runDescriptorControl(args []string, out io.Writer) error {
 	return writeSourceControlBytes(ctx, out, append(receipt, '\n'))
 }
 
-func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(string, *os.File)) (result []byte, returned error) {
+func writeDescriptorReleasePlan(ctx context.Context, args []string) (result []byte, returned error) {
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) == 0 {
 		return nil, errSourceControlInput
 	}
@@ -76,57 +72,20 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 			result = nil
 		}
 	}()
-	var name, destination string
-	check := inputs.checkProtected
+	var destination string
 	switch args[0] {
 	case "prepare-forward-release-plan":
 		result, destination, returned = descriptorReleasePurposeArguments(args[1:], inputs, descriptorReleaseForward)
-		name = "descriptor-release-plan.json"
 	case "prepare-release-plan":
 		result, destination, returned = descriptorReleasePlanArguments(args[1:], inputs)
-		name = "descriptor-release-plan.json"
-	case "prepare-artifact":
-		if len(args) != 6 {
-			return nil, errSourceControlInput
-		}
-		version, err := strconv.ParseInt(args[2], 10, 64)
-		if err != nil || strconv.FormatInt(version, 10) != args[2] {
-			return nil, errSourceControlInput
-		}
-		program, err := inputs.read(args[3], 64<<20)
-		if err != nil {
-			return nil, err
-		}
-		template, err := inputs.read(args[4], 64<<20)
-		if err != nil {
-			return nil, err
-		}
-		result, returned = infrastructure.PrepareDescriptorArtifact(args[1], version, program, template)
-		name, destination = infrastructure.DescriptorArtifactName, args[5]
-	case "prepare-inventory":
-		if len(args) != 3 {
-			return nil, errSourceControlInput
-		}
-		files, checkInventory, err := inputs.readInfrastructureInventory(args[1], args[2],
-			infrastructure.ProgramName, infrastructure.DescriptorTemplateName, infrastructure.DescriptorArtifactName)
-		if err != nil {
-			return nil, err
-		}
-		d, err := infrastructure.ValidateDescriptorResources(files[infrastructure.DescriptorArtifactName], files[infrastructure.ProgramName], files[infrastructure.DescriptorTemplateName])
-		if err != nil {
-			return nil, err
-		}
-		result, returned = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, files)
-		name, destination = enrollment.InfrastructureInventoryName, args[2]
-		check = checkInventory
 	default:
 		return nil, errSourceControlInput
 	}
 	if returned != nil {
 		return nil, returned
 	}
-	if returned = persistSourceArtifacts(ctx, destination, []sourceArtifactFile{{name, result}}, check, observe); returned != nil {
+	if returned = persistSourceArtifacts(ctx, destination, []sourceArtifactFile{{"descriptor-release-plan.json", result}}, inputs.checkProtected, nil); returned != nil {
 		return nil, returned
 	}
-	return bytes.Clone(result), check()
+	return bytes.Clone(result), inputs.checkProtected()
 }

@@ -38,7 +38,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareForwardingDescriptor("one", 1, nextBytes, []byte(systemd.PlatformUnitTemplate))
+	descriptorBytes, err := infrastructure.PrepareRuntimeDescriptor("forwarding", "one", 1, nextBytes, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,7 +236,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
+	badDescriptor, err := infrastructure.PrepareRuntimeDescriptor("forwarding", "one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

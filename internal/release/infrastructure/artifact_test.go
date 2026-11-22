@@ -13,18 +13,25 @@ func TestCanonicalDescriptorIndependentOracle(t *testing.T) {
 	p, u := []byte("program"), []byte("closed public template")
 	ps, us := sha256.Sum256(p), sha256.Sum256(u)
 	want := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"release-one\",\"release_version\":7,\"invocation\":\"source\",\"files\":{\"ardents-node-linux-amd64\":\"%s\",\"ardents-source.service\":\"%s\"}}\n", hex.EncodeToString(ps[:]), hex.EncodeToString(us[:])))
-	got, err := PrepareDescriptor("release-one", 7, p, u)
+	got, err := PrepareRuntimeDescriptor("source", "release-one", 7, p, u)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("canonical bytes %s %v", got, err)
 	}
 	if _, err := DecodeDescriptor(want); err != nil {
 		t.Fatal(err)
 	}
-	if runtime, err := PrepareRuntimeDescriptor("source", "release-one", 7, p, u); err != nil || !bytes.Equal(runtime, want) {
-		t.Fatalf("runtime descriptor differs: %s %v", runtime, err)
-	}
 	if _, err := ValidateResources(want, p, u); err != nil {
 		t.Fatal(err)
+	}
+	resources, err := ValidateRuntimeResources("source", want, p, u)
+	if err != nil || resources.Invocation != "source" || resources.ReleaseIdentity != "release-one" || resources.ReleaseVersion != 7 {
+		t.Fatalf("portable runtime resource declaration: %+v %v", resources, err)
+	}
+	if _, err := ValidateRuntimeResources("forwarding", want, p, u); err == nil {
+		t.Fatal("runtime validator accepted a canonical foreign role")
+	}
+	if _, err := ValidateRuntimeResources("source", want, p, []byte("different template")); err == nil {
+		t.Fatal("runtime validator accepted different template bytes")
 	}
 	if _, err := ValidateResources(want, p, []byte("different template")); err == nil {
 		t.Fatal("accepted a mismatched template")

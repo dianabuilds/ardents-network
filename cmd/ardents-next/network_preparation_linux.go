@@ -39,6 +39,14 @@ func openPreparationAt(parent *os.File, name string, flags int, mode uint32) (*o
 	return os.NewFile(uintptr(fd), name), nil
 }
 
+func requirePreparationExt4(file *os.File) error {
+	var fs syscall.Statfs_t
+	if err := syscall.Fstatfs(int(file.Fd()), &fs); err != nil || fs.Type != 0xef53 {
+		return errors.Join(errNetworkPreparation, err)
+	}
+	return nil
+}
+
 func openPreparationParent(path string) (*preparationPath, error) {
 	return openPreparationDirectories(nil, path, nil)
 }

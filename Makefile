@@ -448,7 +448,7 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint/plan -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^Test(SourcePreparationNative(ArtifactBytesAndInventory|RetainsFailureAndRejectsAdoption|OutputSubstitutionRefuses)|ForwardingPreparationNative(CanonicalCommand|RetainsOriginalFailures)|(Join|Descriptor)PreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption))$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestSourcePreparationNativeOutputSubstitutionRefuses$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^Test(ControlProvisioningKeysNativeRoleAndPurpose|ControlReleaseKeyReceiptsNative|Forwarding(NodeProvision|EpochProvision|Profile|TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux

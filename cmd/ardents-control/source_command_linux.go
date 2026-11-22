@@ -31,8 +31,6 @@ func runSourceControl(args []string, out io.Writer) error {
 		return runSourceReleasePurpose(args[1:], out, sourceReleaseForward)
 	case "refresh-release-timestamp":
 		return runSourceReleasePurpose(args[1:], out, sourceReleaseTimestamp)
-	case "prepare-descriptor", "prepare-inventory":
-		return runSourceArtifactPreparation(args, out)
 	case "inspect-latest":
 		return runSourceInspection(args[1:], out)
 	default:

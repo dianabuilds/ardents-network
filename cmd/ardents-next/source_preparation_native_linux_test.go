@@ -306,7 +306,7 @@ func TestSourcePreparationNativePublicMountRefusal(t *testing.T) {
 	if e = syscall.Fstatfs(int(f.Fd()), &fs); e != nil || fs.Type != 0x01021994 {
 		t.Fatal("invalid environment: original control is not tmpfs", e)
 	}
-	if sourcePreparationMount(&signingInput{file: f}) == nil {
+	if requirePreparationExt4(f) == nil {
 		t.Fatal("actual non-ext4 public descriptor accepted")
 	}
 }
