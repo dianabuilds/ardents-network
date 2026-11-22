@@ -57,9 +57,13 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		if observed := diagnosticString(fields, "_PID"); diagnosticPID(observed) {
 			pid = observed
 		}
-		if json.Unmarshal([]byte(message), &fields) != nil {
+		// Decode MESSAGE independently. Unmarshal into the journal map would
+		// retain envelope keys that are absent from the runtime event.
+		var event map[string]json.RawMessage
+		if json.Unmarshal([]byte(message), &event) != nil {
 			return "", false, nil
 		}
+		fields = event
 	}
 	schema := diagnosticString(fields, "schema")
 	var stringFields []string

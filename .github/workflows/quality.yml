@@ -11,7 +11,7 @@ jobs:
       - name: Check out exact Reader candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: de47408e1d37d6244888f12f1c07077bcb95b800
+          ref: dd79f2dcb2ad6a7f8441b3b44e33c413b7c6acab
           persist-credentials: false
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -21,7 +21,7 @@ jobs:
       - name: Exercise genuine cold and warm Reader
         shell: bash
         env:
-          CANDIDATE: de47408e1d37d6244888f12f1c07077bcb95b800
+          CANDIDATE: dd79f2dcb2ad6a7f8441b3b44e33c413b7c6acab
           GOTOOLCHAIN: local
         run: |
           set -euo pipefail

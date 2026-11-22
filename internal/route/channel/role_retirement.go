@@ -6,6 +6,8 @@ import (
 	"io"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // FinishRole completes an outgoing forwarding role after its work owner has
@@ -94,6 +96,23 @@ func (s *Session) FinishRole() (result error) {
 	// physical write, close and release failures.
 	s.failure = nil
 	return nil
+}
+
+// FinishRelayWrite ends the relay's forward direction to a retiring peer.
+func (l *Lane) FinishRelayWrite(ctx context.Context) error {
+	err := l.CloseWrite()
+	refusal, ok := err.(*frameRetirement)
+	if !ok || refusal.lane != l || refusal.kind != ardp.KindEOF {
+		return err
+	}
+	// The scheduler refused this exact EOF before physical output. Only a
+	// clean CLOSE already decoded on the same lane can supersede it.
+	// WaitPeerRetirement joins any selected writer and checks its result.
+	witness := l.retirementWitness()
+	if !witness.clean || witness.local {
+		return err
+	}
+	return l.WaitPeerRetirement(ctx)
 }
 
 // WaitPeerRetirement requires this lane's clean peer CLOSE and joins its

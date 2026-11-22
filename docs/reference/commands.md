@@ -477,7 +477,9 @@ journal stream into it, for example:
 Each tab-separated row is occurrence time (UTC), clock origin (event or journal),
 owner, journal process ID, role, Carrier, kind, state, and quoted bounded reason. It preserves input order.
 Old Source events without an occurrence time use the journal receipt time when
-available. Unknown schemas and unrelated journal messages are ignored; corrupt
+available. For journal records, runtime event fields come exclusively from
+`MESSAGE`. The journal supplies the process ID and fallback receipt time.
+Unknown schemas and unrelated journal messages are ignored; corrupt
 input records and malformed recognized categories fail without printing their
 raw content. Present projected string fields must be JSON strings; null and other
 types fail, while absent optional fields remain unavailable. The projection
