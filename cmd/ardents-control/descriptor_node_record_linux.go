@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"io"
@@ -36,19 +35,6 @@ func (p descriptorRecordPlan) current(now time.Time) error {
 	return nil
 }
 
-func descriptorPublic32(raw string) ([32]byte, error) {
-	var value [32]byte
-	decoded, err := hex.DecodeString(raw)
-	if err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != raw {
-		return value, errSourceControlInput
-	}
-	copy(value[:], decoded)
-	if value == [32]byte{} {
-		return value, errSourceControlInput
-	}
-	return value, nil
-}
-
 func (p descriptorRecordPlan) prepare(now time.Time) ([]byte, error) {
 	if err := p.current(now); err != nil {
 		return nil, err
@@ -59,15 +45,15 @@ func (p descriptorRecordPlan) prepare(now time.Time) ([]byte, error) {
 	if err != nil || portErr != nil || number < 1024 || ip == nil || net.JoinHostPort(ip.String(), strconv.FormatUint(number, 10)) != p.Endpoint {
 		return nil, errSourceControlInput
 	}
-	network, err := descriptorPublic32(p.Network)
+	network, err := controlPublic32(p.Network)
 	if err != nil {
 		return nil, err
 	}
-	node, err := descriptorPublic32(p.Node)
+	node, err := controlPublic32(p.Node)
 	if err != nil {
 		return nil, err
 	}
-	public, err := descriptorPublic32(p.PublicKey)
+	public, err := controlPublic32(p.PublicKey)
 	if err != nil {
 		return nil, err
 	}

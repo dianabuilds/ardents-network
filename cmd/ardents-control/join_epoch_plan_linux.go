@@ -46,19 +46,19 @@ func (p joinEpochPlan) prepare(now time.Time) ([]byte, error) {
 	if err := p.current(now); err != nil {
 		return nil, err
 	}
-	network, err := joinPublic32(p.Network)
+	network, err := controlPublic32(p.Network)
 	if err != nil {
 		return nil, err
 	}
-	authority, err := joinPublic32(p.Authority)
+	authority, err := controlPublic32(p.Authority)
 	if err != nil {
 		return nil, err
 	}
-	seed, err := joinPublic32(p.Seed)
+	seed, err := controlPublic32(p.Seed)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := joinPublic32(p.Node); err != nil {
+	if _, err := controlPublic32(p.Node); err != nil {
 		return nil, err
 	}
 	if len(p.Records) == 0 || len(p.Records) > 64 || len(p.Domains) == 0 || len(p.Domains) > 16 {
@@ -132,7 +132,7 @@ func prepareJoinEpoch(ctx context.Context, args []string, observe func(string, *
 	flags.Var(&plans, "record-plan", "original public Node declaration, paired by order")
 	flags.Var(&records, "record", "original signed Node Record, paired by order")
 	flags.StringVar(&output, "output", "", "fresh public Epoch preparation output")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 10 || !joinEpochUniqueOptions(args) || !sourceControlPath(output) || len(plans.values) == 0 || len(plans.values) != len(records.values) {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 10 || !uniqueControlOptions(args, "domain", "record-plan", "record") || !sourceControlPath(output) || len(plans.values) == 0 || len(plans.values) != len(records.values) {
 		return p, nil, errSourceControlInput
 	}
 	var err error
@@ -197,20 +197,4 @@ func prepareJoinEpoch(ctx context.Context, args []string, observe func(string, *
 		return p, nil, err
 	}
 	return p, bytes.Clone(result), check()
-}
-
-func joinEpochUniqueOptions(args []string) bool {
-	seen := map[string]bool{}
-	for _, argument := range args {
-		if len(argument) < 2 || argument[0] != '-' {
-			continue
-		}
-		name := strings.TrimLeft(argument, "-")
-		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && name != "domain" && name != "record-plan" && name != "record" {
-			return false
-		}
-		seen[name] = true
-	}
-	return true
 }

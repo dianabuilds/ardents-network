@@ -73,12 +73,10 @@ func decodePublicKey(encoded string) (ed25519.PublicKey, error) {
 }
 
 func decodeIdentifier(encoded string) ([32]byte, error) {
-	var result [32]byte
-	raw, err := hex.DecodeString(encoded)
-	if err != nil || len(raw) != len(result) || hex.EncodeToString(raw) != encoded {
+	result, ok := decodeHex32(encoded)
+	if !ok {
 		return result, errors.New("alpha control identifier is invalid")
 	}
-	copy(result[:], raw)
 	return result, nil
 }
 

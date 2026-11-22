@@ -87,7 +87,7 @@ func signForwardingEpoch(ctx context.Context, args []string, observe func(string
 		return nil, err
 	}
 	defer clear(key)
-	authority, err := forwardingPublic32(p.Authority)
+	authority, err := controlPublic32(p.Authority)
 	if err != nil || !bytes.Equal(key[32:], authority[:]) {
 		return nil, errSourceControlInput
 	}
@@ -98,7 +98,7 @@ func signForwardingEpoch(ctx context.Context, args []string, observe func(string
 	signed := append(bytes.Clone(message), 1)
 	signed = append(signed, id[:]...)
 	signed = append(signed, ed25519.Sign(key, sum[:])...)
-	network, _ := forwardingPublic32(p.Network)
+	network, _ := controlPublic32(p.Network)
 	policy := epoch.Policy{NetworkID: network, Authorities: map[[32]byte]ed25519.PublicKey{id: ed25519.PublicKey(authority[:])}, Threshold: 1, Profile: epoch.ProfileClosedRoute, Now: time.Now().UTC()}
 	records := make([][]byte, len(p.Records))
 	for index, record := range p.Records {
@@ -108,7 +108,7 @@ func signForwardingEpoch(ctx context.Context, args []string, observe func(string
 	if err != nil || len(decision.Candidates) != len(records) {
 		return nil, errors.Join(errSourceControlInput, err)
 	}
-	node, _ := forwardingPublic32(p.Node)
+	node, _ := controlPublic32(p.Node)
 	selected := -1
 	for index, candidate := range decision.Candidates {
 		if candidate.NodeID == node {

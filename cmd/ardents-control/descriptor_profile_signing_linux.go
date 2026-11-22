@@ -34,7 +34,7 @@ func signDescriptorProfile(ctx context.Context, args []string, observe func(stri
 			}
 		}
 	}
-	if _, err := descriptorPublic32(args[2]); err != nil {
+	if _, err := controlPublic32(args[2]); err != nil {
 		return plan, nil, err
 	}
 	inputs := &sourceControlInputs{ctx: ctx}

@@ -55,7 +55,7 @@ func joinTokenMaterialArguments(args []string) (p joinTokenMaterialPlan, binding
 		text   string
 		target *[32]byte
 	}{{p.Network, &binding.Network}, {p.Issuer, &binding.Issuer}, {p.Signer, &binding.Signer}} {
-		*pair.target, err = joinPublic32(pair.text)
+		*pair.target, err = controlPublic32(pair.text)
 		if err != nil {
 			return p, binding, output, err
 		}

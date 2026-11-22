@@ -177,7 +177,7 @@ func prepareJoinNodeSigned(ctx context.Context, args []string, observe func(stri
 		return nil, err
 	}
 	defer clear(key)
-	public, err := joinPublic32(plan.PublicKey)
+	public, err := controlPublic32(plan.PublicKey)
 	if err != nil || !bytes.Equal(public[:], key[32:]) {
 		return nil, errSourceControlInput
 	}
@@ -192,7 +192,7 @@ func prepareJoinNodeSigned(ctx context.Context, args []string, observe func(stri
 			return nil, err
 		}
 	} else {
-		artifact, err = createJoinNodeCertificate(facts, key)
+		artifact, err = createNodeCertificate(facts, key)
 		if err != nil {
 			return nil, err
 		}

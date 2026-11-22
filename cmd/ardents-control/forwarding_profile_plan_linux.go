@@ -60,15 +60,15 @@ func (p forwardingProfilePlan) prepare(now time.Time) (prepared forwardingProfil
 	if err := p.current(now); err != nil {
 		return prepared, err
 	}
-	network, err := forwardingPublic32(p.Network)
+	network, err := controlPublic32(p.Network)
 	if err != nil {
 		return prepared, err
 	}
-	authority, err := forwardingPublic32(p.Authority)
+	authority, err := controlPublic32(p.Authority)
 	if err != nil {
 		return prepared, err
 	}
-	permission, err := forwardingPublic32(p.PermissionAuthority)
+	permission, err := controlPublic32(p.PermissionAuthority)
 	if err != nil || authority == permission || p.Tokens.Schema != "ardents-forwarding-token-inventory-v1" || p.Tokens.Inventory.Binding.Network != network || len(p.Bundle) == 0 || len(p.Bundle) > 1<<20 || len(p.Duties) == 0 || len(p.Duties) > closedprofile.MaxNodes {
 		return prepared, errSourceControlInput
 	}
@@ -84,7 +84,7 @@ func (p forwardingProfilePlan) prepare(now time.Time) (prepared forwardingProfil
 	if err != nil || decision.Header.Number != 1 || !decision.Snapshot.RecordPresent {
 		return prepared, errors.Join(errSourceControlInput, err)
 	}
-	generation, err := forwardingPublic32(decision.Snapshot.Generation)
+	generation, err := controlPublic32(decision.Snapshot.Generation)
 	if err != nil {
 		return prepared, err
 	}
@@ -106,7 +106,7 @@ func (p forwardingProfilePlan) prepare(now time.Time) (prepared forwardingProfil
 		return prepared, errSourceControlInput
 	}
 	for _, duty := range p.Duties {
-		node, err := forwardingPublic32(duty.Node)
+		node, err := controlPublic32(duty.Node)
 		if err != nil {
 			return prepared, err
 		}

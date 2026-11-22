@@ -336,6 +336,19 @@ output produces no second receipt.
 The same selection executes the affected Forwarding Node, Epoch, profile,
 token-material and token-authority chains.
 
+The shared Control mechanisms deduplicated in #718 (audit E1-4 candidates 2-3,
+E1-3) keep executed portable coverage: `TestNodeCertificateHasOnlyExactNodeTransportProfile`
+pins the one strict Node transport leaf profile and verifier against foreign
+subject/DNS/IP/CA/usage/interval/key/corrupt certificates;
+`TestUniqueOptionsGrammarPinsFlagCompatiblePredicate` pins the single
+public-option grammar, including the bare-"-" terminator edge and the Epoch
+repeatable set; `TestDecodeHex32RequiresCanonicalLowercaseShape`,
+`TestDecodeIdentifierKeepsClosedProfileContract` and
+`TestControlPublic32RejectsZeroAndNonCanonicalIdentifiers` pin the shared hex-32
+core and the distinct closed-profile versus offline-preparation identifier
+contracts. The role argument/plan refusal tests continue to exercise the same
+shared decoders through their own schemas and validators.
+
 `TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof`
 belongs to root/ext4 `network-signing-linux` preparation with independently pinned
 canonical Control. It generates separate actual State/Node keys and signed
