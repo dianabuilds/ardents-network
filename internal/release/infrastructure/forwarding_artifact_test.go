@@ -27,7 +27,7 @@ func TestForwardingDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DecodeForwardingDescriptor(source); err == nil {
+	if _, err := ValidateRuntimeResources("forwarding", source, program, template); err == nil {
 		t.Fatal("Forwarding accepted Source descriptor")
 	}
 	for _, mutation := range []struct{ before, after string }{
@@ -35,12 +35,12 @@ func TestForwardingDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 		{"\"release_version\":3", "\"release_version\":0"}, {"\"files\":", "\"extra\":0,\"files\":"},
 		{"\"platform\":", "\"platform\":\"linux-amd64\",\"platform\":"},
 	} {
-		if _, err := DecodeForwardingDescriptor([]byte(strings.Replace(string(want), mutation.before, mutation.after, 1))); err == nil {
+		if _, err := ValidateRuntimeResources("forwarding", []byte(strings.Replace(string(want), mutation.before, mutation.after, 1)), program, template); err == nil {
 			t.Fatal("foreign/noncanonical descriptor accepted", mutation)
 		}
 	}
 	for _, raw := range [][]byte{nil, append(bytes.Clone(want), '\n'), bytes.TrimSpace(want), bytes.Repeat([]byte("x"), (16<<10)+1)} {
-		if _, err := DecodeForwardingDescriptor(raw); err == nil {
+		if _, err := ValidateRuntimeResources("forwarding", raw, program, template); err == nil {
 			t.Fatal("noncanonical descriptor accepted")
 		}
 	}

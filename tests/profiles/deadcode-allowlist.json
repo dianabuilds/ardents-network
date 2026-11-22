@@ -1558,9 +1558,6 @@
       {
         "symbols": [
           "internal/release/infrastructure.DecodeDescriptor",
-          "internal/release/infrastructure.DecodeDescriptorArtifact",
-          "internal/release/infrastructure.DecodeForwardingDescriptor",
-          "internal/release/infrastructure.DecodeJoinDescriptor",
           "internal/release/infrastructure.PrepareRuntimeDescriptor",
           "internal/release/infrastructure.ValidateDescriptorResources",
           "internal/release/infrastructure.ValidateForwardingResources",

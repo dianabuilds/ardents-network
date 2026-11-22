@@ -107,10 +107,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/join_command_linux.go",
 			"cmd/ardents-control/join_release_keys_linux.go",
 			"cmd/ardents-control/infrastructure_release_keys_linux.go",
-			"cmd/ardents-control/join_release_plan_linux.go",
-			"cmd/ardents-control/join_release_arguments_linux.go",
-			"cmd/ardents-control/join_release_linux.go",
-			"cmd/ardents-control/join_release_predecessor_linux.go",
+			"cmd/ardents-control/node_release_plan_linux.go",
+			"cmd/ardents-control/node_release_arguments_linux.go",
+			"cmd/ardents-control/node_release_linux.go",
+			"cmd/ardents-control/node_release_predecessor_linux.go",
 			"cmd/ardents-control/join_release_plan_linux_test.go",
 			"internal/release/infrastructure/join_admission.go",
 			"cmd/ardents-control/forwarding_command_linux.go",
@@ -504,13 +504,11 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "cmd/ardents-control/descriptor_forward_release_native_linux_test.go",
 			"cmd/ardents-control/descriptor_release_native_linux_test.go",
-			"cmd/ardents-control/descriptor_release_plan_linux.go",
 			"cmd/ardents-control/forwarding_forward_release_native_linux_test.go",
 			"cmd/ardents-control/forwarding_release_native_linux_test.go",
-			"cmd/ardents-control/forwarding_release_plan_linux.go",
 			"cmd/ardents-control/join_forward_release_native_linux_test.go",
 			"cmd/ardents-control/join_release_native_linux_test.go",
-			"cmd/ardents-control/join_release_plan_linux.go",
+			"cmd/ardents-control/node_release_plan_linux.go",
 			"cmd/ardents-control/source_release_native_linux_test.go",
 			"cmd/ardents-control/source_release_plan_linux.go":
 			return true
@@ -640,7 +638,19 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_release_plan_linux.go" && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
 		}
-		if (source == "cmd/ardents-control/join_release_plan_linux.go" || source == "cmd/ardents-control/join_release_native_linux_test.go") && dependency == modulePath+"/internal/release/infrastructure" {
+		if source == "cmd/ardents-control/node_release_plan_linux.go" && dependency == modulePath+"/internal/release/infrastructure" {
+			return true
+		}
+		if source == "cmd/ardents-control/node_release_linux.go" && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
+		if source == "cmd/ardents-control/node_release_predecessor_linux.go" {
+			switch dependency {
+			case modulePath + "/internal/enrollment", modulePath + "/internal/release/infrastructure", modulePath + "/internal/release", "github.com/theupdateframework/go-tuf/v2/metadata":
+				return true
+			}
+		}
+		if source == "cmd/ardents-control/join_release_native_linux_test.go" && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
 		}
 		if source == "cmd/ardents-control/join_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
@@ -650,15 +660,6 @@ func successorImportAllowed(source, dependency string) bool {
 		// resource after the #604 FJD stage D cutover, without a runtime owner.
 		if source == "cmd/ardents-control/join_forward_release_native_linux_test.go" && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
-		}
-		if source == "cmd/ardents-control/join_release_linux.go" && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
-			return true
-		}
-		if source == "cmd/ardents-control/join_release_predecessor_linux.go" {
-			switch dependency {
-			case modulePath + "/internal/enrollment", modulePath + "/internal/release/infrastructure", modulePath + "/internal/release", "github.com/theupdateframework/go-tuf/v2/metadata":
-				return true
-			}
 		}
 		if dependency == modulePath+"/internal/network/epoch" {
 			switch source {
@@ -699,17 +700,8 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-control/forwarding_epoch_signing_linux.go" || source == "cmd/ardents-control/forwarding_epoch_provision_native_linux_test.go") && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
-		if (source == "cmd/ardents-control/forwarding_release_plan_linux.go" || source == "cmd/ardents-control/forwarding_release_native_linux_test.go") && dependency == modulePath+"/internal/release/infrastructure" {
+		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
-		}
-		if source == "cmd/ardents-control/forwarding_release_linux.go" && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_release_predecessor_linux.go" {
-			switch dependency {
-			case modulePath + "/internal/enrollment", modulePath + "/internal/release/infrastructure", modulePath + "/internal/release", "github.com/theupdateframework/go-tuf/v2/metadata":
-				return true
-			}
 		}
 		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
@@ -1370,11 +1362,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"packaging validator uses new Enrollment", "scripts/protected-generation-check.go", modulePath + "/internal/enrollment", true},
 		{"packaging validator excludes Release authority", "scripts/protected-generation-check.go", modulePath + "/internal/release", false},
 		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/enrollment", false},
-		{"JOIN public signing uses its own artifact resources", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/release/infrastructure", true},
-		{"JOIN public predecessor verifies genuine Release", "cmd/ardents-control/join_release_predecessor_linux.go", modulePath + "/internal/release", true},
+		{"Fixed Node Release signing uses exact artifact resources", "cmd/ardents-control/node_release_linux.go", modulePath + "/internal/release/infrastructure", true},
+		{"Fixed Node Release predecessor verifies genuine Release", "cmd/ardents-control/node_release_predecessor_linux.go", modulePath + "/internal/release", true},
 		{"JOIN key birth grants no Release observation", "cmd/ardents-control/join_release_keys_linux.go", modulePath + "/internal/release", false},
-		{"JOIN public signing grants no Route consumer", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/route/role", false},
-		{"JOIN public plan grants no State owner", "cmd/ardents-control/join_release_plan_linux.go", modulePath + "/internal/network/state", false},
+		{"Fixed Node Release signing grants no Route consumer", "cmd/ardents-control/node_release_linux.go", modulePath + "/internal/route/role", false},
+		{"Fixed Node Release plan grants no State owner", "cmd/ardents-control/node_release_plan_linux.go", modulePath + "/internal/network/state", false},
 		{"delayed ACK fixture retains genuine installed operation", "cmd/ardents-next/publication_ack_installed_linux_test.go", modulePath + "/internal/execution/runtime", true},
 		{"receiving Network fixture selects accepted profile", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/network/epoch", true},
 		{"receiving Network fixture names selected Carriers", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/route/transport", true},

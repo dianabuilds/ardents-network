@@ -6,12 +6,6 @@ const (
 	DescriptorTemplateName     = "ardents-descriptor.service"
 )
 
-// DecodeDescriptorArtifact admits only the closed Descriptor byte inventory. Source and
-// Forwarding declarations cannot be substituted for this separate invocation.
-func DecodeDescriptorArtifact(raw []byte) (Declaration, error) {
-	return decodeDescriptor(raw, "descriptor", DescriptorTemplateName)
-}
-
 // ValidateDescriptorResources compares exact public bytes before Release history is
 // opened. Its detached declaration supplies no pin, authority or runtime right.
 func ValidateDescriptorResources(raw, program, template []byte) (Declaration, error) {

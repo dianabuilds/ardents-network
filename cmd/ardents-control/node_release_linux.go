@@ -24,32 +24,32 @@ import (
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
-// Forwarding's fixed initial/forward purposes never enter Source signing policy
-// or turn a public plan into installed permission.
-func runForwardingReleaseSigning(args []string, out io.Writer) error {
-	return runForwardingReleasePurpose(args, out, forwardingReleaseInitial)
-}
-
-func runForwardingReleasePurpose(args []string, out io.Writer, purpose forwardingReleasePurpose) error {
+// These fixed initial and forward purposes each bind their role's exact target,
+// plan, original key directory and verified predecessor.
+func runNodeReleaseCommand(role nodeReleaseRole, args []string, out io.Writer, purpose nodeReleasePurpose) error {
+	artifacts, ok := role.artifacts()
+	if !ok {
+		return errSourceControlInput
+	}
 	wanted, operation := 4, "sign-initial-release"
-	if purpose == forwardingReleaseForward {
+	if purpose == nodeReleaseForward {
 		wanted, operation = 5, "sign-forward-release"
-	} else if purpose != forwardingReleaseInitial {
+	} else if purpose != nodeReleaseInitial {
 		return errSourceControlInput
 	}
 	if len(args) != wanted {
-		if purpose == forwardingReleaseForward {
-			return errors.New("usage: ardents-control forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
+		if purpose == nodeReleaseForward {
+			return fmt.Errorf("usage: ardents-control %s sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION", role)
 		}
-		return errors.New("usage: ardents-control forwarding sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
+		return fmt.Errorf("usage: ardents-control %s sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION", role)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	root, err := signForwardingReleasePurpose(ctx, args, purpose, nil)
+	root, err := signNodeReleasePurpose(role, ctx, args, purpose, nil)
 	if err != nil {
-		return &forwardingControlFailure{err}
+		return nodeReleaseFailure(role, err)
 	}
 	sum := sha256.Sum256(root)
 	raw, err := json.Marshal(struct {
@@ -58,17 +58,34 @@ func runForwardingReleasePurpose(args []string, out io.Writer, purpose forwardin
 		Targets     []string `json:"targets"`
 		Installed   bool     `json:"installed_qualification"`
 		Independent bool     `json:"independent_custody"`
-	}{"forwarding." + operation, hex.EncodeToString(sum[:]), []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}, false, false})
+	}{string(role) + "." + operation, hex.EncodeToString(sum[:]), []string{infrastructure.ProgramTarget, artifacts.target}, false, false})
 	if err != nil {
 		return err
 	}
 	return writeSourceControlBytes(ctx, out, append(raw, '\n'))
 }
-func signForwardingReleasePurpose(ctx context.Context, args []string, purpose forwardingReleasePurpose, observe func(string, *os.File)) (result []byte, returned error) {
+func nodeReleaseFailure(role nodeReleaseRole, err error) error {
+	switch role {
+	case forwardingReleaseRole:
+		return &forwardingControlFailure{err}
+	case joinReleaseRole:
+		return &joinControlFailure{err}
+	case descriptorReleaseRole:
+		return &descriptorControlFailure{err}
+	default:
+		return errSourceControlInput
+	}
+}
+
+func signNodeReleasePurpose(role nodeReleaseRole, ctx context.Context, args []string, purpose nodeReleasePurpose, observe func(string, *os.File)) (result []byte, returned error) {
+	namesForRole, ok := role.artifacts()
+	if !ok {
+		return nil, errSourceControlInput
+	}
 	wantedArguments := 4
-	if purpose == forwardingReleaseForward {
+	if purpose == nodeReleaseForward {
 		wantedArguments = 5
-	} else if purpose != forwardingReleaseInitial {
+	} else if purpose != nodeReleaseInitial {
 		return nil, errSourceControlInput
 	}
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != wantedArguments {
@@ -97,7 +114,7 @@ func signForwardingReleasePurpose(ctx context.Context, args []string, purpose fo
 	if err != nil {
 		return nil, err
 	}
-	plan, err := decodeForwardingReleasePurpose(planRaw, time.Now().UTC(), purpose)
+	plan, err := decodeNodeReleasePlan(role, planRaw, time.Now().UTC(), purpose)
 	if err != nil {
 		return nil, err
 	}
@@ -117,12 +134,13 @@ func signForwardingReleasePurpose(ctx context.Context, args []string, purpose fo
 			return nil, err
 		}
 	}
-	if err := validateForwardingReleaseResources(plan, artifacts[0], artifacts[1], artifacts[2]); err != nil {
+	candidateVersion, err := validateNodeReleaseResources(role, plan, artifacts[0], artifacts[1], artifacts[2])
+	if err != nil {
 		return nil, err
 	}
-	var predecessor *forwardingReleasePredecessor
-	if purpose == forwardingReleaseForward {
-		predecessor, err = readForwardingReleasePredecessor(inputs, args[4], plan, artifacts[1])
+	var predecessor *nodeReleasePredecessor
+	if purpose == nodeReleaseForward {
+		predecessor, err = readNodeReleasePredecessor(role, inputs, args[4], plan, candidateVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -266,7 +284,7 @@ func signForwardingReleasePurpose(ctx context.Context, args []string, purpose fo
 		root = predecessor.root
 	}
 
-	paths := []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}
+	paths := []string{infrastructure.ProgramTarget, namesForRole.target}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
 		for _, signer := range signers[:3] {
 			if err := check(); err != nil {
@@ -347,7 +365,7 @@ func signForwardingReleasePurpose(ctx context.Context, args []string, purpose fo
 			decision := v.Evaluate(ctx, release.Inputs{RootBytes: rootBytes, Files: metadataFiles, TargetPath: path, Artifact: artifacts[i], Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference.UTC()}})
 			proof, ok := decision.Authorization()
 			if !ok {
-				err = fmt.Errorf("forwarding metadata self-verification refused: %s: %s", decision.Outcome, decision.Notice)
+				err = fmt.Errorf("%s metadata self-verification refused: %s: %s", role, decision.Outcome, decision.Notice)
 				break
 			}
 			proofs = append(proofs, proof)

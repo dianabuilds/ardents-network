@@ -218,10 +218,13 @@ native unit-policy acceptance, Installation startup or a Node duty. Existing
 Source and Forwarding proofs remain purpose-bound; no live owner or permission
 crosses between invocations through this shared byte-preparation mechanism.
 
-JOIN Release preparation remains separate offline command composition. Its
-fixed initial/forward signers consume exact Node/JOIN public claims and original
-private key/input/output custody; shared five-key birth is a physical mechanism,
-not shared signing purpose or trust. Release verifies signatures/floors and
+Forwarding, JOIN and Descriptor use a common offline Release mechanism for
+their fixed initial and forward operations. The role selects its closed plan
+schema, exact program/generation targets and genuine predecessor verifier.
+Each operation admits its own original key directory and retains original
+protected inputs and exclusive output. Source Timestamp signing is a separate
+purpose and path.
+Release verifies signatures/floors and
 Infrastructure retains a distinct opaque JOIN candidate pair for original
 predecessor verification. Forward public metadata cannot supply native
 replacement, first-pin provenance, domain retirement or runtime duty. Enrollment

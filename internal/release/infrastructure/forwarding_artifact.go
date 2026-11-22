@@ -6,12 +6,6 @@ const (
 	ForwardingTemplateName     = "ardents-forwarding.service"
 )
 
-// DecodeForwardingDescriptor preserves the separate Source grammar. A descriptor
-// for another duty cannot select a runtime or extend Source installation rights.
-func DecodeForwardingDescriptor(raw []byte) (Declaration, error) {
-	return decodeDescriptor(raw, "forwarding", ForwardingTemplateName)
-}
-
 // ValidateForwardingResources checks exact public bytes before Release history is
 // opened. It grants no initial provenance, native custody or accepting authority.
 func ValidateForwardingResources(raw, program, template []byte) (Declaration, error) {

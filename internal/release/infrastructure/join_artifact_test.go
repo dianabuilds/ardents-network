@@ -20,8 +20,8 @@ func TestJoinDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 	if _, err := ValidateJoinResources(want, program, template); err != nil {
 		t.Fatal(err)
 	}
-	for _, decode := range []func([]byte) (Declaration, error){DecodeDescriptor, DecodeForwardingDescriptor} {
-		if _, err := decode(want); err == nil {
+	for _, role := range []string{"source", "forwarding"} {
+		if _, err := ValidateRuntimeResources(role, want, program, template); err == nil {
 			t.Fatal("another invocation accepted JOIN")
 		}
 	}
@@ -30,7 +30,7 @@ func TestJoinDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := DecodeJoinDescriptor(foreign); err == nil {
+		if _, err := ValidateRuntimeResources("join", foreign, program, template); err == nil {
 			t.Fatal("JOIN accepted another invocation")
 		}
 	}
@@ -39,12 +39,12 @@ func TestJoinDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 		{"\"release_version\":3", "\"release_version\":0"}, {"\"files\":", "\"extra\":0,\"files\":"},
 		{"\"platform\":", "\"platform\":\"linux-amd64\",\"platform\":"},
 	} {
-		if _, err := DecodeJoinDescriptor([]byte(strings.Replace(string(want), mutation.before, mutation.after, 1))); err == nil {
+		if _, err := ValidateRuntimeResources("join", []byte(strings.Replace(string(want), mutation.before, mutation.after, 1)), program, template); err == nil {
 			t.Fatal("foreign or noncanonical JOIN accepted", mutation)
 		}
 	}
 	for _, raw := range [][]byte{nil, append(bytes.Clone(want), '\n'), bytes.TrimSpace(want), bytes.Repeat([]byte("x"), (16<<10)+1)} {
-		if _, err := DecodeJoinDescriptor(raw); err == nil {
+		if _, err := ValidateRuntimeResources("join", raw, program, template); err == nil {
 			t.Fatal("noncanonical JOIN accepted")
 		}
 	}
