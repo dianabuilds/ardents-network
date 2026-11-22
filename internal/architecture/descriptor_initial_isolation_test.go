@@ -8,12 +8,12 @@ package architecture
 // and detached inventory accessors retired with the orchestration.
 func descriptorInitialImportAllowed(source, dependency string) bool {
 	switch source {
-	case "cmd/ardents-control/descriptor_release_native_linux_test.go":
+	case "internal/release/infrastructure/signing/descriptor_release_native_linux_test.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "cmd/ardents-control/descriptor_forward_release_native_linux_test.go":
+	case "internal/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/release/infrastructure":
 			return true

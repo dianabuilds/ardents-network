@@ -1,0 +1,181 @@
+package architecture
+
+import (
+	"path"
+	"strings"
+)
+
+func offlineOperatorFile(source string) bool {
+	if strings.HasPrefix(source, "internal/platform/artifacts/") ||
+		strings.HasPrefix(source, "internal/node/provisioning/") ||
+		strings.HasPrefix(source, "internal/release/infrastructure/signing/") {
+		return true
+	}
+	switch source {
+	case "cmd/provision-infrastructure/main.go", "cmd/sign-infrastructure-release/main.go",
+		"cmd/ardents-next/source_inspection_linux.go", "cmd/ardents-next/source_inspection_linux_test.go",
+		"cmd/ardents-next/offline_profile_inspection.go", "cmd/ardents-next/offline_profile_inspection_test.go":
+		return true
+	}
+	return false
+}
+
+// These offline producers can prepare artifacts but cannot open live Route or
+// take authority from a retained runtime root. Each foreign dependency is tied
+// to the particular source responsibility that uses it.
+func offlineOperatorImportAllowed(source, dependency string) bool {
+	first, _, _ := strings.Cut(dependency, "/")
+	if dependency != "" && dependency != "C" && dependency != "unsafe" &&
+		!strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/") {
+		return true
+	}
+	switch source {
+	case "cmd/ardents-next/offline_profile_inspection.go",
+		"cmd/ardents-next/offline_profile_inspection_test.go":
+		switch dependency {
+		case modulePath + "/internal/admission/issuerprofile", modulePath + "/internal/network/closedprofile":
+			return true
+		}
+	case "cmd/ardents-next/source_inspection_linux.go":
+		switch dependency {
+		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/processresource":
+			return true
+		}
+	case "cmd/ardents-next/source_inspection_linux_test.go",
+		"internal/node/provisioning/source_initial_network_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration":
+			return true
+		}
+	case "internal/node/provisioning/epoch_plan_linux.go",
+		"internal/node/provisioning/node_certificate_linux.go",
+		"internal/node/provisioning/node_provision_linux.go",
+		"internal/node/provisioning/node_record_linux.go":
+		switch dependency {
+		case modulePath + "/internal/network/epoch", modulePath + "/internal/platform/artifacts":
+			return true
+		}
+	case "internal/node/provisioning/epoch_provision_linux.go",
+		"internal/node/provisioning/forwarding_epoch_plan_linux_test.go",
+		"internal/node/provisioning/node_provisioning_role_linux.go",
+		"internal/node/provisioning/provisioning_key_linux.go",
+		"internal/node/provisioning/public_identifier_linux.go",
+		"internal/node/provisioning/public_identifier_linux_test.go",
+		"internal/node/provisioning/source_initial_keys_linux.go",
+		"internal/node/provisioning/source_initial_plan_linux.go",
+		"internal/release/infrastructure/signing/descriptor_release_keys_linux.go",
+		"internal/release/infrastructure/signing/forwarding_release_keys_linux.go",
+		"internal/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+		"internal/release/infrastructure/signing/join_release_keys_linux.go",
+		"internal/release/infrastructure/signing/node_release_arguments_linux.go",
+		"internal/release/infrastructure/signing/node_release_arguments_linux_test.go",
+		"internal/release/infrastructure/signing/release_key_receipt_linux.go",
+		"internal/release/infrastructure/signing/source_release_keys_linux.go",
+		"internal/release/infrastructure/signing/source_release_plan_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/platform/artifacts":
+			return true
+		}
+	case "internal/node/provisioning/epoch_provision_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/network/epoch", modulePath + "/internal/network/source":
+			return true
+		}
+	case "internal/node/provisioning/epoch_signing_linux.go",
+		"internal/node/provisioning/source_initial_network_linux.go":
+		switch dependency {
+		case modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/platform/artifacts":
+			return true
+		}
+	case "internal/node/provisioning/forwarding_token_authority_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/admission", modulePath + "/internal/admission/issuer", modulePath + "/internal/admission/quota", modulePath + "/internal/admission/receiving", modulePath + "/internal/admission/stock", modulePath + "/internal/admission/token", modulePath + "/internal/custody", modulePath + "/internal/network", modulePath + "/internal/network/source", modulePath + "/internal/network/state":
+			return true
+		}
+	case "internal/node/provisioning/node_certificate_linux_test.go",
+		"internal/node/provisioning/node_provision_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/network/epoch":
+			return true
+		}
+	case "internal/node/provisioning/profile_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/network/closedprofile", modulePath + "/internal/network/epoch", modulePath + "/internal/network/source":
+			return true
+		}
+	case "internal/node/provisioning/profile_plan_linux.go":
+		switch dependency {
+		case modulePath + "/internal/admission/issuerprofile", modulePath + "/internal/network", modulePath + "/internal/network/closedprofile", modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/platform/artifacts":
+			return true
+		}
+	case "internal/node/provisioning/profile_signing_linux.go":
+		switch dependency {
+		case modulePath + "/internal/network/closedprofile", modulePath + "/internal/platform/artifacts":
+			return true
+		}
+	case "internal/node/provisioning/token_material_linux.go":
+		switch dependency {
+		case modulePath + "/internal/admission/issuance", modulePath + "/internal/platform/artifacts":
+			return true
+		}
+	case "internal/node/provisioning/token_material_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/admission/issuance", modulePath + "/internal/admission/issuerprofile":
+			return true
+		}
+	case "internal/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go",
+		"internal/release/infrastructure/signing/forwarding_forward_release_native_linux_test.go",
+		"internal/release/infrastructure/signing/join_forward_release_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/platform/systemd":
+			return true
+		}
+	case "internal/release/infrastructure/signing/descriptor_release_native_linux_test.go",
+		"internal/release/infrastructure/signing/forwarding_release_native_linux_test.go",
+		"internal/release/infrastructure/signing/join_release_native_linux_test.go",
+		"internal/release/infrastructure/signing/source_release_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/platform/systemd", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+			return true
+		}
+	case "internal/release/infrastructure/signing/node_release_linux.go",
+		"internal/release/infrastructure/signing/source_release_linux.go":
+		switch dependency {
+		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
+			return true
+		}
+	case "internal/release/infrastructure/signing/node_release_plan_linux.go",
+		"internal/release/infrastructure/signing/source_release_plan_linux.go":
+		switch dependency {
+		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/systemd", modulePath + "/internal/release/infrastructure":
+			return true
+		}
+	case "internal/release/infrastructure/signing/node_release_predecessor_linux.go",
+		"internal/release/infrastructure/signing/source_release_predecessor_linux.go":
+		switch dependency {
+		case modulePath + "/internal/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+			return true
+		}
+	case "internal/release/infrastructure/signing/source_release_coherence_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
+			return true
+		}
+	case "internal/release/infrastructure/signing/source_release_timestamp_native_linux_test.go":
+		switch dependency {
+		case modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+			return true
+		}
+	case "cmd/provision-infrastructure/main.go":
+		switch dependency {
+		case modulePath + "/internal/node/provisioning":
+			return true
+		}
+	case "cmd/sign-infrastructure-release/main.go":
+		switch dependency {
+		case modulePath + "/internal/release/infrastructure/signing":
+			return true
+		}
+	}
+	return false
+}

@@ -289,7 +289,7 @@ bootstrap qualification is claimed by this credential-preparation case.
 
 `TestRoleProfileNativeCanonicalEpochInventoryAndSignature` belongs to
 root/ext4 `network-signing-linux` offline preparation. Independently pinned
-canonical Control creates real State/Node keys, signed Records/Epoch, actual
+canonical provisioning command creates real State/Node keys, signed Records/Epoch, actual
 Admission material, the public profile plan and its fixed State signature.
 Independent Epoch/closedprofile verification matches exact signed Record
 digests/generations and public keys; wrong State signer, bad reviewed hash or
@@ -305,8 +305,8 @@ installed Forwarding duty, independent-family eligibility, State acceptance or
 an installed/bootstrap qualification claim.
 
 `TestRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot` belongs to
-root/ext4 `network-signing-linux` preparation with independently pinned canonical
-Control. Real canonical Node-key preparation supplies only its public signer;
+root/ext4 `network-signing-linux` preparation with the independently pinned
+provisioning command. Real canonical Node-key preparation supplies only its public signer;
 the token-key command uses the genuine Admission material owner. Reopened public
 inventory and class/hour SPKIs must match the exported bytes and receipt hash.
 No private key bytes are read by the test. Repeated output refuses and preserves
@@ -320,15 +320,16 @@ offline storage/preparation checks, not State, installed Issuer or bootstrap
 acceptance. Pure flag tests reject ambiguous IDs, intervals, paths and options
 before output creation.
 
-The Control selection in `make network-signing-check` uses the independently
-SHA-256-pinned canonical executable supplied in
-`ARDENTS_FORWARDING_CONTROL_PROGRAM` and
-`ARDENTS_FORWARDING_CONTROL_PROGRAM_SHA256`.
+The offline cases in `make network-signing-check` use independently
+SHA-256-pinned executables. Provisioning takes
+`ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM` and its `_SHA256` pin.
+Release signing takes `ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM` and its
+`_SHA256` pin.
 `TestControlProvisioningKeysNativeRoleAndPurpose` exercises all six Node/State
 key-preparation commands in Forwarding, JOIN and Descriptor. It checks distinct
 public keys, exact role and purpose receipts, private file mode and inventory,
 and refusal to reuse another role's or purpose's occupied output.
-`TestControlReleaseKeyReceiptsNative` uses the same pinned executable for
+`TestControlReleaseKeyReceiptsNative` uses the pinned Release signer for
 Source, Forwarding, JOIN and Descriptor. It derives the public keys from
 each role's generated fixture files and compares the exact receipt bytes,
 including the operation, threshold and digests. It checks that an occupied
@@ -364,7 +365,7 @@ public facts. No State/Startup/installed or independent-family claim is supplied
 
 `TestRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate` belongs to
 the root/ext4 `network-signing-linux` preparation profile. Independently pinned
-canonical Control creates its own protected Node key, prepares a public Record
+canonical provisioning command creates its own protected Node key, prepares a public Record
 from flags, signs the exact reviewed bytes and creates the matching closed Node
 certificate. The test reads no private key bytes. New Epoch and the independent
 X.509 verifier inspect actual public outputs. Wrong pins must fail before a
@@ -386,9 +387,9 @@ startup authority.
 `TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody` belongs to
 the existing `network-signing-linux` offline native profile. After the #604
 FJD stage D signing cutover it additionally requires independently pinned actual
-static canonical `ardents-next` and Control programs through
+static canonical `ardents-next` and offline Release programs through
 `ARDENTS_FORWARDING_NEXT_PROGRAM` / `_SHA256` and
-`ARDENTS_FORWARDING_CONTROL_PROGRAM` / `_SHA256`. The test
+`ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM` / `_SHA256`. The test
 executes `ardents-next platform template` for the exact canonical platform unit
 template, then the actual Forwarding key, public-plan and initial-signing
 commands; verifies five distinct private/public keys, ordinary three-of-five
@@ -428,23 +429,12 @@ wrong artifact cannot stand in for pair incoherence. Already admitted floors
 remain unchanged through the repeated refusal. This is native component
 admission evidence, not installed lifecycle or canonical command cleanup proof.
 
-The separate `source-release-expiry-observer-v1` native diagnostic reads an
-exact eight-file canonical candidate and an already admitted retained Release
-history. It captures actual wall time once for both real target evaluations;
-profiles cannot supply reference time. Before expiry both must authorize with
-`no-update` and form a coherent pair. After expiry both must return
-`release-expired` without authorization. Root/Snapshot/Targets and both target
-safety bounds must remain later than the Timestamp and the observed time.
-Both signed targets must use the prepared announced/no-emergency protocol
-facts with no overlap clock; another signed protocol clock is refused by this
-finite diagnostic and retains its ordinary product Release policy.
-Floors remain unchanged and the verifier closes before the report. This
-observer grants no Installation action or runtime authority. Its canonical
-signer fixture additionally requires an independently pinned Infrastructure
-observer binary through `ARDENTS_SOURCE_EXPIRY_OBSERVER_PROGRAM` and its
-`_SHA256`, a native preparation marker and a real short Timestamp wall-clock
-crossing; wrong-phase observations on both sides refuse. These native controls
-remain distinct from accepted installed expiry evidence.
+The offline Source signing test creates a real short Timestamp from the
+retained distribution. It observes both canonical target decisions against
+the same retained Release history with actual wall time before and after
+expiry. Both targets authorize before expiry and refuse with
+`release-expired` afterwards. Floors remain unchanged. This is offline
+verification evidence; installed expiry has its own native profile.
 
 `TestSourceArchivedManagerBindsOwnerAndOriginalBrokerAtLiveGuards` evaluates
 the actual retirement/startup preconditions with detached contract-shaped
@@ -1802,7 +1792,7 @@ selected Carriers.
   canonical Control with the standard command flags and its test binary with
   `-race -tags network_signing_native`. The outer controller retains the shared
   development lock, complete source manifest, original binaries and their hashes.
-  Supply `ARDENTS_SOURCE_CONTROL_PROGRAM` and its `_SHA256` plus a root-owned
+  Supply `ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM` and its `_SHA256` plus a root-owned
   0700 native-ext4 `TMPDIR` under protected direct ancestors, then execute the test
   binary with `-test.run '^TestSourcePreparationNative' -test.count=1
   -test.timeout=3m`. Require all five discovered tests: exact descriptor/inventory
@@ -2544,7 +2534,7 @@ The maintained local profiles are:
   with the retired `enroll-installed` refusal. The enrollment-pinned
   alpha-control inspection regressions retired with the reader itself
   (ADR-0127, #647); the corpus-intake refusals stay covered by the
-  `cmd/ardents-control` command tests. Successor platform-led Endpoint
+  offline provisioning and Release signing tests. Successor platform-led Endpoint
   qualification is a separate selected composition;
 - `service-credential-response-linux`;
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
@@ -3607,8 +3597,8 @@ The existing root/ext4 `network_signing_native` profile additionally selects
 `TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody` and
 `TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors`.
 After the #604 FJD stage D signing cutover they require independently pinned
-actual static canonical `ardents-next` and Control programs through
-`ARDENTS_JOIN_NEXT_PROGRAM` / `_SHA256` and `ARDENTS_JOIN_CONTROL_PROGRAM` /
+actual static canonical `ardents-next` and offline Release programs through
+`ARDENTS_JOIN_NEXT_PROGRAM` / `_SHA256` and `ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM` /
 `_SHA256`. The tests execute `ardents-next platform template` for the exact
 canonical platform unit template, then the actual JOIN key, public-plan and
 initial/forward-signing commands; they verify five distinct private/public
@@ -3702,7 +3692,7 @@ and purpose-bound Release signing.
 `descriptor-forward-release-linux` runs `make descriptor-forward-release-check`
 (`TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors`)
 on the root/ext4 canonical artifact stand. It pins
-`ARDENTS_DESCRIPTOR_CONTROL_PROGRAM`/`_SHA256` and the static
+`ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM`/`_SHA256` and the static
 `ARDENTS_DESCRIPTOR_NEXT_PROGRAM`/`_SHA256`; the canonical platform unit template
 is produced by `ardents-next platform template` and byte-compared to
 `infrastructure.PlatformUnitTemplate`. The initial/forward chain proves unchanged

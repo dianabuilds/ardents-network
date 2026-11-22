@@ -1763,10 +1763,10 @@ as a shortcut.
 ### Proposed exact artifact and installation binding
 
 The following is the accepted contract under ADR-0123, not an extension
-of any existing accepting parser. Final commands are `ardents-node` for Source,
-the five duties and their Installation composition, `ardents-control` for public
-preparation/inspection, `ardents` for Endpoint and `ardents-custody` for its
-existing purposes. Infrastructure initial verification and native transition
+of any existing accepting parser. The product CLI runs Source, Node and Endpoint and owns the public
+inspection routes. `provision-infrastructure` and `sign-infrastructure-release`
+own offline preparation and signing; `ardents-custody` keeps its separate
+Authority purpose. Infrastructure initial verification and native transition
 must consume their opaque provenance/proofs in the same original command
 operation. A control-process public receipt cannot transfer those rights.
 
@@ -4230,7 +4230,7 @@ not a requirement to finish every operator action. A temporary `ardents-next`
 consumer can check development mechanisms with independent roots; its pinned
 binary and systemd-run are not final installed qualification. Before the first
 final installed positive, direct new-owner `ardents-node` Source/Installation
-entrypoints and the needed `ardents-control` preparation/inspection, canonical build,
+entrypoints and the needed offline preparation and public inspection, canonical build,
 inventory/signing/verification and qualification consumers must be committed for
 that exact candidate. This is a partial command/tool cutover prerequisite; other
 unrelated commands need not be finished. Old selectors must have explicit

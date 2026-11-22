@@ -89,7 +89,7 @@ unit:
 platform-launch-unit:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
 	go test ./cmd/ardents-next -run '^Test(Platform.*|SourceCancellationJoinsWaitCloseAndInputsBeforeCompletion|SourceInitialPreparation.*|SourcePreparationConfig.*|SourcePreparationRefusesOtherPrincipal.*|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
-	go test ./cmd/ardents-control -run '^TestSource(InitialPreparation.*|Preparation.*)$$' -count=1 -timeout=3m
+	go test ./internal/node/provisioning ./internal/platform/artifacts -run '^Test(SourceInitialPreparation|SourcePreparation|ArtifactInputs)' -count=1 -timeout=3m
 	go test ./internal/network/state -run '^Test(Source(Participation|Completion).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
 	go test ./internal/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
 	go test ./internal/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
@@ -444,8 +444,9 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint/plan -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestSourcePreparationNativeOutputSubstitutionRefuses$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^Test(ControlProvisioningKeysNativeRoleAndPurpose|ControlReleaseKeyReceiptsNative|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNativeOutputSubstitutionRefuses$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64
@@ -453,7 +454,11 @@ network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-provisioning.test" ./internal/node/provisioning
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-release-signing.test" ./internal/release/infrastructure/signing
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/operator-artifacts.test" ./internal/platform/artifacts
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/provision-infrastructure" ./cmd/provision-infrastructure
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-infrastructure-release" ./cmd/sign-infrastructure-release
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/release/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
@@ -468,4 +473,4 @@ descriptor-store-inspection-check:
 .PHONY: descriptor-forward-release-check
 descriptor-forward-release-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-forward-release-check requires explicit root/ext4 canonical artifact stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m

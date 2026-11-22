@@ -41,6 +41,9 @@ func issuanceOutcome(err error) string {
 	}
 }
 func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "inspect-public-profile" {
+		return runIssuerPublicInspection(ctx, args[1:], out)
+	}
 	if len(args) > 0 && (args[0] == "initialize-profile" || args[0] == "inspect-profile") {
 		return runIssuerProfile(ctx, "issuance."+args[0], args[1:], out, diagnostic)
 	}

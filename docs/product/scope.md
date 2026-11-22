@@ -145,7 +145,9 @@ it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
 The headless bundle delivers `ardents` and `ardents-custody`. Infrastructure
 public artifact preparation uses offline `ardents-next infrastructure`. The
-fixed Release plans and signing still use offline `ardents-control` tooling. Protected text execution
+fixed Release plans and signing use the offline `sign-infrastructure-release`
+entrypoint. The separate `provision-infrastructure` entrypoint prepares the
+signed Network inputs. Protected text execution
 uses the fixed `ardents-text` worker. Operator instructions must not
 require editing JSON, extracting test-fixture keys, knowing package names, or
 reading ADRs to discover command order.
@@ -174,14 +176,12 @@ the tracker is the one live task ledger.
 
 ### C0 command roles, state, and outcomes
 
-The three commands have non-interchangeable C0 roles: `ardents-control` verifies
-the closed-profile and closed-issuer-profile control evidence and prepares the
-offline infrastructure inputs; `ardents-custody` creates the Service Authority
-and issues the one public Service Credential without exporting Authority
-material; and `ardents` owns Endpoint enrollment/runtime, Service Instance
-initialization/acceptance, publication, and local Application byte exchange, and
-runs the project-controlled Source and selected closed Node duties, including
-the closed-token issuer, through its distinct `source` and `node` subcommands.
+The `ardents` product CLI owns Endpoint enrollment, runtime, publication,
+local Application byte exchange and public verification. Its distinct
+`source` and `node` subcommands run the selected infrastructure roles.
+The offline infrastructure entrypoints prepare and sign their respective
+State and Release artifacts. `ardents-custody` creates the Service Authority
+and issues public credentials while retaining private Authority material.
 Their durable inputs remain separate: immutable artifact and enrollment inputs,
 project Node/issuer roots, Authority Vault, Service Instance root and public
 request/response, Endpoint State/Entry/text-token/Publication roots, and local
@@ -260,7 +260,7 @@ Service Name access available.
 
 The Network audit candidate is the headless maintained product surface:
 
-- `ardents`, `ardents-control`, and `ardents-custody`, plus the fixed
+- `ardents` and `ardents-custody`, plus the fixed
   `ardents-text` worker;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, enrollment,

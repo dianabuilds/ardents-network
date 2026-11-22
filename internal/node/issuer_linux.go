@@ -198,16 +198,16 @@ func (f *issuerInvocation) denyOwner(cause error) {
 
 // cleanupRole joins the independent issuing background wait after Route join.
 // The background wait never interprets cancellation as joined.
-func (f *issuerInvocation) cleanupRole(roleResult error) (error, func(func(string, error))) {
+func (f *issuerInvocation) cleanupRole(roleResult error) (func(func(string, error)), error) {
 	closed := f.issuing.Close(context.Background())
-	return roleResult, func(retain func(string, error)) {
+	return func(retain func(string, error)) {
 		for _, c := range closed.Cleanup {
 			if c.Phase != "" && c.Outcome != "closed" {
 				retain("issuance", f.issuing.Err())
 				break
 			}
 		}
-	}
+	}, roleResult
 }
 
 func (f *issuerInvocation) credentialClose() error       { return f.credential.close() }

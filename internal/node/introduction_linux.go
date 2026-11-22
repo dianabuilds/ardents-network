@@ -208,14 +208,14 @@ func (f *introductionInvocation) denyOwner(error) {
 // cleanupRole releases the Registry after Route's physical join and attributes
 // its exact operational failure. Only the exact operational leaf is removed from
 // the joined release; physical wrappers/causes stay.
-func (f *introductionInvocation) cleanupRole(roleResult error) (error, func(func(string, error))) {
+func (f *introductionInvocation) cleanupRole(roleResult error) (func(func(string, error)), error) {
 	var historyRelease, historyFailure error
 	if f.registry != nil {
 		joined := f.registry.Close()
 		historyFailure = f.registry.Failure()
 		historyRelease = originalRetirementResult(joined, historyFailure)
 	}
-	return originalRetirementResult(roleResult, historyFailure), func(retain func(string, error)) {
+	return func(retain func(string, error)) {
 		if historyFailure != nil {
 			f.mu.Lock()
 			first := f.first
@@ -229,7 +229,7 @@ func (f *introductionInvocation) cleanupRole(roleResult error) (error, func(func
 			}
 		}
 		retain("introduction", historyRelease)
-	}
+	}, originalRetirementResult(roleResult, historyFailure)
 }
 
 func (f *introductionInvocation) credentialClose() error       { return f.credential.close() }

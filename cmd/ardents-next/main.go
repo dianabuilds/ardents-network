@@ -27,6 +27,9 @@ func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 		return runInfrastructure(ctx, args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "source" {
+		if len(args) > 1 && args[1] == "inspect-latest" {
+			return runSourceInspection(ctx, args[2:], out, diagnostic)
+		}
 		if len(args) > 1 && args[1] == "prepare-trust" {
 			return runSourcePreparation(ctx, args[1:], out)
 		}

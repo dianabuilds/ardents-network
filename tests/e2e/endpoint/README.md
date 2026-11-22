@@ -11,9 +11,8 @@ fixed-user-unit replacement and journal-bound rollback cases, the installed
 `.deb` re-enrollment case, and the live two-Endpoint alpha-control agreement
 cases) is retired with that command surface (ADR-0125, #617 S3.5). The
 enrollment-pinned ACA1 inspection regressions formerly here retired with the
-reader itself (ADR-0127, #647); the retired `accept-alpha-corpus` and
-`inspect-alpha-corpus` before-effect refusals remain covered by the
-`cmd/ardents-control` command tests. The canonical protected text Endpoint
+reader itself (ADR-0127, #647). The former Control executable and its
+retirement-only corpus selectors have been removed. The canonical protected text Endpoint
 launch is the platform-led `ardents-next` system-unit composition; its
 installed qualification is a separate selected gate. The shared ephemeral
 Release-metadata fixtures survive for the Ubuntu deb package payload/retention

@@ -254,7 +254,7 @@ supplies no universal role policy.
 
 Local Node certificate provisioning is one offline supporting composition,
 `ardents-next network prepare-node-certificate` and the separate canonical
-`ardents-control forwarding prepare-node-certificate`. Canonical Control's fixed
+`provision-infrastructure forwarding prepare-node-certificate`. Canonical Control's fixed
 Node-key birth and public Record preparation/signing supply that latter path
 without JSON editing, fixture-key extraction or delegation. Network/epoch owns canonical
 initial Record bytes, ordinary signature verification and detached public facts.

@@ -59,7 +59,7 @@ type nodeRole interface {
 	admit(context.Context, receiver.Channel, []byte) (receiving.Grant, error)
 	failedObservation(error, string) error
 	denyOwner(cause error)
-	cleanupRole(roleResult error) (error, func(func(string, error)))
+	cleanupRole(roleResult error) (func(func(string, error)), error)
 	credentialClose() error
 	certificate() tls.Certificate
 	listenerConfig() receiver.ReceiverConfig
@@ -245,7 +245,7 @@ func (l *nodeLifetime) cleanup() error {
 	if l.role != nil {
 		roleResult = originalRetirementResult(l.role.Close(), l.retired)
 	}
-	routeResult, afterRoute := l.hooks.cleanupRole(roleResult)
+	afterRoute, routeResult := l.hooks.cleanupRole(roleResult)
 	retain("route", routeResult)
 	if afterRoute != nil {
 		afterRoute(retain)

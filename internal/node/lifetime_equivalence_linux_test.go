@@ -202,7 +202,7 @@ func TestNodeLifetimeCleanupRolePassThroughWithoutOwner(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			r, _ := role.build(ctx, ctx, cancel, errors.New("original retirement notice"))
-			got, afterRoute := r.cleanupRole(routeResult)
+			afterRoute, got := r.cleanupRole(routeResult)
 			if got != routeResult {
 				t.Fatal("cleanup hook altered the Route result without a role failure", got)
 			}

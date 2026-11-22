@@ -27,8 +27,8 @@ script may be invoked.
 
 `python3 -I -S scripts/installation/build-forwarding-candidate.py
 --source-manifest PATH --source-manifest-sha256 SHA256 --source-revision REVISION
---output FRESH_OUTPUT` remains the shared candidate builder: it builds exactly
-`ardents-node` and `ardents-control` twice under the outside controller's
+--output FRESH_OUTPUT` remains the shared candidate builder: it builds the fixed
+`ardents-node` artifact twice under the outside controller's
 original development lock and joined build scope, and its
 `ardents-forwarding-build-execution-v1` records remain the shared build-scope
 reference. After the Descriptor retirement (#604 FJD stage D, ADR-0125) its
@@ -203,7 +203,7 @@ produces public unsigned bytes and grants no signing or trust authority.
 template (`infrastructure.PlatformUnitTemplate`). The former
 `source prepare-template` producer was removed (ADR-0125).
 
-The distinct canonical `ardents-control source sign-initial-release` producer
+The distinct canonical `sign-infrastructure-release source sign-initial-release` producer
 describes only `ardents/linux-amd64/node` and
 `ardents/linux-amd64/infrastructure/source` in one initial signed set under the
 existing five-key/ordinary-three-signature and rebuild policy. After the #604
