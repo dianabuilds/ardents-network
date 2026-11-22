@@ -54,6 +54,31 @@ func TestDiagnosticTimelineCombinesRuntimeOwnersWithoutPrivateFields(t *testing.
 	}
 }
 
+func TestDiagnosticTimelineJournalFieldsCannotSupplyEventFields(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		record map[string]any
+		want   string
+	}{
+		{"outer kind cannot declare readiness", map[string]any{
+			"MESSAGE": `{"schema":"ardents-source-event-v1","at":"2026-09-25T12:30:00Z"}`,
+			"kind":    "source-ready",
+		}, ""},
+		{"outer reason cannot invalidate readiness", map[string]any{
+			"MESSAGE": `{"schema":"ardents-source-event-v1","kind":"source-ready","at":"2026-09-25T12:30:00Z"}`,
+			"reason":  "unrelated", "_PID": "42",
+		}, "2026-09-25T12:30:00Z\tevent\tsource\t42\t-\t-\tsource-ready\t-\t\"\"\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var output bytes.Buffer
+			input := io.NopCloser(strings.NewReader(diagnosticTestJSON(t, tc.record)))
+			if err := Project(t.Context(), input, &output); err != nil || output.String() != tc.want {
+				t.Fatalf("timeline = %q, err = %v, want %q", output.String(), err, tc.want)
+			}
+		})
+	}
+}
+
 func TestDiagnosticTimelineRejectsMalformedKnownCategoryWithoutEcho(t *testing.T) {
 	input := diagnosticTestJSON(t, map[string]any{
 		"schema": "ardents-node-event-v1", "kind": "lifecycle",
