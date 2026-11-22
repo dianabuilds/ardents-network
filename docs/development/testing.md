@@ -2970,6 +2970,20 @@ constraints. Linux unit/race gates include it; Windows checks retain the common
 inventory. Architecture checks validate both inventories and Linux selection;
 no build-error-based filtering or passing platform skip supplies that membership.
 
+The `portable` CI lane in `.github/workflows/quality.yml` executes that common
+inventory on `windows-latest` and `macos-latest`. On each runner it builds
+(`go build ./...`) and vets (`go vet ./...`) every package with `CGO_ENABLED=0`
+and the repository Go toolchain, then runs the common deterministic inventory
+with the same `make unit` invocation (`-p 1 -short -shuffle=on -count=1
+-timeout=15m`), reading `tests/profiles/deterministic-packages.txt` directly and
+omitting the Linux-only supplement. Native cells (`linux` and `*_native` build
+constraints) are excluded by their build tags on those runners, never as passing
+skips; the lane runs no native profile. This is ADR-0129 mandatory-target compile
+and portable-unit evidence, not platform qualification: C0 qualification remains
+Ubuntu LTS x86-64, and the Ubuntu CI jobs retain every native gate unchanged.
+Both targets report independently; a compile or unit failure on either fails
+that target's job.
+
 ## Independent offline Admission profile
 
 The separate `issuer-key-material-linux` profile runs `make issuance-check`:
