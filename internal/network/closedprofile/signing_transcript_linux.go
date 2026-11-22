@@ -9,8 +9,8 @@ import (
 // explicit public State context and returns its fixed-purpose signing message.
 // It grants no State acceptance or private-key access. Authority is the pinned
 // State signer, distinct from the Admission authority carried inside the body.
-// Verification and the authoritative transcript encoding are portable; the
-// offline signing producer remains a separate Linux-only consumer.
+// The offline producers are Linux-only. Verification uses the same portable
+// transcript encoding.
 func SigningTranscript(body []byte, context Context) ([]byte, error) {
 	if len(body)+ed25519.SignatureSize > MaxSize || len(context.Authority) != ed25519.PublicKeySize {
 		return nil, errors.New("closed profile framing is invalid")
