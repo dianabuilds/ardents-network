@@ -5,8 +5,8 @@ package node
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/tls"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
@@ -15,7 +15,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/bootstrap"
@@ -37,24 +36,53 @@ type IssuerConfig struct {
 // Done closes only after Route, issuing borrowers and all acquired owners join.
 type Issuer struct{ original *issuerInvocation }
 
+func (handle *Issuer) Stop() {
+	if handle != nil && handle.original != nil {
+		handle.original.stop()
+	}
+}
+func (handle *Issuer) Done() <-chan struct{} {
+	if handle == nil || handle.original == nil {
+		return nil
+	}
+	return handle.original.done
+}
+func (handle *Issuer) Close() error {
+	if handle == nil {
+		return nil
+	}
+	if handle.original == nil {
+		return errors.New("original Issuer lifetime absent")
+	}
+	handle.Stop()
+	return handle.original.closeResult()
+}
+func (handle *Issuer) JoinedOutcome() string {
+	if handle == nil || handle.original == nil {
+		return "failed"
+	}
+	return handle.original.joinedOutcome()
+}
+func (handle *Issuer) JoinedFailureOwners() (first, cleanup string) {
+	if handle == nil || handle.original == nil {
+		return "absent", ""
+	}
+	return handle.original.joinedFailureOwners()
+}
+
+// FirstFailure returns detached original facts without observing or waiting for completion.
+func (handle *Issuer) FirstFailure() *FailureDiagnostic {
+	if handle == nil || handle.original == nil {
+		return nil
+	}
+	return handle.original.firstFailure()
+}
+
 type issuerInvocation struct {
-	failure                      failureRecord
-	mu                           sync.Mutex
-	caller, ctx                  context.Context
-	cancel                       context.CancelFunc
-	config                       IssuerConfig
-	denied                       bool
-	first, result, cleanupResult error
-	firstOwner, cleanupOwner     string
-	retired                      error
-	done                         chan struct{}
-	process                      *processresource.Guard
-	producer                     *duty.NodeProducer
-	credential                   *credential
-	budget                       *hosting.Budget
-	receiving                    *receiving.Owner
-	issuing                      issuing.Owner
-	role                         *receiver.Receiver
+	nodeLifetime
+	config     IssuerConfig
+	credential *credential
+	issuing    issuing.Owner
 }
 
 // ListenIssuer joins rejected partial acquisitions before returning. It neither
@@ -77,20 +105,16 @@ func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *I
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	child, cancel := context.WithCancel(ctx)
-	f := &issuerInvocation{failure: failureRecord{started: time.Now()}, caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Issuer admission retired"), done: make(chan struct{})}
+	f := &issuerInvocation{nodeLifetime: newNodeLifetime(ctx, config.Authority, "Issuer", config.ParticipationRoot, config.SpendRoot, config.HostingRoot), config: config}
+	f.hooks = f
 	defer func() {
 		if result != nil {
 			f.deny(result, "startup")
-			f.mu.Lock()
-			first := f.first
-			f.mu.Unlock()
-			result = errors.Join(first, originalRetirementResult(result, f.retired), f.cleanup())
-			result = &startupFailure{cause: result, fact: f.failure.snapshot(f.first)}
+			result = f.joinedStartupFailure(result)
 		}
 	}()
 	var err error
-	f.process, err = processresource.Open(child, processresource.IssuerProfile)
+	f.process, err = processresource.Open(f.ctx, processresource.IssuerProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -114,101 +138,32 @@ func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *I
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: !retained}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
-	if err != nil {
+	if err := f.openProducer(retained, m); err != nil {
 		return nil, err
 	}
 	view, err := f.currentBase()
 	if err != nil {
 		return nil, err
 	}
-	f.budget, err = hosting.Open(config.HostingRoot)
-	if err != nil {
+	if err := f.openHosting(); err != nil {
 		return nil, err
 	}
 	var opened issuing.Result
-	f.issuing, opened = issuing.OpenCurrent(child, p, f.observeIssuance)
+	f.issuing, opened = issuing.OpenCurrent(f.ctx, p, f.observeIssuance)
 	if opened.Outcome != "opened" {
 		return nil, errors.Join(errors.New("original issuing roots unavailable"), f.issuing.Err())
 	}
-	profile := view.ProfileBinding()
-	binding := receiving.Receiver{NetworkID: profile.Network, StateGeneration: profile.Generation, StateDigest: profile.EpochDigest, ProfileDigest: profile.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	openReceiving := receiving.Open
-	if retained {
-		openReceiving = receiving.OpenRetained
-	}
-	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
-	if err != nil {
+	binding := receivingBinding(view, m)
+	if err := f.openReceiving(retained, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) }); err != nil {
 		return nil, err
 	}
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
-	if err := f.producer.Live(); err != nil {
+	if err := f.serve(); err != nil {
 		return nil, err
 	}
-	authority := config.Authority
-	authority.Current = f.current
-	f.role, err = receiver.Listen(child, receiver.ReceiverConfig{Authority: authority, Certificate: f.credential.certificate, Admit: f.admit, ReserveBootstrap: f.reserveBootstrap, Issue: f.issue})
-	if err != nil {
-		return nil, err
-	}
-	if _, err := f.current(); err != nil {
-		return nil, err
-	}
-	f.mu.Lock()
-	f.failure.serving = true
-	f.mu.Unlock()
-	go f.supervise()
 	return &Issuer{original: f}, nil
-}
-
-// currentBase observes external owners without an issuing callback or Node lock.
-// Admission uses this observer; Route additionally checks the retained issuer.
-func (f *issuerInvocation) currentBase() (network.RuntimeView, error) {
-	if err := f.admission(); err != nil {
-		return network.RuntimeView{}, err
-	}
-	measurement, err := f.process.Check()
-	if err != nil {
-		return network.RuntimeView{}, f.failedObservation(err, "process")
-	}
-	if err := f.producer.Check(); err != nil {
-		return network.RuntimeView{}, f.failedObservation(err, "participation")
-	}
-	view, err := f.config.Authority.Current()
-	owner := "network"
-	if err == nil && view.ProfileBinding() != f.config.Authority.Profile {
-		err = errors.New("original Issuer profile changed")
-	}
-	if err == nil {
-		err = view.MatchDuty(f.config.Authority.Duty, time.Now())
-	}
-	if err == nil && time.Since(measurement.Completed) > time.Second {
-		err, owner = expiredMeasurement(measurement), "process"
-	}
-	if err != nil {
-		return network.RuntimeView{}, f.failedObservation(err, owner)
-	}
-	if err := f.admission(); err != nil {
-		return network.RuntimeView{}, err
-	}
-	return view, nil
-}
-
-func (f *issuerInvocation) admission() error {
-	f.mu.Lock()
-	denied := f.denied
-	f.mu.Unlock()
-	// Check the original caller itself: a derived context's propagation may lag.
-	if err := f.caller.Err(); err != nil {
-		f.deny(err, "caller")
-		return f.retired
-	}
-	if denied || f.ctx.Err() != nil {
-		return f.retired
-	}
-	return nil
 }
 
 func (f *issuerInvocation) current() (network.RuntimeView, error) {
@@ -222,6 +177,9 @@ func (f *issuerInvocation) current() (network.RuntimeView, error) {
 	return f.currentBase()
 }
 
+// failedObservation keeps the Issuer notice policy: a foreign operational cause
+// is returned to the caller (not replaced by the retirement notice), while a bare
+// caller/cancellation error is lent the retirement notice. Node retains the cause.
 func (f *issuerInvocation) failedObservation(err error, owner string) error {
 	if err == f.retired || f.caller.Err() != nil && err == f.caller.Err() || f.ctx.Err() != nil && err == f.ctx.Err() {
 		f.deny(f.caller.Err(), "caller")
@@ -231,125 +189,31 @@ func (f *issuerInvocation) failedObservation(err error, owner string) error {
 	return err
 }
 
-func (f *issuerInvocation) deny(cause error, owner string) {
-	f.mu.Lock()
-	f.denied = true
-	if f.first == nil && cause != nil && cause != f.retired {
-		f.first, f.firstOwner = cause, owner
-		f.failure.retain(cause, f.caller, owner)
-	}
-	f.mu.Unlock()
-	// Never call a foreign owner while holding the Node lifecycle mutex.
+// denyOwner denies the issuing owner. Never call a foreign owner while holding
+// the Node lifecycle mutex; the shared latch releases the lock first. A zero
+// issuing owner (startup refused before acquisition) is a safe no-op.
+func (f *issuerInvocation) denyOwner(cause error) {
 	f.issuing.Deny(cause)
-	f.cancel()
 }
 
-func (f *issuerInvocation) supervise() {
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-f.ctx.Done():
-			f.deny(f.caller.Err(), "caller")
-		case <-f.role.Done():
-			f.deny(nil, "route")
-		case <-ticker.C:
-			if _, err := f.current(); err == nil {
-				continue
+// cleanupRole joins the independent issuing background wait after Route join.
+// The background wait never interprets cancellation as joined.
+func (f *issuerInvocation) cleanupRole(roleResult error) (error, func(func(string, error))) {
+	closed := f.issuing.Close(context.Background())
+	return roleResult, func(retain func(string, error)) {
+		for _, c := range closed.Cleanup {
+			if c.Phase != "" && c.Outcome != "closed" {
+				retain("issuance", f.issuing.Err())
+				break
 			}
 		}
-		cleanup := f.cleanup()
-		f.mu.Lock()
-		f.failure.retainCleanup(cleanup, f.caller, f.cleanupOwner)
-		f.cleanupResult, f.result = cleanup, errors.Join(f.first, cleanup)
-		f.mu.Unlock()
-		close(f.done)
-		return
 	}
 }
 
-func (f *issuerInvocation) cleanup() error {
-	var result error
-	retain := func(owner string, err error) {
-		if err != nil && f.cleanupOwner == "" {
-			f.cleanupOwner = owner
-		}
-		result = errors.Join(result, err)
-	}
-	if f.role != nil {
-		retain("route", originalRetirementResult(f.role.Close(), f.retired))
-	}
-	// The independent background wait never interprets cancellation as joined.
-	closed := f.issuing.Close(context.Background())
-	for _, c := range closed.Cleanup {
-		if c.Phase != "" && c.Outcome != "closed" {
-			retain("issuance", f.issuing.Err())
-			break
-		}
-	}
-	if f.receiving != nil {
-		retain("admission", f.receiving.Close())
-	}
-	if f.budget != nil {
-		retain("hosting", f.budget.Close())
-	}
-	if f.producer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		retain("participation", f.producer.Close(ctx))
-		cancel()
-	}
-	retain("process", f.process.Close())
-	retain("credential", f.credential.close())
-	return result
-}
-
-func (handle *Issuer) Stop() {
-	if handle != nil && handle.original != nil {
-		handle.original.deny(handle.original.caller.Err(), "caller")
-	}
-}
-func (handle *Issuer) Done() <-chan struct{} {
-	if handle == nil || handle.original == nil {
-		return nil
-	}
-	return handle.original.done
-}
-func (handle *Issuer) Close() error {
-	if handle == nil {
-		return nil
-	}
-	if handle.original == nil {
-		return errors.New("original Issuer lifetime absent")
-	}
-	handle.Stop()
-	f := handle.original
-	<-f.done
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.result
-}
-func (handle *Issuer) JoinedOutcome() string {
-	if handle == nil || handle.original == nil {
-		return "failed"
-	}
-	f := handle.original
-	<-f.done
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.cleanupResult != nil || f.first != nil && f.first != context.Canceled {
-		return "failed"
-	}
-	return "canceled"
-}
-func (handle *Issuer) JoinedFailureOwners() (first, cleanup string) {
-	if handle == nil || handle.original == nil {
-		return "absent", ""
-	}
-	f := handle.original
-	<-f.done
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.firstOwner, f.cleanupOwner
+func (f *issuerInvocation) credentialClose() error       { return f.credential.close() }
+func (f *issuerInvocation) certificate() tls.Certificate { return f.credential.certificate }
+func (f *issuerInvocation) listenerConfig() receiver.ReceiverConfig {
+	return receiver.ReceiverConfig{ReserveBootstrap: f.reserveBootstrap, Issue: f.issue}
 }
 
 func (f *issuerInvocation) observeIssuance() (admission.AuthorityFacts, time.Time, error) {
@@ -363,23 +227,6 @@ func (f *issuerInvocation) observeIssuance() (admission.AuthorityFacts, time.Tim
 		return admission.AuthorityFacts{}, time.Time{}, f.failedObservation(errors.Join(errors.New("original issuing member changed"), err), "network")
 	}
 	return admissionFacts(p), view.ObservedAt(), nil
-}
-
-func (f *issuerInvocation) observeReceiving(binding receiving.Receiver) (receiving.Observation, error) {
-	view, err := f.current()
-	if err != nil {
-		return receiving.Observation{}, err
-	}
-	p := view.Profile()
-	m, err := view.Member(binding.NodeID, view.ObservedAt())
-	if err != nil || m.DutyGeneration != binding.DutyGeneration {
-		return receiving.Observation{}, errors.Join(errors.New("original receiving Issuer duty changed"), err)
-	}
-	end := m.NotAfter()
-	if p.NotAfter.Before(end) {
-		end = p.NotAfter
-	}
-	return receiving.Observation{Profile: admissionFacts(p), Receiver: binding, Now: view.ObservedAt(), NotAfter: end}, nil
 }
 
 func (f *issuerInvocation) admit(ctx context.Context, c receiver.Channel, raw []byte) (receiving.Grant, error) {
@@ -444,15 +291,4 @@ func (f *issuerInvocation) issue(ctx context.Context, raw []byte, bootstrap bool
 		return nil, err
 	}
 	return r.Response, nil
-}
-
-// FirstFailure returns detached original facts without observing or waiting for completion.
-func (handle *Issuer) FirstFailure() *FailureDiagnostic {
-	if handle == nil || handle.original == nil {
-		return nil
-	}
-	f := handle.original
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.failure.snapshot(f.first)
 }

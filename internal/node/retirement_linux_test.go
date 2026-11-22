@@ -51,7 +51,7 @@ func TestOriginalRetirementNoticeCannotErasePhysicalCleanupFailure(t *testing.T)
 func TestCopiedForwardingHandleRetainsLateOriginalCleanupFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	original := &forwarding{ctx: ctx, cancel: cancel, done: make(chan struct{})}
+	original := &forwarding{nodeLifetime: nodeLifetime{ctx: ctx, cancel: cancel, done: make(chan struct{})}}
 	handle := &Forwarding{original: original}
 	copy := *handle
 	cause := errors.New("original physical cleanup failed")
@@ -70,12 +70,12 @@ func TestOriginalObservationCancellationDoesNotMintCleanupFailure(t *testing.T) 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	notice := errors.New("private original retirement")
-	f := &forwarding{ctx: ctx, cancel: cancel, retired: notice}
+	f := &forwarding{nodeLifetime: nodeLifetime{ctx: ctx, cancel: cancel, retired: notice}}
 	if got := f.failedObservation(context.Canceled, "process"); got != notice || f.first != context.Canceled {
 		t.Fatal("original bare caller cancellation became a foreign cleanup cause")
 	}
 	for _, cause := range []error{fmt.Errorf("physical close: %w", context.Canceled), errors.Join(context.Canceled, errors.New("close failed")), errors.New(context.Canceled.Error())} {
-		f := &forwarding{ctx: ctx, cancel: cancel, retired: notice}
+		f := &forwarding{nodeLifetime: nodeLifetime{ctx: ctx, cancel: cancel, retired: notice}}
 		if got := f.failedObservation(cause, "process"); got != cause || f.first != cause {
 			t.Fatal("genuine foreign or physical failure replaced", cause)
 		}
