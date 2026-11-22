@@ -50,7 +50,7 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 	if end, bounded := ctx.Deadline(); bounded && end.Before(plan.Deadline) {
 		plan.Deadline = end.UTC().Truncate(time.Second)
 	}
-	read, err := Begin(ctx, owner.local, owner.principal)
+	read, err := beginRead(ctx, owner.local, owner.principal)
 	if err != nil {
 		return nil, err
 	}
@@ -60,22 +60,22 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 		// The installed authority reobserves the original Startup before and
 		// after CurrentRuntime. Retain this operation's rights around that
 		// observation without repeating the same full native file/manager I/O.
-		if err := errors.Join(ctx.Err(), read.Check()); err != nil {
+		if err := errors.Join(ctx.Err(), read.check()); err != nil {
 			return network.RuntimeView{}, err
 		}
 		view, err := originalCurrent()
-		return view, errors.Join(err, ctx.Err(), read.Check())
+		return view, errors.Join(err, ctx.Err(), read.check())
 	}
 	authority = funding.Observe(current, authority.Witness, authority.Presentation)
 	pending, err := read.prepare(plan, authority, owner.holder, request.Value, owner.route)
 	if err != nil {
 		return nil, err
 	}
-	if err := errors.Join(ctx.Err(), owner.check(), read.Check()); err != nil {
+	if err := errors.Join(ctx.Err(), owner.check(), read.check()); err != nil {
 		return nil, errors.Join(err, pending.close())
 	}
 	// The fixed local request precedes the same sole worker transfer used by
-	// the console adapter. The caller receives no raw Service transport.
+	// the qualified document worker. The caller receives no raw Service transport.
 	return newResultStream(ctx, owner.check, func() ([]byte, error) {
 		return pending.complete(owner.check)
 	}, pending.close), nil

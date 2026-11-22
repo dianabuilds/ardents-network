@@ -556,36 +556,19 @@ func (p *latencyParticipant) coldAttempt(ctx context.Context, link string, index
 	plan.HostingRoot = filepath.Join(base, "hosting")
 	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	// Bound the cold deadline exactly as the ordinary Reader.Open does: the
-	// ForwardClass lifetime, capped by the current profile and the caller deadline.
-	plan.Deadline = time.Now().Add(admission.ForwardClass.Lifetime()).UTC().Truncate(time.Second)
-	if view, viewErr := p.network.CurrentRuntime(); viewErr == nil {
-		if end := view.Profile().NotAfter; end.Before(plan.Deadline) {
-			plan.Deadline = end
-		}
-	}
-	if end, hasDeadline := bounded.Deadline(); hasDeadline && end.Before(plan.Deadline) {
-		plan.Deadline = end.UTC().Truncate(time.Second)
-	}
-	read, err := endpointreader.Begin(bounded, p.owner, p.readerPrincipal)
-	if err != nil {
-		return 0, err
-	}
-	// Retain this operation's rights around each authority observation, exactly
-	// as the ordinary Reader console adapter does.
-	originalCurrent := p.authority.Current
-	authority := funding.Observe(func() (network.RuntimeView, error) {
-		if err := read.Check(); err != nil {
-			return network.RuntimeView{}, err
-		}
-		view, err := originalCurrent()
-		return view, errors.Join(err, read.Check())
-	}, p.authority.Witness, p.authority.Presentation)
+	reader := endpointreader.New(endpointreader.Config{
+		Local: p.owner, Principal: p.readerPrincipal, Plan: plan,
+		Authority: p.authority, Holder: holder, Check: bounded.Err,
+	})
 	began := time.Now()
-	body, err := read.Read(plan, authority, holder, link)
+	stream, err := reader.Open(bounded, application.Request{Destination: application.TargetLink, Value: link})
+	if err != nil {
+		return time.Since(began), err
+	}
+	body, readErr := document.Read(bounded, stream)
 	elapsed := time.Since(began)
 	clear(body)
-	return elapsed, errors.Join(err, read.Close())
+	return elapsed, errors.Join(readErr, stream.Close())
 }
 
 // diagnosticOpenTiming performs one extra retained-context read with a logging
