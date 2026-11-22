@@ -1339,11 +1339,11 @@
       },
       {
         "symbols": [
-          "internal/network/source.DecodeServingDeclaration",
-          "internal/network/source.servingObject"
+          "internal/network/source/servingdeclaration.DecodeServingDeclaration",
+          "internal/network/source/servingdeclaration.servingObject"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/network/source)",
-        "rationale": "These exact internal/network/source functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/network/source/servingdeclaration)",
+        "rationale": "These exact internal/network/source/servingdeclaration functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -1574,11 +1574,11 @@
       },
       {
         "symbols": [
-          "internal/network/source.DecodeServingDeclaration",
-          "internal/network/source.servingObject"
+          "internal/network/source/servingdeclaration.DecodeServingDeclaration",
+          "internal/network/source/servingdeclaration.servingObject"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/source)",
-        "rationale": "These exact internal/network/source functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/source/servingdeclaration)",
+        "rationale": "These exact internal/network/source/servingdeclaration functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },

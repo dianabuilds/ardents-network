@@ -606,7 +606,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_install_inputs_linux.go" && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_initial_network_native_linux_test.go" && dependency == modulePath+"/internal/network/source" {
+		if source == "cmd/ardents-control/source_initial_network_native_linux_test.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/network/source/servingdeclaration") {
 			return true
 		}
 		if source == "cmd/ardents-control/source_initial_network_linux.go" && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
@@ -721,11 +721,11 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_forward_release_native_linux_test.go" && dependency == modulePath+"/internal/release/infrastructure" {
 			return true
 		}
-		if (source == "cmd/ardents-control/source_inspection_linux.go" || source == "cmd/ardents-control/source_inspection_linux_test.go") && dependency == modulePath+"/internal/network/source" {
+		if (source == "cmd/ardents-control/source_inspection_linux.go" || source == "cmd/ardents-control/source_inspection_linux_test.go") && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/network/source/servingdeclaration") {
 			return true
 		}
 		if source == "cmd/ardents-control/source_state_linux.go" || source == "cmd/ardents-control/source_state_linux_test.go" {
-			for _, owner := range []string{"network/source", "processresource"} {
+			for _, owner := range []string{"network/source", "network/source/servingdeclaration", "processresource"} {
 				if dependency == modulePath+"/internal/"+owner {
 					return true
 				}
@@ -739,7 +739,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if source == "cmd/ardents-control/source_state_preparation_linux_test.go" {
 			switch dependency {
-			case modulePath + "/internal/network/source", modulePath + "/internal/network/state", modulePath + "/internal/network/duty", modulePath + "/tests/epochfixture/network":
+			case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/network/state", modulePath + "/internal/network/duty", modulePath + "/tests/epochfixture/network":
 				return true
 			}
 		}
@@ -763,46 +763,47 @@ func successorImportAllowed(source, dependency string) bool {
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
-		"internal/processresource":                 {},
-		"internal/node":                            {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
-		"internal/network":                         {},
-		"internal/network/closedprofile":           {},
-		"internal/network/duty":                    {},
-		"internal/network/epoch":                   {},
-		"internal/network/source":                  {"network/epoch"},
-		"internal/network/state":                   {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/state/durable"},
-		"internal/network/state/durable":           {},
-		"internal/admission":                       {"admission/issuerprofile"},
-		"internal/admission/issuerprofile":         {},
-		"internal/admission/allocation":            {"admission"},
-		"internal/custody":                         {"admission", "admission/allocation", "publication"},
-		"internal/admission/attempts":              {},
-		"internal/admission/spending":              {},
-		"internal/admission/token":                 {"admission", "admission/issuerprofile"},
-		"internal/admission/receiving":             {"admission", "admission/token", "admission/spending"},
-		"internal/admission/stock":                 {"admission", "admission/allocation", "admission/attempts", "admission/token"},
-		"internal/admission/quota":                 {"admission", "admission/issuerprofile"},
-		"internal/admission/issuance":              {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing"},
-		"internal/admission/issuer":                {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing"},
-		"internal/admission/issuerprofile/signing": {"admission/issuerprofile"},
-		"internal/hosting":                         {},
-		"internal/publication":                     {},
-		"internal/publication/durable":             {"publication"},
-		"internal/publication/instance":            {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
-		"internal/publication/runtime":             {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
-		"internal/connection":                      {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
-		"internal/connection/wire":                 {},
-		"internal/reachability":                    {"publication"},
-		"internal/enrollment":                      {},
-		"internal/release":                         {},
-		"internal/execution":                       {},
-		"internal/execution/runtime":               {"execution", "execution/worker"},
-		"internal/execution/worker":                {"platform/systemd", "endpoint/unit"},
-		"internal/release/endpoint":                {"enrollment", "release"},
-		"internal/release/infrastructure":          {"enrollment", "release"},
-		"internal/endpoint/launch":                 {"release/endpoint", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
-		"internal/platform/cgroup":                 {},
-		"internal/endpoint/plan":                   {},
+		"internal/processresource":                   {},
+		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/network":                           {},
+		"internal/network/closedprofile":             {},
+		"internal/network/duty":                      {},
+		"internal/network/epoch":                     {},
+		"internal/network/source":                    {"network/epoch"},
+		"internal/network/source/servingdeclaration": {},
+		"internal/network/state":                     {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable"},
+		"internal/network/state/durable":             {},
+		"internal/admission":                         {"admission/issuerprofile"},
+		"internal/admission/issuerprofile":           {},
+		"internal/admission/allocation":              {"admission"},
+		"internal/custody":                           {"admission", "admission/allocation", "publication"},
+		"internal/admission/attempts":                {},
+		"internal/admission/spending":                {},
+		"internal/admission/token":                   {"admission", "admission/issuerprofile"},
+		"internal/admission/receiving":               {"admission", "admission/token", "admission/spending"},
+		"internal/admission/stock":                   {"admission", "admission/allocation", "admission/attempts", "admission/token"},
+		"internal/admission/quota":                   {"admission", "admission/issuerprofile"},
+		"internal/admission/issuance":                {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing"},
+		"internal/admission/issuer":                  {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing"},
+		"internal/admission/issuerprofile/signing":   {"admission/issuerprofile"},
+		"internal/hosting":                           {},
+		"internal/publication":                       {},
+		"internal/publication/durable":               {"publication"},
+		"internal/publication/instance":              {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
+		"internal/publication/runtime":               {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
+		"internal/connection":                        {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
+		"internal/connection/wire":                   {},
+		"internal/reachability":                      {"publication"},
+		"internal/enrollment":                        {},
+		"internal/release":                           {},
+		"internal/execution":                         {},
+		"internal/execution/runtime":                 {"execution", "execution/worker"},
+		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit"},
+		"internal/release/endpoint":                  {"enrollment", "release"},
+		"internal/release/infrastructure":            {"enrollment", "release"},
+		"internal/endpoint/launch":                   {"release/endpoint", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
+		"internal/platform/cgroup":                   {},
+		"internal/endpoint/plan":                     {},
 
 		"internal/platform/systemd":    {},
 		"internal/platform/process":    {},
@@ -1175,7 +1176,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/release/infrastructure/source_observation_linux.go" || source == "internal/release/infrastructure/source_install_linux.go" || source == "internal/release/infrastructure/source_loaded_linux.go" || source == "internal/release/infrastructure/source_policy_linux_test.go" || source == "internal/release/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 			return true
 		}
-		if source == "cmd/ardents-next/source_input_linux.go" && dependency == modulePath+"/internal/network/source" {
+		if source == "cmd/ardents-next/source_input_linux.go" && dependency == modulePath+"/internal/network/source/servingdeclaration" {
 			return true
 		}
 		// A registered package's external behavior tests may import that package.

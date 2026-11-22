@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 )
 
 // The non-root child is an explicit numeric system-UID fixture, not an
@@ -147,7 +148,7 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if err := os.Chown(participationRoot, 199, 199); err != nil {
 		t.Fatal(err)
 	}
-	serve := source.ServingDeclaration{Network: &source.ServingNetwork{Root: stateRoot, NetworkID: p.Network, Authorities: [][32]byte{p.StateKey}, Threshold: 1, ProfileAuthority: p.StateKey, ClockObservationFile: clock},
+	serve := servingdeclaration.ServingDeclaration{Network: &servingdeclaration.ServingNetwork{Root: stateRoot, NetworkID: p.Network, Authorities: [][32]byte{p.StateKey}, Threshold: 1, ProfileAuthority: p.StateKey, ClockObservationFile: clock},
 		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: participationRoot, Address: p.Endpoint, Certificate: "/unopened-source-certificate", PrivateKey: "/unopened-source-private-key", ClientRoot: "/unopened-client-ca", ClientPins: [][32]byte{{1}}}
 	serveRaw, err := json.Marshal(serve)
 	if err != nil {

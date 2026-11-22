@@ -15,6 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
@@ -89,7 +90,7 @@ func prepareObservedSourceState(ctx context.Context, planPath, bundlePath string
 			return err
 		}
 	}
-	plan, err := source.DecodeServingDeclaration(raw[0])
+	plan, err := servingdeclaration.DecodeServingDeclaration(raw[0])
 	if err != nil {
 		return err
 	}
@@ -154,7 +155,7 @@ func prepareObservedSourceState(ctx context.Context, planPath, bundlePath string
 // The public serving declaration supplies independently selected pins and paths;
 // Source serving/acquisition stay absent from this offline configuration. This
 // producer grants no accepted Route profile, membership, acquisition or duty.
-func sourcePreparationStateConfig(plan source.ServingDeclaration) (state.Config, error) {
+func sourcePreparationStateConfig(plan servingdeclaration.ServingDeclaration) (state.Config, error) {
 	n := plan.Network
 	if n == nil || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || plan.ProcessProfile != processresource.SourceProfile ||
 		n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 ||

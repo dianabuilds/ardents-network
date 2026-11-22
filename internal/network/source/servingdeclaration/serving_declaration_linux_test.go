@@ -1,4 +1,4 @@
-package source
+package servingdeclaration
 
 import (
 	"bytes"
@@ -38,7 +38,7 @@ func TestServingDeclarationClosedByteGrammar(t *testing.T) {
 	if _, err := DecodeServingDeclaration(bytes.Repeat([]byte(" "), 16<<10+1)); err == nil {
 		t.Fatal("unbounded input accepted")
 	}
-	// Numeric policy belongs to State/Installation, not the shared byte codec.
+	// Numeric policy belongs to State, not the shared byte codec.
 	if _, err := DecodeServingDeclaration([]byte(strings.Replace(raw, `"threshold":1`, `"threshold":0`, 1))); err != nil {
 		t.Fatal("codec acquired runtime policy", err)
 	}

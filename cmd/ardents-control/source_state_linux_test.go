@@ -9,12 +9,13 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 func TestSourcePreparationConfigHasNoServingOrAcquisition(t *testing.T) {
-	plan := source.ServingDeclaration{ProcessProfile: processresource.SourceProfile, ParticipationRoot: "/var/lib/source-participation",
-		Network: &source.ServingNetwork{Root: "/var/lib/source-state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}},
+	plan := servingdeclaration.ServingDeclaration{ProcessProfile: processresource.SourceProfile, ParticipationRoot: "/var/lib/source-participation",
+		Network: &servingdeclaration.ServingNetwork{Root: "/var/lib/source-state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}},
 			Threshold: 1, ProfileAuthority: [32]byte{2}, ClockObservationFile: "/var/lib/source-clock"},
 		Address: "127.0.0.1:4000", Certificate: "/unopened/certificate", PrivateKey: "/unopened/private-key", ClientRoot: "/unopened/ca", ClientPins: [][32]byte{{3}}}
 	config, err := sourcePreparationStateConfig(plan)

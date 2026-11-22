@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 )
 
 func runSourceInspection(args []string, out io.Writer) error {
@@ -86,7 +87,7 @@ func inspectSource(ctx context.Context, args []string) (response source.Message,
 			}
 		}
 	}
-	plan, err := source.DecodeServingDeclaration(raw[0])
+	plan, err := servingdeclaration.DecodeServingDeclaration(raw[0])
 	if err != nil {
 		return response, err
 	}
