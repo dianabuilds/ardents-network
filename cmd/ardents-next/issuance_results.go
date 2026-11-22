@@ -74,7 +74,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 		defer clear(batch)
 	}
 	o, _ := newObservation(endpoint)
-	finish := o.beginIssuance(r.Operation)
+	finish := o.begin("ardents.issuance", r.Operation)
 	plan := issuer.Plan{AdmissionRoot: p.Admission.Root, AdmissionBinding: p.Admission.Binding, KeyRoot: p.Keys.Root, KeyBinding: p.Keys.Binding, ResultRoot: p.Root}
 	var result issuer.Result
 	if args[0] == "initialize-results" {

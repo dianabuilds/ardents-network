@@ -105,7 +105,7 @@ func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		return write()
 	}
 	o, _ := newObservation(endpoint)
-	finish := o.beginIssuance(r.Operation)
+	finish := o.begin("ardents.issuance", r.Operation)
 	r.Phase = "open"
 	if args[0] == "initialize" {
 		r.Phase = "initialize"

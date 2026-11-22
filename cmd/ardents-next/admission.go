@@ -103,7 +103,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		defer clear(batch)
 	}
 	o, telemetryErr := newObservation(endpoint)
-	finish := o.beginAdmission(r.Operation)
+	finish := o.begin("ardents.admission", r.Operation)
 	r.Phase = "execute"
 	if ctx.Err() != nil {
 		r.Outcome = admission.Canceled

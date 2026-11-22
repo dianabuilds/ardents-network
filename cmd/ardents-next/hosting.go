@@ -90,7 +90,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		return write()
 	}
 	o, telemetryErr := newObservation(endpoint)
-	finish := o.beginHosting(r.Operation)
+	finish := o.begin("ardents.hosting", r.Operation)
 	r.Phase = "execute"
 	err = executeHosting(ctx, args[0], p, &r, diagnostic)
 	r.Outcome = hostingOutcome(err)

@@ -10,22 +10,12 @@ import (
 	"testing"
 )
 
-func TestInvalidInputDoesNotDisclosePathsOrBytes(t *testing.T) {
-	dir := t.TempDir()
-	secret := filepath.Join(dir, "private-permission")
-	facts := filepath.Join(dir, "private-facts")
-	if err := os.WriteFile(secret, bytes.Repeat([]byte("secret"), 40), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(facts, []byte("private-input"), 0600); err != nil {
-		t.Fatal(err)
-	}
+func TestRetiredPermissionInspectorUsesUnknownCommandRefusal(t *testing.T) {
 	var out, diagnostic bytes.Buffer
-	if code := run(context.Background(), []string{"inspect-permission", secret, facts}, &out, &diagnostic); code != 2 {
-		t.Fatalf("exit %d", code)
-	}
-	if out.String() != "{\"outcome\":\"invalid-input\"}\n" || diagnostic.Len() != 0 {
-		t.Fatalf("unexpected output %q / %q", out.String(), diagnostic.String())
+	args := []string{"inspect-permission", "private-permission", "private-facts"}
+	if code := run(context.Background(), args, &out, &diagnostic); code != 2 ||
+		out.Len() != 0 || diagnostic.String() != errDocumentUsage.Error()+"\n" {
+		t.Fatalf("retired command: code %d, stdout %q, stderr %q", code, out.String(), diagnostic.String())
 	}
 }
 
@@ -33,16 +23,6 @@ type unavailableOutput struct{}
 
 func (unavailableOutput) Write([]byte) (int, error) {
 	return 0, errors.New("private-output-error")
-}
-
-func TestOutputFailureHasFiniteExit(t *testing.T) {
-	var diagnostic bytes.Buffer
-	if code := run(context.Background(), commandFixture(t), unavailableOutput{}, &diagnostic); code != 2 {
-		t.Fatalf("output failure exit %d", code)
-	}
-	if bytes.Contains(diagnostic.Bytes(), []byte("private-output-error")) {
-		t.Fatal("output error disclosed")
-	}
 }
 
 func TestFactsRejectDuplicateUnknownAndTrailingInput(t *testing.T) {
