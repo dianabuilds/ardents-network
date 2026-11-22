@@ -55,7 +55,7 @@ func descriptorTokenMaterialArguments(args []string) (p descriptorTokenMaterialP
 		text   string
 		target *[32]byte
 	}{{p.Network, &binding.Network}, {p.Issuer, &binding.Issuer}, {p.Signer, &binding.Signer}} {
-		*pair.target, err = descriptorPublic32(pair.text)
+		*pair.target, err = controlPublic32(pair.text)
 		if err != nil {
 			return p, binding, output, err
 		}

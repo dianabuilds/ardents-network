@@ -13,7 +13,9 @@ import (
 
 // Exact Node transport leaf profile from the current TLS material owner. This
 // self-signature is not Network membership, State trust or process admission.
-func createDescriptorNodeCertificate(facts epoch.InitialClosedRecord, key ed25519.PrivateKey) ([]byte, error) {
+// Forwarding, JOIN and Descriptor share this pure codec; each role command
+// supplies its own prepared Record facts and freshly born Node key.
+func createNodeCertificate(facts epoch.InitialClosedRecord, key ed25519.PrivateKey) ([]byte, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return nil, err
@@ -26,13 +28,13 @@ func createDescriptorNodeCertificate(facts epoch.InitialClosedRecord, key ed2551
 	if err != nil {
 		return nil, err
 	}
-	if err := verifyDescriptorNodeCertificate(der, facts); err != nil {
+	if err := verifyNodeCertificate(der, facts); err != nil {
 		return nil, err
 	}
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), nil
 }
 
-func verifyDescriptorNodeCertificate(der []byte, facts epoch.InitialClosedRecord) error {
+func verifyNodeCertificate(der []byte, facts epoch.InitialClosedRecord) error {
 	c, err := x509.ParseCertificate(der)
 	if err != nil {
 		return errSourceControlInput

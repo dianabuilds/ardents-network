@@ -11,14 +11,19 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
 )
 
 // A finite operator plan rejects implicit last-wins option selection. Only
-// the option named by its caller may be repeated.
-func uniqueControlOptions(args []string, repeatable string) bool {
+// the exact options named by its caller may be repeated. This is the single
+// public-option grammar for every Forwarding/JOIN/Descriptor record, profile,
+// token-material, release-plan and Epoch argument parser; the Epoch producers
+// pass domain/record-plan/record (#718, audit E1-3). The option predicate
+// matches Go flag's own parseOne: a bare "-" is not an option.
+func uniqueControlOptions(args []string, repeatable ...string) bool {
 	seen := map[string]bool{}
 	for _, argument := range args {
 		if len(argument) < 2 || argument[0] != '-' {
@@ -26,7 +31,7 @@ func uniqueControlOptions(args []string, repeatable string) bool {
 		}
 		name := strings.TrimLeft(argument, "-")
 		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && name != repeatable {
+		if seen[name] && !slices.Contains(repeatable, name) {
 			return false
 		}
 		seen[name] = true

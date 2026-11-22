@@ -73,7 +73,7 @@ func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testin
 		t.Fatal(err)
 	}
 	block, rest := pem.Decode(certificate)
-	if block == nil || len(rest) != 0 || verifyForwardingNodeCertificate(block.Bytes, facts) != nil {
+	if block == nil || len(rest) != 0 || verifyNodeCertificate(block.Bytes, facts) != nil {
 		t.Fatal("actual canonical certificate profile differs")
 	}
 	for _, op := range []string{"sign-node-record", "prepare-node-certificate"} {

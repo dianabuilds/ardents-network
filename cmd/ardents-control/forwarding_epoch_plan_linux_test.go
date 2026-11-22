@@ -82,11 +82,11 @@ func TestForwardingEpochPreparationPreservesOrderedSignedRecordsAndSeed(t *testi
 		}
 	}
 	for _, args := range [][]string{{"--record", "a", "--record", "b"}, {"--domain=a", "--domain=b"}, {"--record-plan", "a", "--record-plan", "b"}} {
-		if !forwardingEpochUniqueOptions(args) {
+		if !uniqueControlOptions(args, "domain", "record-plan", "record") {
 			t.Fatal("ordered repeated input refused")
 		}
 	}
-	if forwardingEpochUniqueOptions([]string{"--assignment-seed", "a", "--assignment-seed=b"}) {
+	if uniqueControlOptions([]string{"--assignment-seed", "a", "--assignment-seed=b"}, "domain", "record-plan", "record") {
 		t.Fatal("duplicate seed permits implicit redraw")
 	}
 }

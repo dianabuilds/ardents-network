@@ -663,7 +663,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/network/epoch" {
 			switch source {
-			case "cmd/ardents-control/forwarding_node_record_linux.go", "cmd/ardents-control/forwarding_node_certificate_linux.go", "cmd/ardents-control/forwarding_node_provision_linux.go", "cmd/ardents-control/forwarding_node_certificate_linux_test.go", "cmd/ardents-control/forwarding_node_provision_native_linux_test.go":
+			case "cmd/ardents-control/forwarding_node_record_linux.go", "cmd/ardents-control/node_certificate_linux.go", "cmd/ardents-control/forwarding_node_provision_linux.go", "cmd/ardents-control/node_certificate_linux_test.go", "cmd/ardents-control/forwarding_node_provision_native_linux_test.go":
 				return true
 			}
 		}
@@ -1710,11 +1710,6 @@ func joinRetainedImportAllowed(source, dependency string) bool {
 	case "cmd/ardents-control/join_profile_plan_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
-	case "cmd/ardents-control/join_node_certificate_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
 			return true
 		}
 	case "cmd/ardents-control/join_epoch_plan_linux.go":

@@ -34,7 +34,7 @@ func signJoinProfile(ctx context.Context, args []string, observe func(string, *o
 			}
 		}
 	}
-	if _, err := joinPublic32(args[2]); err != nil {
+	if _, err := controlPublic32(args[2]); err != nil {
 		return plan, nil, err
 	}
 	inputs := &sourceControlInputs{ctx: ctx}

@@ -12,7 +12,7 @@ import (
 // fixture key is reused. This produces no signature or trust/independence claim.
 func runDescriptorReleaseKeys(args []string, out io.Writer) error {
 	if len(args) != 1 {
-		return &descriptorControlFailure{errSourceControlInput}
+		return errSourceControlInput
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

@@ -18,11 +18,6 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
 			return true
 		}
-	case "cmd/ardents-control/descriptor_node_certificate_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
 	case "cmd/ardents-control/descriptor_node_provision_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
