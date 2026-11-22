@@ -9,9 +9,9 @@ import (
 	"os"
 )
 
-// Physical secret generation/output only. The two fixed callers own their
-// distinct Node or State purpose; no signing or authority is granted here.
-func prepareJoinPrivateKey(ctx context.Context, path, name string, observe func(string, *os.File)) (public [32]byte, returned error) {
+// prepareProvisioningKey generates and durably writes one fresh PKCS#8 key.
+// The calling command selects the Node or State filename and owns its purpose.
+func prepareProvisioningKey(ctx context.Context, path, name string, observe func(string, *os.File)) (public [32]byte, returned error) {
 	defer func() {
 		if returned != nil {
 			public = [32]byte{}

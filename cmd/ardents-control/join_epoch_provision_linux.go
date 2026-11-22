@@ -25,7 +25,7 @@ func runJoinEpochProvision(args []string, out io.Writer) error {
 		if len(args) != 2 {
 			return &joinControlFailure{errSourceControlInput}
 		}
-		public, err := prepareJoinPrivateKey(ctx, args[1], "state-key.pem", nil)
+		public, err := prepareProvisioningKey(ctx, args[1], "state-key.pem", nil)
 		if err != nil {
 			return &joinControlFailure{err}
 		}

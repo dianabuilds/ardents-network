@@ -25,7 +25,7 @@ func runDescriptorEpochProvision(args []string, out io.Writer) error {
 		if len(args) != 2 {
 			return &descriptorControlFailure{errSourceControlInput}
 		}
-		public, err := prepareDescriptorPrivateKey(ctx, args[1], "state-key.pem", nil)
+		public, err := prepareProvisioningKey(ctx, args[1], "state-key.pem", nil)
 		if err != nil {
 			return &descriptorControlFailure{err}
 		}

@@ -31,7 +31,7 @@ func runDescriptorNodeProvision(args []string, out io.Writer) error {
 		if len(args) != 2 {
 			return &descriptorControlFailure{errSourceControlInput}
 		}
-		public, err := prepareDescriptorNodeKey(ctx, args[1], nil)
+		public, err := prepareProvisioningKey(ctx, args[1], "node-key.pem", nil)
 		if err != nil {
 			return &descriptorControlFailure{err}
 		}

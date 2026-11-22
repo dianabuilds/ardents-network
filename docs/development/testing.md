@@ -314,6 +314,17 @@ offline storage/preparation checks, not State, installed Issuer or bootstrap
 acceptance. Pure flag tests reject ambiguous IDs, intervals, paths and options
 before output creation.
 
+The Control selection in `make network-signing-check` uses the independently
+SHA-256-pinned canonical executable supplied in
+`ARDENTS_FORWARDING_CONTROL_PROGRAM` and
+`ARDENTS_FORWARDING_CONTROL_PROGRAM_SHA256`.
+`TestControlProvisioningKeysNativeRoleAndPurpose` exercises all six Node/State
+key-preparation commands in Forwarding, JOIN and Descriptor. It checks distinct
+public keys, exact role and purpose receipts, private file mode and inventory,
+and refusal to reuse another role's or purpose's occupied output.
+The same selection executes the affected Forwarding Node, Epoch, profile,
+token-material and token-authority chains.
+
 `TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof`
 belongs to root/ext4 `network-signing-linux` preparation with independently pinned
 canonical Control. It generates separate actual State/Node keys and signed

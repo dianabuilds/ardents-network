@@ -72,6 +72,12 @@ own fixed ceremony/receipt. It signs nothing and supplies no trust or runtime
 right. JOIN forward signing verifies its own exact public predecessor pair;
 Source/Forwarding signing purposes and live histories are never reused.
 
+Forwarding, JOIN and Descriptor create each individual provisioned Node or
+State key through the command-local `provisioning_key_linux.go`. The fixed
+role commands select their respective Node/State file, output directory and
+public receipt. Record, Epoch, profile and Release signing retain their
+purpose-specific inputs and checks.
+
 The former `cmd/ardents-next/forwarding_installed_native_linux_test.go` OLD-path
 installed QA test and its `forwarding_bootstrap_receipt_test.go` public receipt
 reader retired with the transitional Forwarding orchestration (#604 FJD stage D,

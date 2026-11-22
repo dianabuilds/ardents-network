@@ -134,7 +134,7 @@ func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testin
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := prepareForwardingNodeKey(ctx, filepath.Join(parent, "canceled-key"), nil); err == nil {
+	if _, err := prepareProvisioningKey(ctx, filepath.Join(parent, "canceled-key"), "node-key.pem", nil); err == nil {
 		t.Fatal("canceled key birth accepted")
 	}
 	if _, err := os.Lstat(filepath.Join(parent, "canceled-key")); !errors.Is(err, os.ErrNotExist) {
