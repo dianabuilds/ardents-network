@@ -159,7 +159,7 @@ func TestHolderRefillReservationAllowsChildControlAndTopsUpDelta(t *testing.T) {
 		calls++
 		held += delta
 		if calls == 1 {
-			child := &Lane{s: s, id: 1, end: end, writeEnd: end, ctx: t.Context(), changed: make(chan struct{})}
+			child := &Lane{s: s, id: 1, end: end, writeEnd: end, ctx: t.Context()}
 			return writeConsumedCredit(s, child, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}, false)
 		}
 		if calls != 2 || delta != 20 {

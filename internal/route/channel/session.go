@@ -669,7 +669,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 }
 
 func (s *Session) newLaneLocked(id uint32) *Lane {
-	l := &Lane{s: s, id: id, end: s.end, readEnd: s.end, writeEnd: s.end, changed: make(chan struct{}), credit: Window, receive: Window}
+	l := &Lane{s: s, id: id, end: s.end, readEnd: s.end, writeEnd: s.end, credit: Window, receive: Window}
 	l.ctx, l.cancel = context.WithCancelCause(s.ctx)
 	l.hardEnd = s.end
 	l.handshake = s.pending

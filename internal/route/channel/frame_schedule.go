@@ -153,14 +153,27 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		l.writes.Done()
 		s.writes.Done()
 	}
+	var waiter *laneWaiter
+	var timer laneTimer
+	defer func() {
+		timer.stop()
+		if waiter != nil {
+			s.mu.Lock()
+			l.forgetLocked(waiter)
+			s.mu.Unlock()
+		}
+	}()
 	for {
 		s.mu.Lock()
 		if t.selected {
 			s.mu.Unlock()
 			return finish, nil
 		}
-		end, changed := l.frameDeadline(f, terminal), l.changed
+		end := l.frameDeadline(f, terminal)
 		stopped := s.stopped || l.peerClosed || (!terminal && l.closed)
+		if !stopped && waiter == nil {
+			waiter = l.notifyLocked()
+		}
 		s.mu.Unlock()
 		if stopped {
 			finish()
@@ -170,13 +183,12 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 			finish()
 			return nil, &frameExpiry{end: end}
 		}
-		timer := time.NewTimer(time.Until(end))
+		timer.reset(end)
 		select {
 		case <-t.ready:
-		case <-changed:
+		case <-waiter.ch:
 		case <-s.ctx.Done():
-		case <-timer.C:
+		case <-timer.timer.C:
 		}
-		timer.Stop()
 	}
 }

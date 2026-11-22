@@ -151,12 +151,15 @@ func TestEOFRefusesPhysicalStartAfterPeerCloseDuringDeadline(t *testing.T) {
 				go func() { written <- lane.CloseWrite() }()
 				<-physical.entered
 				s.mu.Lock()
-				changed := lane.changed
+				waiter := lane.notifyLocked()
 				s.mu.Unlock()
 				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{status}}); err != nil {
 					t.Fatal(err)
 				}
-				<-changed // Only the actual decoder can signal this original lane here.
+				<-waiter.ch // Only the actual decoder can signal this original lane here.
+				s.mu.Lock()
+				lane.forgetLocked(waiter)
+				s.mu.Unlock()
 				close(physical.resume)
 				type outcome struct {
 					frame ardp.Frame

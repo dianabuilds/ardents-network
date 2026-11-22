@@ -64,7 +64,7 @@ func (s *Session) ExchangeParent(ctx, caller context.Context, end time.Time, rem
 	op, cancel := context.WithCancelCause(s.ctx)
 	defer cancel(nil)
 	request := requestContext{Context: ctx, caller: caller}
-	control := &Lane{s: s, end: s.end, hardEnd: s.end, writeEnd: s.end, changed: make(chan struct{}), ctx: op, caller: request, cancel: cancel}
+	control := &Lane{s: s, end: s.end, hardEnd: s.end, writeEnd: s.end, ctx: op, caller: request, cancel: cancel}
 	if end, ok := ctx.Deadline(); ok && end.Before(control.writeEnd) {
 		control.writeEnd = end
 	}
@@ -154,7 +154,7 @@ func (s *Session) AcceptParent(ctx context.Context, witness, remaining uint64) e
 	if err := s.replaceRemaining(witness, remaining); err != nil {
 		return err
 	}
-	control := &Lane{s: s, end: s.end, writeEnd: s.end, changed: make(chan struct{}), ctx: ctx}
+	control := &Lane{s: s, end: s.end, writeEnd: s.end, ctx: ctx}
 	accepted, err := ardp.AcceptFrame(0, Window)
 	if err != nil {
 		return err

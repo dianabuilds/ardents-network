@@ -99,12 +99,25 @@ func (s *Session) FinishRole() (result error) {
 // WaitPeerRetirement requires this lane's clean peer CLOSE and joins its
 // selected output. Directional EOF alone does not establish peer retirement.
 func (l *Lane) WaitPeerRetirement(ctx context.Context) error {
+	var waiter *laneWaiter
+	var timer laneTimer
+	defer func() {
+		timer.stop()
+		if waiter != nil {
+			l.s.mu.Lock()
+			l.forgetLocked(waiter)
+			l.s.mu.Unlock()
+		}
+	}()
 	for {
 		l.s.mu.Lock()
 		peer := l.peerClosed
-		changed, end := l.changed, l.end
+		end := l.end
 		closed := l.localClosed || l.s.stopped || l.peerRefused
 		cause := errors.Join(l.cause, l.s.failure, ctx.Err())
+		if !closed && cause == nil && !peer && waiter == nil {
+			waiter = l.notifyLocked()
+		}
 		l.s.mu.Unlock()
 		if closed || cause != nil {
 			return errors.Join(net.ErrClosed, cause)
@@ -122,7 +135,7 @@ func (l *Lane) WaitPeerRetirement(ctx context.Context) error {
 			l.s.mu.Unlock()
 			return errors.Join(errors.New("route lower peer retirement failed"), cause, ctx.Err())
 		}
-		if err := waitLane(changed, end); err != nil {
+		if err := waitLane(waiter.ch, end, &timer); err != nil {
 			return err
 		}
 	}

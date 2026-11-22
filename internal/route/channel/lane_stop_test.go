@@ -10,7 +10,7 @@ import (
 // owning a cancel. Sealing it must refuse and retain the cause, not panic
 // (audit RD-7).
 func TestStopLockedWithoutCancelRefusesWithoutPanic(t *testing.T) {
-	l := &Lane{changed: make(chan struct{})}
+	l := &Lane{}
 	cause := errors.New("route charge refused")
 	l.stopLocked(cause)
 	if !l.closed || !errors.Is(l.cause, cause) {
@@ -25,7 +25,7 @@ func TestStopLockedWithoutCancelRefusesWithoutPanic(t *testing.T) {
 // Lanes that own a cancel keep cancelling it with the refusal cause.
 func TestStopLockedWithCancelStillCancels(t *testing.T) {
 	ctx, cancel := context.WithCancelCause(context.Background())
-	l := &Lane{changed: make(chan struct{}), ctx: ctx, cancel: cancel}
+	l := &Lane{ctx: ctx, cancel: cancel}
 	cause := errors.New("route charge refused")
 	l.stopLocked(cause)
 	if !errors.Is(context.Cause(ctx), cause) {
