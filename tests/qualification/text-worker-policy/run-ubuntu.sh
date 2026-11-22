@@ -11,7 +11,7 @@ done
 [ "$ID" = ubuntu ] && [ "$VERSION_ID" = 24.04 ] && [ "$(uname -m)" = x86_64 ] || fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(systemctl --version | awk 'NR == 1 {print $2}')" = 255 ] || fail 'invalid environment: systemd 255 required'
 rule=/usr/share/polkit-1/rules.d/50-ardents-text.rules
-source_rule=$(dirname "$0")/../../../packaging/text-worker/50-ardents-text.rules
+source_rule=$(dirname "$0")/../../../packaging/document-worker/50-ardents-text.rules
 [ -f "$rule" ] && [ ! -L "$rule" ] && [ "$(stat -c %u:%g:%a "$rule")" = 0:0:644 ] || fail 'invalid environment: root-owned mode 0644 installed rule required'
 cmp -s "$source_rule" "$rule" || fail 'invalid environment: installed rule differs from this source candidate'
 endpoint_uid=$(id -u ardents-endpoint) || fail 'invalid environment: Endpoint account unavailable'

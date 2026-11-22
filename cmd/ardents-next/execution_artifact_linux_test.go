@@ -31,7 +31,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
-		resources[name], err = os.ReadFile(filepath.Join("..", "..", "packaging", "text-worker", name))
+		resources[name], err = os.ReadFile(filepath.Join("..", "..", "packaging", "document-worker", name))
 		if err != nil {
 			t.Fatal(err)
 		}
