@@ -259,10 +259,24 @@ verification, or acceptance obligations.
 
 ## Remote development stands
 
-- Use [standctl](scripts/standctl/README.md) from the Ardents checkout for
-  remote Docker development checks. Use `doctor` to check the shared pool.
-- Keep the working inventory and SSH material in user configuration outside
-  the repository. Use the same inventory across worktrees. A remote run
-  archives a committed revision from the calling worktree or an explicit
-  `--repo` checkout. Confirm the reported commit and selected stand in the
-  run output.
+- The agent owns remote Docker checks from source selection through cleanup.
+  Resolve the task's assigned checkout and Git revision before using
+  [standctl](scripts/standctl/README.md). Inspect `git status --short --branch`
+  in that checkout and use `git worktree list --porcelain` when several
+  worktrees are available. Run from the assigned checkout or supply its
+  `--repo` path yourself if the terminal or client is elsewhere.
+- Choose the revision that contains the requested work. Standctl archives
+  committed files. When a remote check needs uncommitted task changes,
+  prepare a scoped verification snapshot outside the shared worktree and
+  inspect its diff before upload. Preserve the current branch, index and
+  unrelated changes.
+- Use the shared user inventory outside Git and select the Compose service
+  required by the test. Check readiness with `doctor`, then let standctl
+  choose a free compatible host unless the task requires a particular one.
+  Resolve routine choices of checkout, revision, profile and stand from the
+  task context and inventory. Escalate a concrete blocker only after checking
+  the available context.
+- Confirm the reported checkout, commit and stand, monitor the run to its
+  terminal result, and confirm the lease was released. Investigate recovery
+  only for the lease you own. Keep working inventory and SSH material
+  outside the repository.

@@ -33,6 +33,12 @@ changes it. Versions share the same per-host lease state.
 
 ## Select and identify a run
 
+Agents resolve the checkout and revision for their own task and run the check
+through cleanup. Use the existing shared inventory directly. If the assigned
+worktree predates the tool, run the client from a checkout that contains it
+and pass the assigned worktree with `--repo`. See the
+[agent workflow](../../AGENTS.md#remote-development-stands).
+
 `run` takes the first free stand meeting the selected Compose service
 requirements. The host checks those requirements again under the lease lock.
 `doctor` shows readiness and lease state separately. Use `--host` to pin a
