@@ -116,6 +116,37 @@ func TestNetworkPreparationNativeCustody(t *testing.T) {
 	}
 }
 
+func TestNetworkPreparationPublicationKeepsProtectedAccessSeparate(t *testing.T) {
+	// The unsigned caller owns its direct 0700 parent. An earlier writable
+	// ancestor is still inadmissible to either protected publication operation.
+	writable := filepath.Join(preparationPrivateParent(t), "writable")
+	if err := os.Mkdir(writable, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(writable, 0777); err != nil {
+		t.Fatal(err)
+	}
+	parent := filepath.Join(writable, "private")
+	if err := os.Mkdir(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte("canonical unsigned bytes")
+	unsigned := filepath.Join(parent, "unsigned")
+	if err := writeNetworkPreparation(t.Context(), unsigned, "epoch.unsigned", payload); err != nil {
+		t.Fatal("caller-owned preparation refused", err)
+	}
+	for _, sensitive := range []bool{false, true} {
+		protected := filepath.Join(parent, "protected")
+		files := []networkOutputFile{{name: "artifact", raw: payload}}
+		if err := persistNetworkFiles(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
+			t.Fatal("protected inventory admitted outside its root-controlled ancestors", sensitive)
+		}
+		if _, err := os.Lstat(protected); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("protected refusal created output", sensitive, err)
+		}
+	}
+}
+
 func TestNetworkPreparationCancellationRetainsIncompletePrefix(t *testing.T) {
 	for _, stage := range []string{"before", "directory-created", "file-created", "written", "closed", "readback", "before-directory-sync"} {
 		t.Run(stage, func(t *testing.T) {
