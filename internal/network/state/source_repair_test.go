@@ -128,12 +128,12 @@ func TestSourceRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 				case "clean":
 					change = roles.Remove(sourceProducer("server", s.config.root))
 				case "other-producer":
-					value := sourceServerDuty(*s.current)
+					value := sourceServerDuty(s.current)
 					value.Identity = [32]byte{72}
 					value.Family = [32]byte{74}
 					change = roles.Claim([32]byte{72}, []duty.Duty{value})
 				case "mismatched-duty":
-					value := sourceServerDuty(*s.current)
+					value := sourceServerDuty(s.current)
 					value.Identity[0] ^= 1
 					change = roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{value})
 				}

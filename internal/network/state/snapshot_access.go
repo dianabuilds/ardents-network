@@ -48,7 +48,7 @@ func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
 	if s.current == nil {
 		return Snapshot{}
 	}
-	snapshot := snapshotFromEpoch(s.current.Snapshot)
+	snapshot := snapshotFromEpoch(&s.current.Snapshot)
 	snapshot.Conflicting = s.distribution.conflicting
 	snapshot.SourceAttempts = uint16(len(s.distribution.history))
 	snapshot.LatestCompleteness = "latest completeness unproven"

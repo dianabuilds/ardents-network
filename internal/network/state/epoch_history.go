@@ -10,7 +10,10 @@ import (
 
 // selectEpochHistory adapts authenticated documents and committed history to
 // the domain. It performs no verification, persistence or winner selection.
-func (s *networkState) selectEpochHistory(candidates []epoch.Decision) (epoch.Decision, networkdomain.EpochSelection, error) {
+// Candidates pass by pointer; a nil candidate contributes the same zero facts
+// as the historical zero value. The selected decision is returned by pointer
+// into the caller's candidate slice and is never mutated here.
+func (s *networkState) selectEpochHistory(candidates []*epoch.Decision) (*epoch.Decision, networkdomain.EpochSelection, error) {
 	facts := func(decision *epoch.Decision) networkdomain.EpochFacts {
 		if decision == nil {
 			return networkdomain.EpochFacts{}
@@ -21,11 +24,11 @@ func (s *networkState) selectEpochHistory(candidates []epoch.Decision) (epoch.De
 	}
 	history, err := networkdomain.RestoreEpochHistory(facts(s.current), facts(s.pendingDecision), s.distribution.conflicting)
 	if err != nil {
-		return epoch.Decision{}, networkdomain.EpochSelection{}, err
+		return nil, networkdomain.EpochSelection{}, err
 	}
 	inputs := make([]networkdomain.EpochFacts, len(candidates))
 	for index := range candidates {
-		inputs[index] = facts(&candidates[index])
+		inputs[index] = facts(candidates[index])
 	}
 	selection, err := history.Reconcile(inputs)
 	if errors.Is(err, networkdomain.ErrConflictedHistory) {
@@ -35,7 +38,7 @@ func (s *networkState) selectEpochHistory(candidates []epoch.Decision) (epoch.De
 		err = errPendingEpochConflict
 	}
 	if err != nil {
-		return epoch.Decision{}, selection, err
+		return nil, selection, err
 	}
 	return candidates[selection.Index()], selection, nil
 }
@@ -57,7 +60,7 @@ func offlineEpochPending(selection networkdomain.EpochSelection, opening, confir
 	return disposition == networkdomain.EpochPending, err
 }
 
-func (s *networkState) publishSelectedEpoch(selection networkdomain.EpochSelection, now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *networkState) publishSelectedEpoch(selection networkdomain.EpochSelection, now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	disposition, err := selection.DispositionAt(now)
 	if err != nil {
 		if commitErr := s.commitSourceFailure(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); commitErr != nil {
