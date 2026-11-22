@@ -563,13 +563,19 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/network/state/introduction_repair_linux.go" || source == "internal/network/state/forwarding_repair_linux.go" || source == "internal/network/state/join_repair_linux.go" || source == "internal/network/state/descriptor_repair_linux.go") && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
 		return true
 	}
+	// The one shared node-duty repair skeleton consumes the detached manager
+	// property vocabulary only; each role wrapper supplies its own per-unit
+	// cgroup quiescence closure (W4, #711).
+	if source == "internal/network/state/node_duty_repair_linux.go" && dependency == modulePath+"/internal/platform/systemd" {
+		return true
+	}
 	// The bounded Descriptor repair additionally clears an uncertain Store stage
 	// through the existing-only reachability mechanism under the same dead-unit
 	// proofs and retained leases; it grants no publication or runtime authority.
 	if source == "internal/network/state/descriptor_repair_linux.go" && dependency == modulePath+"/internal/reachability" {
 		return true
 	}
-	if source == "internal/network/state/source_repair_linux_test.go" && dependency == modulePath+"/internal/platform/systemd" {
+	if (source == "internal/network/state/source_repair_linux_test.go" || source == "internal/network/state/node_duty_repair_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
 

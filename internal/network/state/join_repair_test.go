@@ -56,11 +56,11 @@ func joinRepairFixture(t *testing.T) *networkState {
 func TestJoinRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing.T) {
 	s := joinRepairFixture(t)
 	before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-	r, err := openJoinRepair(t.Context(), s.config)
+	r, err := openNodeDutyRepair(t.Context(), s.config, joinRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openJoinRepair(t.Context(), s.config); err == nil {
+	if other, err := openNodeDutyRepair(t.Context(), s.config, joinRepairRole); err == nil {
 		_ = other.close()
 		t.Fatal("concurrent repair obtained State lease")
 	}
@@ -75,7 +75,7 @@ func TestJoinRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing.T) {
 	}
 	// Only the domain effect is exercised here, after the independent semantic
 	// admission. This is not public/native recovery qualification.
-	r, err = openJoinRepair(t.Context(), s.config)
+	r, err = openNodeDutyRepair(t.Context(), s.config, joinRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func TestJoinRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 				}
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openJoinRepair(t.Context(), s.config)
+			r, err := openNodeDutyRepair(t.Context(), s.config, joinRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unsafe repair admitted", failure)
@@ -231,7 +231,7 @@ func TestJoinRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(t *testi
 				cancel()
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openJoinRepair(ctx, s.config)
+			r, err := openNodeDutyRepair(ctx, s.config, joinRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unavailable original admitted")
@@ -247,7 +247,7 @@ func TestJoinRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(t *testi
 			if after := repairHistoryBytes(t, s.config.root, s.config.localRoles); !reflect.DeepEqual(before, after) {
 				t.Fatal("refusal changed bytes")
 			}
-			r, err = openJoinRepair(t.Context(), s.config)
+			r, err = openNodeDutyRepair(t.Context(), s.config, joinRepairRole)
 			if err != nil {
 				t.Fatal("refusal leaked original leases", err)
 			}

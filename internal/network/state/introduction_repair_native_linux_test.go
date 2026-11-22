@@ -61,12 +61,10 @@ func TestIntroductionRepairRootsNative(t *testing.T) {
 		}
 		roots[i] = root
 	}
-	cfg := config{root: roots[0], localRoles: roots[1]}
-
 	// The exact command-derived shape: the full ordered set already contains the
 	// State and local-role roots, so the check must proceed, not refuse.
 	t.Run("command shape proceeds", func(t *testing.T) {
-		if err := checkIntroductionRepairRoots(cfg, roots); err != nil {
+		if err := checkNodeDutyRepairRoots(introductionRepairNative, roots); err != nil {
 			t.Fatal("complete ordered writable-root set refused:", err)
 		}
 	})
@@ -75,14 +73,14 @@ func TestIntroductionRepairRootsNative(t *testing.T) {
 	// proving the roots themselves are valid and isolating the double-append as
 	// the sole refusal cause on the unfixed adapter.
 	t.Run("disjoint config roots proceed", func(t *testing.T) {
-		if err := checkIntroductionRepairRoots(cfg, roots[2:]); err != nil {
+		if err := checkNodeDutyRepairRoots(introductionRepairNative, roots[2:]); err != nil {
 			t.Fatal("disjoint root set refused:", err)
 		}
 	})
 
 	t.Run("duplicate refuses", func(t *testing.T) {
 		dup := append(append([]string(nil), roots...), roots[0])
-		if err := checkIntroductionRepairRoots(cfg, dup); !errors.Is(err, ErrIntroductionRepairUnavailable) {
+		if err := checkNodeDutyRepairRoots(introductionRepairNative, dup); !errors.Is(err, ErrIntroductionRepairUnavailable) {
 			t.Fatal("duplicate writable root accepted:", err)
 		}
 	})
@@ -96,7 +94,7 @@ func TestIntroductionRepairRootsNative(t *testing.T) {
 			t.Fatal(err)
 		}
 		set := []string{roots[0], roots[1], roots[2], nested, roots[4]}
-		if err := checkIntroductionRepairRoots(cfg, set); !errors.Is(err, ErrIntroductionRepairUnavailable) {
+		if err := checkNodeDutyRepairRoots(introductionRepairNative, set); !errors.Is(err, ErrIntroductionRepairUnavailable) {
 			t.Fatal("nested writable root accepted:", err)
 		}
 	})

@@ -57,11 +57,11 @@ func descriptorRepairFixture(t *testing.T) *networkState {
 func TestDescriptorRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing.T) {
 	s := descriptorRepairFixture(t)
 	before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-	r, err := openDescriptorRepair(t.Context(), s.config)
+	r, err := openNodeDutyRepair(t.Context(), s.config, descriptorRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openDescriptorRepair(t.Context(), s.config); err == nil {
+	if other, err := openNodeDutyRepair(t.Context(), s.config, descriptorRepairRole); err == nil {
 		_ = other.close()
 		t.Fatal("concurrent repair obtained State lease")
 	}
@@ -76,7 +76,7 @@ func TestDescriptorRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing
 	}
 	// Only the domain effect is exercised here, after the independent semantic
 	// admission. This is not public/native recovery qualification.
-	r, err = openDescriptorRepair(t.Context(), s.config)
+	r, err = openNodeDutyRepair(t.Context(), s.config, descriptorRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestDescriptorRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 				}
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openDescriptorRepair(t.Context(), s.config)
+			r, err := openNodeDutyRepair(t.Context(), s.config, descriptorRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unsafe repair admitted", failure)
@@ -232,7 +232,7 @@ func TestDescriptorRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(t 
 				cancel()
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openDescriptorRepair(ctx, s.config)
+			r, err := openNodeDutyRepair(ctx, s.config, descriptorRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unavailable original admitted")
@@ -248,7 +248,7 @@ func TestDescriptorRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(t 
 			if after := repairHistoryBytes(t, s.config.root, s.config.localRoles); !reflect.DeepEqual(before, after) {
 				t.Fatal("refusal changed bytes")
 			}
-			r, err = openDescriptorRepair(t.Context(), s.config)
+			r, err = openNodeDutyRepair(t.Context(), s.config, descriptorRepairRole)
 			if err != nil {
 				t.Fatal("refusal leaked original leases", err)
 			}

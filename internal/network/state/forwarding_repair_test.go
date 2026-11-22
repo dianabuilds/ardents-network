@@ -55,11 +55,11 @@ func forwardingRepairFixture(t *testing.T) *networkState {
 func TestForwardingRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing.T) {
 	s := forwardingRepairFixture(t)
 	before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-	r, err := openForwardingRepair(t.Context(), s.config)
+	r, err := openNodeDutyRepair(t.Context(), s.config, forwardingRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openForwardingRepair(t.Context(), s.config); err == nil {
+	if other, err := openNodeDutyRepair(t.Context(), s.config, forwardingRepairRole); err == nil {
 		_ = other.close()
 		t.Fatal("concurrent repair obtained State lease")
 	}
@@ -74,7 +74,7 @@ func TestForwardingRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing
 	}
 	// Only the domain effect is exercised here, after the independent semantic
 	// admission. This is not public/native recovery qualification.
-	r, err = openForwardingRepair(t.Context(), s.config)
+	r, err = openNodeDutyRepair(t.Context(), s.config, forwardingRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestForwardingRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 				}
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openForwardingRepair(t.Context(), s.config)
+			r, err := openNodeDutyRepair(t.Context(), s.config, forwardingRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unsafe repair admitted", failure)
@@ -230,7 +230,7 @@ func TestForwardingRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(t 
 				cancel()
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openForwardingRepair(ctx, s.config)
+			r, err := openNodeDutyRepair(ctx, s.config, forwardingRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unavailable original admitted")
@@ -246,7 +246,7 @@ func TestForwardingRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(t 
 			if after := repairHistoryBytes(t, s.config.root, s.config.localRoles); !reflect.DeepEqual(before, after) {
 				t.Fatal("refusal changed bytes")
 			}
-			r, err = openForwardingRepair(t.Context(), s.config)
+			r, err = openNodeDutyRepair(t.Context(), s.config, forwardingRepairRole)
 			if err != nil {
 				t.Fatal("refusal leaked original leases", err)
 			}
