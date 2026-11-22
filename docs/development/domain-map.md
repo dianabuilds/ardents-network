@@ -191,7 +191,7 @@ retired (#604 FJD stage D, ADR-0125) after the merged real-platform installed
 evidence. The platform-led Descriptor lifecycle owns installation and runtime
 admission through the canonical platform unit, `ardents-next node descriptor
 --retained-config` and `descriptor repair-retained`; `ardents-node descriptor ...`
-returns typed before-effect refusals. The former canonical installed Descriptor
+is refusal-by-absence (the binary is removed). The former canonical installed Descriptor
 composition (`cmd/ardents-node/descriptor_installed_linux.go`) and its R01
 five-import exception are removed; Descriptor was the last canonical installed
 role, so R01 now has zero installed exceptions and no old-command role consumer
@@ -235,8 +235,7 @@ and original-prefix recovery) and the `installation/join` declaration owner
 retired (#604 FJD stage D, ADR-0125) after the merged real-platform installed
 evidence. The platform-led JOIN lifecycle owns installation and runtime
 admission through the canonical platform unit, `ardents-next node join
---retained-config` and `join repair-retained`; `ardents-node join ...` returns
-typed before-effect refusals. The former canonical installed JOIN composition
+--retained-config` and `join repair-retained`; `ardents-node join ...` is refusal-by-absence (the binary is removed). The former canonical installed JOIN composition
 (`cmd/ardents-node/join_installed_linux.go`) and its R01 five-import exception
 are removed; no old-command JOIN consumer remains. The retained repair
 mechanisms (`systemd.JoinRuntime`, `cgroup.CheckJoinRecoveryQuiescent` and the
@@ -392,17 +391,17 @@ orchestration is retired and the platform-led lifecycle owns Source delivery.
 Forwarding delivery cut over in turn (#604 FJD stage D, ADR-0125) after the
 merged real-platform installed evidence; its transitional orchestration,
 OLD-path installed QA test and `forwarding-installed-linux` profile are retired,
-and `ardents-node forwarding ...` returns typed before-effect refusals.
+and `ardents-node forwarding ...` is refusal-by-absence (the binary is removed).
 Forwarding Release signing is preserved and bound to `cmd/ardents-next` plus the
 canonical platform unit template. JOIN delivery cut over in turn (#604 FJD stage
 D, ADR-0125) after the merged real-platform installed evidence; its transitional
 orchestration, OLD-path installed QA test and `join-installed-linux` profile are
-retired, and `ardents-node join ...` returns typed before-effect refusals. JOIN
+retired, and `ardents-node join ...` is refusal-by-absence (the binary is removed). JOIN
 Release signing is preserved and bound to `cmd/ardents-next` plus the canonical
 platform unit template. Descriptor delivery cut over last (#604 FJD stage D,
 ADR-0125) after the merged real-platform installed evidence; its transitional
 orchestration and OLD-path installed QA tests/profiles are retired, and
-`ardents-node descriptor ...` returns typed before-effect refusals. Descriptor
+`ardents-node descriptor ...` is refusal-by-absence (the binary is removed). Descriptor
 Release signing is preserved and bound to `cmd/ardents-next` plus the canonical
 platform unit template.
 Retained mechanisms live with Endpoint launch, Release artifact acceptance

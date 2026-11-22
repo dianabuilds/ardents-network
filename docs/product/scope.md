@@ -143,9 +143,9 @@ the accepted Network contract. Infrastructure under one known effective
 controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
-The maintained operator surface is the four headless commands
-`ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`; a concrete
-journey may invoke only the subset it needs. Operator instructions must not
+The maintained operator surface is the three headless commands
+`ardents`, `ardents-control`, and `ardents-custody`, plus the fixed `ardents-text`
+worker; a concrete journey may invoke only the subset it needs. Operator instructions must not
 require editing JSON, extracting test-fixture keys, knowing package names, or
 reading ADRs to discover command order.
 
@@ -173,19 +173,19 @@ the tracker is the one live task ledger.
 
 ### C0 command roles, state, and outcomes
 
-The four commands have non-interchangeable C0 roles: `ardents-control` verifies
+The three commands have non-interchangeable C0 roles: `ardents-control` verifies
 the closed-profile and closed-issuer-profile control evidence and prepares the
-offline infrastructure inputs; `ardents-node` runs only the
-project-controlled Source and selected closed Node duties, including the
-closed-token issuer;
-`ardents-custody` creates the Service Authority and issues the one public
-Service Credential without exporting Authority material; and `ardents` owns
-Endpoint enrollment/runtime, Service Instance initialization/acceptance,
-publication, and local Application byte exchange. Their durable inputs remain
-separate: immutable artifact and enrollment inputs, project Node/issuer roots,
-Authority Vault, Service Instance root and public request/response, Endpoint
-State/Entry/text-token/Publication roots, and local Application/Administration
-sockets. No role may borrow another role's root or private material.
+offline infrastructure inputs; `ardents-custody` creates the Service Authority
+and issues the one public Service Credential without exporting Authority
+material; and `ardents` owns Endpoint enrollment/runtime, Service Instance
+initialization/acceptance, publication, and local Application byte exchange, and
+runs the project-controlled Source and selected closed Node duties, including
+the closed-token issuer, through its distinct `source` and `node` subcommands.
+Their durable inputs remain separate: immutable artifact and enrollment inputs,
+project Node/issuer roots, Authority Vault, Service Instance root and public
+request/response, Endpoint State/Entry/text-token/Publication roots, and local
+Application/Administration sockets. No role may borrow another role's root or
+private material.
 
 The C0 operator route must expose stable, actionable failures for a rejected
 artifact or enrollment input; stale, conflicting, revoked, expired,
@@ -259,7 +259,8 @@ Service Name access available.
 
 The Network audit candidate is the headless maintained product surface:
 
-- `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`;
+- `ardents`, `ardents-control`, and `ardents-custody`, plus the fixed
+  `ardents-text` worker;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, enrollment,
   Release, Custody, control-inspection, and resource Modules;

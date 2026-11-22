@@ -308,11 +308,11 @@ Run a maintained command/config explicitly supplied by the operator:
 ```sh
 # Build debugging artifacts outside source (debug bytes are not Release bytes).
 docker compose -f scripts/diagnostics/compose.yaml run --rm --entrypoint sh runner -c \
-  'mkdir -p /evidence/bin /state/node-debug; chmod 700 /state/node-debug; go build -gcflags="all=-N -l" -buildvcs=false -o /evidence/bin/ardents-node ./cmd/ardents-node'
+  'mkdir -p /evidence/bin /state/node-debug; chmod 700 /state/node-debug; go build -gcflags="all=-N -l" -buildvcs=false -o /evidence/bin/ardents-next ./cmd/ardents-next'
 # Config/state fixtures must be deliberately supplied under private /evidence.
 diag run -raw -out /evidence/node-run-a -timeout 5m -- \
   env ARDENTS_DEBUG_SOCKET=/state/node-debug/process.sock \
-  /evidence/bin/ardents-node node --config /evidence/node-config.json
+  /evidence/bin/ardents-next node forwarding --config /evidence/node-config.json
 ```
 
 During that run, in another terminal sharing the private evidence mount:
