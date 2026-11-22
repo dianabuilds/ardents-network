@@ -1,23 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
-
-const maximumAdmissionPermissionBytes = 228
 
 type admissionRequestCommitmentInput interface {
 	ReadAdmissionRequestCommitment(context.Context) ([32]byte, error)
@@ -48,7 +41,7 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 		if record != "" || requestPath != "" || permissionPath != "" || kind != "" || identity != "" {
 			return errors.New("create-admission-authority accepts no record, request, output, kind, or identity")
 		}
-		binding, err := newAdmissionBinding(environment, network, authorityRoot)
+		binding, err := newAuthorityBinding(mode, custody.AuthorityAdmission, environment, network, authorityRoot)
 		if err != nil {
 			return err
 		}
@@ -61,7 +54,7 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 		if err != nil || binding.Kind != custody.AuthorityAdmission {
 			return errors.New("issue-admission-permission requires one exact admission Authority binding")
 		}
-		request, err := readAdmissionRequest(requestPath)
+		request, err := readAuthorityRequest(requestPath, 512, "admission permission request")
 		if err != nil {
 			return err
 		}
@@ -99,7 +92,7 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 			IDCommitment:    hex.EncodeToString(receipt.Authority.Binding.IDCommitment[:]),
 			AuthorityPublic: hex.EncodeToString(receipt.AdmissionAuthority.Public[:])})
 	}
-	if err := publishStableCustodyPrivateFile(permissionPath, receipt.AdmissionPermission); err != nil {
+	if err := receipt.PublishAdmissionPermission(permissionPath); err != nil {
 		return err
 	}
 	digest := sha256.Sum256(receipt.AdmissionPermission)
@@ -109,107 +102,4 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 		PermissionSHA256 string `json:"permission_sha256"`
 	}{Schema: "ardents-admission-permission-receipt-v1", RecordID: receipt.RecordID,
 		PermissionSHA256: hex.EncodeToString(digest[:])})
-}
-
-func newAdmissionBinding(environment, network, root string) (custody.AuthorityBinding, error) {
-	var binding custody.AuthorityBinding
-	for _, value := range []struct {
-		text string
-		dest []byte
-	}{{environment, binding.Environment[:]}, {network, binding.Network[:]}, {root, binding.Root[:]}} {
-		if err := decodeCommandCommitment(value.text, value.dest); err != nil {
-			return custody.AuthorityBinding{}, errors.New("create-admission-authority requires lowercase public commitments")
-		}
-	}
-	binding.Kind = custody.AuthorityAdmission
-	return binding, nil
-}
-
-func readAdmissionRequest(path string) ([]byte, error) {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > 512 {
-		return nil, errors.New("admission permission request file is invalid")
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	raw, readErr := io.ReadAll(io.LimitReader(file, 513))
-	closeErr := file.Close()
-	if readErr != nil || closeErr != nil || len(raw) > 512 {
-		return nil, errors.Join(readErr, closeErr, errors.New("admission permission request file is invalid"))
-	}
-	return raw, nil
-}
-
-func publishStableCustodyPrivateFile(path string, body []byte) (resultErr error) {
-	if len(body) != maximumAdmissionPermissionBytes {
-		return errors.New("admission permission is invalid")
-	}
-	destination, err := filepath.Abs(path)
-	if err != nil {
-		return fmt.Errorf("resolve admission permission destination: %w", err)
-	}
-	parent := filepath.Dir(destination)
-	staging, err := os.CreateTemp(parent, ".ardents-admission-permission-")
-	if err != nil {
-		return fmt.Errorf("create admission permission staging file: %w", err)
-	}
-	stagingPath, stagingOpen := staging.Name(), true
-	defer func() {
-		if stagingOpen {
-			resultErr = errors.Join(resultErr, staging.Close())
-		}
-		if removeErr := os.Remove(stagingPath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
-			resultErr = errors.Join(resultErr, fmt.Errorf("remove admission permission staging file: %w", removeErr))
-			return
-		}
-		if syncErr := syncStableCustodyPublicDirectory(parent); syncErr != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("flush admission permission directory: %w", syncErr))
-		}
-	}()
-	if err := staging.Chmod(0o600); err != nil {
-		return fmt.Errorf("protect admission permission staging file: %w", err)
-	}
-	if written, err := staging.Write(body); err != nil || written != len(body) {
-		return fmt.Errorf("write admission permission staging file: %w", errors.Join(err, io.ErrShortWrite))
-	}
-	if err := staging.Sync(); err != nil {
-		return fmt.Errorf("flush admission permission staging file: %w", err)
-	}
-	if err := staging.Close(); err != nil {
-		return fmt.Errorf("close admission permission staging file: %w", err)
-	}
-	stagingOpen = false
-	if err := os.Link(stagingPath, destination); err != nil && !errors.Is(err, os.ErrExist) {
-		return fmt.Errorf("publish admission permission: %w", err)
-	}
-	existing, err := readStableCustodyPrivateFile(destination)
-	if err != nil || !bytes.Equal(existing, body) {
-		return errors.New("admission permission destination conflicts")
-	}
-	return nil
-}
-
-func readStableCustodyPrivateFile(path string) ([]byte, error) {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() != maximumAdmissionPermissionBytes ||
-		(runtime.GOOS == "linux" && info.Mode().Perm()&0o077 != 0) {
-		return nil, errors.New("admission permission is invalid")
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	opened, statErr := file.Stat()
-	if statErr != nil || !os.SameFile(info, opened) ||
-		(runtime.GOOS == "linux" && opened.Mode().Perm()&0o077 != 0) {
-		return nil, errors.Join(statErr, file.Close(), errors.New("admission permission is invalid"))
-	}
-	body, readErr := io.ReadAll(io.LimitReader(file, maximumAdmissionPermissionBytes+1))
-	closeErr := file.Close()
-	if readErr != nil || closeErr != nil || len(body) != maximumAdmissionPermissionBytes {
-		return nil, errors.Join(readErr, closeErr, errors.New("admission permission is invalid"))
-	}
-	return body, nil
 }
