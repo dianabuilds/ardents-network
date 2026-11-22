@@ -3,7 +3,7 @@ set -eu
 
 repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 artifact_name() {
-  (cd "$repository" && go run ./scripts/enrollment-artifact-name.go "$1" "$2")
+  (cd "$repository" && go run ./cmd/ardents-next enrollment artifact-name "$1" "$2")
 }
 
 : "${ARDENTS_ALPHA_BUNDLE_COHORT:?ARDENTS_ALPHA_BUNDLE_COHORT is required}"
@@ -103,7 +103,7 @@ if [ "$protected" = true ]; then
   fi
   static_names="$static_names
 $protected_names"
-  (cd "$repository" && go run ./scripts/protected-generation-check.go "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT" "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_TEXT" "$ARDENTS_ALPHA_BUNDLE_RELEASE")
+  (cd "$repository" && go run ./cmd/ardents-next enrollment check-protected-generation "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT" "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_TEXT" "$ARDENTS_ALPHA_BUNDLE_RELEASE")
 fi
 
 for name in $static_names; do
@@ -162,7 +162,7 @@ for name in $static_names; do
   install -m 600 "$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/$name" "$bundle/$name"
 done
 if [ "$protected" = true ]; then
-  (cd "$repository" && go run ./scripts/protected-generation-check.go "$bundle" "$bundle/$endpoint_name" "$bundle/ardents-text-linux-amd64" "$ARDENTS_ALPHA_BUNDLE_RELEASE")
+  (cd "$repository" && go run ./cmd/ardents-next enrollment check-protected-generation "$bundle" "$bundle/$endpoint_name" "$bundle/ardents-text-linux-amd64" "$ARDENTS_ALPHA_BUNDLE_RELEASE")
 fi
 (
   cd "$bundle"

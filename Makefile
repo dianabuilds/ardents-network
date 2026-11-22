@@ -174,9 +174,7 @@ standalone-staticcheck-linux:
 	staticcheck ./scripts/check-deadcode.go
 	staticcheck ./scripts/check-tools.go
 	staticcheck ./scripts/install-quality-analyzer.go
-	staticcheck ./scripts/enrollment-artifact-name.go
 	staticcheck ./scripts/prepare-qualification-release-keys.go
-	staticcheck ./scripts/protected-generation-check.go
 	staticcheck ./scripts/run-fuzz-targets.go
 	staticcheck ./scripts/sign-qualification-release.go
 	staticcheck ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go

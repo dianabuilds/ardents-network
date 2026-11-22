@@ -300,7 +300,7 @@ with `CGO_ENABLED=0`, `-trimpath` and `-buildvcs=false`. Retain byte comparisons
 toolchain, module/build settings and build-input commitments. Generate the
 protected descriptor twice from the actual nine resources; retain matching
 bytes. The descriptor's canonical grammar is owned by enrollment. Validate it
-with `scripts/protected-generation-check.go` before signing.
+with `ardents-next enrollment check-protected-generation` from the reviewed source before signing.
 
 Prepare a bounded public JSON signing plan with schema
 `ardents-qualification-release-signing-plan-v1`, `network`, `reference_time`,

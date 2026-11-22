@@ -371,7 +371,7 @@ func TestSuccessorImportIsolation(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, filename)
-		if !strings.HasPrefix(relative, "internal/") && !strings.HasPrefix(relative, "cmd/") && !strings.HasPrefix(relative, "tests/") {
+		if !strings.HasPrefix(relative, "internal/") && !strings.HasPrefix(relative, "cmd/") && !strings.HasPrefix(relative, "tests/") && !strings.HasPrefix(relative, "scripts/") {
 			return
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ImportsOnly)
@@ -399,7 +399,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, filename)
-		if !isMigratedDomain(relative) && !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/enrollment-artifact-name.go" && relative != "scripts/protected-generation-check.go" && relative != "scripts/sign-qualification-release.go" && !offlineOperatorFile(relative) {
+		if !isMigratedDomain(relative) && !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/sign-qualification-release.go" && !offlineOperatorFile(relative) {
 			return
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ImportsOnly)
@@ -487,8 +487,8 @@ func successorImportAllowed(source, dependency string) bool {
 		first := strings.Split(dependency, "/")[0]
 		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 	}
-	if source == "scripts/enrollment-artifact-name.go" || source == "scripts/protected-generation-check.go" {
-		return dependency == modulePath+"/internal/enrollment" || !strings.Contains(dependency, ".")
+	if source == "cmd/ardents-next/enrollment_packaging.go" && localImport {
+		return local == "internal/enrollment"
 	}
 	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 		return true
@@ -1249,10 +1249,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"retained heap map does not import predecessor Endpoint", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
-		{"packaging identity uses new Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/enrollment", true},
-		{"packaging identity excludes retired Enrollment path", "scripts/enrollment-artifact-name.go", modulePath + "/internal/successor/enrollment", false},
-		{"packaging validator uses new Enrollment", "scripts/protected-generation-check.go", modulePath + "/internal/enrollment", true},
-		{"packaging validator excludes Release authority", "scripts/protected-generation-check.go", modulePath + "/internal/release", false},
+		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment_packaging.go", modulePath + "/internal/enrollment", true},
+		{"packaging commands exclude retired Enrollment", "cmd/ardents-next/enrollment_packaging.go", modulePath + "/internal/successor/enrollment", false},
+		{"standalone packaging helpers cannot consume Enrollment", "scripts/packaging-check.go", modulePath + "/internal/enrollment", false},
+		{"packaging commands exclude Release authority", "cmd/ardents-next/enrollment_packaging.go", modulePath + "/internal/release", false},
 		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/enrollment", false},
 		{"Fixed Node Release signing uses exact artifact resources", "internal/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/release/infrastructure", true},
 		{"Fixed Node Release predecessor verifies genuine Release", "internal/release/infrastructure/signing/node_release_predecessor_linux.go", modulePath + "/internal/release", true},
