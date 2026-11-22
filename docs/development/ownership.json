@@ -73,7 +73,7 @@
         "tests/compatibility/",
         "internal/application/connection/",
         "internal/application/document/",
-        "packaging/text-worker/",
+        "packaging/document-worker/",
         "tests/qualification/text-worker-policy/"
       ],
       "exclude_paths": [
@@ -92,7 +92,7 @@
       "owner": "text-application",
       "include_prefixes": [
         "internal/application/document/",
-        "packaging/text-worker/",
+        "packaging/document-worker/",
         "tests/qualification/text-worker-policy/"
       ],
       "include_paths": [
@@ -188,7 +188,7 @@
       "id": "text-worker",
       "owner": "text-application",
       "commands": "tests/profiles/text-worker-commands.txt",
-      "packaging": "packaging/text-worker"
+      "packaging": "packaging/document-worker"
     }
   ]
 }

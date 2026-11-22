@@ -867,7 +867,10 @@ the retained per-unit repair quiescence observation is
 The alpha bundle packager invokes reviewed `cmd/ardents-next` source for
 `enrollment artifact-name` and `enrollment check-protected-generation`.
 `enrollment_packaging.go` imports only `internal/enrollment` and the standard
-library. Supplied program and worker artifacts are read as data.
+library. It passes the static root and the two supplied executable paths to
+Enrollment. Enrollment loads them as data using its existing protected resource
+inventory. The document worker's source resources live in
+`packaging/document-worker` under the existing signed resource names.
 
 The standalone `scripts/sign-qualification-release.go` implements only the
 ADR-0120 initial Endpoint Release operation. Its exact permitted imports are
