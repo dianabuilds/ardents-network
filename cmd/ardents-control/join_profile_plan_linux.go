@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
@@ -49,12 +48,7 @@ func (p joinProfilePlan) current(now time.Time) error {
 	return nil
 }
 
-type joinProfilePreparation struct {
-	input    closedprofile.Input
-	decision epoch.Decision
-	context  closedprofile.Context
-	body     []byte
-}
+type joinProfilePreparation = nodeProfilePreparation
 
 func (p joinProfilePlan) prepare(now time.Time) (prepared joinProfilePreparation, returned error) {
 	if err := p.current(now); err != nil {
@@ -139,47 +133,8 @@ func (p joinProfilePlan) prepare(now time.Time) (prepared joinProfilePreparation
 	return prepared, prepared.bind(sha256.Sum256(body))
 }
 
-// Adapt detached verified facts to the actual Network join. No role mapping,
-// membership policy, trusted clock, durable root or runtime right lives here.
-func (p joinProfilePreparation) bind(digest [32]byte) error {
-	i := p.input
-	binding := networkdomain.ProfileBinding{Network: i.NetworkID, Generation: i.StateGeneration, EpochDigest: i.EpochDigest, Digest: digest, Epoch: i.Epoch, NotBefore: i.NotBefore, NotAfter: i.NotAfter}
-	facts := networkdomain.ProfileFacts{ProfileBinding: binding, IssuanceAuthorityKey: i.IssuanceAuthorityKey, IssuerNodeID: i.IssuerNodeID}
-	var assignments []networkdomain.Assignment
-	for _, node := range i.Nodes {
-		assignments = append(assignments, networkdomain.Assignment{NodeID: node.NodeID, RecordDigest: node.RecordDigest, Generation: node.DutyGeneration, RoleDomain: node.RoleDomain, Subrole: node.Subrole})
-		if node.NodeID == i.IssuerNodeID {
-			facts.IssuerDutyGeneration = node.DutyGeneration
-		}
-	}
-	var records []networkdomain.NodeRecord
-	for _, record := range p.decision.Candidates {
-		records = append(records, networkdomain.NodeRecord{NodeID: record.NodeID, RecordDigest: record.RecordDigest, Generation: record.RecordGeneration, PublicKey: record.PublicKey, FamilyID: record.FamilyID, KeyID: record.KeyID, DomainProofDigest: sha256.Sum256(record.DomainProof), Endpoint: record.Endpoint, CarrierProfile: record.CarrierProfile, Capacity: record.Capacity, Assignment: record.Domain, ValidFrom: record.ValidFrom, ValidUntil: record.ValidUntil, AssignmentNotAfter: record.AssignmentNotAfter})
-	}
-	for _, key := range i.TokenKeys {
-		public := networkdomain.TokenKey{WindowStart: key.WindowStart, Class: key.Class}
-		copy(public.SPKI[:], key.SPKI)
-		facts.TokenKeys = append(facts.TokenKeys, public)
-	}
-	membership, err := networkdomain.BindMembership(binding, assignments, records)
-	if err != nil {
-		return err
-	}
-	header := p.decision.Header
-	_, err = networkdomain.BindAcceptedState(networkdomain.EpochFacts{Network: header.NetworkID, Number: header.Number, Digest: header.Digest, Previous: header.Previous, ValidFrom: header.ValidFrom, ValidUntil: header.ValidUntil}, i.StateGeneration, facts, membership)
-	return err
-}
-
 func decodeJoinProfilePlan(raw []byte, now time.Time) (p joinProfilePlan, prepared joinProfilePreparation, returned error) {
-	if len(raw) == 0 || len(raw) > maximumJoinProfilePlan || json.Unmarshal(raw, &p) != nil {
-		return p, prepared, errSourceControlInput
-	}
-	canonical, err := json.Marshal(p)
-	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
-		return p, prepared, errSourceControlInput
-	}
-	prepared, err = p.prepare(now)
-	return p, prepared, err
+	return decodeNodeProfilePlan(raw, now, maximumJoinProfilePlan, joinProfilePlan.prepare)
 }
 
 func prepareJoinProfile(ctx context.Context, args []string, observe func(string, *os.File)) (p joinProfilePlan, body []byte, returned error) {

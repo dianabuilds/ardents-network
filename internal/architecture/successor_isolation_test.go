@@ -678,12 +678,9 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if source == "cmd/ardents-control/forwarding_profile_plan_linux.go" {
 			switch dependency {
-			case modulePath + "/internal/network", modulePath + "/internal/network/closedprofile", modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/admission/issuerprofile":
+			case modulePath + "/internal/network/closedprofile", modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/admission/issuerprofile":
 				return true
 			}
-		}
-		if source == "cmd/ardents-control/forwarding_profile_signing_linux.go" && dependency == modulePath+"/internal/network/closedprofile" {
-			return true
 		}
 		if (source == "cmd/ardents-control/closed_profile.go" || source == "cmd/ardents-control/main_test.go") && dependency == modulePath+"/internal/network/closedprofile" {
 			return true
@@ -697,7 +694,26 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_token_material_native_linux_test.go" && dependency == modulePath+"/internal/admission/issuerprofile" {
 			return true
 		}
-		if (source == "cmd/ardents-control/forwarding_epoch_signing_linux.go" || source == "cmd/ardents-control/forwarding_epoch_provision_native_linux_test.go") && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
+		if source == "cmd/ardents-control/forwarding_epoch_provision_native_linux_test.go" && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
+			return true
+		}
+		// The shared fixed Control ceremonies are pure mechanism over caller
+		// role hooks; each role keeps its own plan schema, decoder, authority
+		// pin and failure classification (#725, audit E1-4 cand 5-7). The
+		// per-role signing/plan wrappers retain only their role-bound imports.
+		if source == "cmd/ardents-control/node_epoch_signing_linux.go" && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
+			return true
+		}
+		if source == "cmd/ardents-control/node_profile_signing_linux.go" && dependency == modulePath+"/internal/network/closedprofile" {
+			return true
+		}
+		if source == "cmd/ardents-control/node_profile_preparation_linux.go" {
+			switch dependency {
+			case modulePath + "/internal/network", modulePath + "/internal/network/closedprofile", modulePath + "/internal/network/epoch":
+				return true
+			}
+		}
+		if source == "cmd/ardents-control/node_token_material_linux.go" && dependency == modulePath+"/internal/admission/issuance" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == modulePath+"/internal/release/infrastructure" {
@@ -1702,24 +1718,14 @@ func joinRetainedImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/admission/issuance":
 			return true
 		}
-	case "cmd/ardents-control/join_epoch_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
 	case "cmd/ardents-control/join_profile_plan_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
+		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
 			return true
 		}
 	case "cmd/ardents-control/join_epoch_plan_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
-	case "cmd/ardents-control/join_profile_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/closedprofile":
 			return true
 		}
 	case "cmd/ardents-control/join_node_record_linux.go":

@@ -13,11 +13,6 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
 			return true
 		}
-	case "cmd/ardents-control/descriptor_epoch_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
 	case "cmd/ardents-control/descriptor_node_provision_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
@@ -30,12 +25,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		}
 	case "cmd/ardents-control/descriptor_profile_plan_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_profile_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/closedprofile":
+		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
 			return true
 		}
 	case "cmd/ardents-control/descriptor_token_material_linux.go":

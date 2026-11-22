@@ -87,31 +87,20 @@ func (p forwardingEpochPlan) prepare(now time.Time) ([]byte, error) {
 }
 
 func decodeForwardingEpochPlan(raw []byte, now time.Time) (forwardingEpochPlan, []byte, error) {
-	var p forwardingEpochPlan
-	if len(raw) == 0 || len(raw) > maximumForwardingEpochPlan || json.Unmarshal(raw, &p) != nil {
-		return p, nil, errSourceControlInput
-	}
-	canonical, err := json.Marshal(p)
-	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
-		return p, nil, errSourceControlInput
-	}
-	prepared, err := p.prepare(now)
-	return p, prepared, err
+	return decodeNodePlan(raw, now, maximumForwardingEpochPlan, forwardingEpochPlan.prepare)
 }
 
-type forwardingEpochFlags struct {
-	values  []string
-	maximum int
+// epochSigningFacts exposes only the public pins and signed Records the fixed
+// genesis ceremony reads; the State authority and schema stay Forwarding-bound.
+func (p forwardingEpochPlan) epochSigningFacts() (string, string, string, [][]byte) {
+	records := make([][]byte, len(p.Records))
+	for index, record := range p.Records {
+		records[index] = record.Signed
+	}
+	return p.Authority, p.Network, p.Node, records
 }
 
-func (f *forwardingEpochFlags) String() string { return strings.Join(f.values, ",") }
-func (f *forwardingEpochFlags) Set(value string) error {
-	if len(f.values) >= f.maximum {
-		return errSourceControlInput
-	}
-	f.values = append(f.values, value)
-	return nil
-}
+type forwardingEpochFlags = nodeRepeatableFlag
 
 func prepareForwardingEpoch(ctx context.Context, args []string, observe func(string, *os.File)) (p forwardingEpochPlan, result []byte, returned error) {
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) > 320 {

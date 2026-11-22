@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"crypto/ed25519"
-	"encoding/json"
 	"flag"
 	"io"
 	"net"
@@ -98,14 +96,5 @@ func joinRecordArguments(args []string, now time.Time) (joinRecordPlan, string, 
 }
 
 func decodeJoinRecordPlan(raw []byte, now time.Time) (joinRecordPlan, []byte, error) {
-	var p joinRecordPlan
-	if len(raw) == 0 || len(raw) > 16<<10 || json.Unmarshal(raw, &p) != nil {
-		return p, nil, errSourceControlInput
-	}
-	canonical, err := json.Marshal(p)
-	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
-		return p, nil, errSourceControlInput
-	}
-	prepared, err := p.prepare(now)
-	return p, prepared, err
+	return decodeNodePlan(raw, now, 16<<10, joinRecordPlan.prepare)
 }
