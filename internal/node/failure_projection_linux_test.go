@@ -57,7 +57,7 @@ func TestPhysicalCleanupWithoutLogicalCauseRemainsSeparate(t *testing.T) {
 func TestKnownFirstCauseDoesNotWaitForPhysicalJoin(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	original := &forwarding{caller: ctx, ctx: ctx, cancel: cancel, retired: errors.New("original retired"), done: make(chan struct{}), failure: failureRecord{started: time.Now(), serving: true}}
+	original := &forwarding{nodeLifetime: nodeLifetime{caller: ctx, ctx: ctx, cancel: cancel, retired: errors.New("original retired"), done: make(chan struct{}), failure: failureRecord{started: time.Now(), serving: true}}}
 	handle := &Forwarding{original: original}
 	cancel()
 	handle.Stop()

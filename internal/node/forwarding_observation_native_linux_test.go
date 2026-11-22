@@ -46,7 +46,7 @@ func TestForwardingNativeLocalProtectionDuringHeldAuthority(t *testing.T) {
 	}
 	entered, resume := make(chan struct{}), make(chan struct{})
 	foreign := errors.New("held foreign refusal")
-	f := &forwarding{ctx: ctx, cancel: cancel, process: guard, producer: producer, retired: errors.New("original retirement"), config: ForwardingConfig{Authority: role.Authority{Current: func() (network.RuntimeView, error) {
+	f := &forwarding{nodeLifetime: nodeLifetime{ctx: ctx, cancel: cancel, process: guard, producer: producer, retired: errors.New("original retirement")}, config: ForwardingConfig{Authority: role.Authority{Current: func() (network.RuntimeView, error) {
 		close(entered)
 		<-resume
 		return network.RuntimeView{}, foreign
