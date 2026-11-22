@@ -1,4 +1,4 @@
-package source
+package servingdeclaration
 
 import (
 	"bytes"
@@ -8,8 +8,8 @@ import (
 )
 
 // ServingDeclaration is the existing local Source command grammar. These are
-// declarations only: State retains all signed authority/time/root decisions,
-// Installation binds future inputs, and processresource admits actual placement.
+// declarations only: State retains all signed authority/time/root decisions
+// and processresource admits actual placement.
 type ServingDeclaration struct {
 	Network           *ServingNetwork `json:"network"`
 	ProcessProfile    string          `json:"process_profile"`
@@ -34,7 +34,8 @@ type ServingNetwork struct {
 
 // DecodeServingDeclaration preserves exact field names, duplicate/null refusal,
 // one complete object and exact 32-byte array shapes. It opens no resource.
-// Both the runtime command and Installation consume this one byte grammar.
+// The runtime serve composition, Control preparation/inspection and State's
+// read-only inspection consume this one byte grammar.
 func DecodeServingDeclaration(raw []byte) (ServingDeclaration, error) {
 	bad := errors.New("invalid Source serving declaration")
 	var plan ServingDeclaration

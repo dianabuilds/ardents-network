@@ -10,7 +10,7 @@ import (
 )
 
 // This file owns the original node-role runtime invocation declaration grammar:
-// a pure closed byte codec mirroring network/source.ServingDeclaration. It is
+// a pure closed byte codec mirroring network/source/servingdeclaration.ServingDeclaration. It is
 // configuration validation kept with the runtime owner (ADR-0125 decision 6).
 // It performs no State acceptance, no root creation, no hosting initialization
 // and no processresource policy; those stay with their separate owners. The
@@ -237,7 +237,7 @@ func exactNodeBytes(raw json.RawMessage) bool {
 	return len(raw) > 0 && raw[0] == '[' && json.Unmarshal(raw, &values) == nil && len(values) == 32
 }
 
-// nodeObject mirrors network/source.servingObject: exact field spelling, no
+// nodeObject mirrors network/source/servingdeclaration.servingObject: exact field spelling, no
 // duplicate or null member, one complete object. Unlike the Source serving
 // declaration it admits omitted members (the node runtime grammar decodes them
 // to zero); the allowed field set is still exact and closed per role.

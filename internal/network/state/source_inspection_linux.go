@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
@@ -109,7 +109,7 @@ func (inspection SourceInspection) Check(ctx context.Context, raw []byte, uid, g
 }
 
 func (s *sourceInspection) policy(raw []byte, uid, gid uint32) error {
-	plan, err := source.DecodeServingDeclaration(raw)
+	plan, err := servingdeclaration.DecodeServingDeclaration(raw)
 	if err != nil {
 		return err
 	}

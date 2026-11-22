@@ -2,7 +2,7 @@
 
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/network/source"
+import "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 
 // sourceServePlan declares only distribution. State owns current evidence and
 // local serving guards; this command cannot acquire or refresh an Epoch.
@@ -20,7 +20,7 @@ type sourceServePlan struct {
 // Go's fixed-array decoder accepts short and overlong arrays. This closed plan
 // checks exact shapes before those decoded values can become trust declarations.
 func decodeSourceServePlan(raw []byte) (sourceServePlan, error) {
-	d, err := source.DecodeServingDeclaration(raw)
+	d, err := servingdeclaration.DecodeServingDeclaration(raw)
 	if err != nil {
 		return sourceServePlan{}, err
 	}

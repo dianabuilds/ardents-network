@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 )
 
 // A command/transport control with actual generated TLS, original files and
@@ -105,7 +106,7 @@ func TestSourceInspectionCommandUsesOriginalCredentialAndOneContact(t *testing.T
 	}
 	directory := t.TempDir()
 	paths := []string{filepath.Join(directory, "serve.json"), filepath.Join(directory, "client.pem"), filepath.Join(directory, "client-key.pem"), filepath.Join(directory, "server-ca.pem")}
-	plan := source.ServingDeclaration{Network: &source.ServingNetwork{Root: "/unopened-state", NetworkID: [32]byte{11}, Authorities: [][32]byte{authority}, Threshold: 1,
+	plan := servingdeclaration.ServingDeclaration{Network: &servingdeclaration.ServingNetwork{Root: "/unopened-state", NetworkID: [32]byte{11}, Authorities: [][32]byte{authority}, Threshold: 1,
 		ProfileAuthority: authority, ClockObservationFile: "/unopened-clock"}, ProcessProfile: "ardents-source-process-v1", ParticipationRoot: "/unopened-participation",
 		Address: address, Certificate: "/unopened-source-certificate", PrivateKey: "/unopened-source-private-key", ClientRoot: "/unopened-client-ca", ClientPins: [][32]byte{clientPin}}
 	planRaw, err := json.Marshal(plan)

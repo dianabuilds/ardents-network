@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -21,7 +22,7 @@ import (
 // These units exercise the finite domain composition as the actual test user.
 // The command's separate fixed-system-account gate has its own refusal test.
 // Genuine signed State and actual local files grant no manager/runtime claim.
-func sourceInitialFixture(t *testing.T) (source.ServingDeclaration, string, string) {
+func sourceInitialFixture(t *testing.T) (servingdeclaration.ServingDeclaration, string, string) {
 	t.Helper()
 	root := t.TempDir()
 	now := time.Now().UTC().Truncate(time.Second)
@@ -40,7 +41,7 @@ func sourceInitialFixture(t *testing.T) (source.ServingDeclaration, string, stri
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := source.ServingDeclaration{Network: &source.ServingNetwork{Root: filepath.Join(root, "state"), NetworkID: network, Authorities: [][32]byte{[32]byte(authority.Public().(ed25519.PublicKey))}, Threshold: 1, ProfileAuthority: [32]byte(authority.Public().(ed25519.PublicKey)), ClockObservationFile: filepath.Join(root, "clock")}, ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(root, "participation"), Address: "127.0.0.1:4100", Certificate: "/unopened/source.crt", PrivateKey: "/unopened/source.key", ClientRoot: "/unopened/client-ca.pem", ClientPins: [][32]byte{{76}}}
+	plan := servingdeclaration.ServingDeclaration{Network: &servingdeclaration.ServingNetwork{Root: filepath.Join(root, "state"), NetworkID: network, Authorities: [][32]byte{[32]byte(authority.Public().(ed25519.PublicKey))}, Threshold: 1, ProfileAuthority: [32]byte(authority.Public().(ed25519.PublicKey)), ClockObservationFile: filepath.Join(root, "clock")}, ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(root, "participation"), Address: "127.0.0.1:4100", Certificate: "/unopened/source.crt", PrivateKey: "/unopened/source.key", ClientRoot: "/unopened/client-ca.pem", ClientPins: [][32]byte{{76}}}
 	for _, path := range []string{plan.Network.Root, plan.ParticipationRoot} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)

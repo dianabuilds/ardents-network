@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -52,14 +53,14 @@ func sourceInspectionNativeFixture(t *testing.T) (state.Config, []byte) {
 			t.Fatal(err)
 		}
 	}
-	n := &source.ServingNetwork{Root: cfg.Root, NetworkID: cfg.NetworkID, Threshold: cfg.Threshold, ClockObservationFile: cfg.ClockObservationFile}
+	n := &servingdeclaration.ServingNetwork{Root: cfg.Root, NetworkID: cfg.NetworkID, Threshold: cfg.Threshold, ClockObservationFile: cfg.ClockObservationFile}
 	copy(n.ProfileAuthority[:], cfg.ClosedProfileAuthority)
 	for _, public := range cfg.Authorities {
 		var value [32]byte
 		copy(value[:], public)
 		n.Authorities = append(n.Authorities, value)
 	}
-	plan := source.ServingDeclaration{Network: n, ParticipationRoot: cfg.LocalRoleStateRoot, ProcessProfile: "source", Address: "127.0.0.1:12345", Certificate: "/certificate", PrivateKey: "/private-key", ClientRoot: "/client-root", ClientPins: [][32]byte{{1}}}
+	plan := servingdeclaration.ServingDeclaration{Network: n, ParticipationRoot: cfg.LocalRoleStateRoot, ProcessProfile: "source", Address: "127.0.0.1:12345", Certificate: "/certificate", PrivateKey: "/private-key", ClientRoot: "/client-root", ClientPins: [][32]byte{{1}}}
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
