@@ -256,3 +256,13 @@ verification, or acceptance obligations.
 - Keep commits scoped to one research result, decision, or tracer slice.
 - Never place caches or temporary generated files inside the repository.
 - Do not rewrite or delete the `old` branch.
+
+## Remote development stands
+
+- Use [standctl](scripts/standctl/README.md) from the Ardents checkout for
+  remote Docker development checks. Use `doctor` to check the shared pool.
+- Keep the working inventory and SSH material in user configuration outside
+  the repository. Use the same inventory across worktrees. A remote run
+  archives a committed revision from the calling worktree or an explicit
+  `--repo` checkout. Confirm the reported commit and selected stand in the
+  run output.
