@@ -231,7 +231,11 @@ func TestInstalledPermissionRetireRefusesForeignHandover(t *testing.T) {
 	check := func() error { return nil }
 	// A shared-mode request is not a private handover; retirement refuses and
 	// retains it rather than removing a foreign file.
-	if err := os.WriteFile(requestPath, []byte("shared request"), 0644); err != nil {
+	if err := os.WriteFile(requestPath, []byte("shared request"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// Apply the shared mode after creation so the test runner's umask cannot mask it.
+	if err := os.Chmod(requestPath, 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := installedPermissionRetire(requestPath, responsePath, check); err == nil {
