@@ -139,8 +139,15 @@ func (c *eofDeadlineGate) SetWriteDeadline(end time.Time) error {
 // CLOSE decoded during that operation must prevent a new EOF, even though an
 // already started EOF has the bounded completion right exercised above.
 func TestEOFRefusesPhysicalStartAfterPeerCloseDuringDeadline(t *testing.T) {
-	for _, status := range []byte{0, 1} {
-		t.Run(string(rune('0'+status)), func(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status byte
+		relay  bool
+	}{
+		{"write/clean", 0, false}, {"write/refused", 1, false},
+		{"relay/clean", 0, true}, {"relay/refused", 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				local, peer := net.Pipe()
 				physical := &eofDeadlineGate{Conn: local, entered: make(chan struct{}), resume: make(chan struct{})}
@@ -148,12 +155,18 @@ func TestEOFRefusesPhysicalStartAfterPeerCloseDuringDeadline(t *testing.T) {
 				defer func() { _ = peer.Close(); _ = s.Close() }()
 				lane := lifecycleLane(t, s, 1)
 				written := make(chan error, 1)
-				go func() { written <- lane.CloseWrite() }()
+				go func() {
+					if tc.relay {
+						written <- lane.FinishRelayWrite(t.Context())
+					} else {
+						written <- lane.CloseWrite()
+					}
+				}()
 				<-physical.entered
 				s.mu.Lock()
 				waiter := lane.notifyLocked()
 				s.mu.Unlock()
-				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{status}}); err != nil {
+				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{tc.status}}); err != nil {
 					t.Fatal(err)
 				}
 				<-waiter.ch // Only the actual decoder can signal this original lane here.
@@ -169,9 +182,15 @@ func TestEOFRefusesPhysicalStartAfterPeerCloseDuringDeadline(t *testing.T) {
 				go func() { f, e := ardp.ReadFrame(peer); output <- outcome{f, e} }()
 				select {
 				case err := <-written:
-					var refusal *frameRetirement
-					if !errors.As(err, &refusal) || refusal.lane != lane || refusal.kind != ardp.KindEOF {
-						t.Fatal("unemitted original EOF lost its refusal", err)
+					if tc.relay && tc.status == 0 {
+						if err != nil {
+							t.Fatal("clean peer retirement failed the relay", err)
+						}
+					} else {
+						var refusal *frameRetirement
+						if !errors.As(err, &refusal) || refusal.lane != lane || refusal.kind != ardp.KindEOF {
+							t.Fatal("unemitted original EOF lost its refusal", err)
+						}
 					}
 				case result := <-output:
 					t.Fatal("EOF entered physical output after peer CLOSE", result)

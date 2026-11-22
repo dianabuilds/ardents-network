@@ -27,7 +27,7 @@ func relayIssuer(ctx context.Context, source, target *framing.Lane) error {
 	go func() {
 		_, err := io.Copy(target, source)
 		if err == nil {
-			err = target.CloseWrite()
+			err = target.FinishRelayWrite(ctx)
 		}
 		results <- err
 	}()
