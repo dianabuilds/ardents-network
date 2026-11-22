@@ -51,6 +51,7 @@ github.com/dianabuilds/ardents-network/internal/route/transport/tls
 github.com/dianabuilds/ardents-network/internal/route/introduction
 github.com/dianabuilds/ardents-network/internal/route/capsule
 github.com/dianabuilds/ardents-network/internal/route/join
+github.com/dianabuilds/ardents-network/internal/route/join/pairing
 github.com/dianabuilds/ardents-network/internal/endpoint/funding
 github.com/dianabuilds/ardents-network/internal/endpoint/reader
 github.com/dianabuilds/ardents-network/internal/endpoint/publisher

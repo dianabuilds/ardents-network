@@ -22,7 +22,7 @@ import (
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	issuertransport "github.com/dianabuilds/ardents-network/internal/route/issuer"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/join/pairing"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
@@ -75,7 +75,7 @@ type Receiver struct {
 	pool          nodePool
 	err, closeErr error
 	registrations *introduction.Registry
-	joins         *join.Pairing
+	joins         *pairing.Pairing
 	issuerWork    chan struct{}
 }
 
@@ -98,7 +98,7 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	}
 	child, cancel := context.WithCancel(ctx)
 	r := &Receiver{config: config, ctx: child, cancel: cancel, connections: make(map[net.Conn]struct{}), done: make(chan struct{}), queues: framing.NewBudget(64 << 20), bootstrap: bootstrap.NewBudget()}
-	r.joins = join.NewPairing(r.record)
+	r.joins = pairing.NewPairing(r.record)
 	if issuerDuty {
 		r.issuerWork = make(chan struct{}, 1)
 	}

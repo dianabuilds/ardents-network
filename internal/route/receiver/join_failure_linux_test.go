@@ -14,7 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/join/pairing"
 )
 
 // This fixture exercises the public receiving Pairing interface so the actual
@@ -23,7 +23,7 @@ import (
 type joinBoundsPeer struct {
 	conn     net.Conn
 	done     chan error
-	capacity *join.Capacity
+	capacity *pairing.Capacity
 	finished bool
 	result   error
 }
@@ -31,14 +31,14 @@ type joinBoundsPeer struct {
 type joinBoundsFixture struct {
 	ctx    context.Context
 	cancel context.CancelFunc
-	pairs  *join.Pairing
+	pairs  *pairing.Pairing
 	queues *framing.Budget
 	peers  []*joinBoundsPeer
 }
 
 func newJoinBoundsFixture() *joinBoundsFixture {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &joinBoundsFixture{ctx: ctx, cancel: cancel, queues: framing.NewBudget(64 << 20), pairs: join.NewPairing(nil)}
+	return &joinBoundsFixture{ctx: ctx, cancel: cancel, queues: framing.NewBudget(64 << 20), pairs: pairing.NewPairing(nil)}
 }
 
 func (f *joinBoundsFixture) start(t *testing.T, request ardp.JoinRequest, wrap func(net.Conn) net.Conn) *joinBoundsPeer {
@@ -52,7 +52,7 @@ func (f *joinBoundsFixture) startWithProfile(t *testing.T, request ardp.JoinRequ
 func (f *joinBoundsFixture) startWithBounds(t *testing.T, request ardp.JoinRequest, wrap func(net.Conn) net.Conn, profile [32]byte, limit uint64) *joinBoundsPeer {
 	t.Helper()
 	local, remote := net.Pipe()
-	capacity, err := join.ReserveCapacity(f.queues)
+	capacity, err := pairing.ReserveCapacity(f.queues)
 	if err != nil {
 		_ = local.Close()
 		_ = remote.Close()
@@ -114,7 +114,7 @@ func readJoinBoundsResult(t *testing.T, peer *joinBoundsPeer, nonce uint8) {
 	}
 }
 
-// These controls cover physical failure retention across join.Pairing setup,
+// These controls cover physical failure retention across pairing.Pairing setup,
 // joinPair barrier/relay/termination and Receiver.record. They are organized by
 // the retained receiving result, not by one particular frame or source file.
 // This injects one physical deadline failure; later interruption and Close use
@@ -167,9 +167,9 @@ func TestJoinInitialDeadlineFailureReachesReceiverTerminal(t *testing.T) {
 		defer fixture.close(t)
 		receiver := &Receiver{}
 		// Listen installs this exact callback for its receiving JOIN owner.
-		fixture.pairs = join.NewPairing(receiver.record)
+		fixture.pairs = pairing.NewPairing(receiver.record)
 		local, remote := net.Pipe()
-		capacity, err := join.ReserveCapacity(fixture.queues)
+		capacity, err := pairing.ReserveCapacity(fixture.queues)
 		if err != nil {
 			_ = local.Close()
 			_ = remote.Close()
@@ -192,7 +192,7 @@ func TestJoinPairedDeadlineFailureReachesReceiverTerminal(t *testing.T) {
 				fixture := newJoinBoundsFixture()
 				defer fixture.close(t)
 				receiver := &Receiver{}
-				fixture.pairs = join.NewPairing(receiver.record)
+				fixture.pairs = pairing.NewPairing(receiver.record)
 				var fault *joinDeadlineFault
 				first := fixture.start(t, joinBoundsRequest(1, 1), func(conn net.Conn) net.Conn {
 					fault = &joinDeadlineFault{Conn: conn, cause: errors.New("JOIN " + phase + " failed"), writeOnly: phase == "terminal-write-deadline"}
@@ -258,7 +258,7 @@ func TestJoinPartialTerminalFailurePreventsLaterTerminalOutput(t *testing.T) {
 		fixture := newJoinBoundsFixture()
 		defer fixture.close(t)
 		receiver := &Receiver{}
-		fixture.pairs = join.NewPairing(receiver.record)
+		fixture.pairs = pairing.NewPairing(receiver.record)
 		failure := errors.New("partially emitted JOIN terminal failed")
 		var fault *joinTerminalWriteFault
 		first := fixture.start(t, joinBoundsRequest(1, 1), func(conn net.Conn) net.Conn {

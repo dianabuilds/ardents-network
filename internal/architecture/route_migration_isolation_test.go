@@ -22,6 +22,7 @@ var currentRoutePackages = []string{
 	"internal/route/introduction",
 	"internal/route/issuer",
 	"internal/route/join",
+	"internal/route/join/pairing",
 	"internal/route/prefix",
 	"internal/route/receiver",
 	"internal/route/role",
