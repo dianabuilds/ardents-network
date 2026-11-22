@@ -33,7 +33,7 @@
       "prerequisites": [
         "Linux root and root-owned non-group/other-writable direct ancestors; private 0700 TMPDIR on actual ext4; Descriptor public preparation additionally requires ARDENTS_DESCRIPTOR_CONTROL_PROGRAM and ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256 for the same-source compiled Control, and Descriptor Release signing additionally requires static ARDENTS_DESCRIPTOR_NEXT_PROGRAM/_SHA256",
         "Source and Forwarding artifact preparation share the same-source canonical ARDENTS_SOURCE_CONTROL_PROGRAM and ARDENTS_SOURCE_CONTROL_PROGRAM_SHA256; JOIN artifact preparation uses the ARDENTS_JOIN_CONTROL_PROGRAM and ARDENTS_JOIN_CONTROL_PROGRAM_SHA256 pair",
-        "Node/State key preparation and Forwarding consumer tests require the same-source canonical ARDENTS_FORWARDING_CONTROL_PROGRAM and ARDENTS_FORWARDING_CONTROL_PROGRAM_SHA256",
+        "Node/State key preparation, Release key receipts for all four roles and Forwarding consumer tests require the same-source canonical ARDENTS_FORWARDING_CONTROL_PROGRAM and ARDENTS_FORWARDING_CONTROL_PROGRAM_SHA256",
         "selected Go1.27.4, immutable populated dependencies and race-capable C compiler",
         "same external development lock, complete source/artifact/config and actual mount pins; isolated test authorities only",
         "JOIN Release signing additionally requires independently pinned ARDENTS_JOIN_CONTROL_PROGRAM/_SHA256 and static ARDENTS_JOIN_NEXT_PROGRAM/_SHA256; the canonical platform unit template is produced by ardents-next platform template",

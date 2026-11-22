@@ -322,6 +322,11 @@ SHA-256-pinned canonical executable supplied in
 key-preparation commands in Forwarding, JOIN and Descriptor. It checks distinct
 public keys, exact role and purpose receipts, private file mode and inventory,
 and refusal to reuse another role's or purpose's occupied output.
+`TestControlReleaseKeyReceiptsNative` uses the same pinned executable for
+Source, Forwarding, JOIN and Descriptor. It derives the public keys from
+each role's generated fixture files and compares the exact receipt bytes,
+including the operation, threshold and digests. It checks that an occupied
+output produces no second receipt.
 The same selection executes the affected Forwarding Node, Epoch, profile,
 token-material and token-authority chains.
 

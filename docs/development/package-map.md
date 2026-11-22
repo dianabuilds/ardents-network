@@ -78,6 +78,10 @@ role commands select their respective Node/State file, output directory and
 public receipt. Record, Epoch, profile and Release signing retain their
 purpose-specific inputs and checks.
 
+The command-local `release_key_receipt_linux.go` renders the public key
+receipt for Source, Forwarding, JOIN and Descriptor. Each command fixes its
+operation and completes its own key output before calling the formatter.
+
 The command-local `infrastructure_inventory_linux.go` reads the exact seven
 public files for Source, Forwarding, JOIN and Descriptor. It retains the
 original directory and files through output and rechecks the names alongside
