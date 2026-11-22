@@ -32,31 +32,31 @@ func OpenRetained(root string, network [32]byte, clock func() time.Time) (*Journ
 // retained attempt handling follow the same production path.
 func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot func(string) error, allowFresh bool) (*Journal, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || network == [32]byte{} || clock == nil || clock().IsZero() {
-		return nil, errors.New("text token journal configuration invalid")
+		return nil, errors.New("admission token journal configuration invalid")
 	}
 	info, err := os.Lstat(root)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return nil, errors.New("text token journal root unavailable")
+		return nil, errors.New("admission token journal root unavailable")
 	}
 	entries, err := os.ReadDir(root)
 	if err != nil || len(entries) > 8 {
-		return nil, errors.New("text token journal root shape unavailable")
+		return nil, errors.New("admission token journal root shape unavailable")
 	}
 	fresh := len(entries) == 0
 	if fresh && !allowFresh {
-		return nil, errors.New("retained text token journal is missing")
+		return nil, errors.New("retained admission token journal is missing")
 	}
 	for _, entry := range entries {
 		name := entry.Name()
 		info, err := os.Lstat(filepath.Join(root, name))
 		if err != nil || !info.Mode().IsRegular() || name != "owner.lock" && name != "root.marker" && name != "attempts" && !strings.HasPrefix(name, ".attempts-") {
-			return nil, errors.New("text token journal root entry invalid")
+			return nil, errors.New("admission token journal root entry invalid")
 		}
 	}
 	if !fresh {
 		marker, err := os.ReadFile(filepath.Join(root, "root.marker"))
 		if err != nil || string(marker) != journalMarker {
-			return nil, errors.New("text token journal marker unavailable")
+			return nil, errors.New("admission token journal marker unavailable")
 		}
 	}
 	if err := secureRoot(root); err != nil {
@@ -71,7 +71,7 @@ func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot
 	if fresh {
 		current, err := os.ReadDir(root)
 		if err != nil || len(current) != 1 || current[0].Name() != "owner.lock" {
-			return fail(errors.New("text token journal changed before claim"))
+			return fail(errors.New("admission token journal changed before claim"))
 		}
 		if err := writeJournalFile(filepath.Join(root, "root.marker"), []byte(journalMarker)); err != nil {
 			return fail(err)
@@ -119,7 +119,7 @@ func (journal *Journal) load() error {
 	}
 	if len(raw) < journalHeader || len(raw) > journalHeader+maximumAttempts*attemptSize ||
 		(len(raw)-journalHeader)%attemptSize != 0 || string(raw[:8]) != journalMagic || !bytes.Equal(raw[8:40], journal.network[:]) {
-		return errors.New("text token journal is incomplete or foreign")
+		return errors.New("admission token journal is incomplete or foreign")
 	}
 	journal.floor = time.Unix(int64(binary.BigEndian.Uint64(raw[40:48])), 0).UTC()
 	for offset := journalHeader; offset < len(raw); offset += attemptSize {
@@ -128,7 +128,7 @@ func (journal *Journal) load() error {
 			return err
 		}
 		if _, exists := journal.records[record.digest]; exists {
-			return errors.New("text token journal duplicate")
+			return errors.New("admission token journal duplicate")
 		}
 		journal.records[record.digest] = record
 		if journal.earliestWindow.IsZero() || record.Window.Before(journal.earliestWindow) {
@@ -139,7 +139,7 @@ func (journal *Journal) load() error {
 		}
 	}
 	if journal.floor.IsZero() || journal.clock().UTC().Before(journal.floor) {
-		return errors.New("text token journal time regressed")
+		return errors.New("admission token journal time regressed")
 	}
 	return nil
 }

@@ -67,12 +67,12 @@ func newRequestScope(profile admission.AuthorityFacts, now time.Time,
 	role admission.AllocationRole, maxima [3]uint32) (requestScope, error) {
 	window := now.Truncate(time.Hour)
 	if window.Before(profile.NotBefore) || window.Add(time.Hour).After(profile.NotAfter) {
-		return requestScope{}, errors.New("text permission hour is outside current authority")
+		return requestScope{}, errors.New("admission permission hour is outside current authority")
 	}
 	validationErr := allocation.ValidateMaxima(role, maxima)
 
 	if validationErr != nil {
-		return requestScope{}, errors.New("text permission allocation is invalid")
+		return requestScope{}, errors.New("admission permission allocation is invalid")
 	}
 	return requestScope{profile: profile, window: window, role: role, maxima: maxima}, nil
 }
@@ -86,7 +86,7 @@ func (permission *permission) retainedRequest(scope requestScope) ([]byte, [32]b
 	}
 	if permission.profile != scope.profile || permission.request.Permission.NotBefore != scope.window ||
 		permission.request.Permission.Maxima != scope.maxima {
-		return nil, [32]byte{}, true, errors.New("text permission request cannot be replaced in its hour")
+		return nil, [32]byte{}, true, errors.New("admission permission request cannot be replaced in its hour")
 	}
 	return bytes.Clone(permission.public), permission.digest, true, nil
 }
@@ -113,16 +113,16 @@ func preparePermission(scope requestScope) (*permission, []byte, [32]byte, error
 func (pending *permission) acceptResponse(profile admission.AuthorityFacts, now time.Time,
 	digest [32]byte, permission admission.Permission) error {
 	if pending == nil || digest == [32]byte{} || pending.digest != digest || pending.profile != profile {
-		return errors.New("text permission response has no matching live request")
+		return errors.New("admission permission response has no matching live request")
 	}
 	expected := pending.request.Permission
 	expected.Signature = permission.Signature
 	if permission != expected || admission.VerifyPermission(permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]),
 		profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, now) != nil {
-		return errors.New("text permission response does not match its approved request")
+		return errors.New("admission permission response does not match its approved request")
 	}
 	if pending.accepted != (admission.Permission{}) && pending.accepted != permission {
-		return errors.New("text permission response conflicts")
+		return errors.New("admission permission response conflicts")
 	}
 	pending.accepted = permission
 	return nil
