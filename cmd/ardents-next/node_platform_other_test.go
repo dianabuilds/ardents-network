@@ -4,31 +4,44 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput(t *testing.T) {
 	t.Setenv("ARDENTS_DEBUG_SOCKET", "")
-	for _, role := range []string{"forwarding", "issuer", "descriptor", "introduction", "join"} {
-		t.Run(role, func(t *testing.T) {
+	for _, route := range [][]string{
+		{"node", "forwarding", "--config"},
+		{"node", "issuer", "--config"},
+		{"node", "descriptor", "--config"},
+		{"node", "introduction", "--config"},
+		{"node", "join", "--config"},
+		{"node", "forwarding", "repair-retained"},
+		{"node", "descriptor", "repair-retained"},
+		{"node", "introduction", "repair-retained"},
+		{"node", "join", "repair-retained"},
+	} {
+		t.Run(strings.Join(route[1:], "/"), func(t *testing.T) {
 			input := filepath.Join(t.TempDir(), "unavailable-private-input")
-			command := exec.CommandContext(t.Context(), compiledCommand(t), "node", role, "--config", input)
+			args := append(route, input)
+			command := exec.CommandContext(t.Context(), compiledCommand(t), args...)
 			var out, diagnostic bytes.Buffer
 			command.Stdout, command.Stderr = &out, &diagnostic
 			err := command.Run()
 			var exit *exec.ExitError
-			var event map[string]string
-			if !errors.As(err, &exit) || exit.ExitCode() != 1 || json.Unmarshal(out.Bytes(), &event) != nil || len(event) != 3 ||
-				event["operation"] != "node."+role || event["phase"] != "refused" || event["outcome"] != "unsupported-platform" {
+			want := `{"operation":"node.` + route[1] + `","phase":"refused","outcome":"unsupported-platform"}` + "\n"
+			if !errors.As(err, &exit) || exit.ExitCode() != 1 || out.String() != want {
 				t.Fatal("compiled Node read unavailable private input or lost native refusal", err, out.String())
 			}
-			if diagnostic.Len() != 0 || bytes.Contains(out.Bytes(), []byte(input)) {
+			if diagnostic.Len() != 0 {
 				t.Fatal("unsupported Node exposed private input or a native cause")
+			}
+			if code := run(t.Context(), args, unavailableOutput{}, &diagnostic); code != 2 || diagnostic.Len() != 0 {
+				t.Fatalf("failed Node refusal output returned code %d, stderr %q", code, diagnostic.String())
 			}
 			if _, err := os.Stat(input); !os.IsNotExist(err) {
 				t.Fatal("unsupported Node created private runtime input", err)

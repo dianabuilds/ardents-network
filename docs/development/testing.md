@@ -39,6 +39,12 @@ grammar/command checks, not token issuance or live State qualification.
 
 ## Platform launch unit boundary
 
+The portable deterministic Node CLI test runs the compiled `ardents-next` on
+macOS and Windows. It checks exact refusal stdout, empty stderr and exit code
+1 for all five native startups and four retained repairs with absent plan files.
+The same dispatch returns exit code 2 if the refusal writer fails. The test
+checks that no plan file is created.
+
 Endpoint history-preparation units use independently signed Epoch/profile bytes
 through real Network State, actual participation and role Stock files. They
 cover first preparation and retained reopen, Reader/dual-role separation,
