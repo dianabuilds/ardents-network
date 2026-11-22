@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-const commandUsage = "usage: ardents-control source, forwarding, join, descriptor, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
+const commandUsage = "usage: ardents-control source, forwarding, join, descriptor, inspect-closed-profile, or inspect-closed-issuer-profile"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
@@ -51,10 +51,6 @@ func run(arguments []string, output io.Writer) error {
 		return errors.New("inspect-alpha-corpus is retired")
 	case "accept-alpha-corpus":
 		return errors.New("accept-alpha-corpus is retired")
-	case "prepare-closed-profile":
-		return prepareClosedProfile(arguments[1:], output)
-	case "sign-closed-profile":
-		return signClosedProfile(arguments[1:], output)
 	case "inspect-closed-issuer-profile":
 		return inspectClosedIssuerProfile(arguments[1:], output)
 	case "inspect-closed-profile":

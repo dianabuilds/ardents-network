@@ -883,8 +883,6 @@ facts, and no unified replacement report is selected.
 | Route | Required flags | Result |
 |---|---|---|
 | `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of a retained JSON public issuer-profile export. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
-| `prepare-closed-profile` | `--plan PATH --output PATH` | Render the canonical unsigned `ARDCPR03` body from a bounded public plan into a new file. |
-| `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |
 
 The historical exact `accept-alpha-corpus` and `inspect-alpha-corpus` routes

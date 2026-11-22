@@ -115,13 +115,15 @@ The pinned closed State itself has one accepted envelope: new closed Epochs
 are admitted only as AREP v3, and a retired v1/v2 envelope is refused with a
 typed error before any durable effect (ADR-0111).
 
-`ardents-control prepare-closed-profile` renders only this canonical unsigned
-body from a bounded public plan. `sign-closed-profile` rereads that plan, uses
-one owner-only PKCS#8 Ed25519 State-authority file, and writes a new profile
-artifact without printing the key or profile bytes. It cannot sign another
-grammar and never creates a replacement authority. `inspect-closed-profile` is
-read-only and checks the exact context and signature. A missing or malformed
-signer is unavailable; durable State acceptance remains separate.
+`ardents-next network prepare-closed-profile` renders the canonical
+unsigned body from a bounded public plan. `network sign-closed-profile`
+reconstructs that body, checks the reviewed prepared artifact and its digest,
+and signs with the protected PKCS#8 Ed25519 key matching the independently
+pinned State authority. The Admission authority in the profile is separate.
+The command commits and verifies a fresh signed profile artifact and reports
+its digest. `ardents-control inspect-closed-profile` verifies the exact
+context and signature using public inputs. Network State separately owns
+durable profile acceptance.
 
 Each Node entry is Node-ID[32], SHA-256(exact signed Node Record)[32],
 Role-Domain u8, subrole u8 and duty-generation u64. Sort by Node-ID and reject

@@ -4,22 +4,24 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
-func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
-	const usage = "usage: ardents-control source, forwarding, join, descriptor, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
+func TestRemovedRoutesAreAbsentFromCommandSurface(t *testing.T) {
+	const usage = "usage: ardents-control source, forwarding, join, descriptor, inspect-closed-profile, or inspect-closed-issuer-profile"
 	for _, route := range []string{
 		"inspect",
 		"inspect-public-control",
+		"prepare-closed-profile",
+		"sign-closed-profile",
 		"simulate-public-control",
 		"simulate-public-control-transitions",
 		"simulate-namespace-lifecycle",
@@ -56,7 +58,7 @@ func TestAcceptAlphaCorpusIsRetiredBeforeEffects(t *testing.T) {
 	}
 }
 
-func TestClosedProfileCommandsRoundTripWithoutKeyOutput(t *testing.T) {
+func TestInspectClosedProfileVerifiesIndependentContext(t *testing.T) {
 	now := time.Unix(2_000_401_600, 0).UTC().Truncate(time.Hour)
 	network, issuerNode, otherNode := [32]byte{1}, [32]byte{2}, [32]byte{1}
 	statePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
@@ -89,7 +91,7 @@ func TestClosedProfileCommandsRoundTripWithoutKeyOutput(t *testing.T) {
 			{NodeID: hex.EncodeToString(issuerNode[:]), RecordDigest: hex.EncodeToString(bytes.Repeat([]byte{9}, 32)), RoleDomain: 2, Subrole: 6, DutyGeneration: 2}}}
 	plan.TokenKeys = issuerPlan.TokenKeys
 	directory := t.TempDir()
-	planPath, preparedPath, signedPath, keyPath := filepath.Join(directory, "plan.json"), filepath.Join(directory, "prepared.bin"), filepath.Join(directory, "signed.bin"), filepath.Join(directory, "state.pem")
+	planPath, signedPath := filepath.Join(directory, "plan.json"), filepath.Join(directory, "signed.bin")
 	planRaw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -97,26 +99,42 @@ func TestClosedProfileCommandsRoundTripWithoutKeyOutput(t *testing.T) {
 	if err := os.WriteFile(planPath, planRaw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	privateDER, err := x509.MarshalPKCS8PrivateKey(statePrivate)
+	input, err := readClosedProfilePlan(planPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privateDER}), 0o600); err != nil {
+	body, err := closedprofile.Prepare(input)
+	if err != nil {
 		t.Fatal(err)
 	}
-	var prepared, signed, inspected bytes.Buffer
-	if err := run([]string{"prepare-closed-profile", "--plan", planPath, "--output", preparedPath}, &prepared); err != nil {
-		t.Fatalf("prepare closed profile: %v", err)
+	transcript := append([]byte("ardents-closed-profile-v3\x00"), body...)
+	signed := append(body, ed25519.Sign(statePrivate, transcript)...)
+	if err := os.WriteFile(signedPath, signed, 0o600); err != nil {
+		t.Fatal(err)
 	}
-	if err := run([]string{"sign-closed-profile", "--plan", planPath, "--authority-key", keyPath, "--output", signedPath}, &signed); err != nil {
-		t.Fatalf("sign closed profile: %v", err)
+	stateKey := hex.EncodeToString(statePrivate.Public().(ed25519.PublicKey))
+	inspect := func(authority string, at time.Time, output *bytes.Buffer) error {
+		return run([]string{"inspect-closed-profile", "--plan", planPath, "--profile", signedPath, "--authority", authority, "--at", at.Format(time.RFC3339)}, output)
 	}
-	if err := run([]string{"inspect-closed-profile", "--plan", planPath, "--profile", signedPath, "--authority", hex.EncodeToString(statePrivate.Public().(ed25519.PublicKey)), "--at", now.Format(time.RFC3339)}, &inspected); err != nil {
-		t.Fatalf("inspect closed profile: %v", err)
+	var inspected bytes.Buffer
+	if err := inspect(stateKey, now, &inspected); err != nil {
+		t.Fatal(err)
 	}
-	if prepared.Len() == 0 || signed.Len() == 0 || !strings.Contains(inspected.String(), "ardents-closed-profile-inspection-v1") ||
-		bytes.Contains(signed.Bytes(), statePrivate) || bytes.Contains(inspected.Bytes(), statePrivate) {
-		t.Fatalf("closed profile command outputs leaked key or lacked report: %q / %q / %q", prepared.String(), signed.String(), inspected.String())
+	if !strings.Contains(inspected.String(), "ardents-closed-profile-inspection-v1") ||
+		bytes.Contains(inspected.Bytes(), statePrivate) {
+		t.Fatalf("unexpected closed profile report: %q", inspected.String())
+	}
+	for _, refusal := range []struct {
+		authority string
+		at        time.Time
+	}{
+		{hex.EncodeToString(nodePrivate.Public().(ed25519.PublicKey)), now},
+		{stateKey, now.Add(time.Hour)},
+	} {
+		inspected.Reset()
+		if err := inspect(refusal.authority, refusal.at, &inspected); err == nil || inspected.Len() != 0 {
+			t.Fatalf("invalid inspection produced report %q, error %v", inspected.String(), err)
+		}
 	}
 }
 
