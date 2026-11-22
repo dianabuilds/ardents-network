@@ -1560,9 +1560,12 @@ qualification. Native profiles retain real measurements, including refusal when
 a process disappears during a sample; runtime guards and limits are unchanged.
 
 `TestNodeInspectionNative*` in `network/duty` and `network/state` belongs to the
-existing root/ext4 `network-signing-linux` profile. Its explicit owner selection
-is `go test -race -tags network_signing_native ./internal/network/duty ./internal/network/state -run '^Test(Node|Source)InspectionNative' -count=1 -timeout=3m`
-under the original shared development lock and private native TMPDIR. Duty uses
+existing root/ext4 `network-signing-linux` profile. Its owner selection
+is `go test -race -tags network_signing_native ./internal/network/duty ./internal/network/state -run '^TestNodeInspectionNative' -count=1 -timeout=3m`
+(also run by `make network-signing-check`; E1-2 executed proof restored)
+under the original shared development lock and private native TMPDIR. The State
+fixture binds its State/local-role roots to the production owner-only invariant
+(0700) rather than the toolchain's `t.TempDir` default (0755). Duty uses
 genuine producer operations and original leases: expired live records cannot be
 cleared by inspection, Source exposure policy cannot admit stopped Node history,
 and missing marker/pointer/floor/lease refuses without repair or initialization.
@@ -1595,7 +1598,8 @@ cgroup quiescence remains separate Linux/systemd evidence.
 
 `TestHostingInspectionNative*` is a separate owner selection in the same
 root/ext4 `network-signing-linux` profile:
-`go test -race -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`.
+`go test -race -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`
+(also run by `make network-signing-check`; E1-2 executed proof restored).
 It uses actual Hosting initialization, kernel interface observations and durable
 reservations, then independently inspects original bytes/policy/principal under
 the original allowance lease. Missing/damaged/foreign/pending history refuses
@@ -1608,6 +1612,7 @@ replacement/recovery or capacity permission.
 `TestSpendInspectionNative*` belongs to the existing root/ext4
 `network-signing-linux` profile. Run its bounded owner selection with
 `go test -race -tags network_signing_native ./internal/admission/spending -run '^TestSpendInspectionNative' -count=1 -timeout=2m`
+(also run by `make network-signing-check`; E1-2 executed proof restored)
 under the profile's original development lock, private root-controlled native
 TMPDIR and pinned toolchain/dependencies. It uses genuine spend persistence and
 native exclusive leases, checking unchanged bytes, retained burn, missing or

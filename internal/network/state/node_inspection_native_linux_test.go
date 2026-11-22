@@ -38,6 +38,15 @@ func nodeInspectionNativeFixture(t *testing.T, opened bool) (state.Config, state
 		t.Fatal("invalid environment: root Node inspection driver required")
 	}
 	root, roles := t.TempDir(), t.TempDir()
+	// t.TempDir creates 0755 on the current toolchain; the production local-role
+	// and State roots are owner-only (0700), so bind the fixture to that invariant
+	// rather than the temp-directory default.
+	if err := os.Chmod(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(roles, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	var fs syscall.Statfs_t
 	if err := syscall.Statfs(root, &fs); err != nil || fs.Type != 0xef53 {
 		t.Fatal("invalid environment: private root-controlled ext4 TMPDIR required", err)
