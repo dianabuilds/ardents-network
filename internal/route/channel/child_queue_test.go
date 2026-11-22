@@ -242,16 +242,23 @@ func TestChildGroupAccountsQueuedOutputHeadersAndControls(t *testing.T) {
 
 func waitChildQueue(t *testing.T, l *Lane, size int, closed bool) {
 	t.Helper()
+	l.s.mu.Lock()
+	waiter := l.notifyLocked()
+	l.s.mu.Unlock()
+	defer func() {
+		l.s.mu.Lock()
+		l.forgetLocked(waiter)
+		l.s.mu.Unlock()
+	}()
 	for {
 		l.s.mu.Lock()
 		ready := len(l.buffer) == size && l.closed == closed
-		changed := l.changed
 		l.s.mu.Unlock()
 		if ready {
 			return
 		}
 		select {
-		case <-changed:
+		case <-waiter.ch:
 		case <-time.After(5 * time.Second):
 			t.Fatal("child queue transition did not complete")
 		}

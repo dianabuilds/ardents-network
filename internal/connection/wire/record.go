@@ -30,15 +30,13 @@ const (
 // Write emits exactly one closed native record. It accepts no generic type,
 // unknown kind, profile, optional field, or caller-selected version.
 func Write(writer io.Writer, record Record) error {
-	body, err := encodeRecord(record)
+	envelope, err := encodeEnvelope(record)
 	if err != nil {
 		return err
 	}
 	if writer == nil {
 		return errors.New("native connection record writer is absent")
 	}
-	envelope := append([]byte(connectionPrefix), byte(len(body)>>8), byte(len(body)))
-	envelope = append(envelope, body...)
 	n, err := writer.Write(envelope)
 	if err != nil {
 		return err
@@ -93,34 +91,43 @@ func ReadStream(reader io.Reader) (StreamRecord, error) {
 // ChallengeDigest hashes the exact canonical Challenge envelope used by the
 // matching InstanceProof. It has no predecessor interpretation.
 func ChallengeDigest(challenge Challenge) ([32]byte, error) {
-	body, err := encodeRecord(Record{Challenge: &challenge})
+	envelope, err := encodeEnvelope(Record{Challenge: &challenge})
 	if err != nil {
 		return [32]byte{}, err
 	}
-	envelope := append([]byte(connectionPrefix), byte(len(body)>>8), byte(len(body)))
-	envelope = append(envelope, body...)
 	return sha256.Sum256(envelope), nil
 }
 
-func encodeRecord(record Record) ([]byte, error) {
-	kind, payload, err := recordPayload(record)
+// encodeEnvelope builds the complete canonical envelope in one allocation:
+// prefix, length, common header and payload are written directly into the final
+// buffer, so the payload is copied once rather than through a separate body and
+// envelope (audit SW-1). The refused grammar and canonical bytes are unchanged.
+func encodeEnvelope(record Record) ([]byte, error) {
+	kind, size, err := recordKindSize(record)
 	if err != nil {
 		return nil, err
 	}
-	body := make([]byte, 0, commonHeaderSize+len(payload))
-	var raw [2]byte
-	binary.BigEndian.PutUint16(raw[:], version)
-	body = append(body, raw[:]...)
-	body = append(body, kind, byte(len(Profile)))
-	body = append(body, Profile...)
-	body = append(body, payload...)
-	if len(body) > maximumBodySize {
+	bodySize := commonHeaderSize + size
+	if bodySize > maximumBodySize {
 		return nil, errors.New("native connection record body is oversized")
 	}
-	return body, nil
+	envelope := make([]byte, len(connectionPrefix)+2+bodySize)
+	copy(envelope, connectionPrefix)
+	envelope[len(connectionPrefix)] = byte(bodySize >> 8)
+	envelope[len(connectionPrefix)+1] = byte(bodySize)
+	body := envelope[len(connectionPrefix)+2:]
+	binary.BigEndian.PutUint16(body[:2], version)
+	body[2] = kind
+	body[3] = byte(len(Profile))
+	copy(body[4:4+len(Profile)], Profile)
+	appendRecordPayload(record, kind, body[commonHeaderSize:])
+	return envelope, nil
 }
 
-func recordPayload(record Record) (byte, []byte, error) {
+// recordKindSize validates the closed one-kind grammar and returns the exact
+// payload size without allocating. It owns the same refusal order and messages
+// as the former re-encoding validator.
+func recordKindSize(record Record) (byte, int, error) {
 	count := 0
 	if record.Challenge != nil {
 		count++
@@ -141,75 +148,105 @@ func recordPayload(record Record) (byte, []byte, error) {
 		count++
 	}
 	if count != 1 {
-		return 0, nil, errors.New("native connection record is not one closed kind")
+		return 0, 0, errors.New("native connection record is not one closed kind")
 	}
 	switch {
 	case record.Challenge != nil:
 		value := record.Challenge
 		if value.Network == [32]byte{} || value.Target == [32]byte{} || value.Context == [32]byte{} ||
 			value.Nonce == [32]byte{} || value.InstanceGeneration == 0 {
-			return 0, nil, errors.New("native InstanceChallenge is invalid")
+			return 0, 0, errors.New("native InstanceChallenge is invalid")
 		}
-		payload := make([]byte, 0, 136)
-		payload = append(payload, value.Network[:]...)
-		payload = append(payload, value.Target[:]...)
-		var raw [8]byte
-		binary.BigEndian.PutUint64(raw[:], value.InstanceGeneration)
-		payload = append(payload, raw[:]...)
-		payload = append(payload, value.Context[:]...)
-		payload = append(payload, value.Nonce[:]...)
-		return kindChallenge, payload, nil
+		return kindChallenge, 136, nil
 	case record.Proof != nil:
 		value := record.Proof
 		if value.ChallengeDigest == [32]byte{} || value.Signature == [64]byte{} {
-			return 0, nil, errors.New("native InstanceProof is invalid")
+			return 0, 0, errors.New("native InstanceProof is invalid")
 		}
-		payload := append(append([]byte(nil), value.ChallengeDigest[:]...), value.Signature[:]...)
-		return kindProof, payload, nil
+		return kindProof, 96, nil
 	case record.Continuity != nil:
 		value := record.Continuity
 		if !validRole(value.Role) || value.AttachmentGeneration == 0 || value.SendBase > value.SendEnd ||
 			value.Nonce == [32]byte{} || value.Context == [32]byte{} || value.ExporterCommitment == [32]byte{} || value.MAC == [32]byte{} {
-			return 0, nil, errors.New("native Continuity is invalid")
+			return 0, 0, errors.New("native Continuity is invalid")
 		}
-		payload := continuityTranscript(*value)
-		payload = append(payload, value.MAC[:]...)
-		return kindContinuity, payload, nil
+		return kindContinuity, 1 + 8*4 + 32*4, nil
 	case record.Data != nil:
 		value := record.Data
 		if value.AttachmentGeneration == 0 || len(value.Payload) == 0 || len(value.Payload) > MaximumDataBytes || uint64(len(value.Payload)) > ^uint64(0)-value.Offset {
-			return 0, nil, errors.New("native Data is invalid")
+			return 0, 0, errors.New("native Data is invalid")
 		}
-		payload := connectionOffset(value.AttachmentGeneration, value.Offset)
-		var length [2]byte
-		binary.BigEndian.PutUint16(length[:], uint16(len(value.Payload)))
-		payload = append(payload, length[:]...)
-		payload = append(payload, value.Payload...)
-		return kindData, payload, nil
+		return kindData, 18 + len(value.Payload), nil
 	case record.Acknowledgement != nil:
 		value := record.Acknowledgement
 		if value.AttachmentGeneration == 0 {
-			return 0, nil, errors.New("native Acknowledgement is invalid")
+			return 0, 0, errors.New("native Acknowledgement is invalid")
 		}
-		payload := connectionOffset(value.AttachmentGeneration, value.Offset)
+		if value.Terminal {
+			return kindAcknowledgement, 17, nil
+		}
+		if value.TerminalConfirmation {
+			return 0, 0, errors.New("native Terminal Acknowledgement confirmation is invalid")
+		}
+		return kindAcknowledgement, 16, nil
+	case record.Terminal != nil:
+		value := record.Terminal
+		if value.AttachmentGeneration == 0 {
+			return 0, 0, errors.New("native Terminal is invalid")
+		}
+		return kindTerminal, 16, nil
+	}
+	return 0, 0, errors.New("native connection record kind is invalid")
+}
+
+// appendRecordPayload writes the validated payload fields directly into dst,
+// which encodeEnvelope sized exactly. It performs no validation or allocation.
+func appendRecordPayload(record Record, kind byte, dst []byte) {
+	switch kind {
+	case kindChallenge:
+		value := record.Challenge
+		copy(dst[0:32], value.Network[:])
+		copy(dst[32:64], value.Target[:])
+		binary.BigEndian.PutUint64(dst[64:72], value.InstanceGeneration)
+		copy(dst[72:104], value.Context[:])
+		copy(dst[104:136], value.Nonce[:])
+	case kindProof:
+		value := record.Proof
+		copy(dst[0:32], value.ChallengeDigest[:])
+		copy(dst[32:96], value.Signature[:])
+	case kindContinuity:
+		value := record.Continuity
+		dst[0] = byte(value.Role)
+		binary.BigEndian.PutUint64(dst[1:9], value.AttachmentGeneration)
+		binary.BigEndian.PutUint64(dst[9:17], value.SendBase)
+		binary.BigEndian.PutUint64(dst[17:25], value.SendEnd)
+		binary.BigEndian.PutUint64(dst[25:33], value.ReceiveNext)
+		copy(dst[33:65], value.Nonce[:])
+		copy(dst[65:97], value.Context[:])
+		copy(dst[97:129], value.ExporterCommitment[:])
+		copy(dst[129:161], value.MAC[:])
+	case kindData:
+		value := record.Data
+		binary.BigEndian.PutUint64(dst[0:8], value.AttachmentGeneration)
+		binary.BigEndian.PutUint64(dst[8:16], value.Offset)
+		binary.BigEndian.PutUint16(dst[16:18], uint16(len(value.Payload)))
+		copy(dst[18:], value.Payload)
+	case kindAcknowledgement:
+		value := record.Acknowledgement
+		binary.BigEndian.PutUint64(dst[0:8], value.AttachmentGeneration)
+		binary.BigEndian.PutUint64(dst[8:16], value.Offset)
 		if value.Terminal {
 			marker := byte(1)
 			if value.TerminalConfirmation {
 				marker = 2
 			}
-			payload = append(payload, marker)
-		} else if value.TerminalConfirmation {
-			return 0, nil, errors.New("native Terminal Acknowledgement confirmation is invalid")
+			dst[16] = marker
 		}
-		return kindAcknowledgement, payload, nil
-	case record.Terminal != nil:
+	case kindTerminal:
 		value := record.Terminal
-		if value.AttachmentGeneration == 0 {
-			return 0, nil, errors.New("native Terminal is invalid")
-		}
-		return kindTerminal, connectionOffset(value.AttachmentGeneration, value.Offset), nil
+		binary.BigEndian.PutUint64(dst[0:8], value.AttachmentGeneration)
+		binary.BigEndian.PutUint64(dst[8:16], value.Offset)
 	}
-	return 0, nil, errors.New("native connection record kind is invalid")
 }
 
 func decodeRecord(body []byte) (Record, error) {
@@ -228,8 +265,12 @@ func decodeRecord(body []byte) (Record, error) {
 		copy(value.Target[:], payload[32:64])
 		copy(value.Context[:], payload[72:104])
 		copy(value.Nonce[:], payload[104:136])
-		if _, _, err := recordPayload(Record{Challenge: value}); err != nil {
-			return Record{}, err
+		// Validate the decoded fields directly rather than re-encoding the whole
+		// payload only to discard it (audit SW-1). This matches recordKindSize's
+		// Challenge refusal grammar exactly.
+		if value.Network == [32]byte{} || value.Target == [32]byte{} || value.Context == [32]byte{} ||
+			value.Nonce == [32]byte{} || value.InstanceGeneration == 0 {
+			return Record{}, errors.New("native InstanceChallenge is invalid")
 		}
 		return Record{Challenge: value}, nil
 	case kindProof:
@@ -239,8 +280,8 @@ func decodeRecord(body []byte) (Record, error) {
 		value := &Proof{}
 		copy(value.ChallengeDigest[:], payload[:32])
 		copy(value.Signature[:], payload[32:])
-		if _, _, err := recordPayload(Record{Proof: value}); err != nil {
-			return Record{}, err
+		if value.ChallengeDigest == [32]byte{} || value.Signature == [64]byte{} {
+			return Record{}, errors.New("native InstanceProof is invalid")
 		}
 		return Record{Proof: value}, nil
 	case kindContinuity:
@@ -253,8 +294,9 @@ func decodeRecord(body []byte) (Record, error) {
 		copy(value.Context[:], payload[65:97])
 		copy(value.ExporterCommitment[:], payload[97:129])
 		copy(value.MAC[:], payload[129:161])
-		if _, _, err := recordPayload(Record{Continuity: value}); err != nil {
-			return Record{}, err
+		if !validRole(value.Role) || value.AttachmentGeneration == 0 || value.SendBase > value.SendEnd ||
+			value.Nonce == [32]byte{} || value.Context == [32]byte{} || value.ExporterCommitment == [32]byte{} || value.MAC == [32]byte{} {
+			return Record{}, errors.New("native Continuity is invalid")
 		}
 		return Record{Continuity: value}, nil
 	case kindData:
@@ -265,10 +307,13 @@ func decodeRecord(body []byte) (Record, error) {
 		if length == 0 || length > MaximumDataBytes || len(payload) != 18+length {
 			return Record{}, errors.New("native Data length is invalid")
 		}
-		value := &Data{AttachmentGeneration: binary.BigEndian.Uint64(payload[:8]), Offset: binary.BigEndian.Uint64(payload[8:16]), Payload: append([]byte(nil), payload[18:]...)}
+		// The body is a fresh per-Read allocation owned only by this record, so the
+		// payload can reference it directly instead of copying it again (audit SW-1).
+		// The consumer retains accepted bytes in its own bounded ledger buffer.
+		value := &Data{AttachmentGeneration: binary.BigEndian.Uint64(payload[:8]), Offset: binary.BigEndian.Uint64(payload[8:16]), Payload: payload[18:]}
 		// Validate the decoded fields directly rather than re-encoding the whole
 		// payload only to discard it (audit SW-1). The length bounds are checked
-		// above; this matches recordPayload's remaining Data refusal grammar.
+		// above; this matches recordKindSize's remaining Data refusal grammar.
 		if value.AttachmentGeneration == 0 || uint64(len(value.Payload)) > ^uint64(0)-value.Offset {
 			return Record{}, errors.New("native Data is invalid")
 		}
@@ -300,13 +345,6 @@ func decodeRecord(body []byte) (Record, error) {
 	default:
 		return Record{}, errors.New("native connection record kind is unknown")
 	}
-}
-
-func connectionOffset(generation, offset uint64) []byte {
-	encoded := make([]byte, 16)
-	binary.BigEndian.PutUint64(encoded[:8], generation)
-	binary.BigEndian.PutUint64(encoded[8:], offset)
-	return encoded
 }
 
 func decodeOffset(payload []byte, name string) ([2]uint64, error) {

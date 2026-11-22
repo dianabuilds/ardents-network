@@ -44,8 +44,8 @@
 //     Tests: session_lifecycle_test.go, join_input_test.go, role_frames_test.go,
 //     open_lane_test.go, deadline_effect_test.go.
 //   - lane: lane.go, record_capacity.go. Tests: lane_stop_test.go,
-//     credit_batch_test.go, credit_close_test.go, credit_retirement_test.go,
-//     nested_control_close_test.go, open_lane_test.go.
+//     lane_notify_test.go, credit_batch_test.go, credit_close_test.go,
+//     credit_retirement_test.go, nested_control_close_test.go, open_lane_test.go.
 //   - output: frame_schedule.go, physical_output.go, physical_close.go,
 //     framing_retirement.go, terminal_outcome.go. Tests:
 //     frame_schedule_test.go, framing_retirement_test.go,

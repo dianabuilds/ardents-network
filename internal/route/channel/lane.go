@@ -27,7 +27,7 @@ type Lane struct {
 	pendingCredit, queuedCredit       uint32
 	eof, closed, peerClosed           bool
 	cause                             error
-	changed                           chan struct{}
+	waiters                           []*laneWaiter
 	writeMu                           sync.Mutex
 	writes                            sync.WaitGroup
 	closeOnce                         sync.Once
@@ -59,7 +59,42 @@ type Lane struct {
 	cancel                            context.CancelCauseFunc
 }
 
-func (l *Lane) signalLocked() { close(l.changed); l.changed = make(chan struct{}) }
+// laneWaiter is one reusable notification endpoint for a wait operation. The
+// owner registers it under the session lock before releasing the lock to wait,
+// so every later signal notifies it; the buffered token coalesces signals while
+// the owner rechecks its predicate. It is never closed and is forgotten when the
+// operation returns. This replaces a fresh broadcast channel per signal (RD-4).
+type laneWaiter struct{ ch chan struct{} }
+
+func (l *Lane) notifyLocked() *laneWaiter {
+	w := &laneWaiter{ch: make(chan struct{}, 1)}
+	l.waiters = append(l.waiters, w)
+	return w
+}
+
+func (l *Lane) forgetLocked(w *laneWaiter) {
+	for i, cur := range l.waiters {
+		if cur == w {
+			last := len(l.waiters) - 1
+			l.waiters[i] = l.waiters[last]
+			l.waiters[last] = nil
+			l.waiters = l.waiters[:last]
+			return
+		}
+	}
+}
+
+// signalLocked wakes every registered waiter without allocating. The state
+// change remains owned by the session lock; each waiter rechecks its predicate
+// after waking, so coalesced or spurious tokens cannot invent progress.
+func (l *Lane) signalLocked() {
+	for _, w := range l.waiters {
+		select {
+		case w.ch <- struct{}{}:
+		default:
+		}
+	}
+}
 
 // seal synchronously denies new effects without performing I/O. The work
 // owner subsequently closes and joins this same stream before returning it.
@@ -82,16 +117,36 @@ func (l *Lane) stopLocked(cause error) {
 		l.signalLocked()
 	}
 }
-func waitLane(changed <-chan struct{}, end time.Time) error {
+
+// laneTimer reuses one timer across a wait operation's iterations instead of
+// allocating a timer per wait (RD-4). Go 1.23+ timer channels are unbuffered, so
+// Reset never delivers a stale fire left by a prior iteration's selected wake.
+type laneTimer struct{ timer *time.Timer }
+
+func (t *laneTimer) reset(end time.Time) {
+	d := time.Until(end)
+	if t.timer == nil {
+		t.timer = time.NewTimer(d)
+	} else {
+		t.timer.Reset(d)
+	}
+}
+
+func (t *laneTimer) stop() {
+	if t.timer != nil {
+		t.timer.Stop()
+	}
+}
+
+func waitLane(changed <-chan struct{}, end time.Time, timer *laneTimer) error {
 	if !time.Now().Before(end) {
 		return os.ErrDeadlineExceeded
 	}
-	timer := time.NewTimer(time.Until(end))
-	defer timer.Stop()
+	timer.reset(end)
 	select {
 	case <-changed:
 		return nil
-	case <-timer.C:
+	case <-timer.timer.C:
 		return os.ErrDeadlineExceeded
 	}
 }
@@ -100,6 +155,16 @@ func (l *Lane) Read(p []byte) (int, error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
+	var waiter *laneWaiter
+	var timer laneTimer
+	defer func() {
+		timer.stop()
+		if waiter != nil {
+			l.s.mu.Lock()
+			l.forgetLocked(waiter)
+			l.s.mu.Unlock()
+		}
+	}()
 	for {
 		l.s.mu.Lock()
 		if !time.Now().Before(l.readEnd) {
@@ -170,9 +235,12 @@ func (l *Lane) Read(p []byte) (int, error) {
 			l.s.mu.Unlock()
 			return 0, io.EOF
 		}
-		changed, end := l.changed, l.readEnd
+		if waiter == nil {
+			waiter = l.notifyLocked()
+		}
+		end := l.readEnd
 		l.s.mu.Unlock()
-		if err := waitLane(changed, end); err != nil {
+		if err := waitLane(waiter.ch, end, &timer); err != nil {
 			// The selected original read timer has elapsed even if a later
 			// wall reading moves backwards. Retain that exact cause for
 			// downstream borrowers; a shorter caller read deadline is local.
@@ -196,6 +264,16 @@ func (l *Lane) Write(p []byte) (int, error) {
 	if len(p) != 0 && limit <= 0 {
 		return 0, errors.New("nested lane record capacity unavailable")
 	}
+	var waiter *laneWaiter
+	var timer laneTimer
+	defer func() {
+		timer.stop()
+		if waiter != nil {
+			l.s.mu.Lock()
+			l.forgetLocked(waiter)
+			l.s.mu.Unlock()
+		}
+	}()
 	n := 0
 	for len(p) > 0 {
 		l.s.mu.Lock()
@@ -211,10 +289,13 @@ func (l *Lane) Write(p []byte) (int, error) {
 			l.s.mu.Unlock()
 			return n, os.ErrDeadlineExceeded
 		}
-		credit, changed, end := l.credit, l.changed, l.writeEnd
+		credit, end := l.credit, l.writeEnd
+		if credit == 0 && waiter == nil {
+			waiter = l.notifyLocked()
+		}
 		l.s.mu.Unlock()
 		if credit == 0 {
-			if err := waitLane(changed, end); err != nil {
+			if err := waitLane(waiter.ch, end, &timer); err != nil {
 				return n, err
 			}
 			continue

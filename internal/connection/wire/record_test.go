@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -240,5 +242,188 @@ func TestStreamRecordRefusesAuthenticationAndPreservesFraming(t *testing.T) {
 	}
 	if r, err := ReadStream(reader); err != nil || r.Terminal == nil || r.Terminal.Offset != 1 || reader.Len() != 0 {
 		t.Fatal("terminal framing differs")
+	}
+}
+
+// TestRecordSingleAllocationEnvelopeIsByteExact proves the single-allocation
+// envelope (audit SW-1) emits the identical canonical bytes as the independent
+// contract oracle for every kind and at the allocation boundaries, and that a
+// decode/re-encode replay reproduces exactly the same bytes.
+func TestRecordSingleAllocationEnvelopeIsByteExact(t *testing.T) {
+	t.Parallel()
+	challenge := Challenge{Network: [32]byte{1}, Target: [32]byte{2}, InstanceGeneration: 3, Context: [32]byte{4}, Nonce: [32]byte{5}}
+	challengePayload := append(append([]byte(nil), challenge.Network[:]...), challenge.Target[:]...)
+	challengePayload = binary.BigEndian.AppendUint64(challengePayload, challenge.InstanceGeneration)
+	challengePayload = append(challengePayload, challenge.Context[:]...)
+	challengePayload = append(challengePayload, challenge.Nonce[:]...)
+	proof := Proof{ChallengeDigest: sha256.Sum256(independentEnvelope(1, challengePayload)), Signature: [64]byte{6}}
+	proofPayload := append(append([]byte(nil), proof.ChallengeDigest[:]...), proof.Signature[:]...)
+	continuity, err := NewContinuity([32]byte{1}, RolePublisher, 4, 5, 6, 7, [32]byte{2}, [32]byte{3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	continuityPayload := append(continuityTranscript(continuity), continuity.MAC[:]...)
+
+	type fixture struct {
+		name    string
+		record  Record
+		kind    byte
+		payload []byte
+	}
+	records := []fixture{
+		{"challenge", Record{Challenge: &challenge}, 1, challengePayload},
+		{"proof", Record{Proof: &proof}, 2, proofPayload},
+		{"continuity", Record{Continuity: &continuity}, 3, continuityPayload},
+		{"ack", Record{Acknowledgement: &Acknowledgement{7, 10, false, false}}, 5, independentOffsets(7, 10)},
+		{"receipt", Record{Acknowledgement: &Acknowledgement{7, 10, true, false}}, 5, append(independentOffsets(7, 10), 1)},
+		{"confirmation", Record{Acknowledgement: &Acknowledgement{7, 10, true, true}}, 5, append(independentOffsets(7, 10), 2)},
+		{"terminal", Record{Terminal: &Terminal{7, 10}}, 6, independentOffsets(7, 10)},
+	}
+	// Data at every allocation boundary, including the maximum body whose length
+	// header exceeds one byte.
+	for _, size := range []int{1, 2, 255, 256, MaximumDataBytes - 1, MaximumDataBytes} {
+		payload := bytes.Repeat([]byte{0xAB}, size)
+		dataPayload := append(independentOffsets(7, 8), byte(size>>8), byte(size))
+		records = append(records, fixture{fmt.Sprintf("data-%d", size), Record{Data: &Data{7, 8, payload}}, 4, append(dataPayload, payload...)})
+	}
+	for _, tc := range records {
+		t.Run(tc.name, func(t *testing.T) {
+			want := independentEnvelope(tc.kind, tc.payload)
+			var encoded bytes.Buffer
+			if err := Write(&encoded, tc.record); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(encoded.Bytes(), want) {
+				t.Fatalf("envelope differs from independent oracle:\n%x\n%x", encoded.Bytes(), want)
+			}
+			decoded, err := Read(bytes.NewReader(want))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var replay bytes.Buffer
+			if err := Write(&replay, decoded); err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(replay.Bytes(), want) {
+				t.Fatal("decode/re-encode replay differs from the original canonical bytes")
+			}
+		})
+	}
+	digest, err := ChallengeDigest(challenge)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if digest != sha256.Sum256(independentEnvelope(1, challengePayload)) {
+		t.Fatal("challenge digest differs from the independent canonical envelope hash")
+	}
+}
+
+// TestRecordDecodedPayloadIsIndependentPerRead proves removing the receive-side
+// payload copy (audit SW-1) keeps each Read's payload independent: separate reads
+// share no mutable buffer and never alter the source envelope.
+func TestRecordDecodedPayloadIsIndependentPerRead(t *testing.T) {
+	t.Parallel()
+	wire := independentEnvelope(4, append(append(independentOffsets(1, 0), 0, 3), 1, 2, 3))
+	first, err := Read(bytes.NewReader(wire))
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := Read(bytes.NewReader(wire))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first.Data.Payload, []byte{1, 2, 3}) || !bytes.Equal(second.Data.Payload, []byte{1, 2, 3}) {
+		t.Fatal("decoded payload differs from the canonical bytes")
+	}
+	first.Data.Payload[0] = 99
+	if second.Data.Payload[0] != 1 {
+		t.Fatal("separate reads share a mutable payload buffer")
+	}
+	if wire[len(wire)-3] != 1 {
+		t.Fatal("decoding mutated the source envelope")
+	}
+}
+
+// TestRecordDirectValidationPreservesRefusalGrammar proves validating decoded
+// fields directly (audit SW-1) refuses exactly the same malformed Challenge,
+// Proof and Continuity records, with the same messages, as the former
+// re-encoding validator — on both the encode and decode sides.
+func TestRecordDirectValidationPreservesRefusalGrammar(t *testing.T) {
+	t.Parallel()
+	challenge := Challenge{Network: [32]byte{1}, Target: [32]byte{2}, InstanceGeneration: 3, Context: [32]byte{4}, Nonce: [32]byte{5}}
+	proof := Proof{ChallengeDigest: [32]byte{1}, Signature: [64]byte{2}}
+	continuity := Continuity{Role: RoleInitiator, AttachmentGeneration: 4, SendBase: 5, SendEnd: 6, ReceiveNext: 7,
+		Nonce: [32]byte{1}, Context: [32]byte{2}, ExporterCommitment: [32]byte{3}, MAC: [32]byte{4}}
+	cases := []struct {
+		name          string
+		base          Record
+		message       string
+		mutateRecord  func(Record) Record
+		mutatePayload func([]byte)
+	}{
+		{"challenge-network", Record{Challenge: &challenge}, "native InstanceChallenge is invalid",
+			func(r Record) Record { c := *r.Challenge; c.Network = [32]byte{}; return Record{Challenge: &c} },
+			func(p []byte) { clear(p[0:32]) }},
+		{"challenge-target", Record{Challenge: &challenge}, "native InstanceChallenge is invalid",
+			func(r Record) Record { c := *r.Challenge; c.Target = [32]byte{}; return Record{Challenge: &c} },
+			func(p []byte) { clear(p[32:64]) }},
+		{"challenge-generation", Record{Challenge: &challenge}, "native InstanceChallenge is invalid",
+			func(r Record) Record { c := *r.Challenge; c.InstanceGeneration = 0; return Record{Challenge: &c} },
+			func(p []byte) { clear(p[64:72]) }},
+		{"challenge-context", Record{Challenge: &challenge}, "native InstanceChallenge is invalid",
+			func(r Record) Record { c := *r.Challenge; c.Context = [32]byte{}; return Record{Challenge: &c} },
+			func(p []byte) { clear(p[72:104]) }},
+		{"challenge-nonce", Record{Challenge: &challenge}, "native InstanceChallenge is invalid",
+			func(r Record) Record { c := *r.Challenge; c.Nonce = [32]byte{}; return Record{Challenge: &c} },
+			func(p []byte) { clear(p[104:136]) }},
+		{"proof-digest", Record{Proof: &proof}, "native InstanceProof is invalid",
+			func(r Record) Record { p := *r.Proof; p.ChallengeDigest = [32]byte{}; return Record{Proof: &p} },
+			func(p []byte) { clear(p[0:32]) }},
+		{"proof-signature", Record{Proof: &proof}, "native InstanceProof is invalid",
+			func(r Record) Record { p := *r.Proof; p.Signature = [64]byte{}; return Record{Proof: &p} },
+			func(p []byte) { clear(p[32:96]) }},
+		{"continuity-role", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record { c := *r.Continuity; c.Role = 0; return Record{Continuity: &c} },
+			func(p []byte) { p[0] = 0 }},
+		{"continuity-generation", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record { c := *r.Continuity; c.AttachmentGeneration = 0; return Record{Continuity: &c} },
+			func(p []byte) { clear(p[1:9]) }},
+		{"continuity-offsets", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record { c := *r.Continuity; c.SendBase, c.SendEnd = 7, 6; return Record{Continuity: &c} },
+			func(p []byte) { binary.BigEndian.PutUint64(p[9:17], 7); binary.BigEndian.PutUint64(p[17:25], 6) }},
+		{"continuity-nonce", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record { c := *r.Continuity; c.Nonce = [32]byte{}; return Record{Continuity: &c} },
+			func(p []byte) { clear(p[33:65]) }},
+		{"continuity-context", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record { c := *r.Continuity; c.Context = [32]byte{}; return Record{Continuity: &c} },
+			func(p []byte) { clear(p[65:97]) }},
+		{"continuity-exporter", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record {
+				c := *r.Continuity
+				c.ExporterCommitment = [32]byte{}
+				return Record{Continuity: &c}
+			},
+			func(p []byte) { clear(p[97:129]) }},
+		{"continuity-mac", Record{Continuity: &continuity}, "native Continuity is invalid",
+			func(r Record) Record { c := *r.Continuity; c.MAC = [32]byte{}; return Record{Continuity: &c} },
+			func(p []byte) { clear(p[129:161]) }},
+	}
+	payloadAt := len(connectionPrefix) + 2 + commonHeaderSize
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := Write(io.Discard, tc.mutateRecord(tc.base)); err == nil || err.Error() != tc.message {
+				t.Fatalf("encode refusal = %v, want exactly %q", err, tc.message)
+			}
+			var buf bytes.Buffer
+			if err := Write(&buf, tc.base); err != nil {
+				t.Fatal(err)
+			}
+			mutated := append([]byte(nil), buf.Bytes()...)
+			tc.mutatePayload(mutated[payloadAt:])
+			_, err := Read(bytes.NewReader(mutated))
+			if !errors.Is(err, ErrInvalidRecord) || !strings.Contains(err.Error(), tc.message) {
+				t.Fatalf("decode refusal = %v, want %q wrapped in ErrInvalidRecord", err, tc.message)
+			}
+		})
 	}
 }
