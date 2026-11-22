@@ -176,8 +176,8 @@ same report; no old runtime or root is borrowed by this leaf consumer.
 
 Descriptor-role public preparation is fixed offline command composition.
 Infrastructure binds only its exact descriptor/program/template bytes; Enrollment
-owns the distinct seven-file inventory. Canonical Control retains original public
-input and exclusive output custody through physical joins. These bytes confer
+owns the distinct seven-file inventory. `ardents-next infrastructure` retains
+original public input and exclusive output custody through physical joins. These bytes confer
 neither native policy acceptance nor Release, Startup, Store ACK or runtime duty.
 Reachability remains the sole Store/proof/history owner. No live owner or role
 permission crosses from Source, Forwarding or JOIN through shared physical I/O.
@@ -209,10 +209,10 @@ Platform-led operator preparation is realized by the node domain's pure
 runtime-plan declaration codec and `ardents-next node prepare-plan` (#673,
 ADR-0125); the shared byte grammar supplies no universal role policy.
 
-JOIN public artifact preparation is a separate offline Control composition.
-Infrastructure owns only its exact descriptor/program/template byte binding;
-Enrollment owns the seven-file inventory. The real canonical Control consumers
-retain original native public inputs and exclusive output until physical Close.
+JOIN public artifact preparation uses the fixed-role offline `ardents-next
+infrastructure` consumer. Infrastructure owns exact descriptor/program/template
+byte binding and Enrollment owns the seven-file inventory. The command retains
+original native public inputs and exclusive output until physical Close.
 These detached bytes supply neither initial trust nor coherent Release authority,
 native unit-policy acceptance, Installation startup or a Node duty. Existing
 Source and Forwarding proofs remain purpose-bound; no live owner or permission

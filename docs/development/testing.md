@@ -375,8 +375,7 @@ the existing `network-signing-linux` offline native profile. After the #604
 FJD stage D signing cutover it additionally requires independently pinned actual
 static canonical `ardents-next` and Control programs through
 `ARDENTS_FORWARDING_NEXT_PROGRAM` / `_SHA256` and
-`ARDENTS_FORWARDING_CONTROL_PROGRAM` / `_SHA256`. Existing preparation controls
-retain their separately named `ARDENTS_SOURCE_CONTROL_PROGRAM` pin. The test
+`ARDENTS_FORWARDING_CONTROL_PROGRAM` / `_SHA256`. The test
 executes `ardents-next platform template` for the exact canonical platform unit
 template, then the actual Forwarding key, public-plan and initial-signing
 commands; verifies five distinct private/public keys, ordinary three-of-five
@@ -398,45 +397,11 @@ this signing boundary; the former installed resource-only journey retired with
 the transitional orchestration. Neither test starts a Node, selects an installed
 generation, consumes a runtime root or supplies a recovery proof.
 
-The existing `network-signing-linux` offline native profile also owns
-`TestForwardingPreparationNativeCanonicalCommand` and
-`TestForwardingPreparationNativeRetainsOriginalFailures` in canonical Control.
-The former request/plan/fixed-template preparation controls retired with the
-transitional orchestration; `prepare-descriptor`/`prepare-inventory` remain the
-generic public Forwarding artifact surface.
-They require an independently hash-pinned actual Control executable, root-owned
-protected direct ancestors and native ext4 under a private TMPDIR. They compare
-independent descriptor/inventory byte vectors, refuse Source/extra-resource
-substitution before output, and hold actual output/input effects through
-cancellation and physical Close failure. The same profile's original physical
-output-substitution controls apply to the unchanged shared output mechanism.
-Unsigned public metadata fixtures establish preparation only. These tests do
-not execute installed Node or supply Release/bootstrap acceptance. Deterministic
-Enrollment/Infrastructure tests separately check exact Forwarding lexical
-inventory, descriptor bounds, role separation and resource substitution.
-Admission's portable retained-opening controls use real native
-leases on Windows and Unix: both missing files, individual loss, damaged header/
-tail/lease, binding mismatch, no fresh-root fact and no return before owned Close.
-Linux race checks cover the same strict owners and the unchanged Node completion
-rules. These are component proofs, not installed restart qualification.
-The transitional Source orchestration native qualification is retired (#604
-stage 1.6, ADR-0125). The former `source-startup-linux`, `source-restart-linux`,
-`source-replacement-linux`, `source-stopped-linux`, `source-preflight-linux` and
-`source-recovery-linux` profiles, their `make source-startup-check`,
-`source-restart-check`, `source-replacement-check`, `source-stopped-check` and
-`source-preflight-check` lanes, the startup/retirement/recovery physical-cut and
-refusal observer declarations, and their runner scripts
-(`scripts/installation/run-source-startup.py`, `run-source-stopped.py`,
-`run-source-preflight.py`, `build-source-candidate.py`, `inspect-source-cut.py`,
-`prepare-source-release-plan.py`) are removed. The platform-led Source lifecycle
-replaces them; see the
-[operator procedure](../operations/source-platform-lifecycle.md). Retained
-native evidence is `TestNativeSourceRetainedLifecycle` in `source-process-linux`
-and `TestNativeSourceInstalledLifecycle` under the `source_installed_native`
-build tag, which is the installed gate (see
-[Source installed operator native qualification](#source-installed-operator-native-qualification)).
-The retained Source artifact/authentication, Release signing/expiry and
-read-only State inspection controls below remain required.
+The `network-signing-linux` profile exercises actual public preparation in
+`ardents-next` for the fixed roles. It checks canonical bytes, refusal of
+changed or foreign inputs and durable output identity. The separate native
+Control signing tests execute the fixed Release plan and signer, using the
+new public preparation command for the actual predecessor inventory.
 
 The native canonical signing fixture additionally constructs a deliberately
 hostile threshold-signed Source metadata set. Its two genuine Release target
@@ -3567,24 +3532,14 @@ required.
 
 ### JOIN offline public artifact custody
 
-The checked Linux `network_signing_native` profile selects
-`TestJoinPreparationNativeCanonicalBytesAndInventory` and
-`TestJoinPreparationNativeRetainsFailureAndRejectsAdoption` in canonical Control.
-Run as root on protected ext4 with the shared development lock. Supply the exact
-compiled Control path and SHA-256 as `ARDENTS_JOIN_CONTROL_PROGRAM` and
-`ARDENTS_JOIN_CONTROL_PROGRAM_SHA256`. The compiled command must produce the
-independently stated JOIN descriptor and seven-file inventory; extra/foreign
-resources, changed program bytes and role substitution refuse before output.
-Held-output mutation, cancellation plus real descriptor Close, partial-output
-adoption refusal and fresh positive counterparts retain original errors.
-Ordinary infrastructure/Enrollment tests cover canonical byte/role separation.
-These are offline public-input/output controls, not Release signature, initial
-pin, unit-policy, protected startup, pair operation or installed qualification.
-The former `TestJoinPreparationNativeTemplateAndRequestLeaveRuntimeAbsent`
-request/plan/fixed-template preparation control retired with the transitional
-JOIN orchestration (#604 FJD stage D, ADR-0125); `prepare-descriptor`/
-`prepare-inventory` remain the generic public JOIN artifact surface and
-`ardents-next platform template` emits the canonical platform unit template.
+The Linux `network_signing_native` profile tests JOIN in
+`TestNetworkSigningInfrastructureRoleInventories`. It runs the same-source
+compiled `ardents-next` and compares independent public descriptor and inventory
+bytes. Foreign resources, changed bytes and foreign roles refuse. Native
+preparation requires root, protected original ancestors and an ext4 workspace.
+The shared native tests also cover canceled writes, original inode checks and
+partial-output adoption refusal. The separate JOIN Release tests pin both
+programs and execute the Control purpose-specific signer.
 
 PR matrix delivery preserves each selected package/pattern/race group, its
 existing16-test ordinary bound, two-test expensive Endpoint bound and dedicated
@@ -3731,29 +3686,13 @@ removed preparation routes on the exact Control binary and checks exit 2,
 empty stdout and preservation of input and output paths.
 `ardents-next platform template` emits the canonical platform unit template.
 
-The Control artifact-preparation selection in `make network-signing-check`
-executes the Source, Forwarding, JOIN and Descriptor inventory consumers.
-Supply the same-source canonical Control binary and its SHA-256 through
-`ARDENTS_SOURCE_CONTROL_PROGRAM` for the Source and Forwarding artifact cases,
-`ARDENTS_JOIN_CONTROL_PROGRAM` for JOIN, and
-`ARDENTS_DESCRIPTOR_CONTROL_PROGRAM` for Descriptor, using the matching
-`_SHA256` variables. The Source case inserts an extra input after the
-last output readback and before directory sync to verify that an inventory
-change still refuses at the publication boundary.
-
-The checked `network_signing_native` profile retains the two
-`TestDescriptorPreparationNative` artifact/inventory controls in canonical
-Control through `make network-signing-check`
-(`CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption`). Supply the
-same-source compiled command and SHA-256 as `ARDENTS_DESCRIPTOR_CONTROL_PROGRAM`
-and `ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256`, run as root with protected
-original ancestors and private0700 TMPDIR on actual ext4, under the shared
-own-job lock. These controls execute the actual command for independent
-artifact/inventory bytes, wrong-role/extra/substituted input refusal,
-cancellation/late physical Close, partial-output adoption refusal and fresh
-positive counterparts. This is offline byte/custody evidence, not Release
-signing, first-pin, actual manager/Start, Store ACK or installed qualification.
-Missing prerequisites fail.
+The `make network-signing-check` profile executes the real `ardents-next
+infrastructure` command for the Source and Node role inventories. Descriptor
+uses the same public preparation mechanism with its own fixed inventory.
+The shared tests cover exact native ext4 inputs, late inventory changes,
+output metadata changes and partial-output refusal. The offline signed
+Descriptor chain keeps separate pinned executables for public preparation
+and purpose-bound Release signing.
 
 ### Descriptor initial/forward Release signing (retained)
 

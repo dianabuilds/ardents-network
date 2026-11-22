@@ -36,7 +36,8 @@ func signingAncestors(p *preparationPath) error {
 			return err
 		}
 		stat, ok := info.Sys().(*syscall.Stat_t)
-		if !ok || stat.Uid != 0 || !info.IsDir() || info.Mode().Perm()&0022 != 0 {
+		original, originalOK := d.info.Sys().(*syscall.Stat_t)
+		if !ok || !originalOK || stat.Uid != 0 || stat.Gid != original.Gid || info.Mode() != d.info.Mode() || info.Mode().Perm()&0022 != 0 {
 			return errNetworkSigning
 		}
 	}
@@ -95,27 +96,8 @@ func (s *signingInput) check(ctx context.Context) (err error) {
 		return s.failure
 	}
 	defer func() { s.failure = err }()
-	if err := errors.Join(ctx.Err(), signingAncestors(s.parent)); err != nil {
+	if err := s.checkIdentity(ctx); err != nil {
 		return err
-	}
-	info, err := s.file.Stat()
-	if err != nil {
-		return err
-	}
-	initial, ok1 := s.info.Sys().(*syscall.Stat_t)
-	current, ok2 := info.Sys().(*syscall.Stat_t)
-	if !ok1 || !ok2 || !os.SameFile(s.info, info) || !signingFileAllowed(info, s.private) ||
-		initial.Ctim != current.Ctim || initial.Mtim != current.Mtim || initial.Mode != current.Mode || initial.Gid != current.Gid || info.Size() != s.info.Size() {
-		return errNetworkSigning
-	}
-	linked, err := openPreparationAt(s.parent.parent(), s.name, syscall.O_RDONLY, 0)
-	if err != nil {
-		return err
-	}
-	observed, statErr := linked.Stat()
-	err = errors.Join(statErr, linked.Close())
-	if err != nil || !os.SameFile(s.info, observed) {
-		return errors.Join(errNetworkSigning, err)
 	}
 	// Re-read only the retained original descriptor. Detect byte changes even
 	// when an adversarial writer restores the original size and timestamps.
@@ -134,11 +116,37 @@ func (s *signingInput) check(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	last, ok := after.Sys().(*syscall.Stat_t)
-	if !ok || last.Ctim != initial.Ctim || last.Mtim != initial.Mtim || !signingFileAllowed(after, s.private) {
+	if !s.sameMetadata(after) {
 		return errNetworkSigning
 	}
 	return ctx.Err()
+}
+
+func (s *signingInput) checkIdentity(ctx context.Context) error {
+	if err := errors.Join(ctx.Err(), signingAncestors(s.parent)); err != nil {
+		return err
+	}
+	info, err := s.file.Stat()
+	if err != nil || !s.sameMetadata(info) {
+		return errors.Join(errNetworkSigning, err)
+	}
+	linked, err := openPreparationAt(s.parent.parent(), s.name, syscall.O_RDONLY, 0)
+	if err != nil {
+		return err
+	}
+	observed, statErr := linked.Stat()
+	err = errors.Join(statErr, linked.Close())
+	if err != nil || !s.sameMetadata(observed) {
+		return errors.Join(errNetworkSigning, err)
+	}
+	return nil
+}
+
+func (s *signingInput) sameMetadata(info os.FileInfo) bool {
+	initial, originalOK := s.info.Sys().(*syscall.Stat_t)
+	current, currentOK := info.Sys().(*syscall.Stat_t)
+	return originalOK && currentOK && os.SameFile(s.info, info) && signingFileAllowed(info, s.private) &&
+		initial.Ctim == current.Ctim && initial.Mtim == current.Mtim && initial.Mode == current.Mode && initial.Gid == current.Gid && info.Size() == s.info.Size()
 }
 
 func executeNetworkSigning(ctx context.Context, args []string) (*networkSigningResult, error) {

@@ -13,15 +13,12 @@ func TestCanonicalDescriptorIndependentOracle(t *testing.T) {
 	p, u := []byte("program"), []byte("closed public template")
 	ps, us := sha256.Sum256(p), sha256.Sum256(u)
 	want := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"release-one\",\"release_version\":7,\"invocation\":\"source\",\"files\":{\"ardents-node-linux-amd64\":\"%s\",\"ardents-source.service\":\"%s\"}}\n", hex.EncodeToString(ps[:]), hex.EncodeToString(us[:])))
-	got, err := PrepareDescriptor("release-one", 7, p, u)
+	got, err := PrepareRuntimeDescriptor("source", "release-one", 7, p, u)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("canonical bytes %s %v", got, err)
 	}
 	if _, err := DecodeDescriptor(want); err != nil {
 		t.Fatal(err)
-	}
-	if runtime, err := PrepareRuntimeDescriptor("source", "release-one", 7, p, u); err != nil || !bytes.Equal(runtime, want) {
-		t.Fatalf("runtime descriptor differs: %s %v", runtime, err)
 	}
 	if _, err := ValidateResources(want, p, u); err != nil {
 		t.Fatal(err)

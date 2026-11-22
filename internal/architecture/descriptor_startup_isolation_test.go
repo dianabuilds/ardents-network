@@ -1,6 +1,6 @@
 package architecture
 
-// Exact imports of the retained Descriptor offline public preparation and the
+// Exact imports of retained Descriptor offline provisioning and the
 // read-only repair runtime after the transitional startup/installation
 // orchestration retired (#604 FJD stage D, ADR-0125). No role selector, Route
 // root, legacy backend, callback bridge or sibling live Installation owner. The
@@ -8,11 +8,6 @@ package architecture
 // its own closed producers; the platform-led Descriptor lifecycle owns runtime.
 func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
-	case "cmd/ardents-control/descriptor_artifact_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/enrollment", "github.com/dianabuilds/ardents-network/internal/release/infrastructure":
-			return true
-		}
 	case "cmd/ardents-control/descriptor_epoch_plan_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/network/epoch":

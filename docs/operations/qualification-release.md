@@ -190,12 +190,10 @@ and forward metadata must still cover their declared artifact termination.
 Prepare every actual metadata variant and inventory before the exact bootstrap
 receipt is accepted; a later dynamic variant cannot silently join its cohort.
 
-ADR-0123 accepts a distinct Source program and generation contract. Canonical
-`ardents-control source prepare-descriptor` and `source prepare-inventory`
-directly prepare its public artifact bytes through new Infrastructure/Enrollment
-owners, without installing a program, account, unit or Source process. Temporary
-`ardents-next infrastructure` artifact consumers remain component mechanisms,
-separate from the canonical [command forms](../reference/commands.md).
+ADR-0123 accepts a distinct Source program and generation contract.
+`ardents-next infrastructure prepare-descriptor` and `prepare-inventory`
+produce the public artifacts through Infrastructure and Enrollment. The
+[command forms](../reference/commands.md) also cover the fixed Node roles.
 Use the actual canonical compiled Linux-amd64 `ardents-next` command bytes, the
 canonical platform unit template, a release identity and positive version to
 prepare the descriptor in a fresh native output directory. Retain original

@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
@@ -157,7 +156,7 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 			receipt = nil
 		}
 	}()
-	if err = sourcePreparationMount(plan); err != nil {
+	if err = requirePreparationExt4(plan.file); err != nil {
 		return nil, err
 	}
 	p, reference, err := decodeSourcePreparation(plan.raw)
@@ -220,7 +219,7 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 			return nil, e
 		}
 		inputs = append(inputs, input)
-		if e = sourcePreparationMount(input); e != nil {
+		if e = requirePreparationExt4(input.file); e != nil {
 			return nil, e
 		}
 		if sha256.Sum256(input.raw) != [32]byte(declared.Commitment) {
@@ -309,12 +308,4 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 		receipt[file.name] = hex.EncodeToString(digest[:])
 	}
 	return receipt, nil
-}
-
-func sourcePreparationMount(input *signingInput) error {
-	var fs syscall.Statfs_t
-	if err := syscall.Fstatfs(int(input.file.Fd()), &fs); err != nil || fs.Type != 0xef53 {
-		return errors.Join(errNetworkPreparation, err)
-	}
-	return nil
 }

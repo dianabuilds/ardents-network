@@ -13,7 +13,7 @@ func TestForwardingDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 	program, template := []byte("node program"), []byte("forwarding template")
 	p, u := sha256.Sum256(program), sha256.Sum256(template)
 	want := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"one\",\"release_version\":3,\"invocation\":\"forwarding\",\"files\":{\"ardents-forwarding.service\":\"%s\",\"ardents-node-linux-amd64\":\"%s\"}}\n", hex.EncodeToString(u[:]), hex.EncodeToString(p[:])))
-	got, err := PrepareForwardingDescriptor("one", 3, program, template)
+	got, err := PrepareRuntimeDescriptor("forwarding", "one", 3, program, template)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("independent bytes %q: %v", got, err)
 	}
@@ -23,7 +23,7 @@ func TestForwardingDescriptorIndependentBytesAndRoleSeparation(t *testing.T) {
 	if _, err := DecodeDescriptor(want); err == nil {
 		t.Fatal("Source accepted Forwarding descriptor")
 	}
-	source, err := PrepareDescriptor("one", 3, program, template)
+	source, err := PrepareRuntimeDescriptor("source", "one", 3, program, template)
 	if err != nil {
 		t.Fatal(err)
 	}

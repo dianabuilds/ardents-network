@@ -33,13 +33,6 @@ type Declaration struct {
 	Files           map[string]string `json:"files"`
 }
 
-// PrepareDescriptor emits canonical unsigned public bytes for actual resources.
-// The template is an immutable release resource; this operation neither renders
-// installation-specific argv/paths nor validates an installed native policy.
-func PrepareDescriptor(identity string, version int64, program, template []byte) ([]byte, error) {
-	return prepareDescriptor(identity, version, program, template, "source", TemplateName)
-}
-
 func prepareDescriptor(identity string, version int64, program, template []byte, invocation, templateName string) ([]byte, error) {
 	if len(identity) > 16<<10 || strings.TrimSpace(identity) == "" || version <= 0 || len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 {
 		return nil, ErrInput
@@ -85,11 +78,15 @@ func decodeDescriptor(raw []byte, invocation, templateName string) (Declaration,
 // ValidateResources checks public declaration/byte agreement before a caller
 // opens Release history. It produces no initial or signature authority.
 func ValidateResources(raw, program, template []byte) (Declaration, error) {
-	d, err := DecodeDescriptor(raw)
+	return validateResources(raw, program, template, "source", TemplateName)
+}
+
+func validateResources(raw, program, template []byte, invocation, templateName string) (Declaration, error) {
+	d, err := decodeDescriptor(raw, invocation, templateName)
 	if err != nil {
 		return Declaration{}, err
 	}
-	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[TemplateName] != digest(template) {
+	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[templateName] != digest(template) {
 		return Declaration{}, ErrBinding
 	}
 	return d, nil
@@ -115,4 +112,15 @@ func PrepareRuntimeDescriptor(role, identity string, version int64, program, tem
 		return nil, ErrInput
 	}
 	return prepareDescriptor(identity, version, program, template, role, name)
+}
+
+// ValidateRuntimeResources checks the selected role's canonical descriptor
+// against its program and unit template. The returned declaration supplies
+// public facts for Enrollment without granting Release or initial trust.
+func ValidateRuntimeResources(role string, descriptor, program, template []byte) (Declaration, error) {
+	_, name, _, ok := runtimeNames(role)
+	if !ok {
+		return Declaration{}, ErrInput
+	}
+	return validateResources(descriptor, program, template, role, name)
 }

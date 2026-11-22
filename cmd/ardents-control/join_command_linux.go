@@ -10,12 +10,8 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 type joinControlFailure struct{ cause error }
@@ -44,7 +40,7 @@ func runJoinControl(args []string, out io.Writer) error {
 		return runJoinReleaseSigning(args[1:], out)
 	case "sign-forward-release":
 		return runJoinReleasePurpose(args[1:], out, joinReleaseForward)
-	case "prepare-descriptor", "prepare-inventory", "prepare-release-plan", "prepare-forward-release-plan":
+	case "prepare-release-plan", "prepare-forward-release-plan":
 	default:
 		return &joinControlFailure{errSourceControlInput}
 	}
@@ -52,7 +48,7 @@ func runJoinControl(args []string, out io.Writer) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	raw, err := prepareJoinArtifact(ctx, args, nil)
+	raw, err := writeJoinReleasePlan(ctx, args)
 	if err != nil {
 		return &joinControlFailure{err}
 	}
@@ -67,7 +63,7 @@ func runJoinControl(args []string, out io.Writer) error {
 	return writeSourceControlBytes(ctx, out, append(receipt, '\n'))
 }
 
-func prepareJoinArtifact(ctx context.Context, args []string, observe func(string, *os.File)) (result []byte, returned error) {
+func writeJoinReleasePlan(ctx context.Context, args []string) (result []byte, returned error) {
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) == 0 {
 		return nil, errSourceControlInput
 	}
@@ -78,57 +74,20 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 			result = nil
 		}
 	}()
-	var name, destination string
-	check := inputs.checkProtected
+	var destination string
 	switch args[0] {
 	case "prepare-release-plan":
 		result, destination, returned = joinReleasePlanArguments(args[1:], inputs)
-		name = "join-release-plan.json"
 	case "prepare-forward-release-plan":
 		result, destination, returned = joinReleasePurposeArguments(args[1:], inputs, joinReleaseForward)
-		name = "join-release-plan.json"
-	case "prepare-descriptor":
-		if len(args) != 6 {
-			return nil, errSourceControlInput
-		}
-		version, err := strconv.ParseInt(args[2], 10, 64)
-		if err != nil || strconv.FormatInt(version, 10) != args[2] {
-			return nil, errSourceControlInput
-		}
-		program, err := inputs.read(args[3], 64<<20)
-		if err != nil {
-			return nil, err
-		}
-		template, err := inputs.read(args[4], 64<<20)
-		if err != nil {
-			return nil, err
-		}
-		result, returned = infrastructure.PrepareJoinDescriptor(args[1], version, program, template)
-		name, destination = infrastructure.JoinDescriptorName, args[5]
-	case "prepare-inventory":
-		if len(args) != 3 {
-			return nil, errSourceControlInput
-		}
-		files, checkInventory, err := inputs.readInfrastructureInventory(args[1], args[2],
-			infrastructure.ProgramName, infrastructure.JoinTemplateName, infrastructure.JoinDescriptorName)
-		if err != nil {
-			return nil, err
-		}
-		d, err := infrastructure.ValidateJoinResources(files[infrastructure.JoinDescriptorName], files[infrastructure.ProgramName], files[infrastructure.JoinTemplateName])
-		if err != nil {
-			return nil, err
-		}
-		result, returned = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, files)
-		name, destination = enrollment.InfrastructureInventoryName, args[2]
-		check = checkInventory
 	default:
 		return nil, errSourceControlInput
 	}
 	if returned != nil {
 		return nil, returned
 	}
-	if returned = persistSourceArtifacts(ctx, destination, []sourceArtifactFile{{name, result}}, check, observe); returned != nil {
+	if returned = persistSourceArtifacts(ctx, destination, []sourceArtifactFile{{"join-release-plan.json", result}}, inputs.checkProtected, nil); returned != nil {
 		return nil, returned
 	}
-	return bytes.Clone(result), check()
+	return bytes.Clone(result), inputs.checkProtected()
 }
