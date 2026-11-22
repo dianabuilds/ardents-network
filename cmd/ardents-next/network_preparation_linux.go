@@ -130,17 +130,6 @@ func (p *preparationPath) check() error {
 	return nil
 }
 
-func preparationPrivate(info os.FileInfo, directory bool) bool {
-	s, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || s.Uid != uint32(os.Geteuid()) {
-		return false
-	}
-	if directory {
-		return info.IsDir() && info.Mode().Perm() == 0700
-	}
-	return info.Mode().IsRegular() && info.Mode().Perm() == 0600 && s.Nlink == 1
-}
-
 func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
