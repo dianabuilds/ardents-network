@@ -258,7 +258,7 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		t.Errorf("headless Network make target = %q, want headless-check", headlessProfile.MakeTarget)
 	}
 	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
-	want := []string{"./cmd/ardents-next", "./cmd/ardents-control", "./cmd/ardents-custody"}
+	want := []string{"./cmd/ardents-next", "./cmd/ardents-custody"}
 	if len(commands) != len(want) {
 		t.Fatalf("headless command inventory = %v, want %v", commands, want)
 	}
@@ -277,7 +277,6 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		"headless-evidence: export ARDENTS_E2E_COMMAND := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NEXT := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))",
-		"headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))",
 		"TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses",
 	} {
 		if !strings.Contains(makefile, required) {
@@ -288,7 +287,7 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 
 func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	root := repositoryRoot(t)
-	for _, commandPath := range []string{"./cmd/ardents-next", "./cmd/ardents-control", "./cmd/ardents-custody"} {
+	for _, commandPath := range []string{"./cmd/ardents-next", "./cmd/ardents-custody"} {
 		t.Run(filepath.Base(commandPath), func(t *testing.T) {
 			dependencies := listedDependencies(t, root, commandPath)
 			for _, forbidden := range []string{

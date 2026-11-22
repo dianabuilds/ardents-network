@@ -10,36 +10,25 @@ import (
 	"sort"
 )
 
-// Scope selects the existing companion inventory requirement.
-type Scope uint8
-
-const (
-	General Scope = iota + 1
-	Headless
-)
-
 var (
-	ErrInput                      = errors.New("invalid enrollment input")
-	ErrPin                        = errors.New("manifest differs from independent pin")
-	ErrInventory                  = errors.New("invalid enrollment inventory")
-	ErrBinding                    = errors.New("enrollment program or generation binding differs")
-	ErrLegacyEnrollmentDescriptor = errors.New("retired Network enrollment descriptor version")
+	ErrInput     = errors.New("invalid enrollment input")
+	ErrPin       = errors.New("manifest differs from independent pin")
+	ErrInventory = errors.New("invalid enrollment inventory")
+	ErrBinding   = errors.New("enrollment program or generation binding differs")
 )
 
 // Request supplies the independent pin and actual original executable path.
 // ExecutablePath comes from the command's os.Executable, never a CLI override.
 type Request struct {
 	BundleRoot, ExecutablePath, ManifestSHA256 string
-	Scope                                      Scope
 }
 
 // Facts are authenticated initial descriptor facts, not current authority.
 type Facts struct {
 	Cohort, Release, Platform, Environment, Network, TargetPath string
 	Artifact, TrustedRoot                                       string
-	ControlCatalog, DisclosureRoot, ControlArtifact             string
 	ManifestSHA256                                              string
-	Headless, Protected                                         bool
+	Protected                                                   bool
 }
 
 type snapshot struct {
@@ -97,26 +86,9 @@ func (s *snapshot) metadataNames() []string {
 	if s == nil {
 		return nil
 	}
-	f := s.facts
-	static := map[string]bool{
-		"RELEASE": true, f.Artifact: true, f.TrustedRoot: true,
-		f.ControlCatalog: true, f.DisclosureRoot: true, f.ControlArtifact: true,
-		"release.ac1": true, "network.ac1": true, "compatibility.ac1": true,
-		"release.pub": true, "network.pub": true, "compatibility.pub": true, "corpus.pub": true,
-	}
-	if f.Headless {
-		static[ExecutableArtifactName("ardents-node", f.Platform)] = true
-		static[ExecutableArtifactName("ardents-custody", f.Platform)] = true
-	}
-	if f.Protected {
-		static["protected-endpoint.json"] = true
-		for _, name := range protectedNames() {
-			static[name] = true
-		}
-	}
 	var names []string
 	for name := range s.files {
-		if !static[name] {
+		if name != s.facts.TrustedRoot && name != s.facts.Artifact && releaseMetadataRole(name) != "" {
 			names = append(names, name)
 		}
 	}
@@ -127,11 +99,10 @@ func (s *snapshot) metadataNames() []string {
 // Verify completes all stages and closes every file before publishing a
 // snapshot. It never writes state, interprets Release signatures or executes.
 func Verify(ctx context.Context, request Request) (Bundle, error) {
-	if ctx == nil || request.BundleRoot == "" || request.ExecutablePath == "" ||
-		(request.Scope != General && request.Scope != Headless) || !canonicalDigest(request.ManifestSHA256) {
+	if ctx == nil || request.BundleRoot == "" || request.ExecutablePath == "" || !canonicalDigest(request.ManifestSHA256) {
 		return Bundle{}, ErrInput
 	}
-	accepted, err := loadSnapshot(ctx, request.BundleRoot, request.Scope, &request)
+	accepted, err := loadSnapshot(ctx, request.BundleRoot, &request)
 	if err != nil {
 		return Bundle{}, err
 	}
@@ -141,7 +112,7 @@ func Verify(ctx context.Context, request Request) (Bundle, error) {
 // loadSnapshot owns bounded physical reads, complete inventory and final
 // identity checks for both entry points. Only Verify supplies initial pin and
 // running-program provenance; a candidate never manufactures those checks.
-func loadSnapshot(ctx context.Context, rootPath string, scope Scope, initial *Request) (result *snapshot, err error) {
+func loadSnapshot(ctx context.Context, rootPath string, initial *Request) (result *snapshot, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -209,7 +180,7 @@ func loadSnapshot(ctx context.Context, rootPath string, scope Scope, initial *Re
 		}
 		files[name], identities[name] = data, info
 	}
-	facts, err := descriptor.bind(files, scope)
+	facts, err := descriptor.bind(files)
 	if err != nil {
 		return nil, err
 	}

@@ -143,9 +143,9 @@ the accepted Network contract. Infrastructure under one known effective
 controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
-The maintained operator surface is the three headless commands
-`ardents`, `ardents-control`, and `ardents-custody`, plus the fixed `ardents-text`
-worker; a concrete journey may invoke only the subset it needs. Operator instructions must not
+The headless bundle delivers `ardents` and `ardents-custody`. Infrastructure
+preparation uses offline `ardents-control` tooling. Protected text execution
+uses the fixed `ardents-text` worker. Operator instructions must not
 require editing JSON, extracting test-fixture keys, knowing package names, or
 reading ADRs to discover command order.
 
@@ -270,7 +270,7 @@ The Network audit candidate is the headless maintained product surface:
   under `internal/application/connection` and separately
   authorized Administration under
   `internal/application/administration`;
-- the enrollment-v3 headless artifact lane and the maintained deterministic,
+- the enrollment-v5 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
   qualification profiles.
 
@@ -302,7 +302,7 @@ and maintained commands use only the selected interface
 seam. The former `internal/application/interfacev1/connection` AAI2 grammar and
 exclusive Endpoint adapter are absent; AAI3 rejects an AAI2 request before
 Application owner I/O. No Browser client, presentation, native
-host, extension, or enrollment-v4 artifact is a current product surface.
+host or extension is a current product surface.
 
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence

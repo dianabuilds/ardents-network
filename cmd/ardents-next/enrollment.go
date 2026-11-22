@@ -12,18 +12,14 @@ import (
 )
 
 func runEnrollment(ctx context.Context, args []string, out io.Writer) int {
-	if len(args) != 3 || (args[0] != "verify" && args[0] != "verify-headless") {
+	if len(args) != 3 || args[0] != "verify" {
 		return enrollmentReport(out, "invalid-input", 2)
 	}
 	program, err := os.Executable()
 	if err != nil {
 		return enrollmentReport(out, "unavailable", 1)
 	}
-	scope := enrollment.General
-	if args[0] == "verify-headless" {
-		scope = enrollment.Headless
-	}
-	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2], Scope: scope})
+	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2]})
 	if err != nil {
 		outcome, code := "unavailable", 1
 		switch {
@@ -33,8 +29,6 @@ func runEnrollment(ctx context.Context, args []string, out io.Writer) int {
 			outcome, code = "invalid-input", 2
 		case errors.Is(err, enrollment.ErrPin):
 			outcome = "pin-mismatch"
-		case errors.Is(err, enrollment.ErrLegacyEnrollmentDescriptor):
-			outcome = "retired-descriptor"
 		case errors.Is(err, enrollment.ErrInventory):
 			outcome = "invalid-inventory"
 		case errors.Is(err, enrollment.ErrBinding):
@@ -51,15 +45,13 @@ func runEnrollment(ctx context.Context, args []string, out io.Writer) int {
 		return enrollmentReport(out, "unavailable", 1)
 	}
 	defer clear(programBytes)
-	// Report the actual checked scope without projecting artifact contents,
-	// descriptor identities or any later authority as a successful launch.
+	// Report the verified inventory and whether it includes protected resources.
 	report := struct {
 		Outcome      string `json:"outcome"`
-		Headless     bool   `json:"headless,omitempty"`
 		Protected    bool   `json:"protected,omitempty"`
 		Files        int    `json:"files"`
 		ProgramBytes int    `json:"program_bytes"`
-	}{"verified-initial-bundle", facts.Headless, facts.Protected, len(bundle.Names()), len(programBytes)}
+	}{"verified-initial-bundle", facts.Protected, len(bundle.Names()), len(programBytes)}
 	if ctx.Err() != nil {
 		return enrollmentReport(out, "canceled", 130)
 	}

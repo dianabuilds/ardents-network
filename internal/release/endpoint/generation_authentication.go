@@ -108,7 +108,7 @@ type GenerationDeclaration struct {
 }
 
 func authenticate(ctx context.Context, v *release.Verifier, files inventory, f enrollment.Facts, in release.Inputs) (Authorization, error) {
-	if ctx == nil || v == nil || !f.Protected || !f.Headless ||
+	if ctx == nil || v == nil || !f.Protected ||
 		f.Platform != "linux-amd64" || f.TargetPath != ProgramTarget ||
 		in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform ||
 		in.Local.Architecture != "amd64" || in.Local.Environment != f.Environment ||

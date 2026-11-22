@@ -1785,7 +1785,7 @@ the program bytes and every resource are checked before any native mutation.
 Equal version/different descriptor refuses, including resource-only substitution.
 
 The independent initial inventory is a separate
-`ardents-infrastructure-enrollment-v1` document, not enrollment-v3: exact ordered
+`ardents-infrastructure-enrollment-v1` document with exact ordered
 `schema`, `platform`, `release_identity`, `release_version`, `invocation`, `files`;
 the same scalar rules and canonical 16 KiB bound. `files` is a lexical map of
 exactly seven SHA-256 entries: the program, invocation unit, infrastructure

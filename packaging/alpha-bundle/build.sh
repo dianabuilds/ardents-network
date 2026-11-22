@@ -10,7 +10,6 @@ artifact_name() {
 : "${ARDENTS_ALPHA_BUNDLE_RELEASE:?ARDENTS_ALPHA_BUNDLE_RELEASE is required}"
 : "${ARDENTS_ALPHA_BUNDLE_PLATFORM:?ARDENTS_ALPHA_BUNDLE_PLATFORM is required}"
 : "${ARDENTS_ALPHA_BUNDLE_ENDPOINT:?ARDENTS_ALPHA_BUNDLE_ENDPOINT is required}"
-: "${ARDENTS_ALPHA_BUNDLE_CONTROL:?ARDENTS_ALPHA_BUNDLE_CONTROL is required}"
 : "${ARDENTS_ALPHA_BUNDLE_CUSTODY:?ARDENTS_ALPHA_BUNDLE_CUSTODY is required}"
 : "${ARDENTS_ALPHA_BUNDLE_STATIC_ROOT:?ARDENTS_ALPHA_BUNDLE_STATIC_ROOT is required}"
 : "${ARDENTS_ALPHA_BUNDLE_OUTPUT:?ARDENTS_ALPHA_BUNDLE_OUTPUT is required}"
@@ -18,7 +17,6 @@ artifact_name() {
 
 platform=$ARDENTS_ALPHA_BUNDLE_PLATFORM
 endpoint_name=$(artifact_name ardents "$platform")
-control_name=$(artifact_name ardents-control "$platform")
 custody_name=$(artifact_name ardents-custody "$platform")
 bundle_name="ardents-alpha-${ARDENTS_ALPHA_BUNDLE_RELEASE}-${platform}"
 
@@ -39,7 +37,7 @@ case "$ARDENTS_ALPHA_BUNDLE_OUTPUT" in
   *) echo 'ARDENTS_ALPHA_BUNDLE_OUTPUT must be an absolute path' >&2; exit 2 ;;
 esac
 
-for input in "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$ARDENTS_ALPHA_BUNDLE_CUSTODY"; do
+for input in "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_CUSTODY"; do
   if [ ! -f "$input" ] || [ -L "$input" ]; then
     echo 'alpha bundle executable input must be a direct regular file' >&2
     exit 2
@@ -79,15 +77,6 @@ static_names="1.root.json
 $snapshot_name
 $targets_name
 RELEASE
-catalog.ac1
-catalog.pub
-compatibility.ac1
-compatibility.pub
-corpus.pub
-network.ac1
-network.pub
-release.ac1
-release.pub
 timestamp.json"
 
 protected_names="protected-endpoint.json
@@ -130,20 +119,22 @@ if [ "$actual_names" != "$(printf '%s\n' "$static_names" | LC_ALL=C sort)" ]; th
   exit 2
 fi
 release_descriptor="$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/RELEASE"
-for entry in \
-  "schema=ardents-closed-alpha-enrollment-v4" \
+network=$(sed -n '6s/^network=//p' "$release_descriptor")
+target_path=$(sed -n '7s/^target_path=//p' "$release_descriptor")
+if [ -z "$network" ] || [ -z "$target_path" ] || grep -q "$(printf '\r')" "$release_descriptor" ||
+  ! printf '%s\n' \
+  "schema=ardents-closed-alpha-enrollment-v5" \
   "cohort=$ARDENTS_ALPHA_BUNDLE_COHORT" \
   "release=$ARDENTS_ALPHA_BUNDLE_RELEASE" \
   "platform=$platform" \
   'environment=alpha' \
+  "network=$network" \
+  "target_path=$target_path" \
   "artifact=$endpoint_name" \
-  "control_artifact=$control_name" \
-  'trusted_root=1.root.json'; do
-  if ! grep -F -x -- "$entry" "$release_descriptor" >/dev/null; then
-    echo "alpha bundle RELEASE lacks required entry: $entry" >&2
-    exit 2
-  fi
-done
+  'trusted_root=1.root.json' | cmp -s - "$release_descriptor"; then
+  echo 'alpha bundle RELEASE has an invalid v5 descriptor' >&2
+  exit 2
+fi
 
 output_parent=$(dirname "$ARDENTS_ALPHA_BUNDLE_OUTPUT")
 if [ ! -d "$output_parent" ] || [ -L "$output_parent" ]; then
@@ -163,7 +154,6 @@ trap cleanup EXIT HUP INT TERM
 bundle="$stage/$bundle_name"
 mkdir -m 700 "$bundle"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$bundle/$endpoint_name"
-install -m 700 "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$bundle/$control_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_CUSTODY" "$bundle/$custody_name"
 if [ "$protected" = true ]; then
   install -m 700 "$ARDENTS_ALPHA_BUNDLE_TEXT" "$bundle/ardents-text-linux-amd64"

@@ -143,7 +143,7 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 	if args[0] == "initialize-trust" {
 		return initializeEndpointPlatformTrust(ctx, files, launch, decl, args[2])
 	}
-	candidate, err := enrollment.ReadCandidate(ctx, launch.Distribution, enrollment.Headless)
+	candidate, err := enrollment.ReadCandidate(ctx, launch.Distribution)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func initializeEndpointPlatformTrust(ctx context.Context, files *platformFiles, 
 		return err
 	}
 	bundle, err := enrollment.Verify(ctx, enrollment.Request{
-		BundleRoot: launch.Distribution, ExecutablePath: executable, ManifestSHA256: pin, Scope: enrollment.Headless,
+		BundleRoot: launch.Distribution, ExecutablePath: executable, ManifestSHA256: pin,
 	})
 	if err != nil {
 		return err

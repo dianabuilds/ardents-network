@@ -28,7 +28,7 @@ func installationFixtureInputs(bundle enrollment.Bundle, ref time.Time) (release
 
 func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
-	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	}
 	// A fresh candidate reloads the actual inventory, then reopens complete
 	// established history without borrowing initial pin provenance.
-	c, err := enrollment.ReadCandidate(t.Context(), directory, enrollment.Headless)
+	c, err := enrollment.ReadCandidate(t.Context(), directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestInstallationSecondTargetRefusalRetainsRealFloors(t *testing.T) {
 	for _, scenario := range []string{"missing-generation", "incoherent-generation"} {
 		t.Run(scenario, func(t *testing.T) {
 			directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, scenario != "missing-generation", 2)
-			bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+			bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +167,7 @@ func TestInstallationSecondTargetRefusalRetainsRealFloors(t *testing.T) {
 
 func TestInstallationCandidateCannotBootstrapCompleteTrust(t *testing.T) {
 	directory, _, _ := signedConsumerTargets(t, "linux-amd64", true, true, 1)
-	c, err := enrollment.ReadCandidate(t.Context(), directory, enrollment.Headless)
+	c, err := enrollment.ReadCandidate(t.Context(), directory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestInstallationCandidateCannotBootstrapCompleteTrust(t *testing.T) {
 
 func TestInstallationSnapshotSubstitutionRefusesBeforeTrustFloors(t *testing.T) {
 	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
-	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func (c *installationCancelContext) Err() error {
 
 func TestInstallationOriginalCancellationAtPairHandoffRetainsFloors(t *testing.T) {
 	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
-	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,9 +2,8 @@
 
 Status: **current maintained technical contract.** This document defines the
 bounded first-artifact verification contract. The maintained
-`ardents-next enrollment verify` and `verify-headless` commands consume
-`internal/enrollment`. The pinned schema selects the inventory for the exact
-enrolled artifacts.
+`ardents-next enrollment verify` consumes `internal/enrollment`. The
+independent pin authenticates the exact v5 inventory.
 
 ## Interface and ownership
 
@@ -13,15 +12,14 @@ separate closed infrastructure initial inventory and actual-running-program
 verifier. Its exact grammar belongs to the [infrastructure contract](network-route-node.md#proposed-exact-artifact-and-installation-binding).
 The isolated new owner implements this separate Source verifier through
 `ardents-next infrastructure authenticate-initial`. It does not extend the
-Endpoint/v3 inventory or turn a candidate into independent initial provenance.
+Endpoint inventory or turn a candidate into independent initial provenance.
 `infrastructure-enrollment.json` is pin-checked before parsing and binds exactly
 the seven public files. The snapshot retains original loader cancellation after
 all physical input descriptors join; Release/admission recheck it at handoff.
 Actual Linux mapped-executable inode and bytes must equal the enrolled program;
 same-looking paths or a copied public receipt cannot supply that result.
 This Source extension and its canonical byte oracles compile only on the selected
-Linux profile with their real consumer. Existing Endpoint/v3 grammar and tests
-remain portable; unsupported commands refuse before opening any artifact/history.
+Linux profile with their real consumer. The Endpoint grammar and its behavior tests remain portable; unsupported commands refuse before opening any artifact/history.
 
 The new owner's `ValidateInfrastructureInventory` checks a canonical Source,
 Forwarding or JOIN inventory against all seven bounded supplied byte images. Its copied
@@ -32,23 +30,11 @@ one validation; independently pinned loading and executable verification remain
 separate obligations.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
-selects the protected distribution successor: one initial pin and bundle,
-unchanged Network v3 descriptor, and a complete protected resource group with
-`protected-endpoint.json` projected outside Release metadata. General/headless
-acceptance retains its existing scope; protected readiness requires the new
-complete-inventory boundary. Partial group presence must refuse. This selected
-verifier now checks the complete group's canonical descriptor and resource
-digests and projects those bytes separately. This is manifest authentication,
-not the required fresh Release generation authorization or an installed
-qualification receipt; the installation consumer remains unfinished.
-
-After this manifest-only projection, `cmd/ardents/protected_enrollment.go`
-composes fresh program and generation Release proofs from the same frozen
-metadata/local/reference inputs. The enrolled command uses this composition
-when the complete protected group is present, and passes only the program proof
-to executable replacement. Its existing general readiness is not protected
-readiness. Immutable generation installation and actual system-manager binding
-remain separate unfinished obligations.
+binds the complete protected resource group to the same Release set as the
+Endpoint program. Enrollment checks the protected descriptor and resource
+digests and projects their frozen bytes separately. Release independently
+authorizes the signed program and protected generation. Endpoint launch uses
+those exact proofs to stage and observe the installed generation.
 
 The descriptor is compact UTF-8 JSON followed by one LF, with the five fields
 in the order stated by ADR-0119 and `files` keys in lexical order. Re-encoding
@@ -56,8 +42,7 @@ must reproduce the exact input; unknown/duplicate fields, alternate whitespace
 or ordering refuse. The maximum is 16 KiB, version is a positive int64, platform
 is `linux-amd64`, and release identity matches the enrolled release. Exactly
 nine lowercase SHA-256 digests bind the actual program/resource bytes. The
-whole protected companion group is optional for existing general v3 bundles;
-any partial group refuses in both `Verify` and `VerifyHeadless`.
+protected group is optional in v5. Enrollment rejects a partial group.
 
 `Verify(Request)` accepts one local Bundle Root, current executable path,
 independently delivered Alpha Enrollment Pin, declared local environment,
@@ -65,27 +50,19 @@ network, target path, architecture, and reference time. The only supported
 Installed-profile variation supplies one explicit package-owned executable in
 `ArtifactPath`; all remaining enrolled static files remain below Bundle Root.
 
-It returns `Verified`: exact bytes for Release Decision plus separately scoped
-alpha-control, corpus and optional protected-generation companions;
-`ProtectedDescriptor` and `ProtectedFiles` grant no installation authority and
-are excluded from `Inputs.Files`. `VerifyHeadless` additionally requires
-the manifest-pinned headless companion inventory for the descriptor schema.
-It never executes
-or installs any byte, writes a Release or control floor, downloads from a
-source, or grants authority to a Release, State, Namespace, Route, or Endpoint.
+It returns a `Bundle` that retains the exact bytes for Release evaluation,
+the manifest-pinned Authority Custody executable, and the complete protected
+group when selected. Release input projection excludes the static inventory.
 
-The accepted Network enrollment schemas are
-`ardents-closed-alpha-enrollment-v3` (ADR-0112) and
-`ardents-closed-alpha-enrollment-v4` (ADR-0128). Recognized v1 and v2 schemas
-are refused with the typed exported `ErrLegacyEnrollmentDescriptor`.
-Browser enrollment remains outside this verifier. An unknown schema returns
-a generic inventory error.
-
-The historical `ardents-alpha-enrollment-input-v1` persisted document is
-retired (ADR-0127, #647). Its diagnosis was removed with the old CLI.
-`ardents-control inspect-bundle` returns its typed refusal. Existing
-documents stay on disk byte-for-byte. `ardents-next enrollment verify` and
-platform delivery take the bundle root and independent pin separately.
+[ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md) defines the
+sole descriptor, `ardents-closed-alpha-enrollment-v5`. It names the cohort,
+release, platform, environment, network, target path, Endpoint artifact and
+trusted root in that order after the schema. The inventory requires the
+Endpoint and platform-named Authority Custody executables, the trusted root,
+timestamp metadata and one direct snapshot and targets metadata file.
+Additional root metadata uses canonical versioned names. Release authenticates
+all metadata and owns threshold, expiry, rotation and retained trust policy.
+Prior descriptor versions return an inventory error.
 
 ## Acceptance sequence
 
@@ -102,53 +79,30 @@ agrees with the caller's cohort/release/platform/environment/network/target
 facts.
 6. Prove the running executable is the identical bundled artifact or the one
    declared package-owned artifact, then construct Release Decision inputs.
-7. Project disclosed companions outside Release metadata: catalog and its
-   roots, the pinned `corpus.pub` authority, the platform-named control
-   executable, and the headless companions required by the pinned schema.
+7. Project the authenticated Endpoint and Custody bytes and the optional
+   protected group separately from versioned Release metadata.
 
-`ExecutableArtifactName` is the sole package-owned constructor for enrolled
-command identities. It appends the declared platform to the command and also
-appends the native executable suffix: accepted Windows `ardents-control`, Node,
-Custody, and Endpoint command artifacts end in `.exe`; non-Windows names do
-not. Enrollment verification and bundle construction use the same identity.
-
-The verifier permits at most 32 inventory entries, each no larger than 64 MiB.
-Names are direct file names only. Manifest and descriptor require canonical
-newline-terminated forms; both schemas share the same fixed field ordering.
+`ExecutableArtifactName` supplies platform-named executable identities.
+On Windows these names include `.exe`. The verifier permits at most 32
+inventory entries of at most 64 MiB each and admits only direct file names.
+The manifest and descriptor are canonical and newline-terminated.
 
 ## Failure behavior
 
-Any mismatch returns an error without execution or state mutation. In
-particular, a changed manifest fails before descriptor parsing; an undeclared
-file or a bundled copy of an external Installed artifact fails inventory
-validation; a different current executable fails exact-file identity and byte
-comparison; a recognized retired v1/v2 descriptor returns the typed
-`ErrLegacyEnrollmentDescriptor` after the pin and descriptor-digest checks and
-before any companion inventory or executable identity work; and an undeclared
-or malformed companion never crosses into Release metadata.
-
-The former `VerifyRunningCompanion` companion proof was retired by ADR-0113;
-`Verify`'s own running-artifact gate (`exactExecutable`) remains the single
-exact-file identity check, and the Windows v3 re-execution contract proves it
-against the enrolled endpoint artifact.
-
-A v3 headless bundle requires the platform-named Node and Custody pair.
-Ordinary `Verify` also accepts the original v3 inventory with neither
-companion. Both scopes reject a partial pair. A v4 bundle requires the
-platform-named Custody artifact and rejects the legacy Node companion in
-either scope. Companion bytes remain outside Release metadata.
+Enrollment refuses a changed manifest before interpreting it. It rejects a
+changed descriptor, a missing or undeclared file, an incomplete protected group
+and a different running executable. Older descriptors refuse after verification
+of the pin and descriptor digest and before reading companion files. Refusal
+provides no authenticated initial facts or state mutation.
 
 ## Verification owner
 
 ### Isolated new owner
 
-`internal/enrollment` owns initial portable verification. Both
-`ardents-next enrollment verify` and `verify-headless` take Bundle Root and
-the independent manifest pin. Each command obtains its own original executable
-path from the OS. These are read-only initial verification consumers, not a
-new supported distribution or installed runtime; the enrollment-check
-diagnostic renders only authenticated initial facts and grants no readiness.
-The predecessor commands and roots remain independent.
+`internal/enrollment` owns portable initial verification.
+`ardents-next enrollment verify` takes the Bundle Root and the independent
+manifest pin. The command obtains the original executable path from the OS
+and reports the verified inventory and whether it includes protected resources.
 
 The new owner authenticates pin before parsing, reads each file once into an
 owned snapshot with actual byte bounds, limits directory enumeration, verifies
@@ -161,8 +115,7 @@ installed ACL qualification. Common grammar and behavior tests are portable.
 The result has private construction and returns copied authenticated initial
 facts/bytes. No Release inputs, metadata URLs, permission or durable floor is
 created here. Future new Release composition must consume these exact bytes
-and establish its own authorization. General/headless companion and protected
-group rules remain those above, with no first-pin successor authority. The
+and establish its own authorization. The same companion and protected-group rules apply to independent candidate loading. The
 [new owner design](../../internal/successor/enrollment/README.md) records the
 stages and refusal obligations; the selected GitHub issue owns verification
 and acceptance status.

@@ -35,8 +35,8 @@ func TestPackagingConsumersPreserveArtifactAndProtectedInventory(t *testing.T) {
 	identity := build("enrollment-artifact-name")
 	for _, test := range []struct{ command, platform, want string }{
 		{"ardents", "linux-amd64", "ardents-linux-amd64\n"},
-		{"ardents-control", "windows-amd64", "ardents-control-windows-amd64.exe\n"},
-		{"ardents-node", "windows-arm64", "ardents-node-windows-arm64.exe\n"},
+		{"ardents", "windows-amd64", "ardents-windows-amd64.exe\n"},
+		{"ardents-custody", "windows-arm64", "ardents-custody-windows-arm64.exe\n"},
 		{"ardents-custody", "darwin-arm64", "ardents-custody-darwin-arm64\n"},
 	} {
 		output, err := exec.CommandContext(t.Context(), identity, test.command, test.platform).Output()

@@ -19,15 +19,13 @@ import (
 func fixture(t *testing.T) (Request, map[string][]byte) {
 	t.Helper()
 	files := map[string][]byte{
-		"ardents-linux-amd64": []byte("original program"), "ardents-control-linux-amd64": []byte("control program"),
+		"ardents-linux-amd64": []byte("original program"), "ardents-custody-linux-amd64": []byte("custody"),
 		"1.root.json": []byte("root"), "timestamp.json": []byte("metadata"),
-		"catalog.ac1": []byte("catalog"), "catalog.pub": []byte("disclosure"),
-		"release.ac1": []byte("release"), "network.ac1": []byte("network"), "compatibility.ac1": []byte("compatibility"),
-		"release.pub": []byte("release root"), "network.pub": []byte("network root"), "compatibility.pub": []byte("compatibility root"), "corpus.pub": []byte("corpus"),
+		"1.snapshot.json": []byte("snapshot"), "1.targets.json": []byte("targets"),
 	}
-	files["RELEASE"] = []byte("schema=ardents-closed-alpha-enrollment-v3\ncohort=cohort\nrelease=release\nplatform=linux-amd64\nenvironment=alpha\nnetwork=network\ntarget_path=ardents/linux-amd64/endpoint\nartifact=ardents-linux-amd64\ntrusted_root=1.root.json\ncontrol_catalog=catalog.ac1\ndisclosure_root=catalog.pub\ncontrol_release=release.ac1\ncontrol_network=network.ac1\ncontrol_compatibility=compatibility.ac1\ncontrol_release_root=release.pub\ncontrol_network_root=network.pub\ncontrol_compatibility_root=compatibility.pub\ncorpus_authority=corpus.pub\ncontrol_artifact=ardents-control-linux-amd64\n")
+	files["RELEASE"] = []byte("schema=ardents-closed-alpha-enrollment-v5\ncohort=cohort\nrelease=release\nplatform=linux-amd64\nenvironment=alpha\nnetwork=network\ntarget_path=ardents/linux-amd64/endpoint\nartifact=ardents-linux-amd64\ntrusted_root=1.root.json\n")
 	root := t.TempDir()
-	return Request{BundleRoot: root, ExecutablePath: filepath.Join(root, "ardents-linux-amd64"), Scope: General}, files
+	return Request{BundleRoot: root, ExecutablePath: filepath.Join(root, "ardents-linux-amd64")}, files
 }
 
 func writeFixture(t *testing.T, request *Request, files map[string][]byte) {
@@ -61,7 +59,7 @@ func TestBundleRetainsOnlyCompleteImmutableInitialProvenance(t *testing.T) {
 		t.Fatal(err)
 	}
 	facts, ok := bundle.Facts()
-	if !ok || facts.ManifestSHA256 != r.ManifestSHA256 || facts.Artifact != "ardents-linux-amd64" || facts.Protected || facts.Headless {
+	if !ok || facts.ManifestSHA256 != r.ManifestSHA256 || facts.Artifact != "ardents-linux-amd64" || facts.Protected {
 		t.Fatalf("facts: %+v %v", facts, ok)
 	}
 	data, ok := bundle.File("timestamp.json")
@@ -87,19 +85,15 @@ func TestBundleRetainsOnlyCompleteImmutableInitialProvenance(t *testing.T) {
 }
 
 func TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner(t *testing.T) {
-	for _, profile := range []string{"general", "headless-linux", "headless-windows", "protected"} {
+	for _, profile := range []string{"linux", "windows", "protected"} {
 		t.Run(profile, func(t *testing.T) {
 			r, files := fixture(t)
 			if profile == "protected" {
 				r, files = protectedFixture(t)
-			} else if profile != "general" {
-				files["ardents-node-linux-amd64"] = []byte("node")
-				files["ardents-custody-linux-amd64"] = []byte("custody")
-				r.Scope = Headless
 			}
-			if profile == "headless-windows" {
+			if profile == "windows" {
 				files["RELEASE"] = []byte(strings.ReplaceAll(string(files["RELEASE"]), "linux-amd64", "windows-amd64"))
-				for _, command := range []string{"ardents", "ardents-control", "ardents-node", "ardents-custody"} {
+				for _, command := range []string{"ardents", "ardents-custody"} {
 					old := command + "-linux-amd64"
 					name := command + "-windows-amd64.exe"
 					files[name] = files[old]
@@ -109,6 +103,8 @@ func TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner(t *testing.T) 
 				r.ExecutablePath = filepath.Join(r.BundleRoot, "ardents-windows-amd64.exe")
 			}
 			files["2.snapshot.json"], files["3.targets.json"] = []byte("snapshot"), []byte("targets")
+			delete(files, "1.snapshot.json")
+			delete(files, "1.targets.json")
 			writeFixture(t, &r, files)
 			bundle, err := Verify(context.Background(), r)
 			if err != nil {
@@ -138,55 +134,34 @@ func TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner(t *testing.T) 
 	}
 }
 
-func TestBundleHeadlessCompanionsFollowPinnedSchema(t *testing.T) {
+func TestBundleRequiresCustodyAndRefusesForeignCompanions(t *testing.T) {
 	for _, test := range []struct {
-		name, version          string
-		scope                  Scope
-		node, custody, allowed bool
+		name   string
+		mutate func(map[string][]byte)
 	}{
-		{"legacy exact pair", "v3", Headless, true, true, true},
-		{"legacy missing node", "v3", Headless, false, true, false},
-		{"legacy general with no companions", "v3", General, false, false, true},
-		{"legacy general rejects a partial pair", "v3", General, false, true, false},
-		{"current exact inventory", "v4", Headless, false, true, true},
-		{"current inventory also verifies in general scope", "v4", General, false, true, true},
-		{"current rejects retired node", "v4", Headless, true, true, false},
-		{"current general rejects retired node", "v4", General, true, true, false},
-		{"current requires custody", "v4", Headless, false, false, false},
+		{"missing-custody", func(f map[string][]byte) { delete(f, "ardents-custody-linux-amd64") }},
+		{"retired-node", func(f map[string][]byte) { f["ardents-node-linux-amd64"] = []byte("node") }},
+		{"retired-control", func(f map[string][]byte) { f["ardents-control-linux-amd64"] = []byte("control") }},
+		{"retired-catalog", func(f map[string][]byte) { f["catalog.ac1"] = []byte("catalog") }},
+		{"unknown-json", func(f map[string][]byte) { f["foreign.json"] = []byte("foreign") }},
+		{"noncanonical-metadata-version", func(f map[string][]byte) { f["01.targets.json"] = []byte("targets") }},
+		{"duplicate-metadata-role", func(f map[string][]byte) { f["2.targets.json"] = []byte("targets") }},
+		{"missing-metadata-role", func(f map[string][]byte) { delete(f, "1.targets.json") }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			r, files := fixture(t)
-			r.Scope = test.scope
-			files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v3"), []byte("enrollment-"+test.version), 1)
-			if test.node {
-				files["ardents-node-linux-amd64"] = []byte("original legacy node")
-			}
-			if test.custody {
-				files["ardents-custody-linux-amd64"] = []byte("custody")
-			}
+			test.mutate(files)
 			writeFixture(t, &r, files)
 			bundle, err := Verify(t.Context(), r)
-			candidate, candidateErr := ReadCandidate(t.Context(), r.BundleRoot, test.scope)
-			if !test.allowed {
-				if !errors.Is(err, ErrInventory) || !errors.Is(candidateErr, ErrInventory) {
-					t.Fatalf("Verify = %v, ReadCandidate = %v, want inventory refusal", err, candidateErr)
-				}
-				return
+			candidate, candidateErr := ReadCandidate(t.Context(), r.BundleRoot)
+			if !errors.Is(err, ErrInventory) || !errors.Is(candidateErr, ErrInventory) {
+				t.Fatalf("Verify = %v, ReadCandidate = %v, want inventory refusal", err, candidateErr)
 			}
-			if err != nil || candidateErr != nil {
-				t.Fatalf("Verify = %v, ReadCandidate = %v", err, candidateErr)
+			if _, ok := bundle.Facts(); ok {
+				t.Fatal("refusal returned verified provenance")
 			}
-			if facts, ok := bundle.Facts(); !ok || facts.Headless != test.custody {
-				t.Fatal("unexpected headless provenance")
-			}
-			if facts, ok := candidate.Facts(); !ok || facts.Headless != test.custody {
-				t.Fatal("unexpected candidate headless declaration")
-			}
-			if _, ok := bundle.File("ardents-node-linux-amd64"); ok != test.node {
-				t.Fatalf("legacy companion retained = %v, want %v", ok, test.node)
-			}
-			if names := bundle.MetadataNames(); !reflect.DeepEqual(names, []string{"timestamp.json"}) {
-				t.Fatalf("companion leaked into Release metadata: %v", names)
+			if _, ok := candidate.Facts(); ok {
+				t.Fatal("refusal returned candidate declarations")
 			}
 		})
 	}
@@ -199,17 +174,14 @@ func TestBundleRefusalStagesReturnNoProvenance(t *testing.T) {
 		want   error
 	}{
 		{"retired", func(_ *testing.T, _ *Request, f map[string][]byte) {
-			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v3"), []byte("enrollment-v2"), 1)
-		}, ErrLegacyEnrollmentDescriptor},
+			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-v2"), 1)
+		}, ErrInventory},
 		{"unknown-version", func(_ *testing.T, _ *Request, f map[string][]byte) {
-			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v3"), []byte("enrollment-v9"), 1)
+			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-v9"), 1)
 		}, ErrInventory},
 		{"duplicate-field", func(_ *testing.T, _ *Request, f map[string][]byte) {
 			f["RELEASE"] = append(f["RELEASE"], []byte("cohort=other\n")...)
 		}, ErrInventory},
-		{"missing-companion", func(_ *testing.T, _ *Request, f map[string][]byte) { delete(f, "corpus.pub") }, ErrInventory},
-		{"partial-headless", func(_ *testing.T, _ *Request, f map[string][]byte) { f["ardents-node-linux-amd64"] = []byte("node") }, ErrInventory},
-		{"headless-required", func(_ *testing.T, r *Request, _ map[string][]byte) { r.Scope = Headless }, ErrInventory},
 		{"partial-protected", func(_ *testing.T, _ *Request, f map[string][]byte) { f["ardents-text.conf"] = []byte("config") }, ErrInventory},
 		{"substituted-program", func(_ *testing.T, r *Request, _ map[string][]byte) {
 			r.ExecutablePath = filepath.Join(r.BundleRoot, "1.root.json")
@@ -243,14 +215,18 @@ func TestBundlePinPrecedesAnyManifestOrDescriptorInterpretation(t *testing.T) {
 }
 
 func TestRetiredDescriptorRefusesBeforeCompanionInventoryWork(t *testing.T) {
-	r, files := fixture(t)
-	files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v3"), []byte("enrollment-v1"), 1)
-	writeFixture(t, &r, files)
-	if err := os.WriteFile(filepath.Join(r.BundleRoot, "unknown-companion"), []byte("unlisted"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Verify(context.Background(), r); !errors.Is(err, ErrLegacyEnrollmentDescriptor) {
-		t.Fatalf("retirement must precede companion inventory: %v", err)
+	for _, version := range []string{"v1", "v2", "v3", "v4"} {
+		t.Run(version, func(t *testing.T) {
+			r, files := fixture(t)
+			files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-"+version), 1)
+			writeFixture(t, &r, files)
+			if err := os.WriteFile(filepath.Join(r.BundleRoot, "timestamp.json"), []byte("changed"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Verify(context.Background(), r); !errors.Is(err, ErrInventory) {
+				t.Fatalf("retired descriptor must precede companion reads: %v", err)
+			}
+		})
 	}
 }
 

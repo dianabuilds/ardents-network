@@ -1865,7 +1865,7 @@ selected Carriers.
   Root is an invalid environment for those rows. Root-only Installation profiles
   run separately under their explicit selectors; they do not replace this gate.
 - On Linux x86-64, `make headless-check` builds the exact Network command
-  inventory, checks the enrollment-v4 artifact, runs bounded Endpoint
+  inventory, checks the enrollment-v5 artifact, runs bounded Endpoint
   enrollment and Service ceremony process
   evidence, then rebuilds and tests the headless command candidate in a
   fresh temporary tree containing no Browser/Application implementation.
@@ -2242,7 +2242,7 @@ own Publisher launch method. These entries confer no Linux allowance, and both
 test projections must remain empty. The public verifier's newly reached Windows
 functions are removed from its older exact platform entry.
 
-The headless command inventory declares the three-command Network artifact lane;
+The headless command inventory declares the two-command Endpoint and Authority Custody artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
 graphs, the explicit [`ownership.json`](ownership.json) registry, exact
@@ -2266,8 +2266,8 @@ Installation still freshly compares every byte of the exact signed artifact;
 omitting debug sections reduces that repeated work without changing its
 integrity, authority or deadline checks. Source-level debugger use requires a
 separately built development artifact; it cannot substitute for the pinned
-installed command. The public Make proof builds the three headless artifacts
-(`ardents`, `ardents-control` and `ardents-custody`) from two independent normal
+installed command. The public Make proof builds the two headless artifacts
+(`ardents` and `ardents-custody`) from two independent normal
 clones, a linked worktree, and two independent VCS-free ownership extractions,
 including the Endpoint source dependencies owned by the selected protected text
 Connection and Administration Interfaces and text-application without changing
@@ -2572,8 +2572,7 @@ The maintained local profiles are:
   now-retired enroll/headless/user-unit/replace/rollback routes. The surviving
   `tests/e2e/endpoint` process regressions cover the read-only `enrollment-check`
   diagnostic through the successor enrollment verifier (byte-identical output
-  contract), the retired persisted-input form and retired ACA1 control-route
-  before-effect refusals, and the Ubuntu deb package payload/retention shape
+  contract), the retired persisted-input form, and the Ubuntu deb package payload and retention shape
   with the retired `enroll-installed` refusal. The enrollment-pinned
   alpha-control inspection regressions retired with the reader itself
   (ADR-0127, #647); the corpus-intake refusals stay covered by the
@@ -2930,9 +2929,10 @@ the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
 the independent Administration client round trip remains covered. Shared
 directional-close evidence remains with AAI3 and native Service Connection.
 
-Enrollment regression tests verify the v3 headless Node/Custody pair and the
-new v4 Custody companion against their pinned inventory. The retired Node
-command and its process-refusal scenarios have been removed (ADR-0128).
+Enrollment regressions verify the pinned v5 Endpoint and Authority Custody
+inventory and refuse prior descriptors and unexpected companions. The
+packaging lane checks the real executable bytes and rejects partial
+protected groups under ADR-0130.
 
 The `ardents name encode/resolve/control` retirement oracle submits all three
 recognized command shapes, including absent inputs and incomplete remaining

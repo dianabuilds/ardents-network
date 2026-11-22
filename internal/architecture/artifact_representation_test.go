@@ -134,7 +134,6 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	expected := map[string]bool{
 		"./cmd/ardents-next":    true,
-		"./cmd/ardents-control": true,
 		"./cmd/ardents-custody": true,
 	}
 	result := make(map[string][]byte)

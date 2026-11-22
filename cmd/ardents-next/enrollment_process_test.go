@@ -18,10 +18,10 @@ import (
 func TestEnrollmentCompiledConsumerVerifiesOriginalProgramAndRefusesSubstitution(t *testing.T) {
 	root := t.TempDir()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
-	programName, controlName := "ardents-"+platform, "ardents-control-"+platform
+	programName, custodyName := "ardents-"+platform, "ardents-custody-"+platform
 	if runtime.GOOS == "windows" {
 		programName += ".exe"
-		controlName += ".exe"
+		custodyName += ".exe"
 	}
 	programPath := filepath.Join(root, programName)
 	// Share only the immutable compiled consumer; every bundle and pin is
@@ -34,15 +34,12 @@ func TestEnrollmentCompiledConsumerVerifiesOriginalProgramAndRefusesSubstitution
 	if err := os.WriteFile(programPath, program, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	files := map[string][]byte{programName: program, controlName: []byte("separate control bytes"), "1.root.json": []byte("root"),
-		"catalog.ac1": []byte("catalog"), "catalog.pub": []byte("disclosure"), "release.ac1": []byte("release"),
-		"network.ac1": []byte("network"), "compatibility.ac1": []byte("compatibility"), "release.pub": []byte("release root"),
-		"network.pub": []byte("network root"), "compatibility.pub": []byte("compatibility root"), "corpus.pub": []byte("corpus"), "timestamp.json": []byte("timestamp")}
-	files["RELEASE"] = []byte(strings.Join([]string{"schema=ardents-closed-alpha-enrollment-v3", "cohort=cohort", "release=release", "platform=" + platform,
-		"environment=alpha", "network=network", "target_path=ardents/" + platform + "/endpoint", "artifact=" + programName,
-		"trusted_root=1.root.json", "control_catalog=catalog.ac1", "disclosure_root=catalog.pub", "control_release=release.ac1", "control_network=network.ac1",
-		"control_compatibility=compatibility.ac1", "control_release_root=release.pub", "control_network_root=network.pub", "control_compatibility_root=compatibility.pub",
-		"corpus_authority=corpus.pub", "control_artifact=" + controlName}, "\n") + "\n")
+	files := map[string][]byte{
+		programName: program, custodyName: []byte("separate custody bytes"), "1.root.json": []byte("root"),
+		"timestamp.json": []byte("timestamp"), "1.snapshot.json": []byte("snapshot"), "1.targets.json": []byte("targets"),
+	}
+	files["RELEASE"] = []byte(strings.Join([]string{"schema=ardents-closed-alpha-enrollment-v5", "cohort=cohort", "release=release", "platform=" + platform,
+		"environment=alpha", "network=network", "target_path=ardents/" + platform + "/endpoint", "artifact=" + programName, "trusted_root=1.root.json"}, "\n") + "\n")
 	var names []string
 	for name := range files {
 		names = append(names, name)
