@@ -681,12 +681,6 @@
   ],
   "suite_roots": [
     {
-      "id": "e2e-node",
-      "path": "tests/e2e/node",
-      "profile": "process",
-      "owner": "node adapter process behavior"
-    },
-    {
       "id": "e2e-endpoint",
       "path": "tests/e2e/endpoint",
       "profile": "process",

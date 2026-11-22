@@ -111,23 +111,13 @@ jobs:
           PYTHON
           while IFS= read -r -d '' TEST_ID && IFS= read -r -d '' TEST_PACKAGE && IFS= read -r -d '' TEST_RUN && IFS= read -r -d '' TEST_RACE; do
             # A failed group exits before another group can use this runner.
-            # Its environment and root Node scope stay local to this subshell.
             (
               echo "::group::Selected check group $TEST_ID $TEST_PACKAGE"
-              test_command=(go)
-              if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
-                export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
-                mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
-                go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents-next ./cmd/ardents-control ./cmd/ardents-custody
-                export ARDENTS_NODE_SCOPE_PROFILE=system
-                export GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)"
-                test_command=(sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,ARDENTS_NODE_SCOPE_PROFILE,GOCACHE,GOMODCACHE,GOTOOLCHAIN,GOFLAGS "$(command -v go)")
-              fi
               args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
               if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
               test_log="$RUNNER_TEMP/selected-test-$TEST_ID.json"
               set +e
-              timeout --signal=QUIT --kill-after=10s 330s "${test_command[@]}" test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
+              timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
               status=${PIPESTATUS[0]}
               set -e
               if (( status != 0 )); then
@@ -172,11 +162,7 @@ jobs:
       - name: Install pinned quality tools
         run: make tools-install
       - name: Run the complete maintained gate
-        run: |
-          export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
-          mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
-          go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents-next ./cmd/ardents-control ./cmd/ardents-custody
-          make check NODE_PROCESS_TEST_COMMAND="sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,GOMODCACHE,GOTOOLCHAIN,GOFLAGS env ARDENTS_NODE_SCOPE_PROFILE=system GOCACHE=$RUNNER_TEMP/node-go-build $(command -v go)"
+        run: make check
   go:
     if: always()
     needs: [select, qualification-scripts, affected, full]

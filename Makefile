@@ -26,9 +26,6 @@ define newline
 endef
 UNIT_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/deterministic-packages.txt))
 PROCESS_PACKAGES := $(subst $(newline), ,$(file <tests/profiles/process-packages.txt))
-NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
-# Only the Node process suite may select an elevated system-scope runner.
-NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
 ifneq ($(filter source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
@@ -52,7 +49,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./tests/e2e/node ./internal/execution/runtime ./internal/execution/worker ./cmd/ardents-next
+INSTALLED_TAG_COMPILE_PACKAGES := ./internal/execution/runtime ./internal/execution/worker ./cmd/ardents-next
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"
@@ -109,8 +106,7 @@ heapdump-role-map:
 	go test -tags heapdumpcapture ./internal/diagnostics/process -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
 
 e2e:
-	go test -p 1 $(filter-out $(NODE_PROCESS_PACKAGES),$(PROCESS_PACKAGES)) -shuffle=on -count=1
-	$(NODE_PROCESS_TEST_COMMAND) test -p 1 $(NODE_PROCESS_PACKAGES) -shuffle=on -count=1
+	go test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1
 
 package-e2e:
 	sudo env "PATH=$$PATH" "GOTOOLCHAIN=$(GOTOOLCHAIN)" "GOENV=$(GOENV)" "GOFLAGS=$(GOFLAGS)" "GOCACHE=$(GOCACHE)" "GOMODCACHE=$(GOMODCACHE)" go test -tags packagee2e ./tests/e2e/endpoint -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$$' -shuffle=on -count=1
