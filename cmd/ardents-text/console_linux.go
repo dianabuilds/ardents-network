@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"os"
 	"syscall"
@@ -18,14 +19,14 @@ func openTextCommandIO() (*os.File, *os.File, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	output, err := openTextPresentationDescriptor("/proc/self/fd/1", os.Stdout, os.O_WRONLY)
+	output, err := openTextOutput()
 	if err != nil {
 		return nil, nil, errors.Join(err, input.Close())
 	}
 	// Refuse descriptors on which Go cannot interrupt a pending UI operation.
 	// In particular, this command offers terminal/pipe presentation, not export
 	// to an arbitrary regular output file.
-	if err := errors.Join(input.SetReadDeadline(time.Time{}), output.SetWriteDeadline(time.Time{})); err != nil {
+	if err := input.SetReadDeadline(time.Time{}); err != nil {
 		return nil, nil, errors.Join(err, input.Close(), output.Close())
 	}
 	return input, output, nil
@@ -45,4 +46,23 @@ func openTextPresentationDescriptor(path string, inherited *os.File, mode int) (
 		return nil, errors.Join(errors.New("text UI descriptor changed"), err, opened.Close())
 	}
 	return opened, nil
+}
+
+func runPublishedLink(ctx context.Context, socket string) error {
+	output, err := openTextOutput()
+	if err != nil {
+		return err
+	}
+	return showPublishedLink(ctx, socket, output)
+}
+
+func openTextOutput() (*os.File, error) {
+	output, err := openTextPresentationDescriptor("/proc/self/fd/1", os.Stdout, os.O_WRONLY)
+	if err != nil {
+		return nil, err
+	}
+	if err := output.SetWriteDeadline(time.Time{}); err != nil {
+		return nil, errors.Join(err, output.Close())
+	}
+	return output, nil
 }

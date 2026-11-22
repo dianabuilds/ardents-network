@@ -462,7 +462,7 @@ surviving-boundary claim; testing a sibling worker does not prove otherwise.
 | internal/application/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
 | internal/application/textdocument | Fixed text request/response, bounded snapshots and safe presentation; the version-2 Connection contract and standard library |
 | internal/endpoint | Verified installed-unit/socket identity, local job lifecycle, opaque launch receipt, Broker composition and existing Network/Service orchestration; use existing owned imports and the two selected Application contracts |
-| cmd/ardents-text | Thin trusted text UI and fixed worker entrypoints calling textdocument; standard library and the selected text/Connection owners |
+| cmd/ardents-text | Trusted text UI owns signal interruption and joins its terminal or pipe descriptors. Fixed worker entrypoints reach the inherited-descriptor audit before UI setup. The UI delegates the bounded document exchange and presentation to textdocument and uses the separate Administration client for publication and Link retrieval. |
 | Existing installation/Release owners | Verified worker/root/unit artifacts, separate service identities and controlled install/update/remove; no unverified execution |
 
 These are selected future package additions under ADR-0081.

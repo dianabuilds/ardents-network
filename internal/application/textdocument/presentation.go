@@ -2,10 +2,13 @@ package textdocument
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
 // WritePlainText presents only a complete bounded UTF-8 result. Its caller must
@@ -30,4 +33,28 @@ func WritePlainText(output io.Writer, body []byte) error {
 		}
 	}
 	return writer.Flush()
+}
+
+// PresentLocal opens one bounded local Connection to the supplied Target Link
+// and presents the document after Read joins the exchange. The caller owns
+// interruption and closing of the output, which can outlive the setup bound.
+func PresentLocal(ctx context.Context, socket, link string, output io.Writer) error {
+	if ctx == nil || output == nil {
+		return errors.New("text presentation is invalid")
+	}
+	bounded, cancel := context.WithTimeout(ctx, connection.ReaderTimeout)
+	defer cancel()
+	stream, err := connection.Dial(bounded, socket, connection.Request{Destination: connection.TargetLink, Value: link})
+	if err != nil {
+		return errors.Join(err, bounded.Err())
+	}
+	body, err := Read(bounded, stream)
+	defer clear(body)
+	if err != nil {
+		return errors.Join(err, bounded.Err())
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return WritePlainText(output, body)
 }

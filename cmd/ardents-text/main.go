@@ -29,41 +29,41 @@ func main() {
 }
 
 func run(arguments []string) error {
-	if len(arguments) == 0 || len(arguments) == 1 && (arguments[0] == "--help" || arguments[0] == "help") {
+	if len(arguments) == 1 {
+		// The fixed entrypoints audit inherited descriptors before trusted UI
+		// signal handling or stream setup.
+		switch arguments[0] {
+		case "worker-reader":
+			return textdocument.RunInheritedWorker(textdocument.ReaderWorker)
+		case "worker-publisher":
+			return textdocument.RunInheritedWorker(textdocument.PublisherWorker)
+		case "help", "--help":
+			return errTextUsage
+		}
+	}
+	if len(arguments) == 0 {
 		return errTextUsage
 	}
-	if len(arguments) == 2 && arguments[0] == "link" && filepath.IsAbs(arguments[1]) {
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		return runPublishedLink(ctx, arguments[1])
-	}
-	if len(arguments) == 3 && arguments[0] == "publish" && filepath.IsAbs(arguments[1]) && filepath.IsAbs(arguments[2]) {
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		return publishText(ctx, arguments[1], arguments[2])
-	}
-	if len(arguments) == 2 && arguments[0] == "read" && filepath.IsAbs(arguments[1]) {
-		// Signal handling begins only in the trusted UI. The fixed worker must
-		// reach its inherited-descriptor audit without UI initialization.
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		input, output, err := openTextCommandIO()
-		if err != nil {
-			return err
+	var operation func(context.Context) error
+	switch {
+	case len(arguments) == 2 && arguments[0] == "link" && filepath.IsAbs(arguments[1]):
+		operation = func(ctx context.Context) error { return runPublishedLink(ctx, arguments[1]) }
+	case len(arguments) == 3 && arguments[0] == "publish" && filepath.IsAbs(arguments[1]) && filepath.IsAbs(arguments[2]):
+		operation = func(ctx context.Context) error { return publishText(ctx, arguments[1], arguments[2]) }
+	case len(arguments) == 2 && arguments[0] == "read" && filepath.IsAbs(arguments[1]):
+		operation = func(ctx context.Context) error {
+			input, output, err := openTextCommandIO()
+			if err != nil {
+				return err
+			}
+			return readText(ctx, arguments[1], input, output)
 		}
-		return readText(ctx, arguments[1], input, output)
-	}
-	if len(arguments) != 1 {
-		return errors.New("text worker entrypoint is invalid")
-	}
-	switch arguments[0] {
-	case "worker-reader":
-		return textdocument.RunInheritedWorker(textdocument.ReaderWorker)
-	case "worker-publisher":
-		return textdocument.RunInheritedWorker(textdocument.PublisherWorker)
 	default:
 		return errors.New("text worker entrypoint is invalid")
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	return operation(ctx)
 }
 
 func textFailure(err error) string {

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"path/filepath"
-	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
@@ -19,48 +18,21 @@ var errTextInput = errors.New("text destination or local input is invalid")
 // only the typed destination and fixed text request over AAI3; the Endpoint
 // remains responsible for canonical Target admission, confinement and Route.
 // It neither starts an unconfined worker nor retries another connection.
-func readText(ctx context.Context, socket string, input io.ReadCloser, output io.WriteCloser) (resultErr error) {
+func readText(ctx context.Context, socket string, input io.ReadCloser, output io.WriteCloser) error {
 	if ctx == nil || !filepath.IsAbs(socket) || input == nil || output == nil {
 		return errTextInput
 	}
-	var closeOnce sync.Once
-	var closeErr error
-	closeIO := func() {
-		closeOnce.Do(func() { closeErr = errors.Join(input.Close(), output.Close()) })
-	}
-	callbackDone := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { defer close(callbackDone); closeIO() })
-	defer func() {
-		closeIO()
-		if !stop() {
-			<-callbackDone
+	closeIO := func() error { return errors.Join(input.Close(), output.Close()) }
+	return withTextPresentation(ctx, closeIO, func() error {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
-		resultErr = errors.Join(resultErr, closeErr, ctx.Err())
-	}()
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	link, err := readTextDestination(input)
-	if err != nil {
-		return err
-	}
-	// Human input is cancellable. The subsequent single setup/exchange has a
-	// finite UI deadline even if the local Endpoint ceases to respond.
-	bounded, cancel := context.WithTimeout(ctx, connection.ReaderTimeout)
-	defer cancel()
-	stream, err := connection.Dial(bounded, socket, connection.Request{Destination: connection.TargetLink, Value: link})
-	if err != nil {
-		return errors.Join(err, bounded.Err())
-	}
-	body, err := textdocument.Read(bounded, stream)
-	defer clear(body)
-	if err != nil {
-		return errors.Join(err, bounded.Err())
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return textdocument.WritePlainText(output, body)
+		link, err := readTextDestination(input)
+		if err != nil {
+			return err
+		}
+		return textdocument.PresentLocal(ctx, socket, link, output)
+	})
 }
 
 func readTextDestination(input io.Reader) (string, error) {
