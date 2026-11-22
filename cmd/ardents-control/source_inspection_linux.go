@@ -16,6 +16,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 func runSourceInspection(args []string, out io.Writer) error {
@@ -91,7 +93,10 @@ func inspectSource(ctx context.Context, args []string) (response source.Message,
 	if err != nil {
 		return response, err
 	}
-	config, err := sourcePreparationStateConfig(plan)
+	if plan.ProcessProfile != processresource.SourceProfile {
+		return response, errSourceControlInput
+	}
+	config, err := state.SourcePreparationConfig(plan)
 	if err != nil {
 		return response, err
 	}

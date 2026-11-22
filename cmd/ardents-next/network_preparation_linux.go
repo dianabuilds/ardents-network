@@ -39,7 +39,11 @@ func openPreparationAt(parent *os.File, name string, flags int, mode uint32) (*o
 	return os.NewFile(uintptr(fd), name), nil
 }
 
-func openPreparationParent(path string) (p *preparationPath, err error) {
+func openPreparationParent(path string) (*preparationPath, error) {
+	return openPreparationDirectories(nil, path, nil)
+}
+
+func openPreparationDirectories(ctx context.Context, path string, owner *uint32) (p *preparationPath, err error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return nil, errNetworkPreparation
 	}
@@ -59,9 +63,17 @@ func openPreparationParent(path string) (p *preparationPath, err error) {
 		return p, errors.Join(err, f.Close())
 	}
 	p.directories = append(p.directories, preparationDirectory{file: f, info: info})
+	if !preparationDirectoryOwner(info, owner) {
+		return p, errNetworkPreparation
+	}
 	for _, name := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
 		if name == "" {
 			continue
+		}
+		if ctx != nil {
+			if err := ctx.Err(); err != nil {
+				return p, err
+			}
 		}
 		f, err = openPreparationAt(f, name, syscall.O_RDONLY|syscall.O_DIRECTORY, 0)
 		if err != nil {
@@ -72,8 +84,19 @@ func openPreparationParent(path string) (p *preparationPath, err error) {
 			return p, errors.Join(err, f.Close())
 		}
 		p.directories = append(p.directories, preparationDirectory{file: f, name: name, info: info})
+		if !preparationDirectoryOwner(info, owner) {
+			return p, errNetworkPreparation
+		}
 	}
 	return p, nil
+}
+
+func preparationDirectoryOwner(info os.FileInfo, owner *uint32) bool {
+	if owner == nil {
+		return true
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && (stat.Uid == 0 || stat.Uid == *owner)
 }
 
 func (p *preparationPath) parent() *os.File { return p.directories[len(p.directories)-1].file }

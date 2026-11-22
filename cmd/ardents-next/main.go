@@ -30,6 +30,9 @@ func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 		if len(args) > 1 && args[1] == "prepare-trust" {
 			return runSourcePreparation(ctx, args[1:], out)
 		}
+		if len(args) > 1 && args[1] == "prepare-state" {
+			return runSourceStatePreparation(ctx, args[2:], out, diagnostic)
+		}
 		if len(args) > 1 && args[1] == "repair-retained" {
 			return runSourceRepair(ctx, args[2:], out, diagnostic)
 		}

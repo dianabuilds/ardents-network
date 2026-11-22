@@ -332,12 +332,14 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 		{Address: "127.0.0.1:9", ServerName: "unused.test", Identity: [32]byte{72}, Family: "source-two", EndpointHandle: "source-two", RootPEM: rootPEM, LeafKeyDigest: [32]byte{73}},
 	}, ClientCertificate: client, VerificationClock: time.Now}
 
-	// Genuine prepare-state through the real offline CLI as the fixed account.
-	control := compiledControlCommand(t)
-	if out, err := runAsSource(t, control, "source", "prepare-state", stand.planPath, stand.bundlePath); err != nil || !bytes.Contains(out, []byte("state-prepared")) {
+	// Genuine prepare-state through the exact Endpoint binary as the fixed Source account.
+	if err := os.WriteFile(stand.program, binaryBytes, 0555); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := runAsSource(t, stand.program, "source", "prepare-state", stand.planPath, stand.bundlePath); err != nil || !bytes.Contains(out, []byte("state-prepared")) {
 		t.Fatal("actual prepare-state", string(out), err)
 	}
-	if out, err := runAsSource(t, control, "source", "prepare-state", stand.planPath, stand.bundlePath); err == nil {
+	if out, err := runAsSource(t, stand.program, "source", "prepare-state", stand.planPath, stand.bundlePath); err == nil {
 		t.Fatal("repeated prepare-state adopted non-vacant roots", string(out))
 	}
 	config, err := networkStateConfig(&stand.networkPlan)
@@ -362,9 +364,6 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	// enrolled executable itself (platformOwnExecutable /proc/self/exe).
 	stand.authority = newConsumerReleaseAuthority(t, infrastructureReference.Add(365*24*time.Hour))
 	_, inventoryPin, _ := infrastructureDistributionInvocation(t, stand.base, binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
-	if err := os.WriteFile(stand.program, binaryBytes, 0555); err != nil {
-		t.Fatal(err)
-	}
 	stand.launch = platformLaunch{
 		Role:          "source",
 		Distribution:  stand.distribution,
@@ -436,28 +435,6 @@ func sourceInstalledAccount(t *testing.T) int {
 		t.Fatal("useradd", err)
 	}
 	return uid
-}
-
-func compiledControlCommand(t *testing.T) string {
-	t.Helper()
-	dir, err := os.MkdirTemp("", "ardents-control-installed-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	if err := os.Chmod(dir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(dir, "ardents-control")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, ".")
-	cmd.Dir = filepath.Join("..", "ardents-control")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatal("control command build", string(out), err)
-	}
-	if err := os.Chmod(path, 0555); err != nil {
-		t.Fatal(err)
-	}
-	return path
 }
 
 // compiledForwardCommand builds a distinct working executable of the same

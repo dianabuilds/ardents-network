@@ -24,7 +24,7 @@ Requires a vacant State root and a vacant participation root.
 1. Prepare and sign the verified artifacts offline (Enrollment inventory, Release
    program/template/generation). Preparation signs nothing it does not own and
    authorizes no activation.
-2. `ardents-control source prepare-state SERVE_PLAN BUNDLE` creates the initial
+2. `ardents-next source prepare-state SERVE_PLAN BUNDLE` creates the initial
    State and empty participation history through their existing owners
    (`state.OpenFresh` + `duty.Initialize`). A repeated or partial preparation
    refuses without cleaning saved data.

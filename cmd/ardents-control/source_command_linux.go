@@ -35,8 +35,6 @@ func runSourceControl(args []string, out io.Writer) error {
 		return runSourceArtifactPreparation(args, out)
 	case "inspect-latest":
 		return runSourceInspection(args[1:], out)
-	case "prepare-state":
-		return runSourceStatePreparation(args[1:], out)
 	default:
 		return errors.New("usage: ardents-control source OPERATION [ARGUMENTS]")
 	}

@@ -91,7 +91,7 @@ unit:
 .PHONY: platform-launch-unit
 platform-launch-unit:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
-	go test ./cmd/ardents-next -run '^Test(Platform.*|SourceCancellationJoinsWaitCloseAndInputsBeforeCompletion|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
+	go test ./cmd/ardents-next -run '^Test(Platform.*|SourceCancellationJoinsWaitCloseAndInputsBeforeCompletion|SourceInitialPreparation.*|SourcePreparationConfig.*|SourcePreparationRefusesOtherPrincipal.*|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
 	go test ./cmd/ardents-control -run '^TestSource(InitialPreparation.*|Preparation.*)$$' -count=1 -timeout=3m
 	go test ./internal/network/state -run '^Test(Source(Participation|Completion).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
 	go test ./internal/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m

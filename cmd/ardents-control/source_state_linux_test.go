@@ -7,40 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/dianabuilds/ardents-network/internal/network/source"
-	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
-
-func TestSourcePreparationConfigHasNoServingOrAcquisition(t *testing.T) {
-	plan := servingdeclaration.ServingDeclaration{ProcessProfile: processresource.SourceProfile, ParticipationRoot: "/var/lib/source-participation",
-		Network: &servingdeclaration.ServingNetwork{Root: "/var/lib/source-state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}},
-			Threshold: 1, ProfileAuthority: [32]byte{2}, ClockObservationFile: "/var/lib/source-clock"},
-		Address: "127.0.0.1:4000", Certificate: "/unopened/certificate", PrivateKey: "/unopened/private-key", ClientRoot: "/unopened/ca", ClientPins: [][32]byte{{3}}}
-	config, err := sourcePreparationStateConfig(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if config.Root != plan.Network.Root || config.Clock == nil || !config.Now.IsZero() || config.ClockObservationFile != plan.Network.ClockObservationFile || config.LocalRoleStateRoot != "" ||
-		config.Source.ServeAddress != "" || config.Source.ServeCertificate.PrivateKey != nil || config.Source.ClientCertificate.PrivateKey != nil {
-		t.Fatal("offline preparation acquired runtime configuration")
-	}
-	if _, details, err := source.New(config.Source, config.Authorities); err != nil || details.Configured || details.Serving {
-		t.Fatal("offline configuration declares Source transport", details, err)
-	}
-	// Declaration projection supplies no accepted State or trusted time. State's
-	// genuine verifier separately checks the pins, signatures, time and floors.
-	for _, root := range []string{plan.Network.Root, plan.Network.Root + "/child", "/var/lib"} {
-		changed := plan
-		network := *plan.Network
-		changed.Network = &network
-		changed.ParticipationRoot = root
-		if _, err := sourcePreparationStateConfig(changed); err == nil {
-			t.Fatal("overlapping roots accepted", root)
-		}
-	}
-}
 
 func TestSourcePreparationInputsRetainActualFilesAndLatchLoss(t *testing.T) {
 	for _, change := range []string{"replace", "same-inode", "cancel"} {
@@ -96,16 +63,6 @@ func TestSourcePreparationInputsRetainActualFilesAndLatchLoss(t *testing.T) {
 				t.Fatal("restoration replaced original failure")
 			}
 		})
-	}
-}
-
-func TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects(t *testing.T) {
-	if os.Geteuid() >= 100 && os.Geteuid() <= 999 {
-		t.Fatal("ordinary test profile requires an unprivileged development user outside the fixed system-account range")
-	}
-	var out bytes.Buffer
-	if err := runSourceControl([]string{"prepare-state", "/unopened-plan", "/unopened-bundle"}, &out); err == nil || out.Len() != 0 {
-		t.Fatal("foreign principal reached preparation or receipt", err)
 	}
 }
 

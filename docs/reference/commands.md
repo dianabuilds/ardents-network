@@ -623,15 +623,15 @@ Source backend or automatic plan conversion remains.
 `ardents-node source start-installed BINDING` is retired (#604 stage 1.6,
 ADR-0125); with the binary removed it is refusal-by-absence. Its former typed
 refusal was `old Source start-installed orchestration is retired; use
-the platform-led Source lifecycle (ardents-control source prepare-state,
+the platform-led Source lifecycle (ardents-next source prepare-state,
 ardents-next platform initialize-trust/unit, systemctl start ardents-source)`. The platform-led Source
-lifecycle owns the installed Source start: `ardents-control source prepare-state`,
+lifecycle owns the installed Source start: `ardents-next source prepare-state`,
 `ardents-next platform initialize-trust`/`unit`, then `systemctl start
 ardents-source` with the mandatory `platform check` ExecStartPre gate and
 `source serve-retained`. See the
 [operator procedure](../operations/source-platform-lifecycle.md).
 
-`ardents-control source prepare-state SERVE_PLAN BUNDLE` is a separate finite
+`ardents-next source prepare-state SERVE_PLAN BUNDLE` is a separate finite
 offline producer under the actual Source system UID/GID, without supplementary
 groups. It consumes the public serving declaration and bounded signed Epoch /
 materialization bundle with original file/ancestor custody, and requires the
@@ -813,7 +813,7 @@ serve-retained, source repair-retained)` before reading inputs or attempting
 any effect. The transitional install/start/stop/restart/replace/recover
 orchestration, its journals and its native transaction profiles are removed.
 The [platform-led Source lifecycle](../operations/source-platform-lifecycle.md)
-owns Source delivery: `ardents-control source prepare-state`,
+owns Source delivery: `ardents-next source prepare-state`,
 `ardents-next platform initialize-trust`/`unit`, `systemctl start
 ardents-source` with the mandatory `platform check` ExecStartPre gate and
 `source serve-retained`, systemctl stop/relaunch and forward program change,

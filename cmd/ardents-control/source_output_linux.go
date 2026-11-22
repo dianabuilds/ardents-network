@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -10,20 +9,6 @@ import (
 	"syscall"
 	"time"
 )
-
-// The finite receipt contains no input paths or authority. Write on the actual
-// output descriptor; a detached reporter cannot survive the original command.
-func writeSourceControlOutcome(parent context.Context, out io.Writer, outcome string) error {
-	raw, err := json.Marshal(struct {
-		Operation string `json:"operation"`
-		Outcome   string `json:"outcome"`
-	}{"source.prepare-state", outcome})
-	if err != nil {
-		return err
-	}
-	raw = append(raw, '\n')
-	return writeSourceControlBytes(parent, out, raw)
-}
 
 func writeSourceControlBytes(parent context.Context, out io.Writer, raw []byte) error {
 	ctx, cancel := context.WithTimeout(parent, time.Second)

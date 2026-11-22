@@ -263,7 +263,7 @@ bootstrap receipt still requires its separate Product Owner acceptance.
 The transitional stopped-installation journal and the `source-stopped-linux`
 profile retired under ADR-0125. ADR-0128 removed the old `ardents-node`
 command. The platform-led Source
-lifecycle owns first installation: `ardents-control source prepare-state`,
+lifecycle owns first installation: `ardents-next source prepare-state`,
 `ardents-next platform initialize-trust`/`unit`, publication of the rendered
 `ardents-source.service` unit and `systemctl start ardents-source` with the
 mandatory `platform check` ExecStartPre gate and `source serve-retained`. See

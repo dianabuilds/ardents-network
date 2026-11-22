@@ -14,16 +14,13 @@ func acquireSourceRepairInputs(ctx context.Context, path string) (_ sourceInputs
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	admission, deny := context.WithCancel(ctx)
-	l := &sourceInputLifetime{ctx: admission, deny: deny, callback: make(chan struct{}), done: make(chan struct{})}
-	inputs := sourceInputs{l}
-	l.stop = context.AfterFunc(ctx, func() { l.refuse(ctx.Err()); close(l.callback) })
+	inputs := newSourceInputs(ctx, nil)
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, inputs.Close())
 		}
 	}()
-	file, err := l.acquire(path, 16<<10, false)
+	file, err := inputs.acquire(path, 16<<10, false)
 	if err != nil {
 		return sourceInputs{}, plan, err
 	}
