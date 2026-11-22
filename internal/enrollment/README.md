@@ -21,17 +21,16 @@
 
 **Где искать обязанности:** `internal/enrollment` и адаптеры загрузки комплекта.
 
-**Основа:** [Release и Custody](../../../docs/technical/release-update-custody.md),
-[карта доменов](../../../docs/development/domain-map.md).
+**Основа:** [Release и Custody](../../docs/technical/release-update-custody.md),
+[карта доменов](../../docs/development/domain-map.md).
 
-## Контракт до реализации
+## Контракт проверки
 
 Технический владелец —
-[Enrollment verification](../../../docs/technical/enrollment-verification.md),
+[Enrollment verification](../../docs/technical/enrollment-verification.md),
 а защищённый состав закреплён в
-[ADR-0119](../../../docs/adr/0119-bind-protected-endpoint-generation-to-release.md).
-Этот проект уточняет организацию нового владельца в пределах этих контрактов.
-Он не свидетельствует о принятой реализации. Исполнение и приёмка ведутся в
+[ADR-0119](../../docs/adr/0119-bind-protected-endpoint-generation-to-release.md).
+Этапы проверки ниже описывают действующий код. Исполнение и приёмка ведутся в
 [задаче Enrollment](https://github.com/dianabuilds/ardents-network/issues/504).
 
 Enrollment отвечает на один вопрос: совпадает ли первоначальный комплект с
@@ -61,7 +60,7 @@ grammar identities. Настоящий `ardents-next` Release consumer испо�
 companion bytes. General, headless Linux/Windows и protected inventory имеют
 независимые portable проверки, включая копирование возвращённых имён.
 
-Для [нового Installation](../installation/README.md) требуется отдельный
+Для [Installation](../../docs/technical/release-update-custody.md#release-and-update-ownership) требуется отдельный
 successor candidate snapshot без primary pin provenance. `ReadCandidate`
 загружает distinct opaque `Candidate`: самосогласованные declarations и копии
 байтов, без independent pin и утверждения running-program identity. Его
@@ -77,7 +76,7 @@ authority или права перехода поколения.
 ## Этапы и точки отказа
 
 1. **Вход.** Проверить независимый SHA-256 pin, Bundle Root, исходный context
-   и закрытый выбор general/headless. Consumer получает фактический путь
+   и ожидаемые параметры комплекта. Consumer получает фактический путь
    собственной программы через ОС; пользовательский флаг не заменяет эту
    идентичность. Не открывать сетевые, Release или устанавливаемые корни.
 2. **Manifest.** Ограниченно прочитать обычный файл `SHA256SUMS`, проверить
@@ -89,18 +88,18 @@ authority или права перехода поколения.
    `RELEASE`, чтобы typed refusal retired version предшествовал работе с
    companions. Ограничить перечисление допустимым числом плюс одной записью
    для обнаружения переполнения, без предварительного чтения всего каталога.
-4. **Байты.** Проверить digest `RELEASE` до разбора единственной grammar v3.
+4. **Байты.** Проверить digest `RELEASE` до разбора единственной grammar v5.
    Ограниченно прочитать каждую запись, проверить её digest и оставить именно
    эти проверенные байты. Зафиксировать идентичность открытого файла и повторно
    проверить её после чтения; отказать при обнаруженной замене, изменении,
    symlink, nonregular или превышении лимита. Размер из предварительного Stat
    не является ограничителем чтения. Сохранить лимит 64 MiB на запись;
    учёт памяти включает весь удерживаемый комплект, а не только один файл.
-5. **Связность.** Проверить точную привязку текущей программы и парность
-   Node/Custody. В headless пара обязательна; частичная пара запрещена в обоих
-   вариантах. Protected group либо отсутствует в general/headless, либо полон:
-   канонический пяти-полевой descriptor до 16 KiB, ровно девять ресурсов,
-   соответствующие program/platform/release/digests. Отсутствие группы никогда
+5. **Связность.** Проверить точную привязку текущей программы и наличие
+   отдельного артефакта Authority Custody по [ADR-0130](../../docs/adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
+   Если в комплекте есть protected group, он должен быть полным. Пятиполевой
+   descriptor до 16 KiB связывает девять именованных файлов с их digest и
+   заданными program/platform/release. Отсутствие группы никогда
    не означает protected readiness. Linux platform в descriptor — проверяемый
    факт формата, а не причина ограничивать парсер Linux build tag.
 6. **Выдача.** Передать целый результат только после завершения чтений,
@@ -150,7 +149,7 @@ Release proof и не утверждает filesystem ownership либо гот�
 manifest/descriptor и реальными временными файлами. Положительный сценарий
 проверяет полный snapshot и оригинальную привязку программы. Отрицательные
 сценарии причинно нарушают конкретный этап: pin до parse, retired/unknown
-version, canonical bytes, состав, digest, пары, protected generation, identity,
+version, canonical bytes, состав, digest, protected generation, identity,
 отмена и изменение файла во время чтения. Проверка без критического guard
 должна воспроизвести соответствующий отказ теста. Копии результата отдельно
 проверяются на alias mutation.
