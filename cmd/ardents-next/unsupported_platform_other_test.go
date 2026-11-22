@@ -77,16 +77,6 @@ func TestCompiledInstalledEndpointUsageErrorStaysDistinct(t *testing.T) {
 	}
 }
 
-// runExecutionTextRead is composed internally (execution_holder.go), not a
-// standalone subcommand; assert its typed refusal directly on the report writer.
-func TestUnsupportedExecutionTextReadRefusesExplicitly(t *testing.T) {
-	var out, silent bytes.Buffer
-	if code := runExecutionTextRead(t.Context(), holderPlan{}, [32]byte{}, [32]byte{}, "", &out); code != 1 {
-		t.Fatalf("unsupported text read returned %d", code)
-	}
-	assertUnsupportedPlatformRefusal(t, &out, &silent, "execution.text-read")
-}
-
 type unsupportedRefusalFailWriter struct{}
 
 func (unsupportedRefusalFailWriter) Write([]byte) (int, error) {

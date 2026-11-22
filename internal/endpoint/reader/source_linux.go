@@ -20,14 +20,14 @@ import (
 
 // Histories, selection and shared Hosting remain Reader-owned through the
 // original Connection's joined retirement. No failed opening redraws a set.
-func openSource(operation *executionruntime.Operation, plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared ...*funding.Parents) (_ *connection.InitiatorSource, closeSource func() error, result error) {
+func openSource(operation *executionruntime.Operation, plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared *funding.Parents) (_ *connection.InitiatorSource, closeSource func() error, result error) {
 	if operation == nil || operation.CheckReader() != nil || plan.Domain != 1 || !authority.Available() || holder == nil {
-		return nil, nil, errors.New("original Text Reader composition is unavailable")
+		return nil, nil, errors.New("original document Reader composition is unavailable")
 	}
-	if len(shared) > 1 || len(shared) == 1 && !shared[0].Matches(plan) {
+	if shared != nil && !shared.Matches(plan) {
 		return nil, nil, errors.New("shared Reader Route owners do not match")
 	}
-	ownedParents := len(shared) == 0
+	ownedParents := shared == nil
 	var installation *selection.Installation
 	var budget *hosting.Budget
 	var err error
@@ -37,7 +37,7 @@ func openSource(operation *executionruntime.Operation, plan funding.Plan, author
 			return nil, nil, err
 		}
 	} else {
-		installation, budget = shared[0].Entry(), shared[0].Budget()
+		installation, budget = shared.Entry(), shared.Budget()
 	}
 	var selected *selection.Owner
 	var source *connection.InitiatorSource

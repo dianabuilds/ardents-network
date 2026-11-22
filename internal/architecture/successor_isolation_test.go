@@ -847,9 +847,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/connection_response_loss_linux_test.go" && (dependency == modulePath+"/internal/connection" || dependency == modulePath+"/internal/execution/runtime" || dependency == modulePath+"/internal/publication/runtime" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
-		if source == "cmd/ardents-next/connection_reader_linux.go" && (dependency == modulePath+"/internal/execution" || dependency == modulePath+"/internal/execution/runtime") {
-			return true
-		}
 		if source == "internal/publication/runtime/publisher_streams.go" && dependency == modulePath+"/internal/connection/wire" {
 			return true
 		}
@@ -1443,7 +1440,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"hostile Publisher sibling tests the Application stream", "internal/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/application/connection", true},
 		{"hostile Publisher sibling cannot acquire legacy Service authority", "internal/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/service/connection", false},
 		{"recovery Custody process fixture has a terminal", "cmd/ardents-next/connection_custody_terminal_installed_linux_test.go", "github.com/aymanbagabas/go-pty", true},
-		{"ordinary recovery code cannot open a fixture terminal", "cmd/ardents-next/connection_reader_linux.go", "github.com/aymanbagabas/go-pty", false},
+		{"installed Reader cannot open a fixture terminal", "internal/endpoint/reader/operation_linux.go", "github.com/aymanbagabas/go-pty", false},
 		{"recovery issuance proof consumes the public verifier", "cmd/ardents-next/connection_custody_instance_installed_linux_test.go", modulePath + "/internal/publication", true},
 		{"recovery issuance proof cannot open private Instance authority", "cmd/ardents-next/connection_custody_instance_installed_linux_test.go", modulePath + "/internal/publication/instance", false},
 		{"accepted-request recovery observes genuine Connection", "cmd/ardents-next/connection_accepted_request_installed_linux_test.go", modulePath + "/internal/connection", true},
@@ -1457,7 +1454,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"response loss excludes direct TLS construction", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/route/transport/tls", false},
 		{"response loss excludes direct QUIC construction", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/route/transport/quic", false},
 		{"ordinary Text Reader consumes genuine Connection", "internal/endpoint/reader/source_linux.go", modulePath + "/internal/connection", true},
-		{"ordinary Text Reader consumes qualified original worker", "cmd/ardents-next/connection_reader_linux.go", modulePath + "/internal/execution/runtime", true},
+		{"installed Reader consumes qualified original worker", "internal/endpoint/reader/operation_linux.go", modulePath + "/internal/execution/runtime", true},
 		{"another command cannot borrow Reader composition", "cmd/ardents-next/route.go", modulePath + "/internal/connection", false},
 		{"installed Service scenario consumes real Publisher", "cmd/ardents-next/connection_installed_linux_test.go", modulePath + "/internal/publication/runtime", true},
 		{"installed Service scenario excludes direct TLS construction", "cmd/ardents-next/connection_installed_linux_test.go", modulePath + "/internal/route/transport/tls", false},

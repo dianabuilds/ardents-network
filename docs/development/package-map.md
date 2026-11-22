@@ -630,12 +630,6 @@ change: name the responsibility first, add the real Implementation and tests,
 then update this table in the same change. The normative growth and dependency
 rules are in [repository-layout.md](repository-layout.md).
 
-The existing command row additionally permits exactly
-`cmd/ardents-next/connection_reader_linux.go` to import `connection`,
-`execution`, `execution/runtime`, `reachability` and
-`internal/application/document`; its other new-domain imports remain within
-the command row. This real bounded Text consumer retains original qualified
-Reader authority and closes its Connection/Source before joined result handoff.
 The checked installed component's
 `cmd/ardents-next/connection_response_loss_linux_test.go` additionally imports
 exactly `connection`, `execution/runtime`, `publication/runtime`, `route/transport` and
@@ -925,7 +919,7 @@ through SourceInspection and the bounded repair.
 
 | `internal/endpoint/funding` | `package funding` | Application coordination of original Source stock preparation, issuance and presentation; shared Entry/Hosting parent lifetime. Reader, Publisher and bootstrap callers remain in `cmd/ardents-next`. Admission retains finite rights/debit and durable presentation; Network retains current authority; Route retains selection and physical join. | `internal/admission`, `internal/admission/stock`, `internal/admission/token`, `internal/hosting`, `internal/network`, `internal/network/state`, `internal/route`, `internal/route/ardp`, `internal/route/bootstrap`, `internal/route/prefix`, `internal/route/role`, `internal/route/selection`; standard library. |
 
-| `internal/endpoint/reader` | `package reader` | One original qualified Reader operation shared by console and installed adapters, Source/history ownership, sole stream handoff, local fixed Text request/result projection, interruption and joined retirement. Real callers: installed and console Reader in `cmd/ardents-next`. Borrows participant authority/Stock/Execution/Parents; no CLI or publication decisions. | `internal/application/connection`, `internal/application/document`, `internal/admission`, `internal/admission/stock`, `internal/connection`, `internal/endpoint/funding`, `internal/execution/runtime`, `internal/hosting`, `internal/network`, `internal/reachability`, `internal/route/prefix`, `internal/route/selection`; standard library. |
+| `internal/endpoint/reader` | `package reader` | One original qualified Reader operation for the installed Endpoint, Source/history ownership, sole stream handoff, local document request/result projection, interruption and joined retirement. The installed participant constructs the Reader for the local Connection surface used by `ardents read`. Borrows participant authority/Stock/Execution/Parents; no CLI or publication decisions. | `internal/application/connection`, `internal/application/document`, `internal/admission`, `internal/admission/stock`, `internal/connection`, `internal/endpoint/funding`, `internal/execution/runtime`, `internal/hosting`, `internal/network`, `internal/reachability`, `internal/route/prefix`, `internal/route/selection`; standard library. |
 
 | `internal/endpoint/publisher` | `package publisher` | Qualified snapshot publication application lifecycle: pending/active handoff, Source and role selections, Instance/history custody, stream delivery, withdrawal and joined cleanup. Real callers: installed participant and holder console in `cmd/ardents-next`. Domain Publication retains readiness/refresh/recipient policy. | `internal/application/document`, `internal/admission`, `internal/admission/stock`, `internal/endpoint/funding`, `internal/execution/runtime`, `internal/hosting`, `internal/network`, `internal/publication/durable`, `internal/publication/instance`, `internal/publication/runtime`, `internal/route/prefix`, `internal/route/selection`; standard library. |
 

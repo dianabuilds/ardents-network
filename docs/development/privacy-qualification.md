@@ -66,7 +66,7 @@ production outcomes or authorization to exceed existing product budgets.
 | Quantity | Selected bound and accounting |
 |---|---|
 | Reference request / response | 512 application bytes and 65,536 total response bytes; the text response includes its 13-byte header and 65,523 content bytes |
-| Cold response | p95 <=3 s from authorized request to complete validated response; no private destination cache, token stock or prepared prefix |
+| Cold response | p95 <=3 s from the authorized Reader request, including its worker launch, to the complete validated response; no private destination cache, token stock or prepared prefix |
 | Warm response | p95 <=1 s for a new Connection 1–30 s after a prior read in the same context; valid scoped cache/token stock, one target-free prefix and finite actual-work Node Carrier reuse allowed; retained local Rendezvous Node choice, no reserved join or open Service Connection |
 | Latency samples | 1,000 cold and 1,000 warm attempts per run, 3 declared seeds; report all outcomes and nearest-rank p50/p95/p99; a non-success in the normal reference counts as infinite completion time |
 | First job | UTF-8 document <=4 MiB; one request/Connection, at most 600 s logical lifetime |
