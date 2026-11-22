@@ -19,9 +19,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-func runForwardingNodeProvision(args []string, out io.Writer) error {
-	if len(args) == 0 || os.Geteuid() != 0 {
-		return &forwardingControlFailure{errSourceControlInput}
+func runNodeProvision(role nodeProvisioningRole, args []string, out io.Writer) error {
+	if !role.valid() || len(args) == 0 || os.Geteuid() != 0 {
+		return role.failure(errSourceControlInput)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -29,11 +29,11 @@ func runForwardingNodeProvision(args []string, out io.Writer) error {
 	defer cancel()
 	if args[0] == "prepare-node-key" {
 		if len(args) != 2 {
-			return &forwardingControlFailure{errSourceControlInput}
+			return role.failure(errSourceControlInput)
 		}
 		public, err := prepareProvisioningKey(ctx, args[1], "node-key.pem", nil)
 		if err != nil {
-			return &forwardingControlFailure{err}
+			return role.failure(err)
 		}
 		raw, err := json.Marshal(struct {
 			Operation string `json:"operation"`
@@ -41,7 +41,7 @@ func runForwardingNodeProvision(args []string, out io.Writer) error {
 			State     bool   `json:"state_accepted"`
 			Installed bool   `json:"installed_qualification"`
 			Runtime   bool   `json:"runtime_authority"`
-		}{"forwarding.prepare-node-key", hex.EncodeToString(public[:]), false, false, false})
+		}{role.operation("prepare-node-key"), hex.EncodeToString(public[:]), false, false, false})
 		if err != nil {
 			return err
 		}
@@ -51,33 +51,33 @@ func runForwardingNodeProvision(args []string, out io.Writer) error {
 	var err error
 	finalCheck := func() error { return ctx.Err() }
 	if args[0] == "prepare-node-record" {
-		var plan forwardingRecordPlan
+		var plan nodeRecordPlan
 		var output string
-		plan, output, err = forwardingRecordArguments(args[1:], time.Now().UTC())
-		finalCheck = func() error { return errors.Join(plan.current(time.Now().UTC()), ctx.Err()) }
+		plan, output, err = nodeRecordArguments(role, args[1:], time.Now().UTC())
+		finalCheck = func() error { return errors.Join(plan.current(role, time.Now().UTC()), ctx.Err()) }
 		if err == nil {
-			result, err = plan.prepare(time.Now().UTC())
+			result, err = plan.prepare(role, time.Now().UTC())
 		}
 		if err == nil {
 			var raw []byte
 			raw, err = json.Marshal(plan)
 			if err == nil {
-				err = persistSourceArtifacts(ctx, output, []sourceArtifactFile{{"node-record-plan.json", append(raw, '\n')}, {"node-record.signing-input", result}}, func() error { return plan.current(time.Now().UTC()) }, nil)
+				err = persistSourceArtifacts(ctx, output, []sourceArtifactFile{{"node-record-plan.json", append(raw, '\n')}, {"node-record.signing-input", result}}, func() error { return plan.current(role, time.Now().UTC()) }, nil)
 			}
 		}
 	} else {
-		var signed *forwardingNodeProvisionResult
-		signed, err = prepareForwardingNodeSigned(ctx, args, nil)
+		var signed *nodeProvisionResult
+		signed, err = prepareNodeSigned(ctx, role, args, nil)
 		if err == nil {
 			result = signed.artifact
-			finalCheck = func() error { return errors.Join(signed.plan.current(time.Now().UTC()), ctx.Err()) }
+			finalCheck = func() error { return errors.Join(signed.plan.current(role, time.Now().UTC()), ctx.Err()) }
 		}
 	}
 	if err != nil {
-		return &forwardingControlFailure{err}
+		return role.failure(err)
 	}
 	if err := finalCheck(); err != nil {
-		return &forwardingControlFailure{err}
+		return role.failure(err)
 	}
 	sum := sha256.Sum256(result)
 	raw, err := json.Marshal(struct {
@@ -86,20 +86,20 @@ func runForwardingNodeProvision(args []string, out io.Writer) error {
 		State     bool   `json:"state_accepted"`
 		Installed bool   `json:"installed_qualification"`
 		Runtime   bool   `json:"runtime_authority"`
-	}{"forwarding." + args[0], hex.EncodeToString(sum[:]), false, false, false})
+	}{role.operation(args[0]), hex.EncodeToString(sum[:]), false, false, false})
 	if err != nil {
 		return err
 	}
 	return errors.Join(writeSourceControlBytes(ctx, out, append(raw, '\n')), finalCheck())
 }
 
-type forwardingNodeProvisionResult struct {
+type nodeProvisionResult struct {
 	artifact []byte
-	plan     forwardingRecordPlan
+	plan     nodeRecordPlan
 }
 
-func prepareForwardingNodeSigned(ctx context.Context, args []string, observe func(string, *os.File)) (result *forwardingNodeProvisionResult, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 6 || args[0] != "sign-node-record" && args[0] != "prepare-node-certificate" {
+func prepareNodeSigned(ctx context.Context, role nodeProvisioningRole, args []string, observe func(string, *os.File)) (result *nodeProvisionResult, returned error) {
+	if !role.valid() || ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 6 || args[0] != "sign-node-record" && args[0] != "prepare-node-certificate" {
 		return nil, errSourceControlInput
 	}
 	for _, index := range []int{1, 2, 4, 5} {
@@ -117,11 +117,11 @@ func prepareForwardingNodeSigned(ctx context.Context, args []string, observe fun
 		return nil, errSourceControlInput
 	}
 	inputs := &sourceControlInputs{ctx: ctx}
-	var admitted *forwardingRecordPlan
+	var admitted *nodeRecordPlan
 	defer func() {
 		returned = errors.Join(returned, inputs.close(), ctx.Err())
 		if admitted != nil {
-			returned = errors.Join(returned, admitted.current(time.Now().UTC()))
+			returned = errors.Join(returned, admitted.current(role, time.Now().UTC()))
 		}
 		if returned != nil {
 			result = nil
@@ -131,7 +131,7 @@ func prepareForwardingNodeSigned(ctx context.Context, args []string, observe fun
 	if err != nil {
 		return nil, err
 	}
-	plan, message, err := decodeForwardingRecordPlan(planRaw, time.Now().UTC())
+	plan, message, err := decodeNodeRecordPlan(role, planRaw, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func prepareForwardingNodeSigned(ctx context.Context, args []string, observe fun
 		}
 	}
 	check := func() error {
-		if err := plan.current(time.Now().UTC()); err != nil {
+		if err := plan.current(role, time.Now().UTC()); err != nil {
 			return err
 		}
 		return inputs.checkProtected()
@@ -204,5 +204,5 @@ func prepareForwardingNodeSigned(ctx context.Context, args []string, observe fun
 	if err := persistSourceArtifacts(ctx, args[5], []sourceArtifactFile{{name, artifact}}, check, observe); err != nil {
 		return nil, err
 	}
-	return &forwardingNodeProvisionResult{bytes.Clone(artifact), plan}, check()
+	return &nodeProvisionResult{bytes.Clone(artifact), plan}, check()
 }

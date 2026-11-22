@@ -26,11 +26,18 @@ func forwardingTokenNativeArgs(output, signer string) []string {
 	return []string{"--network-id", strings.Repeat("01", 32), "--issuer-node-id", strings.Repeat("02", 32), "--issuer-node-key", signer, "--start", start.Format(time.RFC3339), "--end", start.Add(time.Hour).Format(time.RFC3339), "--output", output}
 }
 
-func TestForwardingTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T) {
+func TestRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T) {
+	for _, role := range []nodeProvisioningRole{forwardingProvisioningRole, joinProvisioningRole, descriptorProvisioningRole} {
+		t.Run(string(role), func(t *testing.T) { testRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t, role) })
+	}
+}
+
+func testRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T, role nodeProvisioningRole) {
+	t.Helper()
 	parent := sourceArtifactNativeParent(t)
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
 	keyRoot := filepath.Join(parent, "node-key")
-	keyReceipt, err := exec.CommandContext(t.Context(), command, "forwarding", "prepare-node-key", keyRoot).CombinedOutput()
+	keyReceipt, err := exec.CommandContext(t.Context(), command, string(role), "prepare-node-key", keyRoot).CombinedOutput()
 	var key struct {
 		Public string `json:"node_public_key"`
 	}
@@ -39,11 +46,11 @@ func TestForwardingTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testi
 	}
 	output := filepath.Join(parent, "offline-token-material")
 	args := forwardingTokenNativeArgs(output, key.Public)
-	_, binding, _, err := forwardingTokenMaterialArguments(args)
+	_, binding, _, err := nodeTokenMaterialArguments(role, args)
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding", "prepare-token-keys"}, args...)...).CombinedOutput()
+	receipt, err := exec.CommandContext(t.Context(), command, append([]string{string(role), "prepare-token-keys"}, args...)...).CombinedOutput()
 	if err != nil {
 		t.Fatal("canonical finite material producer", err, string(receipt))
 	}
@@ -55,7 +62,7 @@ func TestForwardingTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testi
 		Runtime   bool   `json:"runtime_authority"`
 		Installed bool   `json:"installed_qualification"`
 	}
-	if json.Unmarshal(receipt, &result) != nil || result.Operation != "forwarding.prepare-token-keys" || result.State || result.Issuer || result.Runtime || result.Installed {
+	if json.Unmarshal(receipt, &result) != nil || result.Operation != string(role)+".prepare-token-keys" || result.State || result.Issuer || result.Runtime || result.Installed {
 		t.Fatal("material receipt claims authority")
 	}
 	public, err := os.ReadFile(filepath.Join(output, "public", "token-inventory.json"))
@@ -70,7 +77,7 @@ func TestForwardingTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testi
 		Schema    string             `json:"schema"`
 		Inventory issuance.Inventory `json:"inventory"`
 	}
-	if json.Unmarshal(public, &exported) != nil || exported.Schema != "ardents-forwarding-token-inventory-v1" || exported.Inventory.Binding != binding || len(exported.Inventory.Keys) != 3 || issuerprofile.ValidateCohorts(binding.Start, binding.End, exported.Inventory.Keys) != nil {
+	if json.Unmarshal(public, &exported) != nil || exported.Schema != "ardents-"+string(role)+"-token-inventory-v1" || exported.Inventory.Binding != binding || len(exported.Inventory.Keys) != 3 || issuerprofile.ValidateCohorts(binding.Start, binding.End, exported.Inventory.Keys) != nil {
 		t.Fatal("public cohort/binding mismatch")
 	}
 	// Reopen only through the actual Admission owner. No test reads private files.
@@ -92,7 +99,7 @@ func TestForwardingTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testi
 	if err != nil || before.Mode() != 0600 {
 		t.Fatal("private Admission material custody unavailable", err)
 	}
-	if _, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding", "prepare-token-keys"}, args...)...).CombinedOutput(); err == nil {
+	if _, err := exec.CommandContext(t.Context(), command, append([]string{string(role), "prepare-token-keys"}, args...)...).CombinedOutput(); err == nil {
 		t.Fatal("existing material root was adopted")
 	}
 	after, err := os.Lstat(filepath.Join(material, "issuer.keys"))
@@ -108,7 +115,7 @@ func TestForwardingTokenMaterialNativeCancellationRetainsLeaseAndCloseFailure(t 
 	parent := sourceArtifactNativeParent(t)
 	output := filepath.Join(parent, "held-material")
 	args := forwardingTokenNativeArgs(output, strings.Repeat("03", 32))
-	_, binding, _, err := forwardingTokenMaterialArguments(args)
+	_, binding, _, err := nodeTokenMaterialArguments(forwardingProvisioningRole, args)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +128,7 @@ func TestForwardingTokenMaterialNativeCancellationRetainsLeaseAndCloseFailure(t 
 	done := make(chan error, 1)
 	go func() {
 		var closeErr error
-		public, err := prepareForwardingTokenMaterial(ctx, args, func(phase string, file *os.File) {
+		public, err := prepareNodeTokenMaterial(ctx, forwardingProvisioningRole, args, func(phase string, file *os.File) {
 			if phase == "material-open" {
 				close(held)
 				<-release
@@ -175,7 +182,7 @@ func TestForwardingTokenMaterialNativeCancellationRetainsLeaseAndCloseFailure(t 
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := prepareForwardingTokenMaterial(t.Context(), args, nil); err == nil {
+	if _, err := prepareNodeTokenMaterial(t.Context(), forwardingProvisioningRole, args, nil); err == nil {
 		t.Fatal("partial original output adopted or reset")
 	}
 }

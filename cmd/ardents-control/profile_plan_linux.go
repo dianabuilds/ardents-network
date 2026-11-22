@@ -21,9 +21,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-const maximumJoinProfilePlan = 2 << 20
+const maximumNodeProfilePlan = 2 << 20
 
-type joinProfileDuty struct {
+type nodeProfileDuty struct {
 	Node    string `json:"node_id"`
 	Domain  uint8  `json:"role_domain"`
 	Subrole uint8  `json:"subrole"`
@@ -31,33 +31,33 @@ type joinProfileDuty struct {
 
 // Only public facts are frozen here. Role refinement is explicit; Epoch
 // assignment, membership, grammar and acceptance remain Network decisions.
-type joinProfilePlan struct {
+type nodeProfilePlan struct {
 	Schema              string             `json:"schema"`
 	Reference           time.Time          `json:"reference_time"`
 	Network             string             `json:"network_id"`
 	Authority           string             `json:"state_authority_key"`
 	PermissionAuthority string             `json:"issuance_authority_key"`
 	Bundle              []byte             `json:"epoch_bundle"`
-	Tokens              joinTokenInventory `json:"tokens"`
-	Duties              []joinProfileDuty  `json:"duties"`
+	Tokens              nodeTokenInventory `json:"tokens"`
+	Duties              []nodeProfileDuty  `json:"duties"`
 }
 
-func (p joinProfilePlan) current(now time.Time) error {
-	if p.Schema != "ardents-join-profile-plan-v1" || p.Reference.IsZero() || p.Reference.Location() != time.UTC || p.Reference.Nanosecond() != 0 || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) || now.Before(p.Tokens.Inventory.Binding.Start) || !now.Before(p.Tokens.Inventory.Binding.End) || p.Reference.Before(p.Tokens.Inventory.Binding.Start) || !p.Reference.Before(p.Tokens.Inventory.Binding.End) {
+func (p nodeProfilePlan) current(role nodeProvisioningRole, now time.Time) error {
+	if !role.valid() || p.Schema != role.schema("profile-plan") || p.Reference.IsZero() || p.Reference.Location() != time.UTC || p.Reference.Nanosecond() != 0 || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) || now.Before(p.Tokens.Inventory.Binding.Start) || !now.Before(p.Tokens.Inventory.Binding.End) || p.Reference.Before(p.Tokens.Inventory.Binding.Start) || !p.Reference.Before(p.Tokens.Inventory.Binding.End) {
 		return errSourceControlInput
 	}
 	return nil
 }
 
-type joinProfilePreparation struct {
+type nodeProfilePreparation struct {
 	input    closedprofile.Input
 	decision epoch.Decision
 	context  closedprofile.Context
 	body     []byte
 }
 
-func (p joinProfilePlan) prepare(now time.Time) (prepared joinProfilePreparation, returned error) {
-	if err := p.current(now); err != nil {
+func (p nodeProfilePlan) prepare(role nodeProvisioningRole, now time.Time) (prepared nodeProfilePreparation, returned error) {
+	if err := p.current(role, now); err != nil {
 		return prepared, err
 	}
 	network, err := controlPublic32(p.Network)
@@ -69,7 +69,7 @@ func (p joinProfilePlan) prepare(now time.Time) (prepared joinProfilePreparation
 		return prepared, err
 	}
 	permission, err := controlPublic32(p.PermissionAuthority)
-	if err != nil || authority == permission || p.Tokens.Schema != "ardents-join-token-inventory-v1" || p.Tokens.Inventory.Binding.Network != network || len(p.Bundle) == 0 || len(p.Bundle) > 1<<20 || len(p.Duties) == 0 || len(p.Duties) > closedprofile.MaxNodes {
+	if err != nil || authority == permission || p.Tokens.Schema != role.schema("token-inventory") || p.Tokens.Inventory.Binding.Network != network || len(p.Bundle) == 0 || len(p.Bundle) > 1<<20 || len(p.Duties) == 0 || len(p.Duties) > closedprofile.MaxNodes {
 		return prepared, errSourceControlInput
 	}
 	bundle, err := source.DecodeBundle(p.Bundle)
@@ -133,7 +133,7 @@ func (p joinProfilePlan) prepare(now time.Time) (prepared joinProfilePreparation
 	if _, err := closedprofile.SigningTranscript(body, context); err != nil {
 		return prepared, err
 	}
-	prepared = joinProfilePreparation{input, decision, context, body}
+	prepared = nodeProfilePreparation{input, decision, context, body}
 	// The unsigned-body digest names only this detached consistency check;
 	// it is not a signed profile identity or accepted State.
 	return prepared, prepared.bind(sha256.Sum256(body))
@@ -141,7 +141,7 @@ func (p joinProfilePlan) prepare(now time.Time) (prepared joinProfilePreparation
 
 // Adapt detached verified facts to the actual Network join. No role mapping,
 // membership policy, trusted clock, durable root or runtime right lives here.
-func (p joinProfilePreparation) bind(digest [32]byte) error {
+func (p nodeProfilePreparation) bind(digest [32]byte) error {
 	i := p.input
 	binding := networkdomain.ProfileBinding{Network: i.NetworkID, Generation: i.StateGeneration, EpochDigest: i.EpochDigest, Digest: digest, Epoch: i.Epoch, NotBefore: i.NotBefore, NotAfter: i.NotAfter}
 	facts := networkdomain.ProfileFacts{ProfileBinding: binding, IssuanceAuthorityKey: i.IssuanceAuthorityKey, IssuerNodeID: i.IssuerNodeID}
@@ -170,27 +170,27 @@ func (p joinProfilePreparation) bind(digest [32]byte) error {
 	return err
 }
 
-func decodeJoinProfilePlan(raw []byte, now time.Time) (p joinProfilePlan, prepared joinProfilePreparation, returned error) {
-	if len(raw) == 0 || len(raw) > maximumJoinProfilePlan || json.Unmarshal(raw, &p) != nil {
+func decodeNodeProfilePlan(role nodeProvisioningRole, raw []byte, now time.Time) (p nodeProfilePlan, prepared nodeProfilePreparation, returned error) {
+	if len(raw) == 0 || len(raw) > maximumNodeProfilePlan || json.Unmarshal(raw, &p) != nil {
 		return p, prepared, errSourceControlInput
 	}
 	canonical, err := json.Marshal(p)
 	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
 		return p, prepared, errSourceControlInput
 	}
-	prepared, err = p.prepare(now)
+	prepared, err = p.prepare(role, now)
 	return p, prepared, err
 }
 
-func prepareJoinProfile(ctx context.Context, args []string, observe func(string, *os.File)) (p joinProfilePlan, body []byte, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) > 80 {
+func prepareNodeProfile(ctx context.Context, role nodeProvisioningRole, args []string, observe func(string, *os.File)) (p nodeProfilePlan, body []byte, returned error) {
+	if !role.valid() || ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) > 80 {
 		return p, nil, errSourceControlInput
 	}
-	p = joinProfilePlan{Schema: "ardents-join-profile-plan-v1", Reference: time.Now().UTC().Truncate(time.Second)}
-	flags := flag.NewFlagSet("join prepare-profile", flag.ContinueOnError)
+	p = nodeProfilePlan{Schema: role.schema("profile-plan"), Reference: time.Now().UTC().Truncate(time.Second)}
+	flags := flag.NewFlagSet(string(role)+" prepare-profile", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var bundlePath, inventoryPath, output string
-	duties := joinEpochFlags{maximum: closedprofile.MaxNodes}
+	duties := nodeEpochFlags{maximum: closedprofile.MaxNodes}
 	flags.StringVar(&p.Network, "network-id", "", "explicit Network ID")
 	flags.StringVar(&p.Authority, "authority-key", "", "independent State authority public pin")
 	flags.StringVar(&p.PermissionAuthority, "issuance-authority-key", "", "separate Admission permission authority public pin")
@@ -203,7 +203,7 @@ func prepareJoinProfile(ctx context.Context, args []string, observe func(string,
 	}
 	inputs := &sourceControlInputs{ctx: ctx}
 	defer func() {
-		returned = errors.Join(returned, inputs.close(), p.current(time.Now().UTC()), ctx.Err())
+		returned = errors.Join(returned, inputs.close(), p.current(role, time.Now().UTC()), ctx.Err())
 		if returned != nil {
 			body = nil
 		}
@@ -242,17 +242,19 @@ func prepareJoinProfile(ctx context.Context, args []string, observe func(string,
 		if e1 != nil || e2 != nil || strconv.FormatUint(domain, 10) != fields[1] || strconv.FormatUint(subrole, 10) != fields[2] {
 			return p, nil, errSourceControlInput
 		}
-		p.Duties = append(p.Duties, joinProfileDuty{fields[0], uint8(domain), uint8(subrole)})
+		p.Duties = append(p.Duties, nodeProfileDuty{fields[0], uint8(domain), uint8(subrole)})
 	}
-	prepared, err := p.prepare(time.Now().UTC())
+	prepared, err := p.prepare(role, time.Now().UTC())
 	if err != nil {
 		return p, nil, err
 	}
 	raw, err = json.Marshal(p)
-	if err != nil || len(raw)+1 > maximumJoinProfilePlan {
+	if err != nil || len(raw)+1 > maximumNodeProfilePlan {
 		return p, nil, errSourceControlInput
 	}
-	check := func() error { return errors.Join(p.current(time.Now().UTC()), inputs.checkProtected(), ctx.Err()) }
+	check := func() error {
+		return errors.Join(p.current(role, time.Now().UTC()), inputs.checkProtected(), ctx.Err())
+	}
 	if err := persistSourceArtifacts(ctx, output, []sourceArtifactFile{{"profile-plan.json", append(raw, '\n')}, {"profile.unsigned", prepared.body}}, check, observe); err != nil {
 		return p, nil, err
 	}

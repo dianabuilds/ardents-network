@@ -20,8 +20,8 @@ import (
 
 // Only this fixed profile purpose may use the original matching State key.
 // It authenticates a detached artifact, never accepts State or opens a runtime.
-func signJoinProfile(ctx context.Context, args []string, observe func(string, *os.File)) (plan joinProfilePlan, signed []byte, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 5 {
+func signNodeProfile(ctx context.Context, role nodeProvisioningRole, args []string, observe func(string, *os.File)) (plan nodeProfilePlan, signed []byte, returned error) {
+	if !role.valid() || ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 5 {
 		return plan, nil, errSourceControlInput
 	}
 	for _, index := range []int{0, 1, 3, 4} {
@@ -42,18 +42,18 @@ func signJoinProfile(ctx context.Context, args []string, observe func(string, *o
 	defer func() {
 		returned = errors.Join(returned, inputs.close(), ctx.Err())
 		if admitted {
-			returned = errors.Join(returned, plan.current(time.Now().UTC()))
+			returned = errors.Join(returned, plan.current(role, time.Now().UTC()))
 		}
 		if returned != nil {
 			signed = nil
 		}
 	}()
-	raw, err := inputs.read(args[0], maximumJoinProfilePlan)
+	raw, err := inputs.read(args[0], maximumNodeProfilePlan)
 	if err != nil {
 		return plan, nil, err
 	}
-	var prepared joinProfilePreparation
-	plan, prepared, err = decodeJoinProfilePlan(raw, time.Now().UTC())
+	var prepared nodeProfilePreparation
+	plan, prepared, err = decodeNodeProfilePlan(role, raw, time.Now().UTC())
 	if err != nil {
 		return plan, nil, err
 	}
@@ -66,7 +66,9 @@ func signJoinProfile(ctx context.Context, args []string, observe func(string, *o
 	if !bytes.Equal(actual, prepared.body) || args[2] != hex.EncodeToString(sum[:]) {
 		return plan, nil, errSourceControlInput
 	}
-	check := func() error { return errors.Join(plan.current(time.Now().UTC()), inputs.checkProtected(), ctx.Err()) }
+	check := func() error {
+		return errors.Join(plan.current(role, time.Now().UTC()), inputs.checkProtected(), ctx.Err())
+	}
 	if err := check(); err != nil {
 		return plan, nil, err
 	}
@@ -114,31 +116,31 @@ func signJoinProfile(ctx context.Context, args []string, observe func(string, *o
 	return plan, signed, check()
 }
 
-func runJoinProfileProvision(args []string, out io.Writer) error {
-	if len(args) == 0 || os.Geteuid() != 0 {
-		return &joinControlFailure{errSourceControlInput}
+func runNodeProfileProvision(role nodeProvisioningRole, args []string, out io.Writer) error {
+	if !role.valid() || len(args) == 0 || os.Geteuid() != 0 {
+		return role.failure(errSourceControlInput)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	var plan joinProfilePlan
+	var plan nodeProfilePlan
 	var artifact []byte
 	var err error
 	switch args[0] {
 	case "prepare-profile":
-		plan, artifact, err = prepareJoinProfile(ctx, args[1:], nil)
+		plan, artifact, err = prepareNodeProfile(ctx, role, args[1:], nil)
 	case "sign-profile":
-		plan, artifact, err = signJoinProfile(ctx, args[1:], nil)
+		plan, artifact, err = signNodeProfile(ctx, role, args[1:], nil)
 	default:
-		return &joinControlFailure{errSourceControlInput}
+		return role.failure(errSourceControlInput)
 	}
 	if err != nil {
-		return &joinControlFailure{err}
+		return role.failure(err)
 	}
-	check := func() error { return errors.Join(plan.current(time.Now().UTC()), ctx.Err()) }
+	check := func() error { return errors.Join(plan.current(role, time.Now().UTC()), ctx.Err()) }
 	if err := check(); err != nil {
-		return &joinControlFailure{err}
+		return role.failure(err)
 	}
 	sum := sha256.Sum256(artifact)
 	raw, err := json.Marshal(struct {
@@ -147,7 +149,7 @@ func runJoinProfileProvision(args []string, out io.Writer) error {
 		State     bool   `json:"state_accepted"`
 		Runtime   bool   `json:"runtime_authority"`
 		Installed bool   `json:"installed_qualification"`
-	}{"join." + args[0], hex.EncodeToString(sum[:]), false, false, false})
+	}{role.operation(args[0]), hex.EncodeToString(sum[:]), false, false, false})
 	if err != nil {
 		return err
 	}

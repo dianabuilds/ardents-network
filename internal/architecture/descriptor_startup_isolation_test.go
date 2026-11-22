@@ -1,48 +1,10 @@
 package architecture
 
-// Exact imports of retained Descriptor offline provisioning and the
-// read-only repair runtime after the transitional startup/installation
-// orchestration retired (#604 FJD stage D, ADR-0125). No role selector, Route
-// root, legacy backend, callback bridge or sibling live Installation owner. The
-// generic network authority preparation (epoch/node-record/profile/token) keeps
-// its own closed producers; the platform-led Descriptor lifecycle owns runtime.
+// Descriptor keeps exact imports for Release admission and the read-only
+// platform manager after retiring the transitional startup orchestration
+// (ADR-0125).
 func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
-	case "cmd/ardents-control/descriptor_epoch_plan_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_epoch_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_node_provision_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_node_record_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_profile_plan_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_profile_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/closedprofile":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_token_material_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/admission/issuance":
-			return true
-		}
 	case "internal/release/infrastructure/descriptor_admission.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/enrollment", "github.com/dianabuilds/ardents-network/internal/release":

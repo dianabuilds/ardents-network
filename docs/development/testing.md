@@ -287,7 +287,7 @@ No private fixture key is extracted, no old/Next backend is called, and no Route
 Hosting reservation, receiving spend, installed runtime, operational family or
 bootstrap qualification is claimed by this credential-preparation case.
 
-`TestForwardingProfileNativeCanonicalEpochInventoryAndSignature` belongs to
+`TestRoleProfileNativeCanonicalEpochInventoryAndSignature` belongs to
 root/ext4 `network-signing-linux` offline preparation. Independently pinned
 canonical Control creates real State/Node keys, signed Records/Epoch, actual
 Admission material, the public profile plan and its fixed State signature.
@@ -304,7 +304,7 @@ only Rendezvous assignments: this is profile preparation evidence, not an
 installed Forwarding duty, independent-family eligibility, State acceptance or
 an installed/bootstrap qualification claim.
 
-`TestForwardingTokenMaterialNativeCanonicalInventoryAndRetainedRoot` belongs to
+`TestRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot` belongs to
 root/ext4 `network-signing-linux` preparation with independently pinned canonical
 Control. Real canonical Node-key preparation supplies only its public signer;
 the token-key command uses the genuine Admission material owner. Reopened public
@@ -349,7 +349,7 @@ core and the distinct closed-profile versus offline-preparation identifier
 contracts. The role argument/plan refusal tests continue to exercise the same
 shared decoders through their own schemas and validators.
 
-`TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof`
+`TestRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof`
 belongs to root/ext4 `network-signing-linux` preparation with independently pinned
 canonical Control. It generates separate actual State/Node keys and signed
 Records through canonical commands, prepares/signs the exact Epoch and verifies
@@ -362,7 +362,7 @@ target, authority/Node-key alias, seed/domain/input ambiguity and damaged signed
 Records. Historical but still-valid signed Node declarations remain usable as
 public facts. No State/Startup/installed or independent-family claim is supplied.
 
-`TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate` belongs to
+`TestRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate` belongs to
 the root/ext4 `network-signing-linux` preparation profile. Independently pinned
 canonical Control creates its own protected Node key, prepares a public Record
 from flags, signs the exact reviewed bytes and creates the matching closed Node

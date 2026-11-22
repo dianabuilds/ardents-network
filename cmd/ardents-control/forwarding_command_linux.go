@@ -13,13 +13,13 @@ func runForwardingControl(args []string, out io.Writer) error {
 	}
 	switch args[0] {
 	case "prepare-profile", "sign-profile":
-		return runForwardingProfileProvision(args, out)
+		return runNodeProfileProvision(forwardingProvisioningRole, args, out)
 	case "prepare-token-keys":
-		return runForwardingTokenMaterial(args[1:], out)
+		return runNodeTokenMaterial(forwardingProvisioningRole, args[1:], out)
 	case "prepare-state-key", "prepare-epoch", "sign-epoch":
-		return runForwardingEpochProvision(args, out)
+		return runNodeEpochProvision(forwardingProvisioningRole, args, out)
 	case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
-		return runForwardingNodeProvision(args, out)
+		return runNodeProvision(forwardingProvisioningRole, args, out)
 	case "prepare-release-keys":
 		return runForwardingReleaseKeys(args[1:], out)
 	case "sign-initial-release":

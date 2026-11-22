@@ -15,7 +15,7 @@ import (
 
 // The public declaration has one initial Node Record purpose. It contains no
 // key path, role assignment, custom message or accepting State projection.
-type joinRecordPlan struct {
+type nodeRecordPlan struct {
 	Schema    string    `json:"schema"`
 	Reference time.Time `json:"reference_time"`
 	Network   string    `json:"network_id"`
@@ -28,15 +28,15 @@ type joinRecordPlan struct {
 	Capacity  uint16    `json:"capacity"`
 }
 
-func (p joinRecordPlan) current(now time.Time) error {
-	if p.Schema != "ardents-join-node-record-plan-v1" || p.Reference.IsZero() || p.Reference.Location() != time.UTC || p.From.Location() != time.UTC || p.Until.Location() != time.UTC || p.Reference.Nanosecond() != 0 || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) || p.Reference.Before(p.From) || !p.Reference.Before(p.Until) || now.Before(p.From) || !now.Before(p.Until) || p.Until.Sub(p.From) > 7*24*time.Hour {
+func (p nodeRecordPlan) current(role nodeProvisioningRole, now time.Time) error {
+	if !role.valid() || p.Schema != role.schema("node-record-plan") || p.Reference.IsZero() || p.Reference.Location() != time.UTC || p.From.Location() != time.UTC || p.Until.Location() != time.UTC || p.Reference.Nanosecond() != 0 || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) || p.Reference.Before(p.From) || !p.Reference.Before(p.Until) || now.Before(p.From) || !now.Before(p.Until) || p.Until.Sub(p.From) > 7*24*time.Hour {
 		return errSourceControlInput
 	}
 	return nil
 }
 
-func (p joinRecordPlan) prepare(now time.Time) ([]byte, error) {
-	if err := p.current(now); err != nil {
+func (p nodeRecordPlan) prepare(role nodeProvisioningRole, now time.Time) ([]byte, error) {
+	if err := p.current(role, now); err != nil {
 		return nil, err
 	}
 	host, port, err := net.SplitHostPort(p.Endpoint)
@@ -60,12 +60,12 @@ func (p joinRecordPlan) prepare(now time.Time) ([]byte, error) {
 	return epoch.PrepareInitialClosedRecord(epoch.InitialClosedRecord{NetworkID: network, NodeID: node, PublicKey: ed25519.PublicKey(public[:]), Family: p.Family, Endpoint: p.Endpoint, ValidFrom: p.From, ValidUntil: p.Until, Capacity: p.Capacity, Carrier: epoch.CarrierClosedTCP})
 }
 
-func joinRecordArguments(args []string, now time.Time) (joinRecordPlan, string, error) {
-	p := joinRecordPlan{Schema: "ardents-join-node-record-plan-v1", Reference: now.UTC().Truncate(time.Second)}
+func nodeRecordArguments(role nodeProvisioningRole, args []string, now time.Time) (nodeRecordPlan, string, error) {
+	p := nodeRecordPlan{Schema: role.schema("node-record-plan"), Reference: now.UTC().Truncate(time.Second)}
 	if len(args) > 20 {
 		return p, "", errSourceControlInput
 	}
-	flags := flag.NewFlagSet("join prepare-node-record", flag.ContinueOnError)
+	flags := flag.NewFlagSet(string(role)+" prepare-node-record", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var from, until, output string
 	var capacity uint
@@ -91,14 +91,14 @@ func joinRecordArguments(args []string, now time.Time) (joinRecordPlan, string, 
 	if err != nil || p.Until.Format(time.RFC3339) != until {
 		return p, "", errSourceControlInput
 	}
-	if _, err := p.prepare(now); err != nil {
+	if _, err := p.prepare(role, now); err != nil {
 		return p, "", err
 	}
 	return p, output, nil
 }
 
-func decodeJoinRecordPlan(raw []byte, now time.Time) (joinRecordPlan, []byte, error) {
-	var p joinRecordPlan
+func decodeNodeRecordPlan(role nodeProvisioningRole, raw []byte, now time.Time) (nodeRecordPlan, []byte, error) {
+	var p nodeRecordPlan
 	if len(raw) == 0 || len(raw) > 16<<10 || json.Unmarshal(raw, &p) != nil {
 		return p, nil, errSourceControlInput
 	}
@@ -106,6 +106,6 @@ func decodeJoinRecordPlan(raw []byte, now time.Time) (joinRecordPlan, []byte, er
 	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
 		return p, nil, errSourceControlInput
 	}
-	prepared, err := p.prepare(now)
+	prepared, err := p.prepare(role, now)
 	return p, prepared, err
 }
