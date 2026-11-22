@@ -4,30 +4,8 @@ import (
 	"encoding/json"
 	"flag"
 	"io"
-	"strings"
 	"time"
 )
-
-// Both finite Forwarding flag producers reject implicit last-wins selection.
-// Only the plan's exact State-authority option is intentionally repeatable.
-// This shared public-option grammar outlived the retired prepare-request/plan
-// producers (#604 FJD stage D); the retained release-plan producer and the
-// JOIN/Descriptor argument parsers consume the same uniqueness control.
-func forwardingUniqueOptions(args []string, repeatable string) bool {
-	seen := map[string]bool{}
-	for _, argument := range args {
-		if len(argument) < 2 || argument[0] != '-' {
-			continue
-		}
-		name := strings.TrimLeft(argument, "-")
-		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && name != repeatable {
-			return false
-		}
-		seen[name] = true
-	}
-	return true
-}
 
 // Public declarations and existing artifact bytes only. No key, signature,
 // initial pin or qualification fact is manufactured by this preparer.
@@ -57,7 +35,7 @@ func forwardingReleasePurposeArguments(args []string, inputs *sourceControlInput
 	set.StringVar(&programCustom, "program-custom", "", "reviewed public program claims")
 	set.StringVar(&generationCustom, "generation-custom", "", "reviewed public generation claims")
 	set.StringVar(&destination, "output", "", "fresh output directory")
-	if set.Parse(args) != nil || set.NArg() != 0 || set.NFlag() != 9 || !forwardingUniqueOptions(args, "") || !sourceControlPath(destination) {
+	if set.Parse(args) != nil || set.NArg() != 0 || set.NFlag() != 9 || !uniquePublicOptions(args) || !sourceControlPath(destination) {
 		return nil, "", errSourceControlInput
 	}
 	var err error

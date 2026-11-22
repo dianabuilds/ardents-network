@@ -47,7 +47,7 @@ func joinTokenMaterialArguments(args []string) (p joinTokenMaterialPlan, binding
 	flags.StringVar(&start, "start", "", "first aligned UTC hour")
 	flags.StringVar(&end, "end", "", "exclusive aligned UTC hour")
 	flags.StringVar(&output, "output", "", "fresh protected offline material output")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 6 || !joinUniqueOptions(args, "") || !sourceControlPath(output) {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 6 || !uniquePublicOptions(args) || !sourceControlPath(output) {
 		return p, binding, output, errSourceControlInput
 	}
 	var err error

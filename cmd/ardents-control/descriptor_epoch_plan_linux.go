@@ -132,7 +132,7 @@ func prepareDescriptorEpoch(ctx context.Context, args []string, observe func(str
 	flags.Var(&plans, "record-plan", "original public Node declaration, paired by order")
 	flags.Var(&records, "record", "original signed Node Record, paired by order")
 	flags.StringVar(&output, "output", "", "fresh public Epoch preparation output")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 10 || !descriptorEpochUniqueOptions(args) || !sourceControlPath(output) || len(plans.values) == 0 || len(plans.values) != len(records.values) {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 10 || !uniquePublicOptions(args, "domain", "record-plan", "record") || !sourceControlPath(output) || len(plans.values) == 0 || len(plans.values) != len(records.values) {
 		return p, nil, errSourceControlInput
 	}
 	var err error
@@ -197,20 +197,4 @@ func prepareDescriptorEpoch(ctx context.Context, args []string, observe func(str
 		return p, nil, err
 	}
 	return p, bytes.Clone(result), check()
-}
-
-func descriptorEpochUniqueOptions(args []string) bool {
-	seen := map[string]bool{}
-	for _, argument := range args {
-		if len(argument) < 2 || argument[0] != '-' {
-			continue
-		}
-		name := strings.TrimLeft(argument, "-")
-		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && name != "domain" && name != "record-plan" && name != "record" {
-			return false
-		}
-		seen[name] = true
-	}
-	return true
 }

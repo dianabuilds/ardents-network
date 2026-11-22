@@ -143,11 +143,10 @@ effects. The separate signed candidate integration in
 owners and `github.com/theupdateframework/go-tuf/v2/metadata`; its public signed
 artifact oracle shares no live root or installed runtime. Source's unchanged
 exact descriptor vector remains separately checked.
-The retained Forwarding release-plan argument producer
-(`forwarding_release_arguments_linux.go`) also owns the shared public-option
-uniqueness grammar consumed by the JOIN/Descriptor argument parsers; it imports
-only the standard library. No Source request, account, Startup or native
-installation policy is broadened.
+The Control CLI checks public-option uniqueness in `public_options_linux.go`
+for Forwarding, JOIN and Descriptor Release plan, Node Record, Epoch, profile
+and token key preparation. Each command declares which option names may repeat
+and validates its own values. The shared check imports only the standard library.
 
 The fixed systemd recovery replacement opener matches the genuine expected
 broker-instance/unique owner on its original connection before any RefUnit or

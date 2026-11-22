@@ -92,7 +92,7 @@ func joinRecordArguments(args []string, now time.Time) (joinRecordPlan, string, 
 	flags.StringVar(&until, "valid-until", "", "whole-second RFC3339 interval end")
 	flags.UintVar(&capacity, "capacity", 0, "closed Record capacity, 1..1024")
 	flags.StringVar(&output, "output", "", "fresh public preparation directory")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 9 || !joinUniqueOptions(args, "") || !sourceControlPath(output) || capacity < 1 || capacity > 1024 {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 9 || !uniquePublicOptions(args) || !sourceControlPath(output) || capacity < 1 || capacity > 1024 {
 		return p, "", errSourceControlInput
 	}
 	p.Capacity = uint16(capacity)

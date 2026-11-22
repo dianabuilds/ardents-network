@@ -35,7 +35,7 @@ func descriptorReleasePurposeArguments(args []string, inputs *sourceControlInput
 	set.StringVar(&programCustom, "program-custom", "", "reviewed public program claims")
 	set.StringVar(&generationCustom, "generation-custom", "", "reviewed public generation claims")
 	set.StringVar(&destination, "output", "", "fresh output directory")
-	if set.Parse(args) != nil || set.NArg() != 0 || set.NFlag() != 9 || !forwardingUniqueOptions(args, "") || !sourceControlPath(destination) {
+	if set.Parse(args) != nil || set.NArg() != 0 || set.NFlag() != 9 || !uniquePublicOptions(args) || !sourceControlPath(destination) {
 		return nil, "", errSourceControlInput
 	}
 	var err error
