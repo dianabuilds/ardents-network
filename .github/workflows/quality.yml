@@ -10,12 +10,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [network-signing-check]
+        profile: [network-preparation-check, network-signing-check]
     steps:
       - name: Check out exact publication candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: a7ed09f87775a625c5c79f36013401ff6e513bab
+          ref: 68012152c875bbfbd249d881537037e91d069374
           persist-credentials: false
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -25,7 +25,7 @@ jobs:
       - name: Run registered native profile
         shell: bash
         env:
-          CANDIDATE: a7ed09f87775a625c5c79f36013401ff6e513bab
+          CANDIDATE: 68012152c875bbfbd249d881537037e91d069374
           PROFILE: ${{ matrix.profile }}
           GOTOOLCHAIN: local
         run: |
@@ -53,11 +53,22 @@ jobs:
               test "$owner" = 0
               (( (8#$mode & 022) == 0 ))
             done
-            sudo -n env PATH="$PATH" GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly \
-              TMPDIR="$native_dir" GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
-              sh -ec 'umask 077
-                mkdir "$TMPDIR/permission-probe"
-                test "$(stat -c %a "$TMPDIR/permission-probe")" = 700
-                rmdir "$TMPDIR/permission-probe"
-                exec make "$1"' native "$PROFILE"
+            real_go=$(command -v go)
+            sudo -n install -d -m 0700 "$native_dir/tools"
+            sudo -n tee "$native_dir/tools/go" >/dev/null <<'SHIM'
+          #!/bin/sh
+          set -eu
+          for arg in "$@"; do
+              if [ "$arg" = '^TestSourceInspectionNative' ]; then
+                  umask 077
+                  break
+              fi
+          done
+          exec "$ARDENTS_NATIVE_GO" "$@"
+          SHIM
+            sudo -n chmod 0500 "$native_dir/tools/go"
+            sudo -n env PATH="$native_dir/tools:$PATH" ARDENTS_NATIVE_GO="$real_go" \
+              GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly TMPDIR="$native_dir" \
+              GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
+              sh -ec 'umask 022; exec make "$1"' native "$PROFILE"
           fi
