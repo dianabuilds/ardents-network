@@ -8,7 +8,6 @@ import (
 	"errors"
 	"flag"
 	"io"
-	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/custody"
 )
@@ -42,7 +41,7 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		if record != "" || requestPath != "" || responsePath != "" || kind != "" || identity != "" {
 			return errors.New("create-service-authority accepts no record, request, response, kind, or identity")
 		}
-		binding, err := newServiceBinding(environment, network, authorityRoot)
+		binding, err := newAuthorityBinding(mode, custody.AuthorityService, environment, network, authorityRoot)
 		if err != nil {
 			return err
 		}
@@ -56,7 +55,7 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		if err != nil || binding.Kind != custody.AuthorityService {
 			return errors.New("issue-service-credential requires one exact Service Authority binding")
 		}
-		request, err := readPublicRequest(requestPath)
+		request, err := readAuthorityRequest(requestPath, 1024, "service Instance request")
 		if err != nil {
 			return err
 		}
@@ -89,41 +88,10 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 	if mode == "create-service-authority" {
 		return encodeServiceAuthorityReceipt(output, receipt)
 	}
-	if err := publishStableCustodyPublicFile(responsePath, receipt.ServiceResponse); err != nil {
+	if err := receipt.PublishServiceResponse(responsePath); err != nil {
 		return err
 	}
 	return encodeServiceCredentialReceipt(output, receipt)
-}
-
-func newServiceBinding(environment, network, root string) (custody.AuthorityBinding, error) {
-	var binding custody.AuthorityBinding
-	for _, value := range []struct {
-		text string
-		dest []byte
-	}{{environment, binding.Environment[:]}, {network, binding.Network[:]}, {root, binding.Root[:]}} {
-		if err := decodeCommandCommitment(value.text, value.dest); err != nil {
-			return custody.AuthorityBinding{}, errors.New("create-service-authority requires lowercase public commitments")
-		}
-	}
-	binding.Kind = custody.AuthorityService
-	return binding, nil
-}
-
-func readPublicRequest(path string) ([]byte, error) {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > 1024 {
-		return nil, errors.New("service Instance request file is invalid")
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	raw, readErr := io.ReadAll(io.LimitReader(file, 1025))
-	closeErr := file.Close()
-	if readErr != nil || closeErr != nil || len(raw) > 1024 {
-		return nil, errors.Join(readErr, closeErr, errors.New("service Instance request file is invalid"))
-	}
-	return raw, nil
 }
 
 func encodeServiceAuthorityReceipt(output io.Writer, receipt custody.Receipt) error {
