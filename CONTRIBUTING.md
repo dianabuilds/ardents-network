@@ -57,4 +57,8 @@ the security boundary.
 
 Keep dependency caches, build outputs, and test evidence outside the repository.
 The Makefile configures the quality cache under the system temporary directory;
-`QUALITY_CACHE_ROOT` may name another external location.
+`QUALITY_CACHE_ROOT` may name another external location. A successful
+`make check` trims the shared build cache back to
+`QUALITY_CACHE_BUILD_BUDGET_GIB` (also available as `make quality-cache-trim`).
+Verification sessions remove their disposable `ardents-*` workdirs with
+`scripts/quality-tmp-janitor.sh` when a run completes.

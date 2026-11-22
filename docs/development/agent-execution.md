@@ -194,6 +194,22 @@ independent admitted work explicit rather than silently expanding the scope.
 - Close an issue only when every acceptance and integration obligation is met.
   Missing prerequisites, incomplete consumers and deadcode failures stay visible.
 
+## Disposable verification workspace
+
+Verification runs share the default `QUALITY_CACHE_ROOT` so the warm build and
+module caches are reused; a successful `make check` trims the build cache back
+to `QUALITY_CACHE_BUILD_BUDGET_GIB` through `make quality-cache-trim`. Do not
+create a fresh isolated cache per session or per run.
+
+When a run genuinely needs an isolated disposable workdir, create it under the
+system temporary directory with an `ardents-` prefix (`mktemp -d`) and remove
+it when the run completes, whether it passed or failed:
+`sh scripts/quality-tmp-janitor.sh --own <paths>` removes exactly the named
+paths, and a plain invocation sweeps `ardents-*` orphans older than 24 hours.
+The janitor never removes the shared quality cache root or any path a live
+process still uses. Retain small evidence logs outside the repository when a
+result needs them; the disposable workdir itself is not evidence.
+
 ## Progress communication
 
 At a meaningful change, report the same concise state in the active conversation
@@ -217,11 +233,13 @@ through another tool or endpoint.
 
 ## Transfer to a fresh agent session
 
-Finish or explicitly transfer each live tool/process handle. Save a compact
-handoff outside the repository with paths to the actual worktree, checkpoint,
-evidence and exact next defect/test; link to authoritative issue/owner contents
-instead of duplicating them. Include the selected model, suggested skills and
-unresolved approval boundaries.
+Finish or explicitly transfer each live tool/process handle. Remove the
+session's disposable verification workdirs, or name them in the handoff when
+the receiving session still needs them. Save a compact handoff outside the
+repository with paths to the actual worktree, checkpoint, evidence and exact
+next defect/test; link to authoritative issue/owner contents instead of
+duplicating them. Include the selected model, suggested skills and unresolved
+approval boundaries.
 
 Only the receiving session implements after handoff. The outgoing session may
 coordinate and verify status, but must not edit concurrently. Transfer does not

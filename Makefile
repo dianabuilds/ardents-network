@@ -5,6 +5,8 @@ SHELL := /bin/sh
 # environment.
 
 QUALITY_CACHE_ROOT ?= $(if $(TEMP),$(TEMP),/tmp)/ardents-network-quality
+# A successful full gate trims the shared Go build cache back to this budget.
+QUALITY_CACHE_BUILD_BUDGET_GIB ?= 8
 export GOENV := off
 export GOTOOLCHAIN := local
 export GOFLAGS := -mod=readonly
@@ -18,7 +20,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quality-cache-trim quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -244,6 +246,18 @@ ifeq ($(HEADLESS_GOOS),linux)
 	$(MAKE) --output-sync=target package-e2e
 endif
 	$(MAKE) --output-sync=target test-race
+	$(MAKE) quality-cache-trim
+
+# The build cache is the only unbounded member of the quality cache; the module
+# cache, analyzer caches and compiled artifacts stay warm. A failed gate keeps
+# the cache for diagnosis, and the session removes its own disposable workdirs.
+.PHONY: quality-cache-trim
+quality-cache-trim:
+ifeq ($(OS),Windows_NT)
+	@echo "quality-cache-trim: POSIX-only; trim $(QUALITY_CACHE_ROOT)/go-build manually on Windows"
+else
+	sh ./scripts/trim-quality-cache.sh "$(QUALITY_CACHE_ROOT)" "$(CURDIR)" "$(QUALITY_CACHE_BUILD_BUDGET_GIB)"
+endif
 
 DIAGNOSTIC_PARSER_ROOT ?= $(if $(GOBIN),$(GOBIN),$(shell go env GOPATH)/bin)
 

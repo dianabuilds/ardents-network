@@ -379,7 +379,11 @@ authority material, dependency caches, databases, compiled binaries, profiles,
 coverage, images, installers, SBOM output, and temporary runtime state stay
 outside the repository in an owned system-temporary or explicitly chosen
 external evidence location. Cleanup validates the exact owned path before
-removal.
+removal. The shared quality cache is bounded: a successful `make check` runs
+`make quality-cache-trim`, which trims the Go build cache back to
+`QUALITY_CACHE_BUILD_BUDGET_GIB`. Disposable verification workdirs are removed
+when their run completes (`scripts/quality-tmp-janitor.sh`); the janitor keeps
+the shared cache root and any path a live process still uses.
 
 Hand-authored, non-sensitive fixtures may be committed under the owning
 `testdata/`; a public certificate or public-key fixture is permitted, but a
