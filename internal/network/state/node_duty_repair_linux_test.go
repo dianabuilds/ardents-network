@@ -123,16 +123,16 @@ func TestNodeDutyRepairDeclarationRoleEquivalence(t *testing.T) {
 				{"privileged", program, plan, entry.name, []string{"privileged", "no-env-expand"}, false},
 			} {
 				t.Run(test.name, func(t *testing.T) {
-					row := []any{test.program, []string{test.program, "node", test.operation, "--retained-config", test.plan}, test.flags, 0, 0, 0, 0, 0, 0, 0}
+					row := []any{test.program, []string{test.program, "node", test.operation, "--retained-config", plan}, test.flags, 0, 0, 0, 0, 0, 0, 0}
 					raw, err := json.Marshal([]any{row})
 					if err != nil {
 						t.Fatal(err)
 					}
 					facts := systemd.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: raw}}
-					// The caller-supplied declaration stays the canonical plan; a
-					// unit loaded with a different plan must refuse (as in the
-					// Source declaration oracle).
-					if nodeDutyRepairDeclaration(facts, plan, entry) != test.accepted {
+					// The loaded declaration stays the genuine canonical plan; only
+					// the caller-supplied expected declaration varies, so a foreign
+					// expected plan must refuse against the genuine loaded unit.
+					if nodeDutyRepairDeclaration(facts, test.plan, entry) != test.accepted {
 						t.Fatal("wrong loaded declaration admission")
 					}
 					// A sibling role's genuine declaration is never this role's proof.
