@@ -5,9 +5,7 @@ package main
 import (
 	"context"
 	"io"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
@@ -23,7 +21,7 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		return 2
 	}
 	if ctx.Err() != nil {
-		if nodeIntroductionReport(out, "refused", "canceled", "", "") != nil {
+		if writeNodeEvent(out, "node.introduction", "refused", "canceled", "", "", "") != nil {
 			return 2
 		}
 		return 130
@@ -54,75 +52,21 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		return 130
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.OpenRetained(config)
-	if err != nil {
-		_ = nodeIntroductionReport(out, "refused", "state-unavailable", "", "")
-		return 1
-	}
-	refuse := func(cause error) int {
-		cleanup := ""
-		if owner.Close() != nil {
-			cleanup = "network"
-		}
-		if nodeIntroductionReport(out, "refused", "startup-unavailable", "", cleanup, encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
-			return 2
-		}
-		return 1
-	}
-	view, err := owner.CurrentRuntime()
-	if err != nil {
-		return refuse(err)
-	}
-	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
-	if err != nil {
-		return refuse(err)
-	}
 	listen := node.ListenIntroduction
 	if retained {
 		listen = node.ListenIntroductionRetained
 	}
-	original, err := listen(ctx, node.IntroductionConfig{
-		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()},
-		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, IntroductionRoot: plan.IntroductionRoot,
-		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
+	return runNodeWithState(ctx, out, diagnostic, "node.introduction", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Introduction, error) {
+		return listen(ctx, node.IntroductionConfig{
+			Authority:         authority,
+			ParticipationRoot: plan.ParticipationRoot,
+			SpendRoot:         plan.SpendRoot,
+			HostingRoot:       plan.HostingRoot,
+			IntroductionRoot:  plan.IntroductionRoot,
+			Certificate:       plan.Certificate,
+			PrivateKey:        plan.PrivateKey,
+			Work:              plan.Work,
+			Termination:       plan.Termination,
+		})
 	})
-	if err != nil {
-		return refuse(err)
-	}
-	outputErr := nodeIntroductionReport(out, "listening", "original-duty", "", "")
-	if outputErr == nil {
-		select {
-		case <-ctx.Done():
-		case <-original.Done():
-		}
-	}
-	original.Stop()
-	joined := make(chan nodeCompletion, 1)
-	go func() {
-		_ = original.Close()
-		first, cleanup := original.JoinedFailureOwners()
-		joined <- nodeCompletion{outcome: original.JoinedOutcome(), first: first, cleanup: cleanup, stateError: owner.Close()}
-	}()
-	timer := time.NewTimer(time.Duration(plan.RetirementWaitMS) * time.Millisecond)
-	defer timer.Stop()
-	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
-		_ = nodeIntroductionReport(diagnostic, "retiring", "completion-unavailable", "", "")
-	})
-	if timedOut || result.outcome != "canceled" || result.stateError != nil {
-		if result.stateError != nil {
-			result.cleanup = "network"
-		}
-		_ = nodeIntroductionReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
-		if outputErr != nil {
-			return 2
-		}
-		return 1
-	}
-	if outputErr != nil {
-		return 2
-	}
-	if nodeIntroductionReport(diagnostic, "joined", "canceled", "", "") != nil {
-		return 2
-	}
-	return 130
 }

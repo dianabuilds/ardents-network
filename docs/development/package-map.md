@@ -517,6 +517,11 @@ Its local controller transfers public signed Network inputs and actual permissio
 requests/responses between separately installed participants. It neither imports
 private Instance/Publication runtime nor transfers a live domain owner.
 
+The five runtime roles share the original command State lifetime in
+`cmd/ardents-next/node_lifecycle_linux.go`, importing `network/state`,
+`node` and `route/role`. Role-specific CLI files retain their typed plan,
+profile, root checks and constructor. Each Node joins before its State closes.
+
 The original JOIN command in exactly `cmd/ardents-next/node_join_linux.go`
 additionally imports `internal/node` and `internal/processresource`.
 `node_join_native_linux_test.go` additionally imports `processresource` and
