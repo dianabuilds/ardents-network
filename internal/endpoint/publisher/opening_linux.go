@@ -187,7 +187,7 @@ func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority fund
 	}
 	flow.FollowSource(owner.CurrentSource)
 	return Publication{owner: owner, close: closeAll, serve: func(caller context.Context) error {
-		contract, err := TextContract(operation)
+		contract, err := DocumentContract(operation)
 		if err != nil {
 			return err
 		}

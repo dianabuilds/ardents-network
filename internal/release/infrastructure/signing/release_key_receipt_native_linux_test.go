@@ -10,7 +10,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -23,7 +22,7 @@ func TestControlReleaseKeyReceiptsNative(t *testing.T) {
 		t.Run(role, func(t *testing.T) {
 			output := filepath.Join(parent, role)
 			call := func() ([]byte, error) {
-				return exec.CommandContext(t.Context(), program, role, "prepare-release-keys", output).Output()
+				return releaseCommand(t, program, role, "prepare-release-keys", output).Output()
 			}
 			raw, err := call()
 			if err != nil {

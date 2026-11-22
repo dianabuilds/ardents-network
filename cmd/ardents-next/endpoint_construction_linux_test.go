@@ -176,7 +176,7 @@ func constructionCommandFixture(t *testing.T) (ownerPath, sourcePath, declaratio
 	declaration := endpointPlanDeclaration{
 		NetworkStateRoot:        filepath.Join(base, "state"),
 		LocalRoleStateRoot:      filepath.Join(base, "participation"),
-		TextTokenRoot:           filepath.Join(base, "stock"),
+		ApplicationTokenRoot:    filepath.Join(base, "stock"),
 		EntryStateRoot:          filepath.Join(base, "route"),
 		PublicationRoot:         filepath.Join(base, "publication"),
 		ServiceInstanceRoot:     filepath.Join(base, "instance"),

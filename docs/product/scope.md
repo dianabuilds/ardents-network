@@ -143,14 +143,19 @@ the accepted Network contract. Infrastructure under one known effective
 controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
-The headless bundle delivers `ardents` and `ardents-custody`. Infrastructure
-public artifact preparation uses offline `ardents-next infrastructure`. The
-fixed Release plans and signing use the offline `sign-infrastructure-release`
-entrypoint. The separate `provision-infrastructure` entrypoint prepares the
-signed Network inputs. Protected text execution
-uses the fixed `ardents-text` worker. Operator instructions must not
-require editing JSON, extracting test-fixture keys, knowing package names, or
-reading ADRs to discover command order.
+The headless bundle delivers `ardents` for participants and `ardents-custody`
+for separate key operations. The protected document worker is launched by the
+installed Endpoint. Participants use `ardents publish`, `ardents link` and
+`ardents read` for bounded UTF-8 documents. This restriction belongs to the
+document application. The Service Connection transports opaque bytes, and the
+separate stream qualification exercises binary data, including invalid UTF-8.
+The C0 participant CLI exposes no general file-transfer command.
+
+Infrastructure operators use `ardents infrastructure provision` for offline
+Network inputs and `ardents infrastructure sign-release` for fixed Release
+plans and signatures. Operator instructions must describe the command order
+without requiring edits to JSON, test-fixture keys, package knowledge, or ADR
+lookup.
 
 The readiness journey is: verify the supplied artifact before execution,
 create its supported local state, start the selected project-controlled

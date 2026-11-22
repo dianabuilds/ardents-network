@@ -40,9 +40,9 @@ func runNodeReleaseCommand(role nodeReleaseRole, args []string, out io.Writer, p
 	}
 	if len(args) != wanted {
 		if purpose == nodeReleaseForward {
-			return fmt.Errorf("usage: sign-infrastructure-release %s sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION", role)
+			return fmt.Errorf("usage: ardents infrastructure sign-release %s sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION", role)
 		}
-		return fmt.Errorf("usage: sign-infrastructure-release %s sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION", role)
+		return fmt.Errorf("usage: ardents infrastructure sign-release %s sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION", role)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

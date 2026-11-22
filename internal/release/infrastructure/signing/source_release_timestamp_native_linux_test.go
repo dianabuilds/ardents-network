@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -45,7 +44,7 @@ func exerciseSourceTimestampRefresh(t *testing.T, input sourceTimestampNativeInp
 	plan.Expires = plan.Reference.Add(10 * time.Minute)
 	write(plan)
 	short := filepath.Join(input.parent, "timestamp-short")
-	child := exec.CommandContext(t.Context(), input.command, "source", "refresh-release-timestamp", input.planPath, input.keys, short, filepath.Join(input.parent, "timestamp-short-history"), input.distribution)
+	child := releaseCommand(t, input.command, "source", "refresh-release-timestamp", input.planPath, input.keys, short, filepath.Join(input.parent, "timestamp-short-history"), input.distribution)
 	if output, err := child.CombinedOutput(); err != nil || !bytes.Contains(output, []byte(`"operation":"source.refresh-release-timestamp"`)) {
 		t.Fatal("canonical timestamp refresh", string(output), err)
 	}

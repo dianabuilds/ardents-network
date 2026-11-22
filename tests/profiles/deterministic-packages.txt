@@ -6,10 +6,10 @@ github.com/dianabuilds/ardents-network/internal/architecture
 github.com/dianabuilds/ardents-network/internal/admission
 github.com/dianabuilds/ardents-network/cmd/ardents-next
 
-github.com/dianabuilds/ardents-network/cmd/ardents-text
+github.com/dianabuilds/ardents-network/internal/application/document/worker
 github.com/dianabuilds/ardents-network/tests/qualification/text-worker-lifecycle/stream-worker
 github.com/dianabuilds/ardents-network/internal/application/connection
-github.com/dianabuilds/ardents-network/internal/application/textdocument
+github.com/dianabuilds/ardents-network/internal/application/document
 github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network
 github.com/dianabuilds/ardents-network/internal/hosting
@@ -79,5 +79,3 @@ github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/node/provisioning
 github.com/dianabuilds/ardents-network/internal/platform/artifacts
 github.com/dianabuilds/ardents-network/internal/release/infrastructure/signing
-github.com/dianabuilds/ardents-network/cmd/provision-infrastructure
-github.com/dianabuilds/ardents-network/cmd/sign-infrastructure-release

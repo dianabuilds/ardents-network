@@ -45,7 +45,7 @@ func attachmentPair(t *testing.T) (*Attachment, *net.UnixConn) {
 	return &Attachment{connection: connections[0], pid: uint32(os.Getpid()), uid: uint32(os.Getuid())}, connections[1]
 }
 
-func TestTextWorkerAttachmentChecksEveryReadAndRejectsForeignPID(t *testing.T) {
+func TestDocumentWorkerAttachmentChecksEveryReadAndRejectsForeignPID(t *testing.T) {
 	attachment, peer := attachmentPair(t)
 	for _, body := range []string{"first", "later"} {
 		if _, err := peer.Write([]byte(body)); err != nil {
@@ -65,7 +65,7 @@ func TestTextWorkerAttachmentChecksEveryReadAndRejectsForeignPID(t *testing.T) {
 	}
 }
 
-func TestTextWorkerAttachmentRejectsDescriptorPassingAfterOrdinaryBytes(t *testing.T) {
+func TestDocumentWorkerAttachmentRejectsDescriptorPassingAfterOrdinaryBytes(t *testing.T) {
 	attachment, peer := attachmentPair(t)
 	file, err := os.Open("/dev/null")
 	if err != nil {
@@ -86,7 +86,7 @@ func TestTextWorkerAttachmentRejectsDescriptorPassingAfterOrdinaryBytes(t *testi
 	}
 }
 
-func TestTextWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
+func TestDocumentWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
 	// Dup owns independent fds here, exactly as recvmsg would. Verify every one
 	// closes even when credentials/truncation have already invalidated the read.
 	file, err := os.Open("/dev/null")
@@ -122,7 +122,7 @@ func TestTextWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
 	}
 }
 
-func TestTextWorkerAttachmentCloseIsJoinedAndIdempotent(t *testing.T) {
+func TestDocumentWorkerAttachmentCloseIsJoinedAndIdempotent(t *testing.T) {
 	attachment, _ := attachmentPair(t)
 	completed := make(chan error, 1)
 	joined := make(chan struct{})

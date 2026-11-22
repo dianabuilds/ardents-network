@@ -26,7 +26,7 @@ func TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t *test
 	program, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_JOIN_NEXT_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := exec.CommandContext(t.Context(), command, append([]string{"join"}, args...)...).CombinedOutput()
+		raw, err := releaseCommand(t, command, append([]string{"join"}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Join preparation", args[0], err, string(raw))
 		}
@@ -139,7 +139,7 @@ func TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t *test
 					badPrevious = previous
 				}
 				output, verification := filepath.Join(base, "denied-"+fault), filepath.Join(base, "denied-history-"+fault)
-				if raw, err := exec.CommandContext(t.Context(), command, "join", "sign-forward-release", plan, badKeys, output, verification, badPrevious).CombinedOutput(); err == nil {
+				if raw, err := releaseCommand(t, command, "join", "sign-forward-release", plan, badKeys, output, verification, badPrevious).CombinedOutput(); err == nil {
 					t.Fatal("foreign forward signature accepted", fault, string(raw))
 				}
 				for _, path := range []string{output, verification} {

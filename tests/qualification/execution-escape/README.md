@@ -7,7 +7,7 @@ startup, private Service readiness nor a complete host protection claim.
 
 Build both binaries outside the repository with the selected Linux toolchain:
 
-    go test -c -tags text_worker_escape -trimpath -buildvcs=false -o ESCAPE ./internal/application/textdocument
+    go test -c -tags text_worker_escape -trimpath -buildvcs=false -o ESCAPE ./internal/application/document
     go test -c -tags text_worker_installed -trimpath -buildvcs=false -o RUNTIME ./internal/execution/runtime
 
 Use the admitted Ubuntu24.04/systemd255/cgroup-v2 environment and root-owned

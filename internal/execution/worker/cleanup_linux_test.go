@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestTextWorkerCgroupObservationNeverInfersEmptyFromMissingData(t *testing.T) {
+func TestDocumentWorkerCgroupObservationNeverInfersEmptyFromMissingData(t *testing.T) {
 	for _, body := range []string{"", "populated 0\n", "frozen 0\n", "populated 0\npopulated 0\n", "populated 0\nfrozen 0\nextra 0\n",
 		"populated 2\nfrozen 0\n", "populated 0\nfrozen null\n", strings.Repeat(" ", 1025) + "populated 0 frozen 0"} {
 		if _, err := decodeCgroupEvents([]byte(body)); err == nil {
@@ -29,7 +29,7 @@ func TestTextWorkerCgroupObservationNeverInfersEmptyFromMissingData(t *testing.T
 	}
 }
 
-func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
+func TestDocumentWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 	name := "ardents-text-reader@0-12-997.service"
 	for _, group := range []string{"", "/" + name, "/system.slice/../" + name, "/system.slice//" + name,
 		"/system.slice/" + name + "/child", "/system.slice/other.service", "/system.slice/\n" + name} {
@@ -64,7 +64,7 @@ func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 	}
 }
 
-func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
+func TestDocumentWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 	instance, unit, service := cleanupObservation(t)
 	if !sameCleanupInstance(instance, unit, service) {
 		t.Fatal("exact live cleanup invocation refused")
@@ -141,7 +141,7 @@ func TestStreamWorkerCleanupBindsOnlyQualificationInvocation(t *testing.T) {
 	}
 }
 
-func TestTextWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {
+func TestDocumentWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {
 	owner := &Cleanup{}
 	first := owner.Close()
 	if first == nil || owner.Close() != first {
@@ -149,7 +149,7 @@ func TestTextWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {
 	}
 }
 
-func TestTextWorkerCleanupJoinsOriginalCgroupAfterInvocationChange(t *testing.T) {
+func TestDocumentWorkerCleanupJoinsOriginalCgroupAfterInvocationChange(t *testing.T) {
 	instance, unit, service := cleanupObservation(t)
 	unit["InvocationID"] = value{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
 	owner := &Cleanup{instance: instance}
@@ -176,7 +176,7 @@ func TestTextWorkerCleanupJoinsOriginalCgroupAfterInvocationChange(t *testing.T)
 	}
 }
 
-func TestTextWorkerCleanupJoinsOriginalCgroupWhenManagerUnavailable(t *testing.T) {
+func TestDocumentWorkerCleanupJoinsOriginalCgroupWhenManagerUnavailable(t *testing.T) {
 	instance, _, _ := cleanupObservation(t)
 	owner := &Cleanup{instance: instance}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -202,7 +202,7 @@ func TestTextWorkerCleanupJoinsOriginalCgroupWhenManagerUnavailable(t *testing.T
 	}
 }
 
-func TestTextWorkerCleanupAcceptsOriginalCgroupRemovalWithoutManager(t *testing.T) {
+func TestDocumentWorkerCleanupAcceptsOriginalCgroupRemovalWithoutManager(t *testing.T) {
 	instance, _, _ := cleanupObservation(t)
 	owner := &Cleanup{instance: instance}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -225,7 +225,7 @@ func TestTextWorkerCleanupAcceptsOriginalCgroupRemovalWithoutManager(t *testing.
 	}
 }
 
-func TestTextWorkerCleanupUnknownOriginalObservationFails(t *testing.T) {
+func TestDocumentWorkerCleanupUnknownOriginalObservationFails(t *testing.T) {
 	instance, unit, service := cleanupObservation(t)
 	unit["InvocationID"] = value{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
 	owner := &Cleanup{instance: instance}
@@ -253,7 +253,7 @@ func TestTextWorkerCleanupUnknownOriginalObservationFails(t *testing.T) {
 	}
 }
 
-func TestTextWorkerCleanupLiveOriginalCgroupHasFiniteJoin(t *testing.T) {
+func TestDocumentWorkerCleanupLiveOriginalCgroupHasFiniteJoin(t *testing.T) {
 	instance, unit, service := cleanupObservation(t)
 	unit["InvocationID"] = value{Type: "ay", Data: json.RawMessage(`[2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`)}
 	owner := &Cleanup{instance: instance}

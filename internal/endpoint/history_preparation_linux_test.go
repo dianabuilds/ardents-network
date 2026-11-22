@@ -45,10 +45,10 @@ func historyPreparationPlan(t *testing.T, role string) (HeadlessPlan, source.Bun
 	public := hex.EncodeToString(authority.Public().(ed25519.PublicKey))
 	plan := HeadlessPlan{Schema: "ardents-headless-runtime-v2", Role: role,
 		NetworkStateRoot: filepath.Join(root, "state"), LocalRoleStateRoot: filepath.Join(root, "participation"),
-		TextTokenRoot: filepath.Join(root, "stock"), TimeConfidenceFile: filepath.Join(root, "clock"),
+		ApplicationTokenRoot: filepath.Join(root, "stock"), TimeConfidenceFile: filepath.Join(root, "clock"),
 		EntryStateRoot: filepath.Join(root, "route"),
 		NetworkID:      encoded(1), NetworkAuthorities: []string{public}, ClosedProfileAuthority: public, NetworkThreshold: 1}
-	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot} {
+	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +141,7 @@ func TestParticipantInitialHistoriesAreExplicitAndRetained(t *testing.T) {
 				names = append(names, "publisher")
 			}
 			for _, name := range names {
-				journal, err := attempts.OpenRetained(filepath.Join(plan.TextTokenRoot, name), config.NetworkID, time.Now)
+				journal, err := attempts.OpenRetained(filepath.Join(plan.ApplicationTokenRoot, name), config.NetworkID, time.Now)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -149,7 +149,7 @@ func TestParticipantInitialHistoriesAreExplicitAndRetained(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			entries, err := os.ReadDir(plan.TextTokenRoot)
+			entries, err := os.ReadDir(plan.ApplicationTokenRoot)
 			if err != nil || len(entries) != len(names) {
 				t.Fatal("unexpected role histories", entries, err)
 			}
@@ -240,7 +240,7 @@ func TestParticipantHistoryPreparationRefusesBeforeMutation(t *testing.T) {
 			case "overlap":
 				plan.LocalRoleStateRoot = filepath.Join(plan.NetworkStateRoot, "child")
 			case "clock-overlap":
-				plan.TimeConfidenceFile = filepath.Join(plan.TextTokenRoot, "clock")
+				plan.TimeConfidenceFile = filepath.Join(plan.ApplicationTokenRoot, "clock")
 			case "foreign":
 				if err := os.WriteFile(filepath.Join(plan.LocalRoleStateRoot, "foreign"), []byte("retain"), 0600); err != nil {
 					t.Fatal(err)
@@ -287,7 +287,7 @@ func TestParticipantHistoryPreparationRetainsFailureAndSignedFloor(t *testing.T)
 			if err := PrepareHistories(t.Context(), plan, bundle, profile); err == nil {
 				t.Fatal("altered signature accepted")
 			}
-			for _, path := range []string{plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot} {
+			for _, path := range []string{plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot} {
 				entries, err := os.ReadDir(path)
 				if err != nil || len(entries) != 0 {
 					t.Fatal("unauthenticated preparation created later history", entries, err)

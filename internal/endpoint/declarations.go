@@ -18,7 +18,7 @@ type HeadlessPlan struct {
 	NetworkStateRoot        string         `json:"network_state_root"`
 	LocalRoleStateRoot      string         `json:"local_role_state_root"`
 	TimeConfidenceFile      string         `json:"time_confidence_file"`
-	TextTokenRoot           string         `json:"text_token_root"`
+	ApplicationTokenRoot    string         `json:"text_token_root"`
 	EntryStateRoot          string         `json:"entry_state_root"`
 	ApplicationSocket       string         `json:"application_socket"`
 	AdministrationSocket    string         `json:"administration_socket"`

@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -25,7 +24,7 @@ func TestControlProvisioningKeysNativeRoleAndPurpose(t *testing.T) {
 				name := purpose + "-key.pem"
 				output := filepath.Join(parent, role+"-"+purpose)
 				run := func(role, operation string) ([]byte, error) {
-					return exec.CommandContext(t.Context(), program, role, operation, output).CombinedOutput()
+					return provisionCommand(t, program, role, operation, output).CombinedOutput()
 				}
 				raw, err := run(role, operation)
 				if err != nil {

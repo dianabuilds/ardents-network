@@ -212,7 +212,7 @@ publication. This observed stable read is not an atomic filesystem snapshot
 against a compromised local owner that controls concurrent writes.
 
 The trusted UI may explicitly request its committed publication's Target Link
-with `ardents-text link <administration-socket>`. This read-only operation sends
+with `ardents link <administration-socket>`. This read-only operation sends
 ASCII `link\n`[5] then directional EOF. An implementing Administration owner
 returns ASCII `link\n`[5], a big-endian u16 length, exactly 1 through 512 printable
 ASCII destination bytes, then directional EOF. Unsupported, uncommitted,
@@ -460,9 +460,10 @@ surviving-boundary claim; testing a sibling worker does not prove otherwise.
 | Owner | Responsibility / permitted imports when implemented |
 |---|---|
 | internal/application/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
-| internal/application/textdocument | Fixed text request/response, bounded snapshots and safe presentation; the version-2 Connection contract and standard library |
+| internal/application/document | Fixed text request/response, bounded snapshots and safe presentation; the version-2 Connection contract and standard library |
 | internal/endpoint | Verified installed-unit/socket identity, local job lifecycle, opaque launch receipt, Broker composition and existing Network/Service orchestration; use existing owned imports and the two selected Application contracts |
-| cmd/ardents-text | Trusted text UI owns signal interruption and joins its terminal or pipe descriptors. Fixed worker entrypoints reach the inherited-descriptor audit before UI setup. The UI delegates the bounded document exchange and presentation to textdocument and uses the separate Administration client for publication and Link retrieval. |
+| cmd/ardents-next | The trusted document commands in `ardents` owns terminal I/O. It delegates document exchange and presentation to document and uses the Administration client for publication and Link retrieval. |
+| internal/application/document/worker | The installed `ardents-text` artifact accepts only fixed worker entrypoints and audits the inherited descriptors. |
 | Existing installation/Release owners | Verified worker/root/unit artifacts, separate service identities and controlled install/update/remove; no unverified execution |
 
 These are selected future package additions under ADR-0081.

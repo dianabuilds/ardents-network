@@ -1764,7 +1764,7 @@ as a shortcut.
 
 The following is the accepted contract under ADR-0123, not an extension
 of any existing accepting parser. The product CLI runs Source, Node and Endpoint and owns the public
-inspection routes. `provision-infrastructure` and `sign-infrastructure-release`
+inspection routes. `ardents infrastructure provision` and `ardents infrastructure sign-release`
 own offline preparation and signing; `ardents-custody` keeps its separate
 Authority purpose. Infrastructure initial verification and native transition
 must consume their opaque provenance/proofs in the same original command

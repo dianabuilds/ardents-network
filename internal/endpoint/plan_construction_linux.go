@@ -27,7 +27,7 @@ type PlanDeclaration struct {
 	Role                    string
 	NetworkStateRoot        string
 	LocalRoleStateRoot      string
-	TextTokenRoot           string
+	ApplicationTokenRoot    string
 	EntryStateRoot          string
 	PublicationRoot         string
 	ServiceInstanceRoot     string
@@ -125,7 +125,7 @@ func declaredPlan(network state.Config, declaration PlanDeclaration) (HeadlessPl
 	sort.Strings(authorities)
 	plan := HeadlessPlan{Schema: "ardents-headless-runtime-v2", Role: declaration.Role,
 		NetworkStateRoot: declaration.NetworkStateRoot, LocalRoleStateRoot: declaration.LocalRoleStateRoot,
-		TextTokenRoot: declaration.TextTokenRoot, EntryStateRoot: declaration.EntryStateRoot,
+		ApplicationTokenRoot: declaration.ApplicationTokenRoot, EntryStateRoot: declaration.EntryStateRoot,
 		PublicationRoot: declaration.PublicationRoot, ServiceInstanceRoot: declaration.ServiceInstanceRoot,
 		TimeConfidenceFile: declaration.TimeConfidenceFile, ApplicationSocket: declaration.ApplicationSocket,
 		AdministrationSocket: declaration.AdministrationSocket,
@@ -151,7 +151,7 @@ func declaredPlan(network state.Config, declaration PlanDeclaration) (HeadlessPl
 // owns. An empty permission allocation is refused because no later owner
 // accepts one.
 func declaredLocalPaths(plan HeadlessPlan) error {
-	paths := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot,
+	paths := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot,
 		plan.TimeConfidenceFile, plan.ApplicationSocket, plan.ReaderPermission.RequestPath, plan.ReaderPermission.ResponsePath}
 	permissions := []PermissionPlan{plan.ReaderPermission}
 	if plan.Role == "reader" {
@@ -187,7 +187,7 @@ func isolatedConstructionRoots(plan HeadlessPlan, reference string) error {
 	if !filepath.IsAbs(reference) || filepath.Clean(reference) != reference {
 		return errors.New("reference State root is not canonical")
 	}
-	isolated := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot, plan.TimeConfidenceFile}
+	isolated := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot, plan.TimeConfidenceFile}
 	for i, path := range isolated {
 		for _, previous := range isolated[:i] {
 			if path == previous || strings.HasPrefix(path, previous+"/") || strings.HasPrefix(previous, path+"/") {

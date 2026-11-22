@@ -9,7 +9,7 @@ import (
 	"io"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 )
 
 // resultStream owns only local request/result projection. Execution
@@ -38,7 +38,7 @@ func newResultStream(original context.Context, check func() error, complete func
 			_ = retire()
 		})
 		var fixed bytes.Buffer
-		empty, err := textdocument.NewSnapshot(nil)
+		empty, err := document.NewSnapshot(nil)
 		if err == nil {
 			err = errors.Join(ctx.Err(), check())
 		}
@@ -56,8 +56,8 @@ func newResultStream(original context.Context, check func() error, complete func
 			err = errors.Join(ctx.Err(), check())
 		}
 		if err == nil {
-			var snapshot *textdocument.Snapshot
-			snapshot, err = textdocument.NewSnapshot(body)
+			var snapshot *document.Snapshot
+			snapshot, err = document.NewSnapshot(body)
 			clear(body)
 			if err == nil {
 				err = snapshot.Respond(bytes.NewReader(fixed.Bytes()), checkedOutput{ctx: ctx, check: check, output: response})

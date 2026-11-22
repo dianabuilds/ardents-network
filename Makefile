@@ -457,8 +457,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-provisioning.test" ./internal/node/provisioning
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-release-signing.test" ./internal/release/infrastructure/signing
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/operator-artifacts.test" ./internal/platform/artifacts
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/provision-infrastructure" ./cmd/provision-infrastructure
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-infrastructure-release" ./cmd/sign-infrastructure-release
+	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/ardents-infrastructure" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/release/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state

@@ -11,7 +11,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,7 +31,7 @@ func testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T, r
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		output, err := exec.CommandContext(t.Context(), command, append([]string{string(role)}, args...)...).CombinedOutput()
+		output, err := provisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Node preparation refused", args[0], err, string(output))
 		}
@@ -126,14 +125,14 @@ func testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T, r
 			input, raw = recordPath, record
 		}
 		output := filepath.Join(parent, "wrong-key-"+op)
-		if out, err := exec.CommandContext(t.Context(), command, string(role), op, planPath, input, pin(raw), filepath.Join(otherDir, "node-key.pem"), output).CombinedOutput(); err == nil || bytes.Contains(out, []byte(`"runtime_authority"`)) {
+		if out, err := provisionCommand(t, command, string(role), op, planPath, input, pin(raw), filepath.Join(otherDir, "node-key.pem"), output).CombinedOutput(); err == nil || bytes.Contains(out, []byte(`"runtime_authority"`)) {
 			t.Fatal("wrong original key accepted", op, err)
 		}
 		if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {
 			t.Fatal("wrong key created output", op, err)
 		}
 	}
-	if _, err := exec.CommandContext(t.Context(), command, string(role), "prepare-node-key", keyDir).CombinedOutput(); err == nil {
+	if _, err := provisionCommand(t, command, string(role), "prepare-node-key", keyDir).CombinedOutput(); err == nil {
 		t.Fatal("existing private key output adopted")
 	}
 	if after, err := os.Lstat(privatePath); err != nil || !os.SameFile(privateInfo, after) || after.Mode() != privateInfo.Mode() || after.ModTime() != privateInfo.ModTime() {
