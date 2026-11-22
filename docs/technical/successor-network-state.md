@@ -475,9 +475,11 @@ Neither a public observation nor the generated headless declaration supplies
 Installation/startup permission. The native two-Source test composition uses
 that same projection explicitly without claiming qualified installed startup.
 
-The canonical `ardents-control source prepare-state` finite producer adapts the
+The canonical `ardents-next source prepare-state` finite producer adapts the
 same public serving declaration to State with no acquisition or serving half.
-Under the actual runtime system UID/GID and no supplementary groups, it retains
+State owns the finite `PrepareInitialSource` operation and its public pin
+projection. Under the actual runtime system UID/GID and no supplementary groups,
+the CLI retains
 original public input/ancestor descriptors and an initially empty runtime-owned
 0700 State and participation directories through genuine `State.Accept` and
 joined Close. `State.OpenFresh` and its durable owner exclusively create the

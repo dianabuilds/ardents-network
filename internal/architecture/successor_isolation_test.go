@@ -85,6 +85,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/release/infrastructure/source_release_inspection_linux.go",
 			"internal/platform/cgroup/source_quiescence_linux.go",
 			"internal/network/state/source_inspection_linux.go",
+			"internal/network/state/source_preparation_linux.go",
 			"internal/network/state/inspection_state_linux.go",
 			"internal/network/state/node_inspection_linux.go",
 			"internal/network/state/durable/inspection_linux.go",
@@ -93,9 +94,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/network/duty/node_inspection_linux.go",
 			"internal/admission/spending/inspection_linux.go",
 			"internal/hosting/inspection_linux.go",
-			"cmd/ardents-control/source_state_linux.go",
 			"cmd/ardents-control/source_command_linux.go",
 			"cmd/ardents-control/source_state_linux_test.go",
+			"cmd/ardents-next/source_state_preparation_linux.go",
+			"cmd/ardents-next/source_state_preparation_linux_test.go",
 			"cmd/ardents-control/source_input_linux.go",
 			"cmd/ardents-control/source_output_linux.go",
 			"cmd/ardents-control/source_inspection_linux.go",
@@ -730,24 +732,8 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-control/source_inspection_linux.go" || source == "cmd/ardents-control/source_inspection_linux_test.go") && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/network/source/servingdeclaration") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_state_linux.go" || source == "cmd/ardents-control/source_state_linux_test.go" {
-			for _, owner := range []string{"network/source", "network/source/servingdeclaration", "processresource"} {
-				if dependency == modulePath+"/internal/"+owner {
-					return true
-				}
-			}
-			if source == "cmd/ardents-control/source_state_linux.go" && dependency == modulePath+"/internal/network/state" {
-				return true
-			}
-			if source == "cmd/ardents-control/source_state_linux.go" && dependency == modulePath+"/internal/network/duty" {
-				return true
-			}
-		}
-		if source == "cmd/ardents-control/source_state_preparation_linux_test.go" {
-			switch dependency {
-			case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/network/state", modulePath + "/internal/network/duty", modulePath + "/tests/epochfixture/network":
-				return true
-			}
+		if source == "cmd/ardents-control/source_inspection_linux.go" && (dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/processresource") {
+			return true
 		}
 		if (source == "cmd/ardents-custody/main_test.go" || source == "tests/e2e/service/service_custody_process_linux_test.go" || source == "tests/e2e/service/headless_instance_acquisition_process_test.go") && dependency == modulePath+"/internal/publication" {
 			return true
@@ -1052,6 +1038,12 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_preparation_linux.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
+		if (source == "cmd/ardents-next/source_state_preparation_linux.go" || source == "cmd/ardents-next/source_state_preparation_linux_test.go") && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/processresource") {
+			return true
+		}
+		if source == "cmd/ardents-next/source_state_preparation_linux_test.go" && dependency == modulePath+"/internal/network/duty" {
+			return true
+		}
 		if source == "internal/endpoint/declarations_linux.go" && (dependency == modulePath+"/internal/execution" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
@@ -1194,6 +1186,8 @@ func successorImportAllowed(source, dependency string) bool {
 				"cmd/ardents-next/source_preparation_linux.go",
 				"cmd/ardents-next/source_preparation_process_linux_test.go",
 				"cmd/ardents-next/source_repair_inputs_linux.go",
+				"cmd/ardents-next/source_state_preparation_linux.go",
+				"cmd/ardents-next/source_state_preparation_linux_test.go",
 				"cmd/ardents-next/source_state_linux_test.go":
 				return true
 			}

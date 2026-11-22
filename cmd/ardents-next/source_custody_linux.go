@@ -48,6 +48,21 @@ type sourceInputFile struct {
 	observe func(string, *os.File)
 }
 
+type sourceInputAccess uint8
+
+const (
+	sourcePublicInput sourceInputAccess = iota
+	sourcePrivateInput
+	sourceStateInput
+)
+
+func newSourceInputs(ctx context.Context, observe func(string, *os.File)) sourceInputs {
+	admission, deny := context.WithCancel(ctx)
+	l := &sourceInputLifetime{ctx: admission, deny: deny, callback: make(chan struct{}), done: make(chan struct{}), observe: observe}
+	l.stop = context.AfterFunc(ctx, func() { l.refuse(ctx.Err()); close(l.callback) })
+	return sourceInputs{l}
+}
+
 func acquireSourceInputs(ctx context.Context, path string) (_ sourceInputs, plan servingdeclaration.ServingDeclaration, result error) {
 	return acquireObservedSourceInputs(ctx, path, nil)
 }
@@ -56,10 +71,8 @@ func acquireObservedSourceInputs(ctx context.Context, path string, observe func(
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	admission, deny := context.WithCancel(ctx)
-	l := &sourceInputLifetime{ctx: admission, deny: deny, callback: make(chan struct{}), done: make(chan struct{}), observe: observe}
-	inputs := sourceInputs{l}
-	l.stop = context.AfterFunc(ctx, func() { l.refuse(ctx.Err()); close(l.callback) })
+	inputs := newSourceInputs(ctx, observe)
+	l := inputs.sourceInputLifetime
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, inputs.Close())
@@ -109,33 +122,61 @@ func acquireObservedSourceInputs(ctx context.Context, path string, observe func(
 // root-only/ext4/0700 policy. Runtime keys must belong to the invoking user and
 // exclude other users; public inputs retain their admitted access exactly.
 func (l *sourceInputLifetime) acquire(path string, maximum int64, private bool) (*sourceInputFile, error) {
+	if private {
+		return l.acquireWithAccess(path, maximum, sourcePrivateInput)
+	}
+	return l.acquireWithAccess(path, maximum, sourcePublicInput)
+}
+
+func (l *sourceInputLifetime) acquireWithAccess(path string, maximum int64, access sourceInputAccess) (*sourceInputFile, error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || l.ctx.Err() != nil {
 		return nil, l.refuse(errSourceInput)
 	}
-	p, err := openPreparationParent(filepath.Dir(path))
+	uid := uint32(os.Geteuid())
+	var owner *uint32
+	if access == sourceStateInput {
+		owner = &uid
+	}
+	p, err := openPreparationDirectories(l.ctx, filepath.Dir(path), owner)
 	if err != nil {
-		return nil, l.refuse(errSourceInput)
+		return nil, l.refuse(errors.Join(errSourceInput, err))
 	}
 	f := &sourceInputFile{parent: p, observe: l.observe}
 	l.files = append(l.files, f)
 	f.file, err = openPreparationAt(p.parent(), filepath.Base(path), syscall.O_RDONLY, 0)
 	if err != nil {
-		return nil, l.refuse(errSourceInput)
+		return nil, l.refuse(errors.Join(errSourceInput, err))
 	}
 	f.info, err = f.file.Stat()
 	if err != nil || !f.info.Mode().IsRegular() || f.info.Size() < 1 || f.info.Size() > maximum {
-		return nil, l.refuse(errSourceInput)
+		return nil, l.refuse(errors.Join(errSourceInput, err))
 	}
 	s, ok := f.info.Sys().(*syscall.Stat_t)
-	if !ok || s.Nlink != 1 || private && (s.Uid != uint32(os.Geteuid()) || f.info.Mode().Perm()&0077 != 0) {
+	if !ok || s.Nlink != 1 {
 		return nil, l.refuse(errSourceInput)
+	}
+	switch access {
+	case sourcePrivateInput:
+		if s.Uid != uid || f.info.Mode().Perm()&0077 != 0 {
+			return nil, l.refuse(errSourceInput)
+		}
+	case sourceStateInput:
+		if s.Uid != 0 && s.Uid != uid || f.info.Mode().Perm()&0022 != 0 {
+			return nil, l.refuse(errSourceInput)
+		}
+		if err := checkSourceStatePath(p, uid); err != nil {
+			return nil, l.refuse(err)
+		}
 	}
 	f.raw, err = io.ReadAll(io.LimitReader(f.file, maximum+1))
 	if l.observe != nil {
 		l.observe("read", f.file)
 	}
-	if err != nil || int64(len(f.raw)) != f.info.Size() || f.check() != nil || l.ctx.Err() != nil {
-		return nil, l.refuse(errSourceInput)
+	if err != nil || int64(len(f.raw)) != f.info.Size() {
+		return nil, l.refuse(errors.Join(errSourceInput, err))
+	}
+	if err := errors.Join(f.check(), l.ctx.Err()); err != nil {
+		return nil, l.refuse(err)
 	}
 	return f, nil
 }

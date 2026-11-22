@@ -634,7 +634,7 @@ Required checks of an actually selected change remain mandatory.
 
 ## Consistency, resources and completion inventory
 
-Source's explicit offline `ardents-control source prepare-state` composes
+Source's explicit offline `ardents-next source prepare-state` composes
 `state.OpenFresh`/Accept and `duty.Initialize` in that order over two original
 vacant runtime-owned directories. State owns authenticated acceptance/floors;
 participation owns its empty first generation and exclusive new lease. A

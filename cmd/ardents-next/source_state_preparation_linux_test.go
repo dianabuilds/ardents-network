@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -24,7 +25,11 @@ import (
 // Genuine signed State and actual local files grant no manager/runtime claim.
 func sourceInitialFixture(t *testing.T) (servingdeclaration.ServingDeclaration, string, string) {
 	t.Helper()
-	root := t.TempDir()
+	return sourceInitialFixtureAt(t, t.TempDir())
+}
+
+func sourceInitialFixtureAt(t *testing.T, root string) (servingdeclaration.ServingDeclaration, string, string) {
+	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{71}, 32))
 	node := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{72}, 32))
@@ -95,7 +100,7 @@ func TestSourceInitialPreparationCreatesBothRetainedHistories(t *testing.T) {
 	if !reflect.DeepEqual(stateBefore, sourceHistoryBytes(t, plan.Network.Root)) || !reflect.DeepEqual(rolesBefore, sourceHistoryBytes(t, plan.ParticipationRoot)) {
 		t.Fatal("repeat changed retained state")
 	}
-	config, err := sourcePreparationStateConfig(plan)
+	config, err := state.SourcePreparationConfig(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,6 +150,30 @@ func TestSourceInitialPreparationRefusesPriorAndPartialRoots(t *testing.T) {
 	}
 }
 
+func prepareObservedSourceState(ctx context.Context, planPath, bundlePath string, afterAccept func()) (result error) {
+	custody := sourceStateCustody{files: newSourceInputs(ctx, nil), uid: uint32(os.Geteuid())}
+	defer func() { result = errors.Join(result, custody.close(), ctx.Err()) }()
+	plan, bundle, err := custody.read(planPath, bundlePath)
+	if err != nil {
+		return err
+	}
+	// Arm the intervention only after genuine acceptance publishes its pointer.
+	// The ordinary preparation still reobserves the real input descriptors.
+	var observed bool
+	check := func() error {
+		if !observed {
+			if _, err := os.Stat(filepath.Join(plan.Network.Root, "current")); err == nil {
+				observed = true
+				afterAccept()
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
+		}
+		return custody.check()
+	}
+	return state.PrepareInitialSource(ctx, plan, bundle, check)
+}
+
 func TestSourceInitialPreparationRetainsAcceptedStateOnInterruption(t *testing.T) {
 	for _, failure := range []string{"cancel", "competing-participation"} {
 		t.Run(failure, func(t *testing.T) {
@@ -170,7 +199,7 @@ func TestSourceInitialPreparationRetainsAcceptedStateOnInterruption(t *testing.T
 			if !reflect.DeepEqual(beforeState, sourceHistoryBytes(t, plan.Network.Root)) || !reflect.DeepEqual(beforeRoles, sourceHistoryBytes(t, plan.ParticipationRoot)) {
 				t.Fatal("retry changed original partial preparation")
 			}
-			config, err := sourcePreparationStateConfig(plan)
+			config, err := state.SourcePreparationConfig(plan)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -242,5 +271,103 @@ func TestSourceInitialPreparationDoesNotRecreateLostParticipation(t *testing.T) 
 	}
 	if len(sourceHistoryBytes(t, plan.ParticipationRoot)) != 0 {
 		t.Fatal("retained refusal created history")
+	}
+}
+
+func TestSourcePreparationConfigHasNoServingOrAcquisition(t *testing.T) {
+	plan := servingdeclaration.ServingDeclaration{ProcessProfile: processresource.SourceProfile, ParticipationRoot: "/var/lib/source-participation",
+		Network: &servingdeclaration.ServingNetwork{Root: "/var/lib/source-state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}},
+			Threshold: 1, ProfileAuthority: [32]byte{2}, ClockObservationFile: "/var/lib/source-clock"},
+		Address: "127.0.0.1:4000", Certificate: "/unopened/certificate", PrivateKey: "/unopened/private-key", ClientRoot: "/unopened/ca", ClientPins: [][32]byte{{3}}}
+	config, err := state.SourcePreparationConfig(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Root != plan.Network.Root || config.Clock == nil || !config.Now.IsZero() || config.ClockObservationFile != plan.Network.ClockObservationFile || config.LocalRoleStateRoot != "" ||
+		config.Source.ServeAddress != "" || config.Source.ServeCertificate.PrivateKey != nil || config.Source.ClientCertificate.PrivateKey != nil {
+		t.Fatal("offline preparation acquired runtime configuration")
+	}
+	if _, details, err := source.New(config.Source, config.Authorities); err != nil || details.Configured || details.Serving {
+		t.Fatal("offline configuration declares Source transport", details, err)
+	}
+	// Declaration projection supplies no accepted State or trusted time. State's
+	// genuine verifier separately checks the pins, signatures, time and floors.
+	for _, root := range []string{plan.Network.Root, plan.Network.Root + "/child", "/var/lib"} {
+		changed := plan
+		network := *plan.Network
+		changed.Network = &network
+		changed.ParticipationRoot = root
+		if _, err := state.SourcePreparationConfig(changed); err == nil {
+			t.Fatal("overlapping roots accepted", root)
+		}
+	}
+}
+
+func TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects(t *testing.T) {
+	if os.Geteuid() >= 100 && os.Geteuid() <= 999 {
+		t.Fatal("ordinary test profile requires an unprivileged development user outside the fixed system-account range")
+	}
+	var out, diagnostic bytes.Buffer
+	if code := run(t.Context(), []string{"source", "prepare-state", "/unopened-plan", "/unopened-bundle"}, &out, &diagnostic); code == 0 || out.Len() != 0 {
+		t.Fatal("foreign principal reached preparation or receipt", code)
+	}
+}
+
+func TestSourceInitialPreparationRefusesEarlierInputSubstitutionDuringBundleRead(t *testing.T) {
+	for _, change := range []string{"file", "ancestor"} {
+		t.Run(change, func(t *testing.T) {
+			plan, originalPlan, bundlePath := sourceInitialFixture(t)
+			raw, err := os.ReadFile(originalPlan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			planDir := filepath.Join(filepath.Dir(originalPlan), "public-plan")
+			if err := os.Mkdir(planDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			planPath := filepath.Join(planDir, "serve.json")
+			if err := os.Rename(originalPlan, planPath); err != nil {
+				t.Fatal(err)
+			}
+			armed, replaced := false, false
+			observe := func(phase string, file *os.File) {
+				if !armed || replaced || phase != "check" || file.Name() != filepath.Base(bundlePath) {
+					return
+				}
+				replaced = true
+				target := planPath
+				if change == "ancestor" {
+					target = planDir
+				}
+				if err := os.Rename(target, target+".original"); err != nil {
+					t.Fatal(err)
+				}
+				if change == "ancestor" {
+					if err := os.Mkdir(planDir, 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.WriteFile(planPath, raw, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			custody := sourceStateCustody{files: newSourceInputs(t.Context(), observe), uid: uint32(os.Geteuid())}
+			t.Cleanup(func() {
+				if err := custody.close(); replaced && !errors.Is(err, errSourceInput) {
+					t.Error("original custody failure lost at close", err)
+				}
+			})
+			readPlan, bundle, err := custody.read(planPath, bundlePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			armed = true
+			if err := state.PrepareInitialSource(t.Context(), readPlan, bundle, custody.check); !errors.Is(err, errSourceInput) || !replaced {
+				t.Fatalf("earlier input substitution = %v, replaced = %v", err, replaced)
+			}
+			if len(sourceHistoryBytes(t, plan.Network.Root)) != 0 || len(sourceHistoryBytes(t, plan.ParticipationRoot)) != 0 {
+				t.Fatal("refused inputs initialized history")
+			}
+		})
 	}
 }

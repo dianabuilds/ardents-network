@@ -14,3 +14,7 @@ func runSource(_ context.Context, _ []string, _, diagnostic io.Writer) int {
 func runSourceRepair(_ context.Context, _ []string, _, diagnostic io.Writer) int {
 	return unsupportedPlatformRefusal(diagnostic, "source.repair-retained")
 }
+
+func runSourceStatePreparation(_ context.Context, _ []string, _, diagnostic io.Writer) int {
+	return unsupportedPlatformRefusal(diagnostic, "source.prepare-state")
+}

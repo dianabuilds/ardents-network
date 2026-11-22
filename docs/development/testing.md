@@ -3190,6 +3190,13 @@ on proven replacement guarantees).
 
 ## Source installed operator native qualification
 
+`make network-signing-check` includes the finite
+`TestSourcePreparationNativeStateCommand` scenario. It uses the compiled
+command and a real unused system UID/GID in isolated roots. A mismatched
+primary GID refuses before either history is created. The matching principal
+accepts signed initial State and empty participation once, and a repeat
+leaves both histories intact.
+
 The `source_installed_native` build tag selects
 `cmd/ardents-next/source_installed_native_linux_test.go`
 (`TestNativeSourceInstalledLifecycle`). It is a real-host qualification run
@@ -3203,7 +3210,7 @@ compiles it so its native-test coverage counts.
 The test provisions genuine installed Source delivery on the real host: a
 dedicated `ardents-source` account (unique 100-999 UID/GID, nologin,
 `/nonexistent`), signed State/participation prepared through the actual
-`ardents-control source prepare-state` CLI as that account (repeated
+`ardents-next source prepare-state` CLI as that account (repeated
 preparation refuses), a signed infrastructure distribution of the actual
 command bytes, the explicit first pin executed by the enrolled executable
 itself, the public runtime copy under `/usr/lib/ardents`, declaration and
