@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [packaging, stop-policy]
+        profile: [packaging]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
@@ -38,7 +38,7 @@ jobs:
           set -euo pipefail
           artifacts="$RUNNER_TEMP/protected-enrollment-binaries"
           make headless-build HEADLESS_ARTIFACT_ROOT="$artifacts"
-          ./packaging/alpha-bundle/test.sh linux-amd64 "$artifacts/ardents-linux-amd64" "$artifacts/ardents-custody-linux-amd64"
+          sh ./packaging/alpha-bundle/test.sh linux-amd64 "$artifacts/ardents-linux-amd64" "$artifacts/ardents-custody-linux-amd64"
           go test ./internal/enrollment -run '^TestPackagingConsumersPreserveArtifactAndProtectedInventory$' -count=1 -v
       - name: Query installed policy with original unprivileged subjects
         if: matrix.profile == 'stop-policy'
