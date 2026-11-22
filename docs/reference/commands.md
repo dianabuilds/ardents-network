@@ -487,29 +487,36 @@ their original identities.
 
 ## `ardents-node`
 
+The `ardents-node` binary is fully retired: it was removed with the legacy
+headless CLI retirement (314760b9) and no refusal stub remains. Every
+`ardents-node ...` selector is therefore refusal-by-absence (the shell finds no
+such command), not a typed before-effect refusal returned by a live binary. The
+typed retirement refusals quoted in this section are historical contracts of the
+removed binary; the maintained duties live in `ardents-next` subcommands and the
+platform-led lifecycles.
+
 The transitional Forwarding orchestration is retired (#604 FJD stage D,
-ADR-0125). `ardents-node forwarding start-installed BINDING` returns
-`old Forwarding start-installed orchestration is retired; use the platform-led
-Forwarding lifecycle (ardents-next node forwarding --retained-config, platform
-check/unit, systemctl start ardents-forwarding)` before reading the binding or
-attempting any effect. Every other `ardents-node forwarding ...` form
-(`inspect-inputs`, `install-initial-stopped`, `start-initial`, `restart`,
-`start-selected`, `stop`, `replace`, `recover`, `inspect-initial-history`,
-`inspect-start-history`, `supervise-transition`) returns
-`old Forwarding installation transactions are retired; use the platform-led
-Forwarding lifecycle (ardents-next platform check, node forwarding
---retained-config, forwarding repair-retained)` before reading inputs or
-attempting any effect. The former `installation/forwarding` package, its fixed
-`forwarding start-installed` unit and the OLD-path installed QA profile are
-removed. The platform-led Forwarding lifecycle owns installed delivery: the
-canonical platform unit with the mandatory `platform check` ExecStartPre gate,
-`ardents-next node forwarding --retained-config` and
-`ardents-next forwarding repair-retained` for a dead retained producer. State
-and participation histories are reopened by their own semantic owners, never
-reset. A new candidate and the explicit relaunch/program-change scope require
-their own exact bootstrap receipt and direct Product Owner acceptance before
-any installed execution. The historical transaction contracts remain superseded
-provenance in the [Node owner](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission).
+ADR-0125). The former `ardents-node forwarding start-installed BINDING` refusal
+was `old Forwarding start-installed orchestration is retired; use the
+platform-led Forwarding lifecycle (ardents-next node forwarding
+--retained-config, platform check/unit, systemctl start ardents-forwarding)`;
+every other `ardents-node forwarding ...` form (`inspect-inputs`,
+`install-initial-stopped`, `start-initial`, `restart`, `start-selected`, `stop`,
+`replace`, `recover`, `inspect-initial-history`, `inspect-start-history`,
+`supervise-transition`) refused with `old Forwarding installation transactions
+are retired; use the platform-led Forwarding lifecycle (ardents-next platform
+check, node forwarding --retained-config, forwarding repair-retained)`. The
+former `installation/forwarding` package, its fixed `forwarding start-installed`
+unit and the OLD-path installed QA profile are removed. The platform-led
+Forwarding lifecycle owns installed delivery: the canonical platform unit with
+the mandatory `platform check` ExecStartPre gate, `ardents-next node forwarding
+--retained-config` and `ardents-next forwarding repair-retained` for a dead
+retained producer. State and participation histories are reopened by their own
+semantic owners, never reset. A new candidate and the explicit
+relaunch/program-change scope require their own exact bootstrap receipt and
+direct Product Owner acceptance before any installed execution. The historical
+transaction contracts remain superseded provenance in the
+[Node owner](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission).
 
 The isolated development consumer `ardents-next node forwarding --config <file>`
 starts one original authenticated Forwarding duty on Linux. Its closed input
@@ -596,10 +603,11 @@ Route cleanup failure, which remains failed despite known physical join.
 unavailable, with queue/timer counts explicitly unmeasured. It grants no duty,
 capacity, readiness, supported-host or privacy qualification.
 
-The generic Node, issuer and Hosting commands are retired before they read a
-plan or open a root. The command selects its refusal from the arguments alone.
+The generic Node, issuer and Hosting commands are retired; with the
+`ardents-node` binary removed these selectors are refusal-by-absence. The former
+typed refusals (selected from the arguments alone) are historical:
 
-| Retired selector | Refusal prefix | Maintained owner |
+| Retired selector | Historical refusal prefix | Maintained owner |
 |---|---|---|
 | `ardents-node node --config PATH` | `old Node --config runtime is retired` | `ardents-next node <role> --retained-config` for the independently admitted installed role. |
 | `ardents-node issuer initialize` and `ardents-node issuer serve` | `old Node issuer initialize/serve is retired` | `ardents-next node-identity import`, `ardents-next issuance initialize-profile` and `ardents-next node issuer`. |
@@ -609,16 +617,16 @@ Previously issued records and plans remain historical evidence. The
 [old-start retirement contract](../technical/network-route-node.md#old-start-retirement)
 records the previous reservation-level refusals.
 
-`ardents-node source --config PATH` is retired before reading the plan, opening
-optional diagnostics, State, keys or listeners. It returns
+`ardents-node source --config PATH` is retired; with the binary removed it is
+refusal-by-absence. Its former typed refusal was
 `old Source profile is retired` for the recognized complete selector; no old
 Source backend or automatic plan conversion remains.
 
 `ardents-node source start-installed BINDING` is retired (#604 stage 1.6,
-ADR-0125). It returns `old Source start-installed orchestration is retired; use
+ADR-0125); with the binary removed it is refusal-by-absence. Its former typed
+refusal was `old Source start-installed orchestration is retired; use
 the platform-led Source lifecycle (ardents-control source prepare-state,
-ardents-next platform initialize-trust/unit, systemctl start ardents-source)`
-before any installation, State or native effect. The platform-led Source
+ardents-next platform initialize-trust/unit, systemctl start ardents-source)`. The platform-led Source
 lifecycle owns the installed Source start: `ardents-control source prepare-state`,
 `ardents-next platform initialize-trust`/`unit`, then `systemctl start
 ardents-source` with the mandatory `platform check` ExecStartPre gate and
@@ -1134,16 +1142,16 @@ partial outputs remain retained and cannot be adopted.
 ### Retired JOIN installation and runtime commands
 
 The transitional JOIN orchestration is retired (#604 FJD stage D, ADR-0125).
-`ardents-node join start-installed BINDING` returns `old JOIN start-installed
+The `ardents-node` binary is removed, so `ardents-node join start-installed
+BINDING` and every other `ardents-node join ...` form (`inspect-inputs`,
+`install-initial-stopped`, `inspect-initial-history`, `start-initial`,
+`restart`, `stop`, `replace`, `recover`, `supervise-transition`) are
+refusal-by-absence. Their former typed refusals were `old JOIN start-installed
 orchestration is retired; use the platform-led JOIN lifecycle (ardents-next
 node join --retained-config, platform check/unit, systemctl start ardents-join)`
-before reading the binding or attempting any effect. Every other
-`ardents-node join ...` form (`inspect-inputs`, `install-initial-stopped`,
-`inspect-initial-history`, `start-initial`, `restart`, `stop`, `replace`,
-`recover`, `supervise-transition`) returns `old JOIN installation transactions
-are retired; use the platform-led JOIN lifecycle (ardents-next platform check,
-node join --retained-config, join repair-retained)` before reading inputs or
-attempting any effect. The former `installation/join` package, its fixed
+and `old JOIN installation transactions are retired; use the platform-led JOIN
+lifecycle (ardents-next platform check, node join --retained-config, join
+repair-retained)` respectively. The former `installation/join` package, its fixed
 `join start-installed` unit and the OLD-path installed QA profile are removed.
 The platform-led JOIN lifecycle owns installed delivery: the canonical platform
 unit with the mandatory `platform check` ExecStartPre gate, `ardents-next node
@@ -1167,14 +1175,16 @@ JOIN lifecycle owns State preparation.
 ## Descriptor-role public preparation
 
 The transitional Descriptor orchestration and its OLD preparation are retired
-(#604 FJD stage D, ADR-0125). `ardents-node descriptor start-installed BINDING`
-and every `ardents-node descriptor ...` installation transaction
+(#604 FJD stage D, ADR-0125). The `ardents-node` binary is removed, so
+`ardents-node descriptor start-installed BINDING` and every
+`ardents-node descriptor ...` installation transaction
 (`install-initial-stopped`, `inspect-initial-history`, `start-initial`, `stop`,
 `inspect-started-history`, `restart`, `replace`, `recover`,
-`supervise-transition`, `inspect-inputs`) return one typed before-effect
-retirement error pointing to the platform-led Descriptor lifecycle
-(`ardents-next node descriptor --retained-config`, `platform check/unit`,
-`systemctl start ardents-descriptor`, `descriptor repair-retained`). The former
+`supervise-transition`, `inspect-inputs`) are refusal-by-absence; their former
+typed before-effect retirement error pointed to the platform-led Descriptor
+lifecycle (`ardents-next node descriptor --retained-config`,
+`platform check/unit`, `systemctl start ardents-descriptor`,
+`descriptor repair-retained`). The former
 `descriptor_installed_linux.go`/`descriptor_installation_linux.go` compositions
 and the `installation/descriptor` package are removed; Descriptor was the last
 canonical installed role consumer.

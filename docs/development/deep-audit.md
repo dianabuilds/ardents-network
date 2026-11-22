@@ -109,7 +109,10 @@ the promotion decision. A separate post-release campaign may later use
 operational evidence, but cannot retroactively qualify an earlier build.
 
 For C0, the headless Network candidate and neutral Application Interface are
-joined only by `ardents-application-interface-v1`. The audit corpus uses
+joined by two selected seams: the typed Connection v2 contract with AAI3 grammar
+in `internal/application/connection`, and the separate Administration v1
+contract `ardents-application-interface-v1` in
+`internal/application/administration`. The audit corpus uses
 [`ownership.json`](ownership.json) rather than inferring ownership from
 directory names. The former Browser implementation and qualification lanes are historical evidence
 only under ADR-0069.
