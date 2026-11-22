@@ -86,14 +86,19 @@ func loadStoredChain(config config, storage *durable2.Root, name string) (epoch2
 	return decision, err
 }
 
-func persistDecision(storage *durable2.Root, decision epoch2.Decision, activate bool) error {
+// persistDecision writes the decision's owned canonical bytes without copying
+// the value. A nil decision keeps the historical zero-value generation.
+func persistDecision(storage *durable2.Root, decision *epoch2.Decision, activate bool) error {
+	if decision == nil {
+		decision = &epoch2.Decision{}
+	}
 	return storage.CommitState(durable2.Generation{
 		Name: decision.Snapshot.Generation, Epoch: decision.EpochBytes,
 		Inputs: decision.Inputs, Activate: activate,
 	})
 }
 
-func stageGeneration(storage *durable2.Root, decision epoch2.Decision) error {
+func stageGeneration(storage *durable2.Root, decision *epoch2.Decision) error {
 	return persistDecision(storage, decision, false)
 }
 

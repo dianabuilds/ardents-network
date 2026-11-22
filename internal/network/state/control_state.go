@@ -93,7 +93,7 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 	if err := classifyRetainedClosedSchema(s.config, decision.Header, "recovered active"); err != nil {
 		return err
 	}
-	if err := persistDecision(s.storage, decision, true); err != nil {
+	if err := persistDecision(s.storage, &decision, true); err != nil {
 		return fmt.Errorf("repair active generation pointer: %w", err)
 	}
 	s.current = &decision

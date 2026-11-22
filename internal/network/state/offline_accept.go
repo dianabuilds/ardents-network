@@ -69,7 +69,7 @@ func (s *networkState) acceptWithConflictCommit(ctx context.Context, epoch []byt
 	if err := ctx.Err(); err != nil {
 		return OfflineAcceptance{}, err
 	}
-	_, selection, err := s.selectEpochHistory([]epoch2.Decision{decision})
+	_, selection, err := s.selectEpochHistory([]*epoch2.Decision{&decision})
 	if err != nil {
 		if isEpochHistoryConflict(err) {
 			state := s.distribution
@@ -115,12 +115,12 @@ func (s *networkState) acceptWithConflictCommit(ctx context.Context, epoch []byt
 	state := s.distribution
 	state.sequence++
 	if pending {
-		if err := s.commitPendingDecision(decision, state); err != nil {
+		if err := s.commitPendingDecision(&decision, state); err != nil {
 			return OfflineAcceptance{}, err
 		}
 		return OfflineAcceptance{Snapshot: s.snapshotWithDistribution(now), Pending: true}, nil
 	}
-	if err := s.commitActiveDecision(decision, state); err != nil {
+	if err := s.commitActiveDecision(&decision, state); err != nil {
 		return OfflineAcceptance{}, err
 	}
 	return OfflineAcceptance{Snapshot: s.snapshotWithDistribution(now)}, nil

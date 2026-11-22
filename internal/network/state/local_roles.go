@@ -16,22 +16,24 @@ var errSourceRoleCollision = errors.New("source role collides with a Candidate V
 
 func (s *networkState) rejectSourceCollisions() error {
 	for _, decision := range []*epoch.Decision{s.current, s.pendingDecision} {
-		if decision != nil && sourceCollides(s.config.sourceInfo, *decision) {
+		if decision != nil && sourceCollides(s.config.sourceInfo, decision) {
 			return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 		}
 	}
 	return nil
 }
 
-func (s *networkState) rejectDecisionSourceCollisions(decision epoch.Decision) error {
+func (s *networkState) rejectDecisionSourceCollisions(decision *epoch.Decision) error {
 	if sourceCollides(s.config.sourceInfo, decision) {
 		return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 	}
 	return nil
 }
 
-func sourceCollides(info source.Details, decision epoch.Decision) bool {
-	if !info.Configured {
+// sourceCollides reads the decision without copying it. A nil decision keeps
+// the zero-value outcome: an unverified decision has no Candidate to collide.
+func sourceCollides(info source.Details, decision *epoch.Decision) bool {
+	if !info.Configured || decision == nil {
 		return false
 	}
 	for index := range info.Identities {
@@ -42,7 +44,10 @@ func sourceCollides(info source.Details, decision epoch.Decision) bool {
 	return false
 }
 
-func epochDecisionCollides(decision epoch.Decision, identity [32]byte, family, endpoint string) bool {
+func epochDecisionCollides(decision *epoch.Decision, identity [32]byte, family, endpoint string) bool {
+	if decision == nil {
+		return false
+	}
 	for _, candidate := range decision.Candidates {
 		if candidate.NodeID == identity || candidate.KeyID == identity ||
 			candidate.Family == family || candidate.Endpoint == endpoint {
@@ -148,14 +153,20 @@ func (s *networkState) retainSourceServer() error {
 	if err != nil {
 		return err
 	}
-	err = roles.Claim(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(*s.current)})
+	err = roles.Claim(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(s.current)})
 	if errors.Is(err, duty.ErrLocalRoleProducerRetained) {
 		err = errors.Join(&RecoveryRequiredError{Reason: "serving Source producer has no joined removal"}, err)
 	}
 	return errors.Join(err, roles.Close())
 }
 
-func sourceServerDuty(decision epoch.Decision) duty.Duty {
+// sourceServerDuty projects one verified decision without copying it. A nil
+// decision keeps the zero-value projection: no identity, the empty family hash
+// and a zero bound.
+func sourceServerDuty(decision *epoch.Decision) duty.Duty {
+	if decision == nil {
+		return duty.Duty{Family: sha256.Sum256(nil), Class: "direct-source", State: "live"}
+	}
 	return duty.Duty{Identity: decision.Snapshot.NodeID, Family: sha256.Sum256([]byte(decision.Snapshot.DeclaredFamily)),
 		Class: "direct-source", State: "live", NotAfter: decision.Snapshot.ValidUntil}
 }
@@ -171,12 +182,12 @@ func (s *networkState) releaseSourcePredecessors() error {
 	if err != nil {
 		return err
 	}
-	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(*s.current)}), roles.Close())
+	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(s.current)}), roles.Close())
 }
 
 // servingDutySet keeps distinct still-servable identity/family pairs. When a
 // successor reuses both, its authenticated bound replaces the old record.
-func servingDutySet(decision epoch.Decision, predecessors []duty.Duty) []duty.Duty {
+func servingDutySet(decision *epoch.Decision, predecessors []duty.Duty) []duty.Duty {
 	duties := append([]duty.Duty(nil), predecessors...)
 	current := sourceServerDuty(decision)
 	for index := range duties {

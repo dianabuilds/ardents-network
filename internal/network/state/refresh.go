@@ -139,7 +139,7 @@ func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *e
 	if err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
-	if err := s.rejectDecisionSourceCollisions(decision); err != nil {
+	if err := s.rejectDecisionSourceCollisions(&decision); err != nil {
 		return failedSourceResult(resultIndex, outcomeIndex, observations, err)
 	}
 	if response.ObjectDigest != decision.Header.Digest {

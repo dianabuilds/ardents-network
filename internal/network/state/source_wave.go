@@ -118,7 +118,7 @@ func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epoc
 }
 
 type sourceWaveSummary struct {
-	valid           []epoch.Decision
+	valid           []*epoch.Decision
 	outcomes        [4]byte
 	observedEpochs  [4]uint64
 	observedDigests [4][32]byte
@@ -128,19 +128,22 @@ type sourceWaveSummary struct {
 func summarizeSourceWave(state distributionState, results []sourceResult) sourceWaveSummary {
 	// Start from the same durable cycle: a consumed selector has no new result
 	// on resume, but its recorded outcome and evidence still belong to this wave.
-	summary := sourceWaveSummary{valid: make([]epoch.Decision, 0, 2), outcomes: state.outcomes,
+	summary := sourceWaveSummary{valid: make([]*epoch.Decision, 0, 2), outcomes: state.outcomes,
 		observedEpochs: state.observedEpochs, observedDigests: state.observedDigests}
-	for _, result := range results {
-		for index, outcome := range result.observations {
+	for index := range results {
+		// The wave owns its results until completion; valid decisions pass by
+		// pointer into selection and commit without copying the 9.5KiB value.
+		result := &results[index]
+		for slot, outcome := range result.observations {
 			if outcome != 0 {
-				summary.outcomes[index] = outcome
+				summary.outcomes[slot] = outcome
 			}
 		}
 		if errors.Is(result.err, errSourceRoleCollision) && summary.collisionErr == nil {
 			summary.collisionErr = result.err
 		}
 		if result.err == nil {
-			summary.valid = append(summary.valid, result.decision)
+			summary.valid = append(summary.valid, &result.decision)
 			summary.observedEpochs[result.slot] = result.decision.Header.Number
 			summary.observedDigests[result.slot] = result.decision.Header.Digest
 		}
@@ -148,7 +151,11 @@ func summarizeSourceWave(state distributionState, results []sourceResult) source
 	return summary
 }
 
-func (s *networkState) commitDeferredSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *networkState) commitDeferredSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+	if selected == nil {
+		// Preserve the historical zero-value ValidFrom bound.
+		selected = &epoch.Decision{}
+	}
 	// A pending generation requires an active predecessor on reopen. Keep
 	// authenticated Source observations, but do not stage a future genesis.
 	state := s.distribution
@@ -164,7 +171,7 @@ func (s *networkState) commitDeferredSourceWave(now time.Time, selected epoch.De
 
 }
 
-func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *networkState) commitPendingSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
@@ -176,7 +183,11 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Dec
 	return s.snapshotWithDistribution(now), nil
 }
 
-func (s *networkState) commitActiveSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *networkState) commitActiveSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+	if selected == nil {
+		// Preserve the historical zero-value floor and digest comparison.
+		selected = &epoch.Decision{}
+	}
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {

@@ -12,11 +12,16 @@ import (
 
 // commitActiveDecision coordinates the serving Source duty, immutable Epoch,
 // distribution floor, in-memory decision, and active pointer in that order.
-func (s *networkState) commitActiveDecision(decision epoch.Decision, state distributionState) error {
+func (s *networkState) commitActiveDecision(decision *epoch.Decision, state distributionState) error {
 	return s.commitActiveDecisionWithControl(decision, state, s.storage.CommitControl)
 }
 
-func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, state distributionState, commit func(string, []byte) error) (result error) {
+func (s *networkState) commitActiveDecisionWithControl(decision *epoch.Decision, state distributionState, commit func(string, []byte) error) (result error) {
+	if decision == nil {
+		// Preserve the historical zero-value path: an unverified decision
+		// reaches the same durable refusal without a nil dereference.
+		decision = &epoch.Decision{}
+	}
 	if s.config.sourceInfo.Serving && s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
@@ -32,12 +37,12 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 		}
 		defer func() { result = errors.Join(result, roles.Close()) }()
 		producer := sourceProducer("server", s.config.root)
-		previous := servingDutySet(*s.current, s.servingPredecessors)
+		previous := servingDutySet(s.current, s.servingPredecessors)
 		if s.activeSource > 0 {
 			nextPredecessors = previous
 		}
 		if err := roles.Replace(producer, servingDutySet(decision, nextPredecessors)); err != nil {
-			old := sourceServerDuty(*s.current)
+			old := sourceServerDuty(s.current)
 			protected, guardErr := roles.Conflict(old.Identity, old.Family)
 			if guardErr != nil || !protected {
 				s.retireStateLocked()
@@ -76,7 +81,9 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 		return err
 	}
 	restorePreviousDuty = false
-	s.current = &decision
+	// The decision is immutable after verification; callers never mutate it
+	// after commit, so publishing the pointer keeps the same owned facts.
+	s.current = decision
 	if s.config.sourceInfo.Serving {
 		s.servingPredecessors = nextPredecessors
 	}

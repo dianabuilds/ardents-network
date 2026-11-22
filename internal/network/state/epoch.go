@@ -37,7 +37,12 @@ func epochPredecessor(current *epoch2.Decision) *epoch2.Snapshot {
 	return &epoch2.Snapshot{Epoch: current.Snapshot.Epoch, Digest: current.Snapshot.Digest}
 }
 
-func snapshotFromEpoch(value epoch2.Snapshot) Snapshot {
+// snapshotFromEpoch projects the public Snapshot facts without copying the
+// 8.5KiB epoch value. A nil snapshot keeps the zero-value projection.
+func snapshotFromEpoch(value *epoch2.Snapshot) Snapshot {
+	if value == nil {
+		return Snapshot{}
+	}
 	return Snapshot{
 		Generation: value.Generation, NetworkID: value.NetworkID,
 		Epoch: value.Epoch, Digest: value.Digest,
