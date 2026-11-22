@@ -21,18 +21,25 @@ type Content struct {
 // Close; residue is never removed or adopted. observe is a synchronous barrier
 // around actual effects for negative controls, not an I/O replacement.
 func Publish(ctx context.Context, path string, files []Content, check func() error, observe func(string, *os.File)) (result error) {
-	return publish(ctx, path, files, false, check, observe)
+	return publish(ctx, path, files, 8, false, check, observe)
 }
 
 // secret changes only temporary-memory retirement. It supplies no authority or
 // new output namespace; each finite caller admits its own fixed purpose/files.
 // PublishPrivate publishes the selected artifacts and clears verification buffers.
 func PublishPrivate(ctx context.Context, path string, files []Content, check func() error, observe func(string, *os.File)) error {
-	return publish(ctx, path, files, true, check, observe)
+	return publish(ctx, path, files, 8, true, check, observe)
 }
 
-func publish(ctx context.Context, path string, files []Content, secret bool, check func() error, observe func(string, *os.File)) (result error) {
-	if ctx == nil || os.Geteuid() != 0 || !AbsolutePath(path) || len(files) == 0 || len(files) > 8 || check == nil {
+// PublishInventory admits the larger bounded Network inventory. The caller
+// selects its file names and per-file bounds before borrowing the writer.
+// Sensitive inventories clear all owned readback copies.
+func PublishInventory(ctx context.Context, path string, files []Content, sensitive bool, check func() error, observe func(string, *os.File)) error {
+	return publish(ctx, path, files, 129, sensitive, check, observe)
+}
+
+func publish(ctx context.Context, path string, files []Content, maximum int, secret bool, check func() error, observe func(string, *os.File)) (result error) {
+	if ctx == nil || os.Geteuid() != 0 || !AbsolutePath(path) || len(files) == 0 || len(files) > maximum || check == nil {
 		return ErrInput
 	}
 	seen := make(map[string]bool, len(files))
@@ -103,13 +110,8 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 	}()
 	verify := func(output retainedOutput) error {
 		info, err := output.file.Stat()
-		if err != nil || !os.SameFile(output.info, info) || info.Mode() != 0600 || info.Size() != int64(len(output.artifact.Data)) {
+		if err != nil || !sameOutput(output.info, info) {
 			return errors.Join(ErrInput, err)
-		}
-		before := info.Sys().(*syscall.Stat_t)
-		original := output.info.Sys().(*syscall.Stat_t)
-		if before.Uid != 0 || before.Gid != 0 || before.Nlink != 1 || before.Ctim != original.Ctim || before.Mtim != original.Mtim {
-			return ErrInput
 		}
 		raw := make([]byte, len(output.artifact.Data)+1)
 		count, err := output.file.ReadAt(raw, 0)
@@ -121,7 +123,7 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 			return errors.Join(ErrInput, err)
 		}
 		final, err := output.file.Stat()
-		if err != nil || final.Mode() != info.Mode() || final.Sys().(*syscall.Stat_t).Ctim != before.Ctim {
+		if err != nil || !sameOutput(info, final) {
 			return errors.Join(ErrInput, err)
 		}
 		linked, err := OpenChild(d, output.artifact.Name, false)
@@ -130,7 +132,7 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 		}
 		linkedInfo, err := linked.Stat()
 		err = errors.Join(err, linked.Close())
-		if err != nil || !os.SameFile(info, linkedInfo) {
+		if err != nil || !sameOutput(info, linkedInfo) {
 			return errors.Join(ErrInput, err)
 		}
 		return nil
@@ -145,7 +147,7 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 		}
 		writer := os.NewFile(uintptr(fd), artifact.Name)
 		birth, err := writer.Stat()
-		if err != nil || birth.Mode() != 0600 || birth.Size() != 0 || birth.Sys().(*syscall.Stat_t).Nlink != 1 || birth.Sys().(*syscall.Stat_t).Uid != 0 || birth.Sys().(*syscall.Stat_t).Gid != 0 {
+		if err != nil || !outputAllowed(birth, 0) {
 			return errors.Join(ErrInput, err, writer.Close())
 		}
 		if err := barrier("file-created", writer); err != nil {
@@ -155,12 +157,17 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 		if writeErr == nil && count != len(artifact.Data) {
 			writeErr = io.ErrShortWrite
 		}
-		writeErr = errors.Join(writeErr, writer.Sync(), barrier("written", writer))
+		writeErr = errors.Join(writeErr, barrier("written", writer), writer.Sync())
+		finished, statErr := writer.Stat()
+		if statErr == nil && (!os.SameFile(birth, finished) || !outputAllowed(finished, int64(len(artifact.Data)))) {
+			statErr = ErrInput
+		}
+		writeErr = errors.Join(writeErr, statErr)
 		reader, readErr := OpenChild(d, artifact.Name, false)
 		closeErr := writer.Close()
 		if reader != nil {
 			info, statErr := reader.Stat()
-			if statErr != nil || !os.SameFile(birth, info) {
+			if statErr != nil || finished == nil || !sameOutput(finished, info) {
 				return errors.Join(ErrInput, writeErr, readErr, closeErr, statErr, reader.Close())
 			}
 			outputs = append(outputs, retainedOutput{reader, info, artifact})
@@ -195,6 +202,9 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 	if err := errors.Join(inventory(), barrier("before-directory-sync", d.file)); err != nil {
 		return err
 	}
+	if observe != nil {
+		observe("directory-sync", d.file)
+	}
 	if err := errors.Join(d.file.Sync(), parent.file.Sync(), barrier("synced", d.file)); err != nil {
 		return err
 	}
@@ -202,4 +212,17 @@ func publish(ctx context.Context, path string, files []Content, secret bool, che
 		return err
 	}
 	return errors.Join(inventory(), ctx.Err())
+}
+
+func outputAllowed(info os.FileInfo, size int64) bool {
+	stat := info.Sys().(*syscall.Stat_t)
+	return info.Mode() == 0600 && info.Size() == size && stat.Nlink == 1 && stat.Uid == 0 && stat.Gid == 0
+}
+
+func sameOutput(original, current os.FileInfo) bool {
+	if !os.SameFile(original, current) || !outputAllowed(current, original.Size()) {
+		return false
+	}
+	before, after := original.Sys().(*syscall.Stat_t), current.Sys().(*syscall.Stat_t)
+	return before.Ctim == after.Ctim && before.Mtim == after.Mtim
 }

@@ -433,8 +433,8 @@ other platforms retain runtime and explicit command refusal, without test-only
 public observation reachability. It adds only standard-library imports. The existing installed
 Source composer retains one pure `installedNetworkAuthority` projection used by
 both runtime and preparation; private loading remains runtime-only. Native
-finite output is the existing `network_output_linux.go` mechanism, with final
-inventory following the last original-input I/O; its ordering is unchanged.
+finite output uses `internal/platform/artifacts` through the Linux command
+adapter, with final inventory following the last original-input I/O.
 `network/source/connection_cancellation.go` is a standard-library physical
 mechanism used by both Fetch and serving; it joins the exact original context
 callback before their connection/key/user ownership can return. It adds no
@@ -445,11 +445,11 @@ Initial key preparation uses only standard-library imports in the unexported
 `network_keys_other.go` command responsibilities. Closed declaration parsing and
 its grammar tests compile only on Linux with the genuine producer; other
 platforms retain explicit refusal without a test-only parser. Linux generation and owned
-secret encoding remain separate from public Network artifacts. The cohesive
-`network_output_linux.go` physical finite-file mechanism is synchronously borrowed
-by public signing and private key creation; its explicit secret lifetime clears
-owned readback buffers before return. No private data crosses Network or a
-public-artifact Interface, and no package/dependency is added. Native key tests
+secret encoding remain separate from public Network artifacts. Public signing and private key creation borrow the finite-file mechanism in
+`internal/platform/artifacts` through `network_output_linux.go`. The adapter
+keeps the 8 MiB per-file bound; private key publication clears owned readback
+buffers before return. No private data crosses Network or a public-artifact
+Interface. The exact-import guard admits the artifacts package for this adapter. Native key tests
 use standard-library command composition and the existing registered preparation
 chain harness; that harness may consume independently generated test keys while
 its Admission fixture remains separate. It imports no new domain owner.
