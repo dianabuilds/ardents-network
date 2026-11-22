@@ -321,8 +321,9 @@ Use `announced` for the isolated initial protocol, without invented overlap
 history or emergency grounds.
 
 These targets and the maintained signer/assembly inventory do not authorize
-installed serving Source or any Node role. Headless Node/Custody companions are
-initial manifest inventory, not an infrastructure generation authorization.
+installed serving Source or any Node role. The headless Authority Custody
+artifact belongs to the initial Endpoint manifest inventory under
+[ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
 The [infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
 names the separate exact targets, custody, command/tool and native lifecycle
 boundary under [accepted ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md).

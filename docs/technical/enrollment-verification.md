@@ -116,7 +116,7 @@ The result has private construction and returns copied authenticated initial
 facts/bytes. No Release inputs, metadata URLs, permission or durable floor is
 created here. Future new Release composition must consume these exact bytes
 and establish its own authorization. The same companion and protected-group rules apply to independent candidate loading. The
-[new owner design](../../internal/successor/enrollment/README.md) records the
+[new owner design](../../internal/enrollment/README.md) records the
 stages and refusal obligations; the selected GitHub issue owns verification
 and acceptance status.
 
@@ -129,7 +129,7 @@ separately owned consumers. `ReadCandidate` separately loads an opaque,
 self-consistent immutable `Candidate` with the same bounded physical inventory
 checks. Its declarations and observed manifest checksum are untrusted; it has
 no independent-pin or running-program provenance and cannot become a `Bundle`.
-The [Installation design](../../internal/successor/installation/README.md)
+The [Installation contract](release-update-custody.md#release-and-update-ownership)
 has a genuine consumer establishing two fresh Release authorizations against
 complete retained Release history. Snapshot loading itself establishes neither
 proof. Installed predecessor binding, forward generation continuity and actual
@@ -139,13 +139,13 @@ The alpha-bundle packaging producers use the new owner's public
 `ExecutableArtifactName` and existing `ValidateProtectedGeneration`. Both the
 bundle verifier and packaging use the same artifact-name constructor, including
 Windows `.exe` identities; the helper formats declared names without selecting
-platform support or attesting artifact provenance. The two Go script entry points
-retain their existing argv, stdout and exit-status contract and static-byte
-refusal boundary. The protected
-checker never rewrites the descriptor whose exact bytes Release must bind.
+platform support or attesting artifact provenance. Packaging calls
+`ardents-next enrollment artifact-name` and
+`ardents-next enrollment check-protected-generation` from reviewed source. The
+protected checker reads the descriptor whose exact bytes Release must bind.
 
 The maintained Enrollment tests cover pin-before-parse, inventory rejection,
-executable substitution, retired descriptor refusal, and separation of v3 and v4
-companion bytes from Release metadata. The headless artifact lane exercises
+executable substitution, retired descriptor refusal, and separation of v5
+static inventory from Release metadata. The headless artifact lane exercises
 these checks at the maintained owner. Historical receipts remain bound to
 their original artifacts.
