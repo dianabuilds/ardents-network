@@ -343,7 +343,6 @@
           "internal/enrollment.Candidate.MetadataNames",
           "internal/enrollment.Candidate.Names",
           "internal/enrollment.ReadCandidate",
-          "internal/enrollment.ValidateProtectedGeneration",
           "internal/release/endpoint.AuthenticateCandidate",
           "internal/release/endpoint.AuthenticateInitial",
           "internal/release/endpoint.Authorization.InitialFacts",
