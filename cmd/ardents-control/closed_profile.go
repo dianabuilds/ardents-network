@@ -2,18 +2,12 @@ package main
 
 import (
 	"bytes"
-	"crypto/ed25519"
-	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
@@ -39,74 +33,6 @@ type closedProfilePlanKey struct {
 	WindowStart string
 	Class       uint8
 	SPKI        string
-}
-
-func prepareClosedProfile(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("prepare-closed-profile", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var planPath, destination string
-	flags.StringVar(&planPath, "plan", "", "bounded public closed profile plan")
-	flags.StringVar(&destination, "output", "", "new unsigned profile destination")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || destination == "" {
-		return errors.New("prepare closed profile arguments are invalid")
-	}
-	input, err := readClosedProfilePlan(planPath)
-	if err != nil {
-		return err
-	}
-	body, err := closedprofile.Prepare(input)
-	if err != nil {
-		return err
-	}
-	if err := writeNewClosedProfile(destination, body); err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(closedProfileReport("ardents-closed-profile-prepared-v1", body))
-}
-
-func signClosedProfile(arguments []string, output io.Writer) error {
-	flags := flag.NewFlagSet("sign-closed-profile", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var planPath, keyPath, destination string
-	flags.StringVar(&planPath, "plan", "", "bounded public closed profile plan")
-	flags.StringVar(&keyPath, "authority-key", "", "owner-only State authority PKCS#8 PEM")
-	flags.StringVar(&destination, "output", "", "new signed profile destination")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 || destination == "" {
-		return errors.New("sign closed profile arguments are invalid")
-	}
-	input, err := readClosedProfilePlan(planPath)
-	if err != nil {
-		return err
-	}
-	signer, err := readClosedProfileSigner(keyPath)
-	if err != nil {
-		return err
-	}
-	defer zeroPrivateKey(signer)
-	// The successor closed-profile owner separates the canonical body from the
-	// signing transcript. The transcript is the same ARDCPR03 prefix plus body,
-	// so the signed bytes are unchanged; NotBefore is the profile's own validity
-	// reference for the transcript check (the signature does not depend on it).
-	body, err := closedprofile.Prepare(input)
-	if err != nil {
-		return err
-	}
-	authority, ok := signer.Public().(ed25519.PublicKey)
-	if !ok {
-		return errors.New("closed profile signing is unavailable")
-	}
-	transcript, err := closedprofile.SigningTranscript(body, closedprofile.Context{
-		StateGeneration: input.StateGeneration, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
-		Epoch: input.Epoch, Authority: authority, Now: input.NotBefore,
-	})
-	if err != nil {
-		return err
-	}
-	raw := append(body, ed25519.Sign(signer, transcript)...)
-	if err := writeNewClosedProfile(destination, raw); err != nil {
-		return err
-	}
-	return json.NewEncoder(output).Encode(closedProfileReport("ardents-closed-profile-signed-v1", raw))
 }
 
 func inspectClosedProfile(arguments []string, output io.Writer) error {
@@ -197,59 +123,4 @@ func readClosedProfilePlan(path string) (closedprofile.Input, error) {
 		input.TokenKeys = append(input.TokenKeys, closedprofile.TokenKeyInput{WindowStart: window.UTC(), Class: key.Class, SPKI: spki})
 	}
 	return input, nil
-}
-
-func readClosedProfileSigner(path string) (ed25519.PrivateKey, error) {
-	raw, err := readControlFile(path, 4096)
-	if err != nil {
-		return nil, errors.New("closed profile signer is unavailable")
-	}
-	block, rest := pem.Decode(raw)
-	if block == nil || len(rest) != 0 || block.Type != "PRIVATE KEY" || len(block.Headers) != 0 {
-		return nil, errors.New("closed profile signer is unavailable")
-	}
-	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	private, ok := key.(ed25519.PrivateKey)
-	if err != nil || !ok || len(private) != ed25519.PrivateKeySize {
-		return nil, errors.New("closed profile signer is unavailable")
-	}
-	return append(ed25519.PrivateKey(nil), private...), nil
-}
-
-func writeNewClosedProfile(path string, raw []byte) error {
-	if path == "" || len(raw) == 0 || len(raw) > maximumClosedProfilePlanBytes {
-		return errors.New("closed profile destination is invalid")
-	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return fmt.Errorf("create closed profile: %w", err)
-	}
-	if _, err := file.Write(raw); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("write closed profile: %w", err)
-	}
-	if err := file.Sync(); err != nil {
-		_ = file.Close()
-		return fmt.Errorf("flush closed profile: %w", err)
-	}
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("close closed profile: %w", err)
-	}
-	persisted, err := os.ReadFile(path)
-	if err != nil || !bytes.Equal(persisted, raw) {
-		_ = os.Remove(path)
-		return errors.New("reopen closed profile failed")
-	}
-	return nil
-}
-
-func closedProfileReport(schema string, raw []byte) struct{ Schema, Digest string } {
-	digest := sha256.Sum256(raw)
-	return struct{ Schema, Digest string }{schema, hex.EncodeToString(digest[:])}
-}
-
-func zeroPrivateKey(key ed25519.PrivateKey) {
-	for index := range key {
-		key[index] = 0
-	}
 }
