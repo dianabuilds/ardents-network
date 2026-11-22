@@ -5,9 +5,7 @@ package main
 import (
 	"context"
 	"io"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
@@ -23,7 +21,7 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 2
 	}
 	if ctx.Err() != nil {
-		if nodeDescriptorReport(out, "refused", "canceled", "", "") != nil {
+		if writeNodeEvent(out, "node.descriptor", "refused", "canceled", "", "", "") != nil {
 			return 2
 		}
 		return 130
@@ -54,75 +52,21 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 130
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.OpenRetained(config)
-	if err != nil {
-		_ = nodeDescriptorReport(out, "refused", "state-unavailable", "", "")
-		return 1
-	}
-	refuse := func(cause error) int {
-		cleanup := ""
-		if owner.Close() != nil {
-			cleanup = "network"
-		}
-		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", cleanup, encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
-			return 2
-		}
-		return 1
-	}
-	view, err := owner.CurrentRuntime()
-	if err != nil {
-		return refuse(err)
-	}
-	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
-	if err != nil {
-		return refuse(err)
-	}
 	listen := node.ListenDescriptor
 	if retained {
 		listen = node.ListenDescriptorRetained
 	}
-	original, err := listen(ctx, node.DescriptorConfig{
-		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()},
-		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, DescriptorRoot: plan.DescriptorRoot,
-		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
+	return runNodeWithState(ctx, out, diagnostic, "node.descriptor", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Descriptor, error) {
+		return listen(ctx, node.DescriptorConfig{
+			Authority:         authority,
+			ParticipationRoot: plan.ParticipationRoot,
+			SpendRoot:         plan.SpendRoot,
+			HostingRoot:       plan.HostingRoot,
+			DescriptorRoot:    plan.DescriptorRoot,
+			Certificate:       plan.Certificate,
+			PrivateKey:        plan.PrivateKey,
+			Work:              plan.Work,
+			Termination:       plan.Termination,
+		})
 	})
-	if err != nil {
-		return refuse(err)
-	}
-	outputErr := nodeDescriptorReport(out, "listening", "original-duty", "", "")
-	if outputErr == nil {
-		select {
-		case <-ctx.Done():
-		case <-original.Done():
-		}
-	}
-	original.Stop()
-	joined := make(chan nodeCompletion, 1)
-	go func() {
-		_ = original.Close()
-		first, cleanup := original.JoinedFailureOwners()
-		joined <- nodeCompletion{outcome: original.JoinedOutcome(), first: first, cleanup: cleanup, stateError: owner.Close()}
-	}()
-	timer := time.NewTimer(time.Duration(plan.RetirementWaitMS) * time.Millisecond)
-	defer timer.Stop()
-	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
-		_ = nodeDescriptorReport(diagnostic, "retiring", "completion-unavailable", "", "")
-	})
-	if timedOut || result.outcome != "canceled" || result.stateError != nil {
-		if result.stateError != nil {
-			result.cleanup = "network"
-		}
-		_ = nodeDescriptorReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
-		if outputErr != nil {
-			return 2
-		}
-		return 1
-	}
-	if outputErr != nil {
-		return 2
-	}
-	if nodeDescriptorReport(diagnostic, "joined", "canceled", "", "") != nil {
-		return 2
-	}
-	return 130
 }
