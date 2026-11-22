@@ -2898,9 +2898,21 @@ checks remain portable. Protected context and coalesced initial-authentication
 tests run with the Linux text Endpoint; shared stream lifecycle tests remain
 portable, including the common receipt-consumption representation.
 
-Snapshot construction/response and published-Link client round trips execute on
-Linux with their text command consumer. Shared document-read and raw published-Link
+Snapshot construction/response tests are portable and execute in the portable
+deterministic inventory; published-Link client round trips execute on Linux with
+their text command consumer. Shared document-read and raw published-Link
 server framing tests remain portable; their failure checks are unchanged.
+
+The Text worker INIT/READY, frame, credit, reader/Publisher bridge and
+multiplexer controls and the Stream qualification initialization, bridge and
+workload controls are portable and execute in the portable deterministic
+inventory on Windows and macOS (P1-04/AR-P-01, #691 T10). The Linux-only
+controls remain bound: the AAI3 listener transfer control uses the selected
+Linux Connection server, the snapshot file-import controls use the no-follow
+Linux importer, and the inherited-descriptor audit, escape and hostile worker
+artifacts keep their native tags and stands. The unsupported-platform worker
+entrypoint and snapshot import refuse explicitly; portable codec success
+grants no installed-worker, confinement or publication authority.
 
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their

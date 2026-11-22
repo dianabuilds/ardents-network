@@ -1,5 +1,8 @@
 //go:build linux
 
+// This fixture serves only the Linux AAI3 listener control in
+// reader_connection_aai3_linux_test.go; the portable reader controls use their
+// own admitted fixture streams.
 package textdocument_test
 
 import (

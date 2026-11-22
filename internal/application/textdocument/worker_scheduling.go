@@ -1,5 +1,3 @@
-//go:build linux
-
 package textdocument
 
 import "encoding/binary"

@@ -1,5 +1,3 @@
-//go:build linux
-
 // Package streamqualification's bridge moves bytes only on Service streams
 // already authenticated and owned by Endpoint.
 package streamqualification
