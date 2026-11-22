@@ -10,6 +10,13 @@ import (
 	"syscall"
 )
 
+type outputAccess uint8
+
+const (
+	protectedOutput outputAccess = iota
+	callerOwnedOutput
+)
+
 type Content struct {
 	Name string
 	Data []byte
@@ -21,26 +28,37 @@ type Content struct {
 // Close; residue is never removed or adopted. observe is a synchronous barrier
 // around actual effects for negative controls, not an I/O replacement.
 func Publish(ctx context.Context, path string, files []Content, check func() error, observe func(string, *os.File)) (result error) {
-	return publish(ctx, path, files, 8, false, check, observe)
+	return publish(ctx, path, files, 8, false, protectedOutput, check, observe)
 }
 
 // secret changes only temporary-memory retirement. It supplies no authority or
 // new output namespace; each finite caller admits its own fixed purpose/files.
 // PublishPrivate publishes the selected artifacts and clears verification buffers.
 func PublishPrivate(ctx context.Context, path string, files []Content, check func() error, observe func(string, *os.File)) error {
-	return publish(ctx, path, files, 8, true, check, observe)
+	return publish(ctx, path, files, 8, true, protectedOutput, check, observe)
 }
 
 // PublishInventory admits the larger bounded Network inventory. The caller
 // selects its file names and per-file bounds before borrowing the writer.
 // Sensitive inventories clear all owned readback copies.
 func PublishInventory(ctx context.Context, path string, files []Content, sensitive bool, check func() error, observe func(string, *os.File)) error {
-	return publish(ctx, path, files, 129, sensitive, check, observe)
+	return publish(ctx, path, files, 129, sensitive, protectedOutput, check, observe)
 }
 
-func publish(ctx context.Context, path string, files []Content, maximum int, secret bool, check func() error, observe func(string, *os.File)) (result error) {
-	if ctx == nil || os.Geteuid() != 0 || !AbsolutePath(path) || len(files) == 0 || len(files) > maximum || check == nil {
+// PublishUnsigned publishes one public development artifact below a private
+// directory owned by the calling user. It retains the unsigned command's
+// caller custody and does not admit a protected signing inventory.
+func PublishUnsigned(ctx context.Context, path string, file Content, observe func(string, *os.File)) error {
+	return publish(ctx, path, []Content{file}, 1, false, callerOwnedOutput, func() error { return nil }, observe)
+}
+
+func publish(ctx context.Context, path string, files []Content, maximum int, secret bool, access outputAccess, check func() error, observe func(string, *os.File)) (result error) {
+	owner := os.Geteuid()
+	if ctx == nil || access == protectedOutput && owner != 0 || !AbsolutePath(path) || len(files) == 0 || len(files) > maximum || check == nil {
 		return ErrInput
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	seen := make(map[string]bool, len(files))
 	for _, file := range files {
@@ -51,24 +69,30 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 	}
 	parents := NewInputs(ctx)
 	defer func() { result = errors.Join(result, parents.Close(), ctx.Err()) }()
-	parent, err := parents.Directory(filepath.Dir(path))
+	openParent := parents.Directory
+	if access == callerOwnedOutput {
+		openParent = parents.openDirectory
+	}
+	parent, err := openParent(filepath.Dir(path))
 	if err != nil {
 		return err
 	}
-	if parent.info.Mode() != os.ModeDir|0700 {
+	if !access.privateDirectory(parent.info, owner) {
 		return ErrInput
 	}
 	barrier := func(label string, file *os.File) error {
 		if observe != nil {
 			observe(label, file)
 		}
-		if os.Geteuid() != 0 {
+		if os.Geteuid() != owner {
 			return ErrInput
 		}
-		for _, directory := range parents.files {
-			info, err := directory.file.Stat()
-			if err != nil || !info.IsDir() || info.Mode().Perm()&0022 != 0 || info.Sys().(*syscall.Stat_t).Uid != 0 {
-				return errors.Join(ErrInput, err)
+		if access == protectedOutput {
+			for _, directory := range parents.files {
+				info, err := directory.file.Stat()
+				if err != nil || !info.IsDir() || info.Mode().Perm()&0022 != 0 || info.Sys().(*syscall.Stat_t).Uid != 0 {
+					return errors.Join(ErrInput, err)
+				}
 			}
 		}
 		return errors.Join(parents.Check(), check(), ctx.Err())
@@ -91,7 +115,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 	if err != nil {
 		return err
 	}
-	if d.info.Mode() != os.ModeDir|0700 {
+	if !access.privateDirectory(d.info, owner) {
 		return ErrInput
 	}
 	if err := errors.Join(parent.file.Sync(), barrier("directory-created", d.file)); err != nil {
@@ -110,7 +134,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 	}()
 	verify := func(output retainedOutput) error {
 		info, err := output.file.Stat()
-		if err != nil || !sameOutput(output.info, info) {
+		if err != nil || !access.sameOutput(output.info, info, owner) {
 			return errors.Join(ErrInput, err)
 		}
 		raw := make([]byte, len(output.artifact.Data)+1)
@@ -123,7 +147,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 			return errors.Join(ErrInput, err)
 		}
 		final, err := output.file.Stat()
-		if err != nil || !sameOutput(info, final) {
+		if err != nil || !access.sameOutput(info, final, owner) {
 			return errors.Join(ErrInput, err)
 		}
 		linked, err := OpenChild(d, output.artifact.Name, false)
@@ -132,7 +156,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 		}
 		linkedInfo, err := linked.Stat()
 		err = errors.Join(err, linked.Close())
-		if err != nil || !sameOutput(info, linkedInfo) {
+		if err != nil || !access.sameOutput(info, linkedInfo, owner) {
 			return errors.Join(ErrInput, err)
 		}
 		return nil
@@ -147,7 +171,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 		}
 		writer := os.NewFile(uintptr(fd), artifact.Name)
 		birth, err := writer.Stat()
-		if err != nil || !outputAllowed(birth, 0) {
+		if err != nil || !access.fileAllowed(birth, 0, owner) {
 			return errors.Join(ErrInput, err, writer.Close())
 		}
 		if err := barrier("file-created", writer); err != nil {
@@ -159,7 +183,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 		}
 		writeErr = errors.Join(writeErr, barrier("written", writer), writer.Sync())
 		finished, statErr := writer.Stat()
-		if statErr == nil && (!os.SameFile(birth, finished) || !outputAllowed(finished, int64(len(artifact.Data)))) {
+		if statErr == nil && (!os.SameFile(birth, finished) || !access.fileAllowed(finished, int64(len(artifact.Data)), owner)) {
 			statErr = ErrInput
 		}
 		writeErr = errors.Join(writeErr, statErr)
@@ -167,7 +191,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 		closeErr := writer.Close()
 		if reader != nil {
 			info, statErr := reader.Stat()
-			if statErr != nil || finished == nil || !sameOutput(finished, info) {
+			if statErr != nil || finished == nil || !access.sameOutput(finished, info, owner) {
 				return errors.Join(ErrInput, writeErr, readErr, closeErr, statErr, reader.Close())
 			}
 			outputs = append(outputs, retainedOutput{reader, info, artifact})
@@ -177,6 +201,11 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 		}
 		if err := verify(outputs[len(outputs)-1]); err != nil {
 			return err
+		}
+		if access == callerOwnedOutput {
+			if err := barrier("readback", d.file); err != nil {
+				return err
+			}
 		}
 	}
 	inventory := func() error {
@@ -214,13 +243,26 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 	return errors.Join(inventory(), ctx.Err())
 }
 
-func outputAllowed(info os.FileInfo, size int64) bool {
-	stat := info.Sys().(*syscall.Stat_t)
-	return info.Mode() == 0600 && info.Size() == size && stat.Nlink == 1 && stat.Uid == 0 && stat.Gid == 0
+func (access outputAccess) privateDirectory(info os.FileInfo, owner int) bool {
+	if access == protectedOutput {
+		return info.Mode() == os.ModeDir|0700
+	}
+	return info.IsDir() && info.Mode().Perm() == 0700 && info.Sys().(*syscall.Stat_t).Uid == uint32(owner)
 }
 
-func sameOutput(original, current os.FileInfo) bool {
-	if !os.SameFile(original, current) || !outputAllowed(current, original.Size()) {
+func (access outputAccess) fileAllowed(info os.FileInfo, size int64, owner int) bool {
+	stat := info.Sys().(*syscall.Stat_t)
+	if info.Size() != size || stat.Nlink != 1 || stat.Uid != uint32(owner) {
+		return false
+	}
+	if access == protectedOutput {
+		return info.Mode() == 0600 && stat.Gid == 0
+	}
+	return info.Mode().IsRegular() && info.Mode().Perm() == 0600
+}
+
+func (access outputAccess) sameOutput(original, current os.FileInfo, owner int) bool {
+	if !os.SameFile(original, current) || !access.fileAllowed(current, original.Size(), owner) {
 		return false
 	}
 	before, after := original.Sys().(*syscall.Stat_t), current.Sys().(*syscall.Stat_t)

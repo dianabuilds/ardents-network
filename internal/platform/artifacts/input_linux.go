@@ -76,7 +76,14 @@ func (in *Inputs) Retain(file *os.File, parent *File, name string) (*File, error
 }
 
 func (in *Inputs) Directory(path string) (*File, error) {
-	if path != "/" && !AbsolutePath(path) || len(strings.Split(path, "/")) > 128 {
+	if len(strings.Split(path, "/")) > 128 {
+		return nil, ErrInput
+	}
+	return in.openDirectory(path)
+}
+
+func (in *Inputs) openDirectory(path string) (*File, error) {
+	if path != "/" && !AbsolutePath(path) {
 		return nil, ErrInput
 	}
 	file, err := os.Open("/")

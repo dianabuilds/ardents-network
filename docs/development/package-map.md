@@ -447,9 +447,11 @@ its grammar tests compile only on Linux with the genuine producer; other
 platforms retain explicit refusal without a test-only parser. Linux generation and owned
 secret encoding remain separate from public Network artifacts. Public signing and private key creation borrow the finite-file mechanism in
 `internal/platform/artifacts` through `network_output_linux.go`. The adapter
-keeps the 8 MiB per-file bound; private key publication clears owned readback
-buffers before return. No private data crosses Network or a public-artifact
-Interface. The exact-import guard admits the artifacts package for this adapter. Native key tests
+keeps the 8 MiB per-file bound. Unsigned Network preparation also uses this
+adapter to publish its one selected public file on native ext4 below a private
+caller-owned parent. Protected signing and private key publication retain
+root-controlled ancestors and the required file ownership. Private key readback
+buffers are cleared before return. Network itself receives public bytes only. The exact-import guard admits the artifacts package for this adapter. Native key tests
 use standard-library command composition and the existing registered preparation
 chain harness; that harness may consume independently generated test keys while
 its Admission fixture remains separate. It imports no new domain owner.
