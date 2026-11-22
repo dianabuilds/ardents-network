@@ -558,7 +558,10 @@ lower writes, then returns the Hosting work share and releases the exclusive
 slot before sending the existing clean lower CLOSE. The original Hosting
 termination share stays reserved until that write joins. No new allowance or
 deadline is acquired. The relay must see the exact downstream clean CLOSE
-before ending its reverse direction; the holder ends its lower sending
+before ending its reverse direction. If this clean CLOSE overtakes the
+relay's downstream EOF before physical output, the relay joins the original
+lane's retirement. A refused CLOSE or failed write still fails the exchange.
+The holder ends its lower sending
 direction and waits for the relay's clean CLOSE under its original deadline.
 Directional EOF alone is insufficient. Restricted bootstrap keeps its separate
 existing claim and retirement contract. A busy peer cannot spend
