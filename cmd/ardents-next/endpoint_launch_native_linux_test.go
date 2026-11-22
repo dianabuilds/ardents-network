@@ -920,7 +920,7 @@ func (s *platformLedLaunchStand) cleanup(t *testing.T) {
 func buildEndpointWorkerBinary(t *testing.T) []byte {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "ardents-text-linux-amd64")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/cmd/ardents-text")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/internal/application/document/worker")
 	// The worker runs under RootDirectory chroot; it must be a static binary.
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := cmd.CombinedOutput(); err != nil {

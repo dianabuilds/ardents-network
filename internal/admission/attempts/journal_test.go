@@ -22,7 +22,7 @@ func tokenJournalFixture(t *testing.T) (*Journal, *time.Time, Attempt, []byte) {
 	return journal, &now, record, bytes.Repeat([]byte{6}, 354)
 }
 
-func TestTextTokenJournalPersistsBurnWithoutSecretsOrReplay(t *testing.T) {
+func TestApplicationTokenJournalPersistsBurnWithoutSecretsOrReplay(t *testing.T) {
 	journal, _, record, token := tokenJournalFixture(t)
 	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)
@@ -55,7 +55,7 @@ func TestTextTokenJournalPersistsBurnWithoutSecretsOrReplay(t *testing.T) {
 	}
 }
 
-func TestTextTokenJournalRefusesMissingPartialOrForeignRetainedState(t *testing.T) {
+func TestApplicationTokenJournalRefusesMissingPartialOrForeignRetainedState(t *testing.T) {
 	for _, fault := range []string{"missing", "partial", "foreign", "clock"} {
 		t.Run(fault, func(t *testing.T) {
 			journal, now, record, token := tokenJournalFixture(t)
@@ -141,7 +141,7 @@ func TestRetainedJournalRefusesEmptyOrErasedHistory(t *testing.T) {
 	}
 }
 
-func TestTextTokenJournalPoisonsOwnerOnReplacedFile(t *testing.T) {
+func TestApplicationTokenJournalPoisonsOwnerOnReplacedFile(t *testing.T) {
 	journal, _, record, token := tokenJournalFixture(t)
 	path := filepath.Join(journal.root, "attempts")
 	if err := os.Rename(path, path+".replaced"); err != nil {
@@ -165,7 +165,7 @@ func TestTextTokenJournalPoisonsOwnerOnReplacedFile(t *testing.T) {
 	}
 }
 
-func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
+func TestApplicationTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 	journal, now, record, token := tokenJournalFixture(t)
 	defer journal.Close()
 	if err := journal.Mark(token, record); err != nil {
@@ -203,7 +203,7 @@ func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 
 // The earliest-expiry fence must retain exactly what a full scan retains and
 // keep earliestWindow equal to the minimum retained window (audit AD-4).
-func TestTextTokenJournalPruneFenceMatchesFullScan(t *testing.T) {
+func TestApplicationTokenJournalPruneFenceMatchesFullScan(t *testing.T) {
 	journal, now, record, token := tokenJournalFixture(t)
 	defer journal.Close()
 	base := record.Window
@@ -255,7 +255,7 @@ func TestTextTokenJournalPruneFenceMatchesFullScan(t *testing.T) {
 	}
 }
 
-func TestTextTokenJournalPruningCrashRetainsDeletionTimeFloor(t *testing.T) {
+func TestApplicationTokenJournalPruningCrashRetainsDeletionTimeFloor(t *testing.T) {
 	journal, now, record, token := tokenJournalFixture(t)
 	if err := journal.Mark(token, record); err != nil {
 		t.Fatal(err)

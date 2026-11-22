@@ -40,12 +40,12 @@ func runSourceReleasePurpose(args []string, out io.Writer, purpose sourceRelease
 	}
 	if len(args) != wanted {
 		if purpose == sourceReleaseForward {
-			return errors.New("usage: sign-infrastructure-release source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
+			return errors.New("usage: ardents infrastructure sign-release source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
 		}
 		if purpose == sourceReleaseTimestamp {
-			return errors.New("usage: sign-infrastructure-release source refresh-release-timestamp PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION CURRENT_DISTRIBUTION")
+			return errors.New("usage: ardents infrastructure sign-release source refresh-release-timestamp PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION CURRENT_DISTRIBUTION")
 		}
-		return errors.New("usage: sign-infrastructure-release source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
+		return errors.New("usage: ardents infrastructure sign-release source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

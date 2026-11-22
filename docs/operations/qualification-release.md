@@ -203,7 +203,7 @@ produces public unsigned bytes and grants no signing or trust authority.
 template (`infrastructure.PlatformUnitTemplate`). The former
 `source prepare-template` producer was removed (ADR-0125).
 
-The distinct canonical `sign-infrastructure-release source sign-initial-release` producer
+The distinct canonical `ardents infrastructure sign-release source sign-initial-release` producer
 describes only `ardents/linux-amd64/node` and
 `ardents/linux-amd64/infrastructure/source` in one initial signed set under the
 existing five-key/ordinary-three-signature and rebuild policy. After the #604

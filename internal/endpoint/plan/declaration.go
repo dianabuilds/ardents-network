@@ -24,12 +24,12 @@ type Permission struct {
 // Headless contains the local inputs for one Target Link participant runtime
 // and its Connection Interface, without selecting a Service Target or Route.
 type Headless struct {
-	Role                string     `json:"role,omitempty"`
-	TextTokenRoot       string     `json:"text_token_root,omitempty"`
-	ReaderPermission    Permission `json:"reader_permission,omitempty"`
-	PublisherPermission Permission `json:"publisher_permission,omitempty"`
-	Schema              string     `json:"schema"`
-	NetworkStateRoot    string     `json:"network_state_root"`
+	Role                 string     `json:"role,omitempty"`
+	ApplicationTokenRoot string     `json:"text_token_root,omitempty"`
+	ReaderPermission     Permission `json:"reader_permission,omitempty"`
+	PublisherPermission  Permission `json:"publisher_permission,omitempty"`
+	Schema               string     `json:"schema"`
+	NetworkStateRoot     string     `json:"network_state_root"`
 	// NetworkSourcePlan is an optional existing direct-Source plan. When it
 	// is present, this runtime owns the State root's initial refresh and its
 	// automatic refresh loop; a separate process cannot share that root lease.
@@ -257,7 +257,7 @@ func validateTextFields(plan Headless) error {
 	if plan.TransitAcquisitionRoot != "" || plan.BytesEachDirection != 0 || plan.AlphaCorpusStateRoot != "" || plan.AlphaCorpusAuthority != "" || plan.AlphaCohort != "" {
 		return errors.New("text runtime plan cannot select legacy acquisition or interfaces")
 	}
-	paths := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.ApplicationSocket, plan.ReaderPermission.RequestPath, plan.ReaderPermission.ResponsePath}
+	paths := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.ApplicationSocket, plan.ReaderPermission.RequestPath, plan.ReaderPermission.ResponsePath}
 	permissions := []Permission{plan.ReaderPermission}
 	if plan.Role == "reader" {
 		if plan.PublicationRoot != "" || plan.ServiceInstanceRoot != "" || plan.AdministrationSocket != "" || plan.AdministrationPrincipal != "" || plan.PublisherPermission != (Permission{}) {
@@ -411,7 +411,7 @@ func pathsOverlap(left, right string) bool {
 }
 
 func MutableRoots(plan Headless) []string {
-	roots := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot}
+	roots := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot}
 	if plan.Role == "" {
 		roots = append(roots, plan.PublicationRoot, plan.ServiceInstanceRoot)
 	}

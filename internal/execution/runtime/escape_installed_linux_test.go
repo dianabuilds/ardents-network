@@ -85,12 +85,12 @@ func startExecutionEscapeProbes(t *testing.T) *executionEscapeProbes {
 	probes := &executionEscapeProbes{control: make(chan string, 16), seen: make(chan string, 16), done: make(chan struct{}, 5)}
 	// World readability makes the file probe meaningful for DynamicUser if
 	// the host tree were incorrectly exposed; UID permission is not the oracle.
-	file, err := os.OpenFile("/tmp/ardents-text-worker-escape-file", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	file, err := os.OpenFile("/tmp/ardents-document-worker-escape-file", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := os.Remove("/tmp/ardents-text-worker-escape-file"); err != nil {
+		if err := os.Remove("/tmp/ardents-document-worker-escape-file"); err != nil {
 			t.Error(err)
 		}
 	})
@@ -99,7 +99,7 @@ func startExecutionEscapeProbes(t *testing.T) *executionEscapeProbes {
 		t.Fatal(err)
 	}
 	for _, endpoint := range []struct{ network, address string }{
-		{"tcp4", "127.0.0.1:45561"}, {"tcp6", "[::1]:45562"}, {"unix", "/tmp/ardents-text-worker-escape.sock"},
+		{"tcp4", "127.0.0.1:45561"}, {"tcp6", "[::1]:45562"}, {"unix", "/tmp/ardents-document-worker-escape.sock"},
 	} {
 		listener, err := net.Listen(endpoint.network, endpoint.address)
 		if err != nil {
@@ -176,7 +176,7 @@ func (probes *executionEscapeProbes) watchPacket(name string, connection *net.UD
 func (probes *executionEscapeProbes) requireControls(t *testing.T) {
 	t.Helper()
 	for _, endpoint := range []struct{ network, address string }{
-		{"tcp4", "127.0.0.1:45561"}, {"tcp6", "[::1]:45562"}, {"unix", "/tmp/ardents-text-worker-escape.sock"},
+		{"tcp4", "127.0.0.1:45561"}, {"tcp6", "[::1]:45562"}, {"unix", "/tmp/ardents-document-worker-escape.sock"},
 		{"udp4", "127.0.0.1:45563"}, {"udp4", "127.0.0.1:45564"},
 	} {
 		connection, err := net.DialTimeout(endpoint.network, endpoint.address, time.Second)

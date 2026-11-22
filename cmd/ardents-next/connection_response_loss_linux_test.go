@@ -102,7 +102,7 @@ func assertInstalledConnectionPublicationWithdrawal(t *testing.T, ctx context.Co
 	if n, err := peer.Write([]byte("late")); n != 0 || err == nil {
 		t.Fatal("withdrawn Publisher accepted Application bytes", n, err)
 	}
-	contract, err := endpointpublisher.TextContract(publisherOperation)
+	contract, err := endpointpublisher.DocumentContract(publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}

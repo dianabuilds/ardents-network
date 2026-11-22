@@ -8,7 +8,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/execution"
 )
 
@@ -16,12 +16,12 @@ import (
 // with one bounded selected snapshot. Text owns document/protocol semantics;
 // Execution retains artifact, Job, operation and original descendant cleanup.
 func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, snapshot []byte) (*Invocation, error) {
-	if len(snapshot) > textdocument.MaximumBytes {
+	if len(snapshot) > document.MaximumBytes {
 		return nil, errors.New("text snapshot is invalid")
 	}
 	body := bytes.Clone(snapshot)
 	defer clear(body)
-	if _, err := textdocument.NewSnapshot(body); err != nil {
+	if _, err := document.NewSnapshot(body); err != nil {
 		return nil, err
 	}
 	return owner.launchInvocation(ctx, principal, execution.Administration, body, true, false)
@@ -34,7 +34,7 @@ func (invocation *Invocation) observePublisherAttachment() {
 	invocation.publisherInput = &publisherConnectionInput{incoming: make(chan connection.Stream)}
 	go func() {
 		defer close(invocation.observationDone)
-		err := textdocument.ServeWorkerConnections(invocation.job.Context(), invocation.activation.Attachment, invocation.publisherInput.incoming)
+		err := document.ServeWorkerConnections(invocation.job.Context(), invocation.activation.Attachment, invocation.publisherInput.incoming)
 		if invocation.job.Retire() {
 			invocation.observationError = errors.Join(errUnexpectedWorkerEnd, err)
 		}

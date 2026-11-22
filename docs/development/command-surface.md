@@ -19,12 +19,12 @@ executables under [ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bund
 Protected Endpoint delivery adds the fixed text Application worker and its
 resources. The qualification worker has its own installed verification lane.
 
-| Artifact lane | Binary | Disposition | Boundary |
+| Artifact lane | Entrypoint | Disposition | Boundary |
 |---|---|---|---|
-| Offline operator preparation and signing | provision-infrastructure, sign-infrastructure-release | retained tooling | Verified initial Network artifacts, protected role-specific key and Release production, and the separate Source Timestamp purpose |
+| Offline operator preparation and signing | ardents infrastructure provision, ardents infrastructure sign-release | retained tooling | Verified initial Network artifacts, protected role-specific key and Release production, and the separate Source Timestamp purpose |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Network participant and domain composition | ardents-next | maintained | Network, Node and Endpoint composition. The signed Endpoint artifact retains the `ardents-<platform>` filename. |
-| Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
+| Installed document worker | signed worker artifact `ardents-text` | automatic | Fixed confined Reader/Publisher worker entrypoints invoked by systemd. |
 | Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints, built from the qualification fixture. |
 
 The root cmd directory is Go's conventional collection of thin executable
@@ -48,7 +48,8 @@ Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 | ardents-next | diagnostics timeline | local projection of bounded runtime events from standard input |
 | ardents-next | network inspect-closed-profile / issuance inspect-public-profile / source inspect-latest | independent public-context verification and bounded Source contact |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
-| ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
+| ardents | publish, link, read | Participant document commands |
+| Installed document worker | worker-reader, worker-publisher | Fixed entrypoints invoked by systemd |
 | ardents-stream-qualification | worker-reader, worker-publisher | keep as fixed installed verification workers; never an operator route |
 
 The former `endpoint enroll`/`enroll-installed` Portable per-user profile and

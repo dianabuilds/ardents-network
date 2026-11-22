@@ -37,7 +37,7 @@ func TestTextManagerResponseLimitCannotBeBypassedByReaderFrom(t *testing.T) {
 	}
 }
 
-func TestTextWorkerUnitRejectsForeignAndAmbiguousInstances(t *testing.T) {
+func TestDocumentWorkerUnitRejectsForeignAndAmbiguousInstances(t *testing.T) {
 	for _, name := range []string{"ssh.service", "ardents-text-publisher@.service", "ardents-text-publisher@1-0-997.service",
 		"ardents-stream-qualification-publisher@0-12-997.service",
 		"ardents-text-publisher@1-12-0.service", "ardents-text-publisher@01-12-997.service", "ardents-text-publisher@1-12-997.service/extra",
@@ -57,7 +57,7 @@ func TestTextWorkerUnitRejectsForeignAndAmbiguousInstances(t *testing.T) {
 	}
 }
 
-func TestTextWorkerExecutableObservationRejectsNullAndExtraCommands(t *testing.T) {
+func TestDocumentWorkerExecutableObservationRejectsNullAndExtraCommands(t *testing.T) {
 	valid := `[["/ardents-text",["/ardents-text","worker-publisher"],[],1,1,0,0,42,0,0]]`
 	for _, raw := range []string{
 		strings.Replace(valid, "[],1,1", "null,1,1", 1), strings.Replace(valid, "[],1,1", `["privileged"],1,1`, 1),

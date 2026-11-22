@@ -20,11 +20,15 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "help") {
+		fmt.Fprintln(out, errDocumentUsage)
+		return 0
+	}
 	if len(args) > 0 && args[0] == "platform" {
 		return runPlatform(ctx, args[1:], out)
 	}
 	if len(args) > 0 && args[0] == "infrastructure" {
-		return runInfrastructure(ctx, args[1:], out)
+		return runInfrastructureCommand(ctx, args[1:], out, diagnostic)
 	}
 	if len(args) > 0 && args[0] == "source" {
 		if len(args) > 1 && args[1] == "inspect-latest" {
@@ -46,6 +50,12 @@ func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "publication" {
 		return runPublication(ctx, args[1:], out)
+	}
+	if len(args) > 0 {
+		switch args[0] {
+		case "publish", "link", "read":
+			return runDocumentCommand(ctx, args, diagnostic)
+		}
 	}
 	if len(args) > 0 && args[0] == "diagnostics" {
 		return runDiagnostics(ctx, args[1:], os.Stdin, out, diagnostic)

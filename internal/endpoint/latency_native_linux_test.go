@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/endpoint/reader"
@@ -281,7 +281,7 @@ func openLatencyParticipant(ctx context.Context, root string) (*latencyParticipa
 	}
 	// Publisher holder: one retained hour-scoped permission for the reference
 	// publication, approved externally through the original handover paths.
-	pubHolder, err := openParticipantStock(filepath.Join(plan.TextTokenRoot, "publisher"), admission.AllocationPublisher, observe, check)
+	pubHolder, err := openParticipantStock(filepath.Join(plan.ApplicationTokenRoot, "publisher"), admission.AllocationPublisher, observe, check)
 	if err != nil {
 		return fail(err)
 	}
@@ -292,7 +292,7 @@ func openLatencyParticipant(ctx context.Context, root string) (*latencyParticipa
 	// Reader holder: the retained warm context. Its permission is approved once;
 	// the priming read consumes the cold bootstrap allowance, later warm reads
 	// present retained tokens.
-	readerHolder, err := openParticipantStock(filepath.Join(plan.TextTokenRoot, "reader"), admission.AllocationUser, observe, check)
+	readerHolder, err := openParticipantStock(filepath.Join(plan.ApplicationTokenRoot, "reader"), admission.AllocationUser, observe, check)
 	if err != nil {
 		return fail(err)
 	}
@@ -452,7 +452,7 @@ func (p *latencyParticipant) warmLoop(ctx context.Context, t *testing.T, link st
 			return opened, err
 		}
 		readBegan := time.Now()
-		body, readErr := textdocument.Read(bounded, stream)
+		body, readErr := document.Read(bounded, stream)
 		elapsed := time.Since(began)
 		t.Logf("warm read open=%v exchange=%v total=%v err=%v", opened, time.Since(readBegan), elapsed, readErr)
 		clear(body)
@@ -622,7 +622,7 @@ func (p *latencyParticipant) diagnosticOpenTiming(ctx context.Context, t *testin
 		return
 	}
 	readBegan := time.Now()
-	body, readErr := textdocument.Read(bounded, stream)
+	body, readErr := document.Read(bounded, stream)
 	t.Logf("open-timing open=%v exchange=%v total=%v currents=%d err=%v", opened, time.Since(readBegan), time.Since(began), calls, readErr)
 	clear(body)
 	_ = stream.Close()

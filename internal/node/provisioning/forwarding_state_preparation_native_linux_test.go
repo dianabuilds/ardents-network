@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -35,7 +34,7 @@ func prepareForwardingStateNativeCohort(t *testing.T, command, parent string, pe
 	}
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding"}, args...)...).CombinedOutput()
+		raw, err := provisionCommand(t, command, append([]string{"forwarding"}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("actual canonical State preparation input", args[0], err, string(raw))
 		}

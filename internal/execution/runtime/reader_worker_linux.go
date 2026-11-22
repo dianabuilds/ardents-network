@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/execution"
 )
 
@@ -28,7 +28,7 @@ func (invocation *Invocation) observeReaderAttachment() {
 		ready := make(chan []byte)
 		joined := make(chan readerCompletion, 1)
 		go func() {
-			body, err := textdocument.AwaitRetainedWorkerConnection(invocation.readerCaller, borrow, input.incoming, ready, input.finish)
+			body, err := document.AwaitRetainedWorkerConnection(invocation.readerCaller, borrow, input.incoming, ready, input.finish)
 			joined <- readerCompletion{body: body, err: err}
 		}()
 		var completion readerCompletion

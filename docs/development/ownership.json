@@ -72,8 +72,7 @@
         "internal/application/administration/",
         "tests/compatibility/",
         "internal/application/connection/",
-        "internal/application/textdocument/",
-        "cmd/ardents-text/",
+        "internal/application/document/",
         "packaging/text-worker/",
         "tests/qualification/text-worker-policy/"
       ],
@@ -92,8 +91,7 @@
       "id": "text-application",
       "owner": "text-application",
       "include_prefixes": [
-        "internal/application/textdocument/",
-        "cmd/ardents-text/",
+        "internal/application/document/",
         "packaging/text-worker/",
         "tests/qualification/text-worker-policy/"
       ],

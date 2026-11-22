@@ -19,7 +19,7 @@ func endpointDeclFixture() requestinput.Declaration {
 			NetworkStateRoot:     "/var/lib/ardents/roles/endpoint/state",
 			EntryStateRoot:       "/var/lib/ardents/roles/endpoint/entry",
 			LocalRoleStateRoot:   "/var/lib/ardents/roles/endpoint/participation",
-			TextTokenRoot:        "/var/lib/ardents/roles/endpoint/token",
+			ApplicationTokenRoot: "/var/lib/ardents/roles/endpoint/token",
 			PublicationRoot:      "/var/lib/ardents/roles/endpoint/publication",
 			ServiceInstanceRoot:  "/var/lib/ardents/roles/endpoint/instance",
 			ApplicationSocket:    "/run/ardents/endpoint/application.sock",
@@ -132,7 +132,7 @@ func TestPlatformEndpointRootsRefusesImmutableOverlapAndInvalidPaths(t *testing.
 	for name, change := range map[string]func(*requestinput.Declaration){
 		"installation-overlap": func(d *requestinput.Declaration) { d.Headless.NetworkStateRoot = d.InstallationRoot + "/state" },
 		"bundle-overlap":       func(d *requestinput.Declaration) { d.Headless.EntryStateRoot = d.BundleRoot },
-		"release-overlap":      func(d *requestinput.Declaration) { d.Headless.TextTokenRoot = d.ReleaseFloorRoot + "/token" },
+		"release-overlap":      func(d *requestinput.Declaration) { d.Headless.ApplicationTokenRoot = d.ReleaseFloorRoot + "/token" },
 		"relative-root":        func(d *requestinput.Declaration) { d.Headless.NetworkStateRoot = "relative/state" },
 		"root-escape":          func(d *requestinput.Declaration) { d.Headless.ApplicationSocket = "/application.sock" },
 		"newline":              func(d *requestinput.Declaration) { d.Headless.EntryStateRoot += "\nExecStart=/bin/sh" },

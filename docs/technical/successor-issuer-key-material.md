@@ -4,7 +4,7 @@ This bounded offline owner prepares immutable RSA keys and an unsigned local
 inventory. It does not appoint an issuer, authenticate State, sign ARDCIP01,
 issue tokens or provide network admission. Admission and Hosting remain separate.
 
-Canonical `provision-infrastructure forwarding prepare-token-keys` is a separate finite
+Canonical `ardents infrastructure provision forwarding prepare-token-keys` is a separate finite
 offline caller of these same `Initialize`, `Open`, `Inventory`, `Check` and
 `Close` contracts. Public flags fix the Network, issuer Node, public Node signer
 and one to six aligned UTC hours. No Node private key is opened. A fresh protected

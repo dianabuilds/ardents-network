@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -45,4 +46,8 @@ func sourceNativePinnedProgram(t *testing.T, variable string) (string, []byte) {
 		t.Fatal("invalid environment: original independently pinned program required", variable, err)
 	}
 	return path, raw
+}
+
+func provisionCommand(t *testing.T, program string, args ...string) *exec.Cmd {
+	return exec.CommandContext(t.Context(), program, append([]string{"infrastructure", "provision"}, args...)...)
 }

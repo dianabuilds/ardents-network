@@ -26,7 +26,7 @@ import (
 
 func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	parent := sourceArtifactNativeParent(t)
-	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM")
+	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM")
 	nextPath, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_JOIN_NEXT_PROGRAM")
 	preparedTemplate, err := exec.CommandContext(t.Context(), nextPath, "platform", "template").Output()
 	if err != nil || !bytes.Equal(preparedTemplate, []byte(systemd.PlatformUnitTemplate)) {
@@ -46,7 +46,7 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 		t.Fatal(err)
 	}
 	keyRoot := filepath.Join(parent, "keys")
-	keyOutput, err := exec.CommandContext(t.Context(), command, "join", "prepare-release-keys", keyRoot).CombinedOutput()
+	keyOutput, err := releaseCommand(t, command, "join", "prepare-release-keys", keyRoot).CombinedOutput()
 	if err != nil {
 		t.Fatal("actual Join Release key birth", string(keyOutput), err)
 	}
@@ -147,12 +147,12 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	}
 	planOutput := filepath.Join(parent, "prepared-release-plan")
 	publicArgs := []string{"join", "prepare-release-plan", "--network", plan.Network, "--reference", plan.Reference.Format(time.RFC3339), "--expires", plan.Expires.Format(time.RFC3339), "--program", program, "--descriptor", descriptor, "--template", template, "--program-custom", programClaims, "--generation-custom", generationClaims, "--output", planOutput}
-	if out, err := exec.CommandContext(t.Context(), command, publicArgs...).CombinedOutput(); err != nil {
+	if out, err := releaseCommand(t, command, publicArgs...).CombinedOutput(); err != nil {
 		t.Fatal("canonical public release plan producer", err, string(out))
 	}
 	planPath = filepath.Join(planOutput, "join-release-plan.json")
 	output, verification := filepath.Join(parent, "metadata"), filepath.Join(parent, "verification")
-	child := exec.CommandContext(t.Context(), command, "join", "sign-initial-release", planPath, keyRoot, output, verification)
+	child := releaseCommand(t, command, "join", "sign-initial-release", planPath, keyRoot, output, verification)
 	if out, err := child.CombinedOutput(); err != nil || !bytes.Contains(out, []byte(`"operation":"join.sign-initial-release"`)) {
 		t.Fatal("actual canonical Join signature operation", string(out), err)
 	}
@@ -233,20 +233,21 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 		}
 	}
 	plan.Schema = "ardents-join-initial-release-plan-v1"
-	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
+	foreignProgram := foreignNativeProgram(t)
+	if err := os.WriteFile(program, foreignProgram, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareRuntimeDescriptor("join", "one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
+	badDescriptor, err := infrastructure.PrepareRuntimeDescriptor("join", "one", 1, foreignProgram, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(descriptor, badDescriptor, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan.ProgramCustom, plan.GenerationCustom = custom(controlBytes), custom(badDescriptor)
+	plan.ProgramCustom, plan.GenerationCustom = custom(foreignProgram), custom(badDescriptor)
 	writePlan()
 	if _, err := signNodeReleasePurpose(joinReleaseRole, t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "bad-program"), filepath.Join(parent, "bad-program-history")}, nodeReleaseInitial, nil); err == nil {
-		t.Fatal("Control executable signed as Node")
+		t.Fatal("foreign executable signed as Node")
 	}
 }
 

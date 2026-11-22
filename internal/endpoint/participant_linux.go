@@ -158,7 +158,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 		}
 		// This new composition cannot adopt another owner's token history by
 		// hiding its marker beneath fresh child roots.
-		entries, err := os.ReadDir(plan.TextTokenRoot)
+		entries, err := os.ReadDir(plan.ApplicationTokenRoot)
 		if err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}
@@ -167,7 +167,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 				return phase, errors.New("foreign token history")
 			}
 		}
-		root := filepath.Join(plan.TextTokenRoot, name)
+		root := filepath.Join(plan.ApplicationTokenRoot, name)
 		holder, err := openParticipantStock(root, role, observe, check)
 		if err != nil {
 			return phase, errors.Join(ErrUnavailable, err)

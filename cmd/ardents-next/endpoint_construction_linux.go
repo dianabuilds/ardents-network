@@ -20,7 +20,7 @@ type endpointPlanDeclaration struct {
 	Role                    string                      `json:"role"`
 	NetworkStateRoot        string                      `json:"network_state_root"`
 	LocalRoleStateRoot      string                      `json:"local_role_state_root"`
-	TextTokenRoot           string                      `json:"text_token_root"`
+	ApplicationTokenRoot    string                      `json:"text_token_root"`
 	EntryStateRoot          string                      `json:"entry_state_root"`
 	PublicationRoot         string                      `json:"publication_root"`
 	ServiceInstanceRoot     string                      `json:"service_instance_root"`
@@ -88,7 +88,7 @@ func runEndpointPlanConstruction(ctx context.Context, args []string, diagnostic 
 		return 1
 	}
 	declaration := endpoint.PlanDeclaration{Role: input.Role, NetworkStateRoot: input.NetworkStateRoot,
-		LocalRoleStateRoot: input.LocalRoleStateRoot, TextTokenRoot: input.TextTokenRoot, EntryStateRoot: input.EntryStateRoot,
+		LocalRoleStateRoot: input.LocalRoleStateRoot, ApplicationTokenRoot: input.ApplicationTokenRoot, EntryStateRoot: input.EntryStateRoot,
 		PublicationRoot: input.PublicationRoot, ServiceInstanceRoot: input.ServiceInstanceRoot,
 		TimeConfidenceFile: input.TimeConfidenceFile, ApplicationSocket: input.ApplicationSocket,
 		AdministrationSocket: input.AdministrationSocket, BrokerID: input.BrokerID, ConnectionPrincipal: input.ConnectionPrincipal,

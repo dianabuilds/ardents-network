@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,7 +33,7 @@ func testRoleProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T, role
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := exec.CommandContext(t.Context(), command, append([]string{string(role)}, args...)...).CombinedOutput()
+		raw, err := provisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical public profile flow refused", args[0], err, string(raw))
 		}
