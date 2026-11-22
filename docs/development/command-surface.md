@@ -70,6 +70,8 @@ The following inputs belonged to retired or refusal-only surfaces:
 
 | Removed input | Reason |
 |---|---|
+| ardents-control source prepare-template / prepare-install-inputs | the platform-led Source lifecycle and `ardents-next platform template` replace these preparation routes under ADR-0125 |
+| ardents-control forwarding, join and descriptor prepare-template / prepare-request / prepare-plan / prepare-hosting / prepare-state | platform-led role preparation owns delivery under ADR-0125. The former routes exit with code 2 before input I/O |
 | ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
 | ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by [ADR-0060](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0060-retire-completed-planning-campaign-generators.md) (archived) |

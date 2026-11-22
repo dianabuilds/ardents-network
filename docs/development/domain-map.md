@@ -278,9 +278,7 @@ qualification are not supplied by this operation. No universal Identity/PKI
 authority, private signer, new package or runtime format is introduced.
 
 Canonical Control's former `source prepare-install-inputs` single-Source public
-input preparation is retired (#604 stage 1.6, ADR-0125): it returns a typed
-referral to the platform-led Source lifecycle before reading inputs, and
-`source.ObservePublicContact` is removed. The platform-led lifecycle
+input preparation and `source.ObservePublicContact` were removed under ADR-0125. The platform-led lifecycle
 (`source prepare-state`, `ardents-next platform initialize-trust`/`unit`,
 `systemctl start ardents-source`) owns installed Source delivery; State still
 owns acceptance/currentness. This supplies no installed or bootstrap acceptance.

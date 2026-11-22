@@ -25,42 +25,28 @@ type descriptorControlFailure struct{ cause error }
 func (e *descriptorControlFailure) Error() string { return "Descriptor artifact preparation refused" }
 func (e *descriptorControlFailure) Unwrap() error { return e.cause }
 
-// The transitional Descriptor preparation is retired (ADR-0125, #604 FJD stage D);
-// the platform-led Descriptor lifecycle replaces it. Each refusal fires before any
-// input is read or any effect is attempted. Release signing is preserved and
-// bound to the canonical platform template and ardents-next program.
-var (
-	errDescriptorPrepareTemplateRetired = errors.New("old Descriptor prepare-template is retired; use ardents-next platform template")
-	errDescriptorPrepareRequestRetired  = errors.New("old Descriptor prepare-request is retired; use the platform-led Descriptor lifecycle")
-	errDescriptorPreparePlanRetired     = errors.New("old Descriptor prepare-plan is retired; use the platform-led Descriptor lifecycle")
-	errDescriptorPrepareHostingRetired  = errors.New("old Descriptor prepare-hosting is retired; use the platform-led Descriptor lifecycle")
-	errDescriptorPrepareStateRetired    = errors.New("old Descriptor prepare-state is retired; use the platform-led Descriptor lifecycle")
-)
-
-// Descriptor has its own closed public producers. Shared native readers/writers own
-// only physical input/output custody; no Source or Forwarding right is reused.
 func runDescriptorControl(args []string, out io.Writer) error {
-	if len(args) > 0 {
-		switch args[0] {
-		case "prepare-profile", "sign-profile":
-			return runDescriptorProfileProvision(args, out)
-		case "prepare-token-keys":
-			return runDescriptorTokenMaterial(args[1:], out)
-		case "prepare-state-key", "prepare-epoch", "sign-epoch":
-			return runDescriptorEpochProvision(args, out)
-		case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
-			return runDescriptorNodeProvision(args, out)
-		case "prepare-state":
-			return errDescriptorPrepareStateRetired
-		case "prepare-hosting":
-			return errDescriptorPrepareHostingRetired
-		case "prepare-release-keys":
-			return runDescriptorReleaseKeys(args[1:], out)
-		case "sign-forward-release":
-			return runDescriptorReleasePurpose(args[1:], out, descriptorReleaseForward)
-		case "sign-initial-release":
-			return runDescriptorReleaseSigning(args[1:], out)
-		}
+	if len(args) == 0 {
+		return &descriptorControlFailure{errSourceControlInput}
+	}
+	switch args[0] {
+	case "prepare-profile", "sign-profile":
+		return runDescriptorProfileProvision(args, out)
+	case "prepare-token-keys":
+		return runDescriptorTokenMaterial(args[1:], out)
+	case "prepare-state-key", "prepare-epoch", "sign-epoch":
+		return runDescriptorEpochProvision(args, out)
+	case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
+		return runDescriptorNodeProvision(args, out)
+	case "prepare-release-keys":
+		return runDescriptorReleaseKeys(args[1:], out)
+	case "sign-initial-release":
+		return runDescriptorReleaseSigning(args[1:], out)
+	case "sign-forward-release":
+		return runDescriptorReleasePurpose(args[1:], out, descriptorReleaseForward)
+	case "prepare-artifact", "prepare-inventory", "prepare-release-plan", "prepare-forward-release-plan":
+	default:
+		return &descriptorControlFailure{errSourceControlInput}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -101,12 +87,6 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 	case "prepare-release-plan":
 		result, destination, returned = descriptorReleasePlanArguments(args[1:], inputs)
 		name = "descriptor-release-plan.json"
-	case "prepare-template":
-		return nil, errDescriptorPrepareTemplateRetired
-	case "prepare-request":
-		return nil, errDescriptorPrepareRequestRetired
-	case "prepare-plan":
-		return nil, errDescriptorPreparePlanRetired
 	case "prepare-artifact":
 		if len(args) != 6 {
 			return nil, errSourceControlInput

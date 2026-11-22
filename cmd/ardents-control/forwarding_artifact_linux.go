@@ -27,45 +27,28 @@ type forwardingControlFailure struct{ cause error }
 func (e *forwardingControlFailure) Error() string { return "forwarding artifact preparation refused" }
 func (e *forwardingControlFailure) Unwrap() error { return e.cause }
 
-// The transitional Forwarding preparation is retired (ADR-0125, #604 FJD stage D);
-// the platform-led Forwarding lifecycle replaces it. Each refusal fires before any
-// input is read or any effect is attempted. Release signing is preserved and bound
-// to the canonical platform template and ardents-next program.
-var (
-	errForwardingPrepareTemplateRetired = errors.New("old Forwarding prepare-template is retired; use ardents-next platform template")
-	errForwardingPrepareRequestRetired  = errors.New("old Forwarding prepare-request is retired; use the platform-led Forwarding lifecycle")
-	errForwardingPreparePlanRetired     = errors.New("old Forwarding prepare-plan is retired; use the platform-led Forwarding lifecycle")
-	errForwardingPrepareHostingRetired  = errors.New("old Forwarding prepare-hosting is retired; use the platform-led Forwarding lifecycle")
-	errForwardingPrepareStateRetired    = errors.New("old Forwarding prepare-state is retired; use the platform-led Forwarding lifecycle")
-)
-
 func runForwardingControl(args []string, out io.Writer) error {
-	if len(args) > 0 && (args[0] == "prepare-profile" || args[0] == "sign-profile") {
+	if len(args) == 0 {
+		return &forwardingControlFailure{errSourceControlInput}
+	}
+	switch args[0] {
+	case "prepare-profile", "sign-profile":
 		return runForwardingProfileProvision(args, out)
-	}
-	if len(args) > 0 && args[0] == "prepare-token-keys" {
+	case "prepare-token-keys":
 		return runForwardingTokenMaterial(args[1:], out)
-	}
-	if len(args) > 0 && (args[0] == "prepare-state-key" || args[0] == "prepare-epoch" || args[0] == "sign-epoch") {
+	case "prepare-state-key", "prepare-epoch", "sign-epoch":
 		return runForwardingEpochProvision(args, out)
-	}
-	if len(args) > 0 && (args[0] == "prepare-node-key" || args[0] == "prepare-node-record" || args[0] == "sign-node-record" || args[0] == "prepare-node-certificate") {
+	case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
 		return runForwardingNodeProvision(args, out)
-	}
-	if len(args) > 0 && args[0] == "prepare-hosting" {
-		return errForwardingPrepareHostingRetired
-	}
-	if len(args) > 0 && args[0] == "prepare-state" {
-		return errForwardingPrepareStateRetired
-	}
-	if len(args) > 0 && args[0] == "prepare-release-keys" {
+	case "prepare-release-keys":
 		return runForwardingReleaseKeys(args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "sign-initial-release" {
+	case "sign-initial-release":
 		return runForwardingReleaseSigning(args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "sign-forward-release" {
+	case "sign-forward-release":
 		return runForwardingReleasePurpose(args[1:], out, forwardingReleaseForward)
+	case "prepare-descriptor", "prepare-inventory", "prepare-release-plan", "prepare-forward-release-plan":
+	default:
+		return &forwardingControlFailure{errSourceControlInput}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -100,12 +83,6 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 	var name, destination string
 	check := inputs.checkProtected
 	switch args[0] {
-	case "prepare-template":
-		return nil, errForwardingPrepareTemplateRetired
-	case "prepare-request":
-		return nil, errForwardingPrepareRequestRetired
-	case "prepare-plan":
-		return nil, errForwardingPreparePlanRetired
 	case "prepare-release-plan":
 		result, destination, returned = forwardingReleasePlanArguments(args[1:], inputs)
 		name = "forwarding-release-plan.json"

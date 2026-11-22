@@ -16,8 +16,8 @@ unchanged. Never use diagnostic keys as the operational release authority.
 
 The transitional Forwarding orchestration and its OLD preparation are retired
 (#604 FJD stage D, ADR-0125). `ardents-control forwarding prepare-template`,
-`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` return
-typed before-effect refusals; `ardents-next platform template` emits the exact
+`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` were
+removed. `ardents-next platform template` emits the exact
 canonical platform unit template (`infrastructure.PlatformUnitTemplate`). The
 former `scripts/installation/prepare-forwarding-release-plan.py` public plan
 transformation and its build-records native control are removed with the
@@ -71,8 +71,8 @@ and direct Product Owner acceptance before any installed execution.
 
 The transitional JOIN orchestration and its OLD preparation are retired (#604
 FJD stage D, ADR-0125). `ardents-control join prepare-template`,
-`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` return
-typed before-effect refusals; `ardents-next platform template` emits the exact
+`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` were
+removed. `ardents-next platform template` emits the exact
 canonical platform unit template (`infrastructure.PlatformUnitTemplate`). The
 former `scripts/installation/prepare-join-release-plan.py` public plan
 transformation and its build-records native control are removed with the
@@ -108,8 +108,8 @@ acceptance before any installed execution.
 
 The transitional Descriptor orchestration and its OLD preparation are retired
 (#604 FJD stage D, ADR-0125). `ardents-control descriptor prepare-template`,
-`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` return
-typed before-effect refusals; `ardents-next platform template` emits the exact
+`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` were
+removed. `ardents-next platform template` emits the exact
 canonical platform unit template (`infrastructure.PlatformUnitTemplate`). The
 former `scripts/installation/prepare-descriptor-release-plan.py` public plan
 transformation and its build-records native control are removed with the
@@ -203,8 +203,7 @@ protected inputs through physical output Close and readback. Preparation
 produces public unsigned bytes and grants no signing or trust authority.
 `ardents-next platform template` emits that exact canonical platform unit
 template (`infrastructure.PlatformUnitTemplate`). The former
-`source prepare-template` producer is retired (#604 stage 1.6, ADR-0125) and
-returns a typed refusal pointing to `ardents-next platform template`.
+`source prepare-template` producer was removed (ADR-0125).
 
 The distinct canonical `ardents-control source sign-initial-release` producer
 describes only `ardents/linux-amd64/node` and

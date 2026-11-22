@@ -3691,8 +3691,10 @@ root-only `ardents-node descriptor inspect-inputs` preflight, the
 `ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE`/`ARDENTS_DESCRIPTOR_NODE_PROGRAM` pins
 retired with the transitional orchestration (#604 FJD stage D, ADR-0125).
 `descriptor prepare-template`/`prepare-request`/`prepare-plan`/`prepare-hosting`/
-`prepare-state` return typed before-effect refusals; `ardents-next platform
-template` emits the canonical platform unit template.
+`prepare-state` were removed. The headless process profile exercises the
+removed preparation routes on the exact Control binary and checks exit 2,
+empty stdout and preservation of input and output paths.
+`ardents-next platform template` emits the canonical platform unit template.
 
 The checked `network_signing_native` profile retains the two
 `TestDescriptorPreparationNative` artifact/inventory controls in canonical

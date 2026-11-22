@@ -25,47 +25,30 @@ type joinControlFailure struct{ cause error }
 func (e *joinControlFailure) Error() string { return "JOIN artifact preparation refused" }
 func (e *joinControlFailure) Unwrap() error { return e.cause }
 
-// The transitional JOIN preparation is retired (ADR-0125, #604 FJD stage D);
-// the platform-led JOIN lifecycle replaces it. Each refusal fires before any
-// input is read or any effect is attempted. Release signing is preserved and
-// bound to the canonical platform template and ardents-next program.
-var (
-	errJoinPrepareTemplateRetired = errors.New("old JOIN prepare-template is retired; use ardents-next platform template")
-	errJoinPrepareRequestRetired  = errors.New("old JOIN prepare-request is retired; use the platform-led JOIN lifecycle")
-	errJoinPreparePlanRetired     = errors.New("old JOIN prepare-plan is retired; use the platform-led JOIN lifecycle")
-	errJoinPrepareHostingRetired  = errors.New("old JOIN prepare-hosting is retired; use the platform-led JOIN lifecycle")
-	errJoinPrepareStateRetired    = errors.New("old JOIN prepare-state is retired; use the platform-led JOIN lifecycle")
-)
-
 // JOIN has its own closed public producers. Shared native readers/writers own
 // only physical input/output custody; no Source or Forwarding right is reused.
 func runJoinControl(args []string, out io.Writer) error {
-	if len(args) > 0 {
-		switch args[0] {
-		case "prepare-profile", "sign-profile":
-			return runJoinProfileProvision(args, out)
-		case "prepare-token-keys":
-			return runJoinTokenMaterial(args[1:], out)
-		case "prepare-state-key", "prepare-epoch", "sign-epoch":
-			return runJoinEpochProvision(args, out)
-		case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
-			return runJoinNodeProvision(args, out)
-		case "prepare-state":
-			return errJoinPrepareStateRetired
-		}
+	if len(args) == 0 {
+		return &joinControlFailure{errSourceControlInput}
 	}
-
-	if len(args) > 0 && args[0] == "prepare-hosting" {
-		return errJoinPrepareHostingRetired
-	}
-	if len(args) > 0 && args[0] == "prepare-release-keys" {
+	switch args[0] {
+	case "prepare-profile", "sign-profile":
+		return runJoinProfileProvision(args, out)
+	case "prepare-token-keys":
+		return runJoinTokenMaterial(args[1:], out)
+	case "prepare-state-key", "prepare-epoch", "sign-epoch":
+		return runJoinEpochProvision(args, out)
+	case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
+		return runJoinNodeProvision(args, out)
+	case "prepare-release-keys":
 		return runJoinReleaseKeys(args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "sign-initial-release" {
+	case "sign-initial-release":
 		return runJoinReleaseSigning(args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "sign-forward-release" {
+	case "sign-forward-release":
 		return runJoinReleasePurpose(args[1:], out, joinReleaseForward)
+	case "prepare-descriptor", "prepare-inventory", "prepare-release-plan", "prepare-forward-release-plan":
+	default:
+		return &joinControlFailure{errSourceControlInput}
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -106,12 +89,6 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 	case "prepare-forward-release-plan":
 		result, destination, returned = joinReleasePurposeArguments(args[1:], inputs, joinReleaseForward)
 		name = "join-release-plan.json"
-	case "prepare-template":
-		return nil, errJoinPrepareTemplateRetired
-	case "prepare-request":
-		return nil, errJoinPrepareRequestRetired
-	case "prepare-plan":
-		return nil, errJoinPreparePlanRetired
 	case "prepare-descriptor":
 		if len(args) != 6 {
 			return nil, errSourceControlInput

@@ -3,6 +3,8 @@
 package endpoint_test
 
 import (
+	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,11 +14,10 @@ import (
 )
 
 // The retired ACA1 inspection and qualification-preparation routes refuse
-// against the exact headless control artifact before parsing flags or opening
+// against the exact headless Control artifact before parsing flags or opening
 // any file, root, or floor (ADR-0127, #647). This keeps the headless-evidence
-// control-artifact binding exercised after the reader's retirement; the
-// accepting closed-profile and infrastructure preparation routes retain their
-// own command and native evidence.
+// control-artifact binding exercised after reader retirement. The same
+// artifact exercises the removed transitional infrastructure preparation.
 func TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact(t *testing.T) {
 	control := buildControl(t)
 	directory := t.TempDir()
@@ -40,6 +41,45 @@ func TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact(t *testing.
 	if _, err := os.Lstat(filepath.Join(directory, "absent-output")); !os.IsNotExist(err) {
 		t.Fatalf("retired control routes created an output root: %v", err)
 	}
+
+	t.Run("removed-infrastructure-preparation", func(t *testing.T) {
+		probe := filepath.Join(directory, "input")
+		original := []byte("retained input")
+		if err := os.WriteFile(probe, original, 0600); err != nil {
+			t.Fatal(err)
+		}
+		for _, role := range []struct {
+			name, diagnostic string
+			operations       []string
+		}{
+			{"source", "usage: ardents-control source OPERATION [ARGUMENTS]", []string{"prepare-template", "prepare-install-inputs"}},
+			{"forwarding", "forwarding artifact preparation refused", []string{"prepare-template", "prepare-request", "prepare-plan", "prepare-hosting", "prepare-state"}},
+			{"join", "JOIN artifact preparation refused", []string{"prepare-template", "prepare-request", "prepare-plan", "prepare-hosting", "prepare-state"}},
+			{"descriptor", "Descriptor artifact preparation refused", []string{"prepare-template", "prepare-request", "prepare-plan", "prepare-hosting", "prepare-state"}},
+		} {
+			for _, operation := range role.operations {
+				t.Run(role.name+"/"+operation, func(t *testing.T) {
+					destination := filepath.Join(t.TempDir(), "output")
+					command := exec.CommandContext(t.Context(), control, role.name, operation, probe, destination)
+					var output, diagnostic bytes.Buffer
+					command.Stdout, command.Stderr = &output, &diagnostic
+					var exit *exec.ExitError
+					err := command.Run()
+					if !errors.As(err, &exit) || exit.ExitCode() != 2 || output.Len() != 0 ||
+						diagnostic.String() != role.diagnostic+"\n" {
+						t.Fatalf("removed operation returned %v, stdout %q, stderr %q", err, output.String(), diagnostic.String())
+					}
+					if _, err := os.Lstat(destination); !os.IsNotExist(err) {
+						t.Fatal("removed operation created output", err)
+					}
+					actual, err := os.ReadFile(probe)
+					if err != nil || !bytes.Equal(actual, original) {
+						t.Fatal("removed operation changed the original input", err)
+					}
+				})
+			}
+		}
+	})
 }
 
 func buildControl(t *testing.T) string {

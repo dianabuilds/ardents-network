@@ -2164,8 +2164,9 @@ only from its independently read chain. A late/failed start preserves its own
 blocking prefix and original join obligation. Restart is explicit, with no
 replacement, crash continuation or automatic boot/retry policy.
 
-Canonical Control's separate `forwarding prepare-hosting` initializes the exact
-empty Hosting directory proved by the completed initial birth. It requires root,
+In the retired Forwarding ceremony (ADR-0125), `forwarding prepare-hosting`
+initialized the exact empty Hosting directory proved by the completed initial
+birth. It required root,
 the original fixed Node account and actual stopped manager/namespace/cgroup
 observations, with no prior invocation. Its exclusive root-only Hosting journal,
 intent, completion and pending blocker are separate from the Node-writable budget.
@@ -2179,8 +2180,9 @@ or repeated initialization refuses; deleting/recreating the original directory
 or selecting another allowance path is never a retry. This supplies no installed
 execution or reservation permission.
 
-Canonical Control's separate `forwarding prepare-state PLAN BUNDLE SIGNED_PROFILE`
-is finite offline preparation under the actual `ardents-node` system UID/GID,
+In the same retired ceremony, `forwarding prepare-state PLAN BUNDLE SIGNED_PROFILE`
+performed finite offline preparation under the actual `ardents-node` system
+UID/GID,
 with no supplementary groups other than that primary group. It retains original
 root-controlled public plan, signed bundle/profile and ancestor descriptors,
 and only an existing empty Node-owned 0700 State directory. State alone accepts
@@ -2337,8 +2339,9 @@ postimages. Semantic contents are unopened; every independent observer and
 verifier closes before output. This boundary grants no manager/process/State,
 first-start, non-root Startup, replacement, recovery or installed qualification.
 
-JOIN's separate `ardents-control join prepare-hosting` consumes the genuine
-complete stopped history and one original known-born empty Hosting directory.
+In the retired JOIN ceremony (ADR-0125), `ardents-control join prepare-hosting`
+consumed the genuine complete stopped history and one original known-born empty
+Hosting directory.
 Its fixed installed-stopped manager has no job, Start or Stop vocabulary. Fresh
 manager/namespace/principal and quiescent JOIN-scope observations surround the
 one-use root-only journal/blocker and actual Hosting initialization. Installation
@@ -2514,9 +2517,8 @@ interruption acceptance and installed qualification require their own evidence.
 
 **Forwarding orchestration retired (#604 FJD stage D, ADR-0125); Release signing
 preserved and cut over.** The former `prepare-request`, `prepare-plan`,
-`prepare-template`, `prepare-hosting` and `prepare-state` producers return typed
-before-effect refusals; `ardents-next platform template` emits the canonical
-platform unit template. After the signing cutover the closed version-one purpose
+`prepare-template`, `prepare-hosting` and `prepare-state` routes were removed.
+`ardents-next platform template` emits the canonical platform unit template. After the signing cutover the closed version-one purpose
 checks the actual static Linux-amd64 `ardents-next` program and the exact
 canonical platform unit template (`infrastructure.PlatformUnitTemplate`); the
 descriptor/inventory file identities below remain the retained compatibility

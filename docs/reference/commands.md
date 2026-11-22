@@ -102,11 +102,9 @@ protected output. Their public SHA-256 result confirms byte preparation only;
 it grants no signature, first-pin provenance, installation or runtime right.
 `forwarding prepare-hosting`, `forwarding prepare-state`,
 `forwarding prepare-template`, `forwarding prepare-request` and
-`forwarding prepare-plan` are retired (#604 FJD stage D, ADR-0125). Each returns
-its typed before-effect refusal (`old Forwarding prepare-hosting is retired;
-use the platform-led Forwarding lifecycle`, and the corresponding
-prepare-state/prepare-template/prepare-request/prepare-plan forms) before
-reading any input or attempting any effect. `ardents-next platform template`
+`forwarding prepare-plan` were removed with the
+transitional preparation (ADR-0125). Unknown operations exit with code 2
+before reading any input. `ardents-next platform template`
 emits the exact canonical platform unit template
 (`infrastructure.PlatformUnitTemplate`); the platform-led Forwarding lifecycle
 owns Hosting/State preparation and installed delivery. The generic network
@@ -685,16 +683,8 @@ exact seven Source files and independently checks descriptor/resource agreement;
 it authenticates no Release signature or initial pin. The ordinary Source signing
 producer, exact compiled program and installed bootstrap remain separate gates.
 
-The former public closed template producer is retired (#604 stage 1.6,
-ADR-0125):
-
-```text
-ardents-control source prepare-template FRESH_OUTPUT
-```
-
-It returns `old Source prepare-template is retired; use ardents-next platform
-template` before reading inputs or writing output. `ardents-next platform
-template` emits the canonical platform unit template
+The former `source prepare-template` route was removed (ADR-0125).
+`ardents-next platform template` emits the canonical platform unit template
 (`infrastructure.PlatformUnitTemplate`); `ardents-next platform unit` renders
 and the operator publishes the fixed `ardents-source.service` unit. See the
 [operator procedure](../operations/source-platform-lifecycle.md).
@@ -801,19 +791,9 @@ All operations require fresh output, original root-controlled native files and
 actual time, with no prefix adoption, reset or automatic retry. Keep real
 operator preparation separate from the native tests' generated fixture keys.
 
-The former single-Source public input preparer is retired (#604 stage 1.6,
-ADR-0125):
-
-```text
-ardents-control source prepare-install-inputs ...
-```
-
-It returns `old Source install-input preparation is retired; use the
-platform-led Source lifecycle (ardents-control source prepare-state,
-ardents-next platform initialize-trust)` before reading inputs or writing
-output. The platform-led Source lifecycle replaces the transitional
-install-input preparation; see the
-[operator procedure](../operations/source-platform-lifecycle.md).
+The former `source prepare-install-inputs` route was removed (ADR-0125).
+The [platform-led Source lifecycle](../operations/source-platform-lifecycle.md)
+provides the corresponding preparation and delivery.
 
 The former root installation transaction forms are retired (#604 stage 1.6,
 ADR-0125):
@@ -1093,11 +1073,9 @@ Forwarding inventories cannot be substituted. Other platforms refuse before
 input/output effects.
 
 `join prepare-hosting`, `join prepare-state`, `join prepare-template`,
-`join prepare-request` and `join prepare-plan` are retired (#604 FJD stage D,
-ADR-0125). Each returns its typed before-effect refusal (`old JOIN
-prepare-hosting is retired; use the platform-led JOIN lifecycle`, and the
-corresponding prepare-state/prepare-template/prepare-request/prepare-plan
-forms) before reading any input or attempting any effect.
+`join prepare-request` and `join prepare-plan` were removed with the transitional
+preparation (ADR-0125). Unknown operations exit with code 2 before reading
+any input.
 `ardents-next platform template` emits the exact canonical platform unit
 template (`infrastructure.PlatformUnitTemplate`); the platform-led JOIN
 lifecycle owns Hosting/State preparation and installed delivery. The generic
@@ -1204,7 +1182,8 @@ ardents-control descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_M
 ```
 
 `descriptor prepare-template`, `prepare-request`, `prepare-plan`,
-`prepare-hosting` and `prepare-state` return typed before-effect refusals;
+`prepare-hosting` and `prepare-state` were removed. Unknown operations exit
+with code 2 before reading any input.
 `ardents-next platform template` emits the canonical platform unit template
 (`infrastructure.PlatformUnitTemplate`). After the #604 FJD stage D signing
 cutover the bound program is the static Linux-amd64 `ardents-next` binary and the
