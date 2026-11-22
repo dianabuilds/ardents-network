@@ -47,7 +47,7 @@ func repairSourceInputs(ctx context.Context, path string) (operation error) {
 	defer func() {
 		operation = errors.Join(operation, inputs.Close())
 	}()
-	config, err = networkStateConfig(plan.Network)
+	config, err = networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		return err
 	}

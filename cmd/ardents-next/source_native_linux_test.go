@@ -23,6 +23,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -98,7 +99,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	plan := sourceServePlan{Network: &networkPlan, ProcessProfile: processresource.SourceProfile,
+	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&networkPlan), ProcessProfile: processresource.SourceProfile,
 		ParticipationRoot: filepath.Join(t.TempDir(), "participation"), Address: address, Certificate: cert, PrivateKey: key, ClientRoot: rootPath, ClientPins: [][32]byte{clientPin}}
 	raw, err := json.Marshal(plan)
 	if err != nil {

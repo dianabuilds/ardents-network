@@ -20,13 +20,14 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // Independent authorities remain test fixtures. State genuinely authenticates
 // the signed material and owns its real durable root, Source and exposure.
-func sourceStateCustodyFixture(t *testing.T) (string, sourceServePlan) {
+func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.ServingDeclaration) {
 	t.Helper()
 	f := newNetworkAdmissionFixture(t)
 	bundle, err := networkfixture.BuildClosed(f.spec)
@@ -38,8 +39,8 @@ func sourceStateCustodyFixture(t *testing.T) (string, sourceServePlan) {
 	t.Cleanup(stopClock)
 	var pin [32]byte
 	copy(pin[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan.Network = &networkAuthorityPlan{Root: plan.Network.Root, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{pin}, Threshold: 1, ProfileAuthority: pin, ClockObservationFile: clock}
-	config, err := networkStateConfig(plan.Network)
+	plan.Network = &servingdeclaration.ServingNetwork{Root: plan.Network.Root, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{pin}, Threshold: 1, ProfileAuthority: pin, ClockObservationFile: clock}
+	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +95,7 @@ func TestSourceOriginalInputLossAfterStateRecoveryPrecedesExposureAndListener(t 
 						t.Fatal(err)
 					}
 					defer inputs.Close()
-					config, err := networkStateConfig(plan.Network)
+					config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -211,7 +212,7 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 		t.Fatal(err)
 	}
 	defer inputs.Close()
-	config, err := networkStateConfig(plan.Network)
+	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +289,7 @@ func TestSourceOriginalCustodySurvivesHeldStateCloseAndLateInputFailure(t *testi
 		t.Fatal(err)
 	}
 	defer inputs.Close()
-	config, err := networkStateConfig(plan.Network)
+	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +386,7 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 		t.Fatal(err)
 	}
 	defer inputs.Close()
-	config, err := networkStateConfig(plan.Network)
+	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		t.Fatal(err)
 	}

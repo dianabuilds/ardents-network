@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/release"
@@ -165,7 +166,7 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	plan := sourceServePlan{Network: &networkPlan, ProcessProfile: processresource.SourceProfile,
+	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&networkPlan), ProcessProfile: processresource.SourceProfile,
 		ParticipationRoot: participationRoot, Address: address, Certificate: certPath, PrivateKey: keyPath, ClientRoot: rootPath, ClientPins: [][32]byte{clientPin}}
 	raw, err := json.Marshal(plan)
 	if err != nil {

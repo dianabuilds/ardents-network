@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -310,7 +311,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 		t.Fatal(err)
 	}
 	stand.networkPlan = networkAuthorityPlan{Root: stand.stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
-	plan := sourceServePlan{Network: &stand.networkPlan, ProcessProfile: "ardents-source-process-v1",
+	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&stand.networkPlan), ProcessProfile: "ardents-source-process-v1",
 		ParticipationRoot: stand.participationRoot, Address: stand.address, Certificate: stand.certPath, PrivateKey: stand.keyPath, ClientRoot: stand.caPath, ClientPins: [][32]byte{clientPin}}
 	planRaw, err := json.Marshal(plan)
 	if err != nil {

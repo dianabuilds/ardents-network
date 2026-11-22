@@ -1176,8 +1176,21 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/release/infrastructure/source_observation_linux.go" || source == "internal/release/infrastructure/source_install_linux.go" || source == "internal/release/infrastructure/source_loaded_linux.go" || source == "internal/release/infrastructure/source_policy_linux_test.go" || source == "internal/release/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 			return true
 		}
-		if source == "cmd/ardents-next/source_input_linux.go" && dependency == modulePath+"/internal/network/source/servingdeclaration" {
-			return true
+		if dependency == modulePath+"/internal/network/source/servingdeclaration" {
+			switch source {
+			case "cmd/ardents-next/platform_linux.go",
+				"cmd/ardents-next/source_custody_linux.go",
+				"cmd/ardents-next/source_custody_linux_test.go",
+				"cmd/ardents-next/source_installed_native_linux_test.go",
+				"cmd/ardents-next/source_lifecycle_native_linux_test.go",
+				"cmd/ardents-next/source_linux.go",
+				"cmd/ardents-next/source_native_linux_test.go",
+				"cmd/ardents-next/source_preparation_linux.go",
+				"cmd/ardents-next/source_preparation_process_linux_test.go",
+				"cmd/ardents-next/source_repair_inputs_linux.go",
+				"cmd/ardents-next/source_state_linux_test.go":
+				return true
+			}
 		}
 		// A registered package's external behavior tests may import that package.
 		// This grants neither another package nor nested tests its imports.

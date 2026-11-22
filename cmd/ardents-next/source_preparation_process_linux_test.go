@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -247,11 +248,11 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		t.Fatal("changed original input retained an accepting path")
 	}
 	servingRaw := read("source-1-serve.json")
-	serving, err := decodeSourceServePlan(servingRaw)
+	serving, err := servingdeclaration.DecodeServingDeclaration(servingRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := networkStateConfig(serving.Network)
+	fresh, err := networkStateConfig((*networkAuthorityPlan)(serving.Network))
 	if err != nil {
 		t.Fatal(err)
 	}

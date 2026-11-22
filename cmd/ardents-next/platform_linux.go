@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
@@ -256,11 +257,11 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 }
 
 func platformSourceInspectionConfig(raw []byte) (state.Config, error) {
-	plan, err := decodeSourceServePlan(raw)
+	plan, err := servingdeclaration.DecodeServingDeclaration(raw)
 	if err != nil || !validSourceServePlan(plan) {
 		return state.Config{}, errPlatformInput
 	}
-	config, err := networkStateConfig(plan.Network)
+	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		return state.Config{}, err
 	}
