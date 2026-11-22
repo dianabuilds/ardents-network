@@ -37,20 +37,66 @@ func acquireVaultOperationLock(root string) (*vaultOperationLock, error) {
 }
 
 func vaultLockNamesPath(handle windows.Handle, expected string) bool {
+	final, ok := vaultHandleFinalPath(handle)
+	if !ok {
+		return false
+	}
+	// The expected path may carry 8.3 short-name components (for example a
+	// runner temp directory such as RUNNER~1) while the handle's final path is
+	// the normalized long form. Expand the expected path to its long form before
+	// comparing so a legitimate lock file is not refused. The comparison still
+	// binds the handle to the exact expected path: a substituted target keeps a
+	// different final path, and the reparse-point/NumberOfLinks checks above
+	// remain unchanged.
+	long, err := windowsLongPath(expected)
+	if err != nil {
+		return false
+	}
+	return strings.EqualFold(filepath.Clean(final), filepath.Clean(long))
+}
+
+// vaultHandleFinalPath returns the normalized DOS path of the open handle with
+// the \\?\ prefix removed and UNC paths restored to \\server\share form.
+func vaultHandleFinalPath(handle windows.Handle) (string, bool) {
 	buffer := make([]uint16, 512)
-	count, err := windows.GetFinalPathNameByHandle(handle, &buffer[0], uint32(len(buffer)), 0)
-	if err != nil || count == 0 || count >= uint32(len(buffer)) {
-		return false
+	for {
+		count, err := windows.GetFinalPathNameByHandle(handle, &buffer[0], uint32(len(buffer)), 0)
+		if err != nil || count == 0 {
+			return "", false
+		}
+		if count < uint32(len(buffer)) {
+			path := windows.UTF16ToString(buffer[:count])
+			if !strings.HasPrefix(path, `\\?\`) {
+				return "", false
+			}
+			path = path[len(`\\?\`):]
+			if strings.HasPrefix(path, `UNC\`) {
+				path = `\\` + path[len(`UNC\`):]
+			}
+			return path, true
+		}
+		buffer = make([]uint16, count+1)
 	}
-	path := windows.UTF16ToString(buffer[:count])
-	if !strings.HasPrefix(path, `\\?\`) {
-		return false
+}
+
+// windowsLongPath expands any 8.3 short-name components of an existing path to
+// its long form, growing the buffer as needed.
+func windowsLongPath(path string) (string, error) {
+	encoded, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return "", err
 	}
-	path = path[len(`\\?\`):]
-	if strings.HasPrefix(path, `UNC\`) {
-		path = `\\` + path[len(`UNC\`):]
+	buffer := make([]uint16, 512)
+	for {
+		count, err := windows.GetLongPathName(encoded, &buffer[0], uint32(len(buffer)))
+		if err != nil {
+			return "", err
+		}
+		if count < uint32(len(buffer)) {
+			return windows.UTF16ToString(buffer[:count]), nil
+		}
+		buffer = make([]uint16, count)
 	}
-	return strings.EqualFold(filepath.Clean(path), filepath.Clean(expected))
 }
 
 func (lock *vaultOperationLock) release() error {

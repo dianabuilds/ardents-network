@@ -599,7 +599,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
 		return true
 	}
-	if (source == "internal/custody/vault_lock_windows.go" || source == "internal/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/custody/vault_lock_windows.go" || source == "internal/custody/vault_lock_windows_test.go" || source == "internal/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	if !inZone {
