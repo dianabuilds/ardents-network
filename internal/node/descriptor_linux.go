@@ -198,13 +198,13 @@ func (f *descriptorInvocation) denyOwner(error) {
 // cleanupRole releases the Store after Route's physical join and attributes its
 // exact operational failure once with its true owner, without filtering
 // independent physical Route errors merely because they share an errno or wrapper.
-func (f *descriptorInvocation) cleanupRole(roleResult error) (error, func(func(string, error))) {
+func (f *descriptorInvocation) cleanupRole(roleResult error) (func(func(string, error)), error) {
 	var storeRelease, storeFailure error
 	if f.store != nil {
 		storeRelease = f.store.Close()
 		storeFailure = f.store.OperationalFailure()
 	}
-	return originalRetirementResult(roleResult, storeFailure), func(retain func(string, error)) {
+	return func(retain func(string, error)) {
 		if storeFailure != nil {
 			f.mu.Lock()
 			first := f.first
@@ -218,7 +218,7 @@ func (f *descriptorInvocation) cleanupRole(roleResult error) (error, func(func(s
 			}
 		}
 		retain("reachability", storeRelease)
-	}
+	}, originalRetirementResult(roleResult, storeFailure)
 }
 
 func (f *descriptorInvocation) credentialClose() error       { return f.credential.close() }

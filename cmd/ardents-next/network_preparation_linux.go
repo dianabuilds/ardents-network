@@ -48,7 +48,7 @@ func requirePreparationExt4(file *os.File) error {
 }
 
 func openPreparationParent(path string) (*preparationPath, error) {
-	return openPreparationDirectories(nil, path, nil)
+	return openPreparationDirectories(context.Background(), path, nil)
 }
 
 func openPreparationDirectories(ctx context.Context, path string, owner *uint32) (p *preparationPath, err error) {

@@ -266,8 +266,8 @@ func (f *forwarding) stop() {
 // Forwarding has no separately owned role owner to deny or release: the Route
 // receiver is the role and is joined by the shared cleanup.
 func (f *forwarding) denyOwner(error) {}
-func (f *forwarding) cleanupRole(roleResult error) (error, func(func(string, error))) {
-	return roleResult, nil
+func (f *forwarding) cleanupRole(roleResult error) (func(func(string, error)), error) {
+	return nil, roleResult
 }
 func (f *forwarding) credentialClose() error       { return f.credential.close() }
 func (f *forwarding) certificate() tls.Certificate { return f.credential.certificate }
