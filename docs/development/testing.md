@@ -1876,20 +1876,10 @@ selected Carriers.
   outside Git. They may compose existing owner tests for a bounded lifecycle
   fact, but do not turn that composition into an end-to-end qualification.
 
-Linux Node command tests can select `ARDENTS_NODE_SCOPE_PROFILE=system` to
-place every serving Node in its own systemd scope. The selected profile requires
-a running system manager and permission to create and stop system scopes;
-missing prerequisites fail. The runner verifies the READY process's cgroup and
-sole PID, then joins and verifies scope cleanup. Selected Node process jobs in
-Ubuntu 24.04 PR CI use this profile because worker manager queries must not
-share the Node's measured cgroup. Ordinary developer-host execution without
-this selector retains its shared-cgroup limitation. Scope verification alone
-does not qualify installed workers, a second Endpoint, or whole-host protection.
-The complete Ubuntu CI gate selects the same profile through
-`NODE_PROCESS_TEST_COMMAND`; only the Node process package uses that runner.
-The other process packages and the unprivileged component checks retain their
-ordinary runner. Both process invocations remain serial and run every package
-in the declared process profile.
+The process profile runs the maintained Endpoint and Service suites. The
+[Node native profiles](../../scripts/node/README.md) run the actual Node
+commands and check their role, scope, resource admission and joined cleanup.
+
 The full Ubuntu CI job has a 60-minute orchestration budget for the sequential
 complete gate, including cold compiler caches and the race suite. The Go test
 timeouts and required checks remain unchanged; cancellation is an incomplete

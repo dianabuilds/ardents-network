@@ -176,14 +176,14 @@ func TestPRSelectionMapsQualificationFixturesToBoundedOwners(t *testing.T) {
 		return output
 	}
 	writeFile("go.mod", "module example.com/qualification-selection\n\ngo 1.26.8\n")
-	writeFile("docs/development/ownership.json", "{\"pr_check_mappings\":[{\"path_prefix\":\"tests/qualification/stream-network-two-host/\",\"race\":true,\"owners\":[{\"package\":\"cmd/ardents-qualification\",\"test_pattern\":\"^Test(?:Qualification|ResourceVerdict|FailedNET14V)\"},{\"package\":\"tests/e2e/node/fixturecommand/netem-relay\",\"test_pattern\":\"^TestRelayConfiguration\"},{\"package\":\"tests/epochfixture/network\",\"test_pattern\":\"^TestCanonicalNetworkFixture\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-network\",\"test_pattern\":\"^TestRunCreatesCompleteBoundedNetworkFixture\"},{\"package\":\"internal/endpoint\",\"test_pattern\":\"^TestQualificationStream\"},{\"package\":\"internal/node\",\"test_pattern\":\"^TestClosedHosting\"}]}]}\n")
+	writeFile("docs/development/ownership.json", "{\"pr_check_mappings\":[{\"path_prefix\":\"tests/qualification/stream-network-two-host/\",\"race\":true,\"owners\":[{\"package\":\"cmd/ardents-qualification\",\"test_pattern\":\"^Test(?:Qualification|ResourceVerdict|FailedNET14V)\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-relay\",\"test_pattern\":\"^TestRelayConfiguration\"},{\"package\":\"tests/epochfixture/network\",\"test_pattern\":\"^TestCanonicalNetworkFixture\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-network\",\"test_pattern\":\"^TestRunCreatesCompleteBoundedNetworkFixture\"},{\"package\":\"internal/endpoint\",\"test_pattern\":\"^TestQualificationStream\"},{\"package\":\"internal/node\",\"test_pattern\":\"^TestClosedHosting\"}]}]}\n")
 	for _, owner := range []struct{ directory, packageName, selected, unrelated string }{
 		{"cmd/ardents-qualification", "main", "TestQualificationEvidence", "TestCommandUnrelated"},
 		{"cmd/ardents-node", "main", "TestNodePlan", "TestNodeUnrelated"},
 		{"internal/endpoint", "endpoint", "TestQualificationStream", "TestEndpointUnrelated"},
 		{"internal/node", "node", "TestClosedHosting", "TestNodeUnrelated"},
 		{"internal/architecture", "architecture", "TestRepositoryArchitecture", "TestArchitectureUnrelated"},
-		{"tests/e2e/node/fixturecommand/netem-relay", "main", "TestRelayConfiguration", "TestRelayUnrelated"},
+		{"tests/qualification/stream-network-two-host/fixturecommand/qualification-relay", "main", "TestRelayConfiguration", "TestRelayUnrelated"},
 		{"tests/epochfixture/network", "network", "TestCanonicalNetworkFixture", "TestNetworkFixtureUnrelated"},
 		{"tests/qualification/stream-network-two-host/fixturecommand/qualification-network", "main", "TestRunCreatesCompleteBoundedNetworkFixture", "TestGeneratorUnrelated"},
 	} {
