@@ -23,9 +23,11 @@ type testSuiteRoot struct {
 	Owner   string `json:"owner"`
 }
 
+const streamWorkerFixture = "./tests/qualification/text-worker-lifecycle/stream-worker"
+
 func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network")
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network", streamWorkerFixture)
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
 	if runtime.GOOS == "linux" {
 		for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
@@ -66,7 +68,7 @@ func TestProcessProfileSerializesPackagesSharingLoopbackResources(t *testing.T) 
 
 func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network")
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network", streamWorkerFixture)
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
