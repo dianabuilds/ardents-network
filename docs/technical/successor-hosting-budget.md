@@ -136,6 +136,17 @@ observed as Drain, but admits no reservation. Ambiguous state never produces a
 usable reservation or an automatic retry of a potentially committed refund.
 
 
+An explicitly selected collector must be an HTTP URL with a numeric loopback
+address and a port from 1 to 65535. It accepts no credentials, query, fragment
+or custom path. The command exports protobuf to `/v1/traces` and
+`/v1/metrics`, caps requests at 32 KiB and caps response bodies and headers at
+4 KiB each. Each HTTP request has a 250 ms timeout and the export shuts down
+within 750 ms. Redirects, proxies, retries, compression and ambient headers are
+disabled. The resource reports only `service.name`. Spans and instruments
+contain only the command's operation, phase and outcome. Successful Hosting
+results survive collector failure. With no collector, diagnostics stay on
+stderr and no exporter is created.
+
 ## Domain model and ownership
 
 Hosting is a supporting domain with one aggregate: the provider-period budget.

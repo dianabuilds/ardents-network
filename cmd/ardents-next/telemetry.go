@@ -20,8 +20,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-
-	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 // Telemetry is command composition, not part of admission authority.
@@ -51,25 +49,26 @@ func collectorEndpoint(value string) error {
 }
 
 func newObservation(endpoint string) (*observation, error) {
+	if endpoint == "" {
+		return nil, nil
+	}
 	o := &observation{}
 	r := resource.NewSchemaless(attribute.String("service.name", "ardents-next"))
 	options := []sdktrace.TracerProviderOption{sdktrace.WithResource(r), sdktrace.WithSampler(sdktrace.AlwaysSample()), sdktrace.WithoutPanicRecording()}
-	if endpoint != "" {
-		endpoint = strings.TrimSuffix(endpoint, "/")
-		o.transport = &http.Transport{Proxy: nil, DisableKeepAlives: true, MaxConnsPerHost: 1, MaxResponseHeaderBytes: 4096, ResponseHeaderTimeout: 250 * time.Millisecond}
-		client := &http.Client{Transport: o.transport, Timeout: 250 * time.Millisecond, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-		e, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL(endpoint+"/v1/traces"), otlptracehttp.WithHTTPClient(client), otlptracehttp.WithEncoding(otlptracehttp.EncodingProtobuf), otlptracehttp.WithMaxRequestSize(32768), otlptracehttp.WithMaxResponseSize(4096), otlptracehttp.WithHeaders(map[string]string{}), otlptracehttp.WithCompression(otlptracehttp.NoCompression), otlptracehttp.WithRetry(otlptracehttp.RetryConfig{Enabled: false}), otlptracehttp.WithTimeout(250*time.Millisecond))
-		if err != nil {
-			return nil, errors.New("telemetry unavailable")
-		}
-		options = append(options, sdktrace.WithBatcher(&quietTraceExporter{SpanExporter: e, failure: &o.failure}, sdktrace.WithMaxQueueSize(1), sdktrace.WithMaxExportBatchSize(1), sdktrace.WithExportTimeout(250*time.Millisecond)))
-		m, err := otlpmetrichttp.New(context.Background(), otlpmetrichttp.WithEndpointURL(endpoint+"/v1/metrics"), otlpmetrichttp.WithHTTPClient(client), otlpmetrichttp.WithMaxRequestSize(32768), otlpmetrichttp.WithMaxResponseSize(4096), otlpmetrichttp.WithHeaders(map[string]string{}), otlpmetrichttp.WithCompression(otlpmetrichttp.NoCompression), otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{Enabled: false}), otlpmetrichttp.WithTimeout(250*time.Millisecond))
-		if err != nil {
-			_ = e.Shutdown(context.Background())
-			return nil, errors.New("telemetry unavailable")
-		}
-		o.exporter = m
+	endpoint = strings.TrimSuffix(endpoint, "/")
+	o.transport = &http.Transport{Proxy: nil, DisableKeepAlives: true, MaxConnsPerHost: 1, MaxResponseHeaderBytes: 4096, ResponseHeaderTimeout: 250 * time.Millisecond}
+	client := &http.Client{Transport: o.transport, Timeout: 250 * time.Millisecond, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	e, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL(endpoint+"/v1/traces"), otlptracehttp.WithHTTPClient(client), otlptracehttp.WithEncoding(otlptracehttp.EncodingProtobuf), otlptracehttp.WithMaxRequestSize(32768), otlptracehttp.WithMaxResponseSize(4096), otlptracehttp.WithHeaders(map[string]string{}), otlptracehttp.WithCompression(otlptracehttp.NoCompression), otlptracehttp.WithRetry(otlptracehttp.RetryConfig{Enabled: false}), otlptracehttp.WithTimeout(250*time.Millisecond))
+	if err != nil {
+		return nil, errors.New("telemetry unavailable")
 	}
+	options = append(options, sdktrace.WithBatcher(&quietTraceExporter{SpanExporter: e, failure: &o.failure}, sdktrace.WithMaxQueueSize(1), sdktrace.WithMaxExportBatchSize(1), sdktrace.WithExportTimeout(250*time.Millisecond)))
+	m, err := otlpmetrichttp.New(context.Background(), otlpmetrichttp.WithEndpointURL(endpoint+"/v1/metrics"), otlpmetrichttp.WithHTTPClient(client), otlpmetrichttp.WithMaxRequestSize(32768), otlpmetrichttp.WithMaxResponseSize(4096), otlpmetrichttp.WithHeaders(map[string]string{}), otlpmetrichttp.WithCompression(otlpmetrichttp.NoCompression), otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{Enabled: false}), otlpmetrichttp.WithTimeout(250*time.Millisecond))
+	if err != nil {
+		_ = e.Shutdown(context.Background())
+		return nil, errors.New("telemetry unavailable")
+	}
+	o.exporter = m
 	o.traces = sdktrace.NewTracerProvider(options...)
 	o.reader = sdkmetric.NewManualReader()
 	o.meters = sdkmetric.NewMeterProvider(sdkmetric.WithResource(r), sdkmetric.WithReader(o.reader), sdkmetric.WithExemplarFilter(exemplar.AlwaysOffFilter), sdkmetric.WithCardinalityLimit(16))
@@ -88,29 +87,6 @@ func (e *quietTraceExporter) ExportSpans(ctx context.Context, spans []sdktrace.R
 	// Raw exporter errors can contain endpoint and response data. Retain only
 	// a finite failure indication instead of forwarding to the global handler.
 	return nil
-}
-
-func (o *observation) inspect(ctx context.Context, raw []byte, f admission.Facts) admission.Outcome {
-	if o == nil {
-		return admission.Inspect(ctx, raw, f)
-	}
-	// No external parent context or propagation is accepted.
-	spanContext, span := o.traces.Tracer("ardents.permission.inspection").Start(context.Background(), "permission.inspect")
-	start := time.Now()
-	result := admission.Inspect(ctx, raw, f)
-	attr := attribute.String("outcome", string(result))
-	span.SetAttributes(attr)
-	span.End()
-	meter := o.meters.Meter("ardents.permission.inspection")
-	count, err := meter.Int64Counter("ardents.permission.inspections")
-	if err == nil {
-		count.Add(spanContext, 1, metric.WithAttributes(attr))
-	}
-	duration, err := meter.Float64Histogram("ardents.permission.inspection.duration", metric.WithUnit("s"))
-	if err == nil {
-		duration.Record(spanContext, time.Since(start).Seconds(), metric.WithAttributes(attr))
-	}
-	return result
 }
 
 func (o *observation) close() bool {
@@ -140,60 +116,21 @@ func (o *observation) close() bool {
 	return !o.failure.Load()
 }
 
-func (o *observation) beginHosting(operation string) func(string, string) {
+func (o *observation) begin(scope, operation string) func(string, string) {
 	if o == nil {
 		return func(string, string) {}
 	}
-	ctx, span := o.traces.Tracer("ardents.hosting").Start(context.Background(), operation)
+	ctx, span := o.traces.Tracer(scope).Start(context.Background(), operation)
 	start := time.Now()
 	return func(phase, outcome string) {
 		attrs := []attribute.KeyValue{attribute.String("operation", operation), attribute.String("phase", phase), attribute.String("outcome", outcome)}
 		span.SetAttributes(attrs...)
 		span.End()
-		meter := o.meters.Meter("ardents.hosting")
-		if count, err := meter.Int64Counter("ardents.hosting.operations"); err == nil {
+		meter := o.meters.Meter(scope)
+		if count, err := meter.Int64Counter(scope + ".operations"); err == nil {
 			count.Add(ctx, 1, metric.WithAttributes(attrs...))
 		}
-		if duration, err := meter.Float64Histogram("ardents.hosting.duration", metric.WithUnit("s")); err == nil {
-			duration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
-		}
-	}
-}
-
-func (o *observation) beginAdmission(operation string) func(string, string) {
-	if o == nil {
-		return func(string, string) {}
-	}
-	ctx, span := o.traces.Tracer("ardents.admission").Start(context.Background(), operation)
-	start := time.Now()
-	return func(phase, outcome string) {
-		attrs := []attribute.KeyValue{attribute.String("operation", operation), attribute.String("phase", phase), attribute.String("outcome", outcome)}
-		span.SetAttributes(attrs...)
-		span.End()
-		meter := o.meters.Meter("ardents.admission")
-		if count, err := meter.Int64Counter("ardents.admission.operations"); err == nil {
-			count.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		if duration, err := meter.Float64Histogram("ardents.admission.duration", metric.WithUnit("s")); err == nil {
-			duration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
-		}
-	}
-}
-func (o *observation) beginIssuance(operation string) func(string, string) {
-	if o == nil {
-		return func(string, string) {}
-	}
-	ctx, span := o.traces.Tracer("ardents.issuance").Start(context.Background(), operation)
-	start := time.Now()
-	return func(phase, outcome string) {
-		attrs := []attribute.KeyValue{attribute.String("operation", operation), attribute.String("phase", phase), attribute.String("outcome", outcome)}
-		span.SetAttributes(attrs...)
-		span.End()
-		meter := o.meters.Meter("ardents.issuance")
-		if count, err := meter.Int64Counter("ardents.issuance.operations"); err == nil {
-			count.Add(ctx, 1, metric.WithAttributes(attrs...))
-		}
-		if duration, err := meter.Float64Histogram("ardents.issuance.duration", metric.WithUnit("s")); err == nil {
+		if duration, err := meter.Float64Histogram(scope+".duration", metric.WithUnit("s")); err == nil {
 			duration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
 		}
 	}

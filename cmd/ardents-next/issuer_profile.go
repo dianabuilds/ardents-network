@@ -52,7 +52,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 	}
 	defer clear(raw)
 	observation, _ := newObservation(collector)
-	finish := observation.beginIssuance(operation)
+	finish := observation.begin("ardents.issuance", operation)
 	var output string
 	var bytes []byte
 	switch operation {
