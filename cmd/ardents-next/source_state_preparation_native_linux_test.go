@@ -38,6 +38,9 @@ func TestSourcePreparationNativeStateCommand(t *testing.T) {
 	if err := os.WriteFile(program, binary, 0555); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(program, 0555); err != nil {
+		t.Fatal(err)
+	}
 	plan, planPath, bundlePath := sourceInitialFixtureAt(t, root)
 	for _, name := range []string{planPath, bundlePath, plan.Network.ClockObservationFile} {
 		if err := os.Chmod(name, 0644); err != nil {
