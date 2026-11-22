@@ -23,6 +23,16 @@ func TestCanonicalDescriptorIndependentOracle(t *testing.T) {
 	if _, err := ValidateResources(want, p, u); err != nil {
 		t.Fatal(err)
 	}
+	resources, err := ValidateRuntimeResources("source", want, p, u)
+	if err != nil || resources.Invocation != "source" || resources.ReleaseIdentity != "release-one" || resources.ReleaseVersion != 7 {
+		t.Fatalf("portable runtime resource declaration: %+v %v", resources, err)
+	}
+	if _, err := ValidateRuntimeResources("forwarding", want, p, u); err == nil {
+		t.Fatal("runtime validator accepted a canonical foreign role")
+	}
+	if _, err := ValidateRuntimeResources("source", want, p, []byte("different template")); err == nil {
+		t.Fatal("runtime validator accepted different template bytes")
+	}
 	if _, err := ValidateResources(want, p, []byte("different template")); err == nil {
 		t.Fatal("accepted a mismatched template")
 	}

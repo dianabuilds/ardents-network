@@ -21,7 +21,7 @@ resources. The qualification worker has its own installed verification lane.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
-| Offline infrastructure preparation | ardents-control | retained tooling | Bounded closed-profile operator adapter and offline infrastructure preparation and signing; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
+| Offline provisioning and signing | ardents-control | retained tooling | Bounded closed-profile operations, Source inspection and purpose-specific Release plans and signing; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Network participant and domain composition | ardents-next | maintained | Network, Node and Endpoint composition. The signed Endpoint artifact retains the `ardents-<platform>` filename. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
@@ -42,6 +42,8 @@ Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 |---|---|---|
 | ardents-next | network accept-epoch / accept-profile / inspect | bounded State intake and diagnostics |
 | ardents-next | enrollment verify | read-only initial artifact and pin verification |
+| ardents-next | source prepare-state | offline first signed State and empty participation history |
+| ardents-next | infrastructure prepare-runtime-descriptor / prepare-runtime-inventory | public artifact preparation for fixed roles |
 | ardents-next | endpoint withdraw | local Administration client |
 | ardents-next | diagnostics timeline | local projection of bounded runtime events from standard input |
 | ardents-control | prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
@@ -70,6 +72,8 @@ The following inputs belonged to retired or refusal-only surfaces:
 
 | Removed input | Reason |
 |---|---|
+| ardents-control source prepare-state | the fixed-principal preparer now runs through `ardents-next source prepare-state` |
+| ardents-control public descriptor and inventory preparation for Source, Forwarding, JOIN and Descriptor | `ardents-next infrastructure` now owns these public CLI routes |
 | ardents-control source prepare-template / prepare-install-inputs | the platform-led Source lifecycle and `ardents-next platform template` replace these preparation routes under ADR-0125 |
 | ardents-control forwarding, join and descriptor prepare-template / prepare-request / prepare-plan / prepare-hosting / prepare-state | platform-led role preparation owns delivery under ADR-0125. The former routes exit with code 2 before input I/O |
 | ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
