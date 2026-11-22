@@ -201,3 +201,46 @@ jobs:
             test "$GROUP_RESULT" = skipped
             test "$FULL_RESULT" = success
           fi
+  portable:
+    # ADR-0129 mandatory-target evidence: compile and portable-unit verification
+    # on Windows and macOS. This lane is NOT native qualification; C0
+    # qualification stays Ubuntu LTS x86-64 and the Ubuntu jobs above retain
+    # every native profile unchanged. Native cells (linux and *_native build
+    # constraints) are excluded by their build tags on these runners, never as
+    # passing skips; the common deterministic inventory is the declared
+    # portable subset (tests/profiles/deterministic-packages.txt).
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    name: portable-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Build every package for the target platform
+        run: go build ./...
+      - name: Vet every package for the target platform
+        run: go vet ./...
+      - name: Run the portable deterministic unit inventory
+        # Mirrors the `make unit` invocation on the common inventory without
+        # the Linux-only supplement; reading the manifest directly avoids a
+        # host make dependency. No build-error filtering and no platform skip.
+        run: |
+          set -euo pipefail
+          packages=()
+          while IFS= read -r package || [[ -n "$package" ]]; do
+            if [[ -n "$package" ]]; then packages+=("$package"); fi
+          done < tests/profiles/deterministic-packages.txt
+          go test -p 1 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m
