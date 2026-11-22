@@ -55,11 +55,11 @@ func introductionRepairFixture(t *testing.T) *networkState {
 func TestIntroductionRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testing.T) {
 	s := introductionRepairFixture(t)
 	before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-	r, err := openIntroductionRepair(t.Context(), s.config)
+	r, err := openNodeDutyRepair(t.Context(), s.config, introductionRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openIntroductionRepair(t.Context(), s.config); err == nil {
+	if other, err := openNodeDutyRepair(t.Context(), s.config, introductionRepairRole); err == nil {
 		_ = other.close()
 		t.Fatal("concurrent repair obtained State lease")
 	}
@@ -74,7 +74,7 @@ func TestIntroductionRepairDomainAdmissionRetainsBothLeasesAndHistories(t *testi
 	}
 	// Only the domain effect is exercised here, after the independent semantic
 	// admission. This is not public/native recovery qualification.
-	r, err = openIntroductionRepair(t.Context(), s.config)
+	r, err = openNodeDutyRepair(t.Context(), s.config, introductionRepairRole)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestIntroductionRepairBindsNonPrimaryMember(t *testing.T) {
 	if err := s.storage.Close(); err != nil {
 		t.Fatal(err)
 	}
-	r, err := openIntroductionRepair(t.Context(), s.config)
+	r, err := openNodeDutyRepair(t.Context(), s.config, introductionRepairRole)
 	if err != nil {
 		t.Fatal("repair refused a genuine non-primary member fence", err)
 	}
@@ -242,7 +242,7 @@ func TestIntroductionRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 				}
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openIntroductionRepair(t.Context(), s.config)
+			r, err := openNodeDutyRepair(t.Context(), s.config, introductionRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unsafe repair admitted", failure)
@@ -278,7 +278,7 @@ func TestIntroductionRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(
 				cancel()
 			}
 			before := repairHistoryBytes(t, s.config.root, s.config.localRoles)
-			r, err := openIntroductionRepair(ctx, s.config)
+			r, err := openNodeDutyRepair(ctx, s.config, introductionRepairRole)
 			if err == nil {
 				_ = r.close()
 				t.Fatal("unavailable original admitted")
@@ -294,7 +294,7 @@ func TestIntroductionRepairLeaseAndCancellationRefusalsJoinOriginalAcquisitions(
 			if after := repairHistoryBytes(t, s.config.root, s.config.localRoles); !reflect.DeepEqual(before, after) {
 				t.Fatal("refusal changed bytes")
 			}
-			r, err = openIntroductionRepair(t.Context(), s.config)
+			r, err = openNodeDutyRepair(t.Context(), s.config, introductionRepairRole)
 			if err != nil {
 				t.Fatal("refusal leaked original leases", err)
 			}
