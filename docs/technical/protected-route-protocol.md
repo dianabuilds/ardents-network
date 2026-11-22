@@ -121,7 +121,7 @@ reconstructs that body, checks the reviewed prepared artifact and its digest,
 and signs with the protected PKCS#8 Ed25519 key matching the independently
 pinned State authority. The Admission authority in the profile is separate.
 The command commits and verifies a fresh signed profile artifact and reports
-its digest. `ardents-control inspect-closed-profile` verifies the exact
+its digest. `ardents-next network inspect-closed-profile` verifies the exact
 context and signature using public inputs. Network State separately owns
 durable profile acceptance.
 

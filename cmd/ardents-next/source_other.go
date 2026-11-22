@@ -18,3 +18,7 @@ func runSourceRepair(_ context.Context, _ []string, _, diagnostic io.Writer) int
 func runSourceStatePreparation(_ context.Context, _ []string, _, diagnostic io.Writer) int {
 	return unsupportedPlatformRefusal(diagnostic, "source.prepare-state")
 }
+
+func runSourceInspection(_ context.Context, _ []string, _, diagnostic io.Writer) int {
+	return unsupportedPlatformRefusal(diagnostic, "source.inspect-latest")
+}

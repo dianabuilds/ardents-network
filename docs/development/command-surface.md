@@ -21,7 +21,7 @@ resources. The qualification worker has its own installed verification lane.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
-| Offline provisioning and signing | ardents-control | retained tooling | Read-only closed-profile inspection, Source inspection and purpose-specific Release plans and signing; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
+| Offline operator preparation and signing | provision-infrastructure, sign-infrastructure-release | retained tooling | Verified initial Network artifacts, protected role-specific key and Release production, and the separate Source Timestamp purpose |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Network participant and domain composition | ardents-next | maintained | Network, Node and Endpoint composition. The signed Endpoint artifact retains the `ardents-<platform>` filename. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
@@ -46,10 +46,7 @@ Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 | ardents-next | infrastructure prepare-runtime-descriptor / prepare-runtime-inventory | public artifact preparation for fixed roles |
 | ardents-next | endpoint withdraw | local Administration client |
 | ardents-next | diagnostics timeline | local projection of bounded runtime events from standard input |
-| ardents-control | inspect-closed-profile, inspect-closed-issuer-profile | bounded offline public verification |
-| ardents-control | inspect-bundle, inspect-transitions | retirement refusal at dispatch before arguments, files, roots, or floors; the ACA1 reader/report Modules are removed and no unified replacement is selected (ADR-0127, #647) |
-| ardents-control | prepare-qualification-evidence, prepare-qualification-catalog | retirement refusal at dispatch; the ACA1 preparation scripts are removed with the reader (ADR-0127, #647) |
-| ardents-control | prepare-qualification-node-record, prepare-qualification-epoch | retirement refusal at dispatch pointing at ardents-next network prepare-initial-node-record/prepare-initial-epoch; the qualification-network scripts are removed (ADR-0127, #647) |
+| ardents-next | network inspect-closed-profile / issuance inspect-public-profile / source inspect-latest | independent public-context verification and bounded Source contact |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 | ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
 | ardents-stream-qualification | worker-reader, worker-publisher | keep as fixed installed verification workers; never an operator route |
@@ -72,19 +69,8 @@ The following inputs belonged to retired or refusal-only surfaces:
 
 | Removed input | Reason |
 |---|---|
-| ardents-control prepare-closed-profile / sign-closed-profile | `ardents-next network` owns preparation and fixed-purpose State signing for the same `ARDCPR03` profile |
-| ardents-control source prepare-state | the fixed-principal preparer now runs through `ardents-next source prepare-state` |
-| ardents-control public descriptor and inventory preparation for Source, Forwarding, JOIN and Descriptor | `ardents-next infrastructure` now owns these public CLI routes |
-| ardents-control source prepare-template / prepare-install-inputs | the platform-led Source lifecycle and `ardents-next platform template` replace these preparation routes under ADR-0125 |
-| ardents-control forwarding, join and descriptor prepare-template / prepare-request / prepare-plan / prepare-hosting / prepare-state | platform-led role preparation owns delivery under ADR-0125. The former routes exit with code 2 before input I/O |
-| ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
-| ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
+| former ardents-control binary | offline production has distinct entrypoints and public inspection uses the owning product command; retired ACA1/ACA2 and qualification selectors have no executable |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by [ADR-0060](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0060-retire-completed-planning-campaign-generators.md) (archived) |
-| ardents-control accept-alpha-corpus | retired fresh corpus intake; the exact route returns `accept-alpha-corpus is retired` before parsing arguments or opening any file or floor |
-| ardents-control inspect-alpha-corpus | retired ACA2/corpus diagnostic; the exact route returns `inspect-alpha-corpus is retired` before parsing arguments or opening any file, root, or floor, and the ACA2 production verifier is removed (ADR-0110) |
-| ardents-control inspect-bundle/inspect-transitions | retired ACA1 disclosure reader and unified transition report (ADR-0127, #647); each returns `<route> is retired` before parsing arguments or opening any file, root, or floor. The alphacontrol/inspection Modules and report schemas are removed; successor per-domain commands verify the same authority facts and no unified replacement is selected. Existing inspection floor roots stay unchanged |
-| ardents-control prepare-qualification-evidence/prepare-qualification-catalog | retired ACA1 signing-input preparation (ADR-0127, #647); typed refusal at dispatch and the alpha preparation scripts are removed with the reader |
-| ardents-control prepare-qualification-node-record/prepare-qualification-epoch | retired old-epoch Network preparation (ADR-0127, #647); typed refusals point at the successor `ardents-next network` preparation commands that produce the same canonical ARNR-v2/AREP-v3 bytes, and the qualification-network scripts are removed |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 

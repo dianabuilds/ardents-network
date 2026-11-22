@@ -20,7 +20,7 @@ import sys
 
 # The platform inventory retains its program filename. The executable comes
 # from the platform-led command composition.
-COMMAND_PACKAGES = {"ardents-node": "ardents-next", "ardents-control": "ardents-control"}
+COMMAND_PACKAGES = {"ardents-node": "ardents-next"}
 COMMANDS = tuple(COMMAND_PACKAGES)
 FLAGS = ["-trimpath", "-buildvcs=false", "-ldflags=-w"]
 

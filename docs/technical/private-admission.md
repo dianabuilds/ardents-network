@@ -148,19 +148,11 @@ reopening requires the exact Network, Node, signer and interval. State still
 accepts token keys only through the subsequently State-signed `ARDCPR03`
 profile, never by trusting this profile as a replacement State authority.
 
-For offline preparation, `ardents-control inspect-closed-issuer-profile` reads
-the raw signed public profile produced by new Issuer initialization/inspection,
-or the existing public JSON initialization export. It uses the new
-`issuerprofile` codec and reads no private issuer root. Supply `--node-key`, `--network`
-and `--node` from the independently authorized current Node/Network evidence,
-not from the supplied profile/export. The command verifies the export digest
-when present, Node signature,
-exact inventory grammar and identity bindings, then renders its public
-`NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` fields for
-the bounded closed-profile plan. Retain the separately authorized Epoch,
-Node Record digests, duty assignments and admission-authority key when
-preparing that plan. Inspection permits provisioning future hourly keys; it
-does not assert current Node duty or time validity and does not advance floors.
+For offline preparation, `ardents-next issuance inspect-public-profile`
+checks the raw signed public profile with explicit Node key, Network and
+issuer pins. It uses `issuerprofile` without opening private issuer roots.
+The report contains the signed public inventory and its validity interval.
+State acceptance separately validates currentness and authority.
 
 The holder [Admission stock owner](../../internal/admission/stock/doc.go) consumes the participant's opened State owner
 and the retained local context established by a verified worker launch. The
