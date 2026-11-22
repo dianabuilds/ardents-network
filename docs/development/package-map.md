@@ -207,12 +207,21 @@ Recovery domain units use Unix filesystem semantics; the public repair command
 is Linux-only. Windows retained participation repair explicitly refuses before
 the ordinary opener's mutating DACL enforcement; no Windows repair is selected.
 
-Explicit Introduction repair stays with Network State and participation. Portable
-`state/introduction_repair.go` consumes only `network/duty`, `network/epoch` and
-`network/state/durable`. Its Linux native adapter and detached policy tests
-(`state/introduction_repair_linux.go`, `state/introduction_repair_test.go`)
-additionally consume exactly `platform/systemd`; only the implementation also
-consumes `platform/cgroup`. Unlike Source, Introduction shares the
+Explicit Introduction repair stays with Network State and participation.
+Introduction is one of the four node-duty roles whose participation repair is
+ONE parameterized mechanism within package state (W4, #711; audit AR-N-01/E1-5).
+Portable `state/node_duty_repair.go` owns the shared `nodeDutyRepair`
+open/checkHistory/close mechanism and the `nodeDutyMember` binding, consuming
+only `network/duty`, `network/epoch` and `network/state/durable`; the role's
+portable `state/introduction_repair.go` carries only its refusal sentinel and
+`nodeDutyRepairRole` descriptor. The shared Linux skeleton
+`state/node_duty_repair_linux.go` consumes `network/epoch` and
+`platform/systemd`; the role's Linux wrapper
+`state/introduction_repair_linux.go` additionally consumes exactly
+`platform/systemd` and `platform/cgroup`, supplying its original read-only
+manager observe closure and per-unit quiescence. The detached cross-role policy
+tests (`state/node_duty_repair_linux_test.go`) consume exactly
+`platform/systemd`. Unlike Source, Introduction shares the
 `ardents-node` account with sibling Node role units, so quiescence is the per-unit
 `cgroup/introduction_quiescence_linux.go` observation only — never an account-wide
 process scan. The original Node producer identity is random, so
@@ -227,25 +236,31 @@ runtime and root control connections (distinct `introductionUnitReply` /
 domain/native join. No old Introduction runtime is used.
 
 Explicit Forwarding, JOIN and Descriptor repair stay with Network State and
-participation, mirroring Introduction. Portable `state/forwarding_repair.go`,
-`state/join_repair.go` and `state/descriptor_repair.go` consume only
-`network/duty`, `network/epoch` and `network/state/durable`; they share the
-`nodeDutyMember` binding that ties the discovered sole live `node-duty` fence to
-an accepted Candidate of the current generation with the exact authenticated
-family digest. Their Linux native adapters
+participation as the same shared node-duty mechanism, mirroring Introduction.
+Their portable role files (`state/forwarding_repair.go`, `state/join_repair.go`,
+`state/descriptor_repair.go`) carry only the role sentinel and descriptor; the
+shared `state/node_duty_repair.go` mechanism consumes `network/duty`,
+`network/epoch` and `network/state/durable` and owns the `nodeDutyMember`
+binding that ties the discovered sole live `node-duty` fence to an accepted
+Candidate of the current generation with the exact authenticated family digest.
+The shared Linux skeleton `state/node_duty_repair_linux.go` consumes
+`network/epoch` and `platform/systemd`; the role wrappers
 (`state/forwarding_repair_linux.go`, `state/join_repair_linux.go`,
 `state/descriptor_repair_linux.go`) additionally consume exactly
-`platform/systemd` and `platform/cgroup`; the Descriptor adapter
-additionally consumes `reachability` for the bounded existing-only Store
-uncertain-stage recovery (`RepairRetainedStoreStage`) under the same dead-unit
-proofs and retained leases. The portable behavior tests
-(`state/forwarding_repair_test.go`, `state/join_repair_test.go`,
-`state/descriptor_repair_test.go`) consume only `network/duty` and
-`network/state/durable`. All three roles share the `ardents-node` account with
-sibling Node role units, so quiescence is the per-unit
+`platform/systemd` and `platform/cgroup`; the Descriptor wrapper
+additionally consumes `network/epoch` and `reachability` for the bounded
+existing-only Store uncertain-stage recovery (`RepairRetainedStoreStage`) under
+the same dead-unit proofs and retained leases, passed to the skeleton as the
+role's optional Store-stage hook at the unchanged ordering point. The portable
+behavior tests (`state/forwarding_repair_test.go`, `state/join_repair_test.go`,
+`state/descriptor_repair_test.go`, `state/introduction_repair_test.go` and the
+cross-role equivalence oracle `state/node_duty_repair_test.go`) consume only
+`network/duty` and `network/state/durable`. All four roles share the
+`ardents-node` account with sibling Node role units, so quiescence is the per-unit
 `cgroup/forwarding_quiescence_linux.go` / `cgroup/join_quiescence_linux.go` /
-`cgroup/descriptor_quiescence_linux.go` observation only — never an account-wide
-process scan. JOIN repair binds the `/var/lib/ardents/roles/join/` root prefix,
+`cgroup/descriptor_quiescence_linux.go` / `cgroup/introduction_quiescence_linux.go`
+observation only — never an account-wide process scan. JOIN repair binds the
+`/var/lib/ardents/roles/join/` root prefix,
 the fixed `ardents-join.service` stopped policy and the exact
 `node join --retained-config` declaration; each JOIN pair participant owns a
 separate participation root and sole fence, so repair is per-invocation, never a
@@ -280,10 +295,12 @@ remain. No old Forwarding, JOIN or Descriptor runtime is used.
 |---|---|
 | File `internal/network/state/source_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/cgroup`; `internal/platform/process` |
 | File `internal/network/state/source_repair_linux_test.go` | File `internal/platform/systemd` |
+| File `internal/network/state/node_duty_repair_linux.go` | File `internal/network/epoch`; `internal/platform/systemd` (shared node-duty repair skeleton, W4 #711) |
+| File `internal/network/state/node_duty_repair_linux_test.go` | File `internal/platform/systemd` |
 | File `internal/network/state/introduction_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/cgroup` |
 | File `internal/network/state/forwarding_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/cgroup` |
 | File `internal/network/state/join_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/cgroup` |
-| File `internal/network/state/descriptor_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/cgroup`; `internal/reachability` (bounded existing-only Store stage recovery) |
+| File `internal/network/state/descriptor_repair_linux.go` | File `internal/network/epoch`; `internal/platform/systemd`; `internal/platform/cgroup`; `internal/reachability` (bounded existing-only Store stage recovery) |
 | File `cmd/ardents-next/source_repair_linux.go` | File `internal/network/state`; `internal/platform/systemd` |
 | File `cmd/ardents-next/introduction_repair_linux.go` | File `internal/network/state`; `internal/platform/systemd`; `internal/processresource` |
 | File `cmd/ardents-next/forwarding_repair_linux.go` | File `internal/network/state`; `internal/platform/systemd`; `internal/hosting`; `internal/processresource` |
@@ -706,7 +723,7 @@ Git history; no current package may import or start a lab Module.
 | `internal/network/source/servingdeclaration` | `package servingdeclaration` | Own the pure closed Source serving-declaration byte grammar (`serving_declaration.go`): exact field names, duplicate/null refusal, one complete object, exact 32-byte array shapes and one finite bounded input, mirroring the original node-role declaration codec in `internal/node` (`plan_declaration.go`, #673). It returns declaration facts only and opens no resource: no State acceptance, root creation, signing, runtime or process policy. Extracted from `internal/network/source` as AR-N-07a (#691) with unchanged canonical declaration bytes. Real consumers: `cmd/ardents-next/source_input_linux.go`, `cmd/ardents-control/source_state_linux.go` (prepare-state), `cmd/ardents-control/source_inspection_linux.go` (inspect-latest) and State's read-only `source_inspection_linux.go`; the closed-grammar behavior oracle is `serving_declaration_linux_test.go`. | standard library |
 | `internal/network/epoch` | `package epoch` | Authenticate bounded Epoch/Record/View grammar, authority signatures, commitments and materializations from an explicit policy. Project decoded input facts and authentication results into Network's Candidate View policy; compare the returned disposition and summaries to signed commitments. Network is the sole production owner of eligibility, collisions, family totals and deterministic Role Domain assignment. Return one owned verified Decision; `Inspect` exposes only a bounded untrusted Header for exact-byte reuse and chain loading, and `InspectMaterializationIndex` reads an untrusted bounded prefix before the full proof check. Called by State. `ardents-next network` and the bounded `ardents-control` provisioning commands consume `PrepareInitialClosedRecord`/`PrepareInitialClosedEpoch` for unsigned fresh closed Node Records and initial Epoch commitments. Preparation shares Network evaluation and grants no signature or State acceptance (ADR-0120). | `internal/network` through `candidate_evaluation.go` and `assignment.go` only, `tests/epochfixture/assignment` and `tests/epochfixture/network` in behavior tests, standard library |
 | `internal/network/closedprofile` | `package closedprofile` | Own only the bounded ARDCPR03 signed-profile grammar and canonical unsigned preparation, validated fixed-purpose public signing transcript and verification against an explicit caller-supplied State context. Its public token-key adapter delegates exact RSA-PSS SPKI validation to the Admission issuerprofile leaf. Return owned parsed public facts; State alone joins them to verified Epoch candidates, decides durable acceptance/conflict, and exposes runtime views. Unsigned preparation is an explicit subsequent provisioning contract; private signing remains outside Network. New State consumes verification. | `internal/admission/issuerprofile` through `token_spki.go` only, standard library |
-| `internal/network/state` | `package state` | Own selected closed-profile intake, authenticated history recovery, finite acquisition and serving, ordered durable publication, clock observation and joined stop/close. `CurrentRuntimeWitness` additionally retains a synchronous original-owner refusal projection without granting authority; `CurrentRuntime` returns one opaque checked observation with copied public profile and exact membership; `AcceptClosedProfile` returns only a committed identity receipt. `Current` is non-authorizing intake/acquisition diagnostics with the local Source exclusion identity. Process admission is borrowed through `PermitWork`; no process-resource monitor, Node lifecycle projection, role/Purpose selection, private signing, token debit, reservation or Carrier execution belongs here. Separate Linux NodeInspection authenticates retained signed/time/security and accepted-profile/member history plus zero-producer participation, returning only copied binding facts without runtime rights. Product tests use genuine signed closed-v3 inputs and independent canonical builders. | `internal/network/closedprofile`, `internal/network/duty`, `internal/network/epoch`, `internal/network/source`, `internal/network/source/servingdeclaration`, `internal/network/state/durable`; `tests/epochfixture/network` in behavior tests; `internal/network` through `acquisition_history.go`, `epoch_history.go`, `membership.go`, `accepted_observation.go`, `runtime_observation.go`, `runtime_witness.go`, `closed_profile_accept.go`, `clock_observation.go`, `closed_profile_role_join_test.go` and `closed_runtime_view_test.go` only; `internal/platform/systemd` only in `source_repair_linux.go`, `source_repair_linux_test.go`, `introduction_repair_linux.go`, `introduction_repair_test.go`, `forwarding_repair_linux.go`, `join_repair_linux.go` and `descriptor_repair_linux.go`, `internal/platform/cgroup` only in `source_repair_linux.go`, `introduction_repair_linux.go`, `forwarding_repair_linux.go`, `join_repair_linux.go` and `descriptor_repair_linux.go`, `internal/platform/process` only in `source_repair_linux.go`, `internal/reachability` only in `descriptor_repair_linux.go` for the bounded existing-only Store uncertain-stage recovery; standard library |
+| `internal/network/state` | `package state` | Own selected closed-profile intake, authenticated history recovery, finite acquisition and serving, ordered durable publication, clock observation and joined stop/close. `CurrentRuntimeWitness` additionally retains a synchronous original-owner refusal projection without granting authority; `CurrentRuntime` returns one opaque checked observation with copied public profile and exact membership; `AcceptClosedProfile` returns only a committed identity receipt. `Current` is non-authorizing intake/acquisition diagnostics with the local Source exclusion identity. Process admission is borrowed through `PermitWork`; no process-resource monitor, Node lifecycle projection, role/Purpose selection, private signing, token debit, reservation or Carrier execution belongs here. Separate Linux NodeInspection authenticates retained signed/time/security and accepted-profile/member history plus zero-producer participation, returning only copied binding facts without runtime rights. Product tests use genuine signed closed-v3 inputs and independent canonical builders. | `internal/network/closedprofile`, `internal/network/duty`, `internal/network/epoch`, `internal/network/source`, `internal/network/source/servingdeclaration`, `internal/network/state/durable`; `tests/epochfixture/network` in behavior tests; `internal/network` through `acquisition_history.go`, `epoch_history.go`, `membership.go`, `accepted_observation.go`, `runtime_observation.go`, `runtime_witness.go`, `closed_profile_accept.go`, `clock_observation.go`, `closed_profile_role_join_test.go` and `closed_runtime_view_test.go` only; `internal/platform/systemd` only in `source_repair_linux.go`, `source_repair_linux_test.go`, `node_duty_repair_linux.go`, `node_duty_repair_linux_test.go`, `introduction_repair_linux.go`, `forwarding_repair_linux.go`, `join_repair_linux.go` and `descriptor_repair_linux.go`, `internal/platform/cgroup` only in `source_repair_linux.go`, `introduction_repair_linux.go`, `forwarding_repair_linux.go`, `join_repair_linux.go` and `descriptor_repair_linux.go`, `internal/platform/process` only in `source_repair_linux.go`, `internal/reachability` only in `descriptor_repair_linux.go` for the bounded existing-only Store uncertain-stage recovery; standard library |
 | `internal/network/state/durable` | `package durable` | Own the exclusive State-root lease, bounded opaque immutable Epoch/input generations, distribution journal, closed-profile bytes and physical state, atomic pointer replacement, fsync and recovery staging cleanup. Independent Linux Inspection retains existing read-only native history/lease without mutation or role policy; Source and Node semantic consumers verify its bytes separately. Accept exact framing limits from State; never verify Epoch authority, select Source results, decide profile conflicts, or publish a runtime View. | `golang.org/x/sys/windows` on Windows, standard library |
 | `internal/admission` | `package admission` | Own canonical Permission and holder request grammar, token classes and validation of externally supplied authority facts. Child packages own allocation, quota, issuance, stock and spending transitions; no Network authority. | `internal/admission/issuerprofile`, standard library |
 | `internal/admission/issuerprofile` | `package issuerprofile` | Own the canonical public issuer profile, complete class/hour inventory and RSA-PSS SPKI grammar; mint opaque purpose-bound signature requests and verified public profiles. PublicPins/Inspect authenticate independently selected public identities without clock acceptance; Verify additionally fixes the exact interval. The genuine public Control consumer reads only signed public bytes. No storage, private key, quota or State authority. | standard library |
