@@ -7,4 +7,6 @@ import (
 	"io"
 )
 
-func runRoute(context.Context, []string, io.Writer, io.Writer) int { return 1 }
+func runRoute(_ context.Context, _ []string, out, _ io.Writer) int {
+	return unsupportedPlatformRefusal(out, "route")
+}

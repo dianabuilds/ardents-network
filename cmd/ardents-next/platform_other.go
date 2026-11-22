@@ -7,4 +7,6 @@ import (
 	"io"
 )
 
-func runPlatform(context.Context, []string, io.Writer) int { return 2 }
+func runPlatform(_ context.Context, _ []string, out io.Writer) int {
+	return unsupportedPlatformRefusal(out, "platform")
+}

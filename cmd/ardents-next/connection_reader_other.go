@@ -7,6 +7,7 @@ import (
 	"io"
 )
 
-func runExecutionTextRead(context.Context, holderPlan, [32]byte, [32]byte, string, io.Writer) int {
-	return 1 // No native qualification or participant effects on this platform.
+func runExecutionTextRead(_ context.Context, _ holderPlan, _, _ [32]byte, _ string, out io.Writer) int {
+	// No native qualification or participant effects on this platform.
+	return unsupportedPlatformRefusal(out, "execution.text-read")
 }

@@ -7,4 +7,6 @@ import (
 	"io"
 )
 
-func runSourcePreparation(context.Context, []string, io.Writer) int { return 2 }
+func runSourcePreparation(_ context.Context, _ []string, out io.Writer) int {
+	return unsupportedPlatformRefusal(out, "source.prepare-trust")
+}
