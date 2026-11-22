@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [network-preparation-check, network-signing-check]
+        profile: [network-signing-check]
     steps:
       - name: Check out exact publication candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -55,5 +55,9 @@ jobs:
             done
             sudo -n env PATH="$PATH" GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly \
               TMPDIR="$native_dir" GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
-              make "$PROFILE"
+              sh -ec 'umask 077
+                mkdir "$TMPDIR/permission-probe"
+                test "$(stat -c %a "$TMPDIR/permission-probe")" = 700
+                rmdir "$TMPDIR/permission-probe"
+                exec make "$1"' native "$PROFILE"
           fi
