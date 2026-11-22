@@ -3696,6 +3696,16 @@ removed preparation routes on the exact Control binary and checks exit 2,
 empty stdout and preservation of input and output paths.
 `ardents-next platform template` emits the canonical platform unit template.
 
+The Control artifact-preparation selection in `make network-signing-check`
+executes the Source, Forwarding, JOIN and Descriptor inventory consumers.
+Supply the same-source canonical Control binary and its SHA-256 through
+`ARDENTS_SOURCE_CONTROL_PROGRAM` for the Source and Forwarding artifact cases,
+`ARDENTS_JOIN_CONTROL_PROGRAM` for JOIN, and
+`ARDENTS_DESCRIPTOR_CONTROL_PROGRAM` for Descriptor, using the matching
+`_SHA256` variables. The Source case inserts an extra input after the
+last output readback and before directory sync to verify that an inventory
+change still refuses at the publication boundary.
+
 The checked `network_signing_native` profile retains the two
 `TestDescriptorPreparationNative` artifact/inventory controls in canonical
 Control through `make network-signing-check`

@@ -78,6 +78,12 @@ role commands select their respective Node/State file, output directory and
 public receipt. Record, Epoch, profile and Release signing retain their
 purpose-specific inputs and checks.
 
+The command-local `infrastructure_inventory_linux.go` reads the exact seven
+public files for Source, Forwarding, JOIN and Descriptor. It retains the
+original directory and files through output and rechecks the names alongside
+protected-input verification. Each role supplies its fixed filenames and
+keeps its own resource validation and Enrollment projection.
+
 The former `cmd/ardents-next/forwarding_installed_native_linux_test.go` OLD-path
 installed QA test and its `forwarding_bootstrap_receipt_test.go` public receipt
 reader retired with the transitional Forwarding orchestration (#604 FJD stage D,

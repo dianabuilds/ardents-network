@@ -10,9 +10,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -108,39 +106,13 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 		result, returned = infrastructure.PrepareForwardingDescriptor(args[1], version, program, template)
 		name, destination = infrastructure.ForwardingDescriptorName, args[5]
 	case "prepare-inventory":
-		if len(args) != 3 || !sourceControlPath(args[1]) || args[1] == args[2] || strings.HasPrefix(args[2], args[1]+"/") {
+		if len(args) != 3 {
 			return nil, errSourceControlInput
 		}
-		directory, err := inputs.directory(args[1])
+		files, checkInventory, err := inputs.readInfrastructureInventory(args[1], args[2],
+			infrastructure.ProgramName, infrastructure.ForwardingTemplateName, infrastructure.ForwardingDescriptorName)
 		if err != nil {
 			return nil, err
-		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.ForwardingTemplateName: 64 << 20, infrastructure.ForwardingDescriptorName: 16 << 10,
-			"root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
-		inventory := func() error {
-			if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
-				return err
-			}
-			entries, err := directory.file.ReadDir(8)
-			if err != nil && err != io.EOF || len(entries) != 7 {
-				return errSourceControlInput
-			}
-			for _, entry := range entries {
-				if _, ok := wanted[entry.Name()]; !ok {
-					return errSourceControlInput
-				}
-			}
-			return nil
-		}
-		if err := inventory(); err != nil {
-			return nil, err
-		}
-		files := make(map[string][]byte, 7)
-		for filename, maximum := range wanted {
-			files[filename], err = inputs.read(filepath.Join(args[1], filename), maximum)
-			if err != nil {
-				return nil, err
-			}
 		}
 		d, err := infrastructure.ValidateForwardingResources(files[infrastructure.ForwardingDescriptorName], files[infrastructure.ProgramName], files[infrastructure.ForwardingTemplateName])
 		if err != nil {
@@ -148,7 +120,7 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 		}
 		result, returned = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, files)
 		name, destination = enrollment.InfrastructureInventoryName, args[2]
-		check = func() error { return errors.Join(inputs.checkProtected(), inventory()) }
+		check = checkInventory
 	default:
 		return nil, errSourceControlInput
 	}

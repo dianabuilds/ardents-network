@@ -105,6 +105,22 @@ func TestSourcePreparationNativeArtifactBytesAndInventory(t *testing.T) {
 	if err != nil || !bytes.Equal(actual, expectedInventory) {
 		t.Fatal("independent inventory bytes", string(actual), err)
 	}
+
+	t.Run("late-extra-inventory-input", func(t *testing.T) {
+		destination := filepath.Join(parent, "late-extra-inventory")
+		mutated := false
+		result, err := prepareSourceArtifact(t.Context(), []string{"prepare-inventory", distribution, destination}, func(stage string, _ *os.File) {
+			if stage == "before-directory-sync" {
+				if err := os.WriteFile(filepath.Join(distribution, "late-extra"), []byte("extra"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				mutated = true
+			}
+		})
+		if !mutated || result != nil || !errors.Is(err, errSourceControlInput) {
+			t.Fatal("late inventory entry was admitted", mutated, err)
+		}
+	})
 }
 
 func TestSourcePreparationNativeRetainsFailureAndRejectsAdoption(t *testing.T) {
