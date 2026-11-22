@@ -20,12 +20,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-func TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *testing.T) {
+func TestRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *testing.T) {
+	for _, role := range []nodeProvisioningRole{forwardingProvisioningRole, joinProvisioningRole, descriptorProvisioningRole} {
+		t.Run(string(role), func(t *testing.T) { testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t, role) })
+	}
+}
+
+func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *testing.T, role nodeProvisioningRole) {
+	t.Helper()
 	parent := sourceArtifactNativeParent(t)
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		output, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding"}, args...)...).CombinedOutput()
+		output, err := exec.CommandContext(t.Context(), command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Epoch preparation refused", args[0], err, string(output))
 		}
@@ -40,7 +47,7 @@ func TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof
 		State     bool   `json:"state_accepted"`
 		Runtime   bool   `json:"runtime_authority"`
 	}
-	if json.Unmarshal(call("prepare-state-key", stateRoot), &stateKey) != nil || stateKey.Operation != "forwarding.prepare-state-key" || len(stateKey.Public) != 64 || stateKey.State || stateKey.Runtime {
+	if json.Unmarshal(call("prepare-state-key", stateRoot), &stateKey) != nil || stateKey.Operation != string(role)+".prepare-state-key" || len(stateKey.Public) != 64 || stateKey.State || stateKey.Runtime {
 		t.Fatal("State key receipt supplies unexpected authority")
 	}
 	args := []string{"--network-id", strings.Repeat("01", 32), "--authority-key", stateKey.Public, "--assignment-seed", strings.Repeat("04", 32), "--node-id", strings.Repeat("03", 32), "--valid-from", now.Add(-time.Minute).Format(time.RFC3339), "--valid-until", now.Add(time.Hour).Format(time.RFC3339), "--domain", "a", "--domain", "b"}
@@ -107,7 +114,7 @@ func TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof
 	if material, err := os.ReadFile(filepath.Join(signedRoot, "material.bin")); err != nil || !bytes.Equal(material, bundle.Materials[0]) {
 		t.Fatal("public proof output differs", err)
 	}
-	if output, err := exec.CommandContext(t.Context(), command, "forwarding", "sign-epoch", planPath, preparedPath, digest(prepared), nodeKey, filepath.Join(parent, "wrong-key")).CombinedOutput(); err == nil || bytes.Contains(output, []byte(`"runtime_authority"`)) {
+	if output, err := exec.CommandContext(t.Context(), command, string(role), "sign-epoch", planPath, preparedPath, digest(prepared), nodeKey, filepath.Join(parent, "wrong-key")).CombinedOutput(); err == nil || bytes.Contains(output, []byte(`"runtime_authority"`)) {
 		t.Fatal("Node key admitted as State signer", err)
 	}
 	if _, err := os.Lstat(filepath.Join(parent, "wrong-key")); !errors.Is(err, os.ErrNotExist) {
@@ -125,7 +132,7 @@ func TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof
 			pin = digest(bad)
 		}
 		output := filepath.Join(parent, "refused-"+mode)
-		if _, err := signForwardingEpoch(t.Context(), []string{planPath, input, pin, filepath.Join(parent, "unopened-private-key"), output}, nil); err == nil || errors.Is(err, os.ErrNotExist) {
+		if _, err := signNodeEpoch(t.Context(), role, []string{planPath, input, pin, filepath.Join(parent, "unopened-private-key"), output}, nil); err == nil || errors.Is(err, os.ErrNotExist) {
 			t.Fatal("changed public Epoch reached private key", mode, err)
 		}
 		if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {
@@ -135,7 +142,7 @@ func TestForwardingEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof
 	if after, err := os.Lstat(statePrivate); err != nil || !os.SameFile(before, after) || after.Mode() != before.Mode() || after.ModTime() != before.ModTime() {
 		t.Fatal("State key replaced", err)
 	}
-	if _, err := exec.CommandContext(t.Context(), command, "forwarding", "prepare-state-key", stateRoot).CombinedOutput(); err == nil {
+	if _, err := exec.CommandContext(t.Context(), command, string(role), "prepare-state-key", stateRoot).CombinedOutput(); err == nil {
 		t.Fatal("existing State key output adopted")
 	}
 }

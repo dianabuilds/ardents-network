@@ -20,12 +20,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T) {
+func TestRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T) {
+	for _, role := range []nodeProvisioningRole{forwardingProvisioningRole, joinProvisioningRole, descriptorProvisioningRole} {
+		t.Run(string(role), func(t *testing.T) { testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t, role) })
+	}
+}
+
+func testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T, role nodeProvisioningRole) {
+	t.Helper()
 	parent := sourceArtifactNativeParent(t)
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		output, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding"}, args...)...).CombinedOutput()
+		output, err := exec.CommandContext(t.Context(), command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Node preparation refused", args[0], err, string(output))
 		}
@@ -38,7 +45,7 @@ func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testin
 		Public    string `json:"node_public_key"`
 		Runtime   bool   `json:"runtime_authority"`
 	}
-	if json.Unmarshal(keyReceipt, &key) != nil || key.Operation != "forwarding.prepare-node-key" || len(key.Public) != 64 || key.Runtime || bytes.Contains(keyReceipt, []byte("PRIVATE KEY")) {
+	if json.Unmarshal(keyReceipt, &key) != nil || key.Operation != string(role)+".prepare-node-key" || len(key.Public) != 64 || key.Runtime || bytes.Contains(keyReceipt, []byte("PRIVATE KEY")) {
 		t.Fatal("private or invalid key receipt")
 	}
 	privatePath := filepath.Join(keyDir, "node-key.pem")
@@ -82,7 +89,7 @@ func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testin
 			input = recordPath
 		}
 		output := filepath.Join(parent, "wrong-pin-"+op)
-		_, err := prepareForwardingNodeSigned(t.Context(), []string{op, planPath, input, strings.Repeat("00", 32), filepath.Join(parent, "unopened-private-key"), output}, nil)
+		_, err := prepareNodeSigned(t.Context(), role, []string{op, planPath, input, strings.Repeat("00", 32), filepath.Join(parent, "unopened-private-key"), output}, nil)
 		if err == nil || errors.Is(err, os.ErrNotExist) {
 			t.Fatal("wrong pin reached private key read", op, err)
 		}
@@ -103,7 +110,7 @@ func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testin
 		// The supplied SHA is correct for these actual changed bytes. Public
 		// preparation/signature verification, not merely the pin, must refuse
 		// before attempting the deliberately missing private input.
-		_, err := prepareForwardingNodeSigned(t.Context(), []string{op, planPath, input, pin(bad), filepath.Join(parent, "unopened-private-key"), output}, nil)
+		_, err := prepareNodeSigned(t.Context(), role, []string{op, planPath, input, pin(bad), filepath.Join(parent, "unopened-private-key"), output}, nil)
 		if err == nil || errors.Is(err, os.ErrNotExist) {
 			t.Fatal("changed public artifact reached private key read", op, err)
 		}
@@ -119,14 +126,14 @@ func TestForwardingNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testin
 			input, raw = recordPath, record
 		}
 		output := filepath.Join(parent, "wrong-key-"+op)
-		if out, err := exec.CommandContext(t.Context(), command, "forwarding", op, planPath, input, pin(raw), filepath.Join(otherDir, "node-key.pem"), output).CombinedOutput(); err == nil || bytes.Contains(out, []byte(`"runtime_authority"`)) {
+		if out, err := exec.CommandContext(t.Context(), command, string(role), op, planPath, input, pin(raw), filepath.Join(otherDir, "node-key.pem"), output).CombinedOutput(); err == nil || bytes.Contains(out, []byte(`"runtime_authority"`)) {
 			t.Fatal("wrong original key accepted", op, err)
 		}
 		if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {
 			t.Fatal("wrong key created output", op, err)
 		}
 	}
-	if _, err := exec.CommandContext(t.Context(), command, "forwarding", "prepare-node-key", keyDir).CombinedOutput(); err == nil {
+	if _, err := exec.CommandContext(t.Context(), command, string(role), "prepare-node-key", keyDir).CombinedOutput(); err == nil {
 		t.Fatal("existing private key output adopted")
 	}
 	if after, err := os.Lstat(privatePath); err != nil || !os.SameFile(privateInfo, after) || after.Mode() != privateInfo.Mode() || after.ModTime() != privateInfo.ModTime() {

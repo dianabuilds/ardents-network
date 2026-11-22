@@ -15,13 +15,13 @@ func runJoinControl(args []string, out io.Writer) error {
 	}
 	switch args[0] {
 	case "prepare-profile", "sign-profile":
-		return runJoinProfileProvision(args, out)
+		return runNodeProfileProvision(joinProvisioningRole, args, out)
 	case "prepare-token-keys":
-		return runJoinTokenMaterial(args[1:], out)
+		return runNodeTokenMaterial(joinProvisioningRole, args[1:], out)
 	case "prepare-state-key", "prepare-epoch", "sign-epoch":
-		return runJoinEpochProvision(args, out)
+		return runNodeEpochProvision(joinProvisioningRole, args, out)
 	case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
-		return runJoinNodeProvision(args, out)
+		return runNodeProvision(joinProvisioningRole, args, out)
 	case "prepare-release-keys":
 		return runJoinReleaseKeys(args[1:], out)
 	case "sign-initial-release":

@@ -663,11 +663,11 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/network/epoch" {
 			switch source {
-			case "cmd/ardents-control/forwarding_node_record_linux.go", "cmd/ardents-control/node_certificate_linux.go", "cmd/ardents-control/forwarding_node_provision_linux.go", "cmd/ardents-control/node_certificate_linux_test.go", "cmd/ardents-control/forwarding_node_provision_native_linux_test.go":
+			case "cmd/ardents-control/node_record_linux.go", "cmd/ardents-control/node_certificate_linux.go", "cmd/ardents-control/node_provision_linux.go", "cmd/ardents-control/node_certificate_linux_test.go", "cmd/ardents-control/node_provision_native_linux_test.go":
 				return true
 			}
 		}
-		if source == "cmd/ardents-control/forwarding_epoch_plan_linux.go" && dependency == modulePath+"/internal/network/epoch" {
+		if source == "cmd/ardents-control/epoch_plan_linux.go" && dependency == modulePath+"/internal/network/epoch" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_token_authority_native_linux_test.go" {
@@ -676,28 +676,28 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
-		if source == "cmd/ardents-control/forwarding_profile_plan_linux.go" {
+		if source == "cmd/ardents-control/profile_plan_linux.go" {
 			switch dependency {
 			case modulePath + "/internal/network", modulePath + "/internal/network/closedprofile", modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/admission/issuerprofile":
 				return true
 			}
 		}
-		if source == "cmd/ardents-control/forwarding_profile_signing_linux.go" && dependency == modulePath+"/internal/network/closedprofile" {
+		if source == "cmd/ardents-control/profile_signing_linux.go" && dependency == modulePath+"/internal/network/closedprofile" {
 			return true
 		}
 		if (source == "cmd/ardents-control/closed_profile.go" || source == "cmd/ardents-control/main_test.go") && dependency == modulePath+"/internal/network/closedprofile" {
 			return true
 		}
-		if source == "cmd/ardents-control/forwarding_profile_native_linux_test.go" && (dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
+		if source == "cmd/ardents-control/profile_native_linux_test.go" && (dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
-		if (source == "cmd/ardents-control/forwarding_token_material_linux.go" || source == "cmd/ardents-control/forwarding_token_material_native_linux_test.go") && dependency == modulePath+"/internal/admission/issuance" {
+		if (source == "cmd/ardents-control/token_material_linux.go" || source == "cmd/ardents-control/token_material_native_linux_test.go") && dependency == modulePath+"/internal/admission/issuance" {
 			return true
 		}
-		if source == "cmd/ardents-control/forwarding_token_material_native_linux_test.go" && dependency == modulePath+"/internal/admission/issuerprofile" {
+		if source == "cmd/ardents-control/token_material_native_linux_test.go" && dependency == modulePath+"/internal/admission/issuerprofile" {
 			return true
 		}
-		if (source == "cmd/ardents-control/forwarding_epoch_signing_linux.go" || source == "cmd/ardents-control/forwarding_epoch_provision_native_linux_test.go") && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
+		if (source == "cmd/ardents-control/epoch_signing_linux.go" || source == "cmd/ardents-control/epoch_provision_native_linux_test.go") && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == modulePath+"/internal/release/infrastructure" {
@@ -1691,47 +1691,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 	}
 }
 
-// Retained JOIN signing/provisioning producers and the read-only repair runtime
-// manager. The transitional first-start/replacement orchestration and its native
-// regression consumers retired (#604 FJD stage D, ADR-0125); the platform-led
-// JOIN lifecycle owns installed delivery.
+// The retained read-only JOIN repair runtime uses the platform manager. The
+// platform-led JOIN lifecycle owns installed delivery (ADR-0125).
 func joinRetainedImportAllowed(source, dependency string) bool {
 	switch source {
-	case "cmd/ardents-control/join_token_material_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/admission/issuance":
-			return true
-		}
-	case "cmd/ardents-control/join_epoch_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
-	case "cmd/ardents-control/join_profile_plan_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/network", "github.com/dianabuilds/ardents-network/internal/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/network/epoch", "github.com/dianabuilds/ardents-network/internal/network/source":
-			return true
-		}
-	case "cmd/ardents-control/join_epoch_plan_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
-	case "cmd/ardents-control/join_profile_signing_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/closedprofile":
-			return true
-		}
-	case "cmd/ardents-control/join_node_record_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
-	case "cmd/ardents-control/join_node_provision_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/network/epoch":
-			return true
-		}
 	case "internal/platform/systemd/join_manager_linux.go":
 		switch dependency {
 		case "github.com/godbus/dbus/v5":

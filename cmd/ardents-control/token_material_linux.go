@@ -19,7 +19,7 @@ import (
 
 // This is an offline key-material request, not an issuer appointment, signed
 // profile, Permission or runtime plan. Admission owns generation and storage.
-type forwardingTokenMaterialPlan struct {
+type nodeTokenMaterialPlan struct {
 	Schema  string    `json:"schema"`
 	Network string    `json:"network_id"`
 	Issuer  string    `json:"issuer_node_id"`
@@ -28,17 +28,17 @@ type forwardingTokenMaterialPlan struct {
 	End     time.Time `json:"end"`
 }
 
-type forwardingTokenInventory struct {
+type nodeTokenInventory struct {
 	Schema    string             `json:"schema"`
 	Inventory issuance.Inventory `json:"inventory"`
 }
 
-func forwardingTokenMaterialArguments(args []string) (p forwardingTokenMaterialPlan, binding issuance.Binding, output string, returned error) {
-	if len(args) > 16 {
+func nodeTokenMaterialArguments(role nodeProvisioningRole, args []string) (p nodeTokenMaterialPlan, binding issuance.Binding, output string, returned error) {
+	if !role.valid() || len(args) > 16 {
 		return p, binding, output, errSourceControlInput
 	}
-	p.Schema = "ardents-forwarding-token-key-plan-v1"
-	flags := flag.NewFlagSet("forwarding prepare-token-keys", flag.ContinueOnError)
+	p.Schema = role.schema("token-key-plan")
+	flags := flag.NewFlagSet(string(role)+" prepare-token-keys", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var start, end string
 	flags.StringVar(&p.Network, "network-id", "", "explicit Network ID")
@@ -76,11 +76,11 @@ func forwardingTokenMaterialArguments(args []string) (p forwardingTokenMaterialP
 // material root. Its original birth and native ancestry remain retained while
 // Admission initializes and reopens its own separate immutable material root.
 // No private material leaves that owner; only Inventory crosses this boundary.
-func prepareForwardingTokenMaterial(ctx context.Context, args []string, observe func(string, *os.File)) (public []byte, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 {
+func prepareNodeTokenMaterial(ctx context.Context, role nodeProvisioningRole, args []string, observe func(string, *os.File)) (public []byte, returned error) {
+	if !role.valid() || ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 {
 		return nil, errSourceControlInput
 	}
-	p, binding, output, err := forwardingTokenMaterialArguments(args)
+	p, binding, output, err := nodeTokenMaterialArguments(role, args)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func prepareForwardingTokenMaterial(ctx context.Context, args []string, observe 
 	if err != nil {
 		return nil, err
 	}
-	// Physical Close joins before input descriptors and public acknowledgement.
+	// Physical Close finishes before input descriptors and public acknowledgement.
 	defer func() {
 		returned = errors.Join(returned, store.Close())
 		if observe != nil {
@@ -153,7 +153,7 @@ func prepareForwardingTokenMaterial(ctx context.Context, args []string, observe 
 	if err != nil {
 		return nil, err
 	}
-	public, err = json.Marshal(forwardingTokenInventory{"ardents-forwarding-token-inventory-v1", inventory})
+	public, err = json.Marshal(nodeTokenInventory{role.schema("token-inventory"), inventory})
 	if err != nil {
 		return nil, err
 	}
@@ -165,14 +165,14 @@ func prepareForwardingTokenMaterial(ctx context.Context, args []string, observe 
 	return public, retained()
 }
 
-func runForwardingTokenMaterial(args []string, out io.Writer) error {
+func runNodeTokenMaterial(role nodeProvisioningRole, args []string, out io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	public, err := prepareForwardingTokenMaterial(ctx, args, nil)
+	public, err := prepareNodeTokenMaterial(ctx, role, args, nil)
 	if err != nil {
-		return &forwardingControlFailure{err}
+		return role.failure(err)
 	}
 	sum := sha256.Sum256(public)
 	raw, err := json.Marshal(struct {
@@ -182,7 +182,7 @@ func runForwardingTokenMaterial(args []string, out io.Writer) error {
 		Issuer    bool   `json:"issuer_authority"`
 		Runtime   bool   `json:"runtime_authority"`
 		Installed bool   `json:"installed_qualification"`
-	}{"forwarding.prepare-token-keys", hex.EncodeToString(sum[:]), false, false, false, false})
+	}{role.operation("prepare-token-keys"), hex.EncodeToString(sum[:]), false, false, false, false})
 	if err != nil {
 		return err
 	}

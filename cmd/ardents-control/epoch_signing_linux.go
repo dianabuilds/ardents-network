@@ -16,16 +16,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-type descriptorEpochResult struct {
+type nodeEpochResult struct {
 	bundle []byte
-	plan   descriptorEpochPlan
+	plan   nodeEpochPlan
 }
 
 // This fixed genesis signature accepts only its original rebuilt AREP-v3
 // preparation and one explicit State authority. It cannot sign an arbitrary
 // message, successor, role profile or Source declaration.
-func signDescriptorEpoch(ctx context.Context, args []string, observe func(string, *os.File)) (result *descriptorEpochResult, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 5 {
+func signNodeEpoch(ctx context.Context, role nodeProvisioningRole, args []string, observe func(string, *os.File)) (result *nodeEpochResult, returned error) {
+	if !role.valid() || ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 5 {
 		return nil, errSourceControlInput
 	}
 	for _, index := range []int{0, 1, 3, 4} {
@@ -43,21 +43,21 @@ func signDescriptorEpoch(ctx context.Context, args []string, observe func(string
 		return nil, errSourceControlInput
 	}
 	inputs := &sourceControlInputs{ctx: ctx}
-	var admitted *descriptorEpochPlan
+	var admitted *nodeEpochPlan
 	defer func() {
 		returned = errors.Join(returned, inputs.close(), ctx.Err())
 		if admitted != nil {
-			returned = errors.Join(returned, admitted.current(time.Now().UTC()))
+			returned = errors.Join(returned, admitted.current(role, time.Now().UTC()))
 		}
 		if returned != nil {
 			result = nil
 		}
 	}()
-	raw, err := inputs.read(args[0], maximumDescriptorEpochPlan)
+	raw, err := inputs.read(args[0], maximumNodeEpochPlan)
 	if err != nil {
 		return nil, err
 	}
-	p, message, err := decodeDescriptorEpochPlan(raw, time.Now().UTC())
+	p, message, err := decodeNodeEpochPlan(role, raw, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func signDescriptorEpoch(ctx context.Context, args []string, observe func(string
 	if !bytes.Equal(prepared, message) || hex.EncodeToString(sum[:]) != args[2] {
 		return nil, errSourceControlInput
 	}
-	check := func() error { return errors.Join(p.current(time.Now().UTC()), inputs.checkProtected()) }
+	check := func() error { return errors.Join(p.current(role, time.Now().UTC()), inputs.checkProtected()) }
 	if err := check(); err != nil {
 		return nil, err
 	}
@@ -140,5 +140,5 @@ func signDescriptorEpoch(ctx context.Context, args []string, observe func(string
 	if err := persistSourceArtifacts(ctx, args[4], []sourceArtifactFile{{"epoch.bin", signed}, {"material.bin", material}, {"state-bundle.bin", bundle}}, check, observe); err != nil {
 		return nil, err
 	}
-	return &descriptorEpochResult{bytes.Clone(bundle), p}, check()
+	return &nodeEpochResult{bytes.Clone(bundle), p}, check()
 }

@@ -15,14 +15,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-const maximumJoinEpochPlan = 8 << 20
+const maximumNodeEpochPlan = 8 << 20
 
-type joinEpochRecord struct {
-	Declaration joinRecordPlan `json:"declaration"`
+type nodeEpochRecord struct {
+	Declaration nodeRecordPlan `json:"declaration"`
 	Signed      []byte         `json:"signed"`
 }
 
-type joinEpochPlan struct {
+type nodeEpochPlan struct {
 	Schema    string            `json:"schema"`
 	Reference time.Time         `json:"reference_time"`
 	Network   string            `json:"network_id"`
@@ -32,18 +32,18 @@ type joinEpochPlan struct {
 	From      time.Time         `json:"valid_from"`
 	Until     time.Time         `json:"valid_until"`
 	Domains   []string          `json:"domains"`
-	Records   []joinEpochRecord `json:"records"`
+	Records   []nodeEpochRecord `json:"records"`
 }
 
-func (p joinEpochPlan) current(now time.Time) error {
-	if p.Schema != "ardents-join-epoch-plan-v1" || p.Reference.IsZero() || p.Reference.Location() != time.UTC || p.From.Location() != time.UTC || p.Until.Location() != time.UTC || p.Reference.Nanosecond() != 0 || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) || p.Reference.Before(p.From) || !p.Reference.Before(p.Until) || now.Before(p.From) || !now.Before(p.Until) || p.Until.Sub(p.From) > 7*24*time.Hour {
+func (p nodeEpochPlan) current(role nodeProvisioningRole, now time.Time) error {
+	if !role.valid() || p.Schema != role.schema("epoch-plan") || p.Reference.IsZero() || p.Reference.Location() != time.UTC || p.From.Location() != time.UTC || p.Until.Location() != time.UTC || p.Reference.Nanosecond() != 0 || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) || p.Reference.Before(p.From) || !p.Reference.Before(p.Until) || now.Before(p.From) || !now.Before(p.Until) || p.Until.Sub(p.From) > 7*24*time.Hour {
 		return errSourceControlInput
 	}
 	return nil
 }
 
-func (p joinEpochPlan) prepare(now time.Time) ([]byte, error) {
-	if err := p.current(now); err != nil {
+func (p nodeEpochPlan) prepare(role nodeProvisioningRole, now time.Time) ([]byte, error) {
+	if err := p.current(role, now); err != nil {
 		return nil, err
 	}
 	network, err := controlPublic32(p.Network)
@@ -70,7 +70,7 @@ func (p joinEpochPlan) prepare(now time.Time) ([]byte, error) {
 		// This old public reference validates its original declaration only.
 		// Signed Record validity/current eligibility belongs to the new Epoch
 		// operation below; this does not renew a past signing permission.
-		message, err := record.Declaration.prepare(record.Declaration.Reference)
+		message, err := record.Declaration.prepare(role, record.Declaration.Reference)
 		if err != nil || record.Declaration.Network != p.Network || record.Declaration.PublicKey == p.Authority || len(record.Signed) > epoch.MaxRecordBytes {
 			return nil, errSourceControlInput
 		}
@@ -86,26 +86,26 @@ func (p joinEpochPlan) prepare(now time.Time) ([]byte, error) {
 	return epoch.PrepareInitialClosedEpoch(epoch.InitialClosedEpoch{NetworkID: network, AssignmentSeed: seed, ValidFrom: p.From, ValidUntil: p.Until, Domains: p.Domains, Records: records, AuthorityKeys: []ed25519.PublicKey{ed25519.PublicKey(authority[:])}, Carrier: epoch.CarrierClosedTCP})
 }
 
-func decodeJoinEpochPlan(raw []byte, now time.Time) (joinEpochPlan, []byte, error) {
-	var p joinEpochPlan
-	if len(raw) == 0 || len(raw) > maximumJoinEpochPlan || json.Unmarshal(raw, &p) != nil {
+func decodeNodeEpochPlan(role nodeProvisioningRole, raw []byte, now time.Time) (nodeEpochPlan, []byte, error) {
+	var p nodeEpochPlan
+	if len(raw) == 0 || len(raw) > maximumNodeEpochPlan || json.Unmarshal(raw, &p) != nil {
 		return p, nil, errSourceControlInput
 	}
 	canonical, err := json.Marshal(p)
 	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
 		return p, nil, errSourceControlInput
 	}
-	prepared, err := p.prepare(now)
+	prepared, err := p.prepare(role, now)
 	return p, prepared, err
 }
 
-type joinEpochFlags struct {
+type nodeEpochFlags struct {
 	values  []string
 	maximum int
 }
 
-func (f *joinEpochFlags) String() string { return strings.Join(f.values, ",") }
-func (f *joinEpochFlags) Set(value string) error {
+func (f *nodeEpochFlags) String() string { return strings.Join(f.values, ",") }
+func (f *nodeEpochFlags) Set(value string) error {
 	if len(f.values) >= f.maximum {
 		return errSourceControlInput
 	}
@@ -113,15 +113,15 @@ func (f *joinEpochFlags) Set(value string) error {
 	return nil
 }
 
-func prepareJoinEpoch(ctx context.Context, args []string, observe func(string, *os.File)) (p joinEpochPlan, result []byte, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) > 320 {
+func prepareNodeEpoch(ctx context.Context, role nodeProvisioningRole, args []string, observe func(string, *os.File)) (p nodeEpochPlan, result []byte, returned error) {
+	if !role.valid() || ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) > 320 {
 		return p, nil, errSourceControlInput
 	}
-	p = joinEpochPlan{Schema: "ardents-join-epoch-plan-v1", Reference: time.Now().UTC().Truncate(time.Second)}
-	flags := flag.NewFlagSet("join prepare-epoch", flag.ContinueOnError)
+	p = nodeEpochPlan{Schema: role.schema("epoch-plan"), Reference: time.Now().UTC().Truncate(time.Second)}
+	flags := flag.NewFlagSet(string(role)+" prepare-epoch", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	var from, until, output string
-	domains, plans, records := joinEpochFlags{maximum: 16}, joinEpochFlags{maximum: 64}, joinEpochFlags{maximum: 64}
+	domains, plans, records := nodeEpochFlags{maximum: 16}, nodeEpochFlags{maximum: 64}, nodeEpochFlags{maximum: 64}
 	flags.StringVar(&p.Network, "network-id", "", "explicit Network ID")
 	flags.StringVar(&p.Authority, "authority-key", "", "independently reviewed State authority public key")
 	flags.StringVar(&p.Seed, "assignment-seed", "", "fixed reviewed assignment seed; no redraw")
@@ -149,7 +149,7 @@ func prepareJoinEpoch(ctx context.Context, args []string, observe func(string, *
 	defer func() {
 		returned = errors.Join(returned, inputs.close(), ctx.Err())
 		if p.Schema != "" {
-			returned = errors.Join(returned, p.current(time.Now().UTC()))
+			returned = errors.Join(returned, p.current(role, time.Now().UTC()))
 		}
 		if returned != nil {
 			result = nil
@@ -167,11 +167,11 @@ func prepareJoinEpoch(ctx context.Context, args []string, observe func(string, *
 		if err != nil {
 			return p, nil, err
 		}
-		var declaration joinRecordPlan
+		var declaration nodeRecordPlan
 		if json.Unmarshal(raw, &declaration) != nil {
 			return p, nil, errSourceControlInput
 		}
-		declaration, _, err = decodeJoinRecordPlan(raw, declaration.Reference)
+		declaration, _, err = decodeNodeRecordPlan(role, raw, declaration.Reference)
 		if err != nil {
 			return p, nil, err
 		}
@@ -179,17 +179,17 @@ func prepareJoinEpoch(ctx context.Context, args []string, observe func(string, *
 		if err != nil {
 			return p, nil, err
 		}
-		p.Records = append(p.Records, joinEpochRecord{declaration, bytes.Clone(signed)})
+		p.Records = append(p.Records, nodeEpochRecord{declaration, bytes.Clone(signed)})
 	}
-	result, err = p.prepare(time.Now().UTC())
+	result, err = p.prepare(role, time.Now().UTC())
 	if err != nil {
 		return p, nil, err
 	}
 	raw, err := json.Marshal(p)
-	if err != nil || len(raw)+1 > maximumJoinEpochPlan {
+	if err != nil || len(raw)+1 > maximumNodeEpochPlan {
 		return p, nil, errSourceControlInput
 	}
-	check := func() error { return errors.Join(p.current(time.Now().UTC()), inputs.checkProtected()) }
+	check := func() error { return errors.Join(p.current(role, time.Now().UTC()), inputs.checkProtected()) }
 	if err := check(); err != nil {
 		return p, nil, err
 	}

@@ -22,12 +22,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-func TestForwardingProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T) {
+func TestRoleProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T) {
+	for _, role := range []nodeProvisioningRole{forwardingProvisioningRole, joinProvisioningRole, descriptorProvisioningRole} {
+		t.Run(string(role), func(t *testing.T) { testRoleProfileNativeCanonicalEpochInventoryAndSignature(t, role) })
+	}
+}
+
+func testRoleProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T, role nodeProvisioningRole) {
+	t.Helper()
 	parent := sourceArtifactNativeParent(t)
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding"}, args...)...).CombinedOutput()
+		raw, err := exec.CommandContext(t.Context(), command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical public profile flow refused", args[0], err, string(raw))
 		}
@@ -135,35 +142,35 @@ func TestForwardingProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T
 	if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() || !before.ModTime().Equal(after.ModTime()) {
 		t.Fatal("profile signer changed original State key custody", err)
 	}
-	if _, _, err := signForwardingProfile(t.Context(), []string{planPath, messagePath, digest(message), issuerPrivate, filepath.Join(parent, "wrong-signer")}, nil); err == nil {
+	if _, _, err := signNodeProfile(t.Context(), role, []string{planPath, messagePath, digest(message), issuerPrivate, filepath.Join(parent, "wrong-signer")}, nil); err == nil {
 		t.Fatal("Node key used as State signer")
 	}
 	if _, err := os.Lstat(filepath.Join(parent, "wrong-signer")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("wrong signer created output", err)
 	}
-	var plan forwardingProfilePlan
+	var plan nodeProfilePlan
 	if json.Unmarshal(read(planPath), &plan) != nil {
 		t.Fatal("profile plan malformed")
 	}
 	for _, tc := range []struct {
 		name   string
-		change func(*forwardingProfilePlan)
+		change func(*nodeProfilePlan)
 	}{
-		{"schema", func(p *forwardingProfilePlan) { p.Schema = "ardents-source-plan-v1" }},
-		{"stale", func(p *forwardingProfilePlan) { p.Reference = p.Reference.Add(-6 * time.Minute) }},
-		{"future", func(p *forwardingProfilePlan) { p.Reference = p.Reference.Add(2 * time.Minute) }},
-		{"network", func(p *forwardingProfilePlan) { p.Network = strings.Repeat("05", 32) }},
-		{"state-authority-alias", func(p *forwardingProfilePlan) { p.PermissionAuthority = p.Authority }},
-		{"node-authority-alias", func(p *forwardingProfilePlan) { p.PermissionAuthority = issuerPublic }},
-		{"issuer-key", func(p *forwardingProfilePlan) { p.Tokens.Inventory.Binding.Signer = [32]byte{7} }},
-		{"missing-class", func(p *forwardingProfilePlan) { p.Tokens.Inventory.Keys = p.Tokens.Inventory.Keys[:2] }},
-		{"duplicate-duty", func(p *forwardingProfilePlan) { p.Duties[1] = p.Duties[0] }},
-		{"epoch-domain-contradiction", func(p *forwardingProfilePlan) { p.Duties[1].Domain = 1; p.Duties[1].Subrole = 1 }},
-		{"unknown-node", func(p *forwardingProfilePlan) { p.Duties[1].Node = strings.Repeat("06", 32) }},
-		{"signed-epoch-damaged", func(p *forwardingProfilePlan) { p.Bundle[len(p.Bundle)-1] ^= 1 }},
+		{"schema", func(p *nodeProfilePlan) { p.Schema = "ardents-source-plan-v1" }},
+		{"stale", func(p *nodeProfilePlan) { p.Reference = p.Reference.Add(-6 * time.Minute) }},
+		{"future", func(p *nodeProfilePlan) { p.Reference = p.Reference.Add(2 * time.Minute) }},
+		{"network", func(p *nodeProfilePlan) { p.Network = strings.Repeat("05", 32) }},
+		{"state-authority-alias", func(p *nodeProfilePlan) { p.PermissionAuthority = p.Authority }},
+		{"node-authority-alias", func(p *nodeProfilePlan) { p.PermissionAuthority = issuerPublic }},
+		{"issuer-key", func(p *nodeProfilePlan) { p.Tokens.Inventory.Binding.Signer = [32]byte{7} }},
+		{"missing-class", func(p *nodeProfilePlan) { p.Tokens.Inventory.Keys = p.Tokens.Inventory.Keys[:2] }},
+		{"duplicate-duty", func(p *nodeProfilePlan) { p.Duties[1] = p.Duties[0] }},
+		{"epoch-domain-contradiction", func(p *nodeProfilePlan) { p.Duties[1].Domain = 1; p.Duties[1].Subrole = 1 }},
+		{"unknown-node", func(p *nodeProfilePlan) { p.Duties[1].Node = strings.Repeat("06", 32) }},
+		{"signed-epoch-damaged", func(p *nodeProfilePlan) { p.Bundle[len(p.Bundle)-1] ^= 1 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var changed forwardingProfilePlan
+			var changed nodeProfilePlan
 			_ = json.Unmarshal(read(planPath), &changed)
 			tc.change(&changed)
 			raw, _ := json.Marshal(changed)
@@ -172,7 +179,7 @@ func TestForwardingProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T
 				t.Fatal(err)
 			}
 			output := filepath.Join(parent, "refused-"+tc.name)
-			if _, _, err := signForwardingProfile(t.Context(), []string{path, messagePath, digest(message), filepath.Join(parent, "unopened-private-key"), output}, nil); err == nil || errors.Is(err, os.ErrNotExist) {
+			if _, _, err := signNodeProfile(t.Context(), role, []string{path, messagePath, digest(message), filepath.Join(parent, "unopened-private-key"), output}, nil); err == nil || errors.Is(err, os.ErrNotExist) {
 				t.Fatal("invalid declaration reached private key", err)
 			}
 			if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {
@@ -191,7 +198,7 @@ func TestForwardingProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T
 			}
 			pin = digest(changed)
 		}
-		if _, _, err := signForwardingProfile(t.Context(), []string{planPath, input, pin, filepath.Join(parent, "unopened-private-key"), filepath.Join(parent, "refused-"+mode)}, nil); err == nil || errors.Is(err, os.ErrNotExist) {
+		if _, _, err := signNodeProfile(t.Context(), role, []string{planPath, input, pin, filepath.Join(parent, "unopened-private-key"), filepath.Join(parent, "refused-"+mode)}, nil); err == nil || errors.Is(err, os.ErrNotExist) {
 			t.Fatal("bad reviewed input reached private key", mode, err)
 		}
 	}

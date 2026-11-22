@@ -186,7 +186,7 @@ func prepareForwardingIssuedStock(t *testing.T, parent string, vault *custody.Va
 	if err != nil || facts.IssuanceAuthorityKey != created.AdmissionAuthority.Public {
 		t.Fatal("actual State-bound Permission authority", err)
 	}
-	var inventory forwardingTokenInventory
+	var inventory nodeTokenInventory
 	raw, err := os.ReadFile(filepath.Join(parent, "canonical-preparation", "token-material", "public", "token-inventory.json"))
 	if err != nil || json.Unmarshal(raw, &inventory) != nil {
 		t.Fatal("actual canonical public key inventory", err)

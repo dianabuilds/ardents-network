@@ -13,13 +13,13 @@ func runDescriptorControl(args []string, out io.Writer) error {
 	}
 	switch args[0] {
 	case "prepare-profile", "sign-profile":
-		return runDescriptorProfileProvision(args, out)
+		return runNodeProfileProvision(descriptorProvisioningRole, args, out)
 	case "prepare-token-keys":
-		return runDescriptorTokenMaterial(args[1:], out)
+		return runNodeTokenMaterial(descriptorProvisioningRole, args[1:], out)
 	case "prepare-state-key", "prepare-epoch", "sign-epoch":
-		return runDescriptorEpochProvision(args, out)
+		return runNodeEpochProvision(descriptorProvisioningRole, args, out)
 	case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
-		return runDescriptorNodeProvision(args, out)
+		return runNodeProvision(descriptorProvisioningRole, args, out)
 	case "prepare-release-keys":
 		return runDescriptorReleaseKeys(args[1:], out)
 	case "sign-initial-release":
