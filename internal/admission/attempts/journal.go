@@ -51,27 +51,27 @@ type Journal struct {
 // Mark durably records a potentially spent token before its caller may present it.
 func (journal *Journal) Mark(token []byte, record Attempt) error {
 	if journal == nil || len(token) != 354 {
-		return errors.New("text token journal unavailable")
+		return errors.New("admission token journal unavailable")
 	}
 	journal.mu.Lock()
 	defer journal.mu.Unlock()
 	if journal.closed || journal.failure != nil {
-		return errors.New("text token journal closed or failed")
+		return errors.New("admission token journal closed or failed")
 	}
 	now := journal.clock().UTC().Truncate(time.Second)
 	record.digest, record.observed = sha256.Sum256(token), now
 	if !validAttempt(record) || now.Before(journal.floor) || now.Before(record.Window) || !now.Before(record.Window.Add(time.Hour)) {
-		return errors.New("text token attempt binding unavailable")
+		return errors.New("admission token attempt binding unavailable")
 	}
 	if _, exists := journal.records[record.digest]; exists {
-		return errors.New("text token already potentially spent")
+		return errors.New("admission token is already marked as potentially spent")
 	}
 	if err := journal.prune(now); err != nil {
 		journal.failure = err
 		return err
 	}
 	if len(journal.records) >= maximumAttempts {
-		return errors.New("text token attempt journal exhausted")
+		return errors.New("admission token attempt journal exhausted")
 	}
 	// An ambiguous write poisons this owner. The caller burns its stock item
 	// before calling Mark and cannot present it until this flush succeeds.
@@ -79,7 +79,7 @@ func (journal *Journal) Mark(token []byte, record Attempt) error {
 	if err == nil {
 		info, inspectErr := file.Stat()
 		if inspectErr != nil || journal.identity == nil || !os.SameFile(info, journal.identity) || info.Size() != int64(journalHeader+len(journal.records)*attemptSize) {
-			err = errors.Join(errors.New("text token journal file changed"), inspectErr, file.Close())
+			err = errors.Join(errors.New("admission token journal file changed"), inspectErr, file.Close())
 			journal.failure = err
 			return err
 		}
@@ -87,7 +87,7 @@ func (journal *Journal) Mark(token []byte, record Attempt) error {
 		var written int
 		written, err = file.Write(raw)
 		if err == nil && written != len(raw) {
-			err = errors.New("short text token attempt write")
+			err = errors.New("short admission token attempt write")
 		}
 		if err == nil {
 			err = file.Sync()
@@ -167,7 +167,7 @@ func encodeAttempt(record Attempt) []byte {
 
 func decodeAttempt(raw []byte) (Attempt, error) {
 	if len(raw) != attemptSize {
-		return Attempt{}, errors.New("text token attempt length invalid")
+		return Attempt{}, errors.New("admission token attempt length invalid")
 	}
 	var record Attempt
 	copy(record.digest[:], raw[:32])
@@ -179,7 +179,7 @@ func decodeAttempt(raw []byte) (Attempt, error) {
 	copy(record.Nonce[:], raw[113:145])
 	record.observed = time.Unix(int64(binary.BigEndian.Uint64(raw[145:153])), 0).UTC()
 	if !validAttempt(record) {
-		return Attempt{}, errors.New("text token attempt invalid")
+		return Attempt{}, errors.New("admission token attempt invalid")
 	}
 	return record, nil
 }

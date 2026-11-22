@@ -15,7 +15,7 @@ func (owner *Owner) RefillPlan(requested [][32]byte, class uint8, requiresAdmiss
 	profile, now, err := owner.current(observed, at, observedErr)
 	permission := owner.permission
 	if err != nil || !permission.CurrentFor(profile, now) {
-		return nil, errors.New("text issuer stock owner unavailable")
+		return nil, errors.New("admission stock for the issuer is unavailable")
 	}
 	if batch := permission.pending; batch != nil {
 		if !batch.Refill {
@@ -24,7 +24,7 @@ func (owner *Owner) RefillPlan(requested [][32]byte, class uint8, requiresAdmiss
 		receivers := make([][32]byte, len(batch.Challenges))
 		for index, challenge := range batch.Challenges {
 			if challenge.Class != 1 || challenge.ReceiverNodeID != profile.IssuerNodeID {
-				return nil, errors.New("text issuer pending stock binding unavailable")
+				return nil, errors.New("pending issuer refill binding does not match")
 			}
 			receivers[index] = challenge.ReceiverNodeID
 		}

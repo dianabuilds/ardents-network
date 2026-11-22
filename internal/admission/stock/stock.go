@@ -47,20 +47,20 @@ func (permission *permission) reserveBatch(profile admission.AuthorityFacts, now
 	if batch := permission.pending; batch != nil {
 		if batch.Refill != refill || !slices.Equal(batch.Challenges, challenges) || batch.Selection != selection ||
 			batch.Bootstrap != bootstrap {
-			return nil, errors.New("text issuance retry must retain the original batch")
+			return nil, errors.New("admission issuance retry must retain the original batch")
 		}
 		return batch, nil
 	}
 
 	if bootstrap && permission.BootstrapAllowance() == 0 {
-		return nil, errors.New("text bootstrap batch allowance is exhausted")
+		return nil, errors.New("admission bootstrap batch allowance is exhausted")
 	}
 	if len(challenges) == 0 {
-		return nil, errors.New("text issuance allocation is empty")
+		return nil, errors.New("admission issuance allocation is empty")
 	}
 	class := challenges[0].Class
 	if class < 1 || class > 3 || uint32(len(challenges)) > permission.Remaining(class) {
-		return nil, errors.New("text issuance allocation is exhausted")
+		return nil, errors.New("admission issuance allocation is exhausted")
 	}
 	pending, err := admissiontoken.PrepareClosedTokenBatch(admissiontoken.ClosedTokenBatchConfig{Profile: profile, Contexts: challenges,
 		Permission: permission.accepted, HolderKey: permission.holder, Now: now})
@@ -90,7 +90,7 @@ func (permission *permission) discardPendingBatch(batch *batch) {
 // in the permission-owned stock. A failed finalization consumes the batch.
 func (permission *permission) acceptIssuedBatch(batch *batch, body []byte, check func() error) error {
 	if permission == nil || batch == nil || permission.pending != batch {
-		return errors.New("text issuance batch owner changed")
+		return errors.New("admission issuance batch owner changed")
 	}
 	tokens, err := batch.Pending.FinalizeEncoded(body)
 	permission.pending = nil
@@ -124,18 +124,18 @@ func (permission *permission) acceptIssuedBatch(batch *batch, body []byte, check
 // restored.
 func (permission *permission) consumeToken(profile admission.AuthorityFacts, now time.Time, hello Presentation, class uint8) ([]byte, error) {
 	if !permission.CurrentFor(profile, now) {
-		return nil, TransferFailureAt("permission", errors.New("text token permission expired"))
+		return nil, TransferFailureAt("permission", errors.New("admission permission is no longer current"))
 	}
 	challenge := admissiontoken.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
 		ReceiverNodeID: hello.RecipientNodeID, ReceiverDutyGeneration: hello.RecipientDutyGeneration, Class: class, WindowStart: permission.accepted.NotBefore}
 	if int(profile.TokenKeyCount) > len(profile.TokenKeys) {
-		return nil, TransferFailureAt("key-inventory", errors.New("text token key inventory unavailable"))
+		return nil, TransferFailureAt("key-inventory", errors.New("admission token key inventory unavailable"))
 	}
 	var spki []byte
 	for _, key := range profile.TokenKeys[:profile.TokenKeyCount] {
 		if key.Class == class && key.WindowStart == challenge.WindowStart {
 			if spki != nil {
-				return nil, TransferFailureAt("key-ambiguity", errors.New("text token key ambiguous"))
+				return nil, TransferFailureAt("key-ambiguity", errors.New("admission token key ambiguous"))
 			}
 			spki = key.SPKI[:]
 		}
@@ -150,5 +150,5 @@ func (permission *permission) consumeToken(profile admission.AuthorityFacts, now
 		}
 		return token, nil
 	}
-	return nil, TransferFailureAt("stock", errors.New("text forwarding token stock unavailable"))
+	return nil, TransferFailureAt("stock", errors.New("admission token stock unavailable"))
 }
