@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/join/pairing"
 )
 
 // admissionRetirement retains capacity even when receiving Admission refuses
@@ -23,7 +23,7 @@ type admissionRetirement struct {
 	registry       *introduction.Registry
 	registration   *introduction.Capacity
 	joinQueues     *framing.Budget
-	join           *join.Capacity
+	join           *pairing.Capacity
 	issuerTerminal func() error
 }
 
@@ -81,7 +81,7 @@ func (c Channel) HoldReservation(release func() error) (func() error, error) {
 		if c.capacity.join != nil {
 			return r.request, errors.New("route JOIN capacity already held")
 		}
-		position, err := join.ReserveCapacity(c.capacity.joinQueues)
+		position, err := pairing.ReserveCapacity(c.capacity.joinQueues)
 		if err != nil {
 			return r.request, err
 		}

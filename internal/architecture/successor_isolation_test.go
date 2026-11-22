@@ -254,8 +254,8 @@ func TestSuccessorRoutePrefixRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
 
 // Receiving pairing/relay opens no durable root and owns no native mechanism.
 func TestSuccessorRouteReceivingJoinRunsOnWindowsAndLinux(t *testing.T) {
-	directory := path.Join(repositoryRoot(t), "internal/route/join")
-	for _, filename := range []string{"pair.go", "relay.go", "pair_test.go", "relay_test.go", "doc.go"} {
+	directory := path.Join(repositoryRoot(t), "internal/route/join/pairing")
+	for _, filename := range []string{"pair.go", "relay.go", "pair_test.go", "relay_test.go", "relay_eof_test.go", "doc.go"} {
 		for _, target := range []string{"windows", "linux"} {
 			profile := build.Default
 			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
@@ -821,8 +821,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/route/selection":    {"route", "network"},
 		"internal/route/role":         {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
 		"internal/route/join":         {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
+		"internal/route/join/pairing": {"route/ardp", "route/channel", "route/role"},
 		"internal/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
-		"internal/route/receiver":     {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"internal/route/receiver":     {"route/issuer", "route/join/pairing", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
 		"internal/endpoint/session":   {"admission", "admission/stock", "endpoint/funding", "endpoint/publisher", "execution/runtime", "hosting", "reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection"},
 		"internal/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "endpoint/launch", "network", "network/source", "network/state"},
 		"internal/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection"},
@@ -1476,7 +1477,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"channel cannot import QUIC adapter", "internal/route/channel/session_test.go", modulePath + "/internal/route/transport/quic", false},
 		{"holder JOIN cannot import Receiver", "internal/route/join/acquisition.go", modulePath + "/internal/route/receiver", false},
 		{"Receiver cannot import holder Prefix", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/prefix", false},
-		{"actual receiver dispatches JOIN", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/join", true},
+		{"actual receiver dispatches JOIN pairing", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/join/pairing", true},
+		{"receiver does not import holder JOIN", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/join", false},
 		{"holder JOIN consumes Prefix", "internal/route/join/acquisition.go", modulePath + "/internal/route/prefix", true},
 		{"former operation cannot return", "cmd/ardents-next/route_linux.go", modulePath + "/internal/route/operation", false},
 		{"Prefix cannot import JOIN consumer", "internal/route/prefix/borrowing.go", modulePath + "/internal/route/join", false},
