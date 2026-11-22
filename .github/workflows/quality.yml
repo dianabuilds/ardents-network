@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [network-preparation-check, network-signing-check]
+        profile: [network-signing-check]
     steps:
       - name: Check out exact publication candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -53,6 +53,12 @@ jobs:
               test "$owner" = 0
               (( (8#$mode & 022) == 0 ))
             done
+            build_dir=$(mktemp -d "$RUNNER_TEMP/ardents-signing-build.XXXXXX")
+            trap 'sudo -n rm -rf "$native_dir"; rm -rf "$build_dir"' EXIT
+            CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
+            pin=$(sha256sum "$build_dir/ardents" | cut -d ' ' -f 1)
+            sudo -n install -m 0555 "$build_dir/ardents" "$native_dir/ardents"
+            printf '%s  %s\n' "$pin" "$native_dir/ardents" | sudo -n sha256sum -c
             real_go=$(command -v go)
             sudo -n install -d -m 0700 "$native_dir/tools"
             sudo -n tee "$native_dir/tools/go" >/dev/null <<'SHIM'
@@ -69,6 +75,8 @@ jobs:
             sudo -n chmod 0500 "$native_dir/tools/go"
             sudo -n env PATH="$native_dir/tools:$PATH" ARDENTS_NATIVE_GO="$real_go" \
               GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly TMPDIR="$native_dir" \
+              ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM="$native_dir/ardents" ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM_SHA256="$pin" \
+              ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM="$native_dir/ardents" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM_SHA256="$pin" \
               GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
               sh -ec 'umask 022; exec make "$1"' native "$PROFILE"
           fi
