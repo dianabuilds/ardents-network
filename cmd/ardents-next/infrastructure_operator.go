@@ -11,7 +11,7 @@ import (
 
 func runInfrastructureCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) == 0 {
-		return runInfrastructure(ctx, args, out)
+		return 2
 	}
 	var err error
 	switch args[0] {
@@ -19,8 +19,11 @@ func runInfrastructureCommand(ctx context.Context, args []string, out, diagnosti
 		err = provisioning.Run(args[1:], out)
 	case "sign-release":
 		err = signing.Run(args[1:], out)
-	default:
+	case "prepare-descriptor", "prepare-runtime-descriptor", "prepare-inventory", "prepare-runtime-inventory",
+		"authenticate-initial", "authenticate-candidate":
 		return runInfrastructure(ctx, args, out)
+	default:
+		return 2
 	}
 	if err != nil {
 		fmt.Fprintln(diagnostic, err)
