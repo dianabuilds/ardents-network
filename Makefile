@@ -440,8 +440,6 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/admission/spending -run '^TestSpendInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint/plan -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
-
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNativeOutputSubstitutionRefuses$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
@@ -459,7 +457,6 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/release/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/endpoint/plan
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/reachability
 
 .PHONY: descriptor-store-inspection-check

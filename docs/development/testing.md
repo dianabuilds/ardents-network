@@ -2470,6 +2470,9 @@ The maintained local profiles are:
   exact/rejected/short replies, original guard/socket-record/socket substitution
   before output, retained cancellation and physical descriptor/callback join.
   Wire fixtures grant no root archival, startup, manager or runtime authority.
+  Endpoint Plan's `TestInstallationNativeRequest*` exercises the original
+  root-owned declaration file, including access and link refusals, mutation
+  during read, cancellation and origin reobservation.
   The profile selects the `installation_native` Linux tests in new Installation. It requires
   a root driver and `ARDENTS_INSTALLATION_NATIVE_ROOT` naming an existing direct
   root:root temporary parent with trusted non-writable ancestors outside the
@@ -3566,28 +3569,6 @@ barrier after genuine manager I/O retains a held observer across cancellation
 and Close until its real release. The ordinary independent frame vectors refuse
 every Node/Source unit and job object on this absence-only reply vocabulary.
 These are native read-only observations, not Installation or startup admission.
-
-### Original delivery file custody
-
-The checked `network_signing_native` profile selects `TestDeliveryFilesNative*`
-in `endpoint/plan`. Use a separate root/ext4 private preparation stand
-with `/etc/ardents-join-preparation-native-stand` containing exactly
-`ardents-join-preparation-native-v1` plus LF. These controls exercise the shared
-protected delivery-file mechanism: detached byte copies cannot mutate original
-custody, same-byte replacement cannot substitute a new inode, repeated actual FD
-return without GC, and canceled held physical reads/Close retain independent
-late native failure and private bytes until original join. Missing prerequisites
-fail. No installation, runtime, first-pin, State/time, spend or pair authority is
-supplied. The former JOIN-specific `TestJoinInputsNative*` /
-`TestJoinPreflightNativeDoesNotCreateResources` controls and the canonical
-`join inspect-inputs` read-only preflight retired with the transitional JOIN
-orchestration (#604 FJD stage D, ADR-0125).
-
-Original clock-file observation retains its own descriptor through held native
-metadata checks and Close. The native clean-close counterpart proves that the
-owner's own closed-admission refusal does not poison a clean joined result;
-independently induced actual descriptor-Close failure still remains retained.
-This changes no live clock time, writer policy or State floor.
 
 ### JOIN offline Release production
 
