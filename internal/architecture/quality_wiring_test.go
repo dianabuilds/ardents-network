@@ -49,7 +49,7 @@ func assertQualityWiring(t *testing.T, root string) {
 	}
 	assertPinnedActions(t, workflow)
 	selection := readProjectFile(t, root, "docs/development/ownership.json")
-	for _, owner := range []string{"cmd/ardents-stream-qualification", "internal/application/streamqualification"} {
+	for _, owner := range []string{"tests/qualification/text-worker-lifecycle/stream-worker", "internal/application/streamqualification"} {
 		if !bytes.Contains(selection, []byte(owner)) {
 			t.Errorf("PR ownership registry omits qualification packaging consumer %s", owner)
 		}

@@ -122,7 +122,7 @@
       "path_prefix": "packaging/stream-qualification-worker/",
       "race": true,
       "owners": [
-        {"package": "cmd/ardents-stream-qualification", "test_pattern": "^Test"},
+        {"package": "tests/qualification/text-worker-lifecycle/stream-worker", "test_pattern": "^Test"},
         {"package": "internal/application/streamqualification", "test_pattern": "^Test"}
       ]
     }
