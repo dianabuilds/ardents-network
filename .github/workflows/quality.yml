@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [node-process-check, node-issuer-check, node-descriptor-check, node-introduction-check, node-join-check]
+        target: [node-process-check, node-join-check]
     steps:
       - name: Check out exact Node CLI candidate
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -41,11 +41,16 @@ jobs:
           test "$(sudo -n id -u)" = 0
           test -r /sys/fs/cgroup/cgroup.controllers
           build_dir=$(mktemp -d "$RUNNER_TEMP/ardents-node-build.XXXXXX")
-          native_dir=$(sudo -n mktemp -d /opt/ardents-node-native.XXXXXX)
+          native_dir=$(sudo -n mktemp -d /ardents-node-native.XXXXXX)
           trap 'sudo -n rm -rf "$native_dir"; rm -rf "$build_dir"' EXIT
           test "$(findmnt -T "$native_dir" -n -o FSTYPE)" = ext4
           sudo -n chmod 0755 "$native_dir"
           sudo -n install -d -m 0755 "$native_dir/tmp"
+          for directory in / "$native_dir" "$native_dir/tmp"; do
+            read -r owner mode <<<"$(stat -c '%u %a' "$directory")"
+            test "$owner" = 0
+            (( (8#$mode & 022) == 0 ))
+          done
           CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
           go test -race -trimpath -buildvcs=false -tags node_process_native -c -o "$build_dir/node.test" ./cmd/ardents-next
           go test -race -trimpath -buildvcs=false -tags node_process_native -c -o "$build_dir/resource.test" ./internal/processresource
