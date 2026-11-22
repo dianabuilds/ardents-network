@@ -82,7 +82,7 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		listen = node.ListenJoinRetained
 	}
 	original, err := listen(ctx, node.JoinConfig{
-		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
+		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.ProfileBinding()},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
 	})

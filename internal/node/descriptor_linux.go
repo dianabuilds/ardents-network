@@ -129,14 +129,14 @@ func listenDescriptor(ctx context.Context, config DescriptorConfig, retained boo
 	if retained {
 		openStore = reachability.OpenRetainedStore
 	}
-	f.store, err = openStore(reachability.StoreConfig{Root: config.DescriptorRoot, Network: view.Profile().Network})
+	f.store, err = openStore(reachability.StoreConfig{Root: config.DescriptorRoot, Network: view.ProfileBinding().Network})
 	if err != nil {
 		return nil, err
 	}
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
-	p := view.Profile()
+	p := view.ProfileBinding()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
 	openReceiving := receiving.Open
 	if retained {
@@ -197,7 +197,7 @@ func (f *descriptorInvocation) currentBase() (network.RuntimeView, error) {
 	}
 	view, err := f.config.Authority.Current()
 	owner := "network"
-	if err == nil && view.Profile().ProfileBinding != f.config.Authority.Profile {
+	if err == nil && view.ProfileBinding() != f.config.Authority.Profile {
 		err = errors.New("original Descriptor profile changed")
 	}
 	if err == nil {

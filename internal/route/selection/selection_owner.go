@@ -134,13 +134,13 @@ func (o *Owner) Select() (Leg, error) {
 	if err != nil {
 		return Leg{}, err
 	}
-	end := minTime(entries[0].NotAfter, set.NotAfter, view.Profile().NotAfter)
+	end := minTime(entries[0].NotAfter, set.NotAfter, view.ProfileBinding().NotAfter)
 	known := []route.Member{route.Member(entries[0]), route.Member(entries[1]), set.Members[0], set.Members[1]}
 	known = append(known, o.exclusions...)
 	if err := o.installation.available(); err != nil {
 		return Leg{}, err
 	}
-	return Leg{Entry: entry, Interior: interior, EntryMember: entryMember, InteriorMember: interiorMember, Profile: view.Profile().ProfileBinding, NotAfter: end, known: known}, nil
+	return Leg{Entry: entry, Interior: interior, EntryMember: entryMember, InteriorMember: interiorMember, Profile: view.ProfileBinding(), NotAfter: end, known: known}, nil
 }
 
 func (o *Owner) Close() error {

@@ -190,3 +190,65 @@ func TestRuntimeProfileOwnsCopiedInventoryAndExactIssuerBinding(t *testing.T) {
 		t.Fatalf("issuer expiry retired independent member: %v", err)
 	}
 }
+
+// The identity accessors must return exactly the facts Profile() copies, and
+// a caller mutating a returned Profile() copy cannot change later reads
+// (audit NW-2 equivalence).
+func TestRuntimeIdentityAccessorsEqualCopiedProfileFacts(t *testing.T) {
+	now := time.Unix(1800000000, 0).UTC()
+	binding := membershipProfile(now)
+	assignments, records := membershipInputs(now)
+	membership, err := network.BindMembership(binding, assignments, records)
+	if err != nil {
+		t.Fatal(err)
+	}
+	epoch := network.EpochFacts{Network: binding.Network, Number: binding.Epoch, Digest: binding.EpochDigest,
+		ValidFrom: binding.NotBefore, ValidUntil: binding.NotAfter}
+	keys := make([]network.TokenKey, 18)
+	for i := range keys {
+		keys[i] = network.TokenKey{WindowStart: now.Add(time.Duration(i) * time.Hour), Class: uint8(i%3 + 1), SPKI: [346]byte{byte(i)}}
+	}
+	profile := network.ProfileFacts{ProfileBinding: binding, IssuanceAuthorityKey: [32]byte{7},
+		IssuerNodeID: records[0].NodeID, IssuerDutyGeneration: records[0].Generation, TokenKeys: keys}
+	accepted, err := network.BindAcceptedState(epoch, binding.Generation, profile, membership)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed, err := network.ConfirmTime(network.ClockEvidence{Wall: now, Independent: now}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := accepted.Observe(observed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	public := view.Profile()
+	if view.ProfileBinding() != public.ProfileBinding {
+		t.Fatal("non-copying binding differs from the copied profile identity")
+	}
+	if view.IssuerNodeID() != public.IssuerNodeID {
+		t.Fatal("non-copying issuer identity differs from the copied profile")
+	}
+	// Mutating the returned copy (identity fields and the full inventory)
+	// must not reach the accepted value or later accessor reads.
+	public.Network = [32]byte{99}
+	public.Digest = [32]byte{99}
+	public.NotAfter = now.Add(100 * time.Hour)
+	public.IssuerNodeID = [32]byte{99}
+	public.TokenKeys[0].SPKI[0] = 99
+	public.TokenKeys = append(public.TokenKeys, network.TokenKey{})
+	if view.ProfileBinding() != binding || view.IssuerNodeID() != records[0].NodeID {
+		t.Fatal("caller mutation of a profile copy changed identity accessors")
+	}
+	again := view.Profile()
+	if again.ProfileBinding != binding || again.IssuerNodeID != records[0].NodeID ||
+		len(again.TokenKeys) != 18 || again.TokenKeys[0].SPKI[0] != 0 {
+		t.Fatal("caller mutation of a profile copy changed the accepted profile")
+	}
+	// The zero observation exposes no identity, matching its invalid value.
+	zero := network.RuntimeView{}
+	if zero.ProfileBinding() != (network.ProfileBinding{}) || zero.IssuerNodeID() != [32]byte{} ||
+		zero.ProfileBinding() != zero.Profile().ProfileBinding || zero.IssuerNodeID() != zero.Profile().IssuerNodeID {
+		t.Fatal("zero observation exposed identity facts")
+	}
+}

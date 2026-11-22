@@ -138,7 +138,7 @@ func OpenPrefix(ctx context.Context, plan funding.Plan, authority funding.Author
 			if err != nil {
 				return Registration{}, err
 			}
-			end := minRouteDeadline(plan.Deadline, view.Profile().NotAfter, duty.RecordValidUntil, duty.Epoch.ValidUntil, time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second))
+			end := minRouteDeadline(plan.Deadline, view.ProfileBinding().NotAfter, duty.RecordValidUntil, duty.Epoch.ValidUntil, time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second))
 			if bound, exists := ctx.Deadline(); exists && bound.Before(end) {
 				end = bound.UTC().Truncate(time.Second)
 			}

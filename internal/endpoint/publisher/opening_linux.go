@@ -155,7 +155,7 @@ func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority fund
 		return Publication{}, err
 	}
 	credential, err := private.Credential(ctx)
-	if err != nil || credential.Delegation().Network != view.Profile().Network {
+	if err != nil || credential.Delegation().Network != view.ProfileBinding().Network {
 		return Publication{}, errors.Join(errors.New("publisher Credential Network mismatch"), err)
 	}
 	value := credential.Delegation()

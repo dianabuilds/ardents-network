@@ -470,6 +470,7 @@
       },
       {
         "symbols": [
+          "internal/network.RuntimeView.IssuerNodeID",
           "internal/network.RuntimeView.MatchDuty",
           "internal/network.RuntimeView.MemberByKey",
           "internal/network.RuntimeView.Members",
@@ -487,7 +488,7 @@
           "internal/route/ardp.writeAll"
         ],
         "classification": "selected Linux-only new Route prefix closure",
-        "rationale": "The actual retained selection and admitted TCP/TLS prefix are Linux command operations. Unsupported platforms refuse before opening Route roots. Linux production reaches these exact Route rules/codecs and RuntimeView members/duties; portable rule and canonical-byte tests reach them on Windows without providing a product Route.",
+        "rationale": "The actual retained selection and admitted TCP/TLS prefix are Linux command operations. Unsupported platforms refuse before opening Route roots. Linux production reaches these exact Route rules/codecs and RuntimeView identity/members/duties; portable rule, canonical-byte and identity-equivalence tests reach them on Windows without providing a product Route.",
         "owner": "Product Owner and Codex; new Route",
         "retirement": "Remove each Windows allowance if a maintained Windows Route consumer is selected, or if its Linux-only operation and portable rule are retired."
       },

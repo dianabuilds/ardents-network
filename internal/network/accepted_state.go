@@ -59,6 +59,11 @@ func (view RuntimeView) Profile() ProfileFacts { return view.accepted.profile.co
 // (audit NW-2).
 func (view RuntimeView) ProfileBinding() ProfileBinding { return view.accepted.profile.ProfileBinding }
 
+// IssuerNodeID returns the profile-selected issuer identity without copying
+// the token-key inventory (audit NW-2). Live duty remains a separate Member
+// check; this identity alone grants no issuance authority.
+func (view RuntimeView) IssuerNodeID() [32]byte { return view.accepted.profile.IssuerNodeID }
+
 func (view RuntimeView) Check(now time.Time) error {
 	observed := view.ObservedAt()
 	if observed.IsZero() || now.IsZero() || !view.accepted.epoch.valid() {

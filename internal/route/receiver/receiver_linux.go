@@ -714,7 +714,7 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	}
 	if issuance {
 		expectedSubrole, expectedDomain = 6, 2
-		if next.NodeID != v.Profile().IssuerNodeID {
+		if next.NodeID != v.IssuerNodeID() {
 			return errors.New("route exact current issuer unavailable")
 		}
 	}
@@ -728,7 +728,7 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	if err != nil {
 		return err
 	}
-	a := role.Authority{Current: r.config.Authority.Current, Duty: duty, Profile: v.Profile().ProfileBinding}
+	a := role.Authority{Current: r.config.Authority.Current, Duty: duty, Profile: v.ProfileBinding()}
 	if _, err := a.Member(); err != nil {
 		return err
 	}

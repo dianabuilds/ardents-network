@@ -94,7 +94,7 @@ func (r *Rendezvous) DutyForLeg(leg Leg, slot uint8, excluded []route.Member) (n
 		// Retain before any further observer call. No post-draw failure can
 		// make a later call select an expanding set of peers.
 		r.members = selected
-		r.until = minTime(view.ObservedAt().Add(30*time.Minute), view.Profile().NotAfter)
+		r.until = minTime(view.ObservedAt().Add(30*time.Minute), view.ProfileBinding().NotAfter)
 		for _, member := range selected {
 			duty, err := view.RetainDuty(member.NodeID, view.ObservedAt())
 			if err != nil {
@@ -139,7 +139,7 @@ func (r *Rendezvous) observe(leg Leg) (network.RuntimeView, error) {
 		return network.RuntimeView{}, errors.New("Rendezvous Source observation unavailable")
 	}
 	r.last = view.ObservedAt()
-	if view.Profile().ProfileBinding != r.leg.Profile || leg.Check(view, view.ObservedAt()) != nil {
+	if view.ProfileBinding() != r.leg.Profile || leg.Check(view, view.ObservedAt()) != nil {
 		return network.RuntimeView{}, errors.New("Rendezvous Source observation unavailable")
 	}
 	return view, nil

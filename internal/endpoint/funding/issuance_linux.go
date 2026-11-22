@@ -21,13 +21,13 @@ func IssuerPreparation(ctx context.Context, authority Authority, holder *stock.O
 			return prefix.IssuerBatch{}, errors.New("route issuance intent invalid")
 		}
 		view, err := authority.current()
-		if err != nil || view.Profile().Digest != binding.ProfileDigest {
+		if err != nil || view.ProfileBinding().Digest != binding.ProfileDigest {
 			return prefix.IssuerBatch{}, errors.Join(errors.New("route issuance profile differs"), err)
 		}
 		if len(receivers) == 0 {
 			switch class {
 			case 1:
-				receivers = [][32]byte{view.Profile().IssuerNodeID}
+				receivers = [][32]byte{view.IssuerNodeID()}
 			case 2:
 				receivers = [][32]byte{leg.Entry.NodeID, leg.Interior.NodeID}
 			default:
@@ -40,7 +40,7 @@ func IssuerPreparation(ctx context.Context, authority Authority, holder *stock.O
 			if err != nil {
 				return prefix.IssuerBatch{}, err
 			}
-			challenges = append(challenges, token.ClosedTokenContext{NetworkID: view.Profile().Network, ProfileDigest: binding.ProfileDigest, IssuerNodeID: view.Profile().IssuerNodeID, ReceiverNodeID: id, ReceiverDutyGeneration: member.DutyGeneration, Class: class, WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)})
+			challenges = append(challenges, token.ClosedTokenContext{NetworkID: view.ProfileBinding().Network, ProfileDigest: binding.ProfileDigest, IssuerNodeID: view.IssuerNodeID(), ReceiverNodeID: id, ReceiverDutyGeneration: member.DutyGeneration, Class: class, WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)})
 		}
 		intent := stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: binding.ID, ProfileDigest: binding.ProfileDigest}, Bootstrap: binding.Bootstrap, Deadline: binding.Deadline}
 		// Only pure draft construction separates this view from validation.
