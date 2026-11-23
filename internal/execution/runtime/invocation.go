@@ -34,6 +34,7 @@ type Invocation struct {
 	cleanupResult    error
 	publisher        bool
 	byteStream       bool
+	byteStreamInput  *byteStreamInput
 	publisherInput   *publisherConnectionInput
 	readerCaller     context.Context
 	readerInput      *readerConnectionInput
@@ -168,11 +169,15 @@ func (owner *Owner) Launch(ctx context.Context, principal [32]byte, surface exec
 	return owner.launchInvocation(ctx, principal, surface, nil, false, false)
 }
 
-func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, snapshot []byte, publisher, reader bool) (_ *Invocation, result error) {
+func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, snapshot []byte, publisher, reader bool) (*Invocation, error) {
+	return owner.launchApplicationInvocation(ctx, principal, surface, documentProtocol{snapshot: snapshot}, publisher, reader)
+}
+
+func (owner *Owner) launchApplicationInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, protocol workerProtocol, publisher, reader bool) (_ *Invocation, result error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("execution launch is unavailable")
 	}
-	if reader && (publisher || surface != execution.Connection || len(snapshot) != 0) {
+	if reader && (publisher || surface != execution.Connection) {
 		return nil, errors.New("reader invocation purpose is invalid")
 	}
 	capability, err := owner.authority.Admit(principal, surface)
@@ -196,7 +201,7 @@ func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, su
 	if reader {
 		readerCaller = ctx
 	}
-	invocation, err := owner.launchInitializedJob(job, surface, documentProtocol{snapshot: snapshot}, publisher, readerCaller)
+	invocation, err := owner.launchInitializedJob(job, surface, protocol, publisher, readerCaller)
 	if err != nil {
 		return nil, err
 	}

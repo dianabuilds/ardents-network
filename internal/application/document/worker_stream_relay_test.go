@@ -68,3 +68,43 @@ func TestInstalledRoleWorkerSelectsStreamByExplicitInitialization(t *testing.T) 
 		t.Fatal("unconfirmed completion was accepted")
 	}
 }
+
+func TestByteStreamWorkerBridgesIndependentPorts(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	host, isolated := net.Pipe()
+	done := make(chan error, 1)
+	go func() { done <- RunWorker(ctx, isolated, PublisherWorker) }()
+	if err := InitializeWorker(ctx, host, ByteStreamWorker, [32]byte{1}, nil); err != nil {
+		t.Fatal(err)
+	}
+	firstBytes := bytes.Repeat([]byte{255, 0, 1}, 12000)
+	secondBytes := bytes.Repeat([]byte{129, 0}, 21000)
+	first := &relayPort{Reader: bytes.NewReader(firstBytes)}
+	second := &relayPort{Reader: bytes.NewReader(secondBytes)}
+	if err := BridgeByteStreamWorker(ctx, host, first, second); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first.received.Bytes(), secondBytes) || !bytes.Equal(second.received.Bytes(), firstBytes) {
+		t.Fatal("independent attachments did not receive exact bytes")
+	}
+	if !first.eof || !second.eof {
+		t.Fatal("both ports did not receive directional EOF")
+	}
+}
+
+type relayPort struct {
+	*bytes.Reader
+	received bytes.Buffer
+	eof      bool
+}
+
+func (port *relayPort) Write(body []byte) (int, error) { return port.received.Write(body) }
+func (port *relayPort) CloseInput() error {
+	port.eof = true
+	return nil
+}
+func (*relayPort) Close() error { return nil }
