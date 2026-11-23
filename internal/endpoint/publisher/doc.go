@@ -1,5 +1,5 @@
-// Package publisher owns application composition for Text publication:
-// original qualified snapshot worker, pending/active handoff, retained Source,
+// Package publisher owns application composition for documents and byte streams:
+// original qualified Application worker, pending/active handoff, retained Source,
 // role selections, Instance and history, stream service, withdrawal and joined
 // cleanup. The domain Publication owner retains readiness, refresh and recipient
 // policy; Execution retains worker authority, Connection its logical streams,

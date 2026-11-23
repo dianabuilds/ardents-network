@@ -45,9 +45,9 @@ type Invocation struct {
 var errUnexpectedWorkerEnd = errors.New("qualified worker attachment ended unexpectedly")
 
 // This bounded setup/Control consumer exports no attachment and permits no
-// post-READY Text frames. Its sole reader observes EOF, credential/FD refusal
-// or unsolicited bytes; a future Text consumer must own its protocol reader
-// instead of sharing this reader. Retirement orders loss against caller close.
+// post-READY Application frames. Its sole reader observes EOF, credential/FD
+// refusal or unsolicited bytes. An Application consumer owns its protocol
+// reader for the invocation. Retirement orders loss against caller close.
 func (invocation *Invocation) observeAttachment() {
 	invocation.observationDone = make(chan struct{})
 	if invocation.consumer != nil {

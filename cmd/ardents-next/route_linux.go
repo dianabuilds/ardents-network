@@ -4,13 +4,10 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
@@ -19,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
@@ -57,24 +55,9 @@ func issueRouteBatch(ctx context.Context, authority admissionAuthority, plan iss
 	if bootstrap {
 		kind = quota.Bootstrap
 	}
-	result := issuer.IssueCurrent(ctx, plan, batch, kind, func() (admission.AuthorityFacts, time.Time, error) { return authority.issuer(plan.KeyBinding.Signer) })
-	if err := ctx.Err(); err != nil {
-		clear(result.Response)
-		return nil, err
-	}
-	_, outcome := result.Status()
-	if outcome == "storage-uncertain" {
-		clear(result.Response)
-		return nil, errors.New("route issuer retirement uncertain")
-	}
-	if result.Response != nil {
-		return result.Response, nil
-	}
-	status := admission.ClosedTokenUnavailable
-	if outcome == string(quota.Exhausted) {
-		status = admission.ClosedTokenExhausted
-	}
-	return admission.EncodeClosedTokenBatchResult(admission.ClosedTokenBatchResult{Status: status})
+	return issuer.IssueCurrentBatch(ctx, plan, batch, kind, func() (admission.AuthorityFacts, time.Time, error) {
+		return authority.issuer(plan.KeyBinding.Signer)
+	})
 }
 
 func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
@@ -144,7 +127,10 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			return issueRouteBatch(ctx, authority, *plan.Issuer, batch, bootstrap)
 		}
 	}
-	certificate, err := readRouteCertificate(plan.Certificate, plan.PrivateKey)
+	if !absoluteAdmissionPath(plan.Certificate) || !absoluteAdmissionPath(plan.PrivateKey) {
+		return 2
+	}
+	certificate, err := artifacts.ReadOwnerKeyPair(plan.Certificate, plan.PrivateKey)
 	if err != nil {
 		return 2
 	}
@@ -264,50 +250,4 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	}
 	_ = json.NewEncoder(diagnostic).Encode(map[string]string{"operation": "route.receive", "phase": "joined", "outcome": "canceled"})
 	return 130
-}
-
-func readRouteCertificate(certPath, keyPath string) (tls.Certificate, error) {
-	if !absoluteAdmissionPath(certPath) || !absoluteAdmissionPath(keyPath) {
-		return tls.Certificate{}, errors.New("route certificate paths invalid")
-	}
-	cert, err := readBounded(certPath, 8192)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	key, err := readRouteKey(keyPath)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	defer clear(key)
-	return tls.X509KeyPair(cert, key)
-}
-
-func readRouteKey(path string) (key []byte, result error) {
-	// Nonblocking/no-follow open cannot stall on a substituted FIFO or follow
-	// a substituted symlink; authority is checked on the opened descriptor.
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		return nil, errors.New("route private key unavailable")
-	}
-	defer func() {
-		result = errors.Join(result, f.Close())
-		if result != nil {
-			clear(key)
-			key = nil
-		}
-	}()
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 {
-		return nil, errors.New("route private key permissions invalid")
-	}
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || stat.Uid != uint32(os.Geteuid()) {
-		return nil, errors.New("route private key owner differs")
-	}
-	raw, err := io.ReadAll(io.LimitReader(f, 8193))
-	if err != nil || len(raw) > 8192 {
-		clear(raw)
-		return nil, errors.New("route private key unavailable")
-	}
-	return raw, nil
 }

@@ -173,21 +173,21 @@ func constructionCommandFixture(t *testing.T) (ownerPath, sourcePath, declaratio
 	if err != nil {
 		t.Fatal(err)
 	}
-	declaration := endpointPlanDeclaration{
-		NetworkStateRoot:        filepath.Join(base, "state"),
-		LocalRoleStateRoot:      filepath.Join(base, "participation"),
-		ApplicationTokenRoot:    filepath.Join(base, "stock"),
-		EntryStateRoot:          filepath.Join(base, "route"),
-		PublicationRoot:         filepath.Join(base, "publication"),
-		ServiceInstanceRoot:     filepath.Join(base, "instance"),
-		TimeConfidenceFile:      filepath.Join(base, "clock"),
-		ApplicationSocket:       filepath.Join(base, "application.sock"),
-		AdministrationSocket:    filepath.Join(base, "administration.sock"),
-		BrokerID:                hex.EncodeToString(bytes.Repeat([]byte{11}, 32)),
-		ConnectionPrincipal:     hex.EncodeToString(bytes.Repeat([]byte{12}, 32)),
-		AdministrationPrincipal: hex.EncodeToString(bytes.Repeat([]byte{13}, 32)),
-		ReaderPermission:        endpointPermissionPlanInput{RequestPath: filepath.Join(base, "reader-request"), ResponsePath: filepath.Join(base, "reader-response"), Maxima: [3]uint32{1, 1, 1}},
-		PublisherPermission:     endpointPermissionPlanInput{RequestPath: filepath.Join(base, "publisher-request"), ResponsePath: filepath.Join(base, "publisher-response"), Maxima: [3]uint32{1, 1, 1}},
+	declaration := map[string]any{
+		"network_state_root":       filepath.Join(base, "state"),
+		"local_role_state_root":    filepath.Join(base, "participation"),
+		"text_token_root":          filepath.Join(base, "stock"),
+		"entry_state_root":         filepath.Join(base, "route"),
+		"publication_root":         filepath.Join(base, "publication"),
+		"service_instance_root":    filepath.Join(base, "instance"),
+		"time_confidence_file":     filepath.Join(base, "clock"),
+		"application_socket":       filepath.Join(base, "application.sock"),
+		"administration_socket":    filepath.Join(base, "administration.sock"),
+		"broker_id":                hex.EncodeToString(bytes.Repeat([]byte{11}, 32)),
+		"connection_principal":     hex.EncodeToString(bytes.Repeat([]byte{12}, 32)),
+		"administration_principal": hex.EncodeToString(bytes.Repeat([]byte{13}, 32)),
+		"reader_permission":        map[string]any{"request_path": filepath.Join(base, "reader-request"), "response_path": filepath.Join(base, "reader-response"), "maxima": [3]uint32{1, 1, 1}},
+		"publisher_permission":     map[string]any{"request_path": filepath.Join(base, "publisher-request"), "response_path": filepath.Join(base, "publisher-response"), "maxima": [3]uint32{1, 1, 1}},
 	}
 	declarationRaw, err := json.Marshal(declaration)
 	if err != nil {

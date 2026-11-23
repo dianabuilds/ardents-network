@@ -1,4 +1,4 @@
-// Package reader owns the application scenario for an original Text Reader:
+// Package reader owns the application scenario for an original document or byte-stream Reader:
 // qualified operation, retained Source/history/selection, stream handoff, local
 // request/result projection, cancellation and joined retirement. Execution owns
 // worker authority/results, Connection owns authenticated logical bytes, Route

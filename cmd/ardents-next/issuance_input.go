@@ -1,10 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
-	"encoding/json"
-	"time"
-
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 )
 
@@ -44,24 +40,4 @@ func decodeIssuancePlan(raw []byte) (issuancePlan, error) {
 	}
 	p.Binding = binding
 	return p, nil
-}
-
-type issuanceInventoryEntry struct {
-	Window string `json:"window"`
-	Class  uint8  `json:"class"`
-	SPKI   string `json:"spki"`
-}
-
-func issuanceInventoryJSON(v issuance.Inventory) ([]byte, error) {
-	b := v.Binding
-	entries := make([]issuanceInventoryEntry, 0, len(v.Keys))
-	for _, key := range v.Keys {
-		entries = append(entries, issuanceInventoryEntry{time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), key.Class, hex.EncodeToString(key.SPKI)})
-	}
-	return json.Marshal(struct {
-		Schema  string                   `json:"schema"`
-		Binding issuanceBindingInput     `json:"binding"`
-		Keys    []issuanceInventoryEntry `json:"keys"`
-		Digest  string                   `json:"digest"`
-	}{"ardents-issuer-public-inventory-v1", issuanceBindingInput{hex.EncodeToString(b.Network[:]), hex.EncodeToString(b.Issuer[:]), hex.EncodeToString(b.Signer[:]), b.Start.Format(time.RFC3339), b.End.Format(time.RFC3339)}, entries, hex.EncodeToString(v.Digest[:])})
 }

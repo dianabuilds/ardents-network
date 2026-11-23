@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/execution"
 )
 
-// LaunchReader initializes one fixed Reader with a sole Text protocol reader.
+// LaunchReader initializes one fixed Reader with a sole document protocol reader.
 // It grants no destination, Service authentication or Route acquisition.
 func (owner *Owner) LaunchReader(ctx context.Context, principal [32]byte) (*Invocation, error) {
 	return owner.launchInvocation(ctx, principal, execution.Connection, nil, false, true)
@@ -37,7 +37,7 @@ func (invocation *Invocation) observeReaderAttachment() {
 			invocation.useMu.Lock()
 			input.completed = true
 			invocation.useMu.Unlock()
-			// Text still owns its protocol buffer through final IPC cleanup.
+			// The document Application still owns its protocol buffer through final IPC cleanup.
 			// Keep the pending result independent, so failure erasure cannot
 			// race with discarding the caller's sealed result.
 			input.result <- readerCompletion{body: bytes.Clone(body)}
@@ -49,7 +49,7 @@ func (invocation *Invocation) observeReaderAttachment() {
 		clear(completion.body)
 		invocation.observationError = err
 		// The caller joins Source before releasing the successful RESULT
-		// barrier. Text then joins its original IPC reader, followed by Job
+		// barrier. The document Application then joins its original IPC reader, followed by Job
 		// retirement and the independently retained descendant cleanup.
 		invocation.job.Retire()
 		close(input.result)

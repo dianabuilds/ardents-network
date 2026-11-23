@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	// MaximumSnapshotBytes is the selected immutable text publication limit.
+	// MaximumSnapshotBytes is the selected immutable document publication limit.
 	MaximumSnapshotBytes = 4 << 20
 	// SnapshotTimeout bounds the entire Snapshot request, without renewal after input.
 	SnapshotTimeout = 45 * time.Second

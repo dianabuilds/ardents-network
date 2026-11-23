@@ -7,7 +7,7 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
-// This unbuffered byte boundary belongs to the original Text protocol reader.
+// This unbuffered byte boundary belongs to the original document protocol reader.
 // It supplies no Service authority; Connection composition must authenticate
 // and retain the original stream before attempting this local transfer.
 type publisherConnectionInput struct {
@@ -16,7 +16,7 @@ type publisherConnectionInput struct {
 
 // DeliverPublisherStream transfers one already authenticated stream to the
 // exact original qualified snapshot invocation. Waiting remains sender-owned;
-// received streams belong to the sole Text reader until their joined Close.
+// received streams belong to the sole document reader until their joined Close.
 // transferred stays true if authority loss is observed after the actual send.
 func (operation *Operation) DeliverPublisherStream(ctx context.Context, contract StreamContract, stream application.Stream) (transferred bool, result error) {
 	if ctx == nil || stream == nil {

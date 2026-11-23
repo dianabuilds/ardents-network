@@ -157,7 +157,7 @@ exercises byte-exact delivery in both directions through the public CLI.
 
 The participant installs the v6 Endpoint distribution selected by
 [ADR-0131](../adr/0131-distribute-authority-custody-separately.md).
-Its protected Linux variant supplies the document worker and systemd
+Its protected Linux variant supplies the Application worker and systemd
 resources. Systemd starts the worker on Endpoint's request. The offline
 Service or Admission Authority operator obtains and verifies the separate
 `ardents-custody` artifact before running any Vault ceremony.
@@ -208,7 +208,7 @@ The [command reference](../reference/commands.md) maps each role to its delivery
 and first command. The v6 participant archive contains the Endpoint program and
 its applicable signed resources. Custody is distributed to the offline Authority
 operator as a separate authenticated executable under ADR-0131. The installed
-document worker is invoked by the selected host service manager. Qualification
+Application worker is invoked by the selected host service manager. Qualification
 workers are test executables.
 
 The C0 operator route must expose stable, actionable failures for a rejected

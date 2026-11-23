@@ -19,11 +19,11 @@ import (
 // recheck, and new-instance observation. The caller owns the launch
 // permission, the bounding context, and cleanup on failure.
 func Activate(ctx context.Context, role string) (*Activation, error) {
-	return activate(ctx, textInventory, role)
+	return activate(ctx, applicationInventory, role)
 }
 
 // ActivateStream is the trusted qualification activation entry for the Stream
-// inventory. Ordinary text jobs use Activate; the architecture gate restricts
+// inventory. Ordinary Application jobs use Activate; the architecture gate restricts
 // Stream callers to the qualification runner (no caller-visible selector).
 func ActivateStream(ctx context.Context, role string) (*Activation, error) {
 	return activate(ctx, streamInventory, role)
