@@ -118,3 +118,52 @@ func TestByteStreamFailureDoesNotExposeUnderlyingDiagnostic(t *testing.T) {
 		}
 	}
 }
+
+// Both endpoints run independent workers and share only an unbuffered byte
+// channel with directional EOF. Exercise the exact first installed failure
+// geometry without Route or native worker launch prerequisites.
+func TestByteStreamWorkerPairCrossesFrameBoundaries(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	leftIn, rightOut := io.Pipe()
+	rightIn, leftOut := io.Pipe()
+	links := [2]pipeRelayPort{{leftIn, leftOut}, {rightIn, rightOut}}
+	payloads := [2][]byte{
+		bytes.Repeat([]byte{0, 255, 128, 7}, 8192),
+		bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000),
+	}
+	results := make(chan error, 2)
+	workers := make(chan error, 2)
+	locals := [2]*relayPort{}
+	for index, link := range links {
+		host, isolated := net.Pipe()
+		defer host.Close()
+		go func() { workers <- RunWorker(ctx, isolated, ReaderWorker) }()
+		if err := InitializeWorker(ctx, host, ByteStreamWorker, [32]byte{byte(index + 1)}, nil); err != nil {
+			t.Fatal(err)
+		}
+		local := &relayPort{Reader: bytes.NewReader(payloads[index])}
+		locals[index] = local
+		go func() { results <- BridgeByteStreamWorker(ctx, host, local, link) }()
+	}
+	for range links {
+		if err := errors.Join(<-results, <-workers); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for index, local := range locals {
+		if !local.eof || !bytes.Equal(local.received.Bytes(), payloads[1-index]) {
+			t.Fatalf("port %d got %d of %d bytes", index, local.received.Len(), len(payloads[1-index]))
+		}
+	}
+}
+
+type pipeRelayPort struct {
+	input  *io.PipeReader
+	output *io.PipeWriter
+}
+
+func (port pipeRelayPort) Read(body []byte) (int, error)  { return port.input.Read(body) }
+func (port pipeRelayPort) Write(body []byte) (int, error) { return port.output.Write(body) }
+func (port pipeRelayPort) CloseInput() error              { return port.output.Close() }
+func (port pipeRelayPort) Close() error                   { return errors.Join(port.input.Close(), port.output.Close()) }
