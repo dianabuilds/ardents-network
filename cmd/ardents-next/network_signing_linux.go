@@ -27,19 +27,8 @@ type signingInput struct {
 }
 
 func signingAncestors(p *preparationPath) error {
-	if err := p.check(); err != nil {
-		return err
-	}
-	for _, d := range p.directories {
-		info, err := d.file.Stat()
-		if err != nil {
-			return err
-		}
-		stat, ok := info.Sys().(*syscall.Stat_t)
-		original, originalOK := d.info.Sys().(*syscall.Stat_t)
-		if !ok || !originalOK || stat.Uid != 0 || stat.Gid != original.Gid || info.Mode() != d.info.Mode() || info.Mode().Perm()&0022 != 0 {
-			return errNetworkSigning
-		}
+	if err := p.CheckRootAccess(); err != nil {
+		return errors.Join(errNetworkSigning, err)
 	}
 	return nil
 }
@@ -65,7 +54,7 @@ func openSigningInput(ctx context.Context, path string, maximum int64, private b
 	if err = errors.Join(ctx.Err(), signingAncestors(p)); err != nil {
 		return input, err
 	}
-	input.file, err = openPreparationAt(p.parent(), input.name, syscall.O_RDONLY, 0)
+	input.file, err = p.OpenFile(input.name)
 	if err != nil {
 		return input, err
 	}
@@ -88,7 +77,7 @@ func (s *signingInput) close() (err error) {
 	if s.file != nil {
 		err = s.file.Close()
 	}
-	return errors.Join(err, s.parent.close())
+	return errors.Join(err, s.parent.Close())
 }
 
 func (s *signingInput) check(ctx context.Context) (err error) {
@@ -130,7 +119,7 @@ func (s *signingInput) checkIdentity(ctx context.Context) error {
 	if err != nil || !s.sameMetadata(info) {
 		return errors.Join(errNetworkSigning, err)
 	}
-	linked, err := openPreparationAt(s.parent.parent(), s.name, syscall.O_RDONLY, 0)
+	linked, err := s.parent.OpenFile(s.name)
 	if err != nil {
 		return err
 	}

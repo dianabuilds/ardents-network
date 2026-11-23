@@ -35,10 +35,10 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 		t.Fatal("invalid native environment", err)
 	}
 	if err := signingAncestors(p); err != nil {
-		_ = p.close()
+		_ = p.Close()
 		t.Fatal("invalid root-controlled ancestors", err)
 	}
-	if err := p.close(); err != nil {
+	if err := p.Close(); err != nil {
 		t.Fatal(err)
 	}
 	command := nodeNativeCommand(t)

@@ -37,7 +37,7 @@ func (f *platformFiles) ReadRuntime(path string, maximum int64, private bool) ([
 	if err := signingAncestors(p); err != nil {
 		return nil, err
 	}
-	input.file, err = openPreparationAt(p.parent(), filepath.Base(path), syscall.O_RDONLY, 0)
+	input.file, err = p.OpenFile(filepath.Base(path))
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (f *platformFiles) Close() error {
 		if input.file != nil {
 			result = errors.Join(result, input.file.Close())
 		}
-		result = errors.Join(result, input.parent.close())
+		result = errors.Join(result, input.parent.Close())
 	}
 	f.resources = nil
 	for i := len(f.inputs) - 1; i >= 0; i-- {
@@ -113,7 +113,7 @@ func (f *platformFiles) Close() error {
 	}
 	f.inputs = nil
 	for i := len(f.directories) - 1; i >= 0; i-- {
-		result = errors.Join(result, f.directories[i].close())
+		result = errors.Join(result, f.directories[i].Close())
 	}
 	f.directories = nil
 	return result

@@ -86,31 +86,7 @@ func (in *Inputs) openDirectory(path string) (*File, error) {
 	if path != "/" && !AbsolutePath(path) {
 		return nil, ErrInput
 	}
-	file, err := os.Open("/")
-	if err != nil {
-		return nil, err
-	}
-	parent, err := in.Retain(file, nil, "")
-	if err != nil {
-		return nil, err
-	}
-	for _, name := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
-		if name == "" {
-			continue
-		}
-		if err := in.ctx.Err(); err != nil {
-			return nil, err
-		}
-		file, err := OpenChild(parent, name, true)
-		if err != nil {
-			return nil, err
-		}
-		parent, err = in.Retain(file, parent, name)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return parent, nil
+	return walkDirectories(in.ctx, path, in.Retain)
 }
 
 func (in *Inputs) Read(path string, maximum int64) ([]byte, error) {

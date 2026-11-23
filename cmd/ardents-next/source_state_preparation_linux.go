@@ -124,33 +124,24 @@ func (c *sourceStateCustody) retainVacantRoot(path string) error {
 		return err
 	}
 	c.roots = append(c.roots, root)
-	if err := checkSourceStatePath(root, c.uid); err != nil {
+	if err := checkSourceStatePath(root); err != nil {
 		return err
 	}
-	info := root.directories[len(root.directories)-1].info
+	info := root.Info()
 	stat := info.Sys().(*syscall.Stat_t)
 	if info.Mode().Perm() != 0700 || stat.Uid != c.uid || stat.Gid != c.uid {
 		return errSourceInput
 	}
-	entries, err := root.parent().ReadDir(1)
+	entries, err := root.Descriptor().ReadDir(1)
 	if err != io.EOF || len(entries) != 0 {
 		return errors.Join(errSourceInput, err)
 	}
 	return nil
 }
 
-func checkSourceStatePath(path *preparationPath, uid uint32) error {
-	if err := path.check(); err != nil {
-		return err
-	}
-	for _, directory := range path.directories {
-		current, err := directory.file.Stat()
-		if err != nil || !sourceInputMetadata(directory.info, current, true) {
-			return errors.Join(errSourceInput, err)
-		}
-		if !preparationDirectoryOwner(current, &uid) {
-			return errSourceInput
-		}
+func checkSourceStatePath(path *preparationPath) error {
+	if err := path.CheckOriginalAccess(); err != nil {
+		return errors.Join(errSourceInput, err)
 	}
 	return nil
 }
@@ -167,7 +158,7 @@ func (c *sourceStateCustody) check() error {
 		}
 	}
 	for _, root := range c.roots {
-		if err := checkSourceStatePath(root, c.uid); err != nil {
+		if err := checkSourceStatePath(root); err != nil {
 			return c.files.refuse(err)
 		}
 	}
@@ -177,7 +168,7 @@ func (c *sourceStateCustody) check() error {
 func (c *sourceStateCustody) close() error {
 	result := c.check()
 	for i := len(c.roots) - 1; i >= 0; i-- {
-		result = errors.Join(result, c.roots[i].close())
+		result = errors.Join(result, c.roots[i].Close())
 	}
 	return errors.Join(result, c.files.Close())
 }

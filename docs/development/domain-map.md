@@ -466,7 +466,11 @@ initializes and owns Store. Native deployment may supply paths/access but cannot
 write their contents or interpret detached observations as runtime rights.
 
 Source's actual original plan/TLS/input lifetime and State Current/Wait/Close
-remain with its command/runtime owners. Node retains original duty, credential,
+remain with its command/runtime owners. `internal/platform/artifacts` shares the
+Linux directory traversal and original-descriptor reobservation used by Source,
+platform pre-start, and offline Network commands. Each invocation retains its
+own descriptors and its required access checks. This mechanism confers no
+State, signing, startup or Route authority. Node retains original duty, credential,
 participation producer and process protection. Unresolved live producers survive
 expiry/lost cleanup; retained openings do not initialize erased histories.
 These obligations apply independently of a custom native transaction or a
