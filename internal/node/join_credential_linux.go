@@ -9,9 +9,10 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"sync"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // joinCredential retains original file custody as well as the exact in-memory
@@ -28,7 +29,7 @@ type joinCredential struct {
 }
 
 func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result error) {
-	if !filepath.IsAbs(certPath) || !filepath.IsAbs(keyPath) || filepath.Clean(certPath) != certPath || filepath.Clean(keyPath) != keyPath {
+	if !pathgrammar.Strict(certPath) || !pathgrammar.Strict(keyPath) {
 		return nil, errors.New("invalid original JOIN credential paths")
 	}
 	c := &joinCredential{}

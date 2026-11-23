@@ -6,18 +6,20 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"io"
 	"os"
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // Publish once, or resynchronize an exact retry. A partial or foreign request
 // is retained as a refusal; it is never replaced with a new holder's request.
 func installedPermissionRequest(path string, raw []byte, check func() error) (err error) {
-	if check == nil || len(raw) == 0 || len(raw) > 4096 || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if check == nil || len(raw) == 0 || len(raw) > 4096 || !pathgrammar.Strict(path) {
 		return errors.New("invalid installed permission handover")
 	}
 	if err := check(); err != nil {
@@ -127,8 +129,8 @@ func installedPermissionRequest(path string, raw []byte, check func() error) (er
 // lifecycle step, and at bootstrap any existing handover necessarily belongs to a
 // prior invocation because this process has not published yet.
 func installedPermissionRetire(requestPath, responsePath string, check func() error) (err error) {
-	if check == nil || !filepath.IsAbs(requestPath) || filepath.Clean(requestPath) != requestPath ||
-		!filepath.IsAbs(responsePath) || filepath.Clean(responsePath) != responsePath {
+	if check == nil || !pathgrammar.Strict(requestPath) ||
+		!pathgrammar.Strict(responsePath) {
 		return errors.New("invalid installed permission handover")
 	}
 	parent := filepath.Dir(requestPath)
@@ -188,7 +190,7 @@ func installedPermissionRetire(requestPath, responsePath string, check func() er
 }
 
 func installedPermissionRead(path string) (raw []byte, err error) {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !pathgrammar.Strict(path) {
 		return nil, errors.New("invalid permission response path")
 	}
 	parent := filepath.Dir(path)

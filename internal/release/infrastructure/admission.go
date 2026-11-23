@@ -51,8 +51,11 @@ func (a Authorization) InitialFacts() (enrollment.InfrastructureFacts, bool) {
 
 func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs) (Authorization, error) {
 	f, ok := b.Facts()
-	if !ok || f.Invocation != "source" || ctx == nil || v == nil {
+	if !ok || f.Invocation != "source" || ctx == nil || v == nil || f.Platform != "linux-amd64" || input.TargetPath != ProgramTarget || input.Local.Platform != f.Platform || input.Local.Architecture != "amd64" || input.Local.RefTime.IsZero() {
 		return Authorization{}, ErrInput
+	}
+	if err := ctx.Err(); err != nil {
+		return Authorization{}, err
 	}
 	floors, err := v.CurrentFloors(ctx)
 	if err != nil {
@@ -76,8 +79,11 @@ func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.
 
 func AuthenticateCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, input release.Inputs) (Authorization, error) {
 	f, ok := c.Facts()
-	if !ok || f.Invocation != "source" || ctx == nil || v == nil {
+	if !ok || f.Invocation != "source" || ctx == nil || v == nil || f.Platform != "linux-amd64" || input.TargetPath != ProgramTarget || input.Local.Platform != f.Platform || input.Local.Architecture != "amd64" || input.Local.RefTime.IsZero() {
 		return Authorization{}, ErrInput
+	}
+	if err := ctx.Err(); err != nil {
+		return Authorization{}, err
 	}
 	floors, err := v.CurrentFloors(ctx)
 	if err != nil {

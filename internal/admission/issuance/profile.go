@@ -6,11 +6,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 var profileFiles = []string{"profile.pin", "profile.bytes", "profile.lock"}
@@ -56,7 +56,7 @@ func InitializeProfile(ctx context.Context, path string, keys Store, identity si
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !pathgrammar.Strict(path) {
 		return ErrInvalid
 	}
 	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {

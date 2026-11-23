@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 const ledgerMarker = "ardents-admission-ledger-v1\n"
@@ -16,7 +18,7 @@ const ledgerMarker = "ardents-admission-ledger-v1\n"
 var ledgerFiles = []string{"admission.pin", "admission.lock", "admission.journal", "admission.floor"}
 
 func ledgerRoot(path string) (*os.Root, os.FileInfo, error) {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !pathgrammar.Strict(path) {
 		return nil, nil, ErrInvalid
 	}
 	before, err := os.Lstat(path)
@@ -53,7 +55,7 @@ func syncLedgerRoot(root *os.Root) error {
 	return errors.Join(f.Sync(), f.Close())
 }
 func initializeLedger(path string, binding LedgerBinding) (err error) {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !pathgrammar.Strict(path) {
 		return ErrInvalid
 	}
 	if err = os.Mkdir(path, 0700); err != nil {

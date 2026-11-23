@@ -5,13 +5,13 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 var errSourcePreparation = errors.New("invalid initial Source State preparation")
@@ -26,7 +26,7 @@ func SourcePreparationConfig(plan servingdeclaration.ServingDeclaration) (Config
 	}
 	paths := []string{n.Root, n.ClockObservationFile, plan.ParticipationRoot}
 	for i, path := range paths {
-		if path == "/" || len(path) > 4096 || !filepath.IsAbs(path) || filepath.Clean(path) != path || strings.ContainsRune(path, 0) {
+		if path == "/" || len(path) > 4096 || !pathgrammar.Strict(path) || strings.ContainsRune(path, 0) {
 			return Config{}, errSourcePreparation
 		}
 		for _, previous := range paths[:i] {

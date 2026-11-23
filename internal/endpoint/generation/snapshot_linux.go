@@ -11,6 +11,8 @@ import (
 	"sort"
 	"sync"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // Snapshot owns an independently opened read-only sealed generation. It takes
@@ -30,7 +32,7 @@ type Snapshot struct {
 
 func OpenSnapshot(ctx context.Context, parentPath string, expectedParent, expectedDirectory os.FileInfo, name string, gid uint32) (result *Snapshot, returnedErr error) {
 	digest, err := hex.DecodeString(name)
-	if ctx == nil || gid == 0 || gid == ^uint32(0) || !filepath.IsAbs(parentPath) || filepath.Clean(parentPath) != parentPath || filepath.Base(parentPath) != "generations" || err != nil || len(digest) != 32 || hex.EncodeToString(digest) != name || !sealedDirectory(expectedParent, gid) || !sealedDirectory(expectedDirectory, gid) {
+	if ctx == nil || gid == 0 || gid == ^uint32(0) || !pathgrammar.Strict(parentPath) || filepath.Base(parentPath) != "generations" || err != nil || len(digest) != 32 || hex.EncodeToString(digest) != name || !sealedDirectory(expectedParent, gid) || !sealedDirectory(expectedDirectory, gid) {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
