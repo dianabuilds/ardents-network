@@ -1,0 +1,31 @@
+name: Installed Endpoint byte-stream proof
+on:
+  push:
+    branches: [codex/proof-installed-byte-stream]
+permissions:
+  contents: read
+jobs:
+  installed-pair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 01e8fde7e32e05339d1135e18cc36a9f7ffcd08c
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Install native qualification prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y systemd-container debootstrap polkitd
+      - name: Run two independent installed Endpoint managers
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show -s --format='candidate=%H tree=%T'
+          go test -c -tags endpoint_pair_native,document_worker_installed -o "$RUNNER_TEMP/installed-pair.test" ./cmd/ardents-next
+          cd cmd/ardents-next
+          sudo env PATH="$PATH" GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" "$RUNNER_TEMP/installed-pair.test" -test.run '^TestNativeInstalledEndpointByteStream$' -test.v -test.timeout=24m
