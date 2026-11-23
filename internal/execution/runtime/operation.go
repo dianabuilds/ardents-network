@@ -31,12 +31,17 @@ type Operation struct {
 	connectionContext  [32]byte
 	connectionClaimed  bool
 	publisher          bool
+	byteStream         bool
 	administration     AdministrationContext
 }
 
 func (*Operation) localPermission() {}
 
 func (operation *Operation) Context() context.Context { return operation.ctx }
+
+// UsesByteStream reports the Application profile selected by the original
+// invocation. Callers still check the operation before relying on it.
+func (operation *Operation) UsesByteStream() bool { return operation.byteStream }
 
 func (operation *Operation) Check() error {
 	if operation == nil || operation.self != operation || operation.job == nil || operation.lease == nil || operation.ctx == nil || operation.caller == nil {

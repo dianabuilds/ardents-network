@@ -33,6 +33,7 @@ type Invocation struct {
 	result           error
 	cleanupResult    error
 	publisher        bool
+	byteStream       bool
 	publisherInput   *publisherConnectionInput
 	readerCaller     context.Context
 	readerInput      *readerConnectionInput
@@ -116,7 +117,7 @@ func (invocation *Invocation) BeginOperation(ctx context.Context) (*Operation, e
 	}
 	bounded, cancel := context.WithCancel(invocation.lease.Context())
 	operation := &Operation{invocation: invocation, job: invocation.job, lease: invocation.lease, ctx: bounded, caller: ctx, cancel: cancel,
-		callbackDone: make(chan struct{}), done: make(chan struct{}), publisher: invocation.publisher, administration: invocation.administration}
+		callbackDone: make(chan struct{}), done: make(chan struct{}), publisher: invocation.publisher, byteStream: invocation.byteStream, administration: invocation.administration}
 	operation.self = operation
 	operation.surface, operation.connectionContext = invocation.surface, localContext
 	operation.stop = context.AfterFunc(ctx, func() { defer close(operation.callbackDone); cancel() })

@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
+	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 	"testing"
 	"time"
 
@@ -159,4 +160,8 @@ func TestRecipientBindingCannotSupplyOriginalOperation(t *testing.T) {
 	if binding.Check(t.Context(), &executionruntime.Operation{}) == nil {
 		t.Fatal("tuple alone supplied qualified authority")
 	}
+}
+
+func deriveRecipientBinding(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time) (*RecipientBinding, error) {
+	return deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, now, 1, wire.DocumentApplication)
 }

@@ -34,7 +34,7 @@ func BindRecipient(ctx context.Context, operation *executionruntime.Operation, p
 	if err := errors.Join(ctx.Err(), operation.CheckPublisher()); err != nil {
 		return nil, err
 	}
-	binding, err := deriveRecipientBinding(proof, profile, request, plaintextDigest, localEnd, time.Now())
+	binding, err := deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, time.Now(), 1, wire.ProfileForOperation(operation.UsesByteStream()))
 	if err != nil {
 		return nil, err
 	}
@@ -46,11 +46,7 @@ func BindRecipient(ctx context.Context, operation *executionruntime.Operation, p
 	return binding, nil
 }
 
-func deriveRecipientBinding(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time) (*RecipientBinding, error) {
-	return deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, now, 1)
-}
-
-func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time, generation uint64) (*RecipientBinding, error) {
+func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time, generation uint64, application wire.ApplicationProfile) (*RecipientBinding, error) {
 	actualDigest, err := request.Digest()
 	if err != nil || actualDigest != plaintextDigest {
 		return nil, errors.Join(errors.New("recipient plaintext commitment differs"), err)
@@ -68,7 +64,7 @@ func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, reques
 		return nil, errors.New("recipient immutable binding or safety bounds differ")
 	}
 	identity := wire.LogicalIdentity{Network: value.Network, Target: value.Target, Instance: value.Instance,
-		InstanceGeneration: value.Generation, Publication: proof.Digest(), Profile: profile,
+		InstanceGeneration: value.Generation, Application: application, Publication: proof.Digest(), Profile: profile,
 		ConnectionNonce: request.ConnectionNonce, InitiatorBinding: request.InitiatorBinding,
 		WorkSafetyNotAfter: request.WorkSafetyNotAfter, WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}
 	logical, attachment, err := wire.Contexts(identity, plaintextDigest, request.AttachmentGeneration)

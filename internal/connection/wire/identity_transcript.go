@@ -15,6 +15,15 @@ const (
 	ByteStreamApplication
 )
 
+// ProfileForOperation maps the fixed local Execution workload to its
+// authenticated Connection profile.
+func ProfileForOperation(byteStream bool) ApplicationProfile {
+	if byteStream {
+		return ByteStreamApplication
+	}
+	return DocumentApplication
+}
+
 // LogicalIdentity is the immutable shared tuple, never local permission. Its
 // exact original verified provenance and lifetime remain with the caller.
 type LogicalIdentity struct {
