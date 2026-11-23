@@ -63,7 +63,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 	}
 	var batch []byte
 	if args[0] == "issue" {
-		if err = checkIssuanceOutput(ctx, p.ResponseFile); err != nil {
+		if err = issuance.CheckExportDestination(ctx, p.ResponseFile); err != nil {
 			r.Outcome = issuanceOutcome(err)
 			return write()
 		}
@@ -85,7 +85,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 	r.Phase, r.Outcome = result.Status()
 	if result.Response != nil {
 		r.Phase = "export"
-		if exportErr := exportIssuanceOutput(ctx, p.ResponseFile, result.Response); exportErr != nil {
+		if exportErr := issuance.Export(ctx, p.ResponseFile, result.Response); exportErr != nil {
 			r.Outcome = issuanceOutcome(exportErr)
 		}
 	}

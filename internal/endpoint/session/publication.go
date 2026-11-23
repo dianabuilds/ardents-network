@@ -69,7 +69,7 @@ func (s *Session) Serve(ctx context.Context) (err error) {
 	}
 	defer func() { err = s.after(err) }()
 	if s.publication.Owner() == nil {
-		return errors.New("qualified Text Publisher is unavailable")
+		return errors.New("qualified document Publisher is unavailable")
 	}
 	return s.publication.Serve(ctx)
 }

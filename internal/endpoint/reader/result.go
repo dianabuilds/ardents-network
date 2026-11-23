@@ -69,7 +69,7 @@ func newResultStream(original context.Context, check func() error, complete func
 		stream.err = err
 		outcome := application.Outcome{Class: application.CleanClose}
 		if err != nil {
-			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: "text read did not complete"}
+			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: "document read did not complete"}
 		}
 		_ = request.CloseWithError(err)
 		_ = response.CloseWithError(err)

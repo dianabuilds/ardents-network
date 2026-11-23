@@ -92,7 +92,11 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 	}
 	// Real command Admission initializes with exactly the exported SPKI bytes.
 	var exported struct {
-		Keys []issuanceInventoryEntry `json:"keys"`
+		Keys []struct {
+			Window string `json:"window"`
+			Class  uint8  `json:"class"`
+			SPKI   string `json:"spki"`
+		} `json:"keys"`
 	}
 	if e = json.Unmarshal(before, &exported); e != nil {
 		t.Fatal(e)

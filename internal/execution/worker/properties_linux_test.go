@@ -20,7 +20,9 @@ func TestDocumentWorkerUnitBindingRequiresExactCollectionPolicy(t *testing.T) {
 		"CollectMode":  {Type: "s", Data: json.RawMessage(`"inactive-or-failed"`)},
 	}
 	service := properties{"ControlGroup": {Type: "s", Data: json.RawMessage(`"` + cgroup + `"`)}}
-	verified := func() bool { return workerUnitBindingVerified(textInventory, unit, service, name, "reader", cgroup) }
+	verified := func() bool {
+		return workerUnitBindingVerified(applicationInventory, unit, service, name, "reader", cgroup)
+	}
 	if !verified() {
 		t.Fatal("exact manager collection policy refused")
 	}
@@ -81,7 +83,7 @@ func TestDocumentWorkerSliceKeepsTheClosedOrdinaryCgroupRoot(t *testing.T) {
 			if test.value != nil {
 				service["Slice"] = *test.value
 			}
-			if got := sliceVerified(textInventory, service); got != test.want {
+			if got := sliceVerified(applicationInventory, service); got != test.want {
 				t.Fatalf("slice verification = %t, want %t", got, test.want)
 			}
 		})

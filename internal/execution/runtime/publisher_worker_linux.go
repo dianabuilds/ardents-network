@@ -13,7 +13,7 @@ import (
 )
 
 // LaunchPublisher admits Administration and initializes the exact fixed worker
-// with one bounded selected snapshot. Text owns document/protocol semantics;
+// with one bounded selected snapshot. The document Application owns its protocol semantics;
 // Execution retains artifact, Job, operation and original descendant cleanup.
 func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, snapshot []byte) (*Invocation, error) {
 	if len(snapshot) > document.MaximumBytes {
@@ -27,7 +27,7 @@ func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, sna
 	return owner.launchInvocation(ctx, principal, execution.Administration, body, true, false)
 }
 
-// This sole reader belongs to the fixed Text protocol. Only handoffs through
+// This sole reader belongs to the fixed document protocol. Only handoffs through
 // the same original qualified operation reach it; the incoming byte boundary
 // neither authenticates Service nor supplies a replacement Job.
 func (invocation *Invocation) observePublisherAttachment() {

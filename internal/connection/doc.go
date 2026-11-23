@@ -16,7 +16,7 @@
 // the same Publisher Stream; InitiatorSource re-resolves the original Target
 // through its retained History and Rendezvous set. Both roles retain finite
 // original-key proposals and join old actors before atomic replay generations.
-// Genuine Text command consumers use those sources before Application handoff;
+// Protected Application command consumers use those sources before Application handoff;
 // complete native/installed acceptance remains a separate evidence boundary.
 //
 // Navigation: README.md carries the extended owner contract; the wire

@@ -105,15 +105,15 @@ func selectNewInstance(before, after listing, candidate string) (string, error) 
 	return selected, nil
 }
 
-// ObserveInstance binds manager-owned identity to one live Text activation.
+// ObserveInstance binds manager-owned identity to one live Application worker activation.
 // It still grants nothing: exact socket credentials, readiness, current job,
 // artifact and a cleanup owner must all be verified before a Principal exists.
 func ObserveInstance(ctx context.Context, name, role string) (Instance, error) {
-	return observeInstance(ctx, textInventory, name, role)
+	return observeInstance(ctx, applicationInventory, name, role)
 }
 
 // ObserveInstanceStream is the trusted qualification re-observation entry for the
-// Stream inventory. Ordinary text jobs use ObserveInstance; the architecture gate
+// Stream inventory. Ordinary Application jobs use ObserveInstance; the architecture gate
 // restricts Stream callers to the qualification runner (no caller-visible selector).
 func ObserveInstanceStream(ctx context.Context, name, role string) (Instance, error) {
 	return observeInstance(ctx, streamInventory, name, role)

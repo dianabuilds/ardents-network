@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package issuance
 
 import (
 	"context"
@@ -8,17 +8,19 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // Issuance exports never write into a domain's retained or pending roots.
-func checkIssuanceExportPath(ctx context.Context, path string) error {
+func checkExportPath(ctx context.Context, path string) error {
+	if ctx == nil {
+		return ErrInvalid
+	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
-		return issuance.ErrInvalid
+		return ErrInvalid
 	}
 	markers := [...]string{
 		"identity.pin", "identity.key", "identity.lock", "identity.pending",
@@ -31,7 +33,7 @@ func checkIssuanceExportPath(ctx context.Context, path string) error {
 	for directory := filepath.Dir(path); ; directory = filepath.Dir(directory) {
 		for _, marker := range markers {
 			if _, err := os.Lstat(filepath.Join(directory, marker)); !errors.Is(err, os.ErrNotExist) {
-				return issuance.ErrUnavailable
+				return ErrUnavailable
 			}
 		}
 		if filepath.Dir(directory) == directory {
@@ -41,27 +43,29 @@ func checkIssuanceExportPath(ctx context.Context, path string) error {
 	return ctx.Err()
 }
 
-func checkIssuanceOutput(ctx context.Context, path string) error {
-	if err := checkIssuanceExportPath(ctx, path); err != nil {
+// CheckExportDestination refuses state-owned and unavailable destinations before an operation.
+func CheckExportDestination(ctx context.Context, path string) error {
+	if err := checkExportPath(ctx, path); err != nil {
 		return err
 	}
 	err := artifacts.CheckPrivateFileDestination(ctx, path)
 	if errors.Is(err, artifacts.ErrInput) {
-		return issuance.ErrUnavailable
+		return ErrUnavailable
 	}
 	return err
 }
 
-func exportIssuanceOutput(ctx context.Context, path string, raw []byte) error {
-	if err := checkIssuanceExportPath(ctx, path); err != nil {
+// Export publishes the original output bytes after rechecking destination custody.
+func Export(ctx context.Context, path string, raw []byte) error {
+	if err := checkExportPath(ctx, path); err != nil {
 		return err
 	}
 	err := artifacts.PublishPrivateFile(ctx, path, raw)
 	if errors.Is(err, artifacts.ErrOutputUncertain) {
-		return errors.Join(issuance.ErrUncertain, err)
+		return errors.Join(ErrUncertain, err)
 	}
 	if errors.Is(err, artifacts.ErrInput) {
-		return issuance.ErrUnavailable
+		return ErrUnavailable
 	}
 	return err
 }

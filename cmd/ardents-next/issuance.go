@@ -101,40 +101,13 @@ func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if err != nil {
 		return write()
 	}
-	if err = checkIssuanceOutput(ctx, p.InventoryFile); err != nil {
+	if err = issuance.CheckExportDestination(ctx, p.InventoryFile); err != nil {
 		r.Outcome = issuanceOutcome(err)
 		return write()
 	}
 	o, _ := newObservation(endpoint)
 	finish := o.begin("ardents.issuance", r.Operation)
-	r.Phase = "open"
-	if args[0] == "initialize" {
-		r.Phase = "initialize"
-		err = issuance.Initialize(ctx, p.Root, p.Binding)
-	}
-	if err == nil {
-		r.Phase = "open"
-		var store issuance.Store
-		store, err = issuance.Open(ctx, p.Root, p.Binding)
-		if err == nil {
-			r.Phase = "inventory"
-			var inventory issuance.Inventory
-			inventory, err = store.Inventory()
-			if err == nil {
-				var public []byte
-				public, err = issuanceInventoryJSON(inventory)
-				if err == nil {
-					r.Phase = "export"
-					err = exportIssuanceOutput(ctx, p.InventoryFile, public)
-				}
-			}
-			closeErr := store.Close()
-			if closeErr != nil {
-				r.Phase = "close"
-				err = errors.Join(err, issuance.ErrUncertain, closeErr)
-			}
-		}
-	}
+	r.Phase, err = issuance.DeliverInventory(ctx, p.Root, p.Binding, p.InventoryFile, args[0] == "initialize")
 	r.Outcome = issuanceOutcome(err)
 	finish(r.Phase, r.Outcome)
 	_ = o.close()

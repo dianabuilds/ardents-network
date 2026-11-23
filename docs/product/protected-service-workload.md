@@ -50,7 +50,10 @@ must survive for process confinement to hold.
 ## Participant interface for arbitrary data
 
 [ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
-selects this interface. Installed qualification is pending.
+selects this interface. The protected Ubuntu candidate has passed the
+document journey and the byte-exact exchange through the public CLI on two
+separately installed Endpoints. The installed scenarios cover the exercised
+artifacts and authorities under their closed fixture.
 The [command reference](../reference/commands.md) lists current commands.
 
 | Person | Installs | Selected action |
