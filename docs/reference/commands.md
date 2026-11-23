@@ -1,6 +1,12 @@
 # Command reference
 
-Build the Linux offline operator entrypoints from the reviewed source:
+| Executable | Who runs it | Purpose |
+|---|---|---|
+| `ardents` | Participants and infrastructure operators | Participants [publish and read documents](#document-commands-and-worker) in C0. Infrastructure operators use the same executable for Network and Release operations. |
+| `ardents-custody` | The offline Authority operator | Create Authorities, issue Credentials or permissions, and manage encrypted Vault records. |
+| `ardents-text` | systemd in the protected Linux deployment | Run the confined document reader or Publisher. |
+
+Build `ardents` from the reviewed source:
 
 ```sh
 go build -trimpath -buildvcs=false -o ardents ./cmd/ardents-next
@@ -433,7 +439,7 @@ and 999. Its home is `/nonexistent`, its shell is `/usr/sbin/nologin`,
 and it has no supplementary groups. The host prepares the declared
 writable directories with mode `0700` and the account's UID/GID before staging.
 
-Deliver the signed Text Worker executable into
+Deliver the signed document worker executable into
 `/usr/lib/ardents/text-worker-root/ardents-text` with mode `0555`.
 The Worker root and its fixed subdirectories are root-owned with mode
 `0555`. Deliver both signed Worker service templates and both sockets
@@ -894,10 +900,14 @@ operation.
 The former Control executable and its retirement-only selectors are removed.
 The ACA1/ACA2 decisions remain historical evidence for their original inputs.
 
-## Trusted text UI and workers
+## Document commands and worker
+
+These commands use the selected C0 document application. Its UTF-8 and
+size checks apply to the document. The underlying Service Connection carries
+opaque bytes.
 
 `ardents link /absolute/path/to/administration.sock` explicitly presents
-the canonical Target Link of the currently committed text publication through
+the canonical Target Link of the currently committed document through
 the private Administration socket. It refuses an unavailable, uncommitted, or
 withdrawn publication; it neither publishes nor retries. The output is an
 interruptible terminal or pipe presentation and is absent from ordinary
@@ -932,14 +942,17 @@ the fixed Publisher worker with that snapshot and retains the publication after
 the command returns. Obtain its Target Link with `ardents link
 /absolute/path/to/administration.sock`; withdraw through `ardents endpoint
 withdraw /absolute/path/to/administration.sock`. These commands require the
-running text participant and its separately accepted Administration permission.
+running document Application and its separately accepted Administration
+permission.
 Component conformance and installed journey results remain separate evidence;
 command success does not establish full host qualification.
 
-The installed `worker-reader` and `worker-publisher` entrypoints accept no
-additional arguments. They perform their descriptor audit and fixed worker
-exchange without initializing the trusted UI's signal handling. Ordinary
-failure diagnostics contain no destination, content or underlying peer reason.
+The installed document worker is built from
+`./internal/application/document/worker`. The systemd units invoke its fixed
+`worker-reader` and `worker-publisher` entrypoints with no additional
+arguments. The worker audits inherited descriptors before the fixed exchange.
+Ordinary failure diagnostics contain no destination, content or underlying
+peer reason.
 
 ## Process and support limits
 

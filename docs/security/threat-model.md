@@ -44,11 +44,12 @@ This threat model covers the current [C0 product scope](../product/scope.md) and
 the stronger public-product claims retained for later decisions. It is not a
 statement that the C0 implementation passed audit or qualification.
 
-For C0, the Network candidate includes headless commands and maintained
-Network, Endpoint, Service, naming, enrollment, Release, Custody, and Endpoint-
-owned Application Broker Modules. The neutral Application Interface is reviewed
-for shared-interface seam, privilege, artifact, and dependency correctness but
-receives no Application-level Endpoint Location Privacy claim. The active Browser
+The C0 Network candidate includes the maintained commands, document worker,
+Network, Endpoint, Service, enrollment, Release, Custody and local Application
+Interfaces listed in the [product scope](../product/scope.md#c0-network-candidate).
+The local Application Interfaces are reviewed for seam, privilege, artifact,
+and dependency correctness. The review scope grants no Application-level
+Endpoint Location Privacy claim. The active Browser
 implementation and qualification lanes are retired; non-executable compatibility
 evidence and historical campaign implementations are outside the candidate
 corpus.
