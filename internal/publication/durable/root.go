@@ -178,6 +178,20 @@ func (root *Root) checkOriginal() error {
 	return root.lease.check(root.path)
 }
 
+// PrepareRoot reconciles the public history and reports its floor after
+// releasing original ownership.
+func PrepareRoot(ctx context.Context, config Config) (uint64, error) {
+	root, err := Open(ctx, config)
+	if err != nil {
+		return 0, err
+	}
+	floor, err := root.Floor(ctx)
+	if err := errors.Join(err, root.Close(), ctx.Err()); err != nil {
+		return 0, err
+	}
+	return floor, nil
+}
+
 // Floor returns detached monotonic history after checking the original root.
 func (root *Root) Floor(ctx context.Context) (uint64, error) {
 	if root == nil || ctx == nil {
