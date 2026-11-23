@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"testing"
@@ -108,3 +109,12 @@ func (port *relayPort) CloseInput() error {
 	return nil
 }
 func (*relayPort) Close() error { return nil }
+
+func TestByteStreamFailureDoesNotExposeUnderlyingDiagnostic(t *testing.T) {
+	for _, category := range []error{errWorkerRelayProtocol, errWorkerRelayRead, errWorkerRelayWrite} {
+		got := ByteStreamFailure(errors.Join(category, errors.New("private input")))
+		if got != category.Error() {
+			t.Fatalf("failure projection %q differs from %q", got, category)
+		}
+	}
+}

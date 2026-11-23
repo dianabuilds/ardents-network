@@ -136,6 +136,7 @@
         "symbols": [
           "internal/application/administration.server.handleByteStream",
           "internal/application/document.BridgeByteStreamWorker",
+          "internal/application/document.ByteStreamFailure",
           "internal/application/document.receiveWorkerBytes",
           "internal/application/document.relayWorkerStreams",
           "internal/application/document.sendWorkerBytes",

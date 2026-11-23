@@ -107,7 +107,7 @@ func (port *publishedBytePort) finish(err error) {
 		_ = port.Close()
 		outcome := application.Outcome{Class: application.CleanClose}
 		if err != nil {
-			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: "published byte stream did not complete"}
+			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: document.ByteStreamFailure(err)}
 		}
 		port.done <- outcome
 		close(port.done)

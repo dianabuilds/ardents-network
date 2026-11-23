@@ -8,6 +8,28 @@ import (
 	"sync"
 )
 
+var (
+	errWorkerRelayProtocol = errors.New("byte-stream worker framing did not complete")
+	errWorkerRelayRead     = errors.New("byte-stream source read failed")
+	errWorkerRelayWrite    = errors.New("byte-stream destination write failed")
+)
+
+// ByteStreamFailure projects fixed categories without exposing peer, path or bytes.
+func ByteStreamFailure(err error) string {
+	switch {
+	case errors.Is(err, errWorkerRelayProtocol):
+		return errWorkerRelayProtocol.Error()
+	case errors.Is(err, errWorkerRelayRead):
+		return errWorkerRelayRead.Error()
+	case errors.Is(err, errWorkerRelayWrite):
+		return errWorkerRelayWrite.Error()
+	case errors.Is(err, context.DeadlineExceeded):
+		return "byte-stream exchange exceeded its deadline"
+	default:
+		return "byte-stream worker handoff or exchange failed"
+	}
+}
+
 // ByteStreamPort is a local or authenticated byte attachment with directional EOF.
 // Its Close interrupts both pending reads and writes.
 type ByteStreamPort interface {
@@ -72,7 +94,7 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 				return
 			}
 			if frame.id != 1 && frame.id != 3 {
-				receiveDone <- errors.New("byte-stream worker returned an unknown attachment")
+				receiveDone <- errWorkerRelayProtocol
 				cancel()
 				return
 			}
@@ -91,7 +113,7 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 				default:
 				}
 			}
-			receiveDone <- errors.New("byte-stream worker returned an unexpected frame")
+			receiveDone <- errWorkerRelayProtocol
 			cancel()
 			return
 		}
@@ -136,12 +158,12 @@ func sendWorkerBytes(ctx context.Context, port io.Reader, id uint32, credit <-ch
 		n, err := port.Read(buffer[:])
 		if n > 0 {
 			if writeErr := write(workerFrame{kind: 2, id: id, body: buffer[:n]}); writeErr != nil {
-				return writeErr
+				return errors.Join(errWorkerRelayProtocol, writeErr)
 			}
 			select {
 			case acknowledged := <-credit:
 				if acknowledged != uint32(n) {
-					return errors.New("byte-stream worker acknowledged a different byte count")
+					return errWorkerRelayProtocol
 				}
 			case <-ctx.Done():
 				return ctx.Err()
@@ -151,7 +173,7 @@ func sendWorkerBytes(ctx context.Context, port io.Reader, id uint32, credit <-ch
 			return write(workerFrame{kind: 4, id: id})
 		}
 		if err != nil {
-			return err
+			return errors.Join(errWorkerRelayRead, err)
 		}
 	}
 }
@@ -166,7 +188,7 @@ func receiveWorkerBytes(ctx context.Context, port ByteStreamPort, incoming <-cha
 				return port.CloseInput()
 			}
 			if err := writeWorkerBytes(port, frame.body); err != nil {
-				return err
+				return errors.Join(errWorkerRelayWrite, err)
 			}
 			credit := binary.BigEndian.AppendUint32(nil, uint32(len(frame.body)))
 			if err := write(workerFrame{kind: 3, id: frame.id, body: credit}); err != nil {
