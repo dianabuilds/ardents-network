@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -95,7 +96,7 @@ func newConsumerReleaseAuthority(t *testing.T, expires time.Time) *consumerRelea
 	return owned
 }
 
-func signedConsumerRelease(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *consumerReleaseAuthority, metadataVersion, releaseVersion int64) (string, string, string) {
+func signedConsumerRelease(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *consumerReleaseAuthority, metadataVersion, releaseVersion int64, legacyCustody ...[]byte) (string, string, string) {
 	t.Helper()
 	_, architecture, validPlatform := strings.Cut(platform, "-")
 	if !validPlatform || architecture == "" {
@@ -109,12 +110,8 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	if supplied, ok := resources[program]; protected && ok {
 		binary = supplied
 	}
-	custody := "ardents-custody-" + platform
 	if !protected && runtime.GOOS == "windows" {
 		program += ".exe"
-	}
-	if strings.HasPrefix(platform, "windows-") {
-		custody += ".exe"
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	expires := ref.Add(365 * 24 * time.Hour)
@@ -216,11 +213,15 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v5\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\n", platform, targetPath, program)
-	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, custody: []byte("independent Custody companion"),
+	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v6\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\n", platform, targetPath, program)
+	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary,
 		"1.root.json": rootBytes, "timestamp.json": timestampBytes, fmt.Sprintf("%d.snapshot.json", metadataVersion): snapshotBytes, fmt.Sprintf("%d.targets.json", metadataVersion): targetBytes}
 	for name, data := range protectedFiles {
 		files[name] = data
+	}
+	if len(legacyCustody) != 0 {
+		files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v6"), []byte("enrollment-v5"), 1)
+		files["ardents-custody-"+platform] = legacyCustody[0]
 	}
 	directory := filepath.Join(t.TempDir(), "bundle")
 	if err = os.Mkdir(directory, 0700); err != nil {
@@ -258,7 +259,7 @@ func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	facts, ok := bundle.Facts()
-	if !ok || !facts.Protected || len(bundle.Names()) != 16 {
+	if !ok || !facts.Protected || len(bundle.Names()) != 15 {
 		t.Fatal("fixture lacks genuinely verified protected inventory")
 	}
 	input, ok := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))

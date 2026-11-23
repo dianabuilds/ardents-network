@@ -18,10 +18,9 @@ import (
 func TestEnrollmentCompiledConsumerVerifiesOriginalProgramAndRefusesSubstitution(t *testing.T) {
 	root := t.TempDir()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
-	programName, custodyName := "ardents-"+platform, "ardents-custody-"+platform
+	programName := "ardents-" + platform
 	if runtime.GOOS == "windows" {
 		programName += ".exe"
-		custodyName += ".exe"
 	}
 	programPath := filepath.Join(root, programName)
 	// Share only the immutable compiled consumer; every bundle and pin is
@@ -35,10 +34,10 @@ func TestEnrollmentCompiledConsumerVerifiesOriginalProgramAndRefusesSubstitution
 		t.Fatal(err)
 	}
 	files := map[string][]byte{
-		programName: program, custodyName: []byte("separate custody bytes"), "1.root.json": []byte("root"),
+		programName: program, "1.root.json": []byte("root"),
 		"timestamp.json": []byte("timestamp"), "1.snapshot.json": []byte("snapshot"), "1.targets.json": []byte("targets"),
 	}
-	files["RELEASE"] = []byte(strings.Join([]string{"schema=ardents-closed-alpha-enrollment-v5", "cohort=cohort", "release=release", "platform=" + platform,
+	files["RELEASE"] = []byte(strings.Join([]string{"schema=ardents-closed-alpha-enrollment-v6", "cohort=cohort", "release=release", "platform=" + platform,
 		"environment=alpha", "network=network", "target_path=ardents/" + platform + "/endpoint", "artifact=" + programName, "trusted_root=1.root.json"}, "\n") + "\n")
 	var names []string
 	for name := range files {

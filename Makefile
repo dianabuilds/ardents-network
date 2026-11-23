@@ -128,8 +128,8 @@ headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NEXT := $(abspath $(HEADLE
 headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))
 headless-evidence: headless-build
 	@test "$(HEADLESS_GOOS)" = linux && test "$(HEADLESS_GOARCH)" = amd64 || (echo "headless-evidence requires Linux x86-64"; exit 2)
-	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
-	go test ./internal/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRequiresCustodyAndRefusesForeignCompanions|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
+	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))"
+	go test ./internal/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRefusesForeignCompanions|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest)$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 

@@ -1838,7 +1838,7 @@ selected Carriers.
   Root is an invalid environment for those rows. Root-only Installation profiles
   run separately under their explicit selectors; they do not replace this gate.
 - On Linux x86-64, `make headless-check` builds the exact Network command
-  inventory, checks the enrollment-v5 artifact, runs bounded Endpoint
+  inventory, checks the enrollment-v6 artifact, runs bounded Endpoint
   enrollment and Service ceremony process
   evidence, then rebuilds and tests the headless command candidate in a
   fresh temporary tree containing no Browser/Application implementation.
@@ -3252,6 +3252,26 @@ Endpoint reaching Service readiness. It is NOT the two-participant privacy
 qualification (#391 S2: two separately admitted managers, publish/link/read over
 the Carrier). The transitional guarded-start/ACK/recovery orchestration is neither
 exercised nor retired (ADR-0125 D6).
+
+The explicit `endpoint_enrollment_migration_native` profile uses the same
+Ubuntu root-driver prerequisites as `endpoint_launch_native`. Build the
+genuine v5 Endpoint and Custody binaries from the retained v5 revision into a
+private directory as `ardents-linux-amd64` and
+`ardents-custody-linux-amd64`. Record their source revision and digests.
+Build and run the v6 fixture with:
+
+```sh
+sudo env "PATH=$PATH" "GOTOOLCHAIN=local" \
+  "ARDENTS_ENROLLMENT_V5_ARTIFACTS=/absolute/path/to/pinned-v5-artifacts" \
+  go test -tags endpoint_launch_native,endpoint_enrollment_migration_native \
+  ./cmd/ardents-next -run '^TestNativeEndpointEnrollmentV5ToV6$' -count=1
+```
+
+The original v5 program stages and boots the signed predecessor with its
+original inventory. The v6 program refuses a live or uncertain predecessor
+and a partial successor root. The clean v6 transition preserves the original
+retained roots, refuses restarting the superseded Release, and reaches active
+Service readiness on the exact new executable.
 
 With both `endpoint_launch_native` and `document_worker_installed`, the
 `TestNativeEndpointReplacementWithPublisher` driver requests an actual Text

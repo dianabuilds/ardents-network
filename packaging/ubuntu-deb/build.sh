@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+
 : "${ARDENTS_PACKAGE_VERSION:?ARDENTS_PACKAGE_VERSION is required}"
 : "${ARDENTS_PACKAGE_PROGRAM:?ARDENTS_PACKAGE_PROGRAM is required}"
 : "${ARDENTS_PACKAGE_STATIC_ROOT:?ARDENTS_PACKAGE_STATIC_ROOT is required}"
@@ -55,5 +57,12 @@ for source in "$ARDENTS_PACKAGE_STATIC_ROOT"/*; do
   fi
   install -m 0644 "$source" "$static_destination/$name"
 done
+
+# Rejoin the staged program and its static inventory for the same closed
+# grammar and byte checks used by Enrollment, without running the payload.
+endpoint_artifact=$(cd "$repository" && go run ./cmd/ardents-next enrollment artifact-name ardents linux-amd64)
+ln "$package_stage/usr/lib/ardents/ardents" "$static_destination/$endpoint_artifact"
+(cd "$repository" && go run ./cmd/ardents-next enrollment check-candidate "$static_destination")
+rm "$static_destination/$endpoint_artifact"
 
 dpkg-deb --build --root-owner-group "$package_stage" "$ARDENTS_PACKAGE_OUTPUT"
