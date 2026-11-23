@@ -28,9 +28,22 @@ type ResultSetup struct {
 	ResultRoot       string
 }
 
+// DecodeResultSetupDeclaration parses an exact local result-setup declaration.
+func DecodeResultSetupDeclaration(raw []byte) (ResultSetup, error) {
+	fields, err := setupFields(raw)
+	if err != nil {
+		return ResultSetup{}, err
+	}
+	return DecodeResultSetup(fields)
+}
+
+func setupFields(raw []byte) (map[string]json.RawMessage, error) {
+	return resultFields(raw, "admission_root", "admission_binding", "key_root", "key_binding", "result_root")
+}
+
 // DecodeInstalledResultSetup reads the Linux plan as POSIX data on any host.
 func DecodeInstalledResultSetup(raw []byte) (ResultSetup, error) {
-	fields, err := resultFields(raw, "admission_root", "admission_binding", "key_root", "key_binding", "result_root")
+	fields, err := setupFields(raw)
 	if err != nil {
 		return ResultSetup{}, err
 	}

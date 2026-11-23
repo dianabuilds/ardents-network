@@ -1,6 +1,6 @@
 //go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris
 
-package main
+package artifacts
 
 import (
 	"context"
@@ -54,10 +54,10 @@ func TestInputOpenDoesNotWaitForSubstitutedFIFO(t *testing.T) {
 	if output, err := child.CombinedOutput(); err != nil {
 		t.Fatalf("FIFO open did not return and join: %v %s", err, output)
 	}
-	if _, err := readBounded(selected, 32); err == nil {
+	if _, err := ReadBoundedFile(selected, 32); err == nil {
 		t.Fatal("FIFO accepted as a bounded file")
 	}
-	if _, err := readBounded(os.DevNull, 32); err == nil {
+	if _, err := ReadBoundedFile(os.DevNull, 32); err == nil {
 		t.Fatal("device accepted as a bounded file")
 	}
 }
