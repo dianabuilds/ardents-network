@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: dafdc6384eaa660b4ebdcc4ad1ca675e48c93aed
+          ref: 038168330a84a93c6503fd8a49da730d5a8f8f0f
           path: candidate
           persist-credentials: false
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -31,7 +31,7 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = dafdc6384eaa660b4ebdcc4ad1ca675e48c93aed
+          test "$(git rev-parse HEAD)" = 038168330a84a93c6503fd8a49da730d5a8f8f0f
           test "$(git -C ../predecessor rev-parse HEAD)" = 296adfc54decd3829dbb5306cf958c6ad22155a4
           git show -s --format='candidate=%H tree=%T'
           mkdir -m 0700 "$RUNNER_TEMP/v5-artifacts"
