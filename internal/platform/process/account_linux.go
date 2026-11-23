@@ -1,6 +1,7 @@
 package process
 
 import (
+	"os"
 	"strconv"
 	"strings"
 )
@@ -58,4 +59,23 @@ func DedicatedAccountID(passwd, group []byte, name string) (uint32, bool) {
 		return 0, false
 	}
 	return uid, true
+}
+
+// RequireFixedServicePrincipal checks the invoking process's real and
+// effective user and group IDs and supplementary groups.
+func RequireFixedServicePrincipal() error {
+	uid := os.Geteuid()
+	if uid < 100 || uid > 999 || os.Getuid() != uid || os.Getgid() != uid || os.Getegid() != uid {
+		return errInput
+	}
+	groups, err := os.Getgroups()
+	if err != nil {
+		return err
+	}
+	for _, group := range groups {
+		if group != uid {
+			return errInput
+		}
+	}
+	return nil
 }

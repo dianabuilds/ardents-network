@@ -102,6 +102,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/artifacts/input_linux_test.go",
 			"cmd/ardents-next/source_state_preparation_linux.go",
 			"cmd/ardents-next/source_state_preparation_linux_test.go",
+			"internal/network/state/source_state_files_linux.go",
+			"internal/network/state/source_state_files_linux_test.go",
 			"internal/platform/artifacts/directory_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/input_linux.go",
@@ -721,6 +723,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
 			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
+				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
 				"cmd/ardents-next/network_keys_linux.go", "cmd/ardents-next/network_keys_native_linux_test.go",
 				"cmd/ardents-next/platform_files_linux.go",
@@ -914,12 +917,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/node_prepare_plan.go" || source == "cmd/ardents-next/node_prepare_plan_test.go") && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
-		if (source == "cmd/ardents-next/source_state_preparation_linux.go" || source == "cmd/ardents-next/source_state_preparation_linux_test.go") && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/processresource") {
-			return true
-		}
-		if source == "cmd/ardents-next/source_state_preparation_linux_test.go" && dependency == modulePath+"/internal/network/duty" {
-			return true
-		}
 		if source == "internal/endpoint/declarations_linux.go" && (dependency == modulePath+"/internal/execution" || dependency == modulePath+"/internal/network/source") {
 			return true
 		}
@@ -1064,8 +1061,7 @@ func successorImportAllowed(source, dependency string) bool {
 				"cmd/ardents-next/source_native_linux_test.go",
 				"cmd/ardents-next/source_preparation_process_linux_test.go",
 				"cmd/ardents-next/source_repair_inputs_linux.go",
-				"cmd/ardents-next/source_state_preparation_linux.go",
-				"cmd/ardents-next/source_state_preparation_linux_test.go",
+				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/source_state_linux_test.go":
 				return true
 			}

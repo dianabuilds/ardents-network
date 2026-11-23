@@ -650,12 +650,13 @@ Required checks of an actually selected change remain mandatory.
 
 ## Consistency, resources and completion inventory
 
-Source's explicit offline `ardents-next source prepare-state` composes
-`state.OpenFresh`/Accept and `duty.Initialize` in that order over two original
+Network State owns the offline `ardents-next source prepare-state`
+transaction. It composes `state.OpenFresh`/Accept and `duty.Initialize` in that order over two original
 vacant runtime-owned directories. State owns authenticated acceptance/floors;
 participation owns its empty first generation and exclusive new lease. A
 preparation failure preserves completed and partial native history, with no
-automatic continuation or cleanup. Both owners and inputs join before receipt;
+automatic continuation or cleanup. Platform Artifacts retains and reobserves the public files and prepared
+directories. Both owners and inputs join before the command renders its receipt;
 no Source transport, producer, process Guard or Installation Startup is opened.
 
 Source serving admission claims only an absent State-root-bound participation

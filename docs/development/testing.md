@@ -3151,7 +3151,7 @@ on proven replacement guarantees).
 ## Source installed operator native qualification
 
 `make network-signing-check` includes the finite
-`TestSourcePreparationNativeStateCommand` scenario. It uses the compiled
+`TestSourcePreparationNativeStateCommand` scenario in Network State. It uses the compiled
 command and a real unused system UID/GID in isolated roots. A mismatched
 primary GID refuses before either history is created. The matching principal
 accepts signed initial State and empty participation once, and a repeat
