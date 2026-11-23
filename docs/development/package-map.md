@@ -843,8 +843,8 @@ without loading a private transport key and initializes no runtime or root.
 
 The Source command retains its files, synchronous denial, native-use joins
 and terminal result in `source_custody_linux.go`. Source and platform
-pre-start share original directory traversal and retained file reobservation
-through `internal/platform/artifacts`. The file check reobserves original
+pre-start share original directory traversal, bounded original file reads and
+retained file reobservation through `internal/platform/artifacts`. The file check reobserves original
 directory access, the retained descriptor, linked identity and exact bytes.
 Root-controlled signing remains a separate access check. Each command
 retains its role-specific input policy and deadlines. State and Source own

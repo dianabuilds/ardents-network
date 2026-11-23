@@ -10,6 +10,32 @@ import (
 	"syscall"
 )
 
+// ReadRetainedFile reads one original descriptor after the caller admits its
+// owner and mode. The caller retains the descriptor and must reobserve it with
+// CheckRetainedFile before using the bytes. A partial read is returned so its
+// owner can erase it during the joined cleanup.
+func ReadRetainedFile(file *os.File, maximum int64, admit func(os.FileMode, uint32) bool, afterRead func(*os.File)) (os.FileInfo, []byte, error) {
+	info, err := file.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > maximum {
+		return nil, nil, ErrInput
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || stat.Nlink != 1 || !admit(info.Mode(), stat.Uid) {
+		return nil, nil, ErrInput
+	}
+	raw, err := io.ReadAll(io.LimitReader(file, maximum+1))
+	if afterRead != nil {
+		afterRead(file)
+	}
+	if err == nil && int64(len(raw)) != info.Size() {
+		err = ErrInput
+	}
+	return info, raw, err
+}
+
 // CheckRetainedFile reobserves an admitted original descriptor, its direct
 // link and its bytes under this directory chain. The caller supplies its
 // previously admitted metadata and contents and retains ownership of both
