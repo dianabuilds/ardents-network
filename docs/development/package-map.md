@@ -1006,3 +1006,11 @@ transport is created; retained runtime openings remain noncreating.
 The Linux `cmd/ardents-next/stream_command_linux.go` CLI adapter uses only
 `internal/application/connection` and the standard library for its local
 Application IPC and byte input/output. Endpoint retains admission authority.
+
+The installed Reader's `operation_linux.go` and `byte_stream_linux.go` use
+`internal/application/connection` for profile selection, directional limits
+and the local terminal projection.
+
+Execution's `byte_stream.go` and `byte_stream_linux.go` use the fixed worker
+protocol in `internal/application/document`. Its `stream_contract.go` and exact
+limit test consume the participant limit from `internal/application/connection`.
