@@ -28,4 +28,4 @@ jobs:
           git show -s --format='candidate=%H tree=%T'
           go test -c -tags endpoint_pair_native,document_worker_installed -o "$RUNNER_TEMP/installed-pair.test" ./cmd/ardents-next
           cd cmd/ardents-next
-          sudo env PATH="$PATH" GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" "$RUNNER_TEMP/installed-pair.test" -test.run '^TestNativeInstalledEndpointByteStream$' -test.v -test.timeout=24m
+          sudo env PATH="$PATH" GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" "$RUNNER_TEMP/installed-pair.test" -test.run '^(TestNativeInstalledEndpointByteStream|TestNativeEndpointPlatformLedJourney)$' -test.v -test.timeout=24m
