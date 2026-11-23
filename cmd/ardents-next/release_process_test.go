@@ -295,9 +295,11 @@ func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
 }
 
 func TestReleaseCompiledForeignPlatformRefusesBeforeHistory(t *testing.T) {
-	foreign := "linux-amd64"
-	if runtime.GOOS == "linux" {
-		foreign = "windows-amd64"
+	foreign := "windows-amd64"
+	if runtime.GOOS == "windows" && runtime.GOARCH == "amd64" {
+		// The host must be able to execute the fixture before it can refuse
+		// the enrolled platform. Change the declared CPU but keep .exe.
+		foreign = "windows-arm64"
 	}
 	directory, pin, program := signedConsumerPlatform(t, foreign, false)
 	history := filepath.Join(t.TempDir(), "absent-history")
