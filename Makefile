@@ -443,7 +443,7 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNativeOutputSubstitutionRefuses$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(NetworkSigningInitialKeys|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux

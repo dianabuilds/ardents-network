@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"os"
 )
@@ -26,13 +24,11 @@ func prepareProvisioningKey(ctx context.Context, path, name string, observe func
 		return public, err
 	}
 	copy(public[:], pub)
-	der, err := x509.MarshalPKCS8PrivateKey(key)
+	raw, err := artifacts.EncodeEd25519Key(key)
 	clear(key)
 	if err != nil {
 		return public, err
 	}
-	raw := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
-	clear(der)
 	defer clear(raw)
 	check := func() error {
 		if os.Geteuid() != 0 {
