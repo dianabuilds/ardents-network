@@ -18,7 +18,7 @@ func showPublishedLink(ctx context.Context, socket string, output io.WriteCloser
 	}
 	bounded, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	return withDocumentPresentation(bounded, output.Close, func() error {
+	return withCommandIO(bounded, output.Close, func() error {
 		link, err := administration.RequestPublishedLink(bounded, socket)
 		if err != nil {
 			return err

@@ -1232,7 +1232,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if strings.HasPrefix(dependency, modulePath+"/internal/application/") {
 		switch source {
-		case "cmd/ardents-next/document_command.go", "cmd/ardents-next/document_reader_peer_linux_test.go", "cmd/ardents-next/stream_command_linux.go":
+		case "cmd/ardents-next/document_command.go", "cmd/ardents-next/document_reader_peer_linux_test.go", "cmd/ardents-next/stream_command_linux.go", "cmd/ardents-next/stream_command_linux_test.go":
 			return dependency == modulePath+"/internal/application/connection"
 		case "cmd/ardents-next/document_reader.go", "cmd/ardents-next/document_reader_linux_test.go", "cmd/ardents-next/document_reader_process_linux_test.go":
 			return dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document"

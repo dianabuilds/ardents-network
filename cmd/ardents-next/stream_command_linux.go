@@ -54,7 +54,7 @@ func exchangeApplicationStream(ctx context.Context, stream connection.Stream, in
 	transfer, cancel := context.WithCancel(ctx)
 	defer cancel()
 	joined := make(chan error, 2)
-	return withDocumentPresentation(transfer, func() error {
+	return withCommandIO(transfer, func() error {
 		return errors.Join(input.Close(), output.Close(), stream.Close())
 	}, func() error {
 		go func() {
