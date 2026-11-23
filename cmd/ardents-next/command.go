@@ -22,6 +22,8 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 		}
 	case "publish", "link", "read":
 		return runDocumentCommand(ctx, arguments, diagnostic)
+	case "stream":
+		return runStreamCommand(ctx, args, diagnostic)
 	case "endpoint":
 		return runEndpointCommand(ctx, args, out, diagnostic)
 	case "platform":
