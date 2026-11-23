@@ -3334,7 +3334,7 @@ excludes the tag. It is compile-checked-only by
 it so native coverage counts; executed proof is the explicit manual root-driver
 run on the admitted host.
 
-It proves the FULL platform-led launch chain to protected text Service readiness
+It proves the FULL platform-led launch chain to protected document Service readiness
 for ONE dual-role (publisher+reader) Endpoint (#391 S1): genuine Network State +
 live Source servers + fixture Release authority + enrolled protected candidate;
 the host prepares the dedicated account, vacant roots and signed Worker resources;
@@ -3461,7 +3461,7 @@ manager — distinct namespaces from the host and from each other, Ubuntu
 os-release, original manager at `/init.scope`, reachable system bus — then runs the
 checked `endpoint_launch_native` full-launch qualification inside each guest
 against its own original manager, using the canonical repository and toolchain
-bound at their host paths. Both guests must reach protected text Service readiness
+bound at their host paths. Both guests must reach protected document Service readiness
 with positive and causal-refusal evidence and distinct original InvocationIDs;
 passing skips are refused. Joined cleanup terminates both machines and removes the
 cloned rootfs. Missing privileges, tools, platform or freshness are invalid

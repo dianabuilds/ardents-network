@@ -47,6 +47,39 @@ A Service receives its intended request and may return malicious content.
 The operating system, installed launcher and relevant Endpoint verification
 must survive for process confinement to hold.
 
+## Candidate participant interface for arbitrary data
+
+This proposal requires a successor decision to ADR-0081's fixed document
+Application. The currently supported commands and artifact remain those in the
+[command reference](../reference/commands.md).
+
+| Person | Installs | Candidate action |
+|---|---|---|
+| Sender or receiver using an Application | The protected Endpoint distribution and a locally authorized Application delivered for its exact confinement profile | The Application opens the recipient's Service through the local Application Interface. The sender and the receiving Service exchange ordered bytes using their Application's protocol. |
+| Participant using the command line | The protected Endpoint distribution with a confined byte-stream Application | `ardents stream connect --link TARGET_LINK` reads bytes from standard input and writes response bytes to standard output. The participant supplies a Link explicitly and chooses the local source and destination. |
+| Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | A candidate `ardents service publish --application APPLICATION` starts the locally authorized fixed worker. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
+
+The candidate stream command keeps diagnostics on standard error and reports a
+complete exchange only after authenticated terminal completion. Standard output
+may already contain partial bytes on interruption. EOF on standard input closes
+the local send direction while receiving may continue. Retrying interrupted
+Application effects requires explicit Application or participant action.
+Applications own framing, format and presentation for messages, images, audio
+and other data. The Endpoint owns the destination, authentication, admission
+and Connection lifetime. A worker receives only its scoped attachment. Selected
+Application and worker identities must bind to signed local policy before any
+effect. Remote input cannot select a command, executable or local file path.
+
+A successor decision needs explicit byte, time and concurrency bounds for both
+directions and a compatibility rule for peers that implement only the current
+document profile. Keep the document workload and its signed identities
+unchanged until their separately designed migration is adopted. Qualify the new
+workload through the same protected Route with two installed Endpoints. Exercise
+non-UTF-8 bytes, directional EOF, backpressure, truncation, interrupted transfer,
+revocation and joined cleanup with both positive and causal refusal cases.
+Confidentiality of Application bytes and traffic-correlation exposure require
+separate evidence under the [threat model](../security/threat-model.md).
+
 ## Interaction
 
 1. The Publisher selects one regular local UTF-8 file, at most 4 MiB. A trusted
