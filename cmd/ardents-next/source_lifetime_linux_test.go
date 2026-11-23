@@ -274,7 +274,7 @@ func TestSourceInputLossAfterHealthyObservationRetainsInputCategory(t *testing.T
 	close(release)
 	err := <-joined
 	var terminal *sourceTerminal
-	if !errors.Is(err, errSourceInput) || !errors.As(err, &terminal) || terminal.firstOwner != "input" || !owner.closed {
+	if !errors.Is(err, errSourceInput) || !errors.As(err, &terminal) || terminal.FirstOwner != "input" || !owner.closed {
 		t.Fatal("last healthy process observation replaced original input refusal", err)
 	}
 }

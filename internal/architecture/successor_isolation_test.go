@@ -666,6 +666,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/network/duty":                      {"durablefile", "pathgrammar"},
 		"internal/network/epoch":                     {},
 		"internal/network/source":                    {"network/epoch"},
+		"internal/network/source/serving":            {"network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "processresource"},
 		"internal/network/source/servingdeclaration": {},
 		"internal/network/state":                     {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
 		"internal/network/state/durable":             {"durablefile", "pathgrammar"},
@@ -748,12 +749,20 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_state_linux_test.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/network/duty") {
 			return true
 		}
+		if (source == "cmd/ardents-next/source_linux.go" || source == "cmd/ardents-next/source_serving_fixture_linux_test.go") && dependency == modulePath+"/internal/network/source/serving" {
+			return true
+		}
+		if source == "cmd/ardents-next/source_serving_fixture_linux_test.go" && dependency == modulePath+"/internal/network/state" {
+			return true
+		}
 		if source == "cmd/ardents-next/source_failure_linux.go" && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
-			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
+			case "cmd/ardents-next/source_repair_inputs_linux.go", "cmd/ardents-next/join_repair_linux.go",
+				"cmd/ardents-next/forwarding_repair_linux.go", "cmd/ardents-next/descriptor_repair_linux.go",
+				"cmd/ardents-next/introduction_repair_linux.go", "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
 				"cmd/ardents-next/platform_unit_linux.go",
@@ -1077,7 +1086,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if dependency == modulePath+"/internal/network/source/servingdeclaration" {
 			switch source {
 			case "cmd/ardents-next/platform_linux.go",
-				"cmd/ardents-next/source_custody_linux.go",
+				"cmd/ardents-next/source_serving_fixture_linux_test.go",
 				"cmd/ardents-next/source_custody_linux_test.go",
 				"cmd/ardents-next/source_installed_native_linux_test.go",
 				"cmd/ardents-next/source_lifecycle_native_linux_test.go",

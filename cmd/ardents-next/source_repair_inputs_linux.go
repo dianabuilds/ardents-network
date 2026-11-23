@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
@@ -14,21 +15,21 @@ func acquireSourceRepairInputs(ctx context.Context, path string) (_ sourceInputs
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	inputs := newSourceInputs(ctx, nil)
+	inputs := artifacts.NewObservedInputs(ctx, nil)
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, inputs.Close())
 		}
 	}()
-	file, err := inputs.acquire(path, 16<<10, false)
+	file, err := inputs.Acquire(path, 16<<10, false)
 	if err != nil {
 		return sourceInputs{}, plan, err
 	}
-	native, ok := file.info.Sys().(*syscall.Stat_t)
-	if !ok || native.Uid != 0 || file.info.Mode().Perm()&0022 != 0 {
+	native, ok := file.Info().Sys().(*syscall.Stat_t)
+	if !ok || native.Uid != 0 || file.Info().Mode().Perm()&0022 != 0 {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	plan, err = servingdeclaration.DecodeServingDeclaration(file.raw)
+	plan, err = servingdeclaration.DecodeServingDeclaration(file.Bytes())
 	if err != nil || !validSourceServePlan(plan) {
 		return sourceInputs{}, plan, errSourceInput
 	}
