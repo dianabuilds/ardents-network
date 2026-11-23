@@ -7,8 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -41,7 +39,11 @@ type admissionPlan struct {
 
 func requiredAdmissionObject(raw []byte, keys ...string) bool {
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil || len(fields) != len(keys) {
+	return json.Unmarshal(raw, &fields) == nil && requiredAdmissionFields(fields, keys...)
+}
+
+func requiredAdmissionFields(fields map[string]json.RawMessage, keys ...string) bool {
+	if len(fields) != len(keys) {
 		return false
 	}
 	for _, key := range keys {
@@ -73,123 +75,126 @@ func admissionNumber(value string, bits int) (uint64, error) {
 	}
 	return n, nil
 }
-func decodeAdmissionPlan(raw []byte, operation string) (admissionPlan, error) {
+func decodeAdmissionPlan(raw []byte) (admissionPlan, error) {
+	fields, err := issuerConfigObject(raw, "root", "binding")
+	if err != nil {
+		return admissionPlan{}, err
+	}
+	return decodeAdmissionScope(fields["root"], fields["binding"])
+}
+
+func decodeAdmissionScope(root, binding json.RawMessage) (admissionPlan, error) {
 	var p admissionPlan
+	var err error
+	p.Root, err = issuerConfigPath(root)
+	if err != nil {
+		return p, err
+	}
+	fields, err := issuerConfigObject(binding, "network", "issuer", "authority", "profile", "duty", "start", "end", "keys")
+	if err != nil {
+		return p, err
+	}
+	p.Binding, err = decodeAdmissionBinding(binding, fields)
+	return p, err
+}
+
+// The caller has already checked the exact fields for its command.
+func decodeAdmissionBinding(raw []byte, fields map[string]json.RawMessage) (quota.LedgerBinding, error) {
+	var binding quota.LedgerBinding
 	bad := errors.New("invalid-input")
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.UseNumber()
-	if uniqueJSON(d) != nil {
-		return p, bad
-	}
-	if _, err := d.Token(); err != io.EOF {
-		return p, bad
-	}
-	keys := []string{"root", "binding"}
-	if operation == "debit" {
-		keys = append(keys, "batch_file", "facts", "kind")
-	} else if operation != "initialize" {
-		return p, bad
-	}
-	if !requiredAdmissionObject(raw, keys...) {
-		return p, bad
-	}
-	var fields map[string]json.RawMessage
-	_ = json.Unmarshal(raw, &fields)
-	if json.Unmarshal(fields["root"], &p.Root) != nil || !filepath.IsAbs(p.Root) || filepath.Clean(p.Root) != p.Root {
-		return p, bad
-	}
-	bindingRaw := fields["binding"]
-	if !requiredAdmissionObject(bindingRaw, "network", "issuer", "authority", "profile", "duty", "start", "end", "keys") {
-		return p, bad
-	}
 	var input admissionBindingInput
-	if json.Unmarshal(bindingRaw, &input) != nil {
-		return p, bad
-	}
-	var keyFields []json.RawMessage
-	var bindingFields map[string]json.RawMessage
-	_ = json.Unmarshal(bindingRaw, &bindingFields)
-	_ = json.Unmarshal(bindingFields["keys"], &keyFields)
-	if len(keyFields) < 3 || len(keyFields) > 18 {
-		return p, bad
-	}
-	for _, key := range keyFields {
-		if !requiredAdmissionObject(key, "window", "class", "spki") {
-			return p, bad
-		}
+	if json.Unmarshal(raw, &input) != nil {
+		return binding, bad
 	}
 	for _, item := range []struct {
 		value  string
 		target *[32]byte
-	}{{input.Network, &p.Binding.Network}, {input.Issuer, &p.Binding.Issuer}, {input.Authority, &p.Binding.Authority}, {input.Profile, &p.Binding.Profile}} {
+	}{{input.Network, &binding.Network}, {input.Issuer, &binding.Issuer}, {input.Authority, &binding.Authority}, {input.Profile, &binding.Profile}} {
 		b, err := admissionHex(item.value, 32)
 		if err != nil {
-			return p, bad
+			return binding, bad
 		}
 		copy(item.target[:], b)
 	}
 	var err error
-	p.Binding.Duty, err = admissionNumber(input.Duty, 64)
+	binding.Duty, err = admissionNumber(input.Duty, 64)
 	if err != nil {
-		return p, bad
+		return binding, bad
 	}
-	p.Binding.Start, err = admissionTime(input.Start)
+	binding.Start, err = admissionTime(input.Start)
 	if err != nil {
-		return p, bad
+		return binding, bad
 	}
-	p.Binding.End, err = admissionTime(input.End)
+	binding.End, err = admissionTime(input.End)
 	if err != nil {
-		return p, bad
+		return binding, bad
+	}
+	if _, hasKeys := fields["keys"]; !hasKeys {
+		return binding, nil
+	}
+	var keyFields []json.RawMessage
+	if json.Unmarshal(fields["keys"], &keyFields) != nil || len(keyFields) < 3 || len(keyFields) > 18 {
+		return binding, bad
+	}
+	for _, key := range keyFields {
+		if !requiredAdmissionObject(key, "window", "class", "spki") {
+			return binding, bad
+		}
 	}
 	for _, key := range input.Keys {
 		t, e := admissionTime(key.Window)
 		if e != nil || t.Unix() < 0 {
-			return p, bad
+			return binding, bad
 		}
 		class, e := admissionNumber(key.Class, 8)
 		if e != nil {
-			return p, bad
+			return binding, bad
 		}
 		spki, e := admissionHex(key.SPKI, 346)
 		if e != nil {
-			return p, bad
+			return binding, bad
 		}
-		p.Binding.Keys = append(p.Binding.Keys, issuerprofile.Key{Window: uint64(t.Unix()), Class: uint8(class), SPKI: spki})
+		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: uint64(t.Unix()), Class: uint8(class), SPKI: spki})
 	}
-	if operation == "debit" {
-		if json.Unmarshal(fields["batch_file"], &p.BatchFile) != nil || !filepath.IsAbs(p.BatchFile) || filepath.Clean(p.BatchFile) != p.BatchFile {
-			return p, bad
-		}
-		p.Facts, err = decodeFacts(fields["facts"])
-		if err != nil {
-			return p, bad
-		}
-		// decodeFacts already enforces exact field names and duplicates; strengthen
-		// canonical hex/time for this persisted accounting operation.
-		var values map[string]string
-		_ = json.Unmarshal(fields["facts"], &values)
-		for _, name := range []string{"network", "issuer", "authority", "holder"} {
-			if _, e := admissionHex(values[name], 32); e != nil {
-				return p, bad
-			}
-		}
-		for _, name := range []string{"duty_not_before", "duty_not_after", "now"} {
-			if _, e := admissionTime(values[name]); e != nil {
-				return p, bad
-			}
-		}
-		var kind string
-		if json.Unmarshal(fields["kind"], &kind) != nil {
-			return p, bad
-		}
-		switch kind {
-		case "bootstrap":
-			p.Kind = quota.Bootstrap
-		case "admitted":
-			p.Kind = quota.Admitted
-		default:
-			return p, bad
+	return binding, nil
+}
+
+func (p *admissionPlan) decodeBatch(fields map[string]json.RawMessage) error {
+	bad := errors.New("invalid-input")
+	var err error
+	p.BatchFile, err = issuerConfigPath(fields["batch_file"])
+	if err != nil {
+		return err
+	}
+	p.Facts, err = decodeFacts(fields["facts"])
+	if err != nil {
+		return bad
+	}
+	// decodeFacts already enforces exact field names and duplicates; strengthen
+	// canonical hex/time for this persisted accounting operation.
+	var values map[string]string
+	_ = json.Unmarshal(fields["facts"], &values)
+	for _, name := range []string{"network", "issuer", "authority", "holder"} {
+		if _, e := admissionHex(values[name], 32); e != nil {
+			return bad
 		}
 	}
-	return p, nil
+	for _, name := range []string{"duty_not_before", "duty_not_after", "now"} {
+		if _, e := admissionTime(values[name]); e != nil {
+			return bad
+		}
+	}
+	var kind string
+	if json.Unmarshal(fields["kind"], &kind) != nil {
+		return bad
+	}
+	switch kind {
+	case "bootstrap":
+		p.Kind = quota.Bootstrap
+	case "admitted":
+		p.Kind = quota.Admitted
+	default:
+		return bad
+	}
+	return nil
 }

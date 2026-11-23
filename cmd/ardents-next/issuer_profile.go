@@ -57,15 +57,15 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 	var bytes []byte
 	switch operation {
 	case "node-identity.import":
-		fields, e := profileConfigObject(raw, "root", "binding", "key_file")
+		fields, e := issuerConfigObject(raw, "root", "binding", "key_file")
 		err = e
 		var root, source string
 		var binding signing.Binding
 		if err == nil {
-			root, err = profilePath(fields["root"])
+			root, err = issuerConfigPath(fields["root"])
 		}
 		if err == nil {
-			source, err = profilePath(fields["key_file"])
+			source, err = issuerConfigPath(fields["key_file"])
 		}
 		if err == nil {
 			binding, err = decodeIdentityBinding(fields["binding"])

@@ -6,8 +6,8 @@ The selected implementation remains one local dev slice; no legacy migration.
 
 ## Completed interface design
 
-Admission quota retains Debit and adds DebitVerified, returning Outcome and an opaque
-DebitConfirmation. Both use one locked transaction. Only successful durable debit
+Admission quota exposes `DebitVerified`, returning an outcome and an opaque
+`DebitConfirmation` from one locked transaction. Only a successful durable debit
 or currently revalidated exact retry mints a confirmation. Snapshot returns
 defensive copies of raw batch, exact ledger binding, kind and checked-at time;
 zero confirmation refuses. No public constructor or storage decoder mints one.
@@ -25,7 +25,7 @@ Issue(ctx,DebitConfirmation,now) returns defensive response bytes and category;
 Close retains the shared result. Store must remain open until ResultStore closes.
 Admission -> key Store -> ResultStore is the fixed command lease order, reverse
 cleanup with retained errors. The real operation owner is
-`internal/successor/admission/issuer`: `Initialize(ctx, Plan)` and
+`internal/admission/issuer`: `Initialize(ctx, Plan)` and
 `Issue(ctx, Plan, raw, Facts, Kind)` open those owners before debit and close in
 reverse order. Its project imports are Admission contracts, quota, issuance and issuer-profile signing. The current-authority operation IssueCurrent reuses the same debit/sign/result path with fresh authority and permission-time checks before and after durable work. The command handles strict configuration, response export and OTel;
 quota and signing rules remain within their respective domains. No arbitrary
@@ -129,8 +129,9 @@ Node duty or qualify either Carrier or native process protection.
 issuance initialize-results config fields: admission_root, admission_binding,
 key_root, key_binding, result_root. issue additionally: batch_file, facts, kind,
 response_file. All three roots are canonical absolute and distinct/non-nested;
-strict JSON16KiB, batch16KiB, lowercase hex, whole-second UTC. Initialization
-opens existing Admission and keys, creates only results. Issue debits only after
+strict JSON16KiB, batch16KiB, lowercase hex, whole-second UTC. The CLI parses
+the original Admission and key bindings in place. Initialization opens the
+existing Admission and key stores and creates the result store. Issue debits only after
 all three owners open. Export uses exclusive/idempotent owner-only file adapter;
 export failure retains result. Finite diagnostics and bounded OTel contain only
 operation/phase/outcome and duration; no secret or binding metadata.

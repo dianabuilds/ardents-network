@@ -164,13 +164,11 @@ func TestIssuerProfileCLICompleteTokenCycle(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	var bound admissionBindingInput
-	if e = json.Unmarshal(raw, &bound); e != nil {
-		t.Fatal(e)
-	}
 	expected := init["admission_binding"].(admissionBindingInput)
-	if bound.Profile != expected.Profile || bound.Authority != expected.Authority || bound.Duty != expected.Duty || len(bound.Keys) != len(expected.Keys) {
-		t.Fatal("State facts replaced")
+	fields["keys"] = expected.Keys
+	wantBinding, err := json.Marshal(fields)
+	if err != nil || !bytes.Equal(raw, wantBinding) {
+		t.Fatal("prepared binding changed its canonical bytes", err)
 	}
 	ledgerRoot := filepath.Join(base, "prepared-admission")
 	initializePlan := map[string]any{"root": ledgerRoot, "binding": json.RawMessage(raw)}
@@ -179,9 +177,9 @@ func TestIssuerProfileCLICompleteTokenCycle(t *testing.T) {
 		t.Fatal(r, e)
 	}
 	init["admission_root"] = ledgerRoot
-	init["admission_binding"] = bound
+	init["admission_binding"] = json.RawMessage(raw)
 	issue["admission_root"] = ledgerRoot
-	issue["admission_binding"] = bound
+	issue["admission_binding"] = json.RawMessage(raw)
 	r, e = resultCommand(t, "initialize-results", init, "")
 	if e != nil {
 		t.Fatal(r, e)
