@@ -2946,6 +2946,35 @@ files stay Linux because they compose the Linux `forwarding` lifetime and
 because it composes the Linux `sourceTerminal`. No de-tagged file adds a native
 mechanism or a weaker accepting path.
 
+P1-B batch 3 (#794, #691) de-tagged the next verified pure leaves whose composed
+symbols are already portable: the Reader local Text result projection
+(`endpoint/reader/result.go`), the Publisher root-isolation predicate
+(`endpoint/publisher/roots.go`) and fixed document stream contract
+(`endpoint/publisher/contract.go`), and the Endpoint network presentation guard
+(`endpoint/authority.go`). Each file was re-verified pure at `origin/dev`: zero
+native mechanism and every composed symbol portable (`application/connection`
+and `application/document` projections, `pathgrammar.Strict`, the portable
+`Operation.BindStreamContract`, and `stock`/`network`/`funding` facts). The Reader
+projection test was de-tagged (`result_test.go`) and a new portable root-isolation
+test (`roots_test.go`) added; both execute in the portable deterministic inventory
+on Windows and macOS. The genuine production consumers remain Linux — the Reader
+and Publisher coordinators compose the Linux `LaunchReader`/`LaunchPublisher`
+native worker seams (`reader_worker_linux.go`/`publisher_worker_linux.go`) with
+unchanged `!linux` typed refusals, the Publisher live Open composes selection and
+Instance custody, and `presentationGuard` is composed by `participant_linux.go` —
+so the de-tagged helpers carry reviewed windows-production-dead deadcode
+allowances; `DocumentContract` and `presentationGuard` (no portable test can
+construct the live `Operation`/`RuntimeView`) also carry reviewed platform-native
+test_dead allowances. The remaining dependency chain is recorded precisely: the
+session `Open*` and Publisher/Reader Open compositions are `!linux`-stub-guarded
+boundary decisions blocked by the `route/selection` Windows owner-only defect
+(#793) and the `route/introduction` native slot-history seam
+(`slot_history_linux.go`: `flock`/`inotify`/`O_NOFOLLOW`); `route/receiver`
+composes that introduction Registry, the Node role lifetimes compose
+`receiver.Receiver`, and `endpoint/plan_construction_linux.go` composes the Linux
+`declarations_linux.go` native projections. No de-tagged file adds a native
+mechanism or a weaker accepting path.
+
 P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
 production is already portable: the admission holder permission-request proof,
 the allocation request/decision quota grammar, the token closed-batch blind

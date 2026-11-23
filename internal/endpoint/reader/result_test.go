@@ -1,5 +1,3 @@
-//go:build linux
-
 package reader
 
 import (
@@ -27,6 +25,11 @@ func TestInstalledReaderProjectionRejectsMalformedRequestBeforeWorkerTransfer(t 
 	var body [1]byte
 	if n, err := stream.Read(body[:]); n != 0 || err == nil {
 		t.Fatal("malformed local request exposed a response", n, err)
+	}
+	select {
+	case <-stream.Done():
+	case <-time.After(time.Second):
+		t.Fatal("malformed local request did not report a terminal outcome")
 	}
 	if err := stream.Close(); err == nil || transfers.Load() != 0 || retirements.Load() != 1 {
 		t.Fatal("malformed request reached worker or lost retirement", err, transfers.Load(), retirements.Load())
