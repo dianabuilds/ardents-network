@@ -25,6 +25,8 @@ func run(arguments []string) error {
 		switch arguments[0] {
 		case "worker-reader":
 			return document.RunInheritedWorker(document.ReaderWorker)
+		case "worker-stream":
+			return document.RunInheritedWorker(document.ByteStreamWorker)
 		case "worker-publisher":
 			return document.RunInheritedWorker(document.PublisherWorker)
 		}

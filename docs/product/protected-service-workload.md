@@ -102,9 +102,11 @@ verification without a new cleartext TLS negotiation field or a trial
 Application request. The two local owners must check this binding before they
 hand an authenticated stream to a data worker.
 
-Implementation needs explicit byte, time and concurrency bounds for both
-directions and a compatibility rule for peers that implement only the current
-document profile. Keep the document workload and its signed identities
+The first byte-stream profile admits up to 4 MiB in each direction per
+Connection. Admission uses the original 60-second setup and exchange budget
+and one active exchange per stream job. Shorter authority and resource
+deadlines still apply and recovery cannot renew them. Existing peers retain
+the document profile and refuse a byte-stream binding. Keep the document workload and its signed identities
 unchanged until their separately designed migration is adopted. Qualify the new
 workload through the same protected Route with two installed Endpoints. Exercise
 non-UTF-8 bytes, directional EOF, backpressure, truncation, interrupted transfer,

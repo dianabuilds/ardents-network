@@ -21,14 +21,14 @@ type workerInitialization struct {
 
 func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerInitialization, error) {
 	var header [77]byte
-	if input == nil || (expected != ReaderWorker && expected != PublisherWorker) {
+	if input == nil || (expected != ReaderWorker && expected != PublisherWorker && expected != ByteStreamWorker) {
 		return workerInitialization{}, errors.New("document worker initialization is invalid")
 	}
 	if _, err := io.ReadFull(input, header[:]); err != nil {
 		return workerInitialization{}, err
 	}
 	length := binary.BigEndian.Uint32(header[41:45])
-	if string(header[:8]) != "ARDTWP01" || WorkerMode(header[8]) != expected || length > MaximumBytes || (expected == ReaderWorker && length != 0) {
+	if string(header[:8]) != "ARDTWP01" || WorkerMode(header[8]) != expected || length > MaximumBytes || (expected != PublisherWorker && length != 0) {
 		return workerInitialization{}, errors.New("document worker initialization is invalid")
 	}
 	initial := workerInitialization{mode: expected}

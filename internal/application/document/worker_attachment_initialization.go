@@ -16,8 +16,8 @@ import (
 // isolation assertion or authority to issue a Principal or Grant.
 func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode, nonce [32]byte, snapshot []byte) (resultErr error) {
 	if ctx == nil || attachment == nil || nonce == [32]byte{} ||
-		(mode != ReaderWorker && mode != PublisherWorker) || len(snapshot) > MaximumBytes ||
-		!utf8.Valid(snapshot) || mode == ReaderWorker && len(snapshot) != 0 {
+		(mode != ReaderWorker && mode != PublisherWorker && mode != ByteStreamWorker) || len(snapshot) > MaximumBytes ||
+		!utf8.Valid(snapshot) || mode != PublisherWorker && len(snapshot) != 0 {
 		return errors.New("document worker initialization is invalid")
 	}
 	if ctx.Err() != nil {

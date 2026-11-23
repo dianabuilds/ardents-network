@@ -27,7 +27,7 @@ import (
 // attest installed confinement: Endpoint independently verifies the unit/root/
 // accepted socket.
 func RunInheritedWorker(mode WorkerMode) error {
-	if mode != ReaderWorker && mode != PublisherWorker {
+	if mode != ReaderWorker && mode != PublisherWorker && mode != ByteStreamWorker {
 		return errors.New("document worker mode is unavailable")
 	}
 	if err := verifyWorkerDescriptors(); err != nil {

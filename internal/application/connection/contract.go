@@ -12,6 +12,9 @@ import (
 // once before dialing or at server acceptance, never renewed between phases.
 const ReaderTimeout = 60 * time.Second
 
+// ByteStreamDirectionalLimit is the total bytes admitted per direction.
+const ByteStreamDirectionalLimit uint64 = 4 << 20
+
 const (
 	maximumOutcomeClassBytes  = 128
 	maximumOutcomeReasonBytes = 512
