@@ -216,7 +216,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 	if err != nil {
 		return nil, err
 	}
-	request := transport.ClosedRoleCarrierRequest{CarrierProfile: transport.CarrierProfile(m.CarrierProfile), Endpoint: m.Endpoint, ExpectedServer: m.PublicKey, Deadline: minDeadline(config.Deadline, time.Now().Add(10*time.Second))}
+	request := transport.ClosedRoleCarrierRequest{CarrierProfile: transport.CarrierProfile(m.CarrierProfile), Endpoint: m.Endpoint, ExpectedServer: m.PublicKey, Deadline: framing.MinDeadline(config.Deadline, time.Now().Add(10*time.Second))}
 	if err := transport.ValidateRoleRequest(childContext, request); err != nil {
 		return nil, err
 	}
@@ -236,7 +236,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 	// Cancellation interrupts setup even before a session reader exists.
 	stopSetup := interruptPrefixOpening(childContext, conn)
 	defer func() { p.openingErr = stopSetup() }()
-	if err := conn.SetDeadline(minDeadline(config.Deadline, time.Now().Add(10*time.Second))); err != nil {
+	if err := conn.SetDeadline(framing.MinDeadline(config.Deadline, time.Now().Add(10*time.Second))); err != nil {
 		_ = conn.Close()
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 	if err != nil {
 		return nil, err
 	}
-	secured, err := roletls.OpenRole(childContext, p.child, m.PublicKey, minDeadline(config.Deadline, time.Now().Add(10*time.Second)))
+	secured, err := roletls.OpenRole(childContext, p.child, m.PublicKey, framing.MinDeadline(config.Deadline, time.Now().Add(10*time.Second)))
 	if err != nil {
 		return nil, err
 	}

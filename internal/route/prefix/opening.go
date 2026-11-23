@@ -90,12 +90,3 @@ func (o *prefixOpening) publishBorrow(caller, child context.Context, borrow *Bor
 	p.retainBorrowLocked(borrow)
 	return nil
 }
-
-// minDeadline bounds operation setup by both original owners. The channel
-// independently enforces its own original deadline at each physical effect.
-func minDeadline(a, b time.Time) time.Time {
-	if a.Before(b) {
-		return a
-	}
-	return b
-}

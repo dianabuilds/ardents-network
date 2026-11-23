@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/route"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
@@ -19,7 +20,7 @@ func (p *Prefix) Rendezvous(choice *selection.Rendezvous, slot uint8, excluded [
 	if err != nil {
 		return network.RetainedDuty{}, time.Time{}, err
 	}
-	return duty, minDeadline(choice.NotAfter(), p.config.Deadline), nil
+	return duty, framing.MinDeadline(choice.NotAfter(), p.config.Deadline), nil
 }
 
 // CheckRendezvous verifies the exact received duty through this Prefix's
@@ -101,9 +102,9 @@ func resolveRendezvous(leg selection.Leg, deadline time.Time, view network.Runti
 	if err != nil {
 		return network.RetainedDuty{}, time.Time{}, err
 	}
-	end := minDeadline(deadline, leg.Profile.NotAfter)
-	end = minDeadline(end, duty.Epoch.ValidUntil)
-	end = minDeadline(end, duty.RecordValidUntil)
+	end := framing.MinDeadline(deadline, leg.Profile.NotAfter)
+	end = framing.MinDeadline(end, duty.Epoch.ValidUntil)
+	end = framing.MinDeadline(end, duty.RecordValidUntil)
 	return duty, end, nil
 }
 
