@@ -7,11 +7,20 @@ import (
 	"slices"
 )
 
+// ApplicationProfile is selected by the local operation and the verified Service.
+type ApplicationProfile uint8
+
+const (
+	DocumentApplication ApplicationProfile = iota
+	ByteStreamApplication
+)
+
 // LogicalIdentity is the immutable shared tuple, never local permission. Its
 // exact original verified provenance and lifetime remain with the caller.
 type LogicalIdentity struct {
 	Network, Target, Instance                                 [32]byte
 	InstanceGeneration                                        uint64
+	Application                                               ApplicationProfile
 	Publication, Profile, ConnectionNonce, InitiatorBinding   [32]byte
 	WorkSafetyNotAfter, WorkSafetyMaximum, NoNewRecoveryAfter int64
 }
@@ -35,6 +44,14 @@ func Contexts(identity LogicalIdentity, plaintext [32]byte, generation uint64) (
 	}
 	for _, bound := range []int64{identity.WorkSafetyNotAfter, identity.WorkSafetyMaximum, identity.NoNewRecoveryAfter} {
 		transcript = binary.BigEndian.AppendUint64(transcript, uint64(bound))
+	}
+	switch identity.Application {
+	case DocumentApplication:
+		// The existing document transcript is a compatibility identity.
+	case ByteStreamApplication:
+		transcript = append(transcript, "ardents-application-byte-stream-v1\x00"...)
+	default:
+		return logical, attachment, errors.New("service application profile is invalid")
 	}
 	logical = sha256.Sum256(transcript)
 	transcript = append([]byte("ardents-attachment-context-v3\x00"), logical[:]...)
