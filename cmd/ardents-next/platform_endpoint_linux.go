@@ -265,13 +265,8 @@ func initializeEndpointPlatformTrust(ctx context.Context, files *platformFiles, 
 // installation/start/stop/recovery effect and yields no accepting receipt to replay;
 // success returns only after the verifier physically closes.
 func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, launch platformLaunch, decl requestinput.Declaration, roots []string, unit []byte, candidate enrollment.Candidate, checkProgram, manifest, pin string) error {
-	passwd, err := files.Read("/etc/passwd", 1<<20, false)
-	if err != nil {
+	if _, err := files.readAccount(platformUser(launch)); err != nil {
 		return err
-	}
-	group, err := files.Read("/etc/group", 1<<20, false)
-	if err != nil || !platformAccount(passwd, group, platformUser(launch)) {
-		return errPlatformInput
 	}
 	installed, err := files.Read("/etc/systemd/system/ardents-endpoint.service", 64<<10, false)
 	if err != nil || !bytes.Equal(installed, unit) {

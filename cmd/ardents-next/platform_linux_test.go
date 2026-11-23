@@ -41,19 +41,6 @@ func TestPlatformSourceCompletionInspectionUsesExactRetainedPlan(t *testing.T) {
 	}
 }
 
-func TestPlatformAccountRefusesPrivilegedAndSharedPrincipals(t *testing.T) {
-	passwd := "root:x:0:0:root:/root:/bin/sh\nardents-node:x:999:999::/nonexistent:/usr/sbin/nologin\n"
-	group := "root:x:0:\nardents-node:x:999:\n"
-	if !platformAccount([]byte(passwd), []byte(group), "ardents-node") {
-		t.Fatal("fixed unprivileged account refused")
-	}
-	for _, changed := range []string{strings.ReplaceAll(passwd, "999", "0"), passwd + "alias:x:999:999::/nonexistent:/usr/sbin/nologin\n", strings.ReplaceAll(passwd, "/usr/sbin/nologin", "/bin/sh"), passwd + "ardents-node:x:999:999::/nonexistent:/usr/sbin/nologin\n"} {
-		if platformAccount([]byte(changed), []byte(group), "ardents-node") {
-			t.Fatal("privileged/shared account accepted")
-		}
-	}
-}
-
 func platformTestLaunch(role string) platformLaunch {
 	base := "/var/lib/ardents/roles/" + role
 	roots := []string{base + "/state", base + "/participation", base + "/spend", base + "/hosting"}

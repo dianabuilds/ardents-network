@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/process"
 )
 
 // Sequential pre-start composition retains existing native file owners. There
@@ -81,6 +83,22 @@ func (f *platformFiles) Read(path string, maximum int64, executable bool) ([]byt
 		return nil, errPlatformInput
 	}
 	return input.raw, nil
+}
+
+func (f *platformFiles) readAccount(name string) (uint32, error) {
+	passwd, err := f.Read("/etc/passwd", 1<<20, false)
+	if err != nil {
+		return 0, err
+	}
+	group, err := f.Read("/etc/group", 1<<20, false)
+	if err != nil {
+		return 0, errPlatformInput
+	}
+	uid, ok := process.DedicatedAccountID(passwd, group, name)
+	if !ok {
+		return 0, errPlatformInput
+	}
+	return uid, nil
 }
 
 func (f *platformFiles) Check(ctx context.Context) error {
