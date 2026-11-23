@@ -183,3 +183,42 @@ func TestTypedConnectionPreservesAllBytesAcrossUnequalFragmentsAfterInputEOF(t *
 		t.Fatalf("owner Open calls = %d", owner.calls.Load())
 	}
 }
+
+func TestByteStreamIPCPreservesPayloadLargerThanOneFrame(t *testing.T) {
+	owner := &reverseOwner{opened: make(chan *reverseAfterEOFStream, 1)}
+	path := shortSocketPath(t)
+	server, err := connection.Listen(path, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	stream, err := connection.Dial(ctx, path, connection.Request{
+		Application: connection.ByteStream, Destination: connection.TargetLink, Value: "all-byte-conformance",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stream.Close()
+
+	sent := bytes.Repeat([]byte{0, 255, 128, 7, 5}, 6554)
+	if n, err := stream.Write(sent); err != nil || n != len(sent) {
+		t.Fatalf("write = %d, %v", n, err)
+	}
+	if err := stream.CloseInput(); err != nil {
+		t.Fatal(err)
+	}
+	received, err := io.ReadAll(stream)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Reverse(sent)
+	if !bytes.Equal(received, sent) {
+		t.Fatalf("received %d of %d bytes", len(received), len(sent))
+	}
+	if result := <-stream.Done(); result.Class != connection.CleanClose {
+		t.Fatal(result)
+	}
+}

@@ -35,3 +35,26 @@ func TestRequestRejectsUnknownAndNoncanonicalDestination(t *testing.T) {
 		})
 	}
 }
+
+func TestRequestUsesDistinctApplicationIdentities(t *testing.T) {
+	for _, test := range []struct {
+		application Application
+		wire        string
+	}{
+		{Document, "AAI3\x02\x00\x01x"},
+		{ByteStream, "AAI4\x02\x00\x01x"},
+	} {
+		want := Request{Application: test.application, Destination: TargetLink, Value: "x"}
+		raw, err := EncodeRequest(want)
+		if err != nil || string(raw) != test.wire {
+			t.Fatalf("encode = %q, %v", raw, err)
+		}
+		got, err := DecodeRequest(raw)
+		if err != nil || got != want {
+			t.Fatalf("decode = %+v, %v", got, err)
+		}
+	}
+	if _, err := DecodeRequest([]byte("AAI4\x01\x00\x01x")); err == nil {
+		t.Fatal("byte-stream Name was accepted")
+	}
+}

@@ -54,7 +54,7 @@ network token, software authorization and confinement evidence are distinct fact
 | Service Connection | Destination/provenance, Instance authentication, logical bytes, Attachment generation, recovery deadline and terminal result | Retain exact Job lifetime; recovery never creates a new Job, Grant or Application operation |
 | Software acceptance | Enrollment/Release verification and floors, selected artifact authorization, installation/replacement journal and predecessor transition | Runtime consumes exact authorized artifact/binding; verifying installed bytes does not authorize a Release |
 | Custody | Purpose-specific authority storage and approved signing | No private keys, general signing interface or authority export in Execution |
-| Text Application | Snapshot import, UTF-8/document grammar, stream multiplexing/credit and escaped presentation | Fixed initialization protocol and bounded byte-use lifetime; document semantics remain with Text |
+| Document Application | Snapshot import, UTF-8/document grammar, stream multiplexing/credit and escaped presentation | Fixed initialization protocol and bounded byte-use lifetime; document semantics remain with the Document Application |
 | Application IPC | AAI3/Administration wire grammar, socket setup/peer cancellation and response classification | Consume local authorization and return/close actual operation handles; IPC cannot attest confinement |
 | Process resources | Whole-process pressure, placement, measurements and NORMAL/PROTECT/DRAIN policy | Worker confinement limits are physical enforcement; global pressure remains a different owner |
 | Qualification | Run identity, workload schedule/canaries, observers, sampling and reports | A separately selected fixed worker may use the lifecycle mechanism; qualification is not ordinary Job policy |
@@ -153,7 +153,7 @@ Local cleanup capacity and Broker active count are distinct. Releasing a revoked
 lease does not prove joined descendants or create new cleanup capacity. Network
 token spend remains irreversible; local release cannot refund it.
 
-### Original Text operation and retained Reader result
+### Original document operation and retained Reader result
 
 The runtime also admits fresh local Administration requests for Link and
 Withdraw through the same original authority and cleanup supervisor. Each

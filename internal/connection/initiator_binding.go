@@ -62,7 +62,7 @@ func prepareInitiator(ctx context.Context, source *InitiatorSource, proof public
 	if err != nil {
 		return nil, capsule.Request{}, err
 	}
-	derived, err := deriveRecipientBinding(proof, profile, request, digest, localEnd, time.Now())
+	derived, err := deriveRecipientGeneration(proof, profile, request, digest, localEnd, time.Now(), 1, wire.ProfileForOperation(operation.UsesByteStream()))
 	if err != nil {
 		return nil, capsule.Request{}, err
 	}

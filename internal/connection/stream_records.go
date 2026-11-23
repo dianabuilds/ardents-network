@@ -18,6 +18,7 @@ type attachmentRecords struct {
 	readerDone, writerDone     chan struct{}
 	retiring                   bool // Stream.mu seals both actors before interruption.
 	retired, replaced          chan struct{}
+	recoveryCause              error // First trigger, assigned under Stream.mu.
 	readerResult, writerResult error // Each actor publishes before its done channel.
 }
 
@@ -65,7 +66,7 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 						return nil
 					}
 					if !errors.Is(readErr, wire.ErrInvalidRecord) && (stream.publisherRoute != nil || stream.initiatorRoute != nil) {
-						if err := stream.startRecoveryLocked(records); err != nil {
+						if err := stream.startRecoveryLocked(records, readErr); err != nil {
 							return errors.Join(readErr, err)
 						}
 						finished = true
@@ -239,7 +240,7 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 			}
 			if err != nil {
 				if !errors.Is(err, wire.ErrInvalidRecord) && (stream.publisherRoute != nil || stream.initiatorRoute != nil) {
-					if recoveryErr := stream.startRecoveryLocked(records); recoveryErr != nil {
+					if recoveryErr := stream.startRecoveryLocked(records, err); recoveryErr != nil {
 						return errors.Join(err, recoveryErr)
 					}
 					finished = true

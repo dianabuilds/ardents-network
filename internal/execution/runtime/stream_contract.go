@@ -1,6 +1,12 @@
 package runtime
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
+)
+
+const qualificationDirectionalLimit uint64 = 64 << 20
 
 // StreamContract is a checked directional byte contract from trusted workload
 // composition, bound to the original qualified operation. It grants neither
@@ -14,13 +20,14 @@ type StreamContract struct {
 
 // BindStreamContract admits the workload's original limits, not peer fields.
 // Ordinary document composition supplies its request/response bounds; trusted
-// qualification composition may supply the existing 64MiB directional bound.
+// qualification composition may supply the existing 64 MiB directional bound.
+// The participant byte-stream profile has one fixed symmetric budget.
 // Once bound, this operation cannot select a different contract for recovery.
 func (operation *Operation) BindStreamContract(send, receive uint64) (StreamContract, error) {
 	if err := operation.Check(); err != nil {
 		return StreamContract{}, err
 	}
-	if send == 0 || receive == 0 || send > 64<<20 || receive > 64<<20 {
+	if !validStreamLimits(operation.UsesByteStream(), send, receive) {
 		return StreamContract{}, errors.New("execution stream byte contract is invalid")
 	}
 	operation.contractMu.Lock()
@@ -50,4 +57,11 @@ func (contract StreamContract) Limits(operation *Operation) (uint64, uint64, err
 		return 0, 0, errors.New("original execution stream contract differs")
 	}
 	return contract.send, contract.receive, operation.Check()
+}
+
+func validStreamLimits(byteStream bool, send, receive uint64) bool {
+	if byteStream {
+		return send == connection.ByteStreamDirectionalLimit && receive == connection.ByteStreamDirectionalLimit
+	}
+	return send > 0 && receive > 0 && send <= qualificationDirectionalLimit && receive <= qualificationDirectionalLimit
 }

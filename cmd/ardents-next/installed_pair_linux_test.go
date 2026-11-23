@@ -25,6 +25,7 @@ type installedPairMessage struct {
 	Network    *installedStartupNetwork
 	Body       []byte
 	Link       string
+	Failure    string
 	Original   [3]string
 	Principals [3]string
 }

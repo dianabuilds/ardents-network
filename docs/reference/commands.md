@@ -13,7 +13,7 @@ and signed infrastructure artifact preparation.
 | Offline Service or Admission Authority operator | Independently authenticated [standalone Custody executable](#ardents-custody) and a separate encrypted Vault | Run `ardents-custody create-service-authority` or `ardents-custody create-admission-authority` with the listed flags. The same utility issues, verifies and handles locked recovery. |
 | Release or qualification operator | Reviewed source, the pinned toolchain and an admitted stand for installed checks | Run `ardents enrollment check-candidate BUNDLE` for the packaging check. The installed worker is a signed resource, and qualification workers are built only by their test recipes. |
 
-The C0 participant commands expose the bounded UTF-8 document application.
+The Endpoint candidate exposes bidirectional Application streams and the existing document application.
 The product target is protected exchange of ordered Application bytes.
 Applications own the meaning and presentation of messages, images, audio,
 documents and files.
@@ -310,7 +310,12 @@ Every command fails closed on malformed, unavailable, or unqualified input.
 Its bounded input belongs to the owning Module; a plan is not an ambient
 configuration format or an authority source.
 
-## `ardents-next`
+## Infrastructure and Endpoint operator commands
+
+The Endpoint distribution exposes `ardents`. Its Go command source is
+`cmd/ardents-next`. Infrastructure examples using `ardents-next` refer to a
+reviewed source build or the program bound by the role's signed distribution.
+Follow that distribution's exact program and unit paths on managed hosts.
 
 ### Public Network preparation in the isolated command
 
@@ -411,7 +416,7 @@ Windows, macOS and Ubuntu for offline preparation. Endpoint activation and
 pre-start verification use the admitted Ubuntu system manager. Existing installation data remains on disk.
 
 Before first Endpoint runtime, the actual runtime principal runs
-`ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE SIGNED_PROFILE`.
+`ardents endpoint prepare-history HEADLESS_PLAN BUNDLE SIGNED_PROFILE`.
 The bounded v2 Headless declaration supplies only trust, clock and storage
 targets here; it is not accepting runtime-plan validation. `BUNDLE` uses the
 existing Source bundle framing and `SIGNED_PROFILE` the signed closed profile.
@@ -431,13 +436,12 @@ other platforms refuse before reading the declaration.
 `ardents` is the Endpoint and Network State command adapter.
 
 The Portable per-user `endpoint user-unit`/`endpoint enroll` start route is
-retired (#617 S3.5); platform delivery owns first execution. Use `ardents-next
-platform unit` with `endpoint construct-plan` and `prepare-history`, then
-`ardents-next endpoint start-installed` under the platform unit. The
+retired (#617 S3.5); platform delivery owns first execution. Use `ardents platform unit` with `endpoint construct-plan` and `prepare-history`, then
+`ardents endpoint start-installed` under the platform unit. The
 [independently pinned Ubuntu verification procedure](portable-enrollment.md)
 still applies before running a downloaded program.
 
-After Endpoint `platform initialize-trust`, `ardents-next platform
+After Endpoint `platform initialize-trust`, `ardents platform
 stage-endpoint <request>` seals the independently pinned generation using
 the already committed Release metadata. Run it as the enrolled executable.
 The host must provide the dedicated Endpoint account and its empty private
@@ -467,7 +471,7 @@ paths for the executable, the four Worker units and the polkit rule.
 Endpoint independently compares these files to the sealed generation.
 
 After staging, initialize the domain histories through their owning
-commands. Install the output of `ardents-next platform unit <launch>`
+commands. Install the output of `ardents platform unit <launch>`
 as the fixed Endpoint system unit, reload systemd, and start that unit.
 Its pre-start check and the Endpoint's original runtime observations
 still determine whether the launch can accept work.
@@ -931,6 +935,25 @@ operation.
 
 The former Control executable and its retirement-only selectors are removed.
 The ACA1/ACA2 decisions remain historical evidence for their original inputs.
+
+## Bidirectional Application stream
+
+The protected Endpoint candidate offers one bidirectional Application exchange
+over the same authenticated Service Connection. The operator publishes a
+single-exchange Service with `ardents stream publish ADMINISTRATION_SOCKET`.
+After `ardents link ADMINISTRATION_SOCKET` supplies the Target Link, the
+participant stores it in a private regular file and runs
+`ardents stream connect APPLICATION_SOCKET --link-file PRIVATE_LINK_FILE`.
+Supply absolute paths and keep the Link file readable only by its owner.
+
+Use pipes for byte input and output on the selected installed Linux profile.
+Each direction carries up to 4 MiB. The exchange has independently bounded
+lifetime and may end earlier when authority or capacity expires. EOF on input
+ends sending while receiving remains available. The commands report errors on
+standard error and return success only after the authenticated terminal result.
+An interrupted exchange can leave partial output. A completed publication
+withdraws its Link. The installed two-Endpoint qualification gates support
+for this candidate.
 
 ## Document commands and worker
 

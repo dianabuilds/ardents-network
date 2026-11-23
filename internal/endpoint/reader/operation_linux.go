@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
@@ -23,11 +24,22 @@ type readerOperation struct {
 }
 
 // beginRead qualifies the original worker before any Source or Application effect.
-func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32]byte) (*readerOperation, error) {
+func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32]byte, profile application.Application) (*readerOperation, error) {
 	if ctx == nil || local == nil {
 		return nil, errors.New("original Reader runtime is unavailable")
 	}
-	worker, err := local.LaunchReader(ctx, principal)
+	var worker *executionruntime.Invocation
+	var err error
+	send, receive := uint64(512), uint64(document.MaximumBytes+13)
+	switch profile {
+	case application.Document:
+		worker, err = local.LaunchReader(ctx, principal)
+	case application.ByteStream:
+		worker, err = local.LaunchByteStreamReader(ctx, principal)
+		send, receive = application.ByteStreamDirectionalLimit, application.ByteStreamDirectionalLimit
+	default:
+		return nil, errors.New("Reader Application profile is unavailable")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +47,7 @@ func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32
 	if err != nil {
 		return nil, errors.Join(err, worker.Close())
 	}
-	contract, err := operation.BindStreamContract(512, uint64(document.MaximumBytes+13))
+	contract, err := operation.BindStreamContract(send, receive)
 	if err != nil {
 		operation.Close()
 		return nil, errors.Join(err, worker.Close())

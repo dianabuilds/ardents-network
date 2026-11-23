@@ -1221,10 +1221,13 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return false
 	}
-	if source == "internal/endpoint/reader/operation_linux.go" && dependency == modulePath+"/internal/application/document" {
+	if (source == "internal/endpoint/reader/operation_linux.go" || source == "internal/endpoint/reader/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (source == "internal/endpoint/reader/reader_linux.go" || source == "internal/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
+	if source == "internal/application/administration/byte_stream_linux.go" && dependency == modulePath+"/internal/application/connection" {
+		return true
+	}
+	if (source == "internal/endpoint/reader/reader_linux.go" || source == "internal/endpoint/reader/operation_linux.go" || source == "internal/endpoint/reader/byte_stream_linux.go" || source == "internal/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "cmd/ardents-next/diagnostic_timeline.go" && local == "internal/diagnostics/timeline" {
@@ -1235,7 +1238,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if strings.HasPrefix(dependency, modulePath+"/internal/application/") {
 		switch source {
-		case "cmd/ardents-next/document_command.go", "cmd/ardents-next/document_reader_peer_linux_test.go":
+		case "cmd/ardents-next/document_command.go", "cmd/ardents-next/document_reader_peer_linux_test.go", "cmd/ardents-next/stream_command_linux.go", "cmd/ardents-next/stream_command_linux_test.go":
 			return dependency == modulePath+"/internal/application/connection"
 		case "cmd/ardents-next/document_reader.go", "cmd/ardents-next/document_reader_linux_test.go", "cmd/ardents-next/document_reader_process_linux_test.go":
 			return dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document"
@@ -1265,6 +1268,12 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if (source == "internal/execution/runtime/publisher_worker_linux.go" || source == "internal/execution/runtime/publisher_worker_linux_test.go") && dependency == modulePath+"/internal/application/document" {
+		return true
+	}
+	if (source == "internal/execution/runtime/byte_stream.go" || source == "internal/execution/runtime/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
+		return true
+	}
+	if (source == "internal/execution/runtime/stream_contract.go" || source == "internal/execution/runtime/stream_contract_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "internal/execution/runtime/reader_worker_linux.go" && dependency == modulePath+"/internal/application/document" {
@@ -1346,6 +1355,12 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
+		return true
+	}
+	if (source == "internal/endpoint/publisher/publisher_linux.go" || source == "internal/endpoint/publisher/opening_linux.go" || source == "internal/endpoint/publisher/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
+		return true
+	}
+	if source == "internal/endpoint/publisher/byte_stream_linux.go" && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "internal/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {

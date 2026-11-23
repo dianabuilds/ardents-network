@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	magic         = "AAI3"
+	localMagic    = "AAI3"
+	streamMagic   = "AAI4"
 	maximumTarget = 512
 )
 
@@ -21,17 +22,30 @@ const (
 	TargetLink DestinationTag = 2
 )
 
+// Application identifies a fixed local workload, independent of the destination.
+type Application uint8
+
+const (
+	Document Application = iota
+	ByteStream
+)
+
 // Request carries one bounded local destination. It carries no Route, peer,
 // grant, key, filesystem path, or Application-selected authority.
 type Request struct {
+	Application Application
 	Destination DestinationTag
 	Value       string
 }
 
-// EncodeRequest returns the canonical AAI3 first request.
+// EncodeRequest returns the canonical request for the selected Application.
 func EncodeRequest(request Request) ([]byte, error) {
 	if err := validRequest(request); err != nil {
 		return nil, err
+	}
+	magic := localMagic
+	if request.Application == ByteStream {
+		magic = streamMagic
 	}
 	raw := make([]byte, len(magic)+1+2+len(request.Value))
 	copy(raw, magic)
@@ -42,9 +56,15 @@ func EncodeRequest(request Request) ([]byte, error) {
 }
 
 func validRequest(request Request) error {
+	if request.Application != Document && request.Application != ByteStream {
+		return errors.New("local Application profile is invalid")
+	}
+	if request.Application == ByteStream && request.Destination != TargetLink {
+		return errors.New("byte stream requires a Target Link")
+	}
 	if (request.Destination != Name && request.Destination != TargetLink) || len(request.Value) == 0 ||
 		len(request.Value) > maximumTarget || !utf8.ValidString(request.Value) {
-		return errors.New("local text Connection destination is invalid")
+		return errors.New("local Application Connection destination is invalid")
 	}
 	return nil
 }

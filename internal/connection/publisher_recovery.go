@@ -85,7 +85,7 @@ func (route *publisherRouteAcquisition) close() {
 
 // Stream.mu admits one original interruption/join and clock for both physical
 // actors, including simultaneous losses and peer proposals before local loss.
-func (stream *Stream) startRecoveryLocked(records *attachmentRecords) error {
+func (stream *Stream) startRecoveryLocked(records *attachmentRecords, cause error) error {
 	if stream.records != records || records.generation != stream.send.generation || (stream.publisherRoute == nil && stream.initiatorRoute == nil) {
 		return errIntegrity
 	}
@@ -105,6 +105,7 @@ func (stream *Stream) startRecoveryLocked(records *attachmentRecords) error {
 	if err := stream.recovery.start(records.generation, time.Now()); err != nil {
 		return err
 	}
+	records.recoveryCause = cause
 	records.retiring = true
 	deadline := stream.recovery.deadline
 	stream.recoveryUsers.Add(1)
@@ -153,8 +154,22 @@ func (stream *Stream) joinFailedAttachment(records *attachmentRecords, deadline 
 	case <-timer.C:
 		stream.mu.Lock()
 		if stream.records == records && !stream.closing {
-			stream.failLocked(errRecoveryExhausted)
+			stream.failLocked(recoveryFailure(records.recoveryCause, errRecoveryExhausted))
 		}
 		stream.mu.Unlock()
 	}
+}
+
+type originalAttachmentFailure struct{ cause error }
+
+func (failure originalAttachmentFailure) Error() string {
+	return "original Service Connection attachment failed"
+}
+func (failure originalAttachmentFailure) Unwrap() error { return failure.cause }
+
+func recoveryFailure(cause, outcome error) error {
+	if cause == nil {
+		return outcome
+	}
+	return errors.Join(outcome, originalAttachmentFailure{cause: cause})
 }

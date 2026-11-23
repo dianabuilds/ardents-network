@@ -4,6 +4,7 @@ package document
 type WorkerMode uint8
 
 const (
-	ReaderWorker    WorkerMode = 1
-	PublisherWorker WorkerMode = 2
+	ReaderWorker     WorkerMode = 1
+	PublisherWorker  WorkerMode = 2
+	ByteStreamWorker WorkerMode = 3
 )

@@ -7,7 +7,7 @@ import (
 
 // The trusted UI owns these original file descriptions until any interrupt
 // has finished. The caller supplies an interruptible close for its own I/O.
-func withDocumentPresentation(ctx context.Context, closeIO, present func() error) (outcome error) {
+func withCommandIO(ctx context.Context, closeIO, present func() error) (outcome error) {
 	var closeErr error
 	closed := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {

@@ -40,7 +40,7 @@ func executeDocumentCommand(ctx context.Context, arguments []string) error {
 func documentFailure(err error) string {
 	switch {
 	case errors.Is(err, errDocumentUsage):
-		return documentUsage
+		return participantUsage
 	case errors.Is(err, context.Canceled):
 		return "read cancelled"
 	case errors.Is(err, context.DeadlineExceeded):

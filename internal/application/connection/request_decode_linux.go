@@ -7,17 +7,27 @@ import (
 	"errors"
 )
 
-// DecodeRequest accepts exactly one canonical AAI3 request. Name is returned
+// DecodeRequest accepts exactly one canonical local request. Name is returned
 // as a typed request; its receiver must refuse it before any network effect.
 func DecodeRequest(raw []byte) (Request, error) {
-	if len(raw) < len(magic)+3 || string(raw[:len(magic)]) != magic {
-		return Request{}, errors.New("local text Connection request is invalid")
+	const magicSize = len(localMagic)
+	if len(raw) < magicSize+3 {
+		return Request{}, errors.New("local Application Connection request is invalid")
 	}
-	length := int(binary.BigEndian.Uint16(raw[len(magic)+1:]))
-	if length == 0 || length > maximumTarget || len(raw) != len(magic)+3+length {
-		return Request{}, errors.New("local text Connection destination is invalid")
+	var application Application
+	switch string(raw[:magicSize]) {
+	case localMagic:
+		application = Document
+	case streamMagic:
+		application = ByteStream
+	default:
+		return Request{}, errors.New("local Application Connection request is invalid")
 	}
-	request := Request{Destination: DestinationTag(raw[len(magic)]), Value: string(raw[len(magic)+3:])}
+	length := int(binary.BigEndian.Uint16(raw[magicSize+1:]))
+	if length == 0 || length > maximumTarget || len(raw) != magicSize+3+length {
+		return Request{}, errors.New("local Application Connection destination is invalid")
+	}
+	request := Request{Application: application, Destination: DestinationTag(raw[magicSize]), Value: string(raw[magicSize+3:])}
 	if err := validRequest(request); err != nil {
 		return Request{}, err
 	}

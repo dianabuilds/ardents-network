@@ -62,7 +62,7 @@ func (stream *Stream) recoverInitiator(records *attachmentRecords) {
 		if err != nil {
 			stream.mu.Lock()
 			if !stream.closing && stream.ctx.Err() == nil && stream.records == records {
-				stream.failLocked(errors.Join(last, err))
+				stream.failLocked(recoveryFailure(records.recoveryCause, errors.Join(last, err)))
 			}
 			stream.mu.Unlock()
 			return

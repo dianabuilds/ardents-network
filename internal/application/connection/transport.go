@@ -70,7 +70,7 @@ func (server *server) serve() {
 		if server.ctx.Err() != nil || len(server.clients) >= 64 {
 			server.mu.Unlock()
 			_ = connection.SetDeadline(time.Now().Add(time.Second))
-			_ = writeRefusal(connection, Refuse(Outcome{Class: CapacityUnavailable, Reason: "local Application capacity exhausted"}))
+			_ = WriteLocalStreamRefusal(connection, Refuse(Outcome{Class: CapacityUnavailable, Reason: "local Application capacity exhausted"}))
 			_ = connection.Close()
 			continue
 		}
@@ -97,7 +97,7 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 	}
 	targetLink, err := readRequest(local)
 	if err != nil {
-		_ = writeRefusal(local, err)
+		_ = WriteLocalStreamRefusal(local, err)
 		return
 	}
 	if err := local.SetDeadline(deadline); err != nil {
@@ -105,13 +105,19 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 	}
 	application, cancel, err := server.openAuthorizedAttachment(local, targetLink, deadline)
 	if err != nil || application == nil {
-		_ = writeRefusal(local, err)
+		_ = WriteLocalStreamRefusal(local, err)
 		return
 	}
 	defer cancel()
-	stop := context.AfterFunc(server.ctx, func() { _ = application.Close() })
+	server.retainCleanupFailure(ServeLocalStream(server.ctx, local, application, targetLink.Application == ByteStream))
+}
+
+// ServeLocalStream owns the established local framing and joins its reader.
+// Local callers must authorize the stream before passing it here.
+func ServeLocalStream(ctx context.Context, local *net.UnixConn, application Stream, directionalEOF bool) (result error) {
+	stop := context.AfterFunc(ctx, func() { _ = application.Close() })
 	defer stop()
-	defer func() { server.retainCleanupFailure(application.Close()) }()
+	defer func() { result = errors.Join(result, application.Close()) }()
 	if _, err := local.Write([]byte{1}); err != nil {
 		return
 	}
@@ -130,6 +136,11 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 			return
 		}
 		if readErr != nil {
+			if directionalEOF && errors.Is(readErr, io.EOF) {
+				if _, err := local.Write([]byte{0, 0, 0, 0}); err != nil {
+					return err
+				}
+			}
 			break
 		}
 	}
@@ -139,16 +150,17 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 		if open {
 			outcome = value
 		}
-	case <-server.ctx.Done():
+	case <-ctx.Done():
 		outcome = Outcome{Class: LocalTimeout, Reason: "Endpoint stopped"}
 	}
 	if outcome.Class == "" {
 		outcome = Outcome{Class: IndeterminateFailure, Reason: "Application Connection ended without an outcome"}
 	}
-	if err := application.Close(); err != nil {
+	if err := application.Close(); err != nil && (!directionalEOF || outcome.Class == CleanClose) {
 		outcome = Outcome{Class: IndeterminateFailure, Reason: "Application cleanup did not complete"}
 	}
 	_ = writeTerminal(local, outcome)
+	return result
 }
 
 // retainCleanupFailure keeps one local failure across attachment turnover.
@@ -189,7 +201,10 @@ func (server *server) Close() error {
 
 func readRequest(reader io.Reader) (Request, error) {
 	var header [7]byte
-	if _, err := io.ReadFull(reader, header[:]); err != nil || string(header[:4]) != localMagic {
+	if _, err := io.ReadFull(reader, header[:]); err != nil {
+		return Request{}, errors.New("local Application request is invalid")
+	}
+	if magic := string(header[:4]); magic != localMagic && magic != streamMagic {
 		return Request{}, errors.New("local Application request is invalid")
 	}
 	length := int(binary.BigEndian.Uint16(header[5:]))
@@ -210,7 +225,7 @@ func readRequest(reader io.Reader) (Request, error) {
 	}
 	return request, nil
 }
-func writeRefusal(writer io.Writer, cause error) error {
+func WriteLocalStreamRefusal(writer io.Writer, cause error) error {
 	if _, err := writer.Write([]byte{0}); err != nil {
 		return err
 	}

@@ -14,7 +14,7 @@ func (operation *Operation) CheckReader() error {
 	}
 	invocation := operation.invocation
 	invocation.useMu.Lock()
-	valid := !invocation.closing && invocation.operation == operation && invocation.readerInput != nil && invocation.readerCaller != nil
+	valid := !invocation.closing && invocation.operation == operation && (invocation.readerInput != nil || invocation.byteStreamInput != nil) && invocation.readerCaller != nil
 	caller := invocation.readerCaller
 	invocation.useMu.Unlock()
 	if !valid {

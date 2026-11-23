@@ -222,7 +222,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	// before publishing offsets or replay decisions; pending local bytes survive.
 	err = stream.commit(func() error {
 		proposal.previous = stream.records
-		return stream.startRecoveryLocked(proposal.previous)
+		return stream.startRecoveryLocked(proposal.previous, nil)
 	})
 	if err != nil {
 		return nil, err
