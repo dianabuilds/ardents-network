@@ -1,4 +1,4 @@
-# Installed text-worker lifecycle
+# Installed worker lifecycle
 
 `make text-worker-lifecycle-check` selects `TestInstalledExecutionRepeatedLaunch`
 from the current Execution runtime on a dedicated Ubuntu 24.04 x86-64
@@ -46,7 +46,7 @@ repository root with the dedicated `ardents-endpoint` account already set up.
 
 ```sh
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false \
-  -o /absolute/path/ardents-stream-qualification ./tests/qualification/text-worker-lifecycle/stream-worker
+  -o /absolute/path/ardents-stream-qualification ./tests/qualification/worker-lifecycle/stream-worker
 python3 packaging/stream-qualification-worker/install.py /absolute/path/ardents-stream-qualification
 ```
 The test proves

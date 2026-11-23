@@ -286,23 +286,23 @@ endif
 
 .PHONY: text-worker-policy-check
 text-worker-policy-check:
-	sh ./tests/qualification/text-worker-policy/run-ubuntu.sh
+	sh ./tests/qualification/document-worker-policy/run-ubuntu.sh
 
 .PHONY: text-worker-lifecycle-check
 text-worker-lifecycle-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh
 
 .PHONY: text-worker-network-check
 text-worker-network-check:
-	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
+	sh ./tests/qualification/document-worker-network/run-ubuntu.sh
 
 .PHONY: execution-lifecycle-check
 execution-lifecycle-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh execution
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh execution
 
 .PHONY: execution-route-check
 execution-route-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh execution-route
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh execution-route
 
 .PHONY: connection-stream-check
 .PHONY: startup-manager-check
@@ -310,44 +310,44 @@ startup-manager-check:
 	sh ./tests/qualification/installation-startup-manager/run-ubuntu.sh -timeout=20s
 
 connection-stream-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-stream
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-stream
 
 .PHONY: connection-request-recovery-check
 connection-request-recovery-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-request-recovery
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-request-recovery
 
 .PHONY: connection-control-check connection-control-received-check connection-control-delivery-check connection-authority-check
 
 connection-authority-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-authority
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-authority
 
 connection-control-delivery-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-control-delivery
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-control-delivery
 
 connection-control-received-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-control-received
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-control-received
 .PHONY: connection-reopen-check
 connection-reopen-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-reopen
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-reopen
 
 connection-control-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-control
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-control
 
 .PHONY: connection-refresh-check
 connection-refresh-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-refresh
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-refresh
 
 .PHONY: connection-withdrawal-check
 connection-withdrawal-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-withdrawal
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-withdrawal
 
 .PHONY: connection-nonce-check
 connection-nonce-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-nonce
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-nonce
 
 .PHONY: publication-timing-check
 publication-timing-check:
-	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh publication-timing -timeout=15m
+	sh ./tests/qualification/worker-lifecycle/run-ubuntu.sh publication-timing -timeout=15m
 
 .PHONY: execution-tree-check
 execution-tree-check:

@@ -299,7 +299,7 @@ effective confinement, artifact, accepted peer and INIT checks remain required.
 See the selected [socket job enqueue path](https://github.com/systemd/systemd/blob/v255/src/core/socket.c#L2176-L2207)
 and [atomic inventory fields](https://github.com/systemd/systemd/blob/v255/src/core/dbus-manager.c#L829-L855).
 
-The [installed lifecycle profile](../../tests/qualification/text-worker-lifecycle/README.md)
+The [installed lifecycle profile](../../tests/qualification/worker-lifecycle/README.md)
 checks twelve original qualified Execution launches on each Text surface. It
 pins the runtime binary and temporary Endpoint unit independently and verifies
 joined cgroup and process cleanup before checking manager collection of each

@@ -92,4 +92,4 @@ their complete manifests and unchanged descriptor, and refuses substituted
 or missing resources without an output archive. Those controls use synthetic
 unit/resource bytes and a real command binary as a worker-byte fixture.
 Installed worker behavior has its own
-[network qualification profile](../../tests/qualification/text-worker-network/README.md).
+[network qualification profile](../../tests/qualification/document-worker-network/README.md).

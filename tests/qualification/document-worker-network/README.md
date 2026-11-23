@@ -2,7 +2,7 @@
 
 Run `make text-worker-network-check` on the dedicated preinstalled Ubuntu 24.04
 x86-64 qualification host with systemd 255, cgroup v2, polkit, the fixed
-`ardents-endpoint` account and the [ordinary Text worker inventory](../text-worker-lifecycle/README.md).
+`ardents-endpoint` account and the [ordinary Text worker inventory](../worker-lifecycle/README.md).
 Build the exact candidate outside Git with the selected Go toolchain,
 `GOOS=linux`, `GOARCH=amd64` and `CGO_ENABLED=0`.
 

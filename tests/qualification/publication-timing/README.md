@@ -5,7 +5,7 @@
 test binary installed at `/usr/lib/ardents/qualification/execution-command.test`.
 Use the same dedicated Ubuntu 24.04/systemd 255, original non-root Endpoint,
 fixed maintained snapshot worker, independently pinned binary/unit digests and
-physical join observers as the [lifecycle profile](../text-worker-lifecycle/README.md).
+physical join observers as the [lifecycle profile](../worker-lifecycle/README.md).
 WSL/container trials retain that environment label and establish no installed
 product or whole-host qualification.
 

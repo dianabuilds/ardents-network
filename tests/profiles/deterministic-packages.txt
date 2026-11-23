@@ -7,7 +7,7 @@ github.com/dianabuilds/ardents-network/internal/admission
 github.com/dianabuilds/ardents-network/cmd/ardents-next
 
 github.com/dianabuilds/ardents-network/internal/application/document/worker
-github.com/dianabuilds/ardents-network/tests/qualification/text-worker-lifecycle/stream-worker
+github.com/dianabuilds/ardents-network/tests/qualification/worker-lifecycle/stream-worker
 github.com/dianabuilds/ardents-network/internal/application/connection
 github.com/dianabuilds/ardents-network/internal/application/document
 github.com/dianabuilds/ardents-network/internal/application/streamqualification

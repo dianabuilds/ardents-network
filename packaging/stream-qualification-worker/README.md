@@ -17,7 +17,7 @@ This inventory is not an installed-host qualification receipt.
 ## Installation
 
 Build the worker from the candidate commit using the
-[text-worker qualification procedure](../../tests/qualification/text-worker-lifecycle/README.md).
+[worker lifecycle qualification procedure](../../tests/qualification/worker-lifecycle/README.md).
 Copy the static Linux-amd64 binary and this fixed source inventory to the
 selected Ubuntu host, then run `install.py` as root with the prepared binary path.
 
