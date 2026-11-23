@@ -22,27 +22,27 @@ type workerInitialization struct {
 func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerInitialization, error) {
 	var header [77]byte
 	if input == nil || (expected != ReaderWorker && expected != PublisherWorker) {
-		return workerInitialization{}, errors.New("text worker initialization is invalid")
+		return workerInitialization{}, errors.New("document worker initialization is invalid")
 	}
 	if _, err := io.ReadFull(input, header[:]); err != nil {
 		return workerInitialization{}, err
 	}
 	length := binary.BigEndian.Uint32(header[41:45])
 	if string(header[:8]) != "ARDTWP01" || WorkerMode(header[8]) != expected || length > MaximumBytes || (expected == ReaderWorker && length != 0) {
-		return workerInitialization{}, errors.New("text worker initialization is invalid")
+		return workerInitialization{}, errors.New("document worker initialization is invalid")
 	}
 	initial := workerInitialization{mode: expected}
 	copy(initial.nonce[:], header[9:41])
 	copy(initial.digest[:], header[45:77])
 	if initial.nonce == [32]byte{} {
-		return workerInitialization{}, errors.New("text worker identity is invalid")
+		return workerInitialization{}, errors.New("document worker identity is invalid")
 	}
 	initial.snapshot = make([]byte, length)
 	if _, err := io.ReadFull(input, initial.snapshot); err != nil {
 		return workerInitialization{}, err
 	}
 	if !utf8.Valid(initial.snapshot) || sha256.Sum256(initial.snapshot) != initial.digest {
-		return workerInitialization{}, errors.New("text worker snapshot is invalid")
+		return workerInitialization{}, errors.New("document worker snapshot is invalid")
 	}
 	return initial, nil
 }
@@ -70,7 +70,7 @@ func readWorkerFrame(input io.Reader) (workerFrame, error) {
 	kind, id, size := header[0], binary.BigEndian.Uint32(header[1:5]), binary.BigEndian.Uint32(header[5:])
 	valid := id != 0 && ((kind == 1 || kind == 4) && size == 0 || kind == 2 && size > 0 && size <= workerFrameLimit || kind == 3 && size == 4 || kind == 5 && size == 1)
 	if !valid {
-		return workerFrame{}, errors.New("text worker frame is invalid")
+		return workerFrame{}, errors.New("document worker frame is invalid")
 	}
 	frame := workerFrame{kind: kind, id: id, body: make([]byte, size)}
 	if _, err := io.ReadFull(input, frame.body); err != nil {

@@ -45,15 +45,15 @@ func Read(ctx context.Context, stream connection.Stream) (body []byte, resultErr
 	}
 	var header [13]byte
 	if _, err := io.ReadFull(stream, header[:]); err != nil {
-		return nil, errors.New("text response is interrupted")
+		return nil, errors.New("document response is interrupted")
 	}
 	length := binary.BigEndian.Uint32(header[9:])
 	if string(header[:8]) != magic || header[8] > 1 || length > MaximumBytes || (header[8] == 1 && length != 0) {
-		return nil, errors.New("text response is invalid")
+		return nil, errors.New("document response is invalid")
 	}
 	body, err := io.ReadAll(io.LimitReader(stream, int64(length)+1))
 	if err != nil || len(body) != int(length) || !utf8.Valid(body) {
-		return nil, errors.New("text response is interrupted or invalid")
+		return nil, errors.New("document response is interrupted or invalid")
 	}
 	select {
 	case outcome, ok := <-stream.Done():
@@ -64,7 +64,7 @@ func Read(ctx context.Context, stream connection.Stream) (body []byte, resultErr
 		return nil, ctx.Err()
 	}
 	if header[8] == 1 {
-		return nil, errors.New("text document is unavailable")
+		return nil, errors.New("document is unavailable")
 	}
 	return body, nil
 }

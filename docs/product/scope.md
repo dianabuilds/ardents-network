@@ -11,7 +11,7 @@ journey and privacy limits remain binding; selection is not implementation proof
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects one authenticated protected Endpoint distribution and one independently
-delivered initial pin. Executable and static text-worker generation are separate
+delivered initial pin. Executable and static document worker generation are separate
 targets in the same signed Release set; installation-specific plans and mutable
 roots remain separate. Selection alone does not establish implementation
 or qualification of the complete installed journey. Product acceptance still
@@ -197,9 +197,16 @@ State and Release artifacts. `ardents-custody` creates the Service Authority
 and issues public credentials while retaining private Authority material.
 Their durable inputs remain separate: immutable artifact and enrollment inputs,
 project Node/issuer roots, Authority Vault, Service Instance root and public
-request/response, Endpoint State/Entry/text-token/Publication roots, and local
+request/response, Endpoint State, Entry, Application Stock and Publication roots, and local
 Application/Administration sockets. No role may borrow another role's root or
 private material.
+
+The [command reference](../reference/commands.md) maps each role to its delivery
+and first command. The v6 participant archive contains the Endpoint program and
+its applicable signed resources. Custody is distributed to the offline Authority
+operator as a separate authenticated executable under ADR-0131. The installed
+document worker is invoked by the selected host service manager. Qualification
+workers are test executables.
 
 The C0 operator route must expose stable, actionable failures for a rejected
 artifact or enrollment input; stale, conflicting, revoked, expired,

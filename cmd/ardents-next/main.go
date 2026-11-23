@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,90 +12,4 @@ func main() {
 	code := run(ctx, os.Args[1:], os.Stdout, os.Stderr)
 	stop()
 	os.Exit(code)
-}
-
-func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	if len(args) == 1 && (args[0] == "--help" || args[0] == "help") {
-		fmt.Fprintln(out, errDocumentUsage)
-		return 0
-	}
-	if len(args) > 0 && args[0] == "platform" {
-		return runPlatform(ctx, args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "infrastructure" {
-		return runInfrastructureCommand(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "source" {
-		if len(args) > 1 && args[1] == "inspect-latest" {
-			return runSourceInspection(ctx, args[2:], out, diagnostic)
-		}
-		if len(args) > 1 && args[1] == "prepare-trust" {
-			return runSourcePreparation(ctx, args[1:], out)
-		}
-		if len(args) > 1 && args[1] == "prepare-state" {
-			return runSourceStatePreparation(ctx, args[2:], out, diagnostic)
-		}
-		if len(args) > 1 && args[1] == "repair-retained" {
-			return runSourceRepair(ctx, args[2:], out, diagnostic)
-		}
-		return runSource(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "node" {
-		return runNode(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "publication" {
-		return runPublication(ctx, args[1:], out)
-	}
-	if len(args) > 0 {
-		switch args[0] {
-		case "publish", "link", "read":
-			return runDocumentCommand(ctx, args, diagnostic)
-		}
-	}
-	if len(args) > 0 && args[0] == "diagnostics" {
-		return runDiagnostics(ctx, args[1:], os.Stdin, out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "endpoint" {
-		if len(args) > 1 && args[1] == "withdraw" {
-			if len(args) != 3 {
-				fmt.Fprintln(diagnostic, "usage: ardents-next endpoint withdraw <administration-socket>")
-				return 2
-			}
-			if err := withdrawEndpoint(ctx, args[2], out); err != nil {
-				fmt.Fprintln(diagnostic, err)
-				return 1
-			}
-			return 0
-		}
-		return runInstalledEndpoint(ctx, args[1:], diagnostic)
-	}
-	if len(args) > 0 && args[0] == "execution" {
-		return runExecution(ctx, args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "release" {
-		return runRelease(ctx, args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "enrollment" {
-		return runEnrollmentCommand(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "route" {
-		return runRoute(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "network" {
-		return runNetwork(ctx, args[1:], out)
-	}
-	if len(args) > 1 && args[0] == "node-identity" && args[1] == "import" {
-		return runIssuerProfile(ctx, "node-identity.import", args[2:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "issuance" {
-		return runIssuance(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "admission" {
-		return runAdmission(ctx, args[1:], out, diagnostic)
-	}
-	if len(args) > 0 && args[0] == "hosting" {
-		return runHosting(ctx, args[1:], out, diagnostic)
-	}
-	fmt.Fprintln(diagnostic, errDocumentUsage)
-	return 2
 }

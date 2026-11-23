@@ -1,8 +1,8 @@
-# Installed Text worker network exchange
+# Installed document worker network exchange
 
 Run `make text-worker-network-check` on the dedicated preinstalled Ubuntu 24.04
 x86-64 qualification host with systemd 255, cgroup v2, polkit, the fixed
-`ardents-endpoint` account and the [ordinary Text worker inventory](../worker-lifecycle/README.md).
+`ardents-endpoint` account and the [ordinary document worker inventory](../worker-lifecycle/README.md).
 Build the exact candidate outside Git with the selected Go toolchain,
 `GOOS=linux`, `GOARCH=amd64` and `CGO_ENABLED=0`.
 
@@ -12,7 +12,7 @@ Build the exact candidate outside Git with the selected Go toolchain,
     go build -trimpath -buildvcs=false -o "$candidate/ardents-text" ./internal/application/document/worker
 
 Install the first three independently pinned artifacts root-owned at
-`/usr/lib/ardents/qualification` with mode 0555. Install the ordinary Text
+`/usr/lib/ardents/qualification` with mode 0555. Install the ordinary document
 worker and its canonical manifest as specified by the lifecycle profile.
 Preserve any prior qualification artifacts for restoration. Load the pinned
 inactive `/run/systemd/system/ardents-endpoint.service` with no drop-ins and
@@ -41,6 +41,6 @@ Descriptor and refusal of a still-signed predecessor.
 The [Publication timing profile](../publication-timing/README.md) exercises
 original creation and ACK timing brackets and actual pair overlap on the same
 owners. The Instance package's recipient lifetime test directly verifies joined
-key erasure. The installed Text profile uses signed Network provisioning
+key erasure. The installed document profile uses signed Network provisioning
 fixtures and one manager. Retain source identity, failures, independent pins,
 unit/manifest inventories and invocation logs outside Git.

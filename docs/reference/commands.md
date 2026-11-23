@@ -1,10 +1,22 @@
 # Command reference
 
-| Executable | Who runs it | Purpose |
+Run `ardents --help` for participant commands, `ardents help operator` for
+host and infrastructure entry points, and `ardents help release` for packaging
+and signed infrastructure artifact preparation.
+
+| Role | Receives or installs | Action |
 |---|---|---|
-| `ardents` | Participants and infrastructure operators | Participants [publish and read documents](#document-commands-and-worker) in C0. Infrastructure operators use the same executable for Network and Release operations. |
-| `ardents-custody` | The offline Authority operator | Create Authorities, issue Credentials or permissions, and manage encrypted Vault records. |
-| `ardents-text` | systemd in the protected Linux deployment | Run the confined document reader or Publisher. |
+| Participant reading a document | Protected Endpoint delivery on the selected Ubuntu profile, including its confined worker | Run `ardents read CONNECTION_SOCKET` and enter a Target Link on standard input. |
+| Participant publishing a document | The same Endpoint delivery with the Publisher role and local Administration permission | Run `ardents publish ADMINISTRATION_SOCKET DOCUMENT`, then `ardents link ADMINISTRATION_SOCKET`. Withdraw with `ardents endpoint withdraw ADMINISTRATION_SOCKET`. |
+| Endpoint host operator | Independently pinned v6 Endpoint bundle or platform package | Run `ardents enrollment verify BUNDLE MANIFEST_SHA256`, then follow [protected Endpoint platform delivery](#protected-endpoint-platform-delivery). The installed service manager invokes `endpoint start-installed` and the fixed document worker. |
+| Network infrastructure operator | Separate signed distribution and configuration for the assigned Source or Node duty | Run `ardents platform template` for the fixed unit template. Provision trust and bind the launch declaration to the assigned role. The service manager invokes `source serve-retained` or the selected `node` duty. |
+| Offline Service or Admission Authority operator | Independently authenticated [standalone Custody executable](#ardents-custody) and a separate encrypted Vault | Run `ardents-custody create-service-authority` or `ardents-custody create-admission-authority` with the listed flags. The same utility issues, verifies and handles locked recovery. |
+| Release or qualification operator | Reviewed source, the pinned toolchain and an admitted stand for installed checks | Run `ardents enrollment check-candidate BUNDLE` for the packaging check. The installed worker is a signed resource, and qualification workers are built only by their test recipes. |
+
+The C0 participant commands expose the bounded UTF-8 document application.
+The product target is protected exchange of ordered Application bytes.
+Applications own the meaning and presentation of messages, images, audio,
+documents and files.
 
 Build `ardents` from the reviewed source:
 
@@ -937,7 +949,7 @@ The local client command is `ardents read /absolute/path/to/connection.sock`.
 Use Linux terminal or pipe input/output; non-interruptible descriptors are refused.
 Enter one explicit Target Link on standard input and finish the line. The
 destination is not a command argument or diagnostic. The client sends one AAI3
-Target-Link request and one fixed text request, with a 60-second setup/exchange
+Target-Link request and one fixed document request, with a 60-second setup/exchange
 deadline after input. It prints the complete document only after successful
 terminal completion and joined local stream cleanup. C0/C1 controls other than
 LF/tab, ESC and Unicode bidi controls appear as local `\uXXXX` escapes. Links

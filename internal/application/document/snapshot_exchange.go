@@ -12,7 +12,7 @@ import (
 // File selection and no-follow/stable-read import are separate trusted work.
 func NewSnapshot(body []byte) (*Snapshot, error) {
 	if len(body) > MaximumBytes || !utf8.Valid(body) {
-		return nil, errors.New("text snapshot is invalid")
+		return nil, errors.New("document snapshot is invalid")
 	}
 	return &Snapshot{body: bytes.Clone(body)}, nil
 }
@@ -21,12 +21,12 @@ func NewSnapshot(body []byte) (*Snapshot, error) {
 // the single immutable response. Its caller owns authenticated stream closure.
 func (snapshot *Snapshot) Respond(input io.Reader, output io.Writer) error {
 	if snapshot == nil || input == nil || output == nil {
-		return errors.New("text snapshot is unavailable")
+		return errors.New("document snapshot is unavailable")
 	}
 	var request [requestBytes + 1]byte
 	n, err := io.ReadFull(input, request[:])
 	if err != io.ErrUnexpectedEOF || n != requestBytes || !validDocumentRequest(request[:n]) {
-		return errors.New("text request is invalid")
+		return errors.New("document request is invalid")
 	}
 	header := documentResponseHeader(len(snapshot.body))
 	_, err = io.Copy(output, io.MultiReader(bytes.NewReader(header[:]), bytes.NewReader(snapshot.body)))

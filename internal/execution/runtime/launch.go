@@ -83,7 +83,7 @@ func (owner *Owner) prepareJob(job *execution.Job, surface execution.Surface) er
 }
 
 func (owner *Owner) launchJob(job *execution.Job, surface execution.Surface) (_ *Invocation, result error) {
-	return owner.launchInitializedJob(job, surface, textProtocol{}, false, nil)
+	return owner.launchInitializedJob(job, surface, documentProtocol{}, false, nil)
 }
 
 func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, protocol workerProtocol, publisher bool, readerCaller context.Context) (_ *Invocation, result error) {

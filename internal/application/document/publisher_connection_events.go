@@ -22,7 +22,7 @@ func (owner *publisherConnections) fromService(event publisherEvent) error {
 		stream.remoteClean = true
 	case 3:
 		if !stream.writePending {
-			return errors.New("text Publisher write completion is unsolicited")
+			return errors.New("document Publisher write completion is unsolicited")
 		}
 		released := stream.writeSize
 		stream.writePending, stream.writeSize = false, 0
@@ -39,7 +39,7 @@ func (owner *publisherConnections) fromService(event publisherEvent) error {
 		stream.ioClosed = true
 		if event.err != nil {
 			owner.cleanupErr = errors.Join(owner.cleanupErr, event.err)
-			return errors.New("text Publisher Service cleanup failed")
+			return errors.New("document Publisher Service cleanup failed")
 		}
 		if stream.writePending {
 			released := stream.writeSize
@@ -47,7 +47,7 @@ func (owner *publisherConnections) fromService(event publisherEvent) error {
 			return owner.releaseCredit(stream, released)
 		}
 	default:
-		return errors.New("text Publisher Service event is invalid")
+		return errors.New("document Publisher Service event is invalid")
 	}
 	return nil
 }
@@ -65,13 +65,13 @@ func (owner *publisherConnections) failStream(stream *publisherStream) error {
 func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 	stream := owner.byID[frame.id]
 	if stream == nil || stream.workerEOF || stream.workerClosed {
-		return errors.New("text Publisher worker emitted an unsolicited stream")
+		return errors.New("document Publisher worker emitted an unsolicited stream")
 	}
 	switch frame.kind {
 	case 2:
 		size := uint32(len(frame.body))
 		if size > stream.receiveCredit || size > MaximumBytes+13-stream.responseBytes {
-			return errors.New("text Publisher response exceeds its bound")
+			return errors.New("document Publisher response exceeds its bound")
 		}
 		stream.receiveCredit -= size
 		stream.responseBytes += size
@@ -81,7 +81,7 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 			return owner.releaseCredit(stream, size)
 		}
 		if len(frame.body) > len(stream.queue)-stream.queued {
-			return errors.New("text Publisher response queue exceeds its bound")
+			return errors.New("document Publisher response queue exceeds its bound")
 		}
 		tail := (stream.head + stream.queued) % len(stream.queue)
 		first := copy(stream.queue[tail:], frame.body)
@@ -90,17 +90,17 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 	case 3:
 		credit := binary.BigEndian.Uint32(frame.body)
 		if credit == 0 || credit > workerCredit || stream.sendCredit > workerCredit-credit {
-			return errors.New("text Publisher request credit is invalid")
+			return errors.New("document Publisher request credit is invalid")
 		}
 		stream.sendCredit += credit
 	case 4:
 		if stream.responseBytes < 13 {
-			return errors.New("text Publisher response is incomplete")
+			return errors.New("document Publisher response is incomplete")
 		}
 		stream.workerEOF = true
 	case 5:
 		if frame.body[0] > 6 {
-			return errors.New("text Publisher worker terminal is invalid")
+			return errors.New("document Publisher worker terminal is invalid")
 		}
 		// Worker CLOSE is a per-stream refusal, never semantic success. It is
 		// an ordered barrier after earlier output; no CLOSE acknowledgement or
@@ -108,7 +108,7 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 		stream.workerEOF = true
 		return owner.failStream(stream)
 	default:
-		return errors.New("text Publisher worker frame direction is invalid")
+		return errors.New("document Publisher worker frame direction is invalid")
 	}
 	return nil
 }
@@ -118,7 +118,7 @@ func (owner *publisherConnections) releaseCredit(stream *publisherStream, releas
 		return nil
 	}
 	if released > workerCredit || stream.receiveCredit > workerCredit-released {
-		return errors.New("text Publisher released credit exceeds its bound")
+		return errors.New("document Publisher released credit exceeds its bound")
 	}
 	stream.receiveCredit += released
 	var body [4]byte

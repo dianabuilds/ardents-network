@@ -18,10 +18,10 @@ func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode W
 	if ctx == nil || attachment == nil || nonce == [32]byte{} ||
 		(mode != ReaderWorker && mode != PublisherWorker) || len(snapshot) > MaximumBytes ||
 		!utf8.Valid(snapshot) || mode == ReaderWorker && len(snapshot) != 0 {
-		return errors.New("text worker initialization is invalid")
+		return errors.New("document worker initialization is invalid")
 	}
 	if ctx.Err() != nil {
-		return errors.New("text worker initialization was cancelled")
+		return errors.New("document worker initialization was cancelled")
 	}
 	cleanupDone := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(cleanupDone); _ = attachment.Close() })
@@ -29,7 +29,7 @@ func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode W
 		if !stop() {
 			<-cleanupDone
 			if resultErr == nil {
-				resultErr = errors.New("text worker initialization was cancelled")
+				resultErr = errors.New("document worker initialization was cancelled")
 			}
 		}
 	}()
@@ -44,13 +44,13 @@ func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode W
 	binary.BigEndian.PutUint32(header[41:45], uint32(len(body)))
 	copy(header[45:], digest[:])
 	if _, err := io.Copy(attachment, io.MultiReader(bytes.NewReader(header[:]), bytes.NewReader(body))); err != nil {
-		return errors.New("text worker initialization was interrupted")
+		return errors.New("document worker initialization was interrupted")
 	}
 	if err := readWorkerReadiness(attachment, nonce, digest); err != nil {
 		return err
 	}
 	if ctx.Err() != nil {
-		return errors.New("text worker readiness was cancelled")
+		return errors.New("document worker readiness was cancelled")
 	}
 	return nil
 }
@@ -63,15 +63,15 @@ func readWorkerReadiness(attachment io.Reader, nonce, digest [32]byte) error {
 	for received < 72 {
 		n, err := attachment.Read(ready[received:])
 		if n < 0 || n > len(ready)-received {
-			return errors.New("text worker readiness is invalid")
+			return errors.New("document worker readiness is invalid")
 		}
 		received += n
 		if err != nil || n == 0 || received > 72 {
-			return errors.New("text worker readiness is interrupted or oversized")
+			return errors.New("document worker readiness is interrupted or oversized")
 		}
 	}
 	if string(ready[:8]) != "ARDTWR01" || !bytes.Equal(ready[8:40], nonce[:]) || !bytes.Equal(ready[40:72], digest[:]) {
-		return errors.New("text worker readiness is bound to another job")
+		return errors.New("document worker readiness is bound to another job")
 	}
 	return nil
 }

@@ -17,14 +17,14 @@ import (
 // the original reader and stream. The returned result includes final IPC join.
 func AwaitRetainedWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
 	if ready == nil || release == nil {
-		return nil, errors.New("text reader completion retention is absent")
+		return nil, errors.New("document reader completion retention is absent")
 	}
 	return awaitWorkerConnection(ctx, attachment, incoming, ready, release)
 }
 
 func awaitWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
 	if ctx == nil || attachment == nil || incoming == nil {
-		return nil, errors.New("text reader Connection is unavailable")
+		return nil, errors.New("document reader Connection is unavailable")
 	}
 	owner := startReaderConnectionIO(ctx, attachment)
 	defer owner.close()
@@ -32,10 +32,10 @@ func awaitWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, i
 	case <-ctx.Done():
 		return nil, errors.Join(ctx.Err(), owner.close())
 	case <-owner.frames:
-		return nil, errors.Join(errors.New("text reader worker ended or emitted output before Connection transfer"), owner.close())
+		return nil, errors.Join(errors.New("document reader worker ended or emitted output before Connection transfer"), owner.close())
 	case service, ok := <-incoming:
 		if !ok || service == nil {
-			return nil, errors.Join(errors.New("text reader stream transfer is absent"), owner.close())
+			return nil, errors.Join(errors.New("document reader stream transfer is absent"), owner.close())
 		}
 		if err := owner.attachService(service); err != nil {
 			return nil, errors.Join(err, service.Close(), owner.close())
@@ -63,12 +63,12 @@ func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, releas
 		return nil, ctx.Err()
 	}
 	if err := writeWorkerFrame(attachment, workerFrame{kind: 1, id: 1}); err != nil {
-		return nil, errors.New("text reader stream could not open")
+		return nil, errors.New("document reader stream could not open")
 	}
 	for {
 		if state.serviceEOF && state.remoteClean && state.requestEOF && state.requestDrained && !state.closeSent {
 			if err := writeWorkerFrame(attachment, workerFrame{kind: 5, id: 1, body: []byte{0}}); err != nil {
-				return nil, errors.New("text reader terminal was interrupted")
+				return nil, errors.New("document reader terminal was interrupted")
 			}
 			state.closeSent = true
 		}
@@ -87,7 +87,7 @@ func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, releas
 			}
 		case completed := <-owner.written:
 			if completed.err != nil {
-				return nil, errors.New("text reader request could not reach Service")
+				return nil, errors.New("document reader request could not reach Service")
 			}
 			if completed.eof {
 				state.requestDrained = true
@@ -99,7 +99,7 @@ func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, releas
 			}
 		case event := <-owner.frames:
 			if event.err != nil {
-				return nil, errors.New("text reader worker exchange was interrupted")
+				return nil, errors.New("document reader worker exchange was interrupted")
 			}
 			complete, err := state.fromWorker(event.frame)
 			if err != nil {
@@ -125,10 +125,10 @@ func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, releas
 					}
 				}
 				if err := writeWorkerFrame(attachment, workerFrame{kind: 5, id: 2, body: []byte{0}}); err != nil {
-					return nil, errors.New("text reader result terminal was interrupted")
+					return nil, errors.New("document reader result terminal was interrupted")
 				}
 				if state.status != 0 {
-					return nil, errors.New("text document is unavailable")
+					return nil, errors.New("document is unavailable")
 				}
 				return state.result, nil
 			}
@@ -163,27 +163,27 @@ func (state *readerConnectionState) fromService(event readerServiceEvent) error 
 	if len(event.body) > 0 {
 		size := uint32(len(event.body))
 		if state.serviceEOF || size > state.sendCredit || size > MaximumBytes+13-state.serviceBytes {
-			return errors.New("text Service response exceeds its bound")
+			return errors.New("document Service response exceeds its bound")
 		}
 		state.readOutstanding = false
 		state.sendCredit -= size
 		state.serviceBytes += size
 		if err := writeWorkerFrame(state.io.attachment, workerFrame{kind: 2, id: 1, body: event.body}); err != nil {
-			return errors.New("text Service response forwarding was interrupted")
+			return errors.New("document Service response forwarding was interrupted")
 		}
 	}
 	if event.eof {
 		if state.serviceEOF {
-			return errors.New("text Service repeated EOF")
+			return errors.New("document Service repeated EOF")
 		}
 		state.serviceEOF = true
 		if err := writeWorkerFrame(state.io.attachment, workerFrame{kind: 4, id: 1}); err != nil {
-			return errors.New("text Service EOF forwarding was interrupted")
+			return errors.New("document Service EOF forwarding was interrupted")
 		}
 	}
 	if event.terminal {
 		if !state.serviceEOF || state.remoteClean || event.outcome.Class != connection.CleanClose {
-			return errors.New("text Service Connection did not complete")
+			return errors.New("document Service Connection did not complete")
 		}
 		state.remoteClean = true
 	}
@@ -195,13 +195,13 @@ func (state *readerConnectionState) fromWorker(frame workerFrame) (bool, error) 
 		return state.fromResult(frame)
 	}
 	if frame.id != 1 || state.closeSent && (frame.kind != 3 || state.resultAnnounced) {
-		return false, errors.New("text worker emitted an unsolicited stream")
+		return false, errors.New("document worker emitted an unsolicited stream")
 	}
 	switch frame.kind {
 	case 2:
 		size := uint32(len(frame.body))
 		if state.requestEOF || size > state.receiveCredit || size > requestBytes-state.requestBytes {
-			return false, errors.New("text worker request exceeds its bound")
+			return false, errors.New("document worker request exceeds its bound")
 		}
 		state.receiveCredit -= size
 		copy(state.request[state.requestBytes:], frame.body)
@@ -209,12 +209,12 @@ func (state *readerConnectionState) fromWorker(frame workerFrame) (bool, error) 
 	case 3:
 		credit := binary.BigEndian.Uint32(frame.body)
 		if credit == 0 || credit > workerCredit || state.sendCredit > workerCredit-credit {
-			return false, errors.New("text worker response credit is invalid")
+			return false, errors.New("document worker response credit is invalid")
 		}
 		state.sendCredit += credit
 	case 4:
 		if state.requestEOF || state.requestBytes != requestBytes || !validDocumentRequest(state.request[:]) {
-			return false, errors.New("text worker request EOF is invalid")
+			return false, errors.New("document worker request EOF is invalid")
 		}
 		state.requestEOF = true
 		// The fixed request fits in 512 bytes. Queue it only after exact EOF;
@@ -230,31 +230,31 @@ func (state *readerConnectionState) fromWorker(frame workerFrame) (bool, error) 
 			return false, state.io.ctx.Err()
 		}
 	default:
-		return false, errors.New("text worker reader stream is invalid")
+		return false, errors.New("document worker reader stream is invalid")
 	}
 	return false, nil
 }
 
 func (state *readerConnectionState) fromResult(frame workerFrame) (bool, error) {
 	if !state.closeSent {
-		return false, errors.New("text worker result preceded authenticated completion")
+		return false, errors.New("document worker result preceded authenticated completion")
 	}
 	switch frame.kind {
 	case 6:
 		if state.resultAnnounced {
-			return false, errors.New("text worker repeated its result")
+			return false, errors.New("document worker repeated its result")
 		}
 		state.status = frame.body[0]
 		state.resultLength = binary.BigEndian.Uint32(frame.body[1:])
 		if state.status > 1 || state.resultLength > MaximumBytes || state.status == 1 && state.resultLength != 0 {
-			return false, errors.New("text worker result is invalid")
+			return false, errors.New("document worker result is invalid")
 		}
 		state.resultAnnounced = true
 		state.result = make([]byte, 0, int(state.resultLength))
 	case 2:
 		size := uint32(len(frame.body))
 		if !state.resultAnnounced || size > state.resultCredit || size > state.resultLength-uint32(len(state.result)) {
-			return false, errors.New("text worker result exceeds its bound")
+			return false, errors.New("document worker result exceeds its bound")
 		}
 		state.resultCredit -= size
 		state.result = append(state.result, frame.body...)
@@ -266,23 +266,23 @@ func (state *readerConnectionState) fromResult(frame workerFrame) (bool, error) 
 		state.resultCredit += size
 	case 4:
 		if !state.resultAnnounced || uint32(len(state.result)) != state.resultLength || !utf8.Valid(state.result) {
-			return false, errors.New("text worker result is incomplete or invalid")
+			return false, errors.New("document worker result is incomplete or invalid")
 		}
 		return true, nil
 	default:
-		return false, errors.New("text worker result frame is invalid")
+		return false, errors.New("document worker result frame is invalid")
 	}
 	return false, nil
 }
 
 func (state *readerConnectionState) credit(id, size uint32) error {
 	if size == 0 {
-		return errors.New("text worker credit cannot be empty")
+		return errors.New("document worker credit cannot be empty")
 	}
 	var body [4]byte
 	binary.BigEndian.PutUint32(body[:], size)
 	if err := writeWorkerFrame(state.io.attachment, workerFrame{kind: 3, id: id, body: body[:]}); err != nil {
-		return errors.New("text worker credit forwarding was interrupted")
+		return errors.New("document worker credit forwarding was interrupted")
 	}
 	return nil
 }

@@ -20,7 +20,7 @@ const publisherActiveLimit = 64
 // Endpoint still owns current-job/Grant validation and joined cgroup cleanup.
 func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream) (resultErr error) {
 	if ctx == nil || attachment == nil || incoming == nil {
-		return errors.New("text Publisher Connections are unavailable")
+		return errors.New("document Publisher Connections are unavailable")
 	}
 	if ctx.Err() != nil {
 		return errors.Join(ctx.Err(), attachment.Close())
@@ -54,7 +54,7 @@ func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, 
 				continue
 			}
 			if stream == nil {
-				return errors.New("text Publisher received an absent Connection")
+				return errors.New("document Publisher received an absent Connection")
 			}
 			owner.streams = append(owner.streams, owner.startStream(stream))
 		case event := <-owner.events:
@@ -63,7 +63,7 @@ func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, 
 			}
 		case event := <-owner.frames:
 			if event.err != nil {
-				return errors.New("text Publisher worker exchange was interrupted")
+				return errors.New("document Publisher worker exchange was interrupted")
 			}
 			if err := owner.fromWorker(event.frame); err != nil {
 				return err
@@ -110,7 +110,7 @@ func (owner *publisherConnections) advance() error {
 		}
 		if stream.id == 0 && stream.requestReady && !stream.failed && owner.active < publisherActiveLimit {
 			if owner.lastID > math.MaxUint32-2 {
-				return errors.New("text Publisher stream IDs are exhausted")
+				return errors.New("document Publisher stream IDs are exhausted")
 			}
 			if owner.lastID == 0 {
 				owner.lastID = 1
@@ -175,7 +175,7 @@ func (owner *publisherConnections) frame(frame workerFrame) error {
 		return owner.ctx.Err()
 	}
 	if err := writeWorkerFrame(owner.attachment, frame); err != nil {
-		return errors.New("text Publisher worker forwarding was interrupted")
+		return errors.New("document Publisher worker forwarding was interrupted")
 	}
 	return nil
 }

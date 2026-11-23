@@ -176,7 +176,7 @@ Scheduler timing is tested with accelerated events, not a wall-clock lifetime
 qualification. These module paths do not establish complete command exposure
 or installed-worker qualification.
 
-The closed text-Service composition retains a bounded job-owned exchange through
+The closed document Service composition retains a bounded job-owned exchange through
 JOIN and the authenticated Service transport's final cleanup. It prepares the
 independent Rendezvous class-2 and Introduction class-1 stocks before concurrent
 Source JOIN and capsule submission; each exact HELLO still requires its own
@@ -269,7 +269,7 @@ attachment, and logical-stream recovery out of one mutable request bag.
 
 The selected protected text Connection Interface adds one narrower consumer
 operation over that composition. Its typed AAI3 caller supplies one explicit
-Target Link and one fixed text request; Endpoint retains the local Connection
+Target Link and one fixed document request; Endpoint retains the local Connection
 principal, authenticated State, Entry, Target authentication, Route inputs,
 the closed token and durable attempt journal, worker qualification, and Broker
 admission input. After Target-Link parsing and Network binding, Endpoint
@@ -445,7 +445,7 @@ second Continuity flight. Cancellation joins the owned transport close and
 prevents later receipt consumption. NewStream retains the preceding sequential
 composition.
 
-The Endpoint text-Service binding retains the exact verified worker job and
+The Endpoint document Service binding retains the exact verified worker job and
 independently checks the signed publication against its live State profile
 and local authority bounds. Its Initiator creates a fresh Connection nonce and
 salted commitment to the private local context; the local context and salt do
@@ -484,7 +484,7 @@ own state, while Context-owned maps and flights remain with the Context:
 No generic callback registry participates in this order. Repeated Context
 Close waits for and returns the one stored joined result.
 
-The initial text-Service stream invokes that real TLS/native Connection path
+The initial document Service stream invokes that real TLS/native Connection path
 and retains its opaque job binding. The reader holds its worker operation
 through authentication and document exchange. Publisher accepts only streams
 belonging to its exact job and context before transferring bytes to its one
@@ -649,7 +649,7 @@ also joins an original Terminal receipt write before classifying a
 concurrent carrier EOF. A peer confirmation can arrive before that write returns;
 only its successful local result completes the receipt, and an actual write
 failure remains a failure even after the peer confirmation.
-The protected text-Service owner now installs a Route-backed replacement source before
+The protected document Service owner now installs a Route-backed replacement source before
 Application bytes are exposed. It retains the verified Introduction recipient,
 selected Source or Responder prefix, original job, Candidate View, logical
 tuple and Work Safety bounds. Every proposed generation uses a fresh capsule,
@@ -1385,7 +1385,7 @@ retired as a caller contract, not translated. The bounded enforcement point is
 the command adapter: a recognized exact `endpoint open` invocation returns a
 deterministic non-success result before validating or opening either file,
 creating an output, dialing the Application socket, or causing Endpoint,
-Route, or Network work. It selects no alternate command, text request, Target,
+Route, or Network work. It selects no alternate command, document request, Target,
 or migration path.
 
 This decision preserves four separate facts. Target Links remain the maintained
@@ -1505,7 +1505,7 @@ the native tail, its current Attachment and the owning Introduction exchange
 before releasing the stream owner. TLS may map the admitted Route child's
 authenticated `CLOSE(0)` to transport truncation because Service TLS has no
 second close-notify exchange. The exact child exposes that already decoded
-clean retirement to the text-Service adapter; only that witness may end a
+clean retirement to the document Service adapter; only that witness may end a
 peer's already complete tail without recovery. Raw EOF, local close, refusal,
 truncation without the witness and every other Carrier failure retain the
 bounded recovery path.

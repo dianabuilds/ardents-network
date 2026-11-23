@@ -38,12 +38,12 @@ type workerMultiplexer struct {
 	resultAnnounced bool
 }
 
-// RunWorker implements only the fixed, already launched text worker exchange.
+// RunWorker implements only the fixed, already launched document worker exchange.
 // It cannot select a destination or open a network/file resource. Its caller
 // must verify the inherited attachment; readiness never grants local authority.
 func RunWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode) (resultErr error) {
 	if ctx == nil || attachment == nil {
-		return errors.New("text worker attachment is unavailable")
+		return errors.New("document worker attachment is unavailable")
 	}
 	lifetime, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -122,7 +122,7 @@ func RunWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMo
 func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 	if frame.kind == 1 {
 		if frame.id%2 != 1 || frame.id <= owner.lastID || len(owner.streams) >= 256 || (owner.initial.mode == ReaderWorker && frame.id != 1) {
-			return false, errors.New("text worker stream admission is invalid")
+			return false, errors.New("document worker stream admission is invalid")
 		}
 		stream := &workerStream{id: frame.id, receiveCredit: workerCredit, sendCredit: workerCredit}
 		if owner.initial.mode == ReaderWorker {
@@ -137,12 +137,12 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 	}
 	stream := owner.streams[frame.id]
 	if stream == nil {
-		return false, errors.New("text worker stream is unsolicited")
+		return false, errors.New("document worker stream is unsolicited")
 	}
 	switch frame.kind {
 	case 2:
 		if frame.id == 2 || stream.receivedEOF || uint32(len(frame.body)) > stream.receiveCredit {
-			return false, errors.New("text worker input credit is invalid")
+			return false, errors.New("document worker input credit is invalid")
 		}
 		stream.receiveCredit -= uint32(len(frame.body))
 		if stream.rejected {
@@ -158,18 +158,18 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 				stream.input = nil
 				return false, nil
 			}
-			return false, errors.New("text worker input exceeds its bound")
+			return false, errors.New("document worker input exceeds its bound")
 		}
 		stream.input = append(stream.input, frame.body...)
 	case 3:
 		credit := binary.BigEndian.Uint32(frame.body)
 		if credit == 0 || credit > workerCredit || stream.sendCredit > workerCredit-credit {
-			return false, errors.New("text worker output credit is invalid")
+			return false, errors.New("document worker output credit is invalid")
 		}
 		stream.sendCredit += credit
 	case 4:
 		if frame.id == 2 || stream.receivedEOF {
-			return false, errors.New("text worker EOF is invalid")
+			return false, errors.New("document worker EOF is invalid")
 		}
 		stream.receivedEOF = true
 		if owner.initial.mode == PublisherWorker {
@@ -186,11 +186,11 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 		}
 	case 5:
 		if frame.body[0] > 6 {
-			return false, errors.New("text worker terminal class is invalid")
+			return false, errors.New("document worker terminal class is invalid")
 		}
 		if owner.initial.mode == ReaderWorker && frame.id == 1 {
 			if frame.body[0] != 0 || !stream.receivedEOF || !stream.sentEOF || owner.readerResult {
-				return false, errors.New("text reader Connection is interrupted")
+				return false, errors.New("document reader Connection is interrupted")
 			}
 			if err := owner.prepareResult(stream.input); err != nil {
 				return false, err
@@ -198,7 +198,7 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 			owner.readerResult = true
 		} else if owner.initial.mode == ReaderWorker && frame.id == 2 {
 			if frame.body[0] != 0 || !stream.sentEOF {
-				return false, errors.New("text reader result is interrupted")
+				return false, errors.New("document reader result is interrupted")
 			}
 			return true, nil
 		}
@@ -216,11 +216,11 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 
 func (owner *workerMultiplexer) prepareResult(response []byte) error {
 	if len(response) < 13 || string(response[:8]) != magic {
-		return errors.New("text reader response is invalid")
+		return errors.New("document reader response is invalid")
 	}
 	length := binary.BigEndian.Uint32(response[9:13])
 	if response[8] > 1 || length > MaximumBytes || len(response) != 13+int(length) || (response[8] == 1 && length != 0) || !utf8.Valid(response[13:]) {
-		return errors.New("text reader response is invalid")
+		return errors.New("document reader response is invalid")
 	}
 	body := response[13:]
 	header := make([]byte, 5)

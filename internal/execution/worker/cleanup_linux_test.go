@@ -41,7 +41,7 @@ func TestDocumentWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 		t.Fatal("installed worker cgroup path refused")
 	}
 	if cgroupPath(textInventory, "/system.slice/foreign.scope/"+name, name, "reader") {
-		t.Fatal("nested foreign text worker cgroup accepted")
+		t.Fatal("nested foreign document worker cgroup accepted")
 	}
 	streamName := "ardents-stream-qualification-reader@0-12-997.service"
 	const qualificationRoot = "/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice/"
@@ -168,7 +168,7 @@ func TestDocumentWorkerCleanupJoinsOriginalCgroupAfterInvocationChange(t *testin
 			stops++
 			return nil
 		})
-	if err == nil || err.Error() != "text worker cleanup invocation changed" {
+	if err == nil || err.Error() != "document worker cleanup invocation changed" {
 		t.Fatalf("changed invocation result: %v", err)
 	}
 	if reads < 2 || stops != 0 {
@@ -194,7 +194,7 @@ func TestDocumentWorkerCleanupJoinsOriginalCgroupWhenManagerUnavailable(t *testi
 			stops++
 			return nil
 		})
-	if err == nil || err.Error() != "text worker cleanup invocation is unavailable" {
+	if err == nil || err.Error() != "document worker cleanup invocation is unavailable" {
 		t.Fatalf("unavailable manager result: %v", err)
 	}
 	if reads < 3 || stops != 0 {
@@ -272,7 +272,7 @@ func TestDocumentWorkerCleanupLiveOriginalCgroupHasFiniteJoin(t *testing.T) {
 			t.Fatal("replacement stop requested")
 			return nil
 		})
-	if err == nil || !strings.Contains(err.Error(), "text worker cgroup cleanup did not complete") || reads < 2 {
+	if err == nil || !strings.Contains(err.Error(), "document worker cgroup cleanup did not complete") || reads < 2 {
 		t.Fatalf("live original cgroup: observations=%d, result=%v", reads, err)
 	}
 }

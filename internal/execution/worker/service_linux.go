@@ -20,7 +20,7 @@ import (
 // uncatchable Endpoint exit. Socket EOF alone cannot terminate a hostile fork.
 func verifyEndpointService(ctx context.Context) error {
 	if ctx == nil {
-		return errors.New("text worker Endpoint service is unavailable")
+		return errors.New("document worker Endpoint service is unavailable")
 	}
 	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -29,7 +29,7 @@ func verifyEndpointService(ctx context.Context) error {
 
 func awaitServiceObservation(ctx context.Context, observe func(context.Context) error) error {
 	if ctx == nil || observe == nil {
-		return errors.New("text worker Endpoint service is unavailable")
+		return errors.New("document worker Endpoint service is unavailable")
 	}
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
@@ -58,11 +58,11 @@ func observeEndpointService(ctx context.Context) error {
 		return err
 	}
 	if !unit.exact("Id", "s", "ardents-endpoint.service") || !unit.exact("ActiveState", "s", "active") {
-		return errors.New("text worker Endpoint service is not active")
+		return errors.New("document worker Endpoint service is not active")
 	}
 	if os.Geteuid() == 0 || !service.exact("MainPID", "u", uint32(os.Getpid())) ||
 		!service.exact("User", "s", "ardents-endpoint") || !service.exact("Group", "s", "ardents-endpoint") || !endpointStopsWithMain(service, version) {
-		return errors.New("text worker caller is not the Endpoint service")
+		return errors.New("document worker caller is not the Endpoint service")
 	}
 	return nil
 }
@@ -99,7 +99,7 @@ func verifyActivationSocket(ctx context.Context, inv inventory, role string) err
 		return err
 	}
 	if err := unit.VerifyListeningSocketAt(systemd.Properties(observed), systemd.Properties(socket), role, inv.prefix+"-"+role+".socket", inv.socket(role)); err != nil {
-		return errors.New("text worker effective activation socket differs")
+		return errors.New("document worker effective activation socket differs")
 	}
 	return nil
 }
@@ -108,14 +108,14 @@ func readFixedUnitProperties(ctx context.Context, name, propertyKind string) (pr
 	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", name)
 	var paths []string
 	if err != nil || answer.Type != "o" || json.Unmarshal(answer.Data, &paths) != nil || len(paths) != 1 {
-		return nil, nil, errors.New("text worker Endpoint service is unavailable")
+		return nil, nil, errors.New("document worker Endpoint service is unavailable")
 	}
 	var unit, service properties
 	for _, kind := range []string{"Unit", propertyKind} {
 		answer, err := managerCall(ctx, paths[0], "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.systemd1."+kind)
 		var properties []properties
 		if err != nil || answer.Type != "a{sv}" || json.Unmarshal(answer.Data, &properties) != nil || len(properties) != 1 {
-			return nil, nil, errors.New("text worker Endpoint service properties are unavailable")
+			return nil, nil, errors.New("document worker Endpoint service properties are unavailable")
 		}
 		if kind == "Unit" {
 			unit = properties[0]
@@ -162,11 +162,11 @@ func endpointStopsWithMain(service properties, version uint16) bool {
 func verifyPlatform(ctx context.Context) error {
 	body, err := readInstalledFile("/usr/lib/os-release", 8<<10)
 	if err != nil || runtime.GOARCH != "amd64" || !ubuntuRelease(body) {
-		return errors.New("text worker Ubuntu platform is unavailable")
+		return errors.New("document worker Ubuntu platform is unavailable")
 	}
 	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", "Get", "ss", "org.freedesktop.systemd1.Manager", "Version")
 	if err != nil || !managerVersionValid(answer) {
-		return errors.New("text worker systemd version is unavailable")
+		return errors.New("document worker systemd version is unavailable")
 	}
 	return nil
 }
@@ -223,7 +223,7 @@ func managerVersion(ctx context.Context) (uint16, error) {
 	}
 	version := decodeManagerVersion(answer)
 	if version == 0 {
-		return 0, errors.New("text worker systemd version unavailable")
+		return 0, errors.New("document worker systemd version unavailable")
 	}
 	return version, nil
 }

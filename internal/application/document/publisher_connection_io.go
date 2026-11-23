@@ -134,7 +134,7 @@ func (stream *publisherStreamIO) read() {
 	select {
 	case outcome, ok := <-stream.service.Done():
 		if !ok {
-			stream.send(publisherEvent{kind: 2, err: errors.New("text Publisher Service terminal is absent")})
+			stream.send(publisherEvent{kind: 2, err: errors.New("document Publisher Service terminal is absent")})
 			return
 		}
 		stream.send(publisherEvent{kind: 2, outcome: outcome})

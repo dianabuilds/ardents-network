@@ -55,12 +55,12 @@ func activate(ctx context.Context, inv inventory, role string) (*Activation, err
 	activation := &Activation{Queued: true, Artifact: artifact}
 	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
 	if err != nil {
-		return activation, errors.New("text worker activation failed")
+		return activation, errors.New("document worker activation failed")
 	}
 	connection, ok := raw.(*net.UnixConn)
 	if !ok {
 		_ = raw.Close()
-		return activation, errors.New("text worker attachment is not local")
+		return activation, errors.New("document worker attachment is not local")
 	}
 	activation.Attachment = newAttachment(connection, 0, 0)
 	if err := prepareSocket(connection); err != nil {
@@ -68,7 +68,7 @@ func activate(ctx context.Context, inv inventory, role string) (*Activation, err
 	}
 	afterSocket, err := inspectActivationSocket(inv, path)
 	if err != nil || !os.SameFile(socket, afterSocket) {
-		return activation, errors.New("text worker activation socket changed")
+		return activation, errors.New("document worker activation socket changed")
 	}
 	observed, err := awaitInstance(ctx, inv, before, role)
 	if err != nil {
@@ -81,18 +81,18 @@ func activate(ctx context.Context, inv inventory, role string) (*Activation, err
 
 func inspectActivationSocket(inv inventory, path string) (os.FileInfo, error) {
 	if path != inv.socket("reader") && path != inv.socket("publisher") || os.Geteuid() == 0 {
-		return nil, errors.New("text worker activation address is unavailable")
+		return nil, errors.New("document worker activation address is unavailable")
 	}
 	if _, err := installedPath(filepath.Dir(path), true); err != nil {
 		return nil, err
 	}
 	info, err := os.Lstat(path)
 	if err != nil {
-		return nil, errors.New("text worker activation socket is unavailable")
+		return nil, errors.New("document worker activation socket is unavailable")
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok || info.Mode()&os.ModeSocket == 0 || info.Mode().Perm() != 0600 || stat.Uid != uint32(os.Geteuid()) || stat.Gid != uint32(os.Getegid()) {
-		return nil, errors.New("text worker activation socket ownership is invalid")
+		return nil, errors.New("document worker activation socket ownership is invalid")
 	}
 	return info, nil
 }
@@ -106,7 +106,7 @@ func awaitInstance(ctx context.Context, inv inventory, before listing, role stri
 		after, err := listInstances(ctx, inv, role)
 		if err != nil {
 			if ctx.Err() != nil && observationErr != nil {
-				return Instance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
+				return Instance{}, fmt.Errorf("document worker activation did not become verifiable (last observation: %w)", observationErr)
 			}
 			return Instance{}, err
 		}
@@ -127,9 +127,9 @@ func awaitInstance(ctx context.Context, inv inventory, before listing, role stri
 		select {
 		case <-ctx.Done():
 			if observationErr != nil {
-				return Instance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
+				return Instance{}, fmt.Errorf("document worker activation did not become verifiable (last observation: %w)", observationErr)
 			}
-			return Instance{}, errors.New("text worker activation did not become verifiable")
+			return Instance{}, errors.New("document worker activation did not become verifiable")
 		case <-ticker.C:
 		}
 	}

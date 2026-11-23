@@ -115,7 +115,7 @@ func ConstructPlans(ctx context.Context, network state.Config, declaration PlanD
 // only from the pin configuration, never from the local declaration.
 func declaredPlan(network state.Config, declaration PlanDeclaration) (HeadlessPlan, error) {
 	if declaration.Role != "" && declaration.Role != "reader" {
-		return HeadlessPlan{}, errors.New("declared text runtime role is unavailable")
+		return HeadlessPlan{}, errors.New("declared document runtime role is unavailable")
 	}
 	authorities := make([]string, 0, len(network.Authorities))
 	for _, public := range network.Authorities {
