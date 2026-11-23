@@ -99,7 +99,7 @@ func (b *acquisitionLifetimeClaim) Publish(_ context.Context, _ context.Context,
 	return handoff(b.CheckLocal)
 }
 func (b *acquisitionLifetimeClaim) ReturnJoined() { b.returns.Add(1) }
-func lifetimeAcquisition(t *testing.T, ctx context.Context) (*JoinAcquisition, *acquisitionLifetimeClaim) {
+func lifetimeAcquisition(t *testing.T, ctx context.Context) (*Acquisition, *acquisitionLifetimeClaim) {
 	t.Helper()
 	claim := new(acquisitionLifetimeClaim)
 	a, err := startAcquisition(ctx, func(func(), func() error) (joinClaim, error) { return claim, nil })
@@ -124,7 +124,7 @@ func TestAcquisitionRecipientRefusalRetainsOriginalCaller(t *testing.T) {
 		return failure
 	}
 	end := time.Now().Add(time.Minute).UTC().Truncate(time.Second)
-	_, err := a.Join(t.Context(), JoinConfig{Secret: [32]byte{1}, Context: [32]byte{2}, Deadline: end, SetupDeadline: end.Add(-30 * time.Second)})
+	_, err := a.Join(t.Context(), Config{Secret: [32]byte{1}, Context: [32]byte{2}, Deadline: end, SetupDeadline: end.Add(-30 * time.Second)})
 	if !called || !errors.Is(err, failure) || !errors.Is(err, context.Canceled) || claim.returns.Load() != 0 {
 		t.Fatal("recipient refusal lost original caller or returned its live borrow", called, err, claim.returns.Load())
 	}
@@ -179,7 +179,7 @@ func TestAcquisitionCleanupReceiptRequiresOriginalReturnAndRetainsPhysicalFailur
 }
 
 func TestJoinPublicAcquisitionRefusesMissingOriginalAndConsumesFailedAttempt(t *testing.T) {
-	for _, acquire := range []func(context.Context, *prefix.Prefix) (*JoinAcquisition, error){AcquireSourceJoin, AcquireResponderJoin} {
+	for _, acquire := range []func(context.Context, *prefix.Prefix) (*Acquisition, error){AcquireSourceJoin, AcquireResponderJoin} {
 		if got, err := acquire(t.Context(), nil); got != nil || err == nil {
 			t.Fatal("missing original role produced an acquisition")
 		}
@@ -187,7 +187,7 @@ func TestJoinPublicAcquisitionRefusesMissingOriginalAndConsumesFailedAttempt(t *
 	a, claim := lifetimeAcquisition(t, t.Context())
 	defer a.Close()
 	end := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
-	config := JoinConfig{Secret: [32]byte{1}, Context: [32]byte{2}, Deadline: end, SetupDeadline: end}
+	config := Config{Secret: [32]byte{1}, Context: [32]byte{2}, Deadline: end, SetupDeadline: end}
 	if stream, err := a.Join(t.Context(), config); stream != nil || err == nil {
 		t.Fatal("unavailable original authority produced a stream")
 	}
@@ -262,7 +262,7 @@ func TestJoinPublicationChecksExactOriginalCaller(t *testing.T) {
 func TestCopiedJoinAcquisitionCannotReturnOriginalClaim(t *testing.T) {
 	a, claim := lifetimeAcquisition(t, t.Context())
 	defer a.Close()
-	copy := &JoinAcquisition{self: a.self, borrows: a.borrows, caller: a.caller, ctx: a.ctx, cancel: a.cancel, watchDone: a.watchDone}
+	copy := &Acquisition{self: a.self, borrows: a.borrows, caller: a.caller, ctx: a.ctx, cancel: a.cancel, watchDone: a.watchDone}
 	if err := copy.Close(); err == nil {
 		t.Error("copied acquisition supplied joined retirement")
 	}

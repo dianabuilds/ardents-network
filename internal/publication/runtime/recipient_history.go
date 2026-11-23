@@ -89,7 +89,7 @@ func (history *recipientHistory) reserve(nonce [32]byte, expiry, registrationEnd
 	defer history.mu.Unlock()
 	if history.closed || history.ctx.Err() != nil || nonce == [32]byte{} ||
 		!now.Before(expiry) || expiry.After(registrationEnd) || now.Before(history.last) {
-		return nil, errors.New("Publisher opening history unavailable")
+		return nil, errors.New("publisher opening history unavailable")
 	}
 	history.last = now
 	for key, entry := range history.entries {
@@ -98,10 +98,10 @@ func (history *recipientHistory) reserve(nonce [32]byte, expiry, registrationEnd
 		}
 	}
 	if history.entries[nonce] != nil {
-		return nil, errors.New("Publisher delivery nonce already reserved")
+		return nil, errors.New("publisher delivery nonce already reserved")
 	}
 	if len(history.entries) >= 2640 {
-		return nil, errors.New("Publisher replay capacity unavailable")
+		return nil, errors.New("publisher replay capacity unavailable")
 	}
 	retained := history.attempts[:0]
 	for _, attempt := range history.attempts {
@@ -111,7 +111,7 @@ func (history *recipientHistory) reserve(nonce [32]byte, expiry, registrationEnd
 	}
 	history.attempts = retained
 	if len(retained) >= 4 {
-		return nil, errors.New("Publisher opening rate unavailable")
+		return nil, errors.New("publisher opening rate unavailable")
 	}
 	history.attempts = append(history.attempts, now)
 	reservation := &openingReservation{history: history, nonce: nonce, expires: expiry, retainUntil: registrationEnd.Add(60 * time.Second)}
@@ -129,7 +129,7 @@ func (reservation *openingReservation) commit(now time.Time) error {
 	defer history.mu.Unlock()
 	if history.closed || history.ctx.Err() != nil || history.entries[reservation.nonce] != reservation ||
 		!now.Before(reservation.expires) || now.Before(history.last) {
-		return errors.New("Publisher replay commit unavailable")
+		return errors.New("publisher replay commit unavailable")
 	}
 	history.last = now
 	reservation.accepted = true

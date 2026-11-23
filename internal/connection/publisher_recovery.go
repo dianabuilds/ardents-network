@@ -66,11 +66,11 @@ func (route *publisherRecoveryRoute) acquire(ctx context.Context) (*publisherRou
 	return &publisherRouteAcquisition{handle: handle}, nil
 }
 
-func (route *publisherRouteAcquisition) checkRecipient(config join.JoinConfig) error {
+func (route *publisherRouteAcquisition) checkRecipient(config join.Config) error {
 	return route.handle.CheckRendezvous(config.Duty, nil)
 }
 
-func (route *publisherRouteAcquisition) join(ctx context.Context) (*join.JoinAcquisition, error) {
+func (route *publisherRouteAcquisition) join(ctx context.Context) (*join.Acquisition, error) {
 	return join.AcquireScopedResponderJoin(ctx, route.handle)
 }
 

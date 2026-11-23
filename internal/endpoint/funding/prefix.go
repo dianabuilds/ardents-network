@@ -15,7 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
-// Preparation retains a genuine independent role selection and finite shared
+// PreparePrefix retains a genuine independent role selection and finite shared
 // Hosting reservation. It performs no dial and grants no ready physical prefix.
 func PreparePrefix(ctx context.Context, plan Plan, selected *selection.Owner, budget *hosting.Budget, authority Authority, holder *stock.Owner) (prefix.Config, error) {
 	if ctx == nil || selected == nil || budget == nil || authority.current == nil || authority.presentation == nil || holder == nil {
@@ -31,7 +31,7 @@ func PreparePrefix(ctx context.Context, plan Plan, selected *selection.Owner, bu
 	return PrepareSelectedPrefix(ctx, plan, leg, budget, authority, holder)
 }
 
-// A new physical reservation for an already retained leg grants no selection
+// PrepareSelectedPrefix reserves resources for an already retained leg. This grants no selection
 // or accepting observation. Prefix reobserves the original genuine authority
 // before every opening/effect and at its final handoff.
 func PrepareSelectedPrefix(ctx context.Context, plan Plan, leg selection.Leg, budget *hosting.Budget, authority Authority, holder *stock.Owner) (prefix.Config, error) {

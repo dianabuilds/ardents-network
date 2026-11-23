@@ -145,7 +145,7 @@ func TestRecipientHistoryRollingRateUsesAttemptTimes(t *testing.T) {
 		}
 		reservation.release()
 	}
-	if _, err := history.reserve(accountingNonce(5), now.Add(time.Minute), now.Add(time.Minute), now.Add(999*time.Millisecond)); err == nil || err.Error() != "Publisher opening rate unavailable" {
+	if _, err := history.reserve(accountingNonce(5), now.Add(time.Minute), now.Add(time.Minute), now.Add(999*time.Millisecond)); err == nil || err.Error() != "publisher opening rate unavailable" {
 		t.Fatal("rolling rate lost its original attempts", err)
 	}
 	reservation, err := history.reserve(accountingNonce(5), now.Add(time.Minute), now.Add(time.Minute), now.Add(time.Second))
@@ -153,7 +153,7 @@ func TestRecipientHistoryRollingRateUsesAttemptTimes(t *testing.T) {
 		t.Fatal("oldest attempt did not expire at its exact boundary", err)
 	}
 	reservation.release()
-	if _, err := history.reserve(accountingNonce(6), now.Add(time.Minute), now.Add(time.Minute), now.Add(1199*time.Millisecond)); err == nil || err.Error() != "Publisher opening rate unavailable" {
+	if _, err := history.reserve(accountingNonce(6), now.Add(time.Minute), now.Add(time.Minute), now.Add(1199*time.Millisecond)); err == nil || err.Error() != "publisher opening rate unavailable" {
 		t.Fatal("one expired attempt incorrectly reset the whole window", err)
 	}
 	reservation, err = history.reserve(accountingNonce(6), now.Add(time.Minute), now.Add(time.Minute), now.Add(1200*time.Millisecond))
@@ -186,7 +186,7 @@ func TestRecipientHistoryCapacityRetainsPendingUntilOriginalRelease(t *testing.T
 		reservation.release()
 	}
 	at := now.Add(661 * time.Second)
-	if _, err := history.reserve(accountingNonce(2641), end, end, at); err == nil || err.Error() != "Publisher replay capacity unavailable" {
+	if _, err := history.reserve(accountingNonce(2641), end, end, at); err == nil || err.Error() != "publisher replay capacity unavailable" {
 		t.Fatal("pending opening bypassed shared replay capacity", err)
 	}
 	pending.release()
@@ -199,7 +199,7 @@ func TestRecipientHistoryCapacityRetainsPendingUntilOriginalRelease(t *testing.T
 		t.Fatal("original pending release failed to return one slot", err)
 	}
 	defer replacement.release()
-	if _, err := history.reserve(accountingNonce(2642), end, end, at); err == nil || err.Error() != "Publisher replay capacity unavailable" {
+	if _, err := history.reserve(accountingNonce(2642), end, end, at); err == nil || err.Error() != "publisher replay capacity unavailable" {
 		t.Fatal("repeated release returned another capacity slot", err)
 	}
 }

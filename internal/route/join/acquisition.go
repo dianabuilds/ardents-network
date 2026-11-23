@@ -24,12 +24,12 @@ type joinClaim interface {
 	ReturnJoined()
 }
 
-// JoinAcquisition retains the original physical Source opening, and for a
+// Acquisition retains the original physical Source opening, and for a
 // Publisher also the exact Responder. It cannot resolve a replacement. Local
 // acquisition is not Network or Service authority; Join rechecks real owners
 // before and after every admission and handoff boundary.
-type JoinAcquisition struct {
-	self              *JoinAcquisition
+type Acquisition struct {
+	self              *Acquisition
 	borrows           joinClaim
 	caller, ctx       context.Context
 	cancel            context.CancelFunc
@@ -48,19 +48,19 @@ type JoinAcquisition struct {
 }
 
 // AcquireSourceJoin retains one exact Source for a single JOIN attempt.
-func AcquireSourceJoin(ctx context.Context, p *prefix.Prefix) (*JoinAcquisition, error) {
+func AcquireSourceJoin(ctx context.Context, p *prefix.Prefix) (*Acquisition, error) {
 	return acquireJoin(ctx, p, false)
 }
 
 // AcquireResponderJoin retains the Responder and its immutable original Source.
 // prefix.Prefix resolves that binding; the caller cannot supply a replacement Source.
-func AcquireResponderJoin(ctx context.Context, p *prefix.Prefix) (*JoinAcquisition, error) {
+func AcquireResponderJoin(ctx context.Context, p *prefix.Prefix) (*Acquisition, error) {
 	return acquireJoin(ctx, p, true)
 }
 
 // AcquireScopedResponderJoin consumes an exact handle from the original
 // retained role scope. The resulting acquisition never follows a later prefix.
-func AcquireScopedResponderJoin(ctx context.Context, h *prefix.ResponderHandle) (*JoinAcquisition, error) {
+func AcquireScopedResponderJoin(ctx context.Context, h *prefix.ResponderHandle) (*Acquisition, error) {
 	if h == nil {
 		return nil, errors.New("scoped Responder handle absent")
 	}
@@ -70,7 +70,7 @@ func AcquireScopedResponderJoin(ctx context.Context, h *prefix.ResponderHandle) 
 }
 
 // AcquireScopedSourceJoin retains the one exact original Source generation.
-func AcquireScopedSourceJoin(ctx context.Context, h *prefix.SourceHandle) (*JoinAcquisition, error) {
+func AcquireScopedSourceJoin(ctx context.Context, h *prefix.SourceHandle) (*Acquisition, error) {
 	if h == nil {
 		return nil, errors.New("scoped Source handle absent")
 	}
@@ -79,7 +79,7 @@ func AcquireScopedSourceJoin(ctx context.Context, h *prefix.SourceHandle) (*Join
 	})
 }
 
-func acquireJoin(ctx context.Context, p *prefix.Prefix, responder bool) (*JoinAcquisition, error) {
+func acquireJoin(ctx context.Context, p *prefix.Prefix, responder bool) (*Acquisition, error) {
 	if p == nil {
 		return nil, errors.New("route JOIN original roles unavailable")
 	}
@@ -93,7 +93,7 @@ func acquireJoin(ctx context.Context, p *prefix.Prefix, responder bool) (*JoinAc
 
 // startAcquisition binds the original caller before obtaining its exact claim.
 // Source and Responder use the same acquisition lifetime and physical join.
-func startAcquisition(ctx context.Context, borrow func(func(), func() error) (joinClaim, error)) (*JoinAcquisition, error) {
+func startAcquisition(ctx context.Context, borrow func(func(), func() error) (joinClaim, error)) (*Acquisition, error) {
 	if ctx == nil || ctx.Err() != nil || borrow == nil {
 		return nil, errors.New("route JOIN original roles unavailable")
 	}
@@ -102,7 +102,7 @@ func startAcquisition(ctx context.Context, borrow func(func(), func() error) (jo
 		cancel()
 		return nil, err
 	}
-	a := &JoinAcquisition{caller: ctx, ctx: child, cancel: cancel, watchDone: make(chan struct{}), done: make(chan struct{})}
+	a := &Acquisition{caller: ctx, ctx: child, cancel: cancel, watchDone: make(chan struct{}), done: make(chan struct{})}
 	a.self = a
 	claim, err := borrow(a.stop, func() error {
 		// Prefix joins this original borrower but owns no JOIN work outcome.
@@ -128,7 +128,7 @@ func startAcquisition(ctx context.Context, borrow func(func(), func() error) (jo
 	return a, nil
 }
 
-func (a *JoinAcquisition) current() error {
+func (a *Acquisition) current() error {
 	if err := a.checkLocal(); err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func (a *JoinAcquisition) current() error {
 
 // checkLocal grants no authority. It fences full observations with the exact
 // acquisition, original callers and borrowed physical generations.
-func (a *JoinAcquisition) checkLocal() error {
+func (a *Acquisition) checkLocal() error {
 	if a == nil || a.self != a || a.caller == nil || a.ctx == nil || a.borrows == nil {
 		return errors.New("route JOIN acquisition absent")
 	}
@@ -161,7 +161,7 @@ func (a *JoinAcquisition) checkLocal() error {
 
 // Terminal cleanup still obeys the original caller and physical generations
 // after local admission seals.
-func (a *JoinAcquisition) originalCurrent() error {
+func (a *Acquisition) originalCurrent() error {
 	if a == nil || a.self != a || a.borrows == nil {
 		return errors.New("route JOIN original acquisition absent")
 	}
@@ -171,7 +171,7 @@ func (a *JoinAcquisition) originalCurrent() error {
 	return a.caller.Err()
 }
 
-func (a *JoinAcquisition) stop() {
+func (a *Acquisition) stop() {
 	a.mu.Lock()
 	a.closed = true
 	stream := a.stream
@@ -185,7 +185,7 @@ func (a *JoinAcquisition) stop() {
 // Publication and synchronous prefix.Prefix.Seal share the original role locks. An
 // acquisition lock alone cannot prevent a prefix from sealing before a delayed
 // stream is assigned. No observation or physical I/O runs inside this commit.
-func (a *JoinAcquisition) publish(ctx context.Context, stream *Joined) error {
+func (a *Acquisition) publish(ctx context.Context, stream *Joined) error {
 	if a == nil || a.self != a {
 		return errors.New("route JOIN original acquisition absent")
 	}
@@ -206,7 +206,7 @@ func (a *JoinAcquisition) publish(ctx context.Context, stream *Joined) error {
 // Close seals the acquisition synchronously, interrupts opening/stream I/O,
 // joins them, then returns both original borrows. Repeated calls retain one
 // terminal result. prefix.Prefix retirement uses this same join, never a timeout.
-func (a *JoinAcquisition) Close() error {
+func (a *Acquisition) Close() error {
 	if a == nil {
 		return nil
 	}
@@ -247,7 +247,7 @@ func (a *JoinAcquisition) Close() error {
 // CleanupResult retains the actual joined physical failures independently of
 // the attempt's refusal/EOF. Completion requires original borrower return and
 // all actors, never just cancellation or a waiting timeout.
-func (a *JoinAcquisition) CleanupResult() (error, bool) {
+func (a *Acquisition) CleanupResult() (error, bool) {
 	if a == nil || a.self != a || a.done == nil {
 		return nil, false
 	}

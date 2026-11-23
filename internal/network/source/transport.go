@@ -118,7 +118,7 @@ func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() b
 func serve(ctx context.Context, server server, ready chan<- error, protected func() bool,
 	active func(int), resolve func(context.Context, Message) Message) (result error) {
 	if ctx.Err() != nil || protected != nil && protected() {
-		err := errors.Join(errors.New("Source serving admission unavailable"), ctx.Err())
+		err := errors.Join(errors.New("source serving admission unavailable"), ctx.Err())
 		ready <- err
 		return err
 	}
@@ -129,7 +129,7 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		return wrapped
 	}
 	if ctx.Err() != nil || protected != nil && protected() {
-		err := errors.Join(errors.New("Source serving admission unavailable"), ctx.Err(), listener.Close())
+		err := errors.Join(errors.New("source serving admission unavailable"), ctx.Err(), listener.Close())
 		ready <- err
 		return err
 	}
@@ -245,7 +245,7 @@ func handleConnection(ctx context.Context, server server, active func(int), conn
 	}
 	response := resolve(ctx, request)
 	if ctx.Err() != nil || protected != nil && protected() {
-		return errors.New("Source response admission unavailable")
+		return errors.New("source response admission unavailable")
 	}
 	if err := writeResponse(connection, response); err != nil {
 		return fmt.Errorf("write distribution response: %w", err)

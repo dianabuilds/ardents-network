@@ -10,7 +10,7 @@ var errRepairDeclaration = errors.New("invalid node repair declaration")
 
 // RepairDeclaration projects the original scope of a fixed Node producer.
 // State separately authenticates the retained original and its repair proof.
-func RepairDeclaration(role string, raw []byte) (NodeNetwork, []string, error) {
+func RepairDeclaration(role string, raw []byte) (Network, []string, error) {
 	var core nodePlanCore
 	var profile, extraRoot string
 	var err error
@@ -32,17 +32,17 @@ func RepairDeclaration(role string, raw []byte) (NodeNetwork, []string, error) {
 		plan, err = DecodeIntroductionPlan(raw)
 		core, profile, extraRoot = plan.nodePlanCore, processresource.IntroductionProfile, plan.IntroductionRoot
 	default:
-		return NodeNetwork{}, nil, errRepairDeclaration
+		return Network{}, nil, errRepairDeclaration
 	}
 	if err != nil || core.Network == nil || core.ProcessProfile != profile {
-		return NodeNetwork{}, nil, errRepairDeclaration
+		return Network{}, nil, errRepairDeclaration
 	}
 	roots := []string{core.Network.Root, core.ParticipationRoot, core.SpendRoot, core.HostingRoot}
 	if role == "descriptor" || role == "introduction" {
 		roots = append(roots, extraRoot)
 	}
 	if !separateRoots(roots...) {
-		return NodeNetwork{}, nil, errRepairDeclaration
+		return Network{}, nil, errRepairDeclaration
 	}
 	return *core.Network, roots, nil
 }

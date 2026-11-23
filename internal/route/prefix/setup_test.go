@@ -56,7 +56,7 @@ func TestResponderOpeningRetainsSourceCancellationDuringFailedObservation(t *tes
 	defer cleanup()
 	source.config.Leg.EntryMember.RoleDomain = 1
 	end := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
-	cause := errors.New("Responder observation failed")
+	cause := errors.New("responder observation failed")
 	var observations, presentations, returns int
 	config := Config{Deadline: end,
 		Current: func() (network.RuntimeView, error) {

@@ -20,7 +20,7 @@ func TestJoinedPeerCloseCannotMoveToAnotherStream(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer session.Close()
-	acquisition := &JoinAcquisition{}
+	acquisition := &Acquisition{}
 	joined := &Joined{acquisition: acquisition, session: session, lane: lane}
 	if _, err := joined.DecodedPeerClose(); err == nil {
 		t.Fatal("unpublished JOIN supplied evidence")

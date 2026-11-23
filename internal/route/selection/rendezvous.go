@@ -33,7 +33,7 @@ type Rendezvous struct {
 // public choice with Leg.RendezvousDuty instead. No authority is granted here.
 func NewRendezvous(leg Leg, current func() (network.RuntimeView, error), excluded []route.Member) (*Rendezvous, error) {
 	if current == nil || leg.EntryMember.RoleDomain != 1 || leg.InteriorMember.RoleDomain != 1 {
-		return nil, errors.New("Rendezvous Source selection unavailable")
+		return nil, errors.New("rendezvous Source selection unavailable")
 	}
 	leg.known = append([]route.Member(nil), leg.known...)
 	r := &Rendezvous{leg: leg, current: current}
@@ -66,10 +66,10 @@ func (r *Rendezvous) DutyForLeg(leg Leg, slot uint8, excluded []route.Member) (n
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if slot > 1 {
-		return network.RetainedDuty{}, errors.New("Rendezvous choice outside retained set")
+		return network.RetainedDuty{}, errors.New("rendezvous choice outside retained set")
 	}
 	if leg.EntryMember.RoleDomain != 1 || leg.InteriorMember.RoleDomain != 1 {
-		return network.RetainedDuty{}, errors.New("Rendezvous Source leg unavailable")
+		return network.RetainedDuty{}, errors.New("rendezvous Source leg unavailable")
 	}
 	if r.failure != nil {
 		return network.RetainedDuty{}, r.failure
@@ -115,7 +115,7 @@ func (r *Rendezvous) DutyForLeg(leg Leg, slot uint8, excluded []route.Member) (n
 		}
 	}
 	if int(slot) >= len(r.duties) || !view.ObservedAt().Before(r.until) {
-		return network.RetainedDuty{}, errors.New("Rendezvous retained choice unavailable")
+		return network.RetainedDuty{}, errors.New("rendezvous retained choice unavailable")
 	}
 	duty := r.duties[slot]
 	if err := view.MatchDuty(duty, view.ObservedAt()); err != nil {
@@ -123,7 +123,7 @@ func (r *Rendezvous) DutyForLeg(leg Leg, slot uint8, excluded []route.Member) (n
 	}
 	member, err := view.Member(duty.NodeID, view.ObservedAt())
 	if err != nil || member.RecordDigest != r.members[slot].RecordDigest {
-		return network.RetainedDuty{}, errors.Join(errors.New("Rendezvous retained Record changed"), err)
+		return network.RetainedDuty{}, errors.Join(errors.New("rendezvous retained Record changed"), err)
 	}
 	if _, err := leg.RendezvousDuty(view, duty.NodeID, duty.RecordGeneration, r.excluded); err != nil {
 		return network.RetainedDuty{}, err
@@ -137,11 +137,11 @@ func (r *Rendezvous) observe(leg Leg) (network.RuntimeView, error) {
 		return network.RuntimeView{}, err
 	}
 	if view.ObservedAt().Before(r.last) {
-		return network.RuntimeView{}, errors.New("Rendezvous Source observation unavailable")
+		return network.RuntimeView{}, errors.New("rendezvous Source observation unavailable")
 	}
 	r.last = view.ObservedAt()
 	if view.ProfileBinding() != r.leg.Profile || leg.Check(view, view.ObservedAt()) != nil {
-		return network.RuntimeView{}, errors.New("Rendezvous Source observation unavailable")
+		return network.RuntimeView{}, errors.New("rendezvous Source observation unavailable")
 	}
 	return view, nil
 }
@@ -167,7 +167,7 @@ func (r *Rendezvous) remember(peers []route.Member) {
 // not capsule authentication or publication readiness.
 func (leg Leg) RendezvousDuty(view network.RuntimeView, node [32]byte, generation uint64, excluded []route.Member) (network.RetainedDuty, error) {
 	if (leg.EntryMember.RoleDomain != 1 && leg.EntryMember.RoleDomain != 3) || leg.Check(view, view.ObservedAt()) != nil {
-		return network.RetainedDuty{}, errors.New("Rendezvous prefix unavailable")
+		return network.RetainedDuty{}, errors.New("rendezvous prefix unavailable")
 	}
 	member, err := view.Member(node, view.ObservedAt())
 	if err != nil || !route.CarrierPermitted(member.CarrierProfile) || member.DutyGeneration != generation || !route.PurposePermitsDuty(6, member.RoleDomain, member.Subrole) {
@@ -175,13 +175,13 @@ func (leg Leg) RendezvousDuty(view network.RuntimeView, node [32]byte, generatio
 	}
 	byKey, err := view.MemberByKey(member.PublicKey, view.ObservedAt())
 	if err != nil || byKey.NodeID != member.NodeID {
-		return network.RetainedDuty{}, errors.Join(errors.New("Rendezvous key ambiguous"), err)
+		return network.RetainedDuty{}, errors.Join(errors.New("rendezvous key ambiguous"), err)
 	}
 	known := append(append([]route.Member(nil), leg.known...), excluded...)
 	known = append(known, rendezvousPeer(leg.EntryMember), rendezvousPeer(leg.InteriorMember))
 	for _, peer := range known {
 		if route.Conflict(rendezvousPeer(member), peer) {
-			return network.RetainedDuty{}, errors.New("Rendezvous conflicts with known participant")
+			return network.RetainedDuty{}, errors.New("rendezvous conflicts with known participant")
 		}
 	}
 	return view.RetainDuty(member.NodeID, view.ObservedAt())

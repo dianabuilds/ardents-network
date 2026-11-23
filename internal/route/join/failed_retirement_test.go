@@ -13,7 +13,7 @@ import (
 // This local identity fixture supplies no accepting acquisition or transport.
 // Failed retirement may affect only the exact originally published child.
 func TestCopiedJoinedCannotChangeOriginalRetirement(t *testing.T) {
-	a := &JoinAcquisition{}
+	a := &Acquisition{}
 	a.self = a
 	original := &Joined{acquisition: a}
 	a.stream = original
@@ -48,7 +48,7 @@ func TestFailedMarkerRefusesAlreadySelectedTerminal(t *testing.T) {
 			defer session.Close()
 			caller, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			a := &JoinAcquisition{ctx: t.Context()}
+			a := &Acquisition{ctx: t.Context()}
 			a.self = a
 			j := &Joined{acquisition: a, session: session, lane: lane, retiring: make(chan struct{}), watcherDone: make(chan struct{})}
 			a.stream = j

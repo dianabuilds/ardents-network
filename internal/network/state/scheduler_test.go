@@ -45,7 +45,7 @@ func TestWaitReportsTerminalAutomaticFailureAlongsideSourceServer(t *testing.T) 
 }
 
 func TestWaitDoesNotMaskTerminalFailureWithCanceledSource(t *testing.T) {
-	failure := errors.New("Network owner failed")
+	failure := errors.New("network owner failed")
 	serverDone, automaticDone := make(chan struct{}), make(chan struct{})
 	close(serverDone)
 	close(automaticDone)

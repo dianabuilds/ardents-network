@@ -8,8 +8,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
-func testNodeNetwork() NodeNetwork {
-	return NodeNetwork{Root: "/state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: "/clock"}
+func testNodeNetwork() Network {
+	return Network{Root: "/state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: "/clock"}
 }
 
 func testCoreMap() map[string]any {

@@ -113,7 +113,7 @@ func TestJoinedPhysicalCloseWaitsForInnerPeerBeforeLowerRetirement(t *testing.T)
 				}
 				defer inner.Close()
 				var returns atomic.Int32
-				joined := &Joined{session: inner, lane: child, parent: &joinedParentRetirement{lane: parent, returned: &returns}, acquisition: &JoinAcquisition{ctx: context.Background()}, retiring: make(chan struct{}), watcherDone: make(chan struct{})}
+				joined := &Joined{session: inner, lane: child, parent: &joinedParentRetirement{lane: parent, returned: &returns}, acquisition: &Acquisition{ctx: context.Background()}, retiring: make(chan struct{}), watcherDone: make(chan struct{})}
 				go joined.watch(context.Background())
 				completed := make(chan error, 1)
 				go func() { completed <- joined.closePhysical() }()

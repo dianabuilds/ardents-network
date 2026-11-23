@@ -8,12 +8,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 )
 
-var errFlight = errors.New("Publisher flight unavailable")
-var errPredecessor = errors.New("Publisher predecessor still retained")
+var errFlight = errors.New("publisher flight unavailable")
+var errPredecessor = errors.New("publisher predecessor still retained")
 
 func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 	if p == nil || ctx == nil {
-		return "", errors.New("Publisher absent")
+		return "", errors.New("publisher absent")
 	}
 	if err := p.check(ctx); err != nil {
 		return "", err
@@ -29,7 +29,7 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 	}
 	if replace && p.current == nil {
 		p.mu.Unlock()
-		return "", errors.New("Publisher current pair absent")
+		return "", errors.New("publisher current pair absent")
 	}
 	if p.predecessor != nil {
 		p.mu.Unlock()
@@ -39,7 +39,7 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 	if pair == nil {
 		if p.revision == ^uint64(0) {
 			p.mu.Unlock()
-			return "", errors.New("Publisher revision exhausted")
+			return "", errors.New("publisher revision exhausted")
 		}
 		p.revision++
 		child, cancel := context.WithCancel(p.ctx)
@@ -112,7 +112,7 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if p.closed || p.pending != pair {
-			return errors.New("Publisher late acknowledgement")
+			return errors.New("publisher late acknowledgement")
 		}
 		if err := errors.Join(checkSource(), p.checkLocal(ctx), pair.ctx.Err()); err != nil {
 			return err

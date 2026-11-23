@@ -55,7 +55,7 @@ func (state *initialDelivery) joinCaller() {
 // after each network flight; copied transcripts alone cannot publish a state.
 func (state *initialDelivery) observe() error {
 	if state.opening == nil {
-		return errors.New("Publisher initial binding absent")
+		return errors.New("publisher initial binding absent")
 	}
 	if _, err := state.opening.Binding(state.ctx); err != nil {
 		return err
@@ -89,7 +89,7 @@ func (state *initialDelivery) retain() error {
 			return err
 		}
 		if nonce == [32]byte{} || p.initialDeliveries[nonce] != nil || len(p.initialDeliveries) >= maximumInitialDeliveries {
-			return errors.New("Publisher initial delivery already retained or full")
+			return errors.New("publisher initial delivery already retained or full")
 		}
 		state.nonce = nonce
 		p.initialDeliveries[nonce] = state
@@ -110,7 +110,7 @@ func (state *initialDelivery) publishJoined() error {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if p.initialDeliveries[state.nonce] != state {
-			return errors.New("Publisher initial binding retention changed")
+			return errors.New("publisher initial binding retention changed")
 		}
 		if err := state.checkLocal(checkOriginal); err != nil {
 			return err
@@ -152,11 +152,11 @@ func (state *initialDelivery) commitResponder(action func(func() error) error) e
 func (state *initialDelivery) checkLocal(checkOriginal func() error) error {
 	p := state.publisher
 	if !p.acceptingPair(state.opening.pair, time.Now()) {
-		return errors.New("Publisher initial pair retired")
+		return errors.New("publisher initial pair retired")
 	}
 	select {
 	case <-state.opening.pair.registration.Done():
-		return errors.New("Publisher original initial Registration retired")
+		return errors.New("publisher original initial Registration retired")
 	default:
 	}
 	// Before actual RESULT/CLOSE completion the delivery caller can revoke

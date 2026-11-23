@@ -16,11 +16,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
-// JoinContextConfig transfers existing role selection borrowers to a context.
+// ContextConfig transfers existing role selection borrowers to a context.
 // Reserve obtains a distinct genuine Hosting reservation for each physical
 // prefix. Its returned function returns only that reservation, after join;
 // installation selection and the shared Hosting budget remain composition-owned.
-type JoinContextConfig struct {
+type ContextConfig struct {
 	Source, Responder *selection.Owner
 	Current           func() (network.RuntimeView, error)
 	Present           role.Presentation
@@ -29,13 +29,13 @@ type JoinContextConfig struct {
 	Exclusions        []route.Member
 }
 
-// JoinContext owns one fixed local Route role and the original physical
+// Context owns one fixed local Route role and the original physical
 // generations opened through it. prefix.Prefix retirement preserves selection; context
 // retirement joins physical users before closing its role selection borrowers.
 // It grants no Execution, Publication or Service authority.
-type JoinContext struct {
+type Context struct {
 	mu          sync.Mutex
-	config      JoinContextConfig
+	config      ContextConfig
 	caller      context.Context
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -49,16 +49,16 @@ type JoinContext struct {
 	watchDone   chan struct{}
 }
 
-// JoinOpening retains the exact published Source and optional Responder. Its
+// Opening retains the exact published Source and optional Responder. Its
 // operations cannot resolve or close a later opening of the same context.
-type JoinOpening struct {
-	owner      *JoinContext
+type Opening struct {
+	owner      *Context
 	generation *joinContextOpening
 }
 
-func (o *JoinOpening) Done() <-chan struct{} { return o.generation.readiness }
+func (o *Opening) Done() <-chan struct{} { return o.generation.readiness }
 
-func (o *JoinOpening) Close() error {
+func (o *Opening) Close() error {
 	if o == nil {
 		return nil
 	}
@@ -68,14 +68,14 @@ func (o *JoinOpening) Close() error {
 	return o.owner.retire(o.generation)
 }
 
-func (o *JoinOpening) Recipient(slot uint8) (network.RetainedDuty, time.Time, error) {
+func (o *Opening) Recipient(slot uint8) (network.RetainedDuty, time.Time, error) {
 	if o == nil {
 		return network.RetainedDuty{}, time.Time{}, net.ErrClosed
 	}
 	return o.owner.recipient(o.generation, slot)
 }
 
-func (o *JoinOpening) Join(ctx context.Context, config JoinConfig, choice uint8) (*Joined, error) {
+func (o *Opening) Join(ctx context.Context, config Config, choice uint8) (*Joined, error) {
 	if o == nil {
 		return nil, net.ErrClosed
 	}
@@ -98,16 +98,16 @@ type contextPrefix interface {
 
 type joinContextOpening struct {
 	commitPair        func(func(func() error) error) error
-	acquire           func(context.Context) (*JoinAcquisition, error)
+	acquire           func(context.Context) (*Acquisition, error)
 	caller            context.Context
 	ctx               context.Context
 	cancel            context.CancelFunc
 	stopContext       func() bool
 	contextStopped    chan struct{}
 	opened            chan struct{}
-	ready, closing    bool // guarded by JoinContext.mu
+	ready, closing    bool // guarded by Context.mu
 	source, responder contextPrefix
-	joins             map[*JoinAcquisition]struct{}
+	joins             map[*Acquisition]struct{}
 	operations        sync.WaitGroup
 	readiness         chan struct{}
 	readinessOnce     sync.Once
@@ -119,7 +119,7 @@ type joinContextOpening struct {
 
 // NewJoinContext takes ownership of Source and optional Responder only on
 // success. Construction is unready: only Open can publish genuine prefixes.
-func NewJoinContext(ctx context.Context, config JoinContextConfig) (*JoinContext, error) {
+func NewJoinContext(ctx context.Context, config ContextConfig) (*Context, error) {
 	if ctx == nil || ctx.Err() != nil || config.Source == nil || config.Source == config.Responder || config.Current == nil || config.Present == nil || config.Reserve == nil ||
 		config.Deadline != config.Deadline.UTC().Truncate(time.Second) || !time.Now().Before(config.Deadline) || config.Deadline.After(time.Now().Add(admission.ForwardClass.Lifetime())) {
 		return nil, errors.New("route JOIN context composition unavailable")
@@ -129,7 +129,7 @@ func NewJoinContext(ctx context.Context, config JoinContextConfig) (*JoinContext
 	}
 	config.Exclusions = append([]route.Member(nil), config.Exclusions...)
 	child, cancel := context.WithDeadline(ctx, config.Deadline)
-	c := &JoinContext{config: config, caller: ctx, ctx: child, cancel: cancel, generations: make(map[*joinContextOpening]struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
+	c := &Context{config: config, caller: ctx, ctx: child, cancel: cancel, generations: make(map[*joinContextOpening]struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
 	go func() {
 		defer close(c.watchDone)
 		select {
@@ -141,14 +141,14 @@ func NewJoinContext(ctx context.Context, config JoinContextConfig) (*JoinContext
 	return c, nil
 }
 
-func (c *JoinContext) availableLocked() error {
+func (c *Context) availableLocked() error {
 	if c.closed || c.failure != nil {
 		return errors.Join(net.ErrClosed, c.failure)
 	}
 	return errors.Join(c.caller.Err(), c.ctx.Err())
 }
 
-func (c *JoinContext) currentLocked(g *joinContextOpening) error {
+func (c *Context) currentLocked(g *joinContextOpening) error {
 	if err := c.availableLocked(); err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func (c *JoinContext) currentLocked(g *joinContextOpening) error {
 
 // observe performs no Context locking. In particular, prefix.Prefix/Joined terminal
 // checks may observe the original authority after local admission has sealed.
-func (c *JoinContext) observe() (network.RuntimeView, error) {
+func (c *Context) observe() (network.RuntimeView, error) {
 	if err := errors.Join(c.caller.Err(), c.ctx.Err()); err != nil {
 		return network.RuntimeView{}, err
 	}
@@ -168,7 +168,7 @@ func (c *JoinContext) observe() (network.RuntimeView, error) {
 	return view, errors.Join(err, c.caller.Err(), c.ctx.Err())
 }
 
-func (c *JoinContext) openingCurrent(g *joinContextOpening) (network.RuntimeView, error) {
+func (c *Context) openingCurrent(g *joinContextOpening) (network.RuntimeView, error) {
 	if err := errors.Join(g.caller.Err(), g.ctx.Err()); err != nil {
 		return network.RuntimeView{}, err
 	}
@@ -176,7 +176,7 @@ func (c *JoinContext) openingCurrent(g *joinContextOpening) (network.RuntimeView
 	return view, errors.Join(err, g.caller.Err(), g.ctx.Err())
 }
 
-func (c *JoinContext) openingAllowed(g *joinContextOpening) error {
+func (c *Context) openingAllowed(g *joinContextOpening) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.currentLocked(g)
@@ -186,7 +186,7 @@ func (c *JoinContext) openingAllowed(g *joinContextOpening) error {
 // its pending result or cancel its work. Retirement must join it before reopen.
 // The returned handle names only this published opening. Its Done signals
 // readiness loss; Close retrieves and joins its original physical work.
-func (c *JoinContext) Open(ctx context.Context) (_ *JoinOpening, result error) {
+func (c *Context) Open(ctx context.Context) (_ *Opening, result error) {
 	if c == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("route JOIN opening caller unavailable")
 	}
@@ -200,7 +200,7 @@ func (c *JoinContext) Open(ctx context.Context) (_ *JoinOpening, result error) {
 		return nil, errors.New("route JOIN physical generation already held")
 	}
 	child, cancel := context.WithDeadline(ctx, c.config.Deadline)
-	g := &joinContextOpening{caller: ctx, ctx: child, cancel: cancel, contextStopped: make(chan struct{}), opened: make(chan struct{}), joins: make(map[*JoinAcquisition]struct{}), readiness: make(chan struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
+	g := &joinContextOpening{caller: ctx, ctx: child, cancel: cancel, contextStopped: make(chan struct{}), opened: make(chan struct{}), joins: make(map[*Acquisition]struct{}), readiness: make(chan struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
 	g.stopContext = context.AfterFunc(c.ctx, func() { defer close(g.contextStopped); cancel() })
 	c.opening = g
 	c.generations[g] = struct{}{}
@@ -254,10 +254,10 @@ func (c *JoinContext) Open(ctx context.Context) (_ *JoinOpening, result error) {
 	if result != nil {
 		return nil, result
 	}
-	return &JoinOpening{owner: c, generation: g}, nil
+	return &Opening{owner: c, generation: g}, nil
 }
 
-func (c *JoinContext) openPrefix(g *joinContextOpening, owner *selection.Owner, source *prefix.Prefix) (*prefix.Prefix, error) {
+func (c *Context) openPrefix(g *joinContextOpening, owner *selection.Owner, source *prefix.Prefix) (*prefix.Prefix, error) {
 	if err := c.openingAllowed(g); err != nil {
 		return nil, err
 	}
@@ -349,7 +349,7 @@ func (c *JoinContext) openPrefix(g *joinContextOpening, owner *selection.Owner, 
 
 // Recipient is initiating-only. The Publisher consumes an incoming exact
 // recipient through Join and cannot use this method to choose a substitute.
-func (c *JoinContext) recipient(g *joinContextOpening, slot uint8) (network.RetainedDuty, time.Time, error) {
+func (c *Context) recipient(g *joinContextOpening, slot uint8) (network.RetainedDuty, time.Time, error) {
 	if c == nil {
 		return network.RetainedDuty{}, time.Time{}, net.ErrClosed
 	}
@@ -384,7 +384,7 @@ func (c *JoinContext) recipient(g *joinContextOpening, slot uint8) (network.Reta
 
 // Join retains exact original prefix acquisitions before observing a recipient
 // or presenting stock. Success transfers that acquisition with the Joined stream.
-func (c *JoinContext) join(g *joinContextOpening, ctx context.Context, config JoinConfig, choice uint8) (*Joined, error) {
+func (c *Context) join(g *joinContextOpening, ctx context.Context, config Config, choice uint8) (*Joined, error) {
 	if c == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("route JOIN caller unavailable")
 	}
@@ -397,7 +397,7 @@ func (c *JoinContext) join(g *joinContextOpening, ctx context.Context, config Jo
 		c.mu.Unlock()
 		return nil, err
 	}
-	var a *JoinAcquisition
+	var a *Acquisition
 	var err error
 	a, err = g.acquire(ctx)
 	if err != nil {
@@ -453,13 +453,13 @@ func (c *JoinContext) join(g *joinContextOpening, ctx context.Context, config Jo
 
 // Local publication and each original prefix.Prefix.Seal use these same role locks.
 // The Context lock is already held; no Current callback or I/O is allowed here.
-func (c *JoinContext) handoffLocked(g *joinContextOpening) error {
+func (c *Context) handoffLocked(g *joinContextOpening) error {
 	return g.commitPair(func(checkOriginal func() error) error {
 		return errors.Join(c.currentLocked(g), checkOriginal())
 	})
 }
 
-func (c *JoinContext) watchPrefix(g *joinContextOpening) {
+func (c *Context) watchPrefix(g *joinContextOpening) {
 	retired := false
 	defer func() {
 		close(g.watchDone)
@@ -485,7 +485,7 @@ func (c *JoinContext) watchPrefix(g *joinContextOpening) {
 
 // sealLocked performs only synchronous local revocation. Ready physical
 // contexts stay live until bounded terminal output and all borrowers join.
-func (c *JoinContext) sealLocked(g *joinContextOpening) {
+func (c *Context) sealLocked(g *joinContextOpening) {
 	if g == nil || g.closing {
 		return
 	}
@@ -501,7 +501,7 @@ func (c *JoinContext) sealLocked(g *joinContextOpening) {
 	}
 }
 
-func (c *JoinContext) failed(err error) {
+func (c *Context) failed(err error) {
 	if err == nil {
 		return
 	}
@@ -511,13 +511,13 @@ func (c *JoinContext) failed(err error) {
 	c.mu.Unlock()
 }
 
-func (c *JoinContext) failedOpening(err error) {
+func (c *Context) failedOpening(err error) {
 	c.failed(prefix.OpeningRetirement(err))
 }
 
 // completed is called after the acquisition has released every original role
 // lock. An explicit stream Close failure immediately denies subsequent work.
-func (c *JoinContext) completed(g *joinContextOpening, a *JoinAcquisition, result error) {
+func (c *Context) completed(g *joinContextOpening, a *Acquisition, result error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if g == nil {
@@ -533,7 +533,7 @@ func (c *JoinContext) completed(g *joinContextOpening, a *JoinAcquisition, resul
 	}
 }
 
-func (c *JoinContext) retire(g *joinContextOpening) error {
+func (c *Context) retire(g *joinContextOpening) error {
 	g.once.Do(func() { c.retireOpening(g) })
 	<-g.watchDone
 	c.mu.Lock()
@@ -542,7 +542,7 @@ func (c *JoinContext) retire(g *joinContextOpening) error {
 	return g.result
 }
 
-func (c *JoinContext) retireOpening(g *joinContextOpening) {
+func (c *Context) retireOpening(g *joinContextOpening) {
 	c.mu.Lock()
 	c.sealLocked(g)
 	c.mu.Unlock()
@@ -556,7 +556,7 @@ func (c *JoinContext) retireOpening(g *joinContextOpening) {
 	}
 	g.operations.Wait()
 	c.mu.Lock()
-	acquisitions := make([]*JoinAcquisition, 0, len(g.joins))
+	acquisitions := make([]*Acquisition, 0, len(g.joins))
 	for acquisition := range g.joins {
 		acquisitions = append(acquisitions, acquisition)
 	}
@@ -585,7 +585,7 @@ func (c *JoinContext) retireOpening(g *joinContextOpening) {
 	c.mu.Unlock()
 }
 
-func (c *JoinContext) close() {
+func (c *Context) close() {
 	close(c.stopWatch)
 	c.mu.Lock()
 	c.closed = true
@@ -610,7 +610,7 @@ func (c *JoinContext) close() {
 
 // Close retires the context permanently. Repeated calls retain its completed
 // physical and selection cleanup result; no timeout substitutes for the joins.
-func (c *JoinContext) Close() error {
+func (c *Context) Close() error {
 	if c == nil {
 		return nil
 	}
@@ -631,7 +631,7 @@ func (g *joinContextOpening) bind(source, responder *prefix.Prefix) {
 		g.responder = responder
 	}
 	g.commitPair = func(handoff func(func() error) error) error { return source.CommitPair(responder, handoff) }
-	g.acquire = func(ctx context.Context) (*JoinAcquisition, error) {
+	g.acquire = func(ctx context.Context) (*Acquisition, error) {
 		if responder != nil {
 			return AcquireResponderJoin(ctx, responder)
 		}

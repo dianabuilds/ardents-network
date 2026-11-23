@@ -16,7 +16,7 @@ import (
 
 func writePreparePlanNetwork(t *testing.T, base string) {
 	t.Helper()
-	network := node.NodeNetwork{Root: filepath.Join(base, "state"), NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: filepath.Join(base, "clock")}
+	network := node.Network{Root: filepath.Join(base, "state"), NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: filepath.Join(base, "clock")}
 	raw, err := json.Marshal(network)
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func preparePlanTestArgs(role, base string, extra map[string]string) []string {
 // decodedPreparePlanFacts decodes the produced plan through the runtime codec and
 // returns the facts the runtime admission gate consumes, proving the written plan
 // is admissible by the same closed grammar and per-role policy the runtime uses.
-func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.NodeNetwork, string, []string, uint32) {
+func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Network, string, []string, uint32) {
 	t.Helper()
 	switch role {
 	case "forwarding":

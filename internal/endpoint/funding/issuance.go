@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
+// IssuerPreparation binds the issuance request to its original owners.
 // Stock owns permission, request/retry identity and verified token deposit.
 // Route supplies the actual mode, exact opening binding and final local guard.
 func IssuerPreparation(ctx context.Context, authority Authority, holder *stock.Owner, leg selection.Leg, class uint8, receivers [][32]byte, preparation ...*stock.Preparation) func(prefix.IssuerBinding) (prefix.IssuerBatch, error) {

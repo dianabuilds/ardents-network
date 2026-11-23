@@ -32,7 +32,7 @@ func (g *publicationDeliveryCloseGate) observePublisherJoin(current func() (netw
 	joinOpening, publisher := false, false
 	for {
 		frame, more := frames.Next()
-		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/route/join.(*JoinAcquisition).Join"
+		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/route/join.(*Acquisition).Join"
 		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/publication/runtime.(*Publisher).NextAuthentication"
 		if !more {
 			break

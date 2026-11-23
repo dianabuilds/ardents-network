@@ -23,7 +23,7 @@ func TestJoinContextMissingOwnersCannotAcquireReadiness(t *testing.T) {
 	caller, cancel := context.WithCancel(t.Context())
 	cancel()
 	for _, ctx := range []context.Context{nil, caller, t.Context()} {
-		owner, err := NewJoinContext(ctx, JoinContextConfig{Deadline: time.Now().UTC().Truncate(time.Second).Add(time.Minute)})
+		owner, err := NewJoinContext(ctx, ContextConfig{Deadline: time.Now().UTC().Truncate(time.Second).Add(time.Minute)})
 		if err == nil || owner != nil {
 			t.Fatal("missing genuine role owners created a JOIN context")
 		}
@@ -35,7 +35,7 @@ func TestJoinContextPreWireRefusalDoesNotRetainCompletedBorrowers(t *testing.T) 
 	defer c.Close()
 	source := joinContextRetiringPrefix(t, g.ctx, nil)
 	g.source = source
-	g.acquire = func(ctx context.Context) (*JoinAcquisition, error) {
+	g.acquire = func(ctx context.Context) (*Acquisition, error) {
 		return startAcquisition(ctx, func(func(), func() error) (joinClaim, error) {
 			claim := &acquisitionLifetimeClaim{}
 			source.claims = append(source.claims, claim)
@@ -49,7 +49,7 @@ func TestJoinContextPreWireRefusalDoesNotRetainCompletedBorrowers(t *testing.T) 
 	c.choice = new(selection.Rendezvous)
 	retained := c.choice
 	for range 64 {
-		if joined, err := c.join(g, t.Context(), JoinConfig{}, 2); joined != nil || err == nil {
+		if joined, err := c.join(g, t.Context(), Config{}, 2); joined != nil || err == nil {
 			t.Fatal("invalid pre-wire attempt succeeded", err)
 		}
 		if len(g.joins) != 0 {
@@ -64,7 +64,7 @@ func TestJoinContextPreWireRefusalDoesNotRetainCompletedBorrowers(t *testing.T) 
 	if source.observations != 0 || c.choice != retained || c.failure != nil {
 		t.Fatal("pre-wire refusal changed presentation, selection or terminal authority")
 	}
-	opening := &JoinOpening{owner: c, generation: g}
+	opening := &Opening{owner: c, generation: g}
 	if err := opening.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -79,13 +79,13 @@ func TestJoinContextPreWireRefusalDoesNotRetainCompletedBorrowers(t *testing.T) 
 // These fixtures model local lifetime and failed cleanup only. They have no
 // selection authority, signed Network, admission or successful physical opening.
 // Genuine Context Open/JOIN tests belong to command composition with real owners.
-func joinContextLifetime(t *testing.T) (*JoinContext, *joinContextOpening) {
+func joinContextLifetime(t *testing.T) (*Context, *joinContextOpening) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
-	c := &JoinContext{caller: ctx, ctx: ctx, cancel: cancel, generations: make(map[*joinContextOpening]struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
+	c := &Context{caller: ctx, ctx: ctx, cancel: cancel, generations: make(map[*joinContextOpening]struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
 	close(c.watchDone) // fixture creates no context watcher
 	child, stop := context.WithCancel(ctx)
-	g := &joinContextOpening{caller: ctx, ctx: child, cancel: stop, stopContext: func() bool { return true }, opened: make(chan struct{}), joins: make(map[*JoinAcquisition]struct{}), readiness: make(chan struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
+	g := &joinContextOpening{caller: ctx, ctx: child, cancel: stop, stopContext: func() bool { return true }, opened: make(chan struct{}), joins: make(map[*Acquisition]struct{}), readiness: make(chan struct{}), stopWatch: make(chan struct{}), watchDone: make(chan struct{})}
 	close(g.watchDone) // fixture creates no physical readiness watcher
 	c.opening = g
 	c.generations[g] = struct{}{}
@@ -147,7 +147,7 @@ func TestJoinContextCloseWaitsForItsPendingOpening(t *testing.T) {
 			t.Fatal("unrelated canceled caller affected the original opening")
 		}
 		finished := make(chan error, 1)
-		go func() { finished <- (&JoinOpening{owner: c, generation: g}).Close() }()
+		go func() { finished <- (&Opening{owner: c, generation: g}).Close() }()
 		synctest.Wait()
 		if g.ctx.Err() == nil {
 			t.Fatal("pending physical opening was not interrupted")
@@ -176,7 +176,7 @@ func TestJoinContextCloseWaitsForItsPendingOpening(t *testing.T) {
 		if !errors.Is(first, cause) || returns != 1 {
 			t.Fatal("late original result did not join and preserve return failure", first, returns)
 		}
-		if again := (&JoinOpening{owner: c, generation: g}).Close(); again != first || returns != 1 {
+		if again := (&Opening{owner: c, generation: g}).Close(); again != first || returns != 1 {
 			t.Fatal("repeated prefix close replaced the retained terminal result")
 		}
 		if _, err := c.Open(t.Context()); !errors.Is(err, cause) {
@@ -209,7 +209,7 @@ func TestJoinContextManualClosePreservesParentsUntilBorrowersJoin(t *testing.T) 
 	g.responder = joinContextRetiringPrefix(t, g.ctx, release("Responder"))
 	g.ready = true // local retirement state only; no authority is fabricated
 	close(g.opened)
-	if err := (&JoinOpening{owner: c, generation: g}).Close(); err != nil {
+	if err := (&Opening{owner: c, generation: g}).Close(); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(order, []string{"Responder", "Source"}) || g.ctx.Err() == nil {
@@ -222,7 +222,7 @@ func TestJoinContextManualClosePreservesParentsUntilBorrowersJoin(t *testing.T) 
 
 func TestJoinContextCompletedFailureSealsAndCannotBeErased(t *testing.T) {
 	c, g := joinContextLifetime(t)
-	a := &JoinAcquisition{}
+	a := &Acquisition{}
 	g.joins[a] = struct{}{}
 	cause := errors.New("joined physical return failed")
 	c.completed(g, a, cause)
