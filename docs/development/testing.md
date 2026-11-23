@@ -2919,6 +2919,33 @@ reviewed deadcode allowances. The enrollment infrastructure inventory and the
 introduction receiving registry remain Linux-bound non-leaves (they compose
 Linux-tagged native seams) and are recorded for a later batch.
 
+P1-B batch 2 (#787, #691) de-tagged the next dependency layer unlocked by batch
+1: the Node first-failure and admission public-observation projections
+(`node/failure_projection.go`, `node/admission_projection.go`), the whole
+`endpoint/funding` composition (source/preparation/prefix/issuance/parents/
+observation/reservation), and the `endpoint/session` pure route reservation
+helpers. Each file was re-verified pure at the integration candidate: zero native
+mechanism and every composed symbol portable. The Node failure-projection test
+was split — the four pure projection/copy tests run in the portable deterministic
+inventory on Windows and macOS, while the physical first-failure join test stays
+Linux because it composes the Linux forwarding lifetime
+(`failure_projection_linux_test.go`). The funding Stock-preparation coordination
+test (`preparation_test.go`) and new portable admission-projection and session
+reservation-helper behavior tests also execute on the windows/macos lane. The
+funding/session/Node command consumers remain Linux, so the newly portable
+symbols carry reviewed windows-production-dead deadcode allowances (and, where no
+portable test reaches them, reviewed platform-native test_dead allowances). The
+session `OpenPrefix`/`OpenBootstrap`/`OpenJoinContext` compositions keep their
+Linux tags and unchanged `!linux` typed refusals (`route_other.go`) because they
+open native selection/Hosting durable roots; de-tagging that boundary is a later
+batch. The enrollment infrastructure inventory (native process/`Stat_t` seams)
+and the introduction receiving registry (native slot-history seam) were re-checked
+and remain Linux-bound non-leaves. The Node forwarding admission/observation
+files stay Linux because they compose the Linux `forwarding` lifetime and
+`route/receiver.Channel`; `cmd/ardents-next/source_failure_linux.go` stays Linux
+because it composes the Linux `sourceTerminal`. No de-tagged file adds a native
+mechanism or a weaker accepting path.
+
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require

@@ -502,20 +502,29 @@ tests use only command mechanisms and the standard library.
 `cmd/ardents-next/node_failure_linux.go` imports exactly
 `internal/node` and the standard library to encode its copied original
 first-failure projection inside the established single terminal report. Node's
-`failure_projection_linux.go` imports only `processresource` and the standard
+`failure_projection.go` imports only `processresource` and the standard
 library; it records local phase/cause/elapsed facts without foreign I/O, authority
-or private identity. Process-resource failure facts retain original numeric
+or private identity. P1-B batch 2 (#787, #691) dropped its accidental Linux
+constraint after per-file purity verification: it composes only the portable
+processresource failure projection and standard-library imports, with no native
+mechanism. Its portable behavior tests execute on the windows/macos lane; the
+physical first-failure join test still composes the Linux forwarding lifetime and
+stays Linux (`failure_projection_linux_test.go`). The Linux-only
+`admission_projection.go` public-observation projection was likewise de-tagged in
+batch 2 (it composes only portable `admission`/`network` facts) with a new
+portable behavior test. Process-resource failure facts retain original numeric
 measurements separately from Node's physical cleanup causes.
 `processresource/failure.go` owns the copied failure projection portably: P1-B
 batch 1 (#781, #691) merged the former `failure_linux.go` `Failure` projection
 into the already-portable fact representation after verifying it is pure
 (`errors` only, no native mechanism). Its portable behavior test executes on the
-windows/macos lane. The genuine Node consumers remain Linux
-(`node/failure_projection_linux.go`, `cmd/ardents-next/source_failure_linux.go`),
-so `Failure` is windows-production-dead under a reviewed deadcode allowance. The
-native process/cgroup observation mechanism stays Linux (`native_linux.go`) with
-its unchanged `!linux` typed refusal (`native_other.go`); unsupported-platform
-commands refuse acquisition.
+windows/macos lane. Its genuine Node consumer `node/failure_projection.go` is now
+portable, but that projection's own command consumers remain Linux
+(`cmd/ardents-next/source_failure_linux.go`, `node_failure_linux.go`), so
+`Failure` and the Node projection stay windows-production-dead under reviewed
+deadcode allowances. The native process/cgroup observation mechanism stays Linux
+(`native_linux.go`) with its unchanged `!linux` typed refusal (`native_other.go`);
+unsupported-platform commands refuse acquisition.
 
 [ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
 for the nearest closed release. The QUIC adapter and its import grants retire;
@@ -935,7 +944,7 @@ are retained as reviewed mechanism code with genuine native coverage (see the
 deadcode allowlist), and their shared custody/reader helpers stay production-live
 through SourceInspection and the bounded repair.
 
-| `internal/endpoint/funding` | `package funding` | Application coordination of original Source stock preparation, issuance and presentation; shared Entry/Hosting parent lifetime. Reader, Publisher and bootstrap callers remain in `cmd/ardents-next`. Admission retains finite rights/debit and durable presentation; Network retains current authority; Route retains selection and physical join. | `internal/admission`, `internal/admission/stock`, `internal/admission/token`, `internal/hosting`, `internal/network`, `internal/network/state`, `internal/route`, `internal/route/ardp`, `internal/route/bootstrap`, `internal/route/prefix`, `internal/route/role`, `internal/route/selection`; `internal/pathgrammar`, standard library. |
+| `internal/endpoint/funding` | `package funding` | Application coordination of original Source stock preparation, issuance and presentation; shared Entry/Hosting parent lifetime. Reader, Publisher and bootstrap callers remain in `cmd/ardents-next`. Admission retains finite rights/debit and durable presentation; Network retains current authority; Route retains selection and physical join. P1-B batch 2 (#787, #691) de-tagged the whole composition (`source.go`, `preparation.go`, `prefix.go`, `issuance.go`, `parents.go`, `observation.go`, `reservation.go`) to portable pure Go after per-file purity verification: every composed symbol (hosting reservation accounting, stock/token/prefix/selection helpers) became portable in batch 1 or earlier, and no file adds a native mechanism. The genuine consumers remain Linux (session/endpoint/`cmd/ardents-next`), so the newly portable symbols are windows-production-dead under reviewed deadcode allowances; the portable `preparation_test.go` exercises the Stock preparation coordination on the windows/macos lane. | `internal/admission`, `internal/admission/stock`, `internal/admission/token`, `internal/hosting`, `internal/network`, `internal/network/state`, `internal/route`, `internal/route/ardp`, `internal/route/bootstrap`, `internal/route/prefix`, `internal/route/role`, `internal/route/selection`; `internal/pathgrammar`, standard library. |
 
 | `internal/endpoint/reader` | `package reader` | One original qualified Reader operation for the installed Endpoint, Source/history ownership, sole stream handoff, local document request/result projection, interruption and joined retirement. The installed participant constructs the Reader for the local Connection surface used by `ardents read`. Borrows participant authority/Stock/Execution/Parents; no CLI or publication decisions. | `internal/application/connection`, `internal/application/document`, `internal/admission`, `internal/admission/stock`, `internal/connection`, `internal/endpoint/funding`, `internal/execution/runtime`, `internal/hosting`, `internal/network`, `internal/reachability`, `internal/route/prefix`, `internal/route/selection`; standard library. |
 
@@ -1009,7 +1018,7 @@ canonical platform unit. No sibling role lifetime or permission is borrowed.
 
 | Path | Package | Responsibility and real consumer | Permitted imports |
 |---|---|---|---|
-| `internal/endpoint/session` | `package session` | Serial original holder scenario: attempt/intent, Prefix/JOIN, registration, Publication, lookup history and joined Stock closure. Separate local, preparation and live-operation constructors; each typed method checks original Execution permission. Real consumer: ardents-next holder console. Native Route construction retains selection and Hosting through physical join; no command DTO, JSON, output or process status. | `internal/admission`, `internal/admission/stock`, `internal/endpoint/funding`, `internal/endpoint/publisher`, `internal/execution/runtime`, `internal/hosting`, `internal/reachability`, `internal/route/ardp`, `internal/route/bootstrap`, `internal/route/capsule`, `internal/route/introduction`, `internal/route/join`, `internal/route/prefix`, `internal/route/role`, `internal/route/selection`; `internal/pathgrammar`, standard library. |
+| `internal/endpoint/session` | `package session` | Serial original holder scenario: attempt/intent, Prefix/JOIN, registration, Publication, lookup history and joined Stock closure. Separate local, preparation and live-operation constructors; each typed method checks original Execution permission. Real consumer: ardents-next holder console. Native Route construction retains selection and Hosting through physical join; no command DTO, JSON, output or process status. P1-B batch 2 (#787, #691) de-tagged the pure route reservation helpers (`reservation.go`: release/root-independence/deadline-min) to portable with a new portable behavior test; they compose only the batch-1 portable hosting reservation release and `pathgrammar`. The `OpenPrefix`/`OpenBootstrap`/`OpenJoinContext` compositions stay Linux (`prefix_linux.go`, `bootstrap_linux.go`, `join_linux.go`) with their unchanged `!linux` typed refusals (`route_other.go`), because they open the native selection/Hosting durable roots; de-tagging that composition boundary is a later batch. | `internal/admission`, `internal/admission/stock`, `internal/endpoint/funding`, `internal/endpoint/publisher`, `internal/execution/runtime`, `internal/hosting`, `internal/reachability`, `internal/route/ardp`, `internal/route/bootstrap`, `internal/route/capsule`, `internal/route/introduction`, `internal/route/join`, `internal/route/prefix`, `internal/route/role`, `internal/route/selection`; `internal/pathgrammar`, standard library. |
 
 Retained State/duty opens require their original lease and refuse missing,
 symlink/reparse-point or hardlinked lease files before initializing any history.

@@ -207,6 +207,56 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 	}
 }
 
+// P1-B batch 2 (#787, #691) de-tagged verified pure production files whose
+// composed symbols became portable in batch 1: the Node failure/admission
+// projections, the whole endpoint/funding composition and the session route
+// reservation helpers. They add no native mechanism, so every mandatory target
+// must select them and their portable behavior tests. The Node first-failure
+// physical-join test still composes the Linux forwarding lifetime and stays
+// Linux-only.
+func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/node/failure_projection.go",
+			"internal/node/failure_projection_test.go",
+			"internal/node/admission_projection.go",
+			"internal/node/admission_projection_test.go",
+			"internal/endpoint/funding/reservation.go",
+			"internal/endpoint/funding/issuance.go",
+			"internal/endpoint/funding/parents.go",
+			"internal/endpoint/funding/prefix.go",
+			"internal/endpoint/funding/preparation.go",
+			"internal/endpoint/funding/source.go",
+			"internal/endpoint/funding/observation.go",
+			"internal/endpoint/funding/preparation_test.go",
+			"internal/endpoint/session/reservation.go",
+			"internal/endpoint/session/reservation_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable P1-B batch 2 file %s excluded on %s", name, target)
+			}
+		}
+		for _, name := range []string{
+			"internal/node/failure_projection_linux_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("Linux forwarding first-failure test %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+	}
+}
+
 // The shared channel has no native mechanism. Check actual Go file selection,
 // including tests: a passing suite must not silently omit an inherited OS file.
 func TestSuccessorRouteChannelRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
@@ -1472,10 +1522,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"session consumes original Execution permission", "internal/endpoint/session/session.go", modulePath + "/internal/execution/runtime", true},
 		{"session cannot call command implementation", "internal/endpoint/session/session.go", modulePath + "/cmd/ardents-next", false},
 		{"session cannot use old Endpoint", "internal/endpoint/session/session.go", modulePath + "/internal/endpoint", false},
-		{"funding cannot depend on session", "internal/endpoint/funding/source_linux.go", modulePath + "/internal/endpoint/session", false},
+		{"funding cannot depend on session", "internal/endpoint/funding/source.go", modulePath + "/internal/endpoint/session", false},
 		{"Reader cannot own installed participant", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/endpoint", false},
 		{"other binaries cannot acquire holder session", "cmd/ardents/main.go", modulePath + "/internal/endpoint/session", false},
-		{"funding cannot depend on Reader", "internal/endpoint/funding/source_linux.go", modulePath + "/internal/endpoint/reader", false},
+		{"funding cannot depend on Reader", "internal/endpoint/funding/source.go", modulePath + "/internal/endpoint/reader", false},
 		{"Reader cannot own Publication", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/publication/runtime", false},
 		{"Publisher cannot import command composition", "internal/endpoint/publisher/publisher_linux.go", modulePath + "/cmd/ardents-next", false},
 		{"other binaries cannot acquire new funding", "cmd/ardents/main.go", modulePath + "/internal/endpoint/funding", false},
@@ -1484,8 +1534,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"diagnostics cannot consume Route", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/route/transport", false},
 		{"withdraw uses the Application Administration client", "cmd/ardents-next/endpoint_administration_client.go", modulePath + "/internal/application/administration", true},
 		{"retired command has no Enrollment grant", "cmd/ardents/endpoint.go", modulePath + "/internal/enrollment", false},
-		{"funded Source uses real token grammar", "internal/endpoint/funding/source_linux.go", modulePath + "/internal/admission/token", true},
-		{"funded Source uses finite bootstrap", "internal/endpoint/funding/source_linux.go", modulePath + "/internal/route/bootstrap", true},
+		{"funded Source uses real token grammar", "internal/endpoint/funding/source.go", modulePath + "/internal/admission/token", true},
+		{"funded Source uses finite bootstrap", "internal/endpoint/funding/source.go", modulePath + "/internal/route/bootstrap", true},
 		{"funded Source behavior selects real Carrier", "cmd/ardents-next/route_token_linux_test.go", modulePath + "/internal/route/transport", true},
 		{"other funding adapter has no bootstrap exception", "cmd/ardents-next/route_funding_linux.go", modulePath + "/internal/route/bootstrap", false},
 		{"installed Execution scenario uses shared Carrier identity", "cmd/ardents-next/execution_installed_linux_test.go", modulePath + "/internal/route/transport", true},
