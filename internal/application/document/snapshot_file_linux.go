@@ -14,7 +14,7 @@ import (
 	"unicode/utf8"
 )
 
-var errSnapshotFile = errors.New("text snapshot input is unavailable or unstable")
+var errSnapshotFile = errors.New("document snapshot input is unavailable or unstable")
 
 // ReadSnapshotFile imports one explicitly selected local file in the trusted
 // owner's process. Every path component is opened without following symlinks.
@@ -70,7 +70,7 @@ func openSnapshotFile(path string) (*os.File, error) {
 		_ = syscall.Close(fd)
 		return nil, closeErr
 	}
-	return os.NewFile(uintptr(fd), "selected text snapshot"), nil
+	return os.NewFile(uintptr(fd), "selected document snapshot"), nil
 }
 
 func readStableSnapshot(ctx context.Context, file *os.File) ([]byte, error) {

@@ -57,7 +57,7 @@ func (owner *readerConnectionIO) attachService(service connection.Stream) error 
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.closing || owner.ctx.Err() != nil || owner.service != nil || service == nil {
-		return errors.New("text reader stream transfer is unavailable")
+		return errors.New("document reader stream transfer is unavailable")
 	}
 	owner.service = service
 	owner.workers.Add(2)
