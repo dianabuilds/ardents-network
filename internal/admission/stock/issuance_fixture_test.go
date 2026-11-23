@@ -65,7 +65,11 @@ func issuedStockFixture(t *testing.T) (*Owner, *spendHostFixture, Presentation) 
 
 func issuedStockFixtureHours(t *testing.T, hours int) (*Owner, *spendHostFixture, Presentation) {
 	t.Helper()
-	now := time.Now().UTC().Truncate(time.Second)
+	return issuedStockFixtureAt(t, time.Now().UTC().Truncate(time.Second), hours)
+}
+
+func issuedStockFixtureAt(t *testing.T, now time.Time, hours int) (*Owner, *spendHostFixture, Presentation) {
+	t.Helper()
 	window := now.Truncate(time.Hour)
 	public, identity, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
