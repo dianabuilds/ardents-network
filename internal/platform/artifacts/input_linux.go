@@ -11,9 +11,6 @@ import (
 	"syscall"
 )
 
-// ErrInput reports an unavailable or invalid original artifact input.
-var ErrInput = errors.New("original source preparation input unavailable")
-
 // File retains the original descriptor and metadata of an input or directory.
 type File struct {
 	file   *os.File

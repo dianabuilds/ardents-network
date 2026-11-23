@@ -200,7 +200,7 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 	if !bytes.Equal(signedProfile, fixture.Profile) {
 		t.Fatal("profile differs from independent canonical oracle")
 	}
-	for _, fault := range []string{"spki", "duplicate node", "interval", "fraction", "nested unknown", "nested duplicate"} {
+	for _, fault := range []string{"spki", "duplicate node", "interval", "fraction", "nested unknown", "nested alias", "nested null", "nested duplicate"} {
 		t.Run("profile refusal "+fault, func(t *testing.T) {
 			var q map[string]any
 			_ = json.Unmarshal(preparationJSON(t, profilePlan), &q)
@@ -215,6 +215,12 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 				q["not_before"] = start.Add(time.Nanosecond).Format(time.RFC3339Nano)
 			case "nested unknown":
 				q["nodes"].([]any)[0].(map[string]any)["private_key"] = "no"
+			case "nested alias":
+				node := q["nodes"].([]any)[0].(map[string]any)
+				node["Duty_Generation"] = node["duty_generation"]
+				delete(node, "duty_generation")
+			case "nested null":
+				q["token_keys"].([]any)[0].(map[string]any)["class"] = nil
 			}
 			raw := preparationJSON(t, q)
 			if fault == "nested duplicate" {

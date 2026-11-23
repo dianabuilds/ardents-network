@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // This declaration admits only closed-profile signing. The State authority is
@@ -19,35 +20,37 @@ import (
 type closedProfileSigningPlan struct {
 	Schema    string          `json:"schema"`
 	Reference string          `json:"reference_time"`
-	Authority preparationID   `json:"state_authority_key"`
+	Authority string          `json:"state_authority_key"`
 	Profile   json.RawMessage `json:"profile"`
 }
 
 func admitClosedProfileSigning(raw, prepared []byte, pin string) (*networkSigning, error) {
 	var plan closedProfileSigningPlan
-	if preparationObject(raw, &plan, "schema", "reference_time", "state_authority_key", "profile") != nil || plan.Schema != "ardents-closed-profile-signing-plan-v1" || plan.Authority == (preparationID{}) {
+	if preparationObject(raw, &plan, "schema", "reference_time", "state_authority_key", "profile") != nil || plan.Schema != "ardents-closed-profile-signing-plan-v1" {
+		return nil, errNetworkSigning
+	}
+	authority, err := admissionHex(plan.Authority, ed25519.PublicKeySize)
+	if err != nil || [ed25519.PublicKeySize]byte(authority) == [ed25519.PublicKeySize]byte{} {
 		return nil, errNetworkSigning
 	}
 	reference, err := admissionTime(plan.Reference)
 	if err != nil {
 		return nil, errNetworkSigning
 	}
-	_, body, err := prepareNetworkPublic("prepare-closed-profile", plan.Profile)
+	input, body, err := provisioning.PrepareClosedNetworkProfile(plan.Profile)
 	digest := sha256.Sum256(body)
 	if err != nil || pin != hex.EncodeToString(digest[:]) || !bytes.Equal(body, prepared) {
 		return nil, errNetworkSigning
 	}
-	var p profilePreparationPlan
-	if json.Unmarshal(plan.Profile, &p) != nil || plan.Authority == p.Authority {
+	if bytes.Equal(authority, input.IssuanceAuthorityKey[:]) {
 		return nil, errNetworkSigning
 	}
-	from, _ := admissionTime(p.From)
-	until, _ := admissionTime(p.Until)
-	context := &closedprofile.Context{NetworkID: p.Network, StateGeneration: p.Generation, EpochDigest: p.Digest, Epoch: p.Epoch, Authority: bytes.Clone(plan.Authority[:]), Now: reference}
+	context := &closedprofile.Context{NetworkID: input.NetworkID, StateGeneration: input.StateGeneration,
+		EpochDigest: input.EpochDigest, Epoch: input.Epoch, Authority: authority, Now: reference}
 	if _, err = closedprofile.SigningTranscript(body, *context); err != nil {
 		return nil, errNetworkSigning
 	}
-	return &networkSigning{operation: "sign-closed-profile", networkSigningInterval: networkSigningInterval{reference: reference, from: from, until: until}, message: body, public: bytes.Clone(plan.Authority[:]), network: p.Network, profile: context}, nil
+	return &networkSigning{operation: "sign-closed-profile", networkSigningInterval: networkSigningInterval{reference: reference, from: input.NotBefore, until: input.NotAfter}, message: body, public: authority, network: input.NetworkID, profile: context}, nil
 }
 
 func (s *networkSigning) signProfile(key ed25519.PrivateKey, now time.Time) ([]networkSignedArtifact, error) {

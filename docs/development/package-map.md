@@ -458,10 +458,11 @@ its Admission fixture remains separate. It imports no new domain owner.
 The shared signing entrypoint and public completion metadata in
 `cmd/ardents-next/network_signing_command.go` use only standard-library imports.
 Initial Network signing in exactly Linux-only `cmd/ardents-next/network_signing.go`
-additionally imports `internal/network/epoch` and
-`internal/network/closedprofile`. The exact Linux-only
-`network_profile_signing.go` and `network_profile_signing_test.go` import only
-the latter public owner beyond their standard-library/registered fixture imports.
+uses `internal/node/provisioning` to reprepare reviewed public declarations and
+obtain the exact facts used for encoding. It uses the fixed
+`internal/network/epoch` and `internal/network/closedprofile` verifiers.
+`network_profile_signing.go` uses Provisioning and Closed Profile.
+Its companion test uses the public owner and the registered independent fixture.
 Closedprofile's Linux producer Interface `SigningTranscript` validates public context and canonical body
 and shares its one domain separator with Verify; private keys remain command-only.
 Composition reprepares and
@@ -477,10 +478,11 @@ composition and the standard library. The shared preparation chain test can
 exercise genuine Record/Epoch/profile signing; the preparation-only profile
 retains explicit test-only signers and conveys no product signing qualification.
 
-Public Network preparation composition in exactly
-`cmd/ardents-next/network_preparation.go` imports `network/epoch` and
-`network/closedprofile` alongside the command's common dependencies. It calls
-their existing canonical unsigned preparation directly. The Linux adapter
+Provisioning owns the public Record, Epoch and Closed Profile declarations in
+`internal/node/provisioning/network_artifact_preparation.go`. Its only project
+imports are Epoch, Closed Profile and Platform Artifacts. It returns each
+canonical unsigned artifact with the exact typed facts used to encode it.
+`cmd/ardents-next/network_preparation.go` imports only Provisioning. The Linux adapter
 `network_preparation_linux.go` borrows original directory custody from
 `internal/platform/artifacts`, the same owner used for publication through
 `network_output_linux.go`. It keeps public input size and file admission local.
