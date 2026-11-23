@@ -41,10 +41,10 @@ func TestServingSourceDutyTracksAcceptedSuccessor(t *testing.T) {
 	}
 
 	advancedReceipt, err := serving.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
-	advanced := advancedReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
+	advanced := advancedReceipt.Snapshot
 	if advanced.SourceNodeID != original.SourceNodeID || advanced.SourceFamily != original.SourceFamily || !afterOriginal.Before(advanced.ValidUntil) {
 		t.Fatalf("successor did not retain and extend the serving Source: before=%+v after=%+v", original, advanced)
 	}

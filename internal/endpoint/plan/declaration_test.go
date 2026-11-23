@@ -2,10 +2,28 @@ package plan
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 )
+
+func TestHeadlessZeroPermissionsRemainInJSON(t *testing.T) {
+	raw, err := json.Marshal(Headless{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
+		t.Fatal(err)
+	}
+	const zeroPermission = `{"request_path":"","response_path":"","maxima":[0,0,0]}`
+	for _, name := range []string{"reader_permission", "publisher_permission"} {
+		if string(fields[name]) != zeroPermission {
+			t.Fatalf("%s = %s, want %s", name, fields[name], zeroPermission)
+		}
+	}
+}
 
 // Independent exact schema bytes: this fixture never calls the production
 // encoder or supplies successful Network, Release or filesystem authority.

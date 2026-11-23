@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,8 +30,8 @@ func writePreparePlanIssuance(t *testing.T, base string) {
 	t.Helper()
 	hex32, spki := strings.Repeat("cd", 32), strings.Repeat("ab", 346)
 	start, end := "2026-01-01T00:00:00Z", "2026-01-02T00:00:00Z"
-	keys := []map[string]any{}
-	for i := 0; i < 3; i++ {
+	var keys []map[string]any
+	for range 3 {
 		keys = append(keys, map[string]any{"window": start, "class": "1", "spki": spki})
 	}
 	sub := map[string]any{
@@ -56,9 +57,7 @@ func preparePlanTestArgs(role, base string, extra map[string]string) []string {
 		"certificate": filepath.Join(base, "cert.pem"), "private-key": filepath.Join(base, "key.pem"),
 		"work": "33554432:33554432", "termination": "65536:65536", "retirement-wait-ms": "5000", "output": filepath.Join(base, "plan.json"),
 	}
-	for key, value := range extra {
-		flags[key] = value
-	}
+	maps.Copy(flags, extra)
 	args := []string{role}
 	for key, value := range flags {
 		args = append(args, "--"+key, value)

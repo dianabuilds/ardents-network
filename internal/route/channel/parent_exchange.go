@@ -26,7 +26,7 @@ type parentExchange struct {
 
 func (e *refillCapacityDelta) Error() string { return "route refill capacity changed before output" }
 
-// replenish keeps one requested control exchange on the original parent. Its
+// ExchangeParent keeps one requested control exchange on the original parent. Its
 // sole reader delivers ACCEPT; presentation cannot start a second reader.
 func (s *Session) ExchangeParent(ctx, caller context.Context, end time.Time, remaining uint64, prepare func(context.Context) (ardp.Frame, error), holds ...func(context.Context, uint64) error) error {
 	if ctx == nil || caller == nil || prepare == nil || remaining == 0 {
@@ -97,8 +97,7 @@ func (s *Session) ExchangeParent(ctx, caller context.Context, end time.Time, rem
 			return err
 		}
 		err := s.write(control, frame, false)
-		var changed *refillCapacityDelta
-		if errors.As(err, &changed) {
+		if changed, ok := errors.AsType[*refillCapacityDelta](err); ok {
 			// The selected turn has returned without charging/emitting ADMIT.
 			// Child frames continue while Hosting performs durable reservation.
 			if err := check(); err != nil {
@@ -146,7 +145,7 @@ func (s *Session) ExchangeParent(ctx, caller context.Context, end time.Time, rem
 	return nil
 }
 
-// acceptParent owns the receiving framing commit and its separately accounted
+// AcceptParent owns the receiving framing commit and its separately accounted
 // ACK. The operation supplies bytes only after genuine verification, capacity
 // and durable spend; the framing owner alone changes the usage limit and emits
 // the canonical control frame within its immutable physical horizon.

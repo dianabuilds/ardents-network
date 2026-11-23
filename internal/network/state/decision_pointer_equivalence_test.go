@@ -134,7 +134,7 @@ func TestDecisionPointerCollisionOutcomesMatchValueOracle(t *testing.T) {
 				t.Fatalf("epochDecisionCollides = %t, want %t", got, want)
 			}
 			info := source.Details{Configured: true,
-				Identities:      [2][32]byte{test.identity, [32]byte{94}},
+				Identities:      [2][32]byte{test.identity, {94}},
 				Families:        [2]string{test.family, "other-family"},
 				EndpointHandles: [2]string{test.endpoint, "other-endpoint"}}
 			wantAny := collidesOracle(oracle, info.Identities[0], info.Families[0], info.EndpointHandles[0]) ||
@@ -188,11 +188,11 @@ func TestSelectEpochHistoryPointerPreservesFacts(t *testing.T) {
 	// A nil candidate contributes the same zero facts as the historical zero
 	// value, so reconciliation refuses both identically.
 	_, nilSelection, nilErr := s.selectEpochHistory([]*epoch.Decision{nil})
-	_, zeroSelection, zeroErr := s.selectEpochHistory([]*epoch.Decision{&epoch.Decision{}})
+	_, zeroSelection, zeroErr := s.selectEpochHistory([]*epoch.Decision{{}})
 	if (nilErr == nil) != (zeroErr == nil) || nilErr != nil && nilErr.Error() != zeroErr.Error() {
 		t.Fatalf("nil/zero candidate refusal differs: nil=%v zero=%v", nilErr, zeroErr)
 	}
-	if nilErr == nil && nilSelection.Index() != zeroSelection.Index() {
+	if nilErr == nil && zeroErr == nil && nilSelection.Index() != zeroSelection.Index() {
 		t.Fatal("nil/zero candidate selection differs")
 	}
 

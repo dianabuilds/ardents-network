@@ -122,7 +122,7 @@ func listedProfilePackages(t *testing.T, root, path string) map[string]bool {
 func packageSet(t *testing.T, contents string) map[string]bool {
 	t.Helper()
 	set := make(map[string]bool)
-	for _, line := range strings.Fields(contents) {
+	for line := range strings.FieldsSeq(contents) {
 		if set[line] {
 			t.Errorf("duplicate package profile entry %s", line)
 		}

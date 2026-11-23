@@ -183,13 +183,11 @@ func TestConcurrentOPENEmitsMonotonicLaneIDs(t *testing.T) {
 		results := make(chan error, 64)
 		var callers sync.WaitGroup
 		for range 64 {
-			callers.Add(1)
-			go func() {
-				defer callers.Done()
+			callers.Go(func() {
 				<-start
 				_, err := s.Open(t.Context(), t.Context(), body)
 				results <- err
-			}()
+			})
 		}
 		close(start)
 		callers.Wait()

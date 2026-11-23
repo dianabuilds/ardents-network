@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"math/big"
 	"net"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
@@ -432,7 +433,7 @@ func TestNestedLaneCloseSeparatesPreOutputRefusalFromActualWriteFailure(t *testi
 		t.Run(map[bool]string{false: "authority-refusal", true: "late-physical"}[failOutput], func(t *testing.T) {
 			local, peer := net.Pipe()
 			defer peer.Close()
-			var conn net.Conn = local
+			conn := local
 			refusal := context.Canceled
 			late := errors.New("original lower CLOSE writer failed late")
 			var physical *nestedControlCloseConn

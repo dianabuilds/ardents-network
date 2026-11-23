@@ -19,7 +19,10 @@ func fileClockObserver(path string) func() time.Time {
 
 func trustedNow(config config, state distributionState) (time.Time, error) {
 	observation, err := trustedObservation(config, state)
-	return observation.Instant(), err
+	if err != nil {
+		return time.Time{}, err
+	}
+	return observation.Instant(), nil
 }
 
 func trustedObservation(config config, state distributionState) (networkdomain.TrustedTime, error) {

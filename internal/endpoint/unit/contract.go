@@ -180,8 +180,8 @@ func verifyRunningInvocation(unit, service managerProperties, request Configurat
 	return nil
 }
 
-// MainPID zero or inactive alone cannot complete a queued manager operation.
-// The typed fixed-unit Job property must describe no queued job as well.
+// VerifyNoJob checks the typed fixed-unit Job property for a queued operation.
+// MainPID zero or inactive alone cannot establish that no job remains queued.
 func VerifyNoJob(unit managerProperties) error {
 	if !systemd.Matches(unit, "Job", "(uo)", []any{uint32(0), "/"}) {
 		return ErrBinding

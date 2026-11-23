@@ -52,7 +52,7 @@ func inspectPermission(ctx context.Context, raw []byte, facts Facts) Outcome {
 	if err != nil {
 		return Malformed
 	}
-	if !ed25519.Verify(ed25519.PublicKey(facts.Authority[:]), PermissionTranscript(permission), permission.Signature[:]) {
+	if !ed25519.Verify(facts.Authority[:], PermissionTranscript(permission), permission.Signature[:]) {
 		return Signature
 	}
 	if ctx.Err() != nil {

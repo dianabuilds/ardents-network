@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-// lane fields belong to the session lock; outbound serialization has a separate
+// Lane fields belong to the session lock; outbound serialization has a separate
 // lock so credit waiters never hold the physical writer or a sibling lane.
 type Lane struct {
 	s                                  *Session
@@ -96,7 +96,7 @@ func (l *Lane) signalLocked() {
 	}
 }
 
-// seal synchronously denies new effects without performing I/O. The work
+// Seal synchronously denies new effects without performing I/O. The work
 // owner subsequently closes and joins this same stream before returning it.
 func (l *Lane) Seal() {
 	l.s.mu.Lock()
@@ -549,7 +549,7 @@ func (l *Lane) RetainUntilFinish(release func()) error {
 	return nil
 }
 
-// finish belongs to the work owner after its readers/writers have joined.
+// Finish belongs to the work owner after its readers/writers have joined.
 // Identifier floors stay in the session; retained input keeps its accounting.
 func (l *Lane) Finish() {
 	l.s.mu.Lock()

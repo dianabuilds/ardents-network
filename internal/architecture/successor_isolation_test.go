@@ -558,7 +558,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata", "golang.org/x/sys/unix":
 			return true
 		}
-		first := strings.Split(dependency, "/")[0]
+		first, _, _ := strings.Cut(dependency, "/")
 		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 	}
 	if source == "cmd/ardents-next/enrollment_packaging.go" && localImport {
@@ -1321,7 +1321,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	// Go reserves first import-path elements without a dot for standard-library
 	// paths. Unknown paths still fail compilation; relative paths are forbidden.
-	first := strings.Split(dependency, "/")[0]
+	first, _, _ := strings.Cut(dependency, "/")
 	return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 }
 

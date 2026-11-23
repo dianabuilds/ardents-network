@@ -192,9 +192,9 @@ func (p *Prefix) checkIntroductionDuty(duty network.RetainedDuty, end time.Time)
 	return view, nil
 }
 
-// A failed operation still joins this original physical setup before its
-// pending claim completes. Stock presentation and receiving spend are never
-// refunded here; the owning domains retain those irreversible transitions.
+// CloseSetup joins this original physical setup before its pending claim
+// completes, including after a failed operation. Stock presentation and
+// receiving spend are never refunded here; their owners retain those transitions.
 func (t *IntroductionChannel) CloseSetup() error {
 	t.cancel()
 	t.interruption.join()
@@ -210,7 +210,7 @@ func (t *IntroductionChannel) CloseSetup() error {
 	return result
 }
 
-// The original terminal keeps cancellation callback ownership through handoff.
+// JoinCaller joins the original terminal cancellation callback after handoff.
 // Registration joins it before waiting for its own readers and withdrawal.
 func (t *IntroductionChannel) JoinCaller() {
 	if t.joinCaller != nil {

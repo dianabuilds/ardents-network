@@ -81,7 +81,8 @@ func TestRetainedOpeningPreservesDamagedHistoryAndReturnsOwnLease(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			expectedLock, expectedJournal := []byte{}, bytes.Clone(valid)
+			var expectedLock []byte
+			expectedJournal := bytes.Clone(valid)
 			candidate := binding
 			switch fault {
 			case "missing-lock":

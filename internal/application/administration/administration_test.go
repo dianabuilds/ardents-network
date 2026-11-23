@@ -104,7 +104,7 @@ func TestLocalAdministrationDispatchesOnlyClosedOperations(t *testing.T) {
 		t.Fatalf("withdraw = %q, %v", outcome, err)
 	}
 	<-withdrawn
-	if _, err := Request(t.Context(), path, Operation("route")); err == nil {
+	if _, err := Request(t.Context(), path, "route"); err == nil {
 		t.Fatal("unknown Administration operation was accepted")
 	}
 	raw, err := (&net.Dialer{}).DialContext(t.Context(), "unix", path)

@@ -173,7 +173,7 @@ func ValidateTokenBatchRequest(request ClosedTokenBatchRequest) error {
 			return errors.New("closed token blinded request is invalid")
 		}
 	}
-	if !ed25519.Verify(ed25519.PublicKey(request.Permission.HolderKey[:]), TokenBatchTranscript(request), request.Signature[:]) {
+	if !ed25519.Verify(request.Permission.HolderKey[:], TokenBatchTranscript(request), request.Signature[:]) {
 		return ErrBatchSignature
 	}
 	return nil

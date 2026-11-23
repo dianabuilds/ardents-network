@@ -55,8 +55,11 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored, err := decodeDistributionState(raw)
-	if err != nil || stored.sequence != next.sequence || stored.trustedTimeFloor != next.trustedTimeFloor {
-		t.Fatalf("visible durable floor: sequence=%d trusted=%d err=%v", stored.sequence, stored.trustedTimeFloor, err)
+	if err != nil {
+		t.Fatal("decode visible durable floor:", err)
+	}
+	if stored.sequence != next.sequence || stored.trustedTimeFloor != next.trustedTimeFloor {
+		t.Fatalf("visible durable floor: sequence=%d trusted=%d", stored.sequence, stored.trustedTimeFloor)
 	}
 	if err := s.Close(); !errors.Is(err, durable.ErrPointerSyncUncertain) {
 		t.Fatalf("Close lost terminal control failure: %v", err)

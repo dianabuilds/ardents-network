@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"testing"
 
-	pty "github.com/aymanbagabas/go-pty"
+	"github.com/aymanbagabas/go-pty"
 )
 
 func TestCustodyUnsupportedTerminalRefusesWithoutRecord(t *testing.T) {

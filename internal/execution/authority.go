@@ -199,7 +199,7 @@ func (authority *Authority) Active() uint32 {
 
 // Drain refuses new admission and invalidates outstanding capabilities for one
 // grant only when that preselected grant permits finite drain.
-func (authority *Authority) Drain(surface Surface) error {
+func (authority *Authority) Drain(_ Surface) error {
 	return errors.New("local Grant drain requires a finite terminal deadline")
 }
 

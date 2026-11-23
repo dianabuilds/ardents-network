@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os/exec"
 	"strings"
 	"testing"
@@ -76,8 +77,8 @@ func TestBuiltHelpShowsTheSelectedRole(t *testing.T) {
 		})
 	}
 	result, err := exec.CommandContext(t.Context(), binary, "help", "unknown").Output()
-	exit, ok := err.(*exec.ExitError)
-	if !ok || exit.ExitCode() != 2 || len(result) != 0 || !bytes.Contains(exit.Stderr, []byte("help [operator|release]")) {
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 2 || len(result) != 0 || !bytes.Contains(exit.Stderr, []byte("help [operator|release]")) {
 		t.Fatalf("unknown help: stdout=%q error=%v", result, err)
 	}
 }

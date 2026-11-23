@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-// prepareJoinedSession reserves and installs the sole lane before an accepted
+// PrepareJoined reserves and installs the sole lane before an accepted
 // RESULT can be emitted. Its owner starts reading only after the actual paired
 // result barrier, or closes this preparation on any refusal.
 func PrepareJoined(ctx context.Context, conn net.Conn, end time.Time, remaining uint64, check func() error, queues *Budget) (*Session, *Lane, error) {
@@ -29,7 +29,7 @@ func PrepareJoined(ctx context.Context, conn net.Conn, end time.Time, remaining 
 	return s, l, nil
 }
 
-// prepareJoinedChild keeps the shared physical-principal budget inside its
+// PrepareJoined keeps the shared physical-principal budget inside its
 // session owner. The JOIN caller supplies its exact connection and bounds;
 // preparing a lane reserves its bounded slot but starts no reader and grants
 // no Network or Admission authority.

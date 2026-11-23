@@ -119,7 +119,7 @@ func verifyDescriptor(raw []byte, target, network, profile [32]byte, at time.Tim
 		transcript = append(transcript, field[:]...)
 	}
 	transcript = append(transcript, raw[recipientStart:recipientEnd]...)
-	if !ed25519.Verify(ed25519.PublicKey(delegation.Instance[:]), transcript, raw[offset+length:]) {
+	if !ed25519.Verify(delegation.Instance[:], transcript, raw[offset+length:]) {
 		return Descriptor{}, errors.New("reachability Instance signature invalid")
 	}
 	value.raw = append([]byte(nil), raw...)

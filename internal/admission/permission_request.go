@@ -96,7 +96,7 @@ func permissionRequestTranscript(request PermissionRequest) []byte {
 func verifyPermissionRequest(request PermissionRequest) error {
 	if err := validatePermissionRequestFacts(request); err != nil ||
 		subtle.ConstantTimeCompare(request.HolderProof[:], make([]byte, ed25519.SignatureSize)) == 1 ||
-		!ed25519.Verify(ed25519.PublicKey(request.Permission.HolderKey[:]), permissionRequestTranscript(request), request.HolderProof[:]) {
+		!ed25519.Verify(request.Permission.HolderKey[:], permissionRequestTranscript(request), request.HolderProof[:]) {
 		return errors.New("permission request is invalid")
 	}
 	return nil

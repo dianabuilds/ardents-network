@@ -39,7 +39,7 @@ func TestIntroductionCleanupRequiresJoinedLowerLaneAndRetainsPhysicalFailure(t *
 		t.Run(map[bool]string{false: "pre-output-refusal", true: "late-output"}[failOutput], func(t *testing.T) {
 			local, peer := net.Pipe()
 			defer peer.Close()
-			var conn net.Conn = local
+			conn := local
 			failure := errors.New("original Introduction lower write failed late")
 			check := func() error { return context.Canceled }
 			var physical *introductionCleanupWrite

@@ -33,7 +33,7 @@ func transportCertificate(t *testing.T, start, end time.Time) (tls.Certificate, 
 	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private}, key
 }
 
-func transportEndpoint(t *testing.T, profile transport.CarrierProfile) string {
+func transportEndpoint(t *testing.T) string {
 	t.Helper()
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -54,7 +54,7 @@ func TestActualSharedTransportClassification(t *testing.T) {
 				now := time.Now()
 				serverCert, serverKey := transportCertificate(t, now.Add(-time.Hour), now.Add(time.Hour))
 				clientCert, clientKey := transportCertificate(t, now.Add(-time.Hour), now.Add(time.Hour))
-				endpoint := transportEndpoint(t, profile)
+				endpoint := transportEndpoint(t)
 				listener, err := listenTestSharedCarrier(profile, endpoint, serverCert, func(key [32]byte) bool { return key == clientKey }, 1)
 				if err != nil {
 					t.Fatal(err)
@@ -149,7 +149,7 @@ func TestActualTransportRejectsServerIdentityAndDates(t *testing.T) {
 				if refusal == "wrong-key" {
 					key[0] ^= 1
 				}
-				endpoint := transportEndpoint(t, profile)
+				endpoint := transportEndpoint(t)
 				listener, err := listenTestSharedCarrier(profile, endpoint, certificate, func([32]byte) bool { return false }, 1)
 				if err != nil {
 					t.Fatal(err)

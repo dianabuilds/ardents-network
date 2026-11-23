@@ -43,7 +43,7 @@ func TestNodeParticipationRetainsExclusionAcrossReopenAndBounds(t *testing.T) {
 				t.Fatalf("reopen lost family exclusion: %v", err)
 			}
 			// An exposure phase belongs to Source, never to Node execution.
-			if err := store.RetainNode(producer, participation, duty2.NodePhase("exposed")); err == nil {
+			if err := store.RetainNode(producer, participation, "exposed"); err == nil {
 				t.Fatal("Node accepted Source exposure phase")
 			}
 			if conflict, err := store.Conflict(participation.Identity, [32]byte{}); err != nil || !conflict {

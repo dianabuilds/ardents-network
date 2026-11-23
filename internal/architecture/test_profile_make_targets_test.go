@@ -16,7 +16,7 @@ type makeProfileTarget struct {
 func makeProfileTargetCommands(makefile, target string) (string, bool) {
 	targets := make(map[string]*makeProfileTarget)
 	var current *makeProfileTarget
-	for _, line := range strings.Split(strings.ReplaceAll(makefile, "\r\n", "\n"), "\n") {
+	for line := range strings.SplitSeq(strings.ReplaceAll(makefile, "\r\n", "\n"), "\n") {
 		if strings.HasPrefix(line, "\t") {
 			if current != nil {
 				current.commands = append(current.commands, strings.TrimSpace(line))

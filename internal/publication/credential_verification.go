@@ -47,7 +47,7 @@ func verifyCredential(raw []byte, target, network [32]byte, at time.Time, requir
 		return Delegation{}, errors.New("publication Credential binding or capability invalid")
 	}
 	value.NotBefore, value.NotAfter = time.Unix(int64(before), 0).UTC(), time.Unix(int64(after), 0).UTC()
-	if at.Before(value.NotBefore) || !at.Before(value.NotAfter) || !ed25519.Verify(ed25519.PublicKey(value.Authority[:]), raw[:credentialBodySize], raw[credentialBodySize:]) {
+	if at.Before(value.NotBefore) || !at.Before(value.NotAfter) || !ed25519.Verify(value.Authority[:], raw[:credentialBodySize], raw[credentialBodySize:]) {
 		return Delegation{}, errors.New("publication Credential validity or signature invalid")
 	}
 	return value, nil

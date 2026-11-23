@@ -141,7 +141,7 @@ func (t *JoinChannel) ParentCleanupResult() (error, bool) {
 	return t.parentCleanup, true
 }
 
-// Prepare only after JOIN has verified RESULT. Stop and join setup interruption
+// PrepareJoined runs only after JOIN has verified RESULT. Stop and join setup interruption
 // before transferring framing; local seal may still emit bounded termination,
 // with the original caller and both generations checked at every frame effect.
 func (t *JoinChannel) PrepareJoined(check func() error) (*framing.Session, *framing.Lane, error) {

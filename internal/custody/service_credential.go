@@ -90,7 +90,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if err := vault.check(); err != nil {
 		return Receipt{}, err
 	}
-	credential := append(transcript, ed25519.Sign(ed25519.PrivateKey(source.RootMaterial), transcript)...)
+	credential := append(transcript, ed25519.Sign(source.RootMaterial, transcript)...)
 	response, err := publication.BuildServiceResponse(operation.ServiceRequest, credential)
 	if err != nil {
 		return Receipt{}, err

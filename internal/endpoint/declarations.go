@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// These projections decode already bound Endpoint declarations for its runtime.
+// PermissionPlan projects an already bound Endpoint declaration for its runtime.
 type PermissionPlan struct {
 	RequestPath  string    `json:"request_path"`
 	ResponsePath string    `json:"response_path"`

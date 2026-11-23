@@ -72,7 +72,7 @@ func testNestedRecordPacking(t *testing.T, laneWrite bool) {
 	var key [32]byte
 	copy(key[:], public)
 	var counters []*recordPackingCounter
-	var client, server net.Conn = left, right
+	client, server := left, right
 	for layer := range 3 {
 		if layer == 2 && laneWrite {
 			// A relay writes opaque bytes directly to the Lane. There is no

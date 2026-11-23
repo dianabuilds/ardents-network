@@ -182,7 +182,7 @@ func (source *Prefix) borrowJoin(ctx context.Context, responder *Prefix, interru
 	return borrow, nil
 }
 
-// publish serializes the caller's local handoff with both original generations'
+// Publish serializes the caller's local handoff with both original generations'
 // synchronous seals. The handoff only updates borrower state; no I/O or join.
 func (b *JoinBorrow) Publish(ctx, caller, operation context.Context, handoff func(checkOriginal func() error) error) error {
 	return b.source.CommitPair(b.responder, func(checkOriginal func() error) error {
