@@ -68,7 +68,9 @@ func relayWorkerStreams(attachment io.ReadWriter) error {
 			if frame.body[0] != 0 || !source.finished || !target.finished {
 				return errors.New("byte-stream worker exchange was interrupted")
 			}
-			return nil
+			// The host authenticates this receipt on the worker attachment.
+			// Socket EOF alone carries no authenticated completion.
+			return writeWorkerFrame(attachment, frame)
 		}
 		frame.id = 4 - frame.id
 		if err := writeWorkerFrame(attachment, frame); err != nil {

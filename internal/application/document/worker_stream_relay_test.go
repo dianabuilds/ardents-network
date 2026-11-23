@@ -37,6 +37,10 @@ func TestByteStreamWorkerRelaysBothDirectionsAndHalfClose(t *testing.T) {
 			t.Fatalf("frame %+v did not cross to the other attachment: %+v, %v", sent, got, err)
 		}
 	}
+	receipt, err := readWorkerFrame(&output)
+	if err != nil || receipt.kind != 5 || receipt.id != 1 || !bytes.Equal(receipt.body, []byte{0}) {
+		t.Fatalf("worker did not acknowledge completion: %+v, %v", receipt, err)
+	}
 	if output.Len() != 0 {
 		t.Fatal("unexpected additional worker output")
 	}

@@ -101,14 +101,6 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 		for {
 			frame, err := readWorkerFrame(attachment)
 			if err != nil {
-				select {
-				case <-finishing:
-					if err == io.EOF {
-						receiveDone <- err
-						return
-					}
-				default:
-				}
 				if !errors.Is(err, io.EOF) {
 					err = errors.Join(errWorkerRelayProtocol, err)
 				} else {
@@ -116,6 +108,19 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 				}
 				fail(err)
 				receiveDone <- err
+				return
+			}
+			if frame.kind == 5 {
+				select {
+				case <-finishing:
+					if frame.id == 1 && frame.body[0] == 0 {
+						receiveDone <- nil
+						return
+					}
+				default:
+				}
+				fail(errWorkerRelayProtocol)
+				receiveDone <- errWorkerRelayProtocol
 				return
 			}
 			if frame.id != 1 && frame.id != 3 {
@@ -162,12 +167,11 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 	if result == nil && child.Err() == nil {
 		close(finishing)
 		result = write(workerFrame{kind: 5, id: 1, body: []byte{0}})
-		// The fixed worker returns EOF only after seeing both directional
-		// endings and the completed handoff acknowledgement.
-		if err := <-receiveDone; err != io.EOF {
-			result = errors.Join(result, err)
+		if result != nil {
+			cancel()
 		}
-		return errors.Join(result, ctx.Err())
+		// Join the authenticated worker receipt before closing its socket.
+		return errors.Join(result, <-receiveDone, ctx.Err())
 	}
 	cancel()
 	result = errors.Join(result, <-receiveDone, ctx.Err())
