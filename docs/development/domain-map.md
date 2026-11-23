@@ -319,7 +319,9 @@ authority is distinct from the independently pinned State signing key. State
 alone authenticates currentness and joins signed Records/roles/issuer references.
 No private authority crosses into Network, Node
 runtime or Custody, and no generic signer, encrypted Vault, signing-history or
-bootstrap acceptance is supplied. Provisioning owns fresh standard-library generation of one State and 1..64
+bootstrap acceptance is supplied. Provisioning also admits the exact public Record, Epoch and profile declarations
+and returns the same typed public facts used for their canonical unsigned bytes.
+Provisioning owns fresh standard-library generation of one State and 1..64
 distinct Node keys, with Platform Artifacts supplying canonical Ed25519 PKCS#8
 encoding and exact admission. Provisioning retains original root-protected native
 output, joined secret erasure and public-only receipt. It creates no NodeID,

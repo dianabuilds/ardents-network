@@ -13,6 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // The declaration embeds the exact public preparation plan, not arbitrary
@@ -39,6 +40,13 @@ type networkSignedArtifact struct {
 	raw  []byte
 }
 
+func preparationObject(raw []byte, value any, keys ...string) error {
+	if !requiredAdmissionObject(raw, keys...) || decodeAdmissionObject(raw, value) != nil {
+		return errNetworkPreparation
+	}
+	return nil
+}
+
 func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*networkSigning, error) {
 	if !isNetworkSigning(operation) || len(raw) > maximumNetworkPreparationPlan {
 		return nil, errNetworkSigning
@@ -49,9 +57,9 @@ func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*n
 	if operation == "prepare-node-certificate" {
 		return admitNodeCertificate(raw, prepared, pin)
 	}
-	field, prepare := "record", "prepare-initial-node-record"
+	field := "record"
 	if operation == "sign-initial-epoch" {
-		field, prepare = "epoch", "prepare-initial-epoch"
+		field = "epoch"
 	}
 	var plan networkSigningPlan
 	schemaPurpose := field
@@ -65,37 +73,26 @@ func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*n
 	if err != nil {
 		return nil, errNetworkSigning
 	}
-	publicPlan := plan.Record
-	if field == "epoch" {
-		publicPlan = plan.Epoch
-	}
-	_, message, err := prepareNetworkPublic(prepare, publicPlan)
-	digest := sha256.Sum256(message)
-	if err != nil || pin != hex.EncodeToString(digest[:]) || !bytes.Equal(message, prepared) {
-		return nil, errNetworkSigning
-	}
-	s := &networkSigning{operation: operation, networkSigningInterval: networkSigningInterval{reference: reference}, message: message}
+	s := &networkSigning{operation: operation, networkSigningInterval: networkSigningInterval{reference: reference}}
 	if field == "record" {
-		var p recordPreparationPlan
-		if json.Unmarshal(publicPlan, &p) != nil {
+		input, message, err := provisioning.PrepareInitialNodeRecord(plan.Record)
+		if err != nil {
 			return nil, errNetworkSigning
 		}
-		s.from, _ = admissionTime(p.From)
-		s.until, _ = admissionTime(p.Until)
-		s.public = bytes.Clone(p.PublicKey[:])
-		s.network = p.Network
+		s.from, s.until = input.ValidFrom, input.ValidUntil
+		s.message, s.public, s.network = message, input.PublicKey, input.NetworkID
 	} else {
-		var p epochPreparationPlan
-		if json.Unmarshal(publicPlan, &p) != nil || len(p.Authorities) != 1 {
+		input, message, err := provisioning.PrepareInitialEpoch(plan.Epoch)
+		if err != nil || len(input.AuthorityKeys) != 1 {
 			return nil, errNetworkSigning
 		}
-		s.from, _ = admissionTime(p.From)
-		s.until, _ = admissionTime(p.Until)
-		s.public = bytes.Clone(p.Authorities[0][:])
-		s.network = p.Network
-		for _, record := range p.Records {
-			s.records = append(s.records, bytes.Clone(record))
-		}
+		s.from, s.until = input.ValidFrom, input.ValidUntil
+		s.message, s.public, s.network = message, input.AuthorityKeys[0], input.NetworkID
+		s.records = input.Records
+	}
+	digest := sha256.Sum256(s.message)
+	if pin != hex.EncodeToString(digest[:]) || !bytes.Equal(s.message, prepared) {
+		return nil, errNetworkSigning
 	}
 	return s, nil
 }
