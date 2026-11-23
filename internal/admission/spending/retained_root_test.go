@@ -31,7 +31,7 @@ func TestIncompleteRetainedRootCannotInitialize(t *testing.T) {
 			if err := os.Rename(path, retained); err != nil {
 				t.Fatal(err)
 			}
-			for attempt := 0; attempt < 2; attempt++ {
+			for range 2 {
 				reopened, err := Open(root, binding)
 				if reopened != nil {
 					_ = reopened.Close()
@@ -66,7 +66,7 @@ func TestInterruptedRootCreationRefusesWithoutJournal(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, closedSpendLockName), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	for attempt := 0; attempt < 2; attempt++ {
+	for range 2 {
 		ledger, err := Open(root, binding)
 		if ledger != nil {
 			_ = ledger.Close()
@@ -84,7 +84,7 @@ func TestRootReopenRequiresDurabilityAfterFailedInitialization(t *testing.T) {
 	root := t.TempDir()
 	binding := Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
 	failure := errors.New("root durability unavailable")
-	for attempt := 0; attempt < 2; attempt++ {
+	for attempt := range 2 {
 		called := false
 		ledger, err := openLedger(root, binding, func(string) error {
 			called = true

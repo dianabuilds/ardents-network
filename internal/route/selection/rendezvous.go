@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"math/big"
+	"slices"
 	"sync"
 	"time"
 
@@ -153,13 +154,7 @@ func (r *Rendezvous) remember(peers []route.Member) {
 		if identity == (route.Member{}) {
 			continue
 		}
-		present := false
-		for _, known := range r.excluded {
-			if known == identity {
-				present = true
-				break
-			}
-		}
+		present := slices.Contains(r.excluded, identity)
 		if !present {
 			r.excluded = append(r.excluded, identity)
 		}

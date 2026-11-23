@@ -297,9 +297,7 @@ func heldRequestPeer(t *testing.T) (string, <-chan struct{}, func()) {
 	var releaseOnce sync.Once
 	releasePeer := func() { releaseOnce.Do(func() { close(release) }) }
 	var work sync.WaitGroup
-	work.Add(1)
-	go func() {
-		defer work.Done()
+	work.Go(func() {
 		connection, acceptErr := listener.AcceptUnix()
 		if acceptErr != nil {
 			return
@@ -310,7 +308,7 @@ func heldRequestPeer(t *testing.T) (string, <-chan struct{}, func()) {
 			received <- struct{}{}
 		}
 		<-release
-	}()
+	})
 	t.Cleanup(func() {
 		releasePeer()
 		if closeErr := listener.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {

@@ -131,7 +131,7 @@ func TestContinuityIndependentTranscript(t *testing.T) {
 func TestRecordRefusesMalformedAndTruncatedInputs(t *testing.T) {
 	t.Parallel()
 	valid := independentEnvelope(4, append(independentOffsets(1, 0), 0, 1, 42))
-	for end := 0; end < len(valid); end++ {
+	for end := range valid {
 		if _, err := Read(bytes.NewReader(valid[:end])); err == nil || errors.Is(err, ErrInvalidRecord) {
 			t.Fatalf("truncation at %d was accepted or classified as a complete contradiction: %v", end, err)
 		}
@@ -175,7 +175,7 @@ func TestRecordRetainsPhysicalFailureAtEveryReadBoundary(t *testing.T) {
 	t.Parallel()
 	valid := independentEnvelope(4, append(independentOffsets(1, 0), 0, 1, 42))
 	cause := errors.New("original physical read failure")
-	for end := 0; end < len(valid); end++ {
+	for end := range valid {
 		reader := io.MultiReader(bytes.NewReader(valid[:end]), failedRecordReader{cause})
 		if _, err := ReadStream(reader); !errors.Is(err, cause) || errors.Is(err, ErrInvalidRecord) {
 			t.Fatalf("physical failure at %d lost its cause or became an integrity violation: %v", end, err)

@@ -68,9 +68,9 @@ func TestHostGeneratedRequestAndIndependentGrammar(t *testing.T) {
 	if _, ok := any(&Root{}).(crypto.Signer); ok {
 		t.Fatal("Instance exposes generic signer")
 	}
-	rootType := reflect.TypeOf(Root{})
-	for i := 0; i < rootType.NumField(); i++ {
-		if rootType.Field(i).IsExported() {
+	rootType := reflect.TypeFor[Root]()
+	for field := range rootType.Fields() {
+		if field.IsExported() {
 			t.Fatal("mutable Root field exported")
 		}
 	}

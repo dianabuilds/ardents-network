@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -1204,7 +1205,7 @@ func successorImportAllowed(source, dependency string) bool {
 	// OTel composition is confined to the exact command package.
 	// No arbitrary third-party bridge is permitted.
 	if owner == "cmd/ardents-next" {
-		for _, allowed := range []string{
+		if slices.Contains([]string{
 			"go.opentelemetry.io/otel/attribute",
 			"go.opentelemetry.io/otel/metric",
 			"go.opentelemetry.io/otel/sdk/metric",
@@ -1214,16 +1215,12 @@ func successorImportAllowed(source, dependency string) bool {
 			"go.opentelemetry.io/otel/sdk/trace",
 			"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp",
 			"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp",
-		} {
-			if dependency == allowed {
-				return true
-			}
+		}, dependency) {
+			return true
 		}
 		if strings.HasSuffix(source, "_test.go") {
-			for _, allowed := range []string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"} {
-				if dependency == allowed {
-					return true
-				}
+			if slices.Contains([]string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"}, dependency) {
+				return true
 			}
 		}
 	}

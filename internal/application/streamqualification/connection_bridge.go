@@ -232,9 +232,7 @@ func RunConnections(ctx context.Context, attachment io.ReadWriteCloser, init Ini
 			}
 		}()
 	}
-	workers.Add(1)
-	go func() {
-		defer workers.Done()
+	workers.Go(func() {
 		for _, bound := range supplied {
 			if err := write(workerFrame{kind: frameOpen, id: bound.ID}); err != nil {
 				fail(err)
@@ -257,11 +255,9 @@ func RunConnections(ctx context.Context, attachment io.ReadWriteCloser, init Ini
 			}
 		}
 		close(initialized)
-	}()
+	})
 	if observe != nil {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			select {
 			case <-initialized:
 			case <-bounded.Done():
@@ -284,7 +280,7 @@ func RunConnections(ctx context.Context, attachment io.ReadWriteCloser, init Ini
 					}
 				}
 			}
-		}()
+		})
 	}
 	closed := make(map[uint32]bool, len(lanes))
 	for len(closed) < len(lanes) {

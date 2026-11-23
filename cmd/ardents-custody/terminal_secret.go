@@ -28,9 +28,13 @@ func (input terminalSecretInput) ReadSecret(ctx context.Context, prompt custody.
 	if input.terminal == nil || !term.IsTerminal(int(input.terminal.Fd())) {
 		return nil, errors.New("custody secret input requires an interactive terminal")
 	}
-	value, err := readTerminalLine(ctx, input.terminal, true, func() { fmt.Fprintf(input.prompts, "%s password: ", prompt) })
-	fmt.Fprintln(input.prompts)
-	if err != nil {
+	value, err := readTerminalLine(ctx, input.terminal, true, func() error {
+		_, err := fmt.Fprintf(input.prompts, "%s password: ", prompt)
+		return err
+	})
+	_, newlineErr := fmt.Fprintln(input.prompts)
+	if err = errors.Join(err, newlineErr); err != nil {
+		clear(value)
 		return nil, fmt.Errorf("read terminal password: %w", err)
 	}
 	return value, nil
@@ -47,8 +51,10 @@ func (input terminalSecretInput) Confirm(ctx context.Context, prompt custody.Con
 	if prompt == custody.ConfirmationPromptVaultPurge {
 		confirmation = "purge"
 	}
-	fmt.Fprintf(input.prompts, "confirm %s by typing %s: ", prompt, confirmation)
-	raw, err := readTerminalLine(ctx, input.terminal, false, nil)
+	raw, err := readTerminalLine(ctx, input.terminal, false, func() error {
+		_, err := fmt.Fprintf(input.prompts, "confirm %s by typing %s: ", prompt, confirmation)
+		return err
+	})
 	line := string(raw)
 	clear(raw)
 	if err != nil {
@@ -72,8 +78,10 @@ func (input terminalSecretInput) readRequestCommitment(ctx context.Context, name
 	if input.terminal == nil || !term.IsTerminal(int(input.terminal.Fd())) {
 		return [32]byte{}, errors.New(name + " commitment requires an interactive terminal")
 	}
-	fmt.Fprintf(input.prompts, "%s SHA-256 from the requesting Endpoint: ", name)
-	raw, err := readTerminalLine(ctx, input.terminal, false, nil)
+	raw, err := readTerminalLine(ctx, input.terminal, false, func() error {
+		_, err := fmt.Fprintf(input.prompts, "%s SHA-256 from the requesting Endpoint: ", name)
+		return err
+	})
 	line := string(raw)
 	clear(raw)
 	if err != nil {

@@ -303,8 +303,7 @@ func sourceTLSCertificateExpired(t *testing.T, err error) {
 
 func sourceTLSClientUnknownAuthority(t *testing.T, clientErr, _ error) {
 	t.Helper()
-	var unknown x509.UnknownAuthorityError
-	if !errors.As(clientErr, &unknown) {
+	if _, ok := errors.AsType[x509.UnknownAuthorityError](clientErr); !ok {
 		t.Fatalf("unknown server CA = %v, want x509.UnknownAuthorityError", clientErr)
 	}
 }
@@ -321,8 +320,7 @@ func sourceTLSServerClientPin(t *testing.T, _, serverErr error) {
 
 func sourceTLSClientHostname(t *testing.T, clientErr, _ error) {
 	t.Helper()
-	var hostname x509.HostnameError
-	if !errors.As(clientErr, &hostname) {
+	if _, ok := errors.AsType[x509.HostnameError](clientErr); !ok {
 		t.Fatalf("server hostname mismatch = %v, want x509.HostnameError", clientErr)
 	}
 }

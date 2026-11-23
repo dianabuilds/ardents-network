@@ -50,7 +50,7 @@ func PrepareEndpointTemplate(template []byte, installationRoot, directory string
 	}
 	section := ""
 	seen := make(map[string]bool)
-	for _, line := range strings.Split(string(template), "\n") {
+	for line := range strings.SplitSeq(string(template), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, ";") {
 			continue

@@ -89,12 +89,10 @@ func TestConcurrentInitializationHasOnlyOneParticipationCreator(t *testing.T) {
 	results := make(chan error, 2)
 	var done sync.WaitGroup
 	for range 2 {
-		done.Add(1)
-		go func() {
-			defer done.Done()
+		done.Go(func() {
 			<-start
 			results <- Initialize(t.Context(), Config{Root: root, Clock: time.Now})
-		}()
+		})
 	}
 	close(start)
 	done.Wait()

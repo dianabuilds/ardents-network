@@ -107,9 +107,7 @@ func (server *server) serve() {
 		}
 		server.clients[connection] = struct{}{}
 		server.mu.Unlock()
-		server.work.Add(1)
-		go func() {
-			defer server.work.Done()
+		server.work.Go(func() {
 			defer func() {
 				server.mu.Lock()
 				if _, owned := server.clients[connection]; owned {
@@ -119,7 +117,7 @@ func (server *server) serve() {
 				server.mu.Unlock()
 			}()
 			server.handle(connection, accepted)
-		}()
+		})
 	}
 }
 

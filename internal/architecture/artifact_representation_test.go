@@ -137,7 +137,7 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 		"./cmd/ardents-custody": true,
 	}
 	result := make(map[string][]byte)
-	for _, command := range strings.Fields(string(readProjectFile(t, repository, "tests/profiles/headless-commands.txt"))) {
+	for command := range strings.FieldsSeq(string(readProjectFile(t, repository, "tests/profiles/headless-commands.txt"))) {
 		if !expected[command] {
 			t.Fatalf("unexpected selected headless artifact %s", command)
 		}
@@ -173,7 +173,7 @@ func assertNoVCSBuildSettings(t *testing.T, artifact string) {
 		t.Fatalf("inspect build metadata for %s: %v\n%s", artifact, err, output)
 	}
 	var settings []string
-	for _, line := range strings.Split(string(output), "\n") {
+	for line := range strings.SplitSeq(string(output), "\n") {
 		if strings.Contains(line, "\tvcs") {
 			settings = append(settings, strings.TrimSpace(line))
 		}

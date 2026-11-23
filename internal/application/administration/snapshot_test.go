@@ -94,7 +94,7 @@ func TestSnapshotAdministrationSerializesAllocationAndJoinsShutdown(t *testing.T
 	entered := make(chan struct{})
 	joined := make(chan struct{})
 	path, server := snapshotTestServer(t, snapshotTestOwner{
-		testInterface: testInterface{withdraw: func(context.Context) error { return nil }},
+		withdraw: func(context.Context) error { return nil },
 		snapshot: func(ctx context.Context, body []byte) error {
 			close(entered)
 			<-ctx.Done()

@@ -93,9 +93,7 @@ func startTruncatedSource(t *testing.T, address string, server testCertificate, 
 			if acceptErr != nil {
 				return
 			}
-			active.Add(1)
-			go func() {
-				defer active.Done()
+			active.Go(func() {
 				defer connection.Close()
 				_ = connection.SetDeadline(time.Now().Add(5 * time.Second))
 				var request [77]byte
@@ -107,7 +105,7 @@ func startTruncatedSource(t *testing.T, address string, server testCertificate, 
 				copy(response[9:41], digest[:])
 				binary.BigEndian.PutUint32(response[41:45], 16)
 				_, _ = connection.Write(response[:])
-			}()
+			})
 		}
 	}()
 	return func() {

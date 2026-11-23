@@ -25,10 +25,7 @@ func (transport *gatedClientTransport) Read(destination []byte) (int, error) {
 	if transport.remaining == 0 {
 		return transport.clientTransport.Read(destination)
 	}
-	length := transport.remaining
-	if length > len(destination) {
-		length = len(destination)
-	}
+	length := min(transport.remaining, len(destination))
 	read, err := io.ReadFull(transport.clientTransport, destination[:length])
 	transport.remaining -= read
 	if transport.remaining == 0 && err == nil {

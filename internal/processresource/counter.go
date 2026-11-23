@@ -11,7 +11,7 @@ import (
 func nativeCounter(raw, name string) (uint64, error) {
 	var value uint64
 	found := false
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) > 0 && fields[0] == name {
 			if found || len(fields) != 2 {
@@ -48,7 +48,7 @@ func nativeMemoryEvents(raw string) (memoryEvents, error) {
 	var refused [5]error
 	destinations := [5]*uint64{&events.high, &events.max, &events.oom, &events.oomKill, &events.oomGroupKill}
 	names := [5]string{"high", "max", "oom", "oom_kill", "oom_group_kill"}
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) == 0 {
 			continue
@@ -89,7 +89,7 @@ func nativeMemoryEvents(raw string) (memoryEvents, error) {
 func nativePressure(raw, kind string) (float64, error) {
 	found := false
 	var value float64
-	for _, line := range strings.Split(raw, "\n") {
+	for line := range strings.SplitSeq(raw, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) > 0 && fields[0] == kind {
 			if found || len(fields) != 5 || !strings.HasPrefix(fields[1], "avg10=") {

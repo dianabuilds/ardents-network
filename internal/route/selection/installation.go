@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/network"
@@ -274,8 +275,8 @@ func selectionRoot(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for n := len(suffix) - 1; n >= 0; n-- {
-		resolved = filepath.Join(resolved, suffix[n])
+	for _, part := range slices.Backward(suffix) {
+		resolved = filepath.Join(resolved, part)
 	}
 	return filepath.Clean(resolved), nil
 }

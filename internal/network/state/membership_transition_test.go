@@ -21,9 +21,9 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 	public := authority.Public().(ed25519.PublicKey)
 	spec := networkfixture.ClosedSpec{NetworkID: [32]byte{1}, Seed: [32]byte{2}, IssuanceAuthority: [32]byte{3}, Number: 1,
 		NotBefore: start, NotAfter: start.Add(2 * time.Hour), Authority: authority,
-		Nodes: []networkfixture.ClosedNode{{RecordSpec: networkfixture.RecordSpec{NodeID: [32]byte{4}, Generation: 1,
+		Nodes: []networkfixture.ClosedNode{{NodeID: [32]byte{4}, Generation: 1,
 			PrivateKey: ed25519.NewKeyFromSeed(bytes.Repeat([]byte{82}, 32)), ValidFrom: start, ValidUntil: start.Add(2 * time.Hour),
-			Endpoint: "127.0.0.1:4601", Carrier: "ardents-carrier-tcp-tls-v2", Capability: 2, Capacity: 8}, RoleDomain: 2, Subrole: 6}}}
+			Endpoint: "127.0.0.1:4601", Carrier: "ardents-carrier-tcp-tls-v2", Capability: 2, Capacity: 8, RoleDomain: 2, Subrole: 6}}}
 	first, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)

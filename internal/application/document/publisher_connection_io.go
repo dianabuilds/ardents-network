@@ -175,9 +175,7 @@ func (stream *publisherStreamIO) finish() {
 
 func (stream *publisherStreamIO) startClose(completed bool) {
 	stream.closeOnce.Do(func() {
-		stream.owner.closers.Add(1)
-		go func() {
-			defer stream.owner.closers.Done()
+		stream.owner.closers.Go(func() {
 			if completed {
 				// Application Done is distinct from original physical completion.
 				// A recovery-enabled Service retains its final control proofs until
@@ -210,6 +208,6 @@ func (stream *publisherStreamIO) startClose(completed bool) {
 			case stream.owner.events <- publisherEvent{stream: stream.state, kind: 4, err: stream.cleanupErr}:
 			case <-stream.owner.ctx.Done():
 			}
-		}()
+		})
 	})
 }

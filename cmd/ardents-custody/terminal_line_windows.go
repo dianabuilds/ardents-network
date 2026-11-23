@@ -15,7 +15,7 @@ import (
 // readTerminalLine cancels the actual synchronous console read on its retained
 // OS thread and joins it. The thread stays locked until the interrupter retires,
 // so cancellation cannot target a replacement reader or another goroutine.
-func readTerminalLine(ctx context.Context, file *os.File, secret bool, ready func()) ([]byte, error) {
+func readTerminalLine(ctx context.Context, file *os.File, secret bool, ready func() error) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -47,9 +47,11 @@ func readTerminalLine(ctx context.Context, file *os.File, secret bool, ready fun
 			value, err = readWindowsSecret(file, ready)
 		} else {
 			if ready != nil {
-				ready()
+				err = ready()
 			}
-			value, err = bufio.NewReader(io.LimitReader(file, 1025)).ReadBytes('\n')
+			if err == nil {
+				value, err = bufio.NewReader(io.LimitReader(file, 1025)).ReadBytes('\n')
+			}
 		}
 		completed <- outcome{value, err}
 		<-release
@@ -95,7 +97,7 @@ finished:
 
 // readWindowsSecret reads finite bytes with echo and processed Ctrl+C disabled.
 // The containing original OS-thread owner supplies cancellation and join.
-func readWindowsSecret(file *os.File, ready func()) (value []byte, resultErr error) {
+func readWindowsSecret(file *os.File, ready func() error) (value []byte, resultErr error) {
 	defer func() {
 		if resultErr != nil {
 			clear(value)
@@ -111,7 +113,9 @@ func readWindowsSecret(file *os.File, ready func()) (value []byte, resultErr err
 	}
 	defer func() { resultErr = errors.Join(resultErr, windows.SetConsoleMode(windows.Handle(file.Fd()), mode)) }()
 	if ready != nil {
-		ready()
+		if err := ready(); err != nil {
+			return nil, err
+		}
 	}
 	var one [1]byte
 	defer clear(one[:])

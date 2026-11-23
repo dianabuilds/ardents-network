@@ -30,7 +30,7 @@ func TestRetainedOpeningRefusesEmptiedOriginalHistory(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for attempt := 0; attempt < 2; attempt++ {
+	for range 2 {
 		owner, err := OpenRetained(root, binding)
 		if owner != nil {
 			_ = owner.Close()
@@ -111,7 +111,7 @@ func TestRetainedOpeningPreservesDamagedHistoryAndReturnsOwnLease(t *testing.T) 
 					t.Fatal(err)
 				}
 			}
-			for attempt := 0; attempt < 2; attempt++ {
+			for range 2 {
 				owner, err := OpenRetained(root, candidate)
 				if owner != nil {
 					_ = owner.Close()
