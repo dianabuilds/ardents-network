@@ -433,11 +433,14 @@ func TestSuccessorRouteRegistrationRunsOnWindowsAndLinux(t *testing.T) {
 	}
 }
 
-// Durable selection owns native root leases, but retained authority checks and
-// recipient choices must execute, including their tests, on both platforms.
+// Durable selection owns native root leases, but retained authority checks,
+// store behavior and recipient choices must execute, including their tests, on
+// both platforms. The physical lease-corruption and foreign-uid controls stay
+// native (installation_cleanup_linux_test.go, closed_set_open_cleanup_linux_test.go,
+// root_hardening_linux_test.go, root_lease_identity_unix_test.go).
 func TestSuccessorRouteSelectionRulesRunOnWindowsAndLinux(t *testing.T) {
 	directory := path.Join(repositoryRoot(t), "internal/route/selection")
-	for _, filename := range []string{"leg.go", "leg_test.go", "entry_set.go", "entry_set_test.go", "introduction_recipient.go", "rendezvous.go", "rendezvous_test.go"} {
+	for _, filename := range []string{"leg.go", "leg_test.go", "entry_set.go", "entry_set_test.go", "introduction_recipient.go", "rendezvous.go", "rendezvous_test.go", "closed_sets_test.go", "closed_adjacent_domains_test.go", "generation_store_test.go", "interior_store_test.go", "interior_refusal_test.go", "installation_test.go", "installation_history_test.go", "selection_owner_test.go"} {
 		for _, target := range []string{"windows", "linux"} {
 			profile := build.Default
 			profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
