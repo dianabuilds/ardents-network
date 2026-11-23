@@ -48,14 +48,6 @@ type sourceInputFile struct {
 	observe func(string, *os.File)
 }
 
-type sourceInputAccess uint8
-
-const (
-	sourcePublicInput sourceInputAccess = iota
-	sourcePrivateInput
-	sourceStateInput
-)
-
 func newSourceInputs(ctx context.Context, observe func(string, *os.File)) sourceInputs {
 	admission, deny := context.WithCancel(ctx)
 	l := &sourceInputLifetime{ctx: admission, deny: deny, callback: make(chan struct{}), done: make(chan struct{}), observe: observe}
@@ -122,22 +114,11 @@ func acquireObservedSourceInputs(ctx context.Context, path string, observe func(
 // root-only/ext4/0700 policy. Runtime keys must belong to the invoking user and
 // exclude other users; public inputs retain their admitted access exactly.
 func (l *sourceInputLifetime) acquire(path string, maximum int64, private bool) (*sourceInputFile, error) {
-	if private {
-		return l.acquireWithAccess(path, maximum, sourcePrivateInput)
-	}
-	return l.acquireWithAccess(path, maximum, sourcePublicInput)
-}
-
-func (l *sourceInputLifetime) acquireWithAccess(path string, maximum int64, access sourceInputAccess) (*sourceInputFile, error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path || l.ctx.Err() != nil {
 		return nil, l.refuse(errSourceInput)
 	}
 	uid := uint32(os.Geteuid())
-	var owner *uint32
-	if access == sourceStateInput {
-		owner = &uid
-	}
-	p, err := openPreparationDirectories(l.ctx, filepath.Dir(path), owner)
+	p, err := openPreparationDirectories(l.ctx, filepath.Dir(path), nil)
 	if err != nil {
 		return nil, l.refuse(errors.Join(errSourceInput, err))
 	}
@@ -155,18 +136,8 @@ func (l *sourceInputLifetime) acquireWithAccess(path string, maximum int64, acce
 	if !ok || s.Nlink != 1 {
 		return nil, l.refuse(errSourceInput)
 	}
-	switch access {
-	case sourcePrivateInput:
-		if s.Uid != uid || f.info.Mode().Perm()&0077 != 0 {
-			return nil, l.refuse(errSourceInput)
-		}
-	case sourceStateInput:
-		if s.Uid != 0 && s.Uid != uid || f.info.Mode().Perm()&0022 != 0 {
-			return nil, l.refuse(errSourceInput)
-		}
-		if err := checkSourceStatePath(p); err != nil {
-			return nil, l.refuse(err)
-		}
+	if private && (s.Uid != uid || f.info.Mode().Perm()&0077 != 0) {
+		return nil, l.refuse(errSourceInput)
 	}
 	f.raw, err = io.ReadAll(io.LimitReader(f.file, maximum+1))
 	if l.observe != nil {
@@ -250,17 +221,6 @@ func (f *sourceInputFile) check() error {
 		observe = func(file *os.File) { f.observe("check", file) }
 	}
 	return sourceInputCheckError(f.parent.CheckRetainedFile(f.file, f.info, f.raw, observe))
-}
-
-func (f *sourceInputFile) checkLink() error {
-	return sourceInputCheckError(f.parent.CheckRetainedFileLink(f.file.Name(), f.info))
-}
-
-func (f *sourceInputFile) checkAncestors() error {
-	if f.parent.CheckOriginalAccess() != nil {
-		return errSourceInput
-	}
-	return nil
 }
 
 func sourceInputCheckError(err error) error {
