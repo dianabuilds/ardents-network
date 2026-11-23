@@ -270,7 +270,7 @@ PKI domain or generic signer is created. Self-signature supplies no membership:
 State owns signed acceptance/currentness, Node exact member/process/producer
 credential custody, and Route exact-key TLS/ALPN and physical join.
 
-Direct-Origin Source public preparation is one offline supporting composition,
+Endpoint owns the offline Direct-Origin Source public preparation exposed by
 `ardents-next source prepare-trust`. It retains original externally supplied
 public chains/roots and independently reviewed commitments, and writes the
 existing two Source serve and one client acquisition/local headless declarations.
@@ -280,8 +280,8 @@ observation grants a live Plan or clock. Private runtime paths remain opaque and
 are never opened by the preparer. The existing installed Network projection is
 pure declaration adaptation; State still owns signed acceptance/time/exposures/
 floors, Installation startup admission, processresource original protection and
-Source command physical completion remain separate. Public native custody and
-exclusive finite output/receipt stay with composition. External credential
+Source command physical completion remain separate. Platform Artifacts supplies retained public input custody and exclusive finite
+output. The command renders the joined receipt. External credential
 issuance, operational trust delivery, effective family independence and installed
 qualification are not supplied by this operation. No universal Identity/PKI
 authority, private signer, new package or runtime format is introduced.

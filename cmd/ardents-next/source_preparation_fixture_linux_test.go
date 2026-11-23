@@ -14,7 +14,12 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 )
+
+type installedHeadless = endpoint.HeadlessPlan
+type installedSource = endpoint.SourcePlan
 
 // All CA, leaves and keys are explicitly external fixture credentials. Product
 // preparation receives only their public files and opaque private declarations.
