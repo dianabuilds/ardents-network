@@ -11,6 +11,8 @@ import (
 	"slices"
 	"sync"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // Inspection retains one existing provider period read-only, under its own
@@ -52,7 +54,7 @@ func OpenInspection(ctx context.Context, path, policySHA256 string, uid, gid uin
 
 func openInspection(ctx context.Context, path, policy string, uid, gid uint32, observe func(string, *os.File)) (result Inspection, returned error) {
 	pin, err := hex.DecodeString(policy)
-	if ctx == nil || os.Geteuid() != 0 || !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" || err != nil || len(pin) != sha256.Size || hex.EncodeToString(pin) != policy {
+	if ctx == nil || os.Geteuid() != 0 || !pathgrammar.Strict(path) || path == "/" || err != nil || len(pin) != sha256.Size || hex.EncodeToString(pin) != policy {
 		return result, errors.New("invalid retained Hosting inspection")
 	}
 	if err := ctx.Err(); err != nil {

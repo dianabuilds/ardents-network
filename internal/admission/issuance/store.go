@@ -5,8 +5,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"os"
-	"path/filepath"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // Store copies share one lifecycle and exclusive lease.
@@ -36,7 +37,7 @@ func initialize(ctx context.Context, root string, b Binding, fault func(string) 
 	if err := platform(); err != nil {
 		return err
 	}
-	if ctx == nil || !b.valid() || !filepath.IsAbs(root) || filepath.Clean(root) != root {
+	if ctx == nil || !b.valid() || !pathgrammar.Strict(root) {
 		return ErrInvalid
 	}
 	if ctx.Err() != nil {

@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 const marker = "ardents-issuer-key-material-v1\n"
@@ -22,7 +24,7 @@ func pinBytes(b Binding, raw []byte, digest [32]byte) []byte {
 }
 
 func ownedRoot(path string) (*os.Root, os.FileInfo, error) {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !pathgrammar.Strict(path) {
 		return nil, nil, ErrInvalid
 	}
 	resolved, err := filepath.EvalSymlinks(path)
