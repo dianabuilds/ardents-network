@@ -343,8 +343,11 @@ func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
 	}
 	defer restarted.Close()
 	current, err := restarted.Current()
-	if err != nil || current.Generation != second.Generation {
-		t.Fatalf("recovered active generation=%s err=%v", current.Generation, err)
+	if err != nil {
+		t.Fatalf("recover active generation: %v", err)
+	}
+	if current.Generation != second.Generation {
+		t.Fatalf("recovered active generation=%s", current.Generation)
 	}
 }
 

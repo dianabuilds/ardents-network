@@ -18,11 +18,11 @@ func TestFreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory(t *testing.T)
 		t.Fatal(err)
 	}
 	acceptedReceipt, err := owner.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations)
-	accepted := acceptedReceipt.Snapshot
 	if err != nil {
 		_ = owner.Close()
 		t.Fatal(err)
 	}
+	accepted := acceptedReceipt.Snapshot
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}

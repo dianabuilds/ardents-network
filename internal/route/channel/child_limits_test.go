@@ -87,8 +87,11 @@ func TestChildTrafficIncludesOPENHeadersAndPreheldTerminals(t *testing.T) {
 	physical.mu.Unlock()
 	for i, kind := range []uint8{ardp.KindBytes, ardp.KindBytes, ardp.KindClose, ardp.KindBytes} {
 		frame, err := ardp.ReadFrame(out)
-		if err != nil || frame.Kind != kind {
-			t.Fatal("unexpected physical frame", i, frame.Kind, err)
+		if err != nil {
+			t.Fatal("cannot read physical frame", i, err)
+		}
+		if frame.Kind != kind {
+			t.Fatal("unexpected physical frame", i, frame.Kind)
 		}
 	}
 	if out.Len() != 0 {

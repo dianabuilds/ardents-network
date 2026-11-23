@@ -33,12 +33,15 @@ func (history ProfileHistory) Consider(profile ProfileBinding) (ProfileDecision,
 		return ProfileDecision{}, errors.New("profile does not belong to this history")
 	}
 	next := history
+	changed := false
 	if next.conflict == [32]byte{} {
 		if next.accepted == [32]byte{} {
 			next.accepted = profile.Digest
+			changed = true
 		} else if next.accepted != profile.Digest {
 			next.conflict = profile.Digest
+			changed = true
 		}
 	}
-	return ProfileDecision{next: next, changed: next != history}, nil
+	return ProfileDecision{next: next, changed: changed}, nil
 }

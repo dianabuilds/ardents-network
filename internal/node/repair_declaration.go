@@ -18,23 +18,35 @@ func RepairDeclaration(role string, raw []byte) (Network, []string, error) {
 	case "forwarding":
 		var plan ForwardingPlan
 		plan, err = DecodeForwardingPlan(raw)
+		if err != nil {
+			return Network{}, nil, errRepairDeclaration
+		}
 		core, profile = plan.nodePlanCore, processresource.Profile
 	case "join":
 		var plan JoinPlan
 		plan, err = DecodeJoinPlan(raw)
+		if err != nil {
+			return Network{}, nil, errRepairDeclaration
+		}
 		core, profile = plan.nodePlanCore, processresource.JoinProfile
 	case "descriptor":
 		var plan DescriptorPlan
 		plan, err = DecodeDescriptorPlan(raw)
+		if err != nil {
+			return Network{}, nil, errRepairDeclaration
+		}
 		core, profile, extraRoot = plan.nodePlanCore, processresource.DescriptorProfile, plan.DescriptorRoot
 	case "introduction":
 		var plan IntroductionPlan
 		plan, err = DecodeIntroductionPlan(raw)
+		if err != nil {
+			return Network{}, nil, errRepairDeclaration
+		}
 		core, profile, extraRoot = plan.nodePlanCore, processresource.IntroductionProfile, plan.IntroductionRoot
 	default:
 		return Network{}, nil, errRepairDeclaration
 	}
-	if err != nil || core.Network == nil || core.ProcessProfile != profile {
+	if core.Network == nil || core.ProcessProfile != profile {
 		return Network{}, nil, errRepairDeclaration
 	}
 	roots := []string{core.Network.Root, core.ParticipationRoot, core.SpendRoot, core.HostingRoot}

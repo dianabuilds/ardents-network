@@ -118,12 +118,18 @@ func TestLegacyResourceOutcomeRemainsReadable(t *testing.T) {
 		t.Fatal(err)
 	}
 	stored, err := decodeDistributionState(raw)
-	if err != nil || stored.outcomes[0] != sourceOutcomeResource {
-		t.Fatalf("legacy resource outcome was not readable: outcome=%d err=%v", stored.outcomes[0], err)
+	if err != nil {
+		t.Fatalf("legacy resource outcome was not readable: %v", err)
+	}
+	if stored.outcomes[0] != sourceOutcomeResource {
+		t.Fatalf("legacy resource outcome was not readable: outcome=%d", stored.outcomes[0])
 	}
 	snapshot, err := s.Current()
-	if err != nil || snapshot.SourceOutcomes[0] != "resource-failed" {
-		t.Fatalf("legacy resource outcome snapshot=%q err=%v", snapshot.SourceOutcomes[0], err)
+	if err != nil {
+		t.Fatalf("legacy resource outcome snapshot: %v", err)
+	}
+	if snapshot.SourceOutcomes[0] != "resource-failed" {
+		t.Fatalf("legacy resource outcome snapshot=%q", snapshot.SourceOutcomes[0])
 	}
 }
 

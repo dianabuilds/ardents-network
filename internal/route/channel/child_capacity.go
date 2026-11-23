@@ -36,12 +36,15 @@ func reservedControlOpen(body []byte) bool {
 	if len(body) == 50 {
 		var envelope ardp.NodeOpen
 		envelope, err = ardp.DecodeNodeOpen(body)
+		if err != nil {
+			return false
+		}
 		opened = envelope.Recipient
 	} else {
 		opened, err = ardp.DecodeOpen(body)
-	}
-	if err != nil {
-		return false
+		if err != nil {
+			return false
+		}
 	}
 	switch ardp.Purpose(opened.Purpose) {
 	case ardp.PurposeIssuer, ardp.PurposeReachability, ardp.PurposeIntroduction, ardp.PurposeSubmission:

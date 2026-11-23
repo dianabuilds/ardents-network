@@ -40,10 +40,10 @@ func Exchange(conn net.Conn, request []byte, check func() error) (payload []byte
 		return nil, err
 	}
 	frame, err := ardp.ReadFrame(conn)
-	defer clear(frame.Body)
 	if err != nil {
 		return nil, err
 	}
+	defer clear(frame.Body)
 	if frame.Kind != ardp.KindResult || frame.Lane != 0 {
 		return nil, errors.New("route issuer RESULT required")
 	}
@@ -99,9 +99,13 @@ func Serve(ctx context.Context, conn net.Conn, h ardp.Hello, remaining uint64, c
 		return err
 	}
 	frame, err := ardp.ReadFrame(conn)
+	readErr := errors.Join(err, recheck())
+	if err != nil {
+		return readErr
+	}
 	defer clear(frame.Body)
-	if err = errors.Join(err, recheck()); err != nil {
-		return err
+	if readErr != nil {
+		return readErr
 	}
 	if frame.Kind != ardp.KindOperation || frame.Lane != 0 {
 		return errors.New("route issuer operation required")

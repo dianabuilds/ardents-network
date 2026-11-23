@@ -209,6 +209,9 @@ func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, de
 			return Grant{}, errors.New("grant released")
 		}
 		allowance, err = prior.state.allowance.Replenish(initial.Now, remaining)
+		if err != nil {
+			return Grant{}, err
+		}
 		if allowance.Deadline().After(initial.NotAfter) {
 			return Grant{}, errors.New("duty cannot cover refill")
 		}

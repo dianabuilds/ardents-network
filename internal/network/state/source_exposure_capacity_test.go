@@ -25,9 +25,13 @@ func TestSourcePlanRotationRefusesRecoveryWithUnprovenExposureHistory(t *testing
 		t.Fatal(err)
 	}
 	accepted, err := first.Refresh(context.Background())
-	if err != nil || accepted.Epoch != 2 || accepted.SourceAttempts != 2 {
+	if err != nil {
 		_ = first.Close()
-		t.Fatalf("first Source wave epoch=%d attempts=%d err=%v", accepted.Epoch, accepted.SourceAttempts, err)
+		t.Fatalf("first Source wave failed: %v", err)
+	}
+	if accepted.Epoch != 2 || accepted.SourceAttempts != 2 {
+		_ = first.Close()
+		t.Fatalf("first Source wave epoch=%d attempts=%d", accepted.Epoch, accepted.SourceAttempts)
 	}
 	if err := first.Close(); err != nil {
 		t.Fatal(err)
@@ -73,7 +77,10 @@ func TestSourcePlanRotationRefusesRecoveryWithUnprovenExposureHistory(t *testing
 	}
 	defer reopened.Close()
 	current, err := reopened.Current()
-	if err != nil || current.Epoch != 2 || current.SourceAttempts != 2 {
-		t.Fatalf("retained State epoch=%d attempts=%d err=%v", current.Epoch, current.SourceAttempts, err)
+	if err != nil {
+		t.Fatalf("retained State: %v", err)
+	}
+	if current.Epoch != 2 || current.SourceAttempts != 2 {
+		t.Fatalf("retained State epoch=%d attempts=%d", current.Epoch, current.SourceAttempts)
 	}
 }

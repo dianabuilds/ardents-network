@@ -12,8 +12,11 @@ func TestIssuerSelectionRetainsExactProfileAndAllKnownExclusions(t *testing.T) {
 	now := time.Unix(1900000000, 0).UTC()
 	view, leg, responder := rendezvousModel(t, now, nil)
 	duty, err := leg.IssuerDuty(view)
-	if err != nil || duty.NodeID != [32]byte{12} {
-		t.Fatal("exact current issuer differs", err, duty.NodeID)
+	if err != nil {
+		t.Fatal("cannot observe current issuer", err)
+	}
+	if duty.NodeID != [32]byte{12} {
+		t.Fatal("exact current issuer differs", duty.NodeID)
 	}
 	member, err := view.Member(duty.NodeID, now)
 	if err != nil {

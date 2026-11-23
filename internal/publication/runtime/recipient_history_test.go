@@ -185,6 +185,9 @@ func TestRecipientHistoryCapacityRetainsPendingUntilOriginalRelease(t *testing.T
 		}
 		reservation.release()
 	}
+	if pending == nil {
+		t.Fatal("original pending reservation was not retained")
+	}
 	at := now.Add(661 * time.Second)
 	if _, err := history.reserve(accountingNonce(2641), end, end, at); err == nil || err.Error() != "publisher replay capacity unavailable" {
 		t.Fatal("pending opening bypassed shared replay capacity", err)
