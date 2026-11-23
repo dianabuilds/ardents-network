@@ -133,6 +133,14 @@ func acceptCapturingPeer(listener *net.UnixListener, received chan<- captureResu
 		}
 		length := binary.BigEndian.Uint32(frame[:])
 		if length == 0 {
+			// Keep the peer open through the client's directional socket
+			// shutdown. A full close here races with CloseWrite on macOS.
+			var trailing [1]byte
+			n, err := connection.Read(trailing[:])
+			if n != 0 || err != io.EOF {
+				result.err = errors.New("peer did not receive directional EOF after the final frame")
+				return
+			}
 			result.data = bytes.Clone(data.Bytes())
 			return
 		}

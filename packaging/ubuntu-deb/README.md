@@ -38,4 +38,4 @@ and Release state, and service units live outside the package's payload.
 Verify a distributed `.deb` against its independently delivered digest before
 running `dpkg -i`. Endpoint startup follows the
 [platform delivery procedure](../../docs/reference/commands.md#protected-endpoint-platform-delivery), which
-uses `ardents-next` and performs its own artifact and Release checks.
+uses the installed `ardents` command and performs its own artifact and Release checks.

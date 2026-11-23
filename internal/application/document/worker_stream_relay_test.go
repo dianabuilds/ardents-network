@@ -1,0 +1,180 @@
+package document
+
+import (
+	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
+	"io"
+	"net"
+	"testing"
+	"time"
+)
+
+func TestByteStreamWorkerRelaysBothDirectionsAndHalfClose(t *testing.T) {
+	var input, output bytes.Buffer
+	credit := binary.BigEndian.AppendUint32(nil, 2)
+	frames := []workerFrame{
+		{kind: 1, id: 1}, {kind: 1, id: 3},
+		{kind: 2, id: 1, body: []byte{0, 255}}, {kind: 3, id: 3, body: credit},
+		{kind: 4, id: 1}, {kind: 2, id: 3, body: []byte{129, 0}},
+		{kind: 4, id: 3}, {kind: 5, id: 1, body: []byte{0}},
+	}
+	for _, frame := range frames {
+		if err := writeWorkerFrame(&input, frame); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := relayWorkerStreams(struct {
+		io.Reader
+		io.Writer
+	}{&input, &output}); err != nil {
+		t.Fatal(err)
+	}
+	for _, sent := range frames[2:7] {
+		got, err := readWorkerFrame(&output)
+		if err != nil || got.kind != sent.kind || got.id != 4-sent.id || !bytes.Equal(got.body, sent.body) {
+			t.Fatalf("frame %+v did not cross to the other attachment: %+v, %v", sent, got, err)
+		}
+	}
+	receipt, err := readWorkerFrame(&output)
+	if err != nil || receipt.kind != 5 || receipt.id != 1 || !bytes.Equal(receipt.body, []byte{0}) {
+		t.Fatalf("worker did not acknowledge completion: %+v, %v", receipt, err)
+	}
+	if output.Len() != 0 {
+		t.Fatal("unexpected additional worker output")
+	}
+}
+
+func TestInstalledRoleWorkerSelectsStreamByExplicitInitialization(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	host, isolated := net.Pipe()
+	defer host.Close()
+	done := make(chan error, 1)
+	go func() { done <- RunWorker(ctx, isolated, ReaderWorker) }()
+
+	if err := InitializeWorker(ctx, host, ByteStreamWorker, [32]byte{1}, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, frame := range []workerFrame{
+		{kind: 1, id: 1}, {kind: 1, id: 3},
+		{kind: 2, id: 1, body: []byte{255}},
+	} {
+		if err := writeWorkerFrame(host, frame); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := readWorkerFrame(host); err != nil || got.id != 3 || !bytes.Equal(got.body, []byte{255}) {
+		t.Fatalf("installed role did not select its relay: %+v, %v", got, err)
+	}
+	_ = host.Close()
+	if err := <-done; err == nil {
+		t.Fatal("unconfirmed completion was accepted")
+	}
+}
+
+func TestByteStreamWorkerBridgesIndependentPorts(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	host, isolated := net.Pipe()
+	done := make(chan error, 1)
+	go func() { done <- RunWorker(ctx, isolated, PublisherWorker) }()
+	if err := InitializeWorker(ctx, host, ByteStreamWorker, [32]byte{1}, nil); err != nil {
+		t.Fatal(err)
+	}
+	firstBytes := bytes.Repeat([]byte{255, 0, 1}, 12000)
+	secondBytes := bytes.Repeat([]byte{129, 0}, 21000)
+	first := &relayPort{Reader: bytes.NewReader(firstBytes)}
+	second := &relayPort{Reader: bytes.NewReader(secondBytes)}
+	if err := BridgeByteStreamWorker(ctx, host, first, second); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first.received.Bytes(), secondBytes) || !bytes.Equal(second.received.Bytes(), firstBytes) {
+		t.Fatal("independent attachments did not receive exact bytes")
+	}
+	if !first.eof || !second.eof {
+		t.Fatal("both ports did not receive directional EOF")
+	}
+}
+
+type relayPort struct {
+	*bytes.Reader
+	received bytes.Buffer
+	eof      bool
+}
+
+func (port *relayPort) Write(body []byte) (int, error) { return port.received.Write(body) }
+func (port *relayPort) CloseInput() error {
+	port.eof = true
+	return nil
+}
+func (*relayPort) Close() error { return nil }
+
+func TestByteStreamFailureDoesNotExposeUnderlyingDiagnostic(t *testing.T) {
+	for _, category := range []error{errWorkerRelayProtocol, errWorkerRelayRead, errWorkerRelayWrite} {
+		got := ByteStreamFailure(errors.Join(category, errors.New("private input")))
+		if got != category.Error() {
+			t.Fatalf("failure projection %q differs from %q", got, category)
+		}
+	}
+}
+
+// Both endpoints run independent workers and share only an unbuffered byte
+// channel with directional EOF. Exercise the exact first installed failure
+// geometry without Route or native worker launch prerequisites.
+func TestByteStreamWorkerPairCrossesFrameBoundaries(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	leftIn, rightOut := io.Pipe()
+	rightIn, leftOut := io.Pipe()
+	links := [2]pipeRelayPort{{leftIn, leftOut}, {rightIn, rightOut}}
+	payloads := [2][]byte{
+		bytes.Repeat([]byte{0, 255, 128, 7}, 8192),
+		bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000),
+	}
+	results := make(chan error, 2)
+	workers := make(chan error, 2)
+	locals := [2]*relayPort{}
+	for index, link := range links {
+		host, isolated := net.Pipe()
+		defer host.Close()
+		go func() { workers <- RunWorker(ctx, isolated, ReaderWorker) }()
+		if err := InitializeWorker(ctx, host, ByteStreamWorker, [32]byte{byte(index + 1)}, nil); err != nil {
+			t.Fatal(err)
+		}
+		local := &relayPort{Reader: bytes.NewReader(payloads[index])}
+		locals[index] = local
+		go func() { results <- BridgeByteStreamWorker(ctx, host, local, link) }()
+	}
+	for range links {
+		if err := errors.Join(<-results, <-workers); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for index, local := range locals {
+		if !local.eof || !bytes.Equal(local.received.Bytes(), payloads[1-index]) {
+			t.Fatalf("port %d got %d of %d bytes", index, local.received.Len(), len(payloads[1-index]))
+		}
+	}
+}
+
+type pipeRelayPort struct {
+	input  *io.PipeReader
+	output *io.PipeWriter
+}
+
+func (port pipeRelayPort) Read(body []byte) (int, error)  { return port.input.Read(body) }
+func (port pipeRelayPort) Write(body []byte) (int, error) { return port.output.Write(body) }
+func (port pipeRelayPort) CloseInput() error              { return port.output.Close() }
+func (port pipeRelayPort) Close() error                   { return errors.Join(port.input.Close(), port.output.Close()) }
+
+func TestByteStreamFailurePrefersFirstCauseOverCancellationCleanup(t *testing.T) {
+	err := errors.Join(byteStreamFirstFailure{cause: errWorkerRelayRead}, errWorkerRelayClosed)
+	if got := ByteStreamFailure(err); got != errWorkerRelayRead.Error() {
+		t.Fatal(got)
+	}
+}

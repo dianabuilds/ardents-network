@@ -28,7 +28,7 @@ func (stream *Stream) BindPublisherRecipient(ctx context.Context, operation *exe
 			return err
 		}
 		var err error
-		binding, err = deriveRecipientGeneration(proof, profile, request, digest, end, time.Now(), stream.send.generation+1)
+		binding, err = deriveRecipientGeneration(proof, profile, request, digest, end, time.Now(), stream.send.generation+1, stream.owner.identity.Application)
 		if err != nil {
 			return err
 		}

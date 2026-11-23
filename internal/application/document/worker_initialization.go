@@ -21,17 +21,27 @@ type workerInitialization struct {
 
 func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerInitialization, error) {
 	var header [77]byte
-	if input == nil || (expected != ReaderWorker && expected != PublisherWorker) {
+	if input == nil || (expected != ReaderWorker && expected != PublisherWorker && expected != ByteStreamWorker) {
 		return workerInitialization{}, errors.New("document worker initialization is invalid")
 	}
 	if _, err := io.ReadFull(input, header[:]); err != nil {
 		return workerInitialization{}, err
 	}
 	length := binary.BigEndian.Uint32(header[41:45])
-	if string(header[:8]) != "ARDTWP01" || WorkerMode(header[8]) != expected || length > MaximumBytes || (expected == ReaderWorker && length != 0) {
-		return workerInitialization{}, errors.New("document worker initialization is invalid")
+	mode := WorkerMode(header[8])
+	switch string(header[:8]) {
+	case "ARDTWP01":
+		if mode != expected || mode == ByteStreamWorker || length > MaximumBytes || (mode != PublisherWorker && length != 0) {
+			return workerInitialization{}, errors.New("document worker initialization is invalid")
+		}
+	case "ARDSWP01":
+		if mode != ByteStreamWorker || length != 0 {
+			return workerInitialization{}, errors.New("byte-stream worker initialization is invalid")
+		}
+	default:
+		return workerInitialization{}, errors.New("worker initialization is invalid")
 	}
-	initial := workerInitialization{mode: expected}
+	initial := workerInitialization{mode: mode}
 	copy(initial.nonce[:], header[9:41])
 	copy(initial.digest[:], header[45:77])
 	if initial.nonce == [32]byte{} {

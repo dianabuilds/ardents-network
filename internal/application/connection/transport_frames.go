@@ -20,7 +20,6 @@ func writeData(writer io.Writer, data []byte) error {
 }
 
 const (
-	localMagic     = "AAI3"
 	maximumFrame   = 16 << 10
 	terminalMarker = ^uint32(0)
 )

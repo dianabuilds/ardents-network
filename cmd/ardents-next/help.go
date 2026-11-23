@@ -5,14 +5,17 @@ import (
 	"io"
 )
 
-const documentUsage = `Usage
+const participantUsage = `Usage
+  ardents stream publish <absolute-administration-socket>
+  ardents stream connect <absolute-application-socket> --link-file <absolute-private-link-file>
   ardents publish <absolute-administration-socket> <absolute-document-file>
   ardents link <absolute-administration-socket>
   ardents read <absolute-application-socket>
   ardents endpoint withdraw <absolute-administration-socket>
 
-The C0 document application accepts bounded UTF-8. Publish succeeds after
-Descriptor acknowledgement. Read takes a Target Link on standard input.
+Stream exchanges arbitrary bytes through standard input and output.
+Publication succeeds after Descriptor acknowledgement. Read takes a Target Link
+on standard input.
 Publishing, link presentation and withdrawal require Administration authorization.
 
 For installed host and infrastructure actions, run ardents help operator.
@@ -59,7 +62,7 @@ are separate release assets.`
 func runHelp(args []string, out, diagnostic io.Writer) int {
 	var message string
 	if len(args) == 0 {
-		message = documentUsage
+		message = participantUsage
 	} else if len(args) == 1 {
 		switch args[0] {
 		case "operator":

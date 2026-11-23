@@ -23,7 +23,7 @@ func readDocument(ctx context.Context, socket string, input io.ReadCloser, outpu
 		return errDocumentInput
 	}
 	closeIO := func() error { return errors.Join(input.Close(), output.Close()) }
-	return withDocumentPresentation(ctx, closeIO, func() error {
+	return withCommandIO(ctx, closeIO, func() error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

@@ -99,7 +99,7 @@ func (lifetime *PublicationLifetime) BeginService(operation *executionruntime.Op
 		root.mu.Unlock()
 		return nil, nil, ErrUnavailable
 	}
-	identity := wire.LogicalIdentity{Network: value.Network, Target: value.Target, Instance: value.Instance, InstanceGeneration: value.Generation,
+	identity := wire.LogicalIdentity{Network: value.Network, Target: value.Target, Instance: value.Instance, InstanceGeneration: value.Generation, Application: wire.ProfileForOperation(operation.UsesByteStream()),
 		Publication: request.PublicationDigest, Profile: request.ProfileDigest, ConnectionNonce: request.ConnectionNonce, InitiatorBinding: request.InitiatorBinding,
 		WorkSafetyNotAfter: request.WorkSafetyNotAfter, WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}
 	logical, attachment, err := wire.Contexts(identity, digest, 1)

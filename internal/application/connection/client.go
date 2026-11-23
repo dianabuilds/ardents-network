@@ -30,6 +30,7 @@ type clientTransport interface {
 
 type client struct {
 	connection       clientTransport
+	directionalEOF   bool
 	stream           *io.PipeReader
 	sink             *io.PipeWriter
 	writeMu          sync.Mutex
@@ -81,6 +82,14 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	if ctx == nil || path == "" || validRequest(destination) != nil {
 		return nil, errors.New("local Application dial input is invalid")
 	}
+	request, err := EncodeRequest(destination)
+	if err != nil {
+		return nil, err
+	}
+	return dialLocalStream(ctx, path, request, destination.Application == ByteStream)
+}
+
+func dialLocalStream(ctx context.Context, path string, request []byte, directionalEOF bool) (Client, error) {
 	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
 	if err != nil {
 		return nil, err
@@ -101,10 +110,6 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	if deadline, available := ctx.Deadline(); available {
 		_ = connection.SetDeadline(deadline)
 	}
-	request, err := EncodeRequest(destination)
-	if err != nil {
-		return nil, err
-	}
 	if _, err := connection.Write(request); err != nil {
 		return nil, setupError(ctx, err)
 	}
@@ -121,6 +126,7 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	}
 	_ = connection.SetDeadline(time.Time{})
 	opened := newClientWithStop(connection, stopCancellation)
+	opened.directionalEOF = directionalEOF
 	go opened.receive()
 	if !guard.handoff(func() { _ = opened.Close() }) {
 		_ = opened.Close()
@@ -170,6 +176,7 @@ func (connection *client) receive() {
 	defer close(connection.receiveDone)
 	reader := bufio.NewReader(connection.connection)
 	var header [4]byte
+	outputEnded := false
 	for {
 		if _, err := io.ReadFull(reader, header[:]); err != nil {
 			connection.finishReceive(Outcome{Class: LocalFailure, Reason: "Endpoint Application attachment ended without a terminal outcome"}, err)
@@ -178,10 +185,19 @@ func (connection *client) receive() {
 		length := binary.BigEndian.Uint32(header[:])
 		if length == terminalMarker {
 			outcome, err := readTerminal(reader)
+			if err == nil && connection.directionalEOF && outcome.Class == CleanClose && !outputEnded {
+				err = errors.New("clean byte stream omitted directional EOF")
+				outcome = Outcome{}
+			}
 			connection.finishReceive(outcome, err)
 			return
 		}
-		if length == 0 || length > maximumFrame {
+		if length == 0 && connection.directionalEOF && !outputEnded {
+			outputEnded = true
+			_ = connection.sink.Close()
+			continue
+		}
+		if outputEnded || length == 0 || length > maximumFrame {
 			connection.finishReceive(Outcome{Class: LocalFailure, Reason: "Endpoint Application response frame is invalid"}, errors.New("local Application response frame is invalid"))
 			return
 		}

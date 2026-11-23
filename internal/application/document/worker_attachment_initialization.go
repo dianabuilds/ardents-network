@@ -16,8 +16,8 @@ import (
 // isolation assertion or authority to issue a Principal or Grant.
 func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode, nonce [32]byte, snapshot []byte) (resultErr error) {
 	if ctx == nil || attachment == nil || nonce == [32]byte{} ||
-		(mode != ReaderWorker && mode != PublisherWorker) || len(snapshot) > MaximumBytes ||
-		!utf8.Valid(snapshot) || mode == ReaderWorker && len(snapshot) != 0 {
+		(mode != ReaderWorker && mode != PublisherWorker && mode != ByteStreamWorker) || len(snapshot) > MaximumBytes ||
+		!utf8.Valid(snapshot) || mode != PublisherWorker && len(snapshot) != 0 {
 		return errors.New("document worker initialization is invalid")
 	}
 	if ctx.Err() != nil {
@@ -38,7 +38,11 @@ func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode W
 	defer clear(body)
 	digest := sha256.Sum256(body)
 	var header [77]byte
-	copy(header[:8], "ARDTWP01")
+	if mode == ByteStreamWorker {
+		copy(header[:8], "ARDSWP01")
+	} else {
+		copy(header[:8], "ARDTWP01")
+	}
 	header[8] = byte(mode)
 	copy(header[9:41], nonce[:])
 	binary.BigEndian.PutUint32(header[41:45], uint32(len(body)))

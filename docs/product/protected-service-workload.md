@@ -47,6 +47,73 @@ A Service receives its intended request and may return malicious content.
 The operating system, installed launcher and relevant Endpoint verification
 must survive for process confinement to hold.
 
+## Participant interface for arbitrary data
+
+[ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
+selects this interface. Installed qualification is pending.
+The [command reference](../reference/commands.md) lists current commands.
+
+| Person | Installs | Selected action |
+|---|---|---|
+| Sender or receiver using an Application | The protected Endpoint distribution and a locally authorized Application delivered for its exact confinement profile | The Application opens the recipient's Service through the local Application Interface. The sender and the receiving Service exchange ordered bytes using their Application's protocol. |
+| Participant using the command line | The protected Endpoint distribution with a confined byte-stream Application | `ardents stream connect APPLICATION_SOCKET --link-file PRIVATE_LINK_FILE` reads bytes from standard input and writes response bytes to standard output. The participant supplies the Link in a private local input, keeping it out of process arguments and reserving standard input for data. |
+| Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | Run `ardents stream publish ADMINISTRATION_SOCKET` to start the locally authorized fixed worker and attach the operator's standard input and output for one exchange. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
+
+The stream command keeps diagnostics on standard error and reports a
+complete exchange only after authenticated terminal completion. Standard output
+may already contain partial bytes on interruption. EOF on standard input closes
+the local send direction while receiving may continue. Retrying interrupted
+Application effects requires explicit Application or participant action.
+Applications own framing, format and presentation for messages, images, audio
+and other data. The Endpoint owns the destination, authentication, admission
+and Connection lifetime. A worker receives only its scoped attachment. Selected
+Application and worker identities must bind to signed local policy before any
+effect. Remote input cannot select a command, executable or local file path.
+
+Reuse the existing authenticated Service Connection and its ordered stream,
+flow control, continuity and terminal result. Reuse the local Application
+Connection byte framing where its authority and lifetime match the new profile.
+The [local binary conformance test](../../internal/application/connection/transport_binary_conformance_test.go)
+exercises a byte exchange through local framing with a test stream. The
+[scheduled qualification workload](../technical/application-confinement.md#selected-boundary)
+exercises fixed binary canaries with qualification-only state. Neither supplies
+a production participant job. Production admission needs an exact signed
+worker profile and a real Service handler; it must refuse an unsupported
+profile before delivering Application bytes. The existing document request
+grammar remains scoped to document Services. The current v3 Target Link carries
+only Network and Target. It can remain the destination input, but cannot prove
+which Application the authenticated Instance offers. The client must request
+the byte-stream profile explicitly. The Instance must authenticate its
+acceptance in the logical Connection setup before either side admits a data
+worker or forwards user payload. The acceptance must bind the exact Target,
+Instance, authenticated Connection and chosen profile. Continuity must retain
+that original binding. Use the existing transport and document grammar for
+document peers. An older peer, unknown profile, missing proof or profile
+mismatch must terminate the requested byte-stream operation without fallback.
+
+Use the existing encrypted Instance proof and Continuity setup to
+authenticate the profile. Both peers derive the expected Application binding
+from their own admitted local profile. The initiator derives it from the
+explicit operation, and the Publisher derives it from the verified Service
+configuration. Commit the byte-stream selection to the logical context that
+the Instance proves and Continuity retains. Preserve the exact existing
+document context transcript. A mismatch therefore fails the existing context
+verification without a new cleartext TLS negotiation field or a trial
+Application request. The two local owners must check this binding before they
+hand an authenticated stream to a data worker.
+
+The first byte-stream profile admits up to 4 MiB in each direction per
+Connection. Admission uses the original 60-second setup and exchange budget
+and one active exchange per stream job. Shorter authority and resource
+deadlines still apply and recovery cannot renew them. Existing peers retain
+the document profile and refuse a byte-stream binding. Keep the document workload and its signed identities
+unchanged until their separately designed migration is adopted. Qualify the new
+workload through the same protected Route with two installed Endpoints. Exercise
+non-UTF-8 bytes, directional EOF, backpressure, truncation, interrupted transfer,
+revocation and joined cleanup with both positive and causal refusal cases.
+Confidentiality of Application bytes and traffic-correlation exposure require
+separate evidence under the [threat model](../security/threat-model.md).
+
 ## Interaction
 
 1. The Publisher selects one regular local UTF-8 file, at most 4 MiB. A trusted

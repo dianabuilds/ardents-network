@@ -26,9 +26,11 @@ bind its file names. The installed worker artifact document
 polkit rule by installed path and digest. The chroot, Endpoint unit
 dependencies and tmpfiles declaration bind related paths.
 
-Use `ardents-document-worker` for the proposed executable, with
-`ardents-document-reader` and `ardents-document-publisher` socket and
-service families and runtime sockets under `/run/ardents-document-worker`.
+Use `ardents-application-worker` for the proposed executable, with
+`ardents-application-reader` and `ardents-application-publisher` socket and
+service families and runtime sockets under `/run/ardents-application-worker`.
+The executable serves both the document and byte-stream profiles. The signed
+resource names describe the worker's installed roles.
 Define a v2 protected descriptor and worker artifact document with one exact
 inventory and path map. The signed Release target inventory, archive, Debian
 payload and installed pre-start project that same set. Reject mixed groups,
@@ -56,7 +58,8 @@ Acceptance requires positive and mixed-inventory controls in packaging,
 portable signed-grammar tests, and an Ubuntu/systemd transition from the exact
 deployed v1. The native test covers live, uncertain and tampered predecessor
 refusal, interruptions during staging and activation, retained root identities
-and floors, authenticated first use, the document journey and joined stop.
+and floors, authenticated first use, the document journey, the bidirectional
+byte-stream journey and joined stop.
 
 `ARDTXT01` and the serialized `text_token_root` are separate wire and
 declaration identities. Keep their interpretation and bytes through this
@@ -165,6 +168,13 @@ Changed bytes, wrong offsets and a one-byte-short workload fail their existing
 worker/verdict boundaries. These checks do not change the installed launch,
 Grant, duration, connection-count or bitrate contract and do not admit another
 worker inventory.
+
+The byte-stream profile selects a distinct INIT on the same fixed installed
+worker entrypoints. The signed executable must implement that INIT and
+acknowledge the original nonce before Endpoint grants the Job. The existing
+document INIT bytes and fixed unit command lines retain their meaning. A
+released predecessor executable that lacks the byte-stream INIT refuses the
+new operation during initialization.
 
 ## Required installed properties
 

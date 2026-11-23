@@ -59,7 +59,7 @@ func Read(ctx context.Context, stream connection.Stream) (body []byte, resultErr
 	select {
 	case outcome, ok := <-stream.Done():
 		if !ok || outcome.Class != connection.CleanClose {
-			return nil, errors.New("text Connection did not complete")
+			return nil, errors.New("document Connection did not complete")
 		}
 	case <-ctx.Done():
 		return nil, ctx.Err()

@@ -1,6 +1,10 @@
 package runtime
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
+)
 
 func TestDetachedOperationCannotBindWorkloadByteContract(t *testing.T) {
 	for _, operation := range []*Operation{nil, {}} {
@@ -16,5 +20,27 @@ func TestDetachedOperationCannotBindWorkloadByteContract(t *testing.T) {
 		if _, _, err := (StreamContract{}).Limits(operation); err == nil {
 			t.Fatal("copied limits supplied original authority")
 		}
+	}
+}
+
+func TestByteStreamUsesTheFixedSymmetricContract(t *testing.T) {
+	limit := connection.ByteStreamDirectionalLimit
+	for _, test := range []struct {
+		send, receive uint64
+		allowed       bool
+	}{
+		{limit, limit, true},
+		{limit, limit + 1, false},
+		{limit - 1, limit, false},
+		{0, limit, false},
+		{qualificationDirectionalLimit, qualificationDirectionalLimit, false},
+	} {
+		if result := validStreamLimits(true, test.send, test.receive); result != test.allowed {
+			t.Errorf("limits %d/%d admitted: %t", test.send, test.receive, result)
+		}
+	}
+	if !validStreamLimits(false, 512, 4<<20+13) ||
+		!validStreamLimits(false, qualificationDirectionalLimit, qualificationDirectionalLimit) {
+		t.Fatal("existing document or qualification limits changed")
 	}
 }

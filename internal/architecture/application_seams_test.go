@@ -227,7 +227,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	administration := ardentsModulePath + "/internal/application/administration"
 	product := listedDirectImports(t, root, "./cmd/ardents-next")
 	if !product[connection] {
-		t.Error("./cmd/ardents-next does not use the selected protected text Connection Module")
+		t.Error("./cmd/ardents-next does not use the selected protected Application Connection Module")
 	}
 	worker := listedDependencies(t, root, "./internal/application/document/worker")
 	if worker[administration] || worker[ardentsModulePath+"/internal/endpoint"] {

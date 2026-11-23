@@ -111,7 +111,9 @@ func (server *server) serve() {
 			defer func() {
 				server.mu.Lock()
 				if _, owned := server.clients[connection]; owned {
-					server.err = errors.Join(server.err, connection.Close())
+					if err := connection.Close(); !errors.Is(err, net.ErrClosed) {
+						server.err = errors.Join(server.err, err)
+					}
 					delete(server.clients, connection)
 				}
 				server.mu.Unlock()
@@ -128,6 +130,9 @@ func (server *server) handle(connection *net.UnixConn, started time.Time) {
 	raw, err := io.ReadAll(io.LimitReader(input, int64(maximumRequest)))
 	if err == nil && string(raw) == snapshotRequest {
 		server.handleSnapshot(connection, input, started.Add(SnapshotTimeout))
+		return
+	}
+	if err == nil && server.handleByteStream(connection, raw, started) {
 		return
 	}
 	var trailing [1]byte
