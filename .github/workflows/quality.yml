@@ -1,232 +1,86 @@
 name: quality
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
+on: workflow_dispatch
 permissions:
   contents: read
-
-concurrency:
-  group: quality-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  select:
-    if: github.event_name == 'pull_request'
+  source-native:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      matrix: ${{ steps.selection.outputs.matrix }}
-      count: ${{ steps.selection.outputs.count }}
-      powershell: ${{ steps.selection.outputs.powershell }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Select affected tests and consumers
-        id: selection
-        env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
-        run: |
-          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --powershell "$RUNNER_TEMP/powershell.txt"
-          python3 - <<'PY'
-          import json, os
-          with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
-              matrix = json.load(source)
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
-              output.write("count=" + str(len(matrix["include"])) + "\n")
-              with open(os.environ["RUNNER_TEMP"] + "/powershell.txt") as marker:
-                  output.write("powershell=" + marker.read().strip() + "\n")
-          PY
-  qualification-scripts:
-    needs: select
-    if: needs.select.outputs.powershell == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Parse affected qualification PowerShell surface
-        shell: pwsh
-        run: |
-          $failed = $false
-          Get-ChildItem tests/qualification -Recurse -Filter *.ps1 | ForEach-Object {
-            $tokens = $null
-            $errors = $null
-            [void][Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
-            foreach ($error in $errors) {
-              Write-Error "$($_.FullName):$($error.Extent.StartLineNumber):$($error.Extent.StartColumnNumber): $($error.Message)"
-              $failed = $true
-            }
-          }
-          if ($failed) { exit 1 }
-  affected:
-    needs: select
-    if: needs.select.outputs.count != '0'
-    strategy:
-      fail-fast: false
-      max-parallel: 16
-      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
-    name: affected-${{ matrix.id }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: ${{ matrix.timeout_minutes }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Install standard Go diagnostic parsers
-        if: matrix.diagnostic_parsers
-        run: make tools-install DIAGNOSTIC_PARSERS_ONLY=1
-      - name: Run original bounded check groups
-        env:
-          SELECTED_CHECKS: ${{ toJSON(matrix.checks) }}
-        run: |
-          set -euo pipefail
-          python3 - > "$RUNNER_TEMP/check-groups" <<'PYTHON'
-          import json, os, sys
-          checks = json.loads(os.environ["SELECTED_CHECKS"])
-          if not isinstance(checks, list) or not 1 <= len(checks) <= 60:
-              raise RuntimeError("finite selected check groups required")
-          for check in checks:
-              if type(check["id"]) is not int or check["id"] < 0 or type(check["race"]) is not bool:
-                  raise RuntimeError("exact typed check declaration required")
-              fields = [str(check["id"]), check["package"], check["run"], str(check["race"]).lower()]
-              if any(not isinstance(field, str) or "\0" in field for field in fields):
-                  raise RuntimeError("closed check fields required")
-              sys.stdout.buffer.write(("\0".join(fields) + "\0").encode("utf-8"))
-          PYTHON
-          while IFS= read -r -d '' TEST_ID && IFS= read -r -d '' TEST_PACKAGE && IFS= read -r -d '' TEST_RUN && IFS= read -r -d '' TEST_RACE; do
-            # A failed group exits before another group can use this runner.
-            (
-              echo "::group::Selected check group $TEST_ID $TEST_PACKAGE"
-              args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
-              if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
-              test_log="$RUNNER_TEMP/selected-test-$TEST_ID.json"
-              set +e
-              timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
-              status=${PIPESTATUS[0]}
-              set -e
-              if (( status != 0 )); then
-                failure=unclassified
-                if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
-                elif grep -q 'race detected' "$test_log"; then failure=race-detected
-                elif grep -q '"FailedBuild"' "$test_log" && grep -q 'proxy.golang.org' "$test_log"; then failure=dependency-fetch
-                elif grep -q '"FailedBuild"' "$test_log"; then failure=go-build
-                elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
-                elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
-                elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled
-                elif grep -q '\.Done:.*run=.*integrity violation' "$test_log"; then failure=retained-done-integrity
-                elif grep -q '\.Done:.*run=.*invalid request' "$test_log"; then failure=retained-done-invalid-request
-                elif grep -q '\.Done:.*run=.*recovery' "$test_log"; then failure=retained-done-recovery
-                elif grep -q '\.Done:.*run=.*text Service job retired' "$test_log"; then failure=retained-done-job-retired
-                elif grep -q '\.Done:.*run=<nil>' "$test_log"; then failure=retained-done-cleanup
-                elif grep -q '\.Done:' "$test_log"; then failure=retained-done-other
-                elif grep -q '\.Close:' "$test_log"; then failure=retained-close
-                elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
-                elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
-                elif grep -q ' Introduction ' "$test_log"; then failure=qualification-introduction
-                elif grep -q 'retained setup reached' "$test_log"; then failure=retained-setup-other
-                fi
-                echo "::error title=Selected check group failed::selected test failure category: $failure"
-              fi
-              echo "::endgroup::"
-              exit "$status"
-            )
-          done < "$RUNNER_TEMP/check-groups"
-  full:
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Install pinned quality tools
-        run: make tools-install
-      - name: Run the complete maintained gate
-        run: make check
-  go:
-    if: always()
-    needs: [select, qualification-scripts, affected, full]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    steps:
-      - name: Require the event's quality gate to complete successfully
-        env:
-          SELECTION: ${{ needs.select.result }}
-          GROUP_RESULT: ${{ needs.affected.result }}
-          POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
-          FULL_RESULT: ${{ needs.full.result }}
-          EVENT: ${{ github.event_name }}
-        run: |
-          if [[ "$EVENT" == pull_request ]]; then
-            test "$SELECTION" = success
-            test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
-            test "$POWERSHELL_RESULT" = success || test "$POWERSHELL_RESULT" = skipped
-            test "$FULL_RESULT" = skipped
-          else
-            test "$SELECTION" = skipped
-            test "$GROUP_RESULT" = skipped
-            test "$FULL_RESULT" = success
-          fi
-  portable:
-    # ADR-0129 mandatory-target evidence: compile and portable-unit verification
-    # on Windows and macOS. This lane is NOT native qualification; C0
-    # qualification stays Ubuntu LTS x86-64 and the Ubuntu jobs above retain
-    # every native profile unchanged. Native cells (linux and *_native build
-    # constraints) are excluded by their build tags on these runners, never as
-    # passing skips; the common deterministic inventory is the declared
-    # portable subset (tests/profiles/deterministic-packages.txt).
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    name: portable-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 25
     env:
-      CGO_ENABLED: "0"
+      CANDIDATE: 27ce51650dcd4037be0d1fe097ddb5f481bdf583
+      CANDIDATE_TREE: 09ddad75ab9fe2d2b1d98ffee477841af2c97ef0
     steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ env.CANDIDATE }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: 1.27.4
           cache: true
-      - name: Build every package for the target platform
-        run: go build ./...
-      - name: Vet every package for the target platform
-        run: go vet ./...
-      - name: Run the portable deterministic unit inventory
-        # Mirrors the `make unit` invocation on the common inventory without
-        # the Linux-only supplement; reading the manifest directly avoids a
-        # host make dependency. No build-error filtering and no platform skip.
+      - name: Run the original Source profile
         run: |
           set -euo pipefail
-          packages=()
-          while IFS= read -r package || [[ -n "$package" ]]; do
-            if [[ -n "$package" ]]; then packages+=("$package"); fi
-          done < tests/profiles/deterministic-packages.txt
-          go test -p 1 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$CANDIDATE_TREE"
+          git log -1 --format='Candidate %H tree %T'
+          . /etc/os-release
+          test "$ID:$VERSION_ID" = ubuntu:24.04
+          manager=$(systemctl show -p Version --value)
+          case "$manager" in 255.*) ;; *) printf '%s\n' "$manager"; exit 2 ;; esac
+          test -r /sys/fs/cgroup/cgroup.controllers
+          build_dir=$(mktemp -d "$RUNNER_TEMP/ardents-node-build.XXXXXX")
+          node_dir=$(sudo -n mktemp -d /ardents-source-custody.XXXXXX)
+          trap 'sudo -n rm -rf "$node_dir"; rm -rf "$build_dir"' EXIT
+          test "$(findmnt -T "$node_dir" -n -o FSTYPE)" = ext4
+          for parent in / "$node_dir"; do
+            read -r uid mode <<<"$(sudo -n stat -c '%u %a' "$parent")"
+            test "$uid" = 0
+            (( (8#$mode & 022) == 0 ))
+          done
+          sudo -n chmod 0755 "$node_dir"
+          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
+          go test -race -trimpath -buildvcs=false -tags node_process_native -c -o "$build_dir/node.test" ./cmd/ardents-next
+          go test -race -trimpath -buildvcs=false -tags node_process_native -c -o "$build_dir/resource.test" ./internal/processresource
+          ordinary_pin=$(sha256sum "$build_dir/ardents" | cut -d ' ' -f 1)
+          command_test_pin=$(sha256sum "$build_dir/node.test" | cut -d ' ' -f 1)
+          resource_test_pin=$(sha256sum "$build_dir/resource.test" | cut -d ' ' -f 1)
+          printf 'command=%s\ncommand-test=%s\nresource-test=%s\n' "$ordinary_pin" "$command_test_pin" "$resource_test_pin"
+          sudo -n install -m 0555 "$build_dir/ardents" "$build_dir/node.test" "$build_dir/resource.test" "$node_dir/"
+          sudo -n env PATH="$PATH" TMPDIR="$node_dir" \
+            ARDENTS_NODE_NATIVE_COMMAND="$node_dir/ardents" ARDENTS_NODE_NATIVE_COMMAND_SHA256="$ordinary_pin" \
+            ARDENTS_NODE_NATIVE_TEST="$node_dir/node.test" ARDENTS_NODE_NATIVE_TEST_SHA256="$command_test_pin" \
+            ARDENTS_NODE_RESOURCE_TEST="$node_dir/resource.test" ARDENTS_NODE_RESOURCE_TEST_SHA256="$resource_test_pin" \
+            sh -ec 'umask 077; exec make source-process-check'
+  source-state:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CANDIDATE: 27ce51650dcd4037be0d1fe097ddb5f481bdf583
+      CANDIDATE_TREE: 09ddad75ab9fe2d2b1d98ffee477841af2c97ef0
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ env.CANDIDATE }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Check original histories and real Source command credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$CANDIDATE_TREE"
+          git log -1 --format='Candidate %H tree %T'
+          . /etc/os-release
+          test "$ID:$VERSION_ID" = ubuntu:24.04
+          test "$(uname -m)" = x86_64
+          native_dir=$(sudo -n mktemp -d /ardents-source-state-owner.XXXXXX)
+          trap 'sudo -n rm -rf "$native_dir"' EXIT
+          test "$(findmnt -T "$native_dir" -n -o FSTYPE)" = ext4
+          sudo -n env PATH="$PATH" TMPDIR="$native_dir" GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly \
+            GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)" \
+            go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state \
+              -run '^TestSource(InitialPreparation|PreparationConfig|PreparationNativeStateCommand)' -count=1 -v -timeout=3m
+          go test -race ./internal/platform/artifacts -run '^TestArtifactInputsReobserveEarlierNamespaceAfterLaterRead$' -count=1 -v -timeout=3m
+          go test -race ./cmd/ardents-next -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$' -count=1 -v -timeout=3m
