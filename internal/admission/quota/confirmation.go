@@ -73,7 +73,7 @@ func (l *Ledger) DebitVerified(ctx context.Context, raw []byte, f admission.Fact
 	// Copy before validation: callers own their buffers; returned evidence cannot
 	// alias them. Concurrent mutation of an input during this call is unsupported.
 	owned := append([]byte(nil), raw...)
-	outcome := l.debit(ctx, owned, f, kind, func(verifiedBatch) {
+	outcome := l.debit(ctx, owned, f, kind, func() {
 		confirmation.state = &confirmedDebit{raw: owned, binding: cloneBinding(l.state.binding), kind: kind, checked: f.Now}
 	})
 	if confirmation.state == nil {

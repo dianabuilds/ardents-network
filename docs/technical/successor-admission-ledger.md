@@ -1,7 +1,7 @@
 # Independent offline Admission accounting
 
 This completed slice design owns offline verification and durable issuance-right
-accounting in `internal/successor/admission/quota`, consumed by `ardents-next`. It does
+accounting in `internal/admission/quota`, consumed by the Issuer and the initialization command. It does
 not authorize network work, sign tokens, authenticate live State/time, provision
 permissions or migrate existing issuer roots. Hosting remains independent.
 
@@ -18,8 +18,9 @@ permissions or migrate existing issuer roots. Hosting remains independent.
 
 ## Interface and authority
 
-Initialize(root, Binding), Open(root, Binding), Ledger.Debit(ctx, wire, Facts,
-Kind), Ledger.Close. Binding pins Network, issuer, duty generation, authority,
+Initialize(root, Binding), Open(root, Binding), Ledger.DebitVerified(ctx, wire, Facts,
+Kind), Ledger.Close. The confirmed debit supplies the Issuer with evidence of
+a committed transaction before it can produce an issuance result. Binding pins Network, issuer, duty generation, authority,
 profile digest, aligned one-to-six-hour interval and sorted unique class/hour
 SPKI inventory (all three classes per hour). Inputs are explicit offline
 assertions. Facts select holder, now, class and count independently of wire;
@@ -66,13 +67,12 @@ refuses. A copied Ledger handle shares one private state and Close identity.
 ## Command and evidence
 
 `admission initialize --config PATH [collector]` takes root and binding.
-`admission debit --config PATH [collector]` takes root, binding, batch_file,
-facts and kind (bootstrap/admitted). Configuration and batch each <=16KiB;
-exact required JSON fields, duplicate/alias/null/trailing refusal. IDs and SPKI
-are lowercase hex, times UTC RFC3339 seconds, duty/class/count canonical decimal
-strings. CLI exits 0 success/retry, 2 input errors, 130 pre-mutation cancellation,
-1 other refusals. Local JSON contains operation/phase/outcome only. Admitted is
-an accounting category, never evidence of authenticated lane authority.
+`issuance issue --config PATH [collector]` performs the confirmed debit and
+produces the issuance result. The retained Issuer also uses the confirmed
+transaction. Configuration and batch each have a 16 KiB bound and exact
+required fields. IDs and SPKI use lowercase hex. Times use UTC RFC3339
+seconds. Duty, class and count use canonical decimal strings. Admitted is
+an accounting category. Authenticated lane authority remains with its owner.
 
 OTel has finite operation/phase/outcome and duration only, no IDs, paths,
 permissions, keys, counters or file contents; collector refusal cannot change
@@ -81,7 +81,7 @@ and storage. Add no generic application or persistence framework.
 
 Acceptance uses independent synthetic signed fixtures, real temporary files,
 process leases/crash/reopen and compiled CLI; bounded local OTLP capture checks
-actual protobuf. Run quick/full repository gates and pinned Go1.27.2 Linux
+actual protobuf. Run quick/full repository gates and registered `make admission-check` Linux
 behavior/race profile. Preserve failed evidence/source identities in an external
 checkpoint. No complete-network or C0 qualification claim follows.
 
@@ -91,8 +91,8 @@ Initialize requires exactly `root` and `binding`. Binding contains exactly
 `network`, `issuer`, `authority`, `profile`, `duty`, `start`, `end`, `keys`;
 each key contains `window`, `class`, `spki`. Identifiers are 64 hex characters,
 SPKI is 692 hex characters, and keys are ordered by hour then class 1,2,3.
-Every cohort uses a different exact SPKI. Debit additionally requires
-`batch_file`, `kind` and `facts`. Facts retain the ten inspection fields:
+Every cohort uses a different exact SPKI. The issuance plan supplies
+`batch_file`, `kind` and `facts` alongside the Admission binding. Facts retain the ten inspection fields:
 `network`, `issuer`, `authority`, `holder`, `duty`, `duty_not_before`,
 `duty_not_after`, `now`, `class`, `count`, each encoded as a string.
 The batch path is an explicit canonical absolute regular-file input.

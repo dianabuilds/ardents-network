@@ -44,6 +44,7 @@ Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 | ardents-next | enrollment verify | read-only initial artifact and pin verification |
 | ardents-next | source prepare-state | offline first signed State and empty participation history |
 | ardents-next | infrastructure prepare-runtime-descriptor / prepare-runtime-inventory | public artifact preparation for fixed roles |
+| ardents-next | admission initialize / issuance issue | initialize a fresh quota root and use confirmed accounting through the Issuer |
 | ardents-next | endpoint withdraw | local Administration client |
 | ardents-next | diagnostics timeline | local projection of bounded runtime events from standard input |
 | ardents-next | network inspect-closed-profile / issuance inspect-public-profile / source inspect-latest | independent public-context verification and bounded Source contact |
@@ -70,6 +71,7 @@ The following inputs belonged to retired or refusal-only surfaces:
 
 | Removed input | Reason |
 |---|---|
+| standalone `admission debit` | issuance uses the confirmed transaction through the owning Issuer |
 | former ardents-control binary | offline production has distinct entrypoints and public inspection uses the owning product command; retired ACA1/ACA2 and qualification selectors have no executable |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by [ADR-0060](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0060-retire-completed-planning-campaign-generators.md) (archived) |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |

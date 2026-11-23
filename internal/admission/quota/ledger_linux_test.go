@@ -21,6 +21,11 @@ import (
 	"time"
 )
 
+func debitOutcome(ledger *Ledger, ctx context.Context, raw []byte, facts admission.Facts, kind Kind) admission.Outcome {
+	outcome, _ := ledger.DebitVerified(ctx, raw, facts, kind)
+	return outcome
+}
+
 func resignPermissionBatch(t *testing.T, raw []byte) {
 	t.Helper()
 	authority := ed25519.NewKeyFromSeed(make([]byte, 32))
@@ -39,19 +44,19 @@ func resignPermissionBatch(t *testing.T, raw []byte) {
 func TestSeparatePermissionsAndChangedAllocation(t *testing.T) {
 	l, _, _ := newTestLedger(t, 1)
 	raw, f, _ := batchFixture(t, 2, 1, 1, 1)
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Debited {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Debited {
 		t.Fatal(got)
 	}
 	second, _, _ := batchFixture(t, 2, 1, 1, 2)
 	second[80] = 5
 	resignPermissionBatch(t, second)
-	if got := l.Debit(t.Context(), second, f, Admitted); got != Debited {
+	if got := debitOutcome(l, t.Context(), second, f, Admitted); got != Debited {
 		t.Fatal("separate permission merged", got)
 	}
 	changed, _, _ := batchFixture(t, 2, 1, 1, 3)
 	binary.BigEndian.PutUint32(changed[164:168], 2)
 	resignPermissionBatch(t, changed)
-	if got := l.Debit(t.Context(), changed, f, Admitted); got != Conflict {
+	if got := debitOutcome(l, t.Context(), changed, f, Admitted); got != Conflict {
 		t.Fatal("same permission expanded", got)
 	}
 }
@@ -73,32 +78,32 @@ func newTestLedger(t *testing.T, max uint32) (*Ledger, string, LedgerBinding) {
 func TestDurableDebitsRetryQuotaAndCopies(t *testing.T) {
 	l, root, b := newTestLedger(t, 2)
 	raw, f, _ := batchFixture(t, 2, 1, 2, 1)
-	if got := l.Debit(t.Context(), raw, f, Bootstrap); got != Debited {
+	if got := debitOutcome(l, t.Context(), raw, f, Bootstrap); got != Debited {
 		t.Fatal(got)
 	}
 	copyHandle := *l
-	if got := copyHandle.Debit(t.Context(), raw, f, Bootstrap); got != AlreadyDebited {
+	if got := debitOutcome(&copyHandle, t.Context(), raw, f, Bootstrap); got != AlreadyDebited {
 		t.Fatal(got)
 	}
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Conflict {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Conflict {
 		t.Fatal(got)
 	}
 	changed, _, _ := batchFixture(t, 2, 2, 2, 1)
-	if got := l.Debit(t.Context(), changed, func() admission.Facts { g := f; g.Count = 2; return g }(), Bootstrap); got != Conflict {
+	if got := debitOutcome(l, t.Context(), changed, func() admission.Facts { g := f; g.Count = 2; return g }(), Bootstrap); got != Conflict {
 		t.Fatal(got)
 	}
 	second, _, _ := batchFixture(t, 2, 1, 2, 2)
-	if got := l.Debit(t.Context(), second, f, Admitted); got != Debited {
+	if got := debitOutcome(l, t.Context(), second, f, Admitted); got != Debited {
 		t.Fatal(got)
 	}
 	third, _, _ := batchFixture(t, 2, 1, 2, 3)
-	if got := l.Debit(t.Context(), third, f, Admitted); got != Exhausted {
+	if got := debitOutcome(l, t.Context(), third, f, Admitted); got != Exhausted {
 		t.Fatal(got)
 	}
 	if err := copyHandle.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if got := l.Debit(t.Context(), third, f, Admitted); got != Unavailable {
+	if got := debitOutcome(l, t.Context(), third, f, Admitted); got != Unavailable {
 		t.Fatal(got)
 	}
 	reopened, err := Open(root, b)
@@ -106,14 +111,14 @@ func TestDurableDebitsRetryQuotaAndCopies(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if got := reopened.Debit(t.Context(), raw, f, Bootstrap); got != AlreadyDebited {
+	if got := debitOutcome(reopened, t.Context(), raw, f, Bootstrap); got != AlreadyDebited {
 		t.Fatal(got)
 	}
-	if got := reopened.Debit(t.Context(), third, f, Admitted); got != Exhausted {
+	if got := debitOutcome(reopened, t.Context(), third, f, Admitted); got != Exhausted {
 		t.Fatal(got)
 	}
 	f.Now = f.DutyNotAfter
-	if got := reopened.Debit(t.Context(), raw, f, Bootstrap); got != admission.Validity {
+	if got := debitOutcome(reopened, t.Context(), raw, f, Bootstrap); got != admission.Validity {
 		t.Fatal(got)
 	}
 }
@@ -126,24 +131,24 @@ func TestBootstrapSharedClassesAndAtomicBatch(t *testing.T) {
 		if class == 3 {
 			want = Exhausted
 		}
-		if got := l.Debit(t.Context(), raw, f, Bootstrap); got != want {
+		if got := debitOutcome(l, t.Context(), raw, f, Bootstrap); got != want {
 			t.Fatalf("class %d: %s", class, got)
 		}
 	}
 	raw, f, _ := batchFixture(t, 3, 3, 3, 4)
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Debited {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Debited {
 		t.Fatal(got)
 	}
 	raw, f, _ = batchFixture(t, 3, 1, 3, 5)
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Exhausted {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Exhausted {
 		t.Fatal(got)
 	}
 	raw, f, _ = batchFixture(t, 1, 3, 3, 6)
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Exhausted {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Exhausted {
 		t.Fatal(got)
 	}
 	raw, f, _ = batchFixture(t, 1, 2, 3, 7)
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Debited {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Debited {
 		t.Fatal("partial batch was debited", got)
 	}
 }
@@ -154,7 +159,7 @@ func TestConcurrentDebitsAndCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	before, _ := os.ReadFile(filepath.Join(l.state.path, "admission.journal"))
-	if got := l.Debit(ctx, raw, f, Admitted); got != admission.Canceled {
+	if got := debitOutcome(l, ctx, raw, f, Admitted); got != admission.Canceled {
 		t.Fatal(got)
 	}
 	after, _ := os.ReadFile(filepath.Join(l.state.path, "admission.journal"))
@@ -164,7 +169,7 @@ func TestConcurrentDebitsAndCancellation(t *testing.T) {
 	var wg sync.WaitGroup
 	results := make(chan admission.Outcome, 16)
 	for i := 0; i < 16; i++ {
-		wg.Go(func() { results <- l.Debit(t.Context(), raw, f, Admitted) })
+		wg.Go(func() { results <- debitOutcome(l, t.Context(), raw, f, Admitted) })
 	}
 	wg.Wait()
 	close(results)
@@ -229,11 +234,11 @@ func TestStorageFailuresTerminalizeAndRetainCommit(t *testing.T) {
 				}
 				return nil
 			}
-			if got := l.Debit(t.Context(), raw, f, Admitted); got != Uncertain || !hit {
+			if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Uncertain || !hit {
 				t.Fatalf("%s hit %t", got, hit)
 			}
 			l.state.fault = nil
-			if got := l.Debit(t.Context(), raw, f, Admitted); got != Uncertain {
+			if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Uncertain {
 				t.Fatal("owner resumed", got)
 			}
 			_ = l.Close()
@@ -249,7 +254,7 @@ func TestStorageFailuresTerminalizeAndRetainCommit(t *testing.T) {
 					t.Fatal(err)
 				}
 				defer reopened.Close()
-				got := reopened.Debit(t.Context(), raw, f, Admitted)
+				got := debitOutcome(reopened, t.Context(), raw, f, Admitted)
 				want := Debited
 				if phase == "commit-sync" || phase == "journal-close" {
 					want = AlreadyDebited
@@ -272,7 +277,7 @@ func TestCancellationAfterCommitAndCloseResult(t *testing.T) {
 		}
 		return nil
 	}
-	if got := l.Debit(ctx, raw, f, Admitted); got != Debited {
+	if got := debitOutcome(l, ctx, raw, f, Admitted); got != Debited {
 		t.Fatal(got)
 	}
 	failure := errors.New("close injected")
@@ -294,7 +299,7 @@ func TestCancellationAfterCommitAndCloseResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if got := reopened.Debit(t.Context(), raw, f, Admitted); got != AlreadyDebited {
+	if got := debitOutcome(reopened, t.Context(), raw, f, Admitted); got != AlreadyDebited {
 		t.Fatal(got)
 	}
 }
@@ -310,7 +315,7 @@ func TestAmbiguousCommitNeedsSuccessfulReopenSync(t *testing.T) {
 				}
 				return nil
 			}
-			if got := l.Debit(t.Context(), raw, facts, Admitted); got != Uncertain {
+			if got := debitOutcome(l, t.Context(), raw, facts, Admitted); got != Uncertain {
 				t.Fatal(got)
 			}
 			l.state.fault = nil
@@ -334,7 +339,7 @@ func TestAmbiguousCommitNeedsSuccessfulReopenSync(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer opened.Close()
-			if got := opened.Debit(t.Context(), raw, facts, Admitted); got != AlreadyDebited {
+			if got := debitOutcome(opened, t.Context(), raw, facts, Admitted); got != AlreadyDebited {
 				t.Fatal(got)
 			}
 		})
@@ -346,7 +351,7 @@ func TestCorruptionSubstitutionAndForeignRoots(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			l, root, b := newTestLedger(t, 2)
 			raw, f, _ := batchFixture(t, 2, 1, 2, 1)
-			if got := l.Debit(t.Context(), raw, f, Admitted); got != Debited {
+			if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Debited {
 				t.Fatal(got)
 			}
 			_ = l.Close()
@@ -423,7 +428,7 @@ func TestLiveReplacementAndRetainedTimeFloor(t *testing.T) {
 	l, root, b := newTestLedger(t, 2)
 	raw, f, _ := batchFixture(t, 2, 1, 2, 1)
 	f.Now = f.Now.Add(time.Second)
-	if got := l.Debit(t.Context(), raw, f, Admitted); got != Debited {
+	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Debited {
 		t.Fatal(got)
 	}
 	_ = l.Close()
@@ -433,7 +438,7 @@ func TestLiveReplacementAndRetainedTimeFloor(t *testing.T) {
 	}
 	defer reopened.Close()
 	f.Now = f.Now.Add(-time.Second)
-	if got := reopened.Debit(t.Context(), raw, f, Admitted); got != admission.Validity {
+	if got := debitOutcome(reopened, t.Context(), raw, f, Admitted); got != admission.Validity {
 		t.Fatal(got)
 	}
 	f.Now = f.Now.Add(time.Second)
@@ -445,7 +450,7 @@ func TestLiveReplacementAndRetainedTimeFloor(t *testing.T) {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if got := reopened.Debit(t.Context(), raw, f, Admitted); got != Uncertain {
+	if got := debitOutcome(reopened, t.Context(), raw, f, Admitted); got != Uncertain {
 		t.Fatal(got)
 	}
 }
@@ -457,7 +462,7 @@ func TestAdmissionLeaseProcess(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if l.Debit(t.Context(), raw, f, Admitted) != Debited {
+		if debitOutcome(l, t.Context(), raw, f, Admitted) != Debited {
 			t.Fatal("helper debit")
 		}
 		_, _ = io.WriteString(os.Stdout, "READY\n")
@@ -501,7 +506,7 @@ func TestAdmissionLeaseProcess(t *testing.T) {
 	}
 	defer reopened.Close()
 	raw, f, _ := batchFixture(t, 2, 1, 2, 1)
-	if got := reopened.Debit(t.Context(), raw, f, Admitted); got != AlreadyDebited {
+	if got := debitOutcome(reopened, t.Context(), raw, f, Admitted); got != AlreadyDebited {
 		t.Fatal("crash refunded", got)
 	}
 }
