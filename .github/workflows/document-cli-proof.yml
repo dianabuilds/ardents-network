@@ -1,0 +1,126 @@
+name: Document CLI installed proof
+on:
+  push:
+    branches: [codex/proof-product-command-surface]
+permissions:
+  contents: read
+jobs:
+  document:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 6728e3cdebbcc25e1c15b268bcaf58d492182a7b
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Build exact document products and installed test
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 6728e3cdebbcc25e1c15b268bcaf58d492182a7b
+          git show -s --format='candidate=%H tree=%T'
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$RUNNER_TEMP/ardents-next" ./cmd/ardents-next
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$RUNNER_TEMP/ardents-custody" ./cmd/ardents-custody
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$RUNNER_TEMP/ardents-text" ./internal/application/document/worker
+          go test -c -tags document_worker_installed -trimpath -buildvcs=false -o "$RUNNER_TEMP/execution-command.test" ./cmd/ardents-next
+          "$RUNNER_TEMP/execution-command.test" -test.list '^TestInstalled(DocumentCommandsThroughJoinedNetworkTCP|ConnectionAuthorityTCP)$'
+      - name: Install fixed resources and run the document network profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID:$VERSION_ID:$(uname -m)" = ubuntu:24.04:x86_64
+          test "$(systemctl --version | awk 'NR == 1 {print $2}')" = 255
+          test "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs
+          ! getent passwd ardents-endpoint
+          ! getent passwd 899
+          ! getent group 899
+          for directory in /usr/share /usr/share/polkit-1 /usr/share/polkit-1/rules.d; do
+            test ! -L "$directory"
+            test "$(stat -c %u "$directory")" = 0
+            sudo -n chmod go-w "$directory"
+          done
+          sudo -n groupadd --system --gid 899 ardents-endpoint
+          sudo -n useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin --uid 899 --gid 899 ardents-endpoint
+          sudo -n install -d -m 0755 /etc/ardents /usr/lib/ardents/qualification
+          root=/usr/lib/ardents/text-worker-root
+          sudo -n install -d -m 0755 "$root"
+          for directory in dev proc sys run tmp etc root usr var var/tmp; do
+            sudo -n install -d -m 0555 "$root/$directory"
+          done
+          sudo -n install -m 0555 "$RUNNER_TEMP/ardents-text" "$root/ardents-text"
+          sudo -n chmod 0555 "$root"
+          files=("$root/ardents-text")
+          for role in reader publisher; do
+            for name in "ardents-text-$role@.service" "ardents-text-$role.socket"; do
+              sudo -n install -m 0644 "packaging/document-worker/$name" "/etc/systemd/system/$name"
+              files+=("/etc/systemd/system/$name")
+            done
+          done
+          rule=/usr/share/polkit-1/rules.d/50-ardents-text.rules
+          sudo -n install -m 0644 packaging/document-worker/50-ardents-text.rules "$rule"
+          files+=("$rule")
+          sudo -n install -m 0644 packaging/document-worker/ardents-text.conf /usr/lib/tmpfiles.d/ardents-text.conf
+          sudo -n install -d -m 0710 -o root -g ardents-endpoint /run/ardents-text
+          python3 - "${files[@]}" > "$RUNNER_TEMP/worker-manifest" <<'PY'
+          import hashlib, json, pathlib, sys
+          files = dict((name, hashlib.sha256(pathlib.Path(name).read_bytes()).hexdigest()) for name in sorted(sys.argv[1:]))
+          print(json.dumps({"schema":"ardents-text-worker-artifact-v1", "files": files}, separators=(",", ":")))
+          PY
+          sudo -n install -m 0644 "$RUNNER_TEMP/worker-manifest" /etc/ardents/text-worker-artifact.json
+          for name in ardents-next ardents-custody execution-command.test; do
+            sudo -n install -m 0555 "$RUNNER_TEMP/$name" "/usr/lib/ardents/qualification/$name"
+          done
+          pin() { sha256sum "$1" | cut -d ' ' -f 1; }
+          instance=$(pin "$RUNNER_TEMP/ardents-next")
+          custody=$(pin "$RUNNER_TEMP/ardents-custody")
+          unit=/run/systemd/system/ardents-endpoint.service
+          binary=/usr/lib/ardents/qualification/execution-command.test
+          systemd_fixture() {
+            local selector=$1 timeout=$2 runtime=$3
+            cat > "$RUNNER_TEMP/qualification-unit" <<UNIT
+          [Unit]
+          Requires=ardents-text-reader.socket ardents-text-publisher.socket
+          After=ardents-text-reader.socket ardents-text-publisher.socket
+          [Service]
+          Type=exec
+          User=ardents-endpoint
+          Group=ardents-endpoint
+          SupplementaryGroups=
+          ExecStart=$binary -test.run=^${selector}\$ -test.v -test.timeout=${timeout}
+          Environment=ARDENTS_RECOVERY_INSTANCE_SHA256=$instance ARDENTS_RECOVERY_CUSTODY_SHA256=$custody
+          Restart=no
+          RestartMode=normal
+          RemainAfterExit=no
+          ExitType=main
+          KillMode=control-group
+          TimeoutStopSec=30s
+          RuntimeMaxSec=$runtime
+          StandardOutput=journal
+          StandardError=journal
+          UNIT
+            sudo -n install -m 0644 "$RUNNER_TEMP/qualification-unit" "$unit"
+            sudo -n systemctl daemon-reload
+          }
+          sudo -n systemctl start polkit.service
+          run_profile() {
+            sudo -n env ARDENTS_TEXT_LIFECYCLE_SHA256="$(pin "$binary")" \
+              ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256="$(pin "$unit")" \
+              ARDENTS_RECOVERY_INSTANCE_SHA256="$instance" ARDENTS_RECOVERY_CUSTODY_SHA256="$custody" \
+              sh "$@"
+          }
+          remaining=$((3600 - $(date -u +%s) % 3600))
+          if ((remaining < 1100)); then
+            sleep "$remaining"
+          fi
+          systemd_fixture TestInstalledDocumentCommandsThroughJoinedNetworkTCP 15m 960s
+          run_profile ./tests/qualification/document-worker-network/run-ubuntu.sh
+          systemd_fixture TestInstalledConnectionAuthorityTCP 20m 1260s
+          run_profile ./tests/qualification/worker-lifecycle/run-ubuntu.sh connection-authority
