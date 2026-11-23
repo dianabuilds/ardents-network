@@ -52,6 +52,16 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 	case <-exchange.Done():
 		return exchange.Err()
 	}
+	// The initiator can still be exchanging final authenticated controls.
+	// Keep the original Publication and Instance until that attachment joins.
+	select {
+	case <-stream.Joined():
+		if err := stream.JoinedCleanup(); err != nil {
+			return err
+		}
+	case <-exchange.Done():
+		return exchange.Err()
+	}
 	return publisher.Withdraw(ctx)
 }
 
