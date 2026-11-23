@@ -160,6 +160,10 @@ current transition remains with its technical owner until that transfer.
 
 ## Supporting mechanisms and composition
 
+Public infrastructure descriptor and inventory preparation belongs to
+`internal/release/infrastructure`. Platform Artifacts supplies the retained
+root-controlled input, ext4 check and exclusive durable output.
+
 Source artifact authentication in `internal/release/infrastructure` joins the
 Release verifier before returning inspection facts. Enrollment owns original
 distribution provenance and the initial pin. Release owns retained trust and

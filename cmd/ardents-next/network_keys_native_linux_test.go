@@ -22,6 +22,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func initialKeyArguments(t *testing.T, count int) (string, string) {
@@ -98,7 +100,7 @@ func verifyInitialKeys(t *testing.T, root string, count int, stdout []byte) []ed
 		}
 		seen[k.Public] = true
 		info, e := os.Lstat(filepath.Join(root, k.File))
-		if e != nil || !signingFileAllowed(info, true) {
+		if e != nil || !artifactio.ProtectedFileMode(info, true) {
 			t.Fatal("native private file", e)
 		}
 		clear(private)
