@@ -2,8 +2,9 @@
 // owner-only generation stores: the content-addressed generation-name grammar,
 // bounded reads, exclusive creation, staged same-directory replacement,
 // generation pruning, the watermark floor codec, owned-root inspection,
-// directory synchronization and the exclusive root lease with its strict
-// regular-file/single-link identity check.
+// directory synchronization, the exclusive root lease with its strict
+// regular-file/single-link identity check and the Windows owner-only root
+// DACL enforcement.
 //
 // It is a mechanism leaf, not a store owner. Every helper takes caller paths,
 // bytes, names and refusal prose only; it holds no lease, root, marker, schema,
@@ -22,4 +23,6 @@
 //   - owned-root inspection: root_inspect.go (root_inspect_test.go)
 //   - directory sync and root lease: directory_sync_unix.go,
 //     directory_sync_windows.go, lease_unix.go (lease_unix_test.go)
+//   - Windows owner-only root DACL enforcement: owner_root_windows.go
+//     (owner_root_windows_test.go)
 package durablefile
