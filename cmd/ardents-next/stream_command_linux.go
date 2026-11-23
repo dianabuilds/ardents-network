@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"syscall"
@@ -79,6 +80,9 @@ func exchangeApplicationStream(ctx context.Context, stream connection.Stream, in
 		select {
 		case outcome, open := <-stream.Done():
 			if !open || outcome.Class != connection.CleanClose {
+				if open {
+					return fmt.Errorf("authenticated stream did not complete (%s): %s", outcome.Class, outcome.Reason)
+				}
 				return errors.New("authenticated stream did not complete")
 			}
 			return nil

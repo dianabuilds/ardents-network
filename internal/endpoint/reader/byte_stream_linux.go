@@ -32,11 +32,14 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 		defer cancel()
 		local := localByteStreamPort{input: request, output: response}
 		op := pending.read.operation
+		reason := "byte stream lost local admission"
 		err := errors.Join(ctx.Err(), check())
 		if err == nil {
+			reason = "byte-stream worker handoff or exchange failed"
 			err = op.ExchangeByteStream(ctx, pending.read.contract, local, pending.service)
 		}
 		if err == nil {
+			reason = "Service Connection did not authenticate terminal completion"
 			select {
 			case outcome, open := <-pending.service.Done():
 				if !open || outcome.Class != application.CleanClose {
@@ -46,6 +49,9 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 				err = ctx.Err()
 			}
 		}
+		if err == nil {
+			reason = "byte-stream joined cleanup failed"
+		}
 		err = errors.Join(err, pending.close(), ctx.Err(), check())
 		stream.err = err
 		_ = request.CloseWithError(err)
@@ -53,7 +59,7 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 		if err == nil {
 			stream.done <- application.Outcome{Class: application.CleanClose}
 		} else {
-			stream.done <- application.Outcome{Class: application.IndeterminateFailure, Reason: "byte stream did not complete"}
+			stream.done <- application.Outcome{Class: application.IndeterminateFailure, Reason: reason}
 		}
 		close(stream.done)
 	}()

@@ -156,7 +156,7 @@ func ServeLocalStream(ctx context.Context, local *net.UnixConn, application Stre
 	if outcome.Class == "" {
 		outcome = Outcome{Class: IndeterminateFailure, Reason: "Application Connection ended without an outcome"}
 	}
-	if err := application.Close(); err != nil {
+	if err := application.Close(); err != nil && outcome.Class == CleanClose {
 		outcome = Outcome{Class: IndeterminateFailure, Reason: "Application cleanup did not complete"}
 	}
 	_ = writeTerminal(local, outcome)
