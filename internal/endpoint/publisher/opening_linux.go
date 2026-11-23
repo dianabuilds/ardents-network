@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
@@ -18,9 +19,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
-func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority funding.Authority, holder *stock.Owner, operation *executionruntime.Operation, shared ...*funding.Parents) (_ Publication, result error) {
+func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority funding.Authority, holder *stock.Owner, operation *executionruntime.Operation, shared ...*funding.Parents) (Publication, error) {
+	return openPublication(ctx, plan, routePlan, authority, holder, operation, nil, shared...)
+}
+
+func openPublication(ctx context.Context, plan Plan, routePlan funding.Plan, authority funding.Authority, holder *stock.Owner, operation *executionruntime.Operation, port document.ByteStreamPort, shared ...*funding.Parents) (_ Publication, result error) {
 	if ctx == nil || operation == nil || ctx != operation.Context() || operation.CheckPublisher() != nil || !authority.Available() || holder == nil || routePlan.Domain != 4 || !independentRoots(plan.InstanceRoot, plan.Root, routePlan.EntryRoot, routePlan.InteriorRoot, routePlan.SourceInteriorRoot, routePlan.ResponderInteriorRoot, routePlan.HostingRoot) {
 		return Publication{}, errors.New("publisher composition unavailable")
+	}
+	if operation.UsesByteStream() != (port != nil) {
+		return Publication{}, errors.New("Publisher Application profile differs")
 	}
 	if len(shared) > 1 || len(shared) == 1 && !shared[0].Matches(routePlan) {
 		return Publication{}, errors.New("shared Publisher Route owners do not match")
@@ -187,6 +195,9 @@ func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority fund
 	}
 	flow.FollowSource(owner.CurrentSource)
 	return Publication{owner: owner, close: closeAll, serve: func(caller context.Context) error {
+		if port != nil {
+			return serveByteStream(caller, owner, operation, port)
+		}
 		contract, err := DocumentContract(operation)
 		if err != nil {
 			return err

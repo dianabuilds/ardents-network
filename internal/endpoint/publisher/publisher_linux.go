@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/network"
@@ -61,7 +62,20 @@ func (owner *Publisher) Publish(context.Context) error {
 	return errors.New("document publication requires an authorized snapshot")
 }
 
-func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte) (result error) {
+func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte) error {
+	return owner.publish(caller, snapshot, nil)
+}
+
+// PublishByteStream exposes one authenticated exchange with a locally supplied
+// Application port. The retained Publication still owns readiness and withdrawal.
+func (owner *Publisher) PublishByteStream(caller context.Context, port document.ByteStreamPort) error {
+	if port == nil {
+		return errors.New("local byte-stream Application is unavailable")
+	}
+	return owner.publish(caller, nil, port)
+}
+
+func (owner *Publisher) publish(caller context.Context, snapshot []byte, port document.ByteStreamPort) (result error) {
 	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || !owner.routes.Matches(owner.routePlan) {
 		return errors.New("installed Publisher is unavailable")
 	}
@@ -120,7 +134,11 @@ func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte)
 	}
 	ctx, deadlineCancel := context.WithDeadline(ctx, plan.Deadline)
 	candidate.cancel = func() { setupCancel(); deadlineCancel() }
-	candidate.worker, err = owner.local.LaunchPublisher(ctx, owner.principal, snapshot)
+	if port == nil {
+		candidate.worker, err = owner.local.LaunchPublisher(ctx, owner.principal, snapshot)
+	} else {
+		candidate.worker, err = owner.local.LaunchByteStreamPublisher(ctx, owner.principal)
+	}
 	if err != nil {
 		return err
 	}
@@ -142,7 +160,7 @@ func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte)
 		return view, errors.Join(err, ctx.Err(), candidate.operation.CheckPublisher())
 	}
 	authority = funding.Observe(current, authority.Witness, authority.Presentation)
-	candidate.handle, err = Open(candidate.operation.Context(), owner.plan, plan, authority, owner.holder, candidate.operation, owner.routes)
+	candidate.handle, err = openPublication(candidate.operation.Context(), owner.plan, plan, authority, owner.holder, candidate.operation, port, owner.routes)
 	if err != nil {
 		return err
 	}
@@ -168,7 +186,7 @@ func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte)
 	candidate.started = true
 	go func() {
 		candidate.serveErr = candidate.handle.Serve(ctx)
-		unexpected := ctx.Err() == nil && !candidate.retiring.Load()
+		unexpected := ctx.Err() == nil && !candidate.retiring.Load() && (port == nil || candidate.serveErr != nil)
 		close(candidate.served)
 		// Join a failed/expired consumer without requiring another local IPC
 		// request. Close waits only for the already completed serve loop.

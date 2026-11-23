@@ -8,6 +8,9 @@ import (
 	"unicode/utf8"
 )
 
+// PublishByteStreamRequest is the exact Administration upgrade request.
+const PublishByteStreamRequest = "stream!!\n"
+
 // ReaderTimeout bounds one local Reader setup and exchange. It is measured
 // once before dialing or at server acceptance, never renewed between phases.
 const ReaderTimeout = 60 * time.Second

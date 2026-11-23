@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
@@ -85,4 +86,18 @@ func exchangeApplicationStream(ctx context.Context, stream connection.Stream, in
 			return ctx.Err()
 		}
 	})
+}
+
+func publishApplicationStream(ctx context.Context, socket string) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+	input, output, err := openDocumentCommandIO()
+	if err != nil {
+		return errors.New("local stream input or output is unavailable")
+	}
+	stream, err := connection.DialPublishedStream(ctx, socket)
+	if err != nil {
+		return errors.Join(errors.New("local byte-stream publication failed"), input.Close(), output.Close())
+	}
+	return exchangeApplicationStream(ctx, stream, input, output)
 }

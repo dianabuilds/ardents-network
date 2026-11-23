@@ -1221,6 +1221,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/endpoint/reader/operation_linux.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
+	if source == "internal/application/administration/byte_stream_linux.go" && dependency == modulePath+"/internal/application/connection" {
+		return true
+	}
 	if (source == "internal/endpoint/reader/reader_linux.go" || source == "internal/endpoint/reader/operation_linux.go" || source == "internal/endpoint/reader/byte_stream_linux.go" || source == "internal/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
@@ -1349,6 +1352,12 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
+		return true
+	}
+	if (source == "internal/endpoint/publisher/publisher_linux.go" || source == "internal/endpoint/publisher/opening_linux.go" || source == "internal/endpoint/publisher/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
+		return true
+	}
+	if source == "internal/endpoint/publisher/byte_stream_linux.go" && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "internal/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {

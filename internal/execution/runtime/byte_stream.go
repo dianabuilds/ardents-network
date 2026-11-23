@@ -53,3 +53,8 @@ func (operation *Operation) ExchangeByteStream(ctx context.Context, contract Str
 func (owner *Owner) LaunchByteStreamReader(ctx context.Context, principal [32]byte) (*Invocation, error) {
 	return owner.LaunchByteStream(ctx, principal, execution.Connection)
 }
+
+// LaunchByteStreamPublisher admits the fixed Administration surface for publication.
+func (owner *Owner) LaunchByteStreamPublisher(ctx context.Context, principal [32]byte) (*Invocation, error) {
+	return owner.LaunchByteStream(ctx, principal, execution.Administration)
+}

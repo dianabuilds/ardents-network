@@ -1014,3 +1014,11 @@ and the local terminal projection.
 Execution's `byte_stream.go` and `byte_stream_linux.go` use the fixed worker
 protocol in `internal/application/document`. Its `stream_contract.go` and exact
 limit test consume the participant limit from `internal/application/connection`.
+
+The installed Publisher uses the fixed byte-stream port in
+`internal/application/document` from `publisher_linux.go`, `opening_linux.go`
+and `byte_stream_linux.go`. Only the last consumes Application Connection
+limits and terminal classes from `internal/application/connection`.
+
+The Linux Administration upgrade in `byte_stream_linux.go` reuses the local
+framing in `internal/application/connection` after Publisher admission.

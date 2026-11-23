@@ -81,6 +81,23 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	if ctx == nil || path == "" || validRequest(destination) != nil {
 		return nil, errors.New("local Application dial input is invalid")
 	}
+	request, err := EncodeRequest(destination)
+	if err != nil {
+		return nil, err
+	}
+	return dialLocalStream(ctx, path, request)
+}
+
+// DialPublishedStream requests the fixed byte-stream profile through local
+// Service Administration. Its established exchange uses the same byte frames.
+func DialPublishedStream(ctx context.Context, path string) (Client, error) {
+	if ctx == nil || path == "" {
+		return nil, errors.New("local Application dial input is invalid")
+	}
+	return dialLocalStream(ctx, path, []byte(PublishByteStreamRequest))
+}
+
+func dialLocalStream(ctx context.Context, path string, request []byte) (Client, error) {
 	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
 	if err != nil {
 		return nil, err
@@ -100,10 +117,6 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	}
 	if deadline, available := ctx.Deadline(); available {
 		_ = connection.SetDeadline(deadline)
-	}
-	request, err := EncodeRequest(destination)
-	if err != nil {
-		return nil, err
 	}
 	if _, err := connection.Write(request); err != nil {
 		return nil, setupError(ctx, err)
