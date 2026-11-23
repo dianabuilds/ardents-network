@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -176,13 +175,9 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 		defer func() { result = errors.Join(result, sourceInspection.Close()) }()
 	}
 	if args[0] == "check" {
-		passwd, err := files.Read("/etc/passwd", 1<<20, false)
+		uid, err := files.readAccount(platformUser(launch))
 		if err != nil {
 			return err
-		}
-		group, err := files.Read("/etc/group", 1<<20, false)
-		if err != nil || !platformAccount(passwd, group, platformUser(launch)) {
-			return errPlatformInput
 		}
 		installed, err := files.Read("/etc/systemd/system/ardents-"+launch.Role+".service", 64<<10, false)
 		if err != nil || !bytes.Equal(installed, unit) {
@@ -192,16 +187,7 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 			return err
 		}
 		if launch.Role == "source" {
-			for _, line := range strings.Split(string(passwd), "\n") {
-				fields := strings.Split(line, ":")
-				if len(fields) == 7 && fields[0] == platformUser(launch) {
-					n, _ := strconv.ParseUint(fields[2], 10, 32)
-					sourceUID = uint32(n)
-				}
-			}
-			if sourceUID == 0 {
-				return errPlatformInput
-			}
+			sourceUID = uid
 			config, err := platformSourceInspectionConfig(plan)
 			if err != nil {
 				return err
@@ -267,56 +253,6 @@ func platformSourceInspectionConfig(raw []byte) (state.Config, error) {
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
 	return config, nil
-}
-
-// A named unit account must resolve to the fixed unprivileged local principal,
-// never a root alias or a shared numeric identity. Provisioning is the operator's
-// concern; this check creates no account or database record.
-func platformAccount(passwd, group []byte, name string) bool {
-	id := ""
-	for _, line := range strings.Split(string(passwd), "\n") {
-		fields := strings.Split(line, ":")
-		if len(fields) == 7 && fields[0] == name {
-			if id != "" || fields[1] != "x" || fields[2] != fields[3] || fields[5] != "/nonexistent" || fields[6] != "/usr/sbin/nologin" {
-				return false
-			}
-			n, err := strconv.ParseUint(fields[2], 10, 32)
-			if err != nil || n < 100 || n > 999 || strconv.FormatUint(n, 10) != fields[2] {
-				return false
-			}
-			id = fields[2]
-		}
-	}
-	if id == "" {
-		return false
-	}
-	for _, line := range strings.Split(string(passwd), "\n") {
-		fields := strings.Split(line, ":")
-		if len(fields) == 7 && fields[0] != name && (fields[2] == id || fields[3] == id) {
-			return false
-		}
-	}
-	found := false
-	for _, line := range strings.Split(string(group), "\n") {
-		fields := strings.Split(line, ":")
-		if len(fields) != 4 {
-			continue
-		}
-		if fields[0] == name {
-			if found || fields[1] != "x" || fields[2] != id || fields[3] != "" {
-				return false
-			}
-			found = true
-		} else if fields[2] == id {
-			return false
-		}
-		for _, member := range strings.Split(fields[3], ",") {
-			if member == name {
-				return false
-			}
-		}
-	}
-	return found
 }
 
 var errPlatformInput = errors.New("platform launch refused")

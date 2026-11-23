@@ -61,8 +61,9 @@ Service. These checks do not qualify installed startup, restart or two participa
 On Linux, `make platform-launch-unit` selects only in-process platform declaration,
 rendered/loaded policy refusal, coherent signed Release pair/retained rollback,
 missing State refusal, fixed sibling-slot vocabulary and original Introduction
-slot-history reopen tests. It also selects initial Source preparation,
-producer claim/removal/reclaim and deterministic supervisor cancellation joins.
+slot-history reopen tests. It also selects the in-process Source network plan and signing-purpose checks,
+fixed account ID validation, initial Source state preparation, producer
+claim/removal/reclaim and deterministic supervisor cancellation joins.
 The Source program-change unit authenticates distinct signed program bytes
 against one retained Release history and reopens the same genuine signed State
 and participation history, retaining the Epoch floor and exposure restriction;

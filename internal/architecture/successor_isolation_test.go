@@ -546,6 +546,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
+	if source == "cmd/ardents-next/platform_files_linux.go" && dependency == modulePath+"/internal/platform/process" {
+		return true
+	}
 	if source == "internal/network/state/source_repair_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/process") {
 		return true
 	}
