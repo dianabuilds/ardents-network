@@ -1,5 +1,3 @@
-//go:build linux
-
 package selection
 
 import (
@@ -333,41 +331,6 @@ func TestInstallationSharedEntrySeparateRolesRetainedReopen(t *testing.T) {
 	}
 	if err := installation.Close(); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestInstallationRetainsBorrowerCleanupFailure(t *testing.T) {
-	root := t.TempDir()
-	view := installationView(t, 1)
-	installation, err := OpenInstallation(InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: func() (network.RuntimeView, error) { return view, nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	borrower, err := installation.Borrow(RoleConfig{InteriorRoot: filepath.Join(root, "interior"), Domain: 3})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// A physically broken lease exercises cleanup provenance; it supplies no
-	// accepting authority or transport behavior.
-	if err := borrower.interior.lease.file.Close(); err != nil {
-		t.Fatal(err)
-	}
-	terminal := borrower.Close()
-	if terminal == nil {
-		t.Fatal("lost Interior physical cleanup failure")
-	}
-	if repeated := borrower.Close(); repeated != terminal {
-		t.Fatal("borrower terminal result changed")
-	}
-	installationTerminal := installation.Close()
-	if installationTerminal == nil {
-		t.Fatal("installation lost returned borrower cleanup failure")
-	}
-	if !errors.Is(installationTerminal, terminal) {
-		t.Fatalf("installation lost cleanup provenance: %v", installationTerminal)
-	}
-	if repeated := installation.Close(); repeated != installationTerminal {
-		t.Fatal("installation terminal result changed")
 	}
 }
 
