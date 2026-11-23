@@ -10,18 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
-var errDocumentUsage = errors.New(`Usage
-  ardents publish <absolute-administration-socket> <absolute-document-file>
-  ardents link <absolute-administration-socket>
-  ardents read <absolute-application-socket>
-  ardents endpoint withdraw <absolute-administration-socket>
-
-The C0 document application accepts bounded UTF-8. Publish succeeds after
-Descriptor acknowledgement. Read takes a Target Link on standard input.
-Publishing, link presentation and withdrawal require Administration authorization.
-
-For installed host and infrastructure actions, run ardents help operator.
-For release tooling, run ardents help release.`)
+var errDocumentUsage = errors.New("invalid document command arguments")
 
 func runDocumentCommand(ctx context.Context, arguments []string, diagnostic io.Writer) int {
 	if err := executeDocumentCommand(ctx, arguments); err != nil {
@@ -51,7 +40,7 @@ func executeDocumentCommand(ctx context.Context, arguments []string) error {
 func documentFailure(err error) string {
 	switch {
 	case errors.Is(err, errDocumentUsage):
-		return errDocumentUsage.Error()
+		return documentUsage
 	case errors.Is(err, context.Canceled):
 		return "read cancelled"
 	case errors.Is(err, context.DeadlineExceeded):

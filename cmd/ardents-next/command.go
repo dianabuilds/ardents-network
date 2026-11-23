@@ -9,7 +9,7 @@ import (
 
 func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int {
 	if len(arguments) == 0 {
-		fmt.Fprintln(diagnostic, errDocumentUsage)
+		fmt.Fprintln(diagnostic, documentUsage)
 		return 2
 	}
 	command, args := arguments[0], arguments[1:]
@@ -57,7 +57,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 	case "hosting":
 		return runHosting(ctx, args, out, diagnostic)
 	}
-	fmt.Fprintln(diagnostic, errDocumentUsage)
+	fmt.Fprintln(diagnostic, documentUsage)
 	return 2
 }
 
