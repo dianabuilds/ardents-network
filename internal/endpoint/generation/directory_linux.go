@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 type Owner struct {
@@ -28,7 +30,7 @@ type Owner struct {
 func Create(ctx context.Context, parentPath string, expectedParent os.FileInfo, name string, gid uint32) (result *Owner, returnedErr error) {
 	digest, err := hex.DecodeString(name)
 	if ctx == nil || os.Geteuid() != 0 || gid == 0 || gid == ^uint32(0) ||
-		!filepath.IsAbs(parentPath) || filepath.Clean(parentPath) != parentPath ||
+		!pathgrammar.Strict(parentPath) ||
 		filepath.Base(parentPath) != "generations" || expectedParent == nil ||
 		err != nil || len(digest) != 32 || hex.EncodeToString(digest) != name {
 		return nil, ErrInput

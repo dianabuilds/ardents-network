@@ -14,7 +14,7 @@ import (
 
 func TestTailReaderDistinguishesPartialServiceRecordFromEmptyTLSTail(t *testing.T) {
 	prefix := []byte("ardents-service-connection-v3\x00")
-	for size := 0; size < len(prefix); size++ {
+	for size := range prefix {
 		read := observedRecordRead{reader: bytes.NewReader(prefix[:size])}
 		_, err := wire.Read(&read)
 		if read.received != size || terminalTruncation(err, read.received) != (size == 0) {

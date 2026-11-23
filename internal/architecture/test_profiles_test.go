@@ -152,6 +152,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	required := map[string]bool{
 		"descriptor-forward-release-linux":  false,
 		"descriptor-store-inspection-linux": false,
+		"worker-descriptor-audit-linux":     false,
 		"network-signing-linux":             false,
 		"network-preparation-linux":         false,
 		"source-process-linux":              false,

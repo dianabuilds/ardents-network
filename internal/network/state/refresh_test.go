@@ -492,7 +492,7 @@ func availableAddresses(t *testing.T, count int) []string {
 	t.Helper()
 	listeners := make([]net.Listener, 0, count)
 	addresses := make([]string, 0, count)
-	for index := 0; index < count; index++ {
+	for range count {
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			for _, held := range listeners {

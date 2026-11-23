@@ -62,7 +62,7 @@ func BuildClosed(spec ClosedSpec) (Closed, error) {
 		}
 		node.NetworkID = spec.NetworkID
 		if node.Family == "" {
-			for attempt := 0; attempt < 1024; attempt++ {
+			for attempt := range 1024 {
 				family := fmt.Sprintf("closed-%d-%d", index, attempt)
 				domain, err := assignment.Select(spec.NetworkID, spec.Number, spec.Seed, family, domains)
 				if err != nil {

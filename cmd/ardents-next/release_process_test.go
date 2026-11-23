@@ -110,7 +110,7 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	if supplied, ok := resources[program]; protected && ok {
 		binary = supplied
 	}
-	if !protected && runtime.GOOS == "windows" {
+	if strings.HasPrefix(platform, "windows-") {
 		program += ".exe"
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)

@@ -103,7 +103,7 @@ func TestActiveSessionOwnsFiniteBudgetAndCancellation(t *testing.T) {
 	if err != nil || receipt.Surface != Connection || active.Context().Err() != nil || value.Active() != 1 {
 		t.Fatalf("active Connection session = receipt=%+v active=%v err=%v count=%d", receipt, active, err, value.Active())
 	}
-	for index := 0; index < maximumAdministrationCapabilities; index++ {
+	for index := range maximumAdministrationCapabilities {
 		if _, err := value.Admit([32]byte{3}, Administration); err != nil {
 			t.Fatalf("admit pending capability %d: %v", index, err)
 		}

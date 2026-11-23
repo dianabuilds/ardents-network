@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // ErrOutputUncertain reports a failed publication after a possible effect.
@@ -20,7 +22,7 @@ func CheckPrivateFileDestination(ctx context.Context, path string) error {
 }
 
 func privateOutputParent(ctx context.Context, path string) (os.FileInfo, error) {
-	if ctx == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if ctx == nil || !pathgrammar.Strict(path) {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 var errInput = errors.New("invalid installation cgroup observation")
@@ -227,7 +229,7 @@ func trustedDirectory(info os.FileInfo) bool {
 }
 
 func observeAncestors(directory string) error {
-	if !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+	if !pathgrammar.Strict(directory) {
 		return errBinding
 	}
 	for {

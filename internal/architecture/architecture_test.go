@@ -72,8 +72,8 @@ func assertDependenciesRegistered(t *testing.T, root string) {
 			inRequireBlock = false
 			continue
 		}
-		if strings.HasPrefix(line, "require ") {
-			line = strings.TrimSpace(strings.TrimPrefix(line, "require "))
+		if after, ok := strings.CutPrefix(line, "require "); ok {
+			line = strings.TrimSpace(after)
 		} else if !inRequireBlock {
 			continue
 		}
@@ -166,7 +166,7 @@ func readPackageRegistry(t *testing.T, root string) map[string]packageRegistrati
 	registry := make(map[string]packageRegistration)
 	contents := string(readProjectFile(t, root, "docs/development/package-map.md"))
 	inlineCode := regexp.MustCompile("`([^`]+)`")
-	for _, line := range strings.Split(contents, "\n") {
+	for line := range strings.SplitSeq(contents, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if !strings.HasPrefix(trimmed, "| `cmd/") && !strings.HasPrefix(trimmed, "| `internal/") && !strings.HasPrefix(trimmed, "| `tests/") {
 			continue
@@ -340,7 +340,7 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 	if forbiddenPackageNames[packageName] {
 		t.Errorf("package %q is a vague junk-drawer name: %s", packageName, relativeDirectory)
 	}
-	for _, segment := range strings.Split(relativeDirectory, "/") {
+	for segment := range strings.SplitSeq(relativeDirectory, "/") {
 		if forbiddenPackageNames[segment] {
 			t.Errorf("package path uses vague junk-drawer segment %q: %s", segment, relativeDirectory)
 		}

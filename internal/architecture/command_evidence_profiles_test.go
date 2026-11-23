@@ -65,7 +65,7 @@ func headlessEvidenceGoTests(t *testing.T, makefile string) []string {
 	const start = "headless-evidence: headless-build"
 	inRecipe := false
 	var recipes []string
-	for _, line := range strings.Split(makefile, "\n") {
+	for line := range strings.SplitSeq(makefile, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == start {
 			inRecipe = true

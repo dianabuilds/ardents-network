@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 func releaseRouteReservation(reservation *hosting.Reservation) error {
@@ -18,7 +19,7 @@ func releaseRouteReservation(reservation *hosting.Reservation) error {
 }
 func independentRouteRoots(roots ...string) bool {
 	for i, root := range roots {
-		if !filepath.IsAbs(root) || filepath.Clean(root) != root {
+		if !pathgrammar.Strict(root) {
 			return false
 		}
 		for _, other := range roots[:i] {

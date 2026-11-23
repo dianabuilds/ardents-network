@@ -180,15 +180,12 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		}
 		socket := &sourceSocket{Conn: connection}
 		connection = &sourceServerConnection{Conn: tls.Server(socket, tlsConfig), socket: socket}
-		connections.Add(1)
-		go func() {
-			defer connections.Done()
+		connections.Go(func() {
 			defer func() { <-credits }()
 			// A peer controls its connection lifetime, so a response-write failure
 			// terminates only this connection and cannot stop the shared listener.
 			err := handleConnection(ctx, server, active, connection, resolve, protected)
-			var physical *sourcePhysicalClose
-			if errors.As(err, &physical) {
+			if physical, ok := errors.AsType[*sourcePhysicalClose](err); ok {
 				cleanupMu.Lock()
 				cleanup = errors.Join(cleanup, physical)
 				cleanupMu.Unlock()
@@ -196,7 +193,7 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 				// handlers retain their own sockets and join before Serve returns.
 				closeListener()
 			}
-		}()
+		})
 	}
 }
 

@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/theupdateframework/go-tuf/v2/metadata"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
 func encodeFloorGeneration(floors FloorSet) ([]byte, error) {
@@ -99,7 +100,7 @@ func decodeFloorGeneration(payload []byte) (FloorSet, error) {
 	parsed := make(map[string]int64)
 	digests := make(map[string][]byte)
 	known := map[string]bool{"root": true, "timestamp": true, "snapshot": true, "targets": true}
-	for _, line := range bytes.Split(bytes.TrimRight(payload, "\n"), []byte{'\n'}) {
+	for line := range bytes.SplitSeq(bytes.TrimRight(payload, "\n"), []byte{'\n'}) {
 		if len(line) == 0 {
 			continue
 		}

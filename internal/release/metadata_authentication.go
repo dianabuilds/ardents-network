@@ -8,9 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/theupdateframework/go-tuf/v2/metadata"
-	"github.com/theupdateframework/go-tuf/v2/metadata/trustedmetadata"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -19,6 +18,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/theupdateframework/go-tuf/v2/metadata"
+	"github.com/theupdateframework/go-tuf/v2/metadata/trustedmetadata"
 )
 
 const targetRole = "targets"
@@ -79,7 +81,7 @@ func buildVerifiedSet(ctx context.Context, in Inputs, refTime time.Time, store f
 			return nil, reject(outcomeReleaseInvalid, "publish initial trusted root failed", err)
 		}
 	}
-	for rotations := int64(0); rotations < maximumRootRotations; rotations++ {
+	for range maximumRootRotations {
 		nextVersion := trusted.Root.Signed.Version + 1
 		data, fetchErr := fetcher.DownloadFile(metadataURL(strconv.FormatInt(nextVersion, 10)+".root.json"), maximumMetadataFileBytes, 0)
 		if isNotFound(fetchErr) {
@@ -261,9 +263,7 @@ func newMapFetcher(base string, files map[string][]byte) (*fetcherAdapter, error
 
 func copyFiles(files map[string][]byte) map[string][]byte {
 	dup := make(map[string][]byte, len(files))
-	for key, value := range files {
-		dup[key] = value
-	}
+	maps.Copy(dup, files)
 	return dup
 }
 
@@ -290,7 +290,7 @@ func (f *fetcherAdapter) DownloadFile(raw string, maxLength int64, _ time.Durati
 	if cleaned != decoded || strings.Contains(decoded, `\`) {
 		return nil, errors.New("release: URL path is not confined")
 	}
-	for _, segment := range strings.Split(decoded, "/") {
+	for segment := range strings.SplitSeq(decoded, "/") {
 		if segment == "." || segment == ".." {
 			return nil, errors.New("release: URL path escapes the offline envelope")
 		}
@@ -332,12 +332,10 @@ func classifyReleaseError(err error) Outcome {
 	if err == nil {
 		return outcomeReleaseAccepted
 	}
-	var typed *releaseError
-	if errors.As(err, &typed) {
+	if typed, ok := errors.AsType[*releaseError](err); ok {
 		return typed.class
 	}
-	var expired *metadata.ErrExpiredMetadata
-	if errors.As(err, &expired) {
+	if _, ok := errors.AsType[*metadata.ErrExpiredMetadata](err); ok {
 		return outcomeReleaseExpired
 	}
 	return outcomeReleaseInvalid

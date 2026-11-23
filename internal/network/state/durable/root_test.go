@@ -71,7 +71,7 @@ func TestRootReopensFullClosedProfilePopulationAndCleansOwnedStaging(t *testing.
 	var first, last ClosedProfileState
 	var firstBytes, lastBytes []byte
 	var lastGeneration string
-	for index := 0; index < 64; index++ {
+	for index := range 64 {
 		digest := sha256.Sum256([]byte(fmt.Sprintf("generation-%d", index)))
 		generation := Generation{
 			Name:     hex.EncodeToString(digest[:]),
@@ -255,7 +255,7 @@ func TestRootRecoveryRefusesExcessInterruptedStagingBeforeCleanup(t *testing.T) 
 			if err := os.WriteFile(rootStaging, []byte("keep until scan succeeds"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			for index := 0; index < 65; index++ {
+			for index := range 65 {
 				name := fmt.Sprintf(".stage-interrupted-%02d", index)
 				if location == "root" {
 					name = fmt.Sprintf(".closed-profile-interrupted-%02d", index)

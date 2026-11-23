@@ -96,7 +96,7 @@ func TestLookupHistoryCapacityBeforeEffectsAndOriginalFlightIdentity(t *testing.
 	raw, target, network, profile, at := signedDescriptor(3)
 	history := &reachability.History{}
 	defer func() { _ = history.Close() }()
-	for i := 0; i < 128; i++ {
+	for i := range 128 {
 		proof, key, _, _, _ := signedDescriptorForAuthority(3, byte(0x11+i))
 		flight, err := history.Begin(context.Background(), key, network, profile, func() error { return nil })
 		if err != nil {

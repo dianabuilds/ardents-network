@@ -43,7 +43,7 @@ func batchFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) 
 	copy(p[104:136], f.Holder[:])
 	binary.BigEndian.PutUint64(p[136:144], 3600)
 	binary.BigEndian.PutUint64(p[144:152], 7200)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		binary.BigEndian.PutUint32(p[152+i*4:156+i*4], max)
 	}
 	copy(p[164:], ed25519.Sign(authority, append([]byte("ardents-issuance-permission-v1\x00"), p[:164]...)))

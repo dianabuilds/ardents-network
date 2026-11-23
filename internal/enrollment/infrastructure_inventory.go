@@ -13,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // InfrastructureInventoryName is separate from the unchanged Endpoint manifest.
@@ -229,7 +231,7 @@ func checkInfrastructureDirectory(root *os.Root, invocation string) (err error) 
 }
 
 func loadInfrastructure(ctx context.Context, path, pin string) (result *infrastructureSnapshot, err error) {
-	if ctx == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if ctx == nil || !pathgrammar.Strict(path) {
 		return nil, ErrInput
 	}
 	if err := infrastructurePlatform(); err != nil {

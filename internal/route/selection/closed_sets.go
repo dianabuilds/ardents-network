@@ -2,6 +2,7 @@ package selection
 
 import (
 	"errors"
+	"slices"
 	"sync"
 )
 
@@ -85,10 +86,8 @@ func (owner *ClosedSets) CurrentMember(domain, slot uint8) (ClosedSetMember, err
 		return ClosedSetMember{}, errors.New("closed Entry set expired")
 	}
 	member := selected.Members[slot]
-	for _, candidate := range view.Candidates {
-		if candidate == member {
-			return member, nil
-		}
+	if slices.Contains(view.Candidates, member) {
+		return member, nil
 	}
 	return ClosedSetMember{}, errors.New("closed Entry member no longer current")
 }

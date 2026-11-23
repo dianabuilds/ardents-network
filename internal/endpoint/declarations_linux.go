@@ -10,13 +10,13 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"syscall"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/execution"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 func installedIdentity(encoded string) ([32]byte, error) {
@@ -79,7 +79,7 @@ func (plan HeadlessPlan) Network() (state.Config, error) {
 	if err != nil || profile == [32]byte{} {
 		return state.Config{}, errors.New("invalid profile authority")
 	}
-	if !filepath.IsAbs(plan.NetworkStateRoot) || filepath.Clean(plan.NetworkStateRoot) != plan.NetworkStateRoot || !filepath.IsAbs(plan.TimeConfidenceFile) || filepath.Clean(plan.TimeConfidenceFile) != plan.TimeConfidenceFile || len(plan.NetworkAuthorities) == 0 || len(plan.NetworkAuthorities) > 16 {
+	if !pathgrammar.Strict(plan.NetworkStateRoot) || !pathgrammar.Strict(plan.TimeConfidenceFile) || len(plan.NetworkAuthorities) == 0 || len(plan.NetworkAuthorities) > 16 {
 		return state.Config{}, errors.New("invalid network declaration")
 	}
 	authorities := make(map[[32]byte]ed25519.PublicKey, len(plan.NetworkAuthorities))

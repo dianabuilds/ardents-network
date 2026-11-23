@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"slices"
 )
 
 // LogicalIdentity is the immutable shared tuple, never local permission. Its
@@ -18,10 +19,8 @@ type LogicalIdentity struct {
 // Contexts encodes the accepted tuple without clamping a bound or admitting a
 // destination. Capsule plaintext and generation bind only the Attachment.
 func Contexts(identity LogicalIdentity, plaintext [32]byte, generation uint64) (logical, attachment [32]byte, err error) {
-	for _, field := range [][32]byte{identity.Network, identity.Target, identity.Instance, identity.Publication, identity.Profile, identity.ConnectionNonce, identity.InitiatorBinding, plaintext} {
-		if field == [32]byte{} {
-			return logical, attachment, errors.New("service identity field absent")
-		}
+	if slices.Contains([][32]byte{identity.Network, identity.Target, identity.Instance, identity.Publication, identity.Profile, identity.ConnectionNonce, identity.InitiatorBinding, plaintext}, [32]byte{}) {
+		return logical, attachment, errors.New("service identity field absent")
 	}
 	if identity.InstanceGeneration == 0 || generation == 0 || identity.WorkSafetyNotAfter <= 0 || identity.WorkSafetyMaximum < identity.WorkSafetyNotAfter || identity.NoNewRecoveryAfter <= 0 || identity.NoNewRecoveryAfter > identity.WorkSafetyNotAfter {
 		return logical, attachment, errors.New("service identity bounds differ")

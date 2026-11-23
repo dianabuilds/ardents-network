@@ -27,7 +27,7 @@ func TestCandidateRetainsUntrustedImmutableInventoryWithoutInitialProvenance(t *
 	if !ok || !f.Protected || f.ManifestSHA256 != r.ManifestSHA256 {
 		t.Fatalf("candidate declarations: %+v %v", f, ok)
 	}
-	if reflect.TypeOf(c).ConvertibleTo(reflect.TypeOf(Bundle{})) {
+	if reflect.TypeOf(c).ConvertibleTo(reflect.TypeFor[Bundle]()) {
 		t.Fatal("candidate can manufacture initial Bundle provenance")
 	}
 	want := []string{"1.snapshot.json", "1.targets.json", "timestamp.json"}

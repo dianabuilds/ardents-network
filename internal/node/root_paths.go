@@ -1,10 +1,14 @@
 package node
 
-import "path/filepath"
+import (
+	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+)
 
 func separateRoots(roots ...string) bool {
 	for i, root := range roots {
-		if !filepath.IsAbs(root) || filepath.Clean(root) != root {
+		if !pathgrammar.Strict(root) {
 			return false
 		}
 		for j, other := range roots {

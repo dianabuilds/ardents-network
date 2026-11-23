@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
@@ -330,5 +331,5 @@ func independentSourcePreparationRoots(roots ...string) bool {
 }
 
 func absoluteSourcePreparationPath(path string) bool {
-	return filepath.IsAbs(path) && filepath.Clean(path) == path
+	return pathgrammar.Strict(path)
 }
