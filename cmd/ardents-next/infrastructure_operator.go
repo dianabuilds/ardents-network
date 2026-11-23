@@ -19,7 +19,7 @@ func runInfrastructureCommand(ctx context.Context, args []string, out, diagnosti
 		err = provisioning.Run(args[1:], out)
 	case "sign-release":
 		err = signing.Run(args[1:], out)
-	case "prepare-descriptor", "prepare-runtime-descriptor", "prepare-inventory", "prepare-runtime-inventory",
+	case "prepare-runtime-descriptor", "prepare-runtime-inventory",
 		"authenticate-initial", "authenticate-candidate":
 		return runInfrastructure(ctx, args, out)
 	default:
