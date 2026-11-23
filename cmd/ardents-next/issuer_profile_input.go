@@ -83,12 +83,12 @@ func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
 	if e != nil {
 		return p, "", e
 	}
-	p.KeyBinding, e = decodeIssuanceBinding(fields["key_binding"])
+	p.KeyBinding, e = issuance.DecodeKeyBinding(fields["key_binding"])
 	if e != nil {
 		return p, "", e
 	}
 	output, e := issuerConfigPath(fields["profile_file"])
-	if e == nil && !issuanceOutputOutsideRoots(output, p.IdentityRoot, p.KeyRoot, p.ProfileRoot) {
+	if e == nil && !issuance.OutputOutsideRoots(output, p.IdentityRoot, p.KeyRoot, p.ProfileRoot) {
 		return p, "", issuance.ErrInvalid
 	}
 	return p, output, e
@@ -106,7 +106,7 @@ func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
 	if e != nil {
 		return "", nil, e
 	}
-	expected, e := decodeIssuanceBinding(fields["expected_profile"])
+	expected, e := issuance.DecodeKeyBinding(fields["expected_profile"])
 	if e != nil {
 		return "", nil, e
 	}
@@ -122,7 +122,7 @@ func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
 	if e != nil {
 		return "", nil, e
 	}
-	base, err := decodeAdmissionBinding(fields["binding"], baseFields)
+	base, err := issuance.DecodeLedgerBinding(fields["binding"], baseFields)
 	if err != nil {
 		return "", nil, issuance.ErrInvalid
 	}

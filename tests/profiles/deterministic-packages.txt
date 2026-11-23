@@ -77,6 +77,7 @@ github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/connection/wire
 github.com/dianabuilds/ardents-network/internal/endpoint/session
 github.com/dianabuilds/ardents-network/internal/release/infrastructure
+github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch
 github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/node/provisioning
 github.com/dianabuilds/ardents-network/internal/platform/artifacts

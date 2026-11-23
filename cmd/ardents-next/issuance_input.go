@@ -4,8 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -36,57 +34,15 @@ func decodeIssuancePlan(raw []byte) (issuancePlan, error) {
 	if err != nil {
 		return p, err
 	}
-	if !issuanceOutputOutsideRoots(p.InventoryFile, p.Root) {
+	if !issuance.OutputOutsideRoots(p.InventoryFile, p.Root) {
 		return p, issuance.ErrInvalid
 	}
-	binding, err := decodeIssuanceBinding(fields["binding"])
+	binding, err := issuance.DecodeKeyBinding(fields["binding"])
 	if err != nil {
 		return p, err
 	}
 	p.Binding = binding
 	return p, nil
-}
-
-// Reject even not-yet-created state roots before initialization has effects.
-func issuanceOutputOutsideRoots(output string, roots ...string) bool {
-	for _, root := range roots {
-		relative, err := filepath.Rel(root, output)
-		if err != nil || relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return false
-		}
-	}
-	return true
-}
-
-func decodeIssuanceBinding(raw []byte) (issuance.Binding, error) {
-	var p issuancePlan
-	if !requiredAdmissionObject(raw, "network", "issuer", "signer", "start", "end") {
-		return p.Binding, issuance.ErrInvalid
-	}
-	var b issuanceBindingInput
-	if json.Unmarshal(raw, &b) != nil {
-		return p.Binding, issuance.ErrInvalid
-	}
-	for _, item := range []struct {
-		value  string
-		target *[32]byte
-	}{{b.Network, &p.Binding.Network}, {b.Issuer, &p.Binding.Issuer}, {b.Signer, &p.Binding.Signer}} {
-		value, err := admissionHex(item.value, 32)
-		if err != nil {
-			return p.Binding, issuance.ErrInvalid
-		}
-		copy(item.target[:], value)
-	}
-	var err error
-	p.Binding.Start, err = admissionTime(b.Start)
-	if err != nil {
-		return p.Binding, issuance.ErrInvalid
-	}
-	p.Binding.End, err = admissionTime(b.End)
-	if err != nil {
-		return p.Binding, issuance.ErrInvalid
-	}
-	return p.Binding, nil
 }
 
 type issuanceInventoryEntry struct {

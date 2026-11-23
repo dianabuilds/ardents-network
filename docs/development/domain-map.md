@@ -125,7 +125,7 @@ not make them target domain boundaries or require another role installer.
 | Initial pin, complete inventory | Enrollment; verified bytes do not authorize runtime work |
 | Exact software authorization, rollback/security floors | Release; neither root creation nor stored binding facts can mint a fresh proof |
 | Application installation/update | Platform delivery; exact authorized artifacts, configuration binding and retained user data |
-| Infrastructure deployment | Operator-supplied verified artifacts/configuration and platform service management |
+| Infrastructure deployment | Portable fixed-role declaration and resource projection; native original Enrollment, Release, account and manager checks. Source State supplies its retained read-only inspection. Operators and the manager deliver and start the admitted unit |
 | Work admission, interruption and physical completion | Runtime composition and its actual Node/Network/Execution/Service owners; process exit or timeout cannot stand in for required joined completion |
 | Spend/quota/results, slot/history/time floors, keys | Their existing Admission/Route/Network/Custody owners; program replacement does not reset their state |
 
