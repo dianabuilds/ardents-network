@@ -17,7 +17,7 @@ func TestRaceShardsCoverTheUnitInventoryOnce(t *testing.T) {
 	for shard := range 4 {
 		command := exec.Command("make", "--no-print-directory", "race-shard-packages", "RACE_SHARD="+strconv.Itoa(shard))
 		command.Dir = root
-		output, err := command.CombinedOutput()
+		output, err := command.Output()
 		if err != nil {
 			t.Fatalf("list race shard %d: %v\n%s", shard, err, output)
 		}

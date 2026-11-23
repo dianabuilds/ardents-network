@@ -35,8 +35,11 @@ jobs:
       - name: Select affected tests and consumers
         id: selection
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
+          PR_BASE="$(git rev-parse HEAD^1)"
           go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --full-gate-matrix --powershell "$RUNNER_TEMP/powershell.txt"
           python3 - <<'PY'
           import json, os

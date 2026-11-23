@@ -612,3 +612,70 @@ func TestExactOriginalGroupsWithinJobEnvelope(t *testing.T) {
  }
 }
 `
+
+func TestPRSelectionUsesTheActualMergeBaseParent(t *testing.T) {
+	root := repositoryRoot(t)
+	fixture := t.TempDir()
+	write := func(name, body string) {
+		t.Helper()
+		path := filepath.Join(fixture, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := func(name string, args ...string) string {
+		t.Helper()
+		command := exec.Command(name, args...)
+		command.Dir = fixture
+		command.Env = isolatedFixtureEnvironment()
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%s %v: %v\n%s", name, args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	write("go.mod", "module example.com/selection\n\ngo 1.27.4\n")
+	write("docs/development/ownership.json", "{\"pr_check_mappings\":[]}\n")
+	write("cmd/tool/main.go", "package main\nfunc main() {}\n")
+	write("tests/probe/probe.go", "package probe\n")
+	for _, owner := range []string{"local", "upstream"} {
+		write("internal/"+owner+"/value.go", "package "+owner+"\nfunc Value() int { return 1 }\n")
+		write("internal/"+owner+"/value_test.go", "package "+owner+"\nimport \"testing\"\nfunc TestValue(t *testing.T) { _ = Value() }\n")
+	}
+	run("git", "init", "-q")
+	run("git", "checkout", "-qb", "base")
+	commit := func(message string) {
+		t.Helper()
+		run("git", "add", ".")
+		run("git", "-c", "core.hooksPath="+filepath.Join(fixture, "absent-hooks"),
+			"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", message)
+	}
+	commit("initial")
+	run("git", "checkout", "-qb", "topic")
+	write("internal/local/value.go", "package local\nfunc Value() int { return 2 }\n")
+	commit("topic")
+	topic := run("git", "rev-parse", "HEAD")
+	run("git", "checkout", "-q", "base")
+	write("internal/upstream/value.go", "package upstream\nfunc Value() int { return 2 }\n")
+	commit("upstream")
+	actualBase := run("git", "rev-parse", "HEAD")
+	run("git", "-c", "core.hooksPath="+filepath.Join(fixture, "absent-hooks"),
+		"-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "merge", "--no-ff", "-qm", "candidate", "topic")
+	if got := run("git", "rev-parse", "HEAD^1"); got != actualBase {
+		t.Fatalf("candidate first parent = %s, want %s", got, actualBase)
+	}
+	if got := run("git", "rev-parse", "HEAD^2"); got != topic {
+		t.Fatalf("candidate second parent = %s, want %s", got, topic)
+	}
+	output := run("go", "run", filepath.Join(root, "scripts", "select-pr-checks.go"),
+		filepath.Join(root, "scripts", "select-pr-check-registry.go"), "--base", "HEAD^1", "--head", "HEAD")
+	if !strings.Contains(output, "selected package=example.com/selection/internal/local") {
+		t.Fatalf("topic owner was not selected:\n%s", output)
+	}
+	if strings.Contains(output, "selected package=example.com/selection/internal/upstream") {
+		t.Fatalf("base-only owner was selected:\n%s", output)
+	}
+}

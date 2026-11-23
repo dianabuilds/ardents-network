@@ -1860,9 +1860,12 @@ selected Carriers.
   Pull request CI runs core and race gates in parallel with `-short` omitted,
   covering the entire unit inventory and its fuzz seeds. The
   `scripts/select-pr-checks.go` full-gate matrix removes selected unit groups
-  already covered by those required gates. It retains process and unlisted
-  packages, race-instrumented process tests and independently bounded special
-  scenarios. Direct selector execution still runs all selected groups.
+  already covered by those required gates. Selection compares the actual merge
+  candidate with its first parent and verifies the second parent is the PR head,
+  so later base changes do not select unrelated upstream work. It retains
+  process and unlisted packages, race-instrumented process tests and independently
+  bounded special scenarios. Direct selector execution still runs all selected
+  groups.
   Declaration selection and transitive race requirements reach a monotone closure
   independently of package visitation order, including already selected consumers.
   Package and dependency loading errors fail selection before a matrix is
