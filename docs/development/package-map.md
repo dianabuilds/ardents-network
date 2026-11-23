@@ -1009,7 +1009,8 @@ Application IPC and byte input/output. Endpoint retains admission authority.
 
 The installed Reader's `operation_linux.go` and `byte_stream_linux.go` use
 `internal/application/connection` for profile selection, directional limits
-and the local terminal projection.
+and the local terminal projection. The byte-stream adapter also uses the fixed
+failure categories from `internal/application/document`.
 
 Execution's `byte_stream.go` and `byte_stream_linux.go` use the fixed worker
 protocol in `internal/application/document`. Its `stream_contract.go` and exact

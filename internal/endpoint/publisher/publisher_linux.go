@@ -186,8 +186,22 @@ func (owner *Publisher) publish(caller context.Context, snapshot []byte, port do
 	candidate.started = true
 	go func() {
 		candidate.serveErr = candidate.handle.Serve(ctx)
-		unexpected := ctx.Err() == nil && !candidate.retiring.Load() && (port == nil || candidate.serveErr != nil)
+		unexpected := ctx.Err() == nil && !candidate.retiring.Load()
 		close(candidate.served)
+		if stream, ok := port.(*publishedBytePort); ok {
+			result := candidate.Close()
+			cleanup, complete := candidate.worker.CleanupResult()
+			owner.mu.Lock()
+			if owner.active == candidate {
+				owner.active = nil
+			}
+			owner.mu.Unlock()
+			stream.finish(result)
+			if (!complete || cleanup != nil) && owner.failed != nil {
+				owner.failed()
+			}
+			return
+		}
 		// Join a failed/expired consumer without requiring another local IPC
 		// request. Close waits only for the already completed serve loop.
 		if !candidate.retiring.Load() {

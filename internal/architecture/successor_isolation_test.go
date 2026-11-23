@@ -1221,7 +1221,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return false
 	}
-	if source == "internal/endpoint/reader/operation_linux.go" && dependency == modulePath+"/internal/application/document" {
+	if (source == "internal/endpoint/reader/operation_linux.go" || source == "internal/endpoint/reader/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
 	if source == "internal/application/administration/byte_stream_linux.go" && dependency == modulePath+"/internal/application/connection" {

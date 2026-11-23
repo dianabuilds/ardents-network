@@ -14,10 +14,9 @@ import (
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
 )
 
-func serveByteStream(ctx context.Context, publisher *publicationruntime.Publisher, operation *executionruntime.Operation, port document.ByteStreamPort) (result error) {
+func serveByteStream(ctx context.Context, publisher *publicationruntime.Publisher, operation *executionruntime.Operation, port document.ByteStreamPort) error {
 	defer port.Close()
 	if local, ok := port.(*publishedBytePort); ok {
-		defer func() { local.finish(result) }()
 		lifetime, cancel := context.WithCancel(ctx)
 		defer cancel()
 		stop := context.AfterFunc(local.ctx, cancel)
@@ -108,7 +107,7 @@ func (port *publishedBytePort) finish(err error) {
 		_ = port.Close()
 		outcome := application.Outcome{Class: application.CleanClose}
 		if err != nil {
-			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: "published byte stream did not complete"}
+			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: document.ByteStreamFailure(err)}
 		}
 		port.done <- outcome
 		close(port.done)

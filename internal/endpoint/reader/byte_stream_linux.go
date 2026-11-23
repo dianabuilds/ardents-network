@@ -8,6 +8,7 @@ import (
 	"io"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 )
 
 type localByteStreamPort struct {
@@ -35,8 +36,10 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 		reason := "byte stream lost local admission"
 		err := errors.Join(ctx.Err(), check())
 		if err == nil {
-			reason = "byte-stream worker handoff or exchange failed"
 			err = op.ExchangeByteStream(ctx, pending.read.contract, local, pending.service)
+			if err != nil {
+				reason = document.ByteStreamFailure(err)
+			}
 		}
 		if err == nil {
 			reason = "Service Connection did not authenticate terminal completion"
