@@ -1,0 +1,47 @@
+name: Direct-Origin Source serving proof
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: f62a8850d9439225e1f9d3d8a2847a1a20542932
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Build exact command and native Source tests
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+          CGO_ENABLED: '0'
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = f62a8850d9439225e1f9d3d8a2847a1a20542932
+          git show -s --format='candidate=%H tree=%T'
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$RUNNER_TEMP/ardents-source" ./cmd/ardents-next
+          go test -c -tags source_installed_native,source_lifecycle_native -o "$RUNNER_TEMP/source.test" ./cmd/ardents-next
+      - name: Exercise original Source under Ubuntu systemd
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID:$VERSION_ID" = ubuntu:24.04
+          test "$(uname -m)" = x86_64
+          test "$(systemctl --version | awk 'NR == 1 { print $2 }')" = 255
+          test -r /sys/fs/cgroup/cgroup.controllers
+          test "$(findmnt -T /var/lib -n -o FSTYPE)" = ext4
+          ! getent passwd ardents-source
+          cd cmd/ardents-next
+          sudo -n env PATH="$PATH" GOTOOLCHAIN=local CGO_ENABLED=0 GOENV=off \
+            GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
+            ARDENTS_PREBUILT_NEXT="$RUNNER_TEMP/ardents-source" \
+            "$RUNNER_TEMP/source.test" -test.run '^TestNativeSource(InstalledLifecycle|RetainedLifecycle)$' -test.timeout=9m -test.v
