@@ -56,7 +56,7 @@ Application. The currently supported commands and artifact remain those in the
 | Person | Installs | Candidate action |
 |---|---|---|
 | Sender or receiver using an Application | The protected Endpoint distribution and a locally authorized Application delivered for its exact confinement profile | The Application opens the recipient's Service through the local Application Interface. The sender and the receiving Service exchange ordered bytes using their Application's protocol. |
-| Participant using the command line | The protected Endpoint distribution with a confined byte-stream Application | `ardents stream connect --link TARGET_LINK` reads bytes from standard input and writes response bytes to standard output. The participant supplies a Link explicitly and chooses the local source and destination. |
+| Participant using the command line | The protected Endpoint distribution with a confined byte-stream Application | `ardents stream connect --link-file PRIVATE_LINK_FILE` reads bytes from standard input and writes response bytes to standard output. The participant supplies the Link in a private local input, keeping it out of process arguments and reserving standard input for data. |
 | Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | A candidate `ardents service publish --application APPLICATION` starts the locally authorized fixed worker. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
 
 The candidate stream command keeps diagnostics on standard error and reports a
@@ -80,7 +80,16 @@ exercises fixed binary canaries with qualification-only state. Neither supplies
 a production participant job. Production admission needs an exact signed
 worker profile and a real Service handler; it must refuse an unsupported
 profile before delivering Application bytes. The existing document request
-grammar remains scoped to document Services.
+grammar remains scoped to document Services. The current v3 Target Link carries
+only Network and Target. It can remain the destination input, but cannot prove
+which Application the authenticated Instance offers. The client must request
+the byte-stream profile explicitly. The Instance must authenticate its
+acceptance in the logical Connection setup before either side admits a data
+worker or forwards user payload. The acceptance must bind the exact Target,
+Instance, authenticated Connection and chosen profile. Continuity must retain
+that original binding. Use the existing transport and document grammar for
+document peers. An older peer, unknown profile, missing proof or profile
+mismatch must terminate the requested byte-stream operation without fallback.
 
 A successor decision needs explicit byte, time and concurrency bounds for both
 directions and a compatibility rule for peers that implement only the current
