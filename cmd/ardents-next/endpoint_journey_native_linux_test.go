@@ -115,6 +115,15 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 	}
 	exercise := func(participant journeyParticipant) {
 		original := participant.original
+		var publisherProcess *exec.Cmd
+		var publisherOutput, publisherDiagnostic bytes.Buffer
+		var publisherDone chan error
+		defer func() {
+			if publisherProcess != nil {
+				_ = publisherProcess.Process.Kill()
+				<-publisherDone
+			}
+		}()
 		installedPairSend(t, conn, installedPairMessage{Operation: "ready", Original: original, Principals: participant.principals})
 		for {
 			command := installedPairReceive(t, conn)
@@ -153,6 +162,63 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				if err != nil {
 					t.Fatal("journey installed reader exchange", err)
 				}
+			case "stream-publish":
+				if role != "publisher" || publisherProcess != nil {
+					t.Fatal("invalid byte-stream publication command")
+				}
+				socket := filepath.Join(participant.base, "administration", "socket")
+				process := exec.CommandContext(t.Context(), os.Getenv("ARDENTS_PREBUILT_NEXT"), "stream", "publish", socket)
+				process.Stdin = bytes.NewReader(command.Body)
+				process.Stdout, process.Stderr = &publisherOutput, &publisherDiagnostic
+				if err := process.Start(); err != nil {
+					t.Fatal(err)
+				}
+				publisherProcess = process
+				publisherDone = make(chan error, 1)
+				go func(done chan<- error) { done <- process.Wait() }(publisherDone)
+				journeyWait(t, 55*time.Second, func() bool {
+					select {
+					case err := <-publisherDone:
+						publisherProcess = nil
+						t.Fatalf("stream publisher stopped before readiness: %v: %s", err, &publisherDiagnostic)
+					default:
+					}
+					ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+					defer cancel()
+					link, err := administration.RequestPublishedLink(ctx, socket)
+					response.Link = link
+					return err == nil && link != ""
+				})
+			case "stream-connect":
+				if role != "reader" {
+					t.Fatal("invalid byte-stream connection command")
+				}
+				path := filepath.Join(t.TempDir(), "target-link")
+				if err := os.WriteFile(path, []byte(command.Link), 0600); err != nil {
+					t.Fatal(err)
+				}
+				socket := filepath.Join(participant.base, "application", "reader")
+				process := exec.CommandContext(t.Context(), os.Getenv("ARDENTS_PREBUILT_NEXT"), "stream", "connect", socket, "--link-file", path)
+				process.Stdin = bytes.NewReader(command.Body)
+				var diagnostic bytes.Buffer
+				process.Stderr = &diagnostic
+				output, err := process.Output()
+				if err != nil {
+					journeyDumpJournal(t)
+					t.Fatalf("stream connect: %v: %s", err, &diagnostic)
+				}
+				response.Body = output
+			case "stream-result":
+				if role != "publisher" || publisherProcess == nil {
+					t.Fatal("invalid byte-stream result command")
+				}
+				err := <-publisherDone
+				publisherProcess = nil
+				if err != nil {
+					journeyDumpJournal(t)
+					t.Fatalf("stream publish: %v: %s", err, &publisherDiagnostic)
+				}
+				response.Body = publisherOutput.Bytes()
 			case "withdraw":
 				if role != "publisher" {
 					t.Fatal("reader received withdrawal fixture command")
@@ -700,6 +766,14 @@ func journeyWait(t *testing.T, bound time.Duration, ready func() bool) {
 // route network and signing authority, and coordinates the publish/link/read/
 // withdraw/restart journey over the local fixture channel.
 func TestNativeEndpointPlatformLedJourney(t *testing.T) {
+	runNativeEndpointPlatformLedJourney(t, false)
+}
+
+func TestNativeInstalledEndpointByteStream(t *testing.T) {
+	runNativeEndpointPlatformLedJourney(t, true)
+}
+
+func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	if os.Geteuid() != 0 {
 		t.Fatal("endpoint platform-led journey qualification requires a root driver")
 	}
@@ -842,7 +916,12 @@ func TestNativeEndpointPlatformLedJourney(t *testing.T) {
 	body := []byte("one platform-led request across independently admitted managers\n")
 	identities := [2][3]string{}
 	identities[0] = startAdmit(0, "publisher")
-	publication := exchange(0, installedPairMessage{Operation: "publish", Body: body})
+	publishOperation := "publish"
+	if byteStream {
+		publishOperation = "stream-publish"
+		body = bytes.Repeat([]byte{0, 255, 128, 7}, 8192)
+	}
+	publication := exchange(0, installedPairMessage{Operation: publishOperation, Body: body})
 	if publication.Link == "" {
 		t.Fatal("installed publisher supplied no Link")
 	}
@@ -854,6 +933,25 @@ func TestNativeEndpointPlatformLedJourney(t *testing.T) {
 		if declared[0][j] == "" || declared[0][j] == declared[1][j] {
 			t.Fatal("participants share a declared principal")
 		}
+	}
+	if byteStream {
+		sent := bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000)
+		read := exchange(1, installedPairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent})
+		received := exchange(0, installedPairMessage{Operation: "stream-result"})
+		if read.Original != identities[1] || received.Original != identities[0] ||
+			!bytes.Equal(read.Body, body) || !bytes.Equal(received.Body, sent) {
+			t.Fatal("installed byte-stream exchange changed bytes or original Endpoint identities")
+		}
+		for i := range peers {
+			exchange(i, installedPairMessage{Operation: "finish"})
+			err := commands[i].Wait()
+			joined[i] = true
+			if err != nil {
+				t.Fatalf("byte-stream participant did not join: %v: %s", err, &outputs[i])
+			}
+		}
+		t.Log("two independently admitted installed Endpoints exchanged byte-equal data in both directions via the public CLI")
+		return
 	}
 	read := exchange(1, installedPairMessage{Operation: "read", Link: publication.Link})
 	if !bytes.Equal(read.Body, body) {
