@@ -1,4 +1,4 @@
-//go:build linux && text_worker_installed
+//go:build linux && document_worker_installed
 
 package document
 

@@ -1,4 +1,4 @@
-//go:build linux && text_worker_escape
+//go:build linux && document_worker_escape
 
 // The qualification artifact keeps Go from opening ambient cgroup files before
 // it audits the only inherited attachment.

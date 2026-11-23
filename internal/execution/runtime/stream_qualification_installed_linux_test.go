@@ -1,4 +1,4 @@
-//go:build linux && amd64 && text_worker_installed
+//go:build linux && amd64 && document_worker_installed
 
 package runtime
 

@@ -190,7 +190,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next test binary at execution-command.test",
         "independently pinned root-owned qualification unit and root driver",
         "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -204,7 +204,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next test binary at execution-command.test",
         "independently pinned root-owned qualification unit and root driver",
         "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -218,7 +218,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next test binary at execution-command.test",
         "independently pinned root-owned qualification unit and root driver",
         "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -232,7 +232,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next test binary at execution-command.test",
         "pinned root-owned qualification unit selecting TestInstalledConnectionAcceptedRequestRecoveryTCP",
         "separately pinned root-owned ardents-next and ardents-custody commands with a genuine no-echo terminal",
         "root driver, private writable roots and loopback TCP"
@@ -247,7 +247,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next binary at execution-command.test",
         "pinned root-owned qualification unit selecting TestInstalledConnectionDurableReopenTCP",
         "root driver, private local roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -303,7 +303,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next binary at execution-command.test",
         "pinned root-owned qualification unit selecting TestInstalledConnectionControlWritesTCP with test timeout20m and RuntimeMaxSec1260s; driver bound12600 polls",
         "root driver, private local roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -317,7 +317,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next test binary at execution-command.test",
         "independently pinned root-owned qualification unit and root driver",
         "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -331,7 +331,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text snapshot artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next binary at execution-command.test",
         "root driver and pinned temporary unit selecting only TestInstalledPublicationElapsedTCP with test timeout15m, RuntimeMaxSec920s and TimeoutStopSec30s",
         "sixteen minutes remaining in the original token hour before admission",
         "private temporary durable roots, loopback TCP; deferred-QUIC refusal controls also observe UDP and independent original process/cgroup join observers"
@@ -346,8 +346,8 @@
       "surface": "new Execution original Endpoint pidfd SIGKILL, independently pinned hostile worker descendants joined by manager lifetime, fresh Endpoint/worker/Job identities after explicit restart; no logical Service recovery or whole-host qualification",
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager and kernel pidfd support",
-        "separately pinned text_worker_hostile artifact and matching fixed root manifest",
-        "root-owned independently pinned text_worker_installed runtime test binary",
+        "separately pinned document_worker_hostile artifact and matching fixed root manifest",
+        "root-owned independently pinned document_worker_installed runtime test binary",
         "fresh inactive temporary Endpoint unit selecting only TestInstalledExecutionEndpointDeathHeldWorkers under the original non-root Endpoint account",
         "Root controller outside the Endpoint unit, readable original kernel cgroup/proc descriptors and actual manager journal"
       ],
@@ -361,8 +361,8 @@
       "surface": "new Execution genuine qualified escape-artifact launch, independent positive-controlled host TCP/UDP/DNS/IPC observers and original physical join on both local surfaces; no Service or whole-host qualification",
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
-        "separately pinned text_worker_escape artifact and matching fixed root manifest",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary",
+        "separately pinned document_worker_escape artifact and matching fixed root manifest",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed Execution runtime test binary",
         "root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionEscapeMatrix with a two-minute test deadline",
         "root driver and actual kernel cgroup/proc observers plus positive-controlled IPv4/IPv6/Unix listeners"
       ],
@@ -375,8 +375,8 @@
       "surface": "qualified hostile worker lineage and joined cleanup on both local surfaces, independent Publisher snapshot progress, original EOF-triggered manager cleanup, and unit collection",
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
-        "separately pinned text_worker_hostile artifact and matching fixed root manifest",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary",
+        "separately pinned document_worker_hostile artifact and matching fixed root manifest",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed Execution runtime test binary",
         "root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionHostileTree with a two-minute test deadline",
         "root driver and actual readable kernel cgroup/proc observers"
       ],
@@ -390,7 +390,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "non-root original Endpoint MainPID running the independently pinned text_worker_installed Execution test binary",
+        "non-root original Endpoint MainPID running the independently pinned document_worker_installed Execution test binary",
         "root-owned independently pinned temporary qualification unit and root driver"
       ],
       "invalid_environment": "selected installed Execution component environment unavailable; no passing skips"
@@ -403,7 +403,7 @@
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",
-        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "original non-root Endpoint MainPID running independently pinned document_worker_installed cmd/ardents-next test binary at execution-command.test",
         "independently pinned root-owned qualification unit and root driver",
         "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
@@ -527,11 +527,11 @@
         "dedicated Ubuntu 24.04 x86-64 with systemd 255, cgroup v2 and active polkit",
         "root driver and separate ardents-endpoint account",
         "exact installed worker artifacts and sockets",
-        "root-owned execution-runtime.test binary built with text_worker_installed tag selecting TestInstalledExecutionRepeatedLaunch",
+        "root-owned execution-runtime.test binary built with document_worker_installed tag selecting TestInstalledExecutionRepeatedLaunch",
         "independent binary and temporary service-unit SHA-256 values",
         "fresh inactive temporary ardents-endpoint.service; no operational Endpoint",
         "stream-activation case: exact installed stream qualification artifact, manifest and sockets from packaging/stream-qualification-worker",
-        "stream-qualification case: execution/runtime test binary (execution-runtime.test) with text_worker_installed tag, same installed stream qualification inventory"
+        "stream-qualification case: execution/runtime test binary (execution-runtime.test) with document_worker_installed tag, same installed stream qualification inventory"
       ],
       "invalid_environment": "the declared dedicated installed worker lifecycle environment is unavailable"
     },

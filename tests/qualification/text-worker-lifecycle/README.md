@@ -9,7 +9,7 @@ Local grant declarations are fixtures.
 Build `execution-runtime.test` outside the repository using the selected Go
 toolchain:
 
-    go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/execution/runtime
+    go test -c -tags document_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/execution/runtime
 
 Install it at `/usr/lib/ardents/qualification/execution-runtime.test`, owned
 by root with mode 0555. The root-owned temporary
@@ -36,7 +36,7 @@ invoked as `sh run-ubuntu.sh stream-activation` with the same independent
 ARDENTS_TEXT_LIFECYCLE_SHA256 and ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256 digests.
 It runs TestInstalledStreamWorkerActivation from the successor worker package
 test binary: build it outside the repository with
-go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/execution/worker
+go test -c -tags document_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/execution/worker
 and install it root:root mode 0555 at
 /usr/lib/ardents/qualification/worker-stream.test. The temporary unit has the
 same shape and ExecStart flags with
@@ -62,7 +62,7 @@ invoked as `sh run-ubuntu.sh stream-qualification` with the same independent
 digests and the same installed stream qualification inventory prerequisite. It
 runs TestInstalledStreamQualificationSeam from the successor execution/runtime
 package test binary: build it outside the repository with
-go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/execution/runtime
+go test -c -tags document_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/execution/runtime
 and install it root:root mode 0555 at
 /usr/lib/ardents/qualification/execution-runtime.test. The temporary unit has the
 same shape and ExecStart flags with
@@ -86,7 +86,7 @@ the same Ubuntu and manager prerequisites. Build all three candidates using
 the selected Go toolchain, `GOOS=linux`, `GOARCH=amd64` and `CGO_ENABLED=0`.
 Set `candidate` to a dedicated absolute build directory outside Git.
 
-    go test -c -tags text_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./cmd/ardents-next
+    go test -c -tags document_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./cmd/ardents-next
     go build -trimpath -buildvcs=false -o "$candidate/ardents-next" ./cmd/ardents-next
     go build -trimpath -buildvcs=false -o "$candidate/ardents-custody" ./cmd/ardents-custody
 
