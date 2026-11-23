@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"syscall"
 	"time"
@@ -30,7 +31,7 @@ func runForwardingRepair(ctx context.Context, args []string, out, diagnostic io.
 	defer cancel()
 	operation := repairForwardingInputs(bounded, args[0])
 	if operation != nil {
-		terminal := &sourceTerminal{firstOwner: "state", first: operation}
+		terminal := &sourceTerminal{FirstOwner: "state", First: operation}
 		if sourceFailureReport(diagnostic, "repair", terminal, nil) != nil {
 			return 2
 		}
@@ -76,24 +77,21 @@ func acquireForwardingRepairInputs(ctx context.Context, path string) (_ sourceIn
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	admission, deny := context.WithCancel(ctx)
-	l := &sourceInputLifetime{ctx: admission, deny: deny, callback: make(chan struct{}), done: make(chan struct{})}
-	inputs := sourceInputs{l}
-	l.stop = context.AfterFunc(ctx, func() { l.refuse(ctx.Err()); close(l.callback) })
+	inputs := artifacts.NewObservedInputs(ctx, nil)
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, inputs.Close())
 		}
 	}()
-	file, err := l.acquire(path, 16<<10, false)
+	file, err := inputs.Acquire(path, 16<<10, false)
 	if err != nil {
 		return sourceInputs{}, plan, err
 	}
-	native, ok := file.info.Sys().(*syscall.Stat_t)
-	if !ok || native.Uid != 0 || file.info.Mode().Perm()&0022 != 0 {
+	native, ok := file.Info().Sys().(*syscall.Stat_t)
+	if !ok || native.Uid != 0 || file.Info().Mode().Perm()&0022 != 0 {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	plan, err = node.DecodeForwardingPlan(file.raw)
+	plan, err = node.DecodeForwardingPlan(file.Bytes())
 	if err != nil || plan.Network == nil || plan.ProcessProfile != processresource.Profile {
 		return sourceInputs{}, plan, errSourceInput
 	}

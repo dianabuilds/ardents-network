@@ -26,7 +26,7 @@ func runSourceRepair(ctx context.Context, args []string, out, diagnostic io.Writ
 	defer cancel()
 	operation := repairSourceInputs(bounded, args[0])
 	if operation != nil {
-		terminal := &sourceTerminal{firstOwner: "state", first: operation}
+		terminal := &sourceTerminal{FirstOwner: "state", First: operation}
 		if sourceFailureReport(diagnostic, "repair", terminal, nil) != nil {
 			return 2
 		}

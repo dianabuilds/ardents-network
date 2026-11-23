@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/ed25519"
-	"crypto/sha256"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -19,14 +17,7 @@ import (
 // networkAuthorityPlan pins the local Network owner, never a claimed current
 // profile. Signed Epoch/profile bytes and their durable history supply facts.
 // These local Admission commands own no Route or public transport selection.
-type networkAuthorityPlan struct {
-	Root                 string     `json:"root"`
-	NetworkID            [32]byte   `json:"network_id"`
-	Authorities          [][32]byte `json:"authorities"`
-	Threshold            int        `json:"threshold"`
-	ProfileAuthority     [32]byte   `json:"profile_authority"`
-	ClockObservationFile string     `json:"clock_observation_file"`
-}
+type networkAuthorityPlan = state.AuthorityDeclaration
 
 type admissionAuthority struct {
 	current      func() (network.RuntimeView, error)
@@ -43,8 +34,7 @@ func validAdmissionAuthority(profile string, plan *networkAuthorityPlan, roots .
 	if plan == nil {
 		return absoluteAdmissionPath(profile)
 	}
-	if profile != "" || !absoluteAdmissionPath(plan.Root) || !absoluteAdmissionPath(plan.ClockObservationFile) ||
-		plan.NetworkID == [32]byte{} || plan.ProfileAuthority == [32]byte{} || len(plan.Authorities) == 0 || len(plan.Authorities) > 16 {
+	if profile != "" || !plan.ValidShape() {
 		return false
 	}
 	for _, root := range roots {
@@ -80,20 +70,7 @@ func openAdmissionAuthority(profile string, plan *networkAuthorityPlan) (admissi
 }
 
 func networkStateConfig(plan *networkAuthorityPlan) (state.Config, error) {
-	if plan == nil || !validAdmissionAuthority("", plan) {
-		return state.Config{}, errors.New("invalid Network owner plan")
-	}
-	authorities := make(map[[32]byte]ed25519.PublicKey, len(plan.Authorities))
-	for _, key := range plan.Authorities {
-		id := sha256.Sum256(key[:])
-		if _, duplicate := authorities[id]; duplicate || key == [32]byte{} {
-			return state.Config{}, errors.New("invalid Network authority pins")
-		}
-		authorities[id] = append(ed25519.PublicKey(nil), key[:]...)
-	}
-	return state.Config{Root: plan.Root, NetworkID: plan.NetworkID, Authorities: authorities,
-		Threshold: plan.Threshold, ClosedProfileAuthority: append(ed25519.PublicKey(nil), plan.ProfileAuthority[:]...),
-		AcceptedProfile: "ardents-route-v3", Clock: time.Now, ClockObservationFile: plan.ClockObservationFile}, nil
+	return plan.Config()
 }
 
 // networkAdmissionAuthority is command composition, not Network or Admission

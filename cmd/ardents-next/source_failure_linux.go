@@ -16,7 +16,7 @@ func sourceStartupFailure(out io.Writer, owner string, cause, cleanup error) int
 	if processresource.Failure(cause) != nil {
 		owner = "process"
 	}
-	if sourceFailureReport(out, "refused", &sourceTerminal{firstOwner: owner, first: cause}, cleanup) != nil {
+	if sourceFailureReport(out, "refused", &sourceTerminal{FirstOwner: owner, First: cause}, cleanup) != nil {
 		return 2
 	}
 	return 1
@@ -26,14 +26,14 @@ func sourceFailureReport(out io.Writer, phase string, operation, processClose er
 	first, cleanup := "", ""
 	var terminal *sourceTerminal
 	if errors.As(operation, &terminal) {
-		first = terminal.firstOwner
-		if processresource.Failure(terminal.first) != nil {
+		first = terminal.FirstOwner
+		if processresource.Failure(terminal.First) != nil {
 			first = "process"
 		}
-		if terminal.wait != nil || terminal.cleanup != nil {
+		if terminal.Wait != nil || terminal.StateClose != nil {
 			cleanup = "state"
 		}
-		if terminal.inputCleanup != nil {
+		if terminal.InputClose != nil {
 			if cleanup != "" {
 				cleanup += ","
 			}
