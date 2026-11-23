@@ -16,7 +16,7 @@ import (
 // stream and its original Route-backed recovery composition.
 func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.AuthenticatedAttachment, result error) {
 	if p == nil || p.self != p || ctx == nil {
-		return nil, errors.New("Publisher Service authentication caller is absent")
+		return nil, errors.New("publisher Service authentication caller is absent")
 	}
 	var state *initialDelivery
 	for state == nil {
@@ -105,7 +105,7 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 	if err := errors.Join(ctx.Err(), setup.Err(), state.observe()); err != nil {
 		return nil, err
 	}
-	physical, err := acquisition.Join(p.physicalContext, join.JoinConfig{Duty: state.opening.rendezvous,
+	physical, err := acquisition.Join(p.physicalContext, join.Config{Duty: state.opening.rendezvous,
 		Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: time.Unix(request.WorkSafetyNotAfter, 0).UTC(), SetupDeadline: request.Deadline})
 	if err != nil {
 		return nil, err

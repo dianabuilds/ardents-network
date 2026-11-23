@@ -20,7 +20,7 @@ type PublisherReplacement struct {
 	ticket                                 *recoveryProposal
 	service                                *instance.ServiceAttachment // Stream.mu publishes ownership.
 	physical                               *join.Joined
-	acquisition                            *join.JoinAcquisition
+	acquisition                            *join.Acquisition
 	opening                                *instance.Opening
 	peer                                   wire.Continuity
 	attachment                             [32]byte
@@ -48,7 +48,7 @@ type PublisherReplacement struct {
 // The public JOIN configuration must match the actual private opening exactly;
 // Route independently checks its recipient. Refusal joins all admitted physical
 // work before retiring the spent ticket, including failed JOIN/TLS setup.
-func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *instance.Opening, config join.JoinConfig) (_ *PublisherReplacement, result error) {
+func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *instance.Opening, config join.Config) (_ *PublisherReplacement, result error) {
 	if stream == nil || stream.self != stream || stream.ctx == nil || stream.owner == nil || ctx == nil || opening == nil {
 		return nil, errIntegrity
 	}

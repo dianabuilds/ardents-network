@@ -82,8 +82,11 @@ func TestPublicInspectionKeepsIdentityPinsAndStrictSelectedInterval(t *testing.T
 		raw := independentIssuerProfile(binding, keys, signer)
 		pins := PublicPins{Network: binding.Network, Issuer: binding.Issuer, Signer: binding.Signer}
 		verified, err := Inspect(raw, pins)
+		if err != nil {
+			t.Fatal("public inspection failed", err)
+		}
 		got, inventory, ok := verified.Snapshot()
-		if err != nil || !ok || !got.matches(binding) || len(inventory) != 3 {
+		if !ok || !got.matches(binding) || len(inventory) != 3 {
 			t.Fatal("public inspection lost independently signed interval", err)
 		}
 		if _, err := Verify(raw, binding); err != nil {

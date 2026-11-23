@@ -7,7 +7,7 @@ import (
 )
 
 // IndependentRoots checks the declared State root together with the role roots.
-func (network NodeNetwork) IndependentRoots(roots ...string) bool {
+func (network Network) IndependentRoots(roots ...string) bool {
 	return separateRoots(append([]string{network.Root}, roots...)...)
 }
 

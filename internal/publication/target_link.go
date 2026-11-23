@@ -11,7 +11,7 @@ import (
 // to expose it. No old runtime codec or mutable owner is imported.
 func TargetLink(network, target [32]byte) (string, error) {
 	if network == [32]byte{} || target == [32]byte{} {
-		return "", errors.New("Target Link binding absent")
+		return "", errors.New("target Link binding absent")
 	}
 	raw := append([]byte{1}, network[:]...)
 	raw = append(raw, target[:]...)
@@ -23,17 +23,17 @@ func TargetLink(network, target [32]byte) (string, error) {
 func ParseTargetLink(link string) (network, target [32]byte, err error) {
 	const prefix = "ardents-target:v3:"
 	if !strings.HasPrefix(link, prefix) || len(link) != len(prefix)+87 {
-		return network, target, errors.New("Target Link format is invalid")
+		return network, target, errors.New("target Link format is invalid")
 	}
 	encoded := link[len(prefix):]
 	raw, err := base64.RawURLEncoding.Strict().DecodeString(encoded)
 	if err != nil || len(raw) != 65 || raw[0] != 1 || base64.RawURLEncoding.EncodeToString(raw) != encoded {
-		return network, target, errors.New("Target Link format is invalid")
+		return network, target, errors.New("target Link format is invalid")
 	}
 	copy(network[:], raw[1:33])
 	copy(target[:], raw[33:])
 	if network == [32]byte{} || target == [32]byte{} {
-		return [32]byte{}, [32]byte{}, errors.New("Target Link binding is absent")
+		return [32]byte{}, [32]byte{}, errors.New("target Link binding is absent")
 	}
 	return network, target, nil
 }

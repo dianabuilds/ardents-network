@@ -21,7 +21,7 @@ type initiatorReplacement struct {
 	ctx                        context.Context
 	cancel                     context.CancelFunc
 	slot                       uint8
-	acquisition                *join.JoinAcquisition
+	acquisition                *join.Acquisition
 	sourceHandle               *initiatorRouteAcquisition
 	attachment                 *initiatorAttachment
 	peer                       wire.Continuity

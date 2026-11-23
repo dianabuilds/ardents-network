@@ -108,8 +108,11 @@ func TestServingSourceDutyProtectsRealResponseAfterEpochExpiry(t *testing.T) {
 	}
 	unixClock.Store(current.ValidUntil.Add(time.Minute).Unix())
 	response, err := clientPlan.Fetch(t.Context(), 0, source2.Message{Operation: "latest", NetworkDigest: source2.NetworkDigest(config.NetworkID)})
-	if err != nil || response.Status != "ok" || response.ObjectDigest != current.Digest || len(response.Payload) == 0 {
-		t.Fatalf("real Source response after Epoch expiry: status=%q digest=%x payload=%d err=%v", response.Status, response.ObjectDigest, len(response.Payload), err)
+	if err != nil {
+		t.Fatalf("real Source response after Epoch expiry: %v", err)
+	}
+	if response.Status != "ok" || response.ObjectDigest != current.Digest || len(response.Payload) == 0 {
+		t.Fatalf("real Source response after Epoch expiry: status=%q digest=%x payload=%d", response.Status, response.ObjectDigest, len(response.Payload))
 	}
 	family := sha256.Sum256([]byte(genesis.accepted[0].family))
 	if protected, err := duty2.ReadConflict(config.LocalRoleStateRoot, clock, genesis.accepted[0].nodeID, family); err != nil || !protected {
@@ -315,11 +318,11 @@ func TestServingSourceDutyKeepsOpeningRoleRootAfterChdir(t *testing.T) {
 
 	t.Chdir(laterDirectory)
 	advancedReceipt, err := serving.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
-	advanced := advancedReceipt.Snapshot
 	if err != nil {
 		_ = serving.Close()
 		t.Fatalf("accept after working directory changed: %v", err)
 	}
+	advanced := advancedReceipt.Snapshot
 	afterOriginal := current.ValidUntil.Add(time.Minute)
 	if conflict, err := duty2.ReadConflict(roleRoot, func() time.Time { return afterOriginal }, advanced.SourceNodeID,
 		sha256.Sum256([]byte(advanced.SourceFamily))); err != nil || !conflict {

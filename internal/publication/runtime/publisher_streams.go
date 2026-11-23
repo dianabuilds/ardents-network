@@ -17,7 +17,7 @@ import (
 // Publication retains physical retirement even after the Application completes.
 func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.StreamContract) (_ *connection.Stream, result error) {
 	if p == nil || p.self != p || ctx == nil {
-		return nil, errors.New("Publisher stream caller is absent")
+		return nil, errors.New("publisher stream caller is absent")
 	}
 	p.mu.Lock()
 	if p.closed {
@@ -54,7 +54,7 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if p.closed || p.connections[logical] != nil {
-			return errors.New("Publisher logical stream is retired or already retained")
+			return errors.New("publisher logical stream is retired or already retained")
 		}
 		if err := errors.Join(ctx.Err(), p.ctx.Err(), stream.Context().Err(), p.lifetime.Context().Err(), p.config.Operation.CheckPublisher(), checkOriginal()); err != nil {
 			return err
@@ -106,13 +106,13 @@ func (p *Publisher) findConnection(request capsule.Request, digest [32]byte) (*c
 		WorkSafetyNotAfter: request.WorkSafetyNotAfter, WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}
 	logical, _, err := wire.Contexts(identity, digest, request.AttachmentGeneration)
 	if err != nil || request.AttachmentGeneration <= 1 {
-		return nil, errors.Join(errors.New("Publisher replacement tuple is invalid"), err)
+		return nil, errors.Join(errors.New("publisher replacement tuple is invalid"), err)
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	stream := p.connections[logical]
 	if p.closed || stream == nil {
-		return nil, errors.New("Publisher original logical stream is unavailable")
+		return nil, errors.New("publisher original logical stream is unavailable")
 	}
 	return stream, nil
 }
@@ -126,7 +126,7 @@ func (p *Publisher) dispatchReplacement(state *initialDelivery) {
 	if err != nil {
 		return
 	}
-	proposal, err := state.opening.stream.PreparePublisherReplacement(state.ctx, state.opening.private, join.JoinConfig{
+	proposal, err := state.opening.stream.PreparePublisherReplacement(state.ctx, state.opening.private, join.Config{
 		Duty: state.opening.rendezvous, Secret: request.JoinSecret, Context: request.HandshakeContext,
 		Deadline: time.Unix(request.WorkSafetyNotAfter, 0).UTC(), SetupDeadline: request.Deadline})
 	if err != nil {

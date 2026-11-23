@@ -18,7 +18,7 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 	}{
 		{name: "server failure", serverErr: errors.New("source server failed")},
 		{name: "automatic refresh failure after source cancellation", serverErr: context.Canceled, automaticErr: errors.New("automatic refresh failed")},
-		{name: "terminal failure after source cancellation", serverErr: context.Canceled, terminalErr: errors.New("Network owner failed")},
+		{name: "terminal failure after source cancellation", serverErr: context.Canceled, terminalErr: errors.New("network owner failed")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()

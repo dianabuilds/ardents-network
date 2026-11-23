@@ -126,8 +126,11 @@ func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testin
 		t.Fatal(err)
 	}
 	receipt, err := owner.AcceptEpoch(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
 	staged := receipt.Snapshot
-	if err != nil || !receipt.Pending || staged.Digest != genesis.epochDigest || staged.PendingDigest != pending.epochDigest ||
+	if !receipt.Pending || staged.Digest != genesis.epochDigest || staged.PendingDigest != pending.epochDigest ||
 		staged.PendingEpoch != pendingEpoch || !staged.TrustedTime.IsZero() || staged.SourceAttempts != 0 {
 		t.Fatalf("offline staging: %+v, %v", staged, err)
 	}
@@ -144,8 +147,11 @@ func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testin
 	}
 	defer reopened.Close()
 	repeatedReceipt, err := reopened.AcceptEpoch(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
 	repeated := repeatedReceipt.Snapshot
-	if err != nil || repeated.Digest != genesis.epochDigest || repeated.PendingDigest != pending.epochDigest || !repeated.TrustedTime.IsZero() {
+	if repeated.Digest != genesis.epochDigest || repeated.PendingDigest != pending.epochDigest || !repeated.TrustedTime.IsZero() {
 		t.Fatalf("offline replay promoted or lost the pending Epoch: %+v, %v", repeated, err)
 	}
 	activated, err := reopened.Refresh(t.Context())
@@ -153,8 +159,11 @@ func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testin
 		t.Fatalf("complete Source wave did not activate the retained Epoch: %+v, %v", activated, err)
 	}
 	replayedReceipt, err := reopened.AcceptEpoch(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
 	replayed := replayedReceipt.Snapshot
-	if err != nil || activated.TrustedTime.IsZero() || !replayed.TrustedTime.Equal(activated.TrustedTime) {
+	if activated.TrustedTime.IsZero() || !replayed.TrustedTime.Equal(activated.TrustedTime) {
 		t.Fatalf("offline replay changed the Source's trusted floor: before=%v after=%v err=%v", activated.TrustedTime, replayed.TrustedTime, err)
 	}
 }

@@ -18,12 +18,12 @@ import (
 // the per-role process profile and root-separation policy. The codec returns
 // facts only and opens no resource.
 
-// NodeNetwork is the embedded public Network-input declaration shared by every
+// Network is the embedded public Network-input declaration shared by every
 // node role. It is layout-identical to the command composition's local Network
 // owner plan so composition can adapt it by pointer conversion. It is not an
 // authenticated observation or a live root; signed Epoch/profile bytes and their
 // durable history supply the actual Network facts.
-type NodeNetwork struct {
+type Network struct {
 	Root                 string     `json:"root"`
 	NetworkID            [32]byte   `json:"network_id"`
 	Authorities          [][32]byte `json:"authorities"`
@@ -38,7 +38,7 @@ type NodeNetwork struct {
 // decode to their zero value, preserving the existing runtime plan grammar;
 // the per-role command policy rejects incomplete declarations before effect.
 type nodePlanCore struct {
-	Network           *NodeNetwork    `json:"network"`
+	Network           *Network        `json:"network"`
 	NodeID            [32]byte        `json:"node_id"`
 	ProcessProfile    string          `json:"process_profile"`
 	ParticipationRoot string          `json:"participation_root"`
@@ -86,9 +86,9 @@ type IssuerPlan struct {
 // DecodeNodeNetwork preserves exact field names, duplicate/null refusal, one
 // complete object and exact 32-byte array shapes for the embedded Network
 // declaration. It opens no resource and grants no Network authority.
-func DecodeNodeNetwork(raw []byte) (NodeNetwork, error) {
+func DecodeNodeNetwork(raw []byte) (Network, error) {
 	bad := errors.New("invalid node network declaration")
-	var network NodeNetwork
+	var network Network
 	if len(raw) == 0 || len(raw) > 16<<10 {
 		return network, bad
 	}
@@ -97,7 +97,7 @@ func DecodeNodeNetwork(raw []byte) (NodeNetwork, error) {
 		return network, bad
 	}
 	if json.Unmarshal(raw, &network) != nil {
-		return NodeNetwork{}, bad
+		return Network{}, bad
 	}
 	return network, nil
 }

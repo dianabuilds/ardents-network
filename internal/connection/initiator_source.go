@@ -331,7 +331,7 @@ func (source *InitiatorSource) AuthenticateInitial() (_ *AuthenticatedAttachment
 		return nil
 	}, func() error {
 		var err error
-		physical, err = acquisition.Join(source.physical, join.JoinConfig{Duty: rendezvous, Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
+		physical, err = acquisition.Join(source.physical, join.Config{Duty: rendezvous, Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
 		if err != nil {
 			return fmt.Errorf("connection initial JOIN: %w", err)
 		}
@@ -535,7 +535,7 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 		return nil
 	}, func() error {
 		var err error
-		physical, err = acquisition.Join(stream.owner.context(), join.JoinConfig{Duty: rendezvous,
+		physical, err = acquisition.Join(stream.owner.context(), join.Config{Duty: rendezvous,
 			Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
 		if err != nil {
 			return fmt.Errorf("connection replacement JOIN: %w", err)

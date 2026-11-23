@@ -79,12 +79,18 @@ func TestAcceptClosedProfileRetriesInterruptedPublication(t *testing.T) {
 		t.Fatal("published profile bytes without durable state")
 	}
 	view, err := store.AcceptClosedProfile(first)
-	if err != nil || view.Digest != sha256.Sum256(first) {
-		t.Fatalf("retry exact profile after interrupted publication: digest=%x, err=%v", view.Digest, err)
+	if err != nil {
+		t.Fatalf("retry exact profile after interrupted publication: %v", err)
+	}
+	if view.Digest != sha256.Sum256(first) {
+		t.Fatalf("retry exact profile after interrupted publication: digest=%x", view.Digest)
 	}
 	current, err := store.CurrentRuntime()
-	if err != nil || current.Profile().Digest != view.Digest {
-		t.Fatalf("current closed profile after retry: digest=%x, err=%v", current.Profile().Digest, err)
+	if err != nil {
+		t.Fatalf("current closed profile after retry: %v", err)
+	}
+	if current.Profile().Digest != view.Digest {
+		t.Fatalf("current closed profile after retry: digest=%x", current.Profile().Digest)
 	}
 }
 

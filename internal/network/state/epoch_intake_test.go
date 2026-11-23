@@ -150,8 +150,11 @@ func TestClosedIntakeRefusesRetiredSchemasBeforeCommit(t *testing.T) {
 	defer store.Close()
 	epoch := buildClosedIntakeEpoch(t, network, authority, 1, [32]byte{}, 3, now.Add(-time.Minute), now.Add(time.Hour))
 	snapshotReceipt, err := store.AcceptEpoch(context.Background(), epoch.Raw, epoch.inputs, epoch.Materials)
+	if err != nil {
+		t.Fatal(err)
+	}
 	snapshot := snapshotReceipt.Snapshot
-	if err != nil || snapshot.Epoch != 1 || snapshot.Generation != hex.EncodeToString(epoch.Digest[:]) {
+	if snapshot.Epoch != 1 || snapshot.Generation != hex.EncodeToString(epoch.Digest[:]) {
 		t.Fatalf("v3 closed Accept = %+v, %v", snapshot, err)
 	}
 }
@@ -242,8 +245,11 @@ func TestClosedIntakeKeepsAuthenticatedOldPredecessorChain(t *testing.T) {
 	// The retained chain still extends through the sole pinned schema.
 	fourth := buildClosedIntakeEpoch(t, network, authority, 4, third.Digest, 3, from, until)
 	acceptedReceipt, err := store.AcceptEpoch(context.Background(), fourth.Raw, fourth.inputs, fourth.Materials)
+	if err != nil {
+		t.Fatal(err)
+	}
 	accepted := acceptedReceipt.Snapshot
-	if err != nil || accepted.Epoch != 4 {
+	if accepted.Epoch != 4 {
 		t.Fatalf("successor Accept over old predecessors = %+v, %v", accepted, err)
 	}
 }

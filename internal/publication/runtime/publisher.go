@@ -151,7 +151,7 @@ func New(ctx context.Context, config Config) (*Publisher, error) {
 
 func (p *Publisher) check(ctx context.Context) error {
 	if p == nil || p.self != p || ctx == nil {
-		return errors.New("Publisher caller absent")
+		return errors.New("publisher caller absent")
 	}
 	_, err := p.lifetime.Credential()
 	return errors.Join(ctx.Err(), p.ctx.Err(), p.administration.Check(p.config.Operation), err, p.sourceScope.Check())
@@ -168,7 +168,7 @@ func (p *Publisher) checkLocal(ctx context.Context) error {
 // through this original Publisher. It cannot open, replace or close the scope.
 func (p *Publisher) CurrentSource(ctx context.Context) (*prefix.SourceHandle, error) {
 	if p == nil || p.self != p {
-		return nil, errors.New("Publisher Source absent")
+		return nil, errors.New("publisher Source absent")
 	}
 	if err := p.check(ctx); err != nil {
 		return nil, err
@@ -179,13 +179,13 @@ func (p *Publisher) CurrentSource(ctx context.Context) (*prefix.SourceHandle, er
 // Link is visible only under the current exact acknowledged accepting pair.
 func (p *Publisher) Link(ctx context.Context) (string, error) {
 	if p == nil || p.self != p {
-		return "", errors.New("Publisher absent")
+		return "", errors.New("publisher absent")
 	}
 	p.mu.Lock()
 	pair, closed := p.current, p.closed
 	p.mu.Unlock()
 	if closed || pair == nil {
-		return "", errors.New("Publisher has no accepting pair")
+		return "", errors.New("publisher has no accepting pair")
 	}
 	if err := pair.check(p, ctx); err != nil {
 		return "", err
@@ -195,7 +195,7 @@ func (p *Publisher) Link(ctx context.Context) (string, error) {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if p.closed || p.current != pair || pair.firstACK.IsZero() {
-			return errors.New("Publisher accepting pair changed")
+			return errors.New("publisher accepting pair changed")
 		}
 		if err := errors.Join(checkSource(), p.checkLocal(ctx)); err != nil {
 			return err
@@ -281,7 +281,7 @@ func (p *Publisher) drain() {
 		responderWork := p.responderScope.Close()
 		responderCleanup, responderJoined := p.responderScope.CleanupResult()
 		if !responderJoined {
-			responderCleanup = errors.Join(responderCleanup, errors.New("Publisher Responder scope did not join"))
+			responderCleanup = errors.Join(responderCleanup, errors.New("publisher Responder scope did not join"))
 		}
 		p.closeErr = errors.Join(p.closeErr, responderWork)
 		physical = errors.Join(physical, responderCleanup)
@@ -295,7 +295,7 @@ func (p *Publisher) drain() {
 		}
 		sourceCleanup, sourceJoined := p.sourceScope.CleanupResult()
 		if !sourceJoined {
-			sourceCleanup = errors.Join(sourceCleanup, errors.New("Publisher Source scope did not join"))
+			sourceCleanup = errors.Join(sourceCleanup, errors.New("publisher Source scope did not join"))
 		}
 		physical = errors.Join(physical, sourceCleanup)
 		p.cancelPhysical()

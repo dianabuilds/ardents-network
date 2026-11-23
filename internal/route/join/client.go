@@ -12,9 +12,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
-// JoinConfig names an already selected public recipient and one fresh opaque
+// Config names an already selected public recipient and one fresh opaque
 // pair intent. It conveys no Publication, Instance or Application authority.
-type JoinConfig struct {
+type Config struct {
 	Duty                    network.RetainedDuty
 	Secret, Context         [32]byte
 	Deadline, SetupDeadline time.Time
@@ -23,7 +23,7 @@ type JoinConfig struct {
 // Join performs exactly one genuine terminal TLS/admission/JOIN exchange. A
 // failed exchange consumes this acquisition's attempt; retry cannot reuse its
 // channel or silently switch the original Source or Responder.
-func (a *JoinAcquisition) Join(ctx context.Context, config JoinConfig) (_ *Joined, result error) {
+func (a *Acquisition) Join(ctx context.Context, config Config) (_ *Joined, result error) {
 	if a == nil || a.self != a || ctx == nil || config.Secret == [32]byte{} || config.Context == [32]byte{} || !time.Now().Before(config.Deadline) || config.Deadline != config.Deadline.UTC().Truncate(time.Second) || config.Deadline.After(time.Now().Add(admission.ForwardClass.Lifetime())) || !time.Now().Before(config.SetupDeadline) || config.SetupDeadline != config.SetupDeadline.UTC().Truncate(time.Second) || config.SetupDeadline.After(config.Deadline) {
 		return nil, errors.New("route JOIN intent bounds invalid")
 	}
@@ -133,7 +133,7 @@ func (a *JoinAcquisition) Join(ctx context.Context, config JoinConfig) (_ *Joine
 
 // cleanupJoin joins setup resources that were never published to a.stream.
 // Its result is physical retirement provenance, separate from setup refusal.
-func (a *JoinAcquisition) cleanupJoin(joined *Joined, terminal interface {
+func (a *Acquisition) cleanupJoin(joined *Joined, terminal interface {
 	CloseSetup() error
 	SetupCleanupResult() (error, bool)
 }) error {

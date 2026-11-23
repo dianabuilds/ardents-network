@@ -37,7 +37,7 @@ func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.A
 		return JoinContext{}, errors.Join(err, installation.Close())
 	}
 	var source, responder *selection.Owner
-	var owner *routejoin.JoinContext
+	var owner *routejoin.Context
 	var once sync.Once
 	var terminal error
 	closeAll := func() error {
@@ -74,7 +74,7 @@ func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.A
 	if end, ok := ctx.Deadline(); ok && end.Before(deadline) {
 		deadline = end.UTC().Truncate(time.Second)
 	}
-	owner, err = routejoin.NewJoinContext(ctx, routejoin.JoinContextConfig{
+	owner, err = routejoin.NewJoinContext(ctx, routejoin.ContextConfig{
 		Source: source, Responder: responder, Current: authority.Current, Deadline: deadline, Exclusions: plan.Exclusions,
 		Reserve: func(caller context.Context) (func() error, error) {
 			reservation, err := budget.Reserve(caller, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: deadline, HoldUntil: deadline.Add(5 * time.Second)})
@@ -116,7 +116,7 @@ func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.A
 			}
 			// Route verifies the exact current duty against the original
 			// roles and retained choice before stock presentation or I/O.
-			stream, err := opening.Join(caller, routejoin.JoinConfig{Duty: duty, Secret: intent.Secret, Context: intent.Context, Deadline: intent.Deadline, SetupDeadline: intent.SetupDeadline}, intent.Choice)
+			stream, err := opening.Join(caller, routejoin.Config{Duty: duty, Secret: intent.Secret, Context: intent.Context, Deadline: intent.Deadline, SetupDeadline: intent.SetupDeadline}, intent.Choice)
 			if err != nil {
 				return nil, err
 			}

@@ -230,10 +230,10 @@ func (p *Prefix) exchangeDescriptor(ctx, caller context.Context, end time.Time, 
 		return nil, err
 	}
 	frame, err := ardp.ReadFrame(conn)
-	defer clear(frame.Body)
 	if err != nil {
 		return nil, err
 	}
+	defer clear(frame.Body)
 	if frame.Kind != ardp.KindResult || frame.Lane != 0 {
 		return nil, errors.New("route Descriptor lane-zero RESULT required")
 	}

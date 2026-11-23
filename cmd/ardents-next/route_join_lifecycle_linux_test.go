@@ -216,7 +216,7 @@ func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
 			if next, err := routejoin.AcquireResponderJoin(t.Context(), responder); err == nil || next != nil {
 				t.Fatal("Responder adopted replacement instead of sealed original", err)
 			}
-			intent := routejoin.JoinConfig{Duty: duty, Deadline: time.Now().Add(10 * time.Second).UTC().Truncate(time.Second), SetupDeadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second)}
+			intent := routejoin.Config{Duty: duty, Deadline: time.Now().Add(10 * time.Second).UTC().Truncate(time.Second), SetupDeadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second)}
 			if _, err := rand.Read(intent.Secret[:]); err != nil {
 				t.Fatal(err)
 			}

@@ -31,7 +31,7 @@ type registrationPair struct {
 
 func (pair *registrationPair) check(p *Publisher, ctx context.Context) error {
 	if pair.registration == nil || pair.recipient == nil || pair.ctx.Err() != nil {
-		return errors.New("Publisher pair unavailable")
+		return errors.New("publisher pair unavailable")
 	}
 	if err := p.check(ctx); err != nil {
 		return err
@@ -41,7 +41,7 @@ func (pair *registrationPair) check(p *Publisher, ctx context.Context) error {
 	}
 	raw, err := pair.recipient.Descriptor(ctx)
 	if err != nil || !bytes.Equal(raw, pair.descriptor) {
-		return errors.Join(errors.New("Publisher exact Descriptor unavailable"), err)
+		return errors.Join(errors.New("publisher exact Descriptor unavailable"), err)
 	}
 	value := p.credential.Delegation()
 	proof, err := reachability.Verify(raw, value.Target, value.Network, pair.receipt.Facts().Profile, time.Now())

@@ -11,7 +11,7 @@ import (
 // proposal; this delivery cannot independently replenish recovery attempts.
 func (opening *IntroductionOpening) prepareResponder(ctx context.Context) error {
 	if opening == nil || opening.publisher == nil {
-		return errors.New("Publisher Responder opening absent")
+		return errors.New("publisher Responder opening absent")
 	}
 	p := opening.publisher
 	if _, err := opening.Binding(ctx); err != nil {
@@ -24,11 +24,11 @@ func (opening *IntroductionOpening) prepareResponder(ctx context.Context) error 
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if !p.acceptingPair(opening.pair, time.Now()) {
-			return errors.New("Publisher recipient retired before nonce commit")
+			return errors.New("publisher recipient retired before nonce commit")
 		}
 		select {
 		case <-opening.pair.registration.Done():
-			return errors.New("Publisher original Registration retired before nonce commit")
+			return errors.New("publisher original Registration retired before nonce commit")
 		default:
 		}
 		if err := errors.Join(p.ctx.Err(), opening.pair.ctx.Err(), p.lifetime.Context().Err(), checkOriginal(), opening.binding.Check(ctx, p.config.Operation)); err != nil {

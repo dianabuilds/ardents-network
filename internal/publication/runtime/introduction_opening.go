@@ -41,7 +41,7 @@ func (p *Publisher) acceptingPair(pair *registrationPair, now time.Time) bool {
 // The returned bounded borrow must be closed even after caller/worker loss.
 func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envelope) (_ *IntroductionOpening, result error) {
 	if p == nil || ctx == nil {
-		return nil, errors.New("Publisher introduction unavailable")
+		return nil, errors.New("publisher introduction unavailable")
 	}
 	if err := p.check(ctx); err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envel
 	}
 	if pair == nil {
 		p.mu.Unlock()
-		return nil, errors.New("Publisher accepting recipient absent")
+		return nil, errors.New("publisher accepting recipient absent")
 	}
 	p.flights.Add(1)
 	p.mu.Unlock()
@@ -128,7 +128,7 @@ func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envel
 // Responder readiness, successful delivery or Service TLS authentication.
 func (opening *IntroductionOpening) Binding(ctx context.Context) (*connection.RecipientBinding, error) {
 	if opening == nil || opening.binding == nil || opening.publisher == nil {
-		return nil, errors.New("Publisher recipient binding unavailable")
+		return nil, errors.New("publisher recipient binding unavailable")
 	}
 	p := opening.publisher
 	// Resolving the retained public duty performs no private effect or
@@ -140,7 +140,7 @@ func (opening *IntroductionOpening) Binding(ctx context.Context) (*connection.Re
 	known = append(known, route.Member{NodeID: intro.NodeID, PublicKey: intro.PublicKey, FamilyID: intro.FamilyID})
 	duty, _, err := p.sourceScope.ResolveRendezvous(opening.rendezvous.NodeID, opening.rendezvous.RecordGeneration, known)
 	if err != nil || duty != opening.rendezvous {
-		return nil, errors.Join(errors.New("Publisher original Rendezvous changed"), err)
+		return nil, errors.Join(errors.New("publisher original Rendezvous changed"), err)
 	}
 	if _, _, err := opening.Candidate(ctx); err != nil {
 		return nil, err
@@ -153,7 +153,7 @@ func (opening *IntroductionOpening) Binding(ctx context.Context) (*connection.Re
 
 func (opening *IntroductionOpening) Candidate(ctx context.Context) (capsule.Request, [32]byte, error) {
 	if opening == nil || opening.publisher == nil || opening.private == nil {
-		return capsule.Request{}, [32]byte{}, errors.New("Publisher opening unavailable")
+		return capsule.Request{}, [32]byte{}, errors.New("publisher opening unavailable")
 	}
 	p := opening.publisher
 	if err := opening.pair.check(p, ctx); err != nil {
@@ -163,7 +163,7 @@ func (opening *IntroductionOpening) Candidate(ctx context.Context) (capsule.Requ
 	accepting := p.acceptingPair(opening.pair, time.Now())
 	p.mu.Unlock()
 	if !accepting {
-		return capsule.Request{}, [32]byte{}, errors.New("Publisher opening pair retired")
+		return capsule.Request{}, [32]byte{}, errors.New("publisher opening pair retired")
 	}
 	return opening.private.Request(ctx)
 }

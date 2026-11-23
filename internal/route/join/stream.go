@@ -17,7 +17,7 @@ import (
 // Connection. The original acquisition remains held until Close joins all
 // framing and lower-channel borrowers.
 type Joined struct {
-	acquisition *JoinAcquisition
+	acquisition *Acquisition
 	session     *framing.Session
 	lane        *framing.Lane
 	parent      interface {
