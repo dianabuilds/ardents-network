@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 )
 
 type admissionBindingInput struct {
@@ -35,11 +35,6 @@ type admissionPlan struct {
 	BatchFile string
 	Facts     admission.Facts
 	Kind      quota.Kind
-}
-
-func requiredAdmissionObject(raw []byte, keys ...string) bool {
-	var fields map[string]json.RawMessage
-	return json.Unmarshal(raw, &fields) == nil && requiredAdmissionFields(fields, keys...)
 }
 
 func requiredAdmissionFields(fields map[string]json.RawMessage, keys ...string) bool {
@@ -90,73 +85,8 @@ func decodeAdmissionScope(root, binding json.RawMessage) (admissionPlan, error) 
 	if err != nil {
 		return p, err
 	}
-	fields, err := issuerConfigObject(binding, "network", "issuer", "authority", "profile", "duty", "start", "end", "keys")
-	if err != nil {
-		return p, err
-	}
-	p.Binding, err = decodeAdmissionBinding(binding, fields)
+	p.Binding, err = issuance.DecodeSetupLedgerBinding(binding)
 	return p, err
-}
-
-// The caller has already checked the exact fields for its command.
-func decodeAdmissionBinding(raw []byte, fields map[string]json.RawMessage) (quota.LedgerBinding, error) {
-	var binding quota.LedgerBinding
-	bad := errors.New("invalid-input")
-	var input admissionBindingInput
-	if json.Unmarshal(raw, &input) != nil {
-		return binding, bad
-	}
-	for _, item := range []struct {
-		value  string
-		target *[32]byte
-	}{{input.Network, &binding.Network}, {input.Issuer, &binding.Issuer}, {input.Authority, &binding.Authority}, {input.Profile, &binding.Profile}} {
-		b, err := admissionHex(item.value, 32)
-		if err != nil {
-			return binding, bad
-		}
-		copy(item.target[:], b)
-	}
-	var err error
-	binding.Duty, err = admissionNumber(input.Duty, 64)
-	if err != nil {
-		return binding, bad
-	}
-	binding.Start, err = admissionTime(input.Start)
-	if err != nil {
-		return binding, bad
-	}
-	binding.End, err = admissionTime(input.End)
-	if err != nil {
-		return binding, bad
-	}
-	if _, hasKeys := fields["keys"]; !hasKeys {
-		return binding, nil
-	}
-	var keyFields []json.RawMessage
-	if json.Unmarshal(fields["keys"], &keyFields) != nil || len(keyFields) < 3 || len(keyFields) > 18 {
-		return binding, bad
-	}
-	for _, key := range keyFields {
-		if !requiredAdmissionObject(key, "window", "class", "spki") {
-			return binding, bad
-		}
-	}
-	for _, key := range input.Keys {
-		t, e := admissionTime(key.Window)
-		if e != nil || t.Unix() < 0 {
-			return binding, bad
-		}
-		class, e := admissionNumber(key.Class, 8)
-		if e != nil {
-			return binding, bad
-		}
-		spki, e := admissionHex(key.SPKI, 346)
-		if e != nil {
-			return binding, bad
-		}
-		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: uint64(t.Unix()), Class: uint8(class), SPKI: spki})
-	}
-	return binding, nil
 }
 
 func (p *admissionPlan) decodeBatch(fields map[string]json.RawMessage) error {

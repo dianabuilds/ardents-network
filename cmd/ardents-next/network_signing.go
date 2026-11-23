@@ -41,7 +41,7 @@ type networkSignedArtifact struct {
 }
 
 func preparationObject(raw []byte, value any, keys ...string) error {
-	if !requiredAdmissionObject(raw, keys...) || decodeAdmissionObject(raw, value) != nil {
+	if _, err := issuerConfigObject(raw, keys...); err != nil || decodeAdmissionObject(raw, value) != nil {
 		return errNetworkPreparation
 	}
 	return nil

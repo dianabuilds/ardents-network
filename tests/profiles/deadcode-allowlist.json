@@ -134,6 +134,28 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/admission/issuance.DecodeInstalledResultSetup",
+          "internal/platform/systemd.InfrastructureAccount",
+          "internal/platform/systemd.InfrastructureUnit.Render",
+          "internal/platform/systemd.InfrastructureUnit.checkProgram",
+          "internal/platform/systemd.InfrastructureUnit.prestartArgs",
+          "internal/platform/systemd.InfrastructureUnit.runtimeArgs",
+          "internal/release/infrastructure/launch.Declaration.unit",
+          "internal/release/infrastructure/launch.below",
+          "internal/release/infrastructure/launch.credentialPaths",
+          "internal/release/infrastructure/launch.equalRoots",
+          "internal/release/infrastructure/launch.independentRoots",
+          "internal/release/infrastructure/launch.valid",
+          "internal/release/infrastructure/launch.validInfrastructure",
+          "internal/release/infrastructure/launch.writableRoots"
+        ],
+        "classification": "portable infrastructure declaration and unit rendering behind native Linux launch",
+        "rationale": "The maintained Linux platform unit/check paths use the complete original infrastructure declaration, Admission result setup and canonical argv rendering. Windows execution refuses before accessing original artifacts or the service manager. Portable launch tests exercise literal POSIX paths, complete writable-root and credential projections, and systemd unit bytes for the six fixed roles.",
+        "owner": "Infrastructure launch and platform systemd",
+        "retirement": "Remove these exact entries when their operation gains a supported Windows production caller or its owning contract is retired."
+      },
+      {
+        "symbols": [
           "internal/hosting.Budget.CoversJoint",
           "internal/hosting.Budget.Reserve",
           "internal/hosting.Budget.ReserveAdditionalJoint",

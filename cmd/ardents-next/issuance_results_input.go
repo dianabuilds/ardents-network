@@ -1,9 +1,6 @@
 package main
 
 import (
-	"path/filepath"
-	"strings"
-
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 )
 
@@ -25,33 +22,16 @@ func decodeIssuanceResultPlan(raw []byte, operation string) (issuanceResultPlan,
 	if err != nil {
 		return p, err
 	}
-	p.Root, err = issuerConfigPath(fields["result_root"])
+	setup, err := issuance.DecodeResultSetup(fields)
 	if err != nil {
 		return p, err
 	}
-	p.Admission, err = decodeAdmissionScope(fields["admission_root"], fields["admission_binding"])
-	if err != nil {
-		return p, issuance.ErrInvalid
-	}
+	p.Root = setup.ResultRoot
+	p.Admission.Root, p.Admission.Binding = setup.AdmissionRoot, setup.AdmissionBinding
+	p.Keys.Root, p.Keys.Binding = setup.KeyRoot, setup.KeyBinding
 	if operation == "issue" {
 		if err := p.Admission.decodeBatch(fields); err != nil {
 			return p, issuance.ErrInvalid
-		}
-	}
-	p.Keys.Root, err = issuerConfigPath(fields["key_root"])
-	if err != nil || !issuanceOutputOutsideRoots(p.Root, p.Keys.Root) {
-		return p, issuance.ErrInvalid
-	}
-	p.Keys.Binding, err = decodeIssuanceBinding(fields["key_binding"])
-	if err != nil {
-		return p, err
-	}
-	roots := []string{p.Root, p.Admission.Root, p.Keys.Root}
-	for i, a := range roots {
-		for j, b := range roots {
-			if i != j && (a == b || strings.HasPrefix(a, b+string(filepath.Separator))) {
-				return p, issuance.ErrInvalid
-			}
 		}
 	}
 	if operation == "issue" {
@@ -59,7 +39,7 @@ func decodeIssuanceResultPlan(raw []byte, operation string) (issuanceResultPlan,
 		if err != nil {
 			return p, issuance.ErrInvalid
 		}
-		if !issuanceOutputOutsideRoots(p.ResponseFile, roots...) {
+		if !issuance.OutputOutsideRoots(p.ResponseFile, p.Root, p.Admission.Root, p.Keys.Root) {
 			return p, issuance.ErrInvalid
 		}
 	}

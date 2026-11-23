@@ -535,7 +535,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/route/prefix/prefix.go" && dependency == modulePath+"/internal/network/state" {
 		return true
 	}
-	if (source == "cmd/ardents-next/platform_linux.go" || source == "cmd/ardents-next/platform_release_linux_test.go") && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/release/infrastructure") {
+	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/release/infrastructure") {
 		return true
 	}
 	switch source {
@@ -554,7 +554,11 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "cmd/ardents-next/platform_linux.go":
-		if local == "internal/endpoint/plan" || local == "internal/pathgrammar" || local == "internal/platform/artifacts" {
+		if local == "internal/release/infrastructure/launch" || local == "internal/platform/artifacts" {
+			return true
+		}
+	case "cmd/ardents-next/platform_linux_test.go":
+		if local == "internal/release/infrastructure/launch" {
 			return true
 		}
 	case "cmd/ardents-next/endpoint_platform_delivery_native_linux_test.go":
@@ -591,10 +595,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/endpoint_latency_native_linux_test.go" && dependency == modulePath+"/internal/route/transport" {
 		return true
 	}
-	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
-		return true
-	}
-	if source == "cmd/ardents-next/platform_unit_linux.go" && dependency == modulePath+"/internal/platform/process" {
+	if (source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
 	if source == "internal/network/state/source_repair_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/process") {
@@ -668,6 +669,12 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/route/introduction/receiving_history_linux.go" && dependency == modulePath+"/internal/admission/receiving" {
 		return true
 	}
+	if source == "internal/admission/issuance/result_declaration.go" && dependency == modulePath+"/internal/platform/artifacts" {
+		return true
+	}
+	if source == "internal/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
+		return true
+	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
@@ -712,6 +719,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit", "pathgrammar"},
 		"internal/release/endpoint":                  {"enrollment", "release"},
 		"internal/release/infrastructure":            {"enrollment", "release", "pathgrammar"},
+		"internal/release/infrastructure/launch":     {"admission/issuance", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
 		"internal/endpoint/launch":                   {"release/endpoint", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
 		"internal/platform/cgroup":                   {"pathgrammar"},
 		"internal/platform/artifacts":                {"pathgrammar"},
@@ -779,7 +787,6 @@ func successorImportAllowed(source, dependency string) bool {
 				"cmd/ardents-next/introduction_repair_linux.go", "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
-				"cmd/ardents-next/platform_unit_linux.go",
 				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go":
 				return true
 			}
@@ -1099,8 +1106,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/network/source/servingdeclaration" {
 			switch source {
-			case "cmd/ardents-next/platform_linux.go",
-				"cmd/ardents-next/source_serving_fixture_linux_test.go",
+			case "cmd/ardents-next/source_serving_fixture_linux_test.go",
 				"cmd/ardents-next/source_custody_linux_test.go",
 				"cmd/ardents-next/source_installed_native_linux_test.go",
 				"cmd/ardents-next/source_lifecycle_native_linux_test.go",

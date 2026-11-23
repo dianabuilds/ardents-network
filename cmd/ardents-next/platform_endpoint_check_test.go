@@ -21,7 +21,7 @@ func TestEndpointPlatformCheckRefusesWrongPinBeforeEffects(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	err = executeEndpointPlatformCheck(t.Context(), []string{"check", "/etc/ardents/endpoint.json", strings.Repeat("0", 64)}, &out, &artifacts.PlatformInputs{}, raw)
+	err = executeEndpointPlatformCheck(t.Context(), []string{"check", "/etc/ardents/endpoint.json", platformDigest(append([]byte("foreign"), raw...))}, &out, &artifacts.PlatformInputs{}, raw)
 	if err == nil || out.Len() != 0 {
 		t.Fatalf("wrong pin reached effects: err=%v output=%q", err, out.String())
 	}

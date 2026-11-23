@@ -1434,11 +1434,12 @@ capture formats and their handling.
 Under [ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md),
 `ardents-next platform` supplies a bounded Linux infrastructure launch path for
 the existing Source, Forwarding, Issuer, Descriptor, Introduction and JOIN
-runtimes. This is command/platform composition, not a new domain, installer,
-supervisor or automatic update policy. It is currently verified at unit scope;
-actual systemd startup, restart, interruption, confinement and complete operator
-acceptance require separate native evidence. Endpoint still consumes its
-transitional Startup; the new path does not qualify or replace that consumer.
+runtimes. The `internal/release/infrastructure/launch` owner validates the declaration,
+projects the exact inputs and write grants, and admits the native pre-start.
+The declaration and signed Linux unit rendering run as portable Go, including
+the Issuer plan's POSIX path and Admission binding projection. Enrollment,
+Release and Network State retain their original proofs. Root-controlled file
+observations, account checks and systemd pre-start use the native boundary.
 The operator sequencing of these commands (first installation, clean stop,
 relaunch, forward program change and recovery) is the
 [Source platform lifecycle procedure](../operations/source-platform-lifecycle.md).
