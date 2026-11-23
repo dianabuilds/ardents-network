@@ -109,12 +109,12 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 		return
 	}
 	defer cancel()
-	server.retainCleanupFailure(ServeLocalStream(server.ctx, local, application))
+	server.retainCleanupFailure(ServeLocalStream(server.ctx, local, application, targetLink.Application == ByteStream))
 }
 
 // ServeLocalStream owns the established local framing and joins its reader.
 // Local callers must authorize the stream before passing it here.
-func ServeLocalStream(ctx context.Context, local *net.UnixConn, application Stream) (result error) {
+func ServeLocalStream(ctx context.Context, local *net.UnixConn, application Stream, directionalEOF bool) (result error) {
 	stop := context.AfterFunc(ctx, func() { _ = application.Close() })
 	defer stop()
 	defer func() { result = errors.Join(result, application.Close()) }()
@@ -136,6 +136,11 @@ func ServeLocalStream(ctx context.Context, local *net.UnixConn, application Stre
 			return
 		}
 		if readErr != nil {
+			if directionalEOF && errors.Is(readErr, io.EOF) {
+				if _, err := local.Write([]byte{0, 0, 0, 0}); err != nil {
+					return err
+				}
+			}
 			break
 		}
 	}
