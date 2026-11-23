@@ -12,23 +12,27 @@ import (
 
 func TestHostingPlanExactFields(t *testing.T) {
 	root := strconv.Quote(filepath.Join(t.TempDir(), "budget"))
-	valid := `{"root":` + root + `,"work":{"tx":1,"rx":2},"termination":{"tx":1,"rx":1},"hold_ms":1}`
-	if _, err := decodeHostingPlan([]byte(valid), "hold"); err != nil {
+	valid := `{"root":` + root + `,"policy":{"provider":"private"}}`
+	if _, err := decodeHostingPlan([]byte(valid), "initialize"); err != nil {
 		t.Fatal(err)
 	}
 	for _, raw := range []string{
-		`{"root":` + root + `,"root":` + root + `}`, `{"root":` + root + `,"extra":1}`, `{"root":null}`,
-		`{"root":` + root + `,"work":{"tx":1,"tx":2},"termination":{},"hold_ms":1}`,
-		`{"root":` + root + `,"work":{"tx":1,"Tx":2},"termination":{"rx":1},"hold_ms":1}`,
-		`{"root":` + root + `,"work":{"tx":1},"termination":{"rx":1,"RX":2},"hold_ms":1}`,
-		`{"root":` + root + `,"work":{},"termination":{},"hold_ms":60001}`, valid + ` {}`,
+		`{"root":` + root + `,"root":` + root + `,"policy":{}}`,
+		`{"root":` + root + `,"extra":1,"policy":{}}`,
+		`{"root":null,"policy":{}}`,
+		`{"root":` + root + `,"policy":{"provider":"one","provider":"two"}}`,
+		`{"root":` + root + `,"policy":{"provider":"one","Provider":"two"}}`,
+		valid + ` {}`,
 	} {
-		if _, err := decodeHostingPlan([]byte(raw), "hold"); err == nil {
+		if _, err := decodeHostingPlan([]byte(raw), "initialize"); err == nil {
 			t.Fatalf("accepted %s", raw)
 		}
 	}
-	if _, err := decodeHostingPlan([]byte(`{"root":`+root+`,"policy":{"provider":"one","Provider":"two"}}`), "initialize"); err == nil {
-		t.Fatal("case alias in policy accepted")
+	if _, err := decodeHostingPlan([]byte(`{"root":`+root+`}`), "observe"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeHostingPlan([]byte(valid), "observe"); err == nil {
+		t.Fatal("observation accepted a policy")
 	}
 }
 

@@ -59,19 +59,14 @@ no completed preparation while its separate original blocker remains. Actual
 cancellation and late native close errors retain that blocker and cannot be
 cleared by another initializer.
 
-The finite command exposes hosting initialize/observe/hold --config PATH,
-optionally followed by a numeric loopback collector URL. Config files are
-bounded regular files of at most 16 KiB, with exact fields and no duplicates.
-Initialize consumes root and policy, observe consumes root, hold consumes root,
-work, termination and hold_ms (1..60000). Roots are canonical absolute paths.
-Hold reserves its interval plus five seconds for cleanup, observes every second
-and releases only after its local wait finishes. Cancellation uses independent
-five-second cleanup. Cleanup failure supersedes cancellation and remains visible.
-The original hold deadline is fixed before reservation; lease/commit delay
-does not extend it. Cleanup contexts bound cancellation and lease waits, not
-the duration of an OS syscall against stalled storage. Local filesystem
-behavior checks do not establish a hard real-time filesystem guarantee.
-An unsupported platform refuses before reading config or touching storage.
+The command exposes `hosting initialize --config PATH` and
+`hosting observe --config PATH`, optionally followed by a numeric loopback
+collector URL. Configuration is a bounded regular file of at most 16 KiB with
+exact fields and no duplicates. Initialization takes the root and policy.
+Observation takes the root. Roots are canonical absolute paths.
+An unsupported platform refuses before reading config or touching storage. The
+reservation lifecycle is compiled with the Linux owner that measures and
+commits the native provider-period budget.
 
 Observe returns local used/reserved/remaining byte counts and protect/drain.
 The command uses Sample and includes observed_at and valid_until. A snapshot
@@ -84,10 +79,11 @@ result. Observation counts whole named interfaces, not attributed useful bytes.
 
 Acceptance requires arithmetic and continuity cases, shared-process concurrency,
 release ambiguity, actual filesystem failures, crash retention, real Linux
-counters and CLI lifecycle, refusal of both foreign formats and OTLP privacy.
-Run Windows quick/full gates and Linux Hosting behavior/race in the pinned
-Go 1.27.2 image. Missing Linux prerequisites fail; no installed Endpoint, Node
-switch-over or C0 qualification is claimed.
+counters and compiled initialization and observation, refusal of both foreign
+formats and OTLP privacy. The Hosting owner exercises SIGINT release and
+SIGKILL retention across real processes. Run the registered Linux
+`make hosting-check` profile and the ordinary repository gates. Missing Linux
+prerequisites fail. These cases qualify the Hosting component and CLI.
 
 ## Command growth policy
 
@@ -117,20 +113,15 @@ are a distinct list of one to sixteen actual names. Initial use is a retained
 floor, never an allowance added on reopen. Low watermark is positive and less
 than the total allowance. Provider text is local operator metadata only.
 
-Observe's config is just {"root":"/absolute/private/budget"}. A hold config is
-{"root":"/absolute/private/budget","work":{"tx":1000,"rx":1000},
-"termination":{"tx":100,"rx":100},"hold_ms":1000}.
-For example, run ardents-next hosting hold --config /private/hold.json;
-append http://127.0.0.1:4318 only when explicitly selecting that collector.
-The hold command waits locally; it does not generate a traffic workload or
-demonstrate that a future workload can stay inside its envelope.
+Observation uses `{"root":"/absolute/private/budget"}`. Run
+`ardents-next hosting observe --config /private/budget-observation.json` and
+append `http://127.0.0.1:4318` when explicitly selecting that collector.
 
 Stdout uses operation, phase, outcome and, for observe only, observation
 (UsedBytes, ReservedBytes, RemainingBytes, Protect, Drain), observed_at and
-valid_until. Stderr emits a fixed
-reserved/hold event and terminal operation/phase/outcome/telemetry; raw errors
-are never rendered. Outcomes are completed (exit 0), canceled (130),
-invalid-input/output failure (2), budget-exhausted, budget-unavailable,
+valid_until. Stderr emits terminal operation, phase, outcome, and telemetry.
+Outcomes are completed (exit 0), canceled (130), invalid-input/output failure
+(2), budget-exhausted, budget-unavailable,
 unsupported-platform or storage-uncertain (1). An expired period can still be
 observed as Drain, but admits no reservation. Ambiguous state never produces a
 usable reservation or an automatic retry of a potentially committed refund.
@@ -225,8 +216,8 @@ part of this domain.
 Cross-domain regression composes Admission and Hosting in Linux tests under
 cmd/ardents-next. The genuine Route command also composes these owners; no
 additional regression package or workload command is exposed.
-The non-test consumers include hosting initialize/observe/hold and the genuine
-Linux Route holder/receiver. Route composition constructs role envelopes and
+The production consumers include `hosting initialize`, `hosting observe`
+and the Linux Route holder and receiver. Route composition constructs role envelopes and
 keeps physical borrowers joined; Hosting owns provider accounting and the exact
 original reservation dependency. Neither owner acquires the other's policy.
 

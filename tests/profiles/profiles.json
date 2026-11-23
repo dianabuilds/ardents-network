@@ -495,7 +495,7 @@
       "id": "hosting-budget-linux",
       "state": "active",
       "make_target": "hosting-check",
-      "surface": "isolated durable Hosting accounting, native counters and compiled finite CLI lifecycle/race",
+      "surface": "isolated durable Hosting accounting, native counters, physical process interruption and reservation retention, and compiled initialization and observation under race",
       "prerequisites": [
         "Linux amd64 with readable proc/sys network counters and loopback",
         "Go 1.27.4 and C compiler for race",
