@@ -47,19 +47,19 @@ A Service receives its intended request and may return malicious content.
 The operating system, installed launcher and relevant Endpoint verification
 must survive for process confinement to hold.
 
-## Candidate participant interface for arbitrary data
+## Participant interface for arbitrary data
 
-This proposal requires a successor decision to ADR-0081's fixed document
-Application. The currently supported commands and artifact remain those in the
-[command reference](../reference/commands.md).
+[ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
+selects this interface. Implementation and installed qualification are pending.
+The [command reference](../reference/commands.md) lists current commands.
 
-| Person | Installs | Candidate action |
+| Person | Installs | Selected action |
 |---|---|---|
 | Sender or receiver using an Application | The protected Endpoint distribution and a locally authorized Application delivered for its exact confinement profile | The Application opens the recipient's Service through the local Application Interface. The sender and the receiving Service exchange ordered bytes using their Application's protocol. |
 | Participant using the command line | The protected Endpoint distribution with a confined byte-stream Application | `ardents stream connect --link-file PRIVATE_LINK_FILE` reads bytes from standard input and writes response bytes to standard output. The participant supplies the Link in a private local input, keeping it out of process arguments and reserving standard input for data. |
-| Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | A candidate `ardents service publish --application APPLICATION` starts the locally authorized fixed worker. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
+| Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | The operator runs `ardents service publish --application APPLICATION` starts the locally authorized fixed worker. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
 
-The candidate stream command keeps diagnostics on standard error and reports a
+The stream command keeps diagnostics on standard error and reports a
 complete exchange only after authenticated terminal completion. Standard output
 may already contain partial bytes on interruption. EOF on standard input closes
 the local send direction while receiving may continue. Retrying interrupted
@@ -91,7 +91,7 @@ that original binding. Use the existing transport and document grammar for
 document peers. An older peer, unknown profile, missing proof or profile
 mismatch must terminate the requested byte-stream operation without fallback.
 
-A successor decision needs explicit byte, time and concurrency bounds for both
+Implementation needs explicit byte, time and concurrency bounds for both
 directions and a compatibility rule for peers that implement only the current
 document profile. Keep the document workload and its signed identities
 unchanged until their separately designed migration is adopted. Qualify the new

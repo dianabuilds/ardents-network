@@ -13,7 +13,7 @@ and signed infrastructure artifact preparation.
 | Offline Service or Admission Authority operator | Independently authenticated [standalone Custody executable](#ardents-custody) and a separate encrypted Vault | Run `ardents-custody create-service-authority` or `ardents-custody create-admission-authority` with the listed flags. The same utility issues, verifies and handles locked recovery. |
 | Release or qualification operator | Reviewed source, the pinned toolchain and an admitted stand for installed checks | Run `ardents enrollment check-candidate BUNDLE` for the packaging check. The installed worker is a signed resource, and qualification workers are built only by their test recipes. |
 
-The C0 participant commands expose the bounded UTF-8 document application.
+The current participant commands expose the bounded document application.
 The product target is protected exchange of ordered Application bytes.
 Applications own the meaning and presentation of messages, images, audio,
 documents and files.

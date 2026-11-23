@@ -124,7 +124,7 @@ additional C0 implementation slice or a stronger claim for existing bytes.
 [successor privacy architecture](../technical/common-privacy-architecture.md)
 and [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) completes
 the [closed successor contract](protected-service-workload.md): Target-Link
-text publication/read, confidential control/admission, the selected TCP/TLS Carrier
+document publication/read, confidential control/admission, the selected TCP/TLS Carrier
 and confined Ubuntu workers. This is selected future implementation scope;
 the current C0 facts below remain until explicit adoption. It admits no public
 wire, canonical Name producer or quantitative anonymity claim.
@@ -147,10 +147,12 @@ controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
 Participants use one command, `ardents`. The C0 document application uses
-`ardents publish`, `ardents link` and `ardents read` for bounded UTF-8
-documents. The Service Connection carries opaque Application bytes. Binary
+`ardents publish`, `ardents link` and `ardents read`. The Service Connection carries opaque Application bytes. Binary
 stream scenarios exercise that layer through a dedicated qualification
-workload. The C0 participant CLI implements the document journey.
+workload. The current participant CLI implements the document journey.
+[ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
+selects bidirectional exchange of arbitrary Application bytes for the next
+participant profile. Its implementation and installed qualification are pending.
 
 The participant installs the v6 Endpoint distribution selected by
 [ADR-0131](../adr/0131-distribute-authority-custody-separately.md).

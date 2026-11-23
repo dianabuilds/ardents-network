@@ -17,6 +17,10 @@ platform-selection clause: admission becomes a fail-closed capability floor
 obligations selected here remain; the runtime code migration is the gated #643
 slice.
 
+[ADR-0132](0132-admit-protected-bidirectional-application-streams.md) amends
+the Application selection to admit a separate bidirectional byte-stream
+profile under the same protection baseline. The document profile remains.
+
 ## Context
 
 ADR-0078 chooses the split-circuit architecture but leaves its exact admission,
