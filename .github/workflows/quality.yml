@@ -43,6 +43,10 @@ jobs:
           sudo -n chown root:root /usr/share/polkit-1
           sudo -n chmod 0755 /usr/share/polkit-1
           sudo -n install -d -o root -g root -m 0755 /usr/share/polkit-1/rules.d
+          test ! -L /usr/share
+          test "$(stat -c '%u' /usr/share)" = 0
+          stat -c '%A %U:%G %n' /usr/share
+          sudo -n chmod go-w /usr/share
           sudo -n systemctl start polkit.service
           getent passwd ardents-endpoint >/dev/null || sudo -n useradd --system --no-create-home --user-group --shell /usr/sbin/nologin ardents-endpoint
           sudo -n install -D -o root -g root -m 0555 "$RUNNER_TEMP/worker-stream.test" /usr/lib/ardents/qualification/worker-stream.test
