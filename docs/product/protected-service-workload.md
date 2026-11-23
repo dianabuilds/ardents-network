@@ -70,6 +70,18 @@ and Connection lifetime. A worker receives only its scoped attachment. Selected
 Application and worker identities must bind to signed local policy before any
 effect. Remote input cannot select a command, executable or local file path.
 
+Reuse the existing authenticated Service Connection and its ordered stream,
+flow control, continuity and terminal result. Reuse the local Application
+Connection byte framing where its authority and lifetime match the new profile.
+The [local binary conformance test](../../internal/application/connection/transport_binary_conformance_test.go)
+exercises a byte exchange through local framing with a test stream. The
+[scheduled qualification workload](../technical/application-confinement.md#selected-boundary)
+exercises fixed binary canaries with qualification-only state. Neither supplies
+a production participant job. Production admission needs an exact signed
+worker profile and a real Service handler; it must refuse an unsupported
+profile before delivering Application bytes. The existing document request
+grammar remains scoped to document Services.
+
 A successor decision needs explicit byte, time and concurrency bounds for both
 directions and a compatibility rule for peers that implement only the current
 document profile. Keep the document workload and its signed identities
