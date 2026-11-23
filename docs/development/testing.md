@@ -1851,17 +1851,19 @@ selected Carriers.
   Staticcheck, and vulnerability checks. On Linux it also runs the Ubuntu
   package installation check. The standalone target runs the strict serial
   race suite after the core checks. Full CI runs the same core checks and the
-  two halves of the ordered race inventory on separate Ubuntu runners.
-  Each half keeps the original serial execution, shuffle, race instrumentation
-  and timeout. Both halves and the core job must pass on the same revision.
+  four disjoint portions of the race inventory on separate Ubuntu runners.
+  Each portion keeps serial execution, shuffle, race instrumentation and the
+  timeout. All portions and the core job must pass on the same revision. The
+  shard containing architecture tests installs the diagnostic parsers they use.
+  Staticcheck, vulnerability and dead-code analyzers run in the core job.
   The Make jobs restore the Go caches in the paths they actually use.
-  Pull request CI runs the same core and race gates in parallel, and also uses
-  `scripts/select-pr-checks.go` to run the changed Go owners,
-  their imported consumers, and explicitly registered non-Go fixture owners;
-  affected valid Fuzz declarations execute their deterministic seed corpus through
-  ordinary `go test -run` in direct execution and split matrix jobs. PR selection
-  does not enable mutation fuzzing. The separate full gates cover the complete
-  inventory. Declaration selection and transitive race requirements reach a monotone closure
+  Pull request CI runs core and race gates in parallel with `-short` omitted,
+  covering the entire unit inventory and its fuzz seeds. The
+  `scripts/select-pr-checks.go` full-gate matrix removes selected unit groups
+  already covered by those required gates. It retains process and unlisted
+  packages, race-instrumented process tests and independently bounded special
+  scenarios. Direct selector execution still runs all selected groups.
+  Declaration selection and transitive race requirements reach a monotone closure
   independently of package visitation order, including already selected consumers.
   Package and dependency loading errors fail selection before a matrix is
   published. A deleted Go package without a current owner selects the repository

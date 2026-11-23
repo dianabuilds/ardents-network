@@ -37,7 +37,7 @@ jobs:
         env:
           PR_BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --powershell "$RUNNER_TEMP/powershell.txt"
+          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --full-gate-matrix --powershell "$RUNNER_TEMP/powershell.txt"
           python3 - <<'PY'
           import json, os
           with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
@@ -164,14 +164,14 @@ jobs:
       - name: Install pinned quality tools
         run: make tools-install
       - name: Run the core maintained gate
-        run: make check-core
+        run: make check-core UNIT_TEST_FLAGS="-shuffle=on -count=1 -timeout=15m"
   full-race:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2, 3]
     env:
       QUALITY_CACHE_ROOT: /tmp/ardents-network-quality-race-${{ matrix.shard }}
       GOCACHE: /tmp/ardents-network-quality-race-${{ matrix.shard }}/go-build
@@ -184,10 +184,14 @@ jobs:
         with:
           go-version: 1.27.4
           cache: true
-      - name: Install pinned quality tools
-        run: make tools-install
+      - name: Install diagnostic parsers for architecture tests
+        run: |
+          packages="$(make --no-print-directory race-shard-packages RACE_SHARD=${{ matrix.shard }})"
+          if printf '%s\n' "$packages" | grep -qx 'github.com/dianabuilds/ardents-network/internal/architecture'; then
+            make tools-install DIAGNOSTIC_PARSERS_ONLY=1
+          fi
       - name: Run serial race shard
-        run: make test-race-shard RACE_SHARD=${{ matrix.shard }}
+        run: make test-race-shard RACE_SHARD=${{ matrix.shard }} RACE_TEST_FLAGS="-race -shuffle=on -count=1 -timeout=15m"
   go:
     if: always()
     needs: [select, qualification-scripts, affected, full, full-race, portable]

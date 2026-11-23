@@ -24,7 +24,12 @@ func assertQualityWiring(t *testing.T, root string) {
 		"$(MAKE) --output-sync=target test-race",
 		"RACE_TEST_FLAGS := -short -race -shuffle=on -count=1 -timeout=15m",
 		"go test -p 1 $(UNIT_PACKAGES) $(RACE_TEST_FLAGS)",
+		"UNIT_TEST_FLAGS := -short -shuffle=on -count=1 -timeout=15m",
+		"go test -p 1 $(UNIT_PACKAGES) $(UNIT_TEST_FLAGS)",
 		"go test -p 1 $$packages $(RACE_TEST_FLAGS)",
+		"race-shard-packages RACE_SHARD=$(RACE_SHARD)",
+		`case "$(RACE_SHARD)" in 0|1|2|3)`,
+		`assigned = ($$0 ~ /\/internal\/custody$$/) ? 3 : (NR-1)%4`,
 		"GOTOOLCHAIN := local",
 		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
 	} {
@@ -47,7 +52,9 @@ func assertQualityWiring(t *testing.T, root string) {
 	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
 	goVersion := moduleGoVersion(t, root)
 	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base", "fail-fast: false", "-timeout=5m", "330s go test", "fetch-depth: 0", "qualification-scripts:", "Management.Automation.Language.Parser", "needs.select.outputs.powershell == 'true'", "workflow_dispatch:", "push:", "branches: [main]",
-		"run: make check-core", "shard: [0, 1]", "run: make test-race-shard RACE_SHARD=",
+		`run: make check-core UNIT_TEST_FLAGS="-shuffle=on -count=1 -timeout=15m"`, "shard: [0, 1, 2, 3]", "run: make test-race-shard RACE_SHARD=",
+		"make --no-print-directory race-shard-packages RACE_SHARD=", "make tools-install DIAGNOSTIC_PARSERS_ONLY=1",
+		`RACE_TEST_FLAGS="-race -shuffle=on -count=1 -timeout=15m"`, "--full-gate-matrix",
 		"needs: [select, qualification-scripts, affected, full, full-race, portable]",
 		"RACE_RESULT: ${{ needs.full-race.result }}", `test "$RACE_RESULT" = success`,
 		"PORTABLE_RESULT: ${{ needs.portable.result }}", `test "$PORTABLE_RESULT" = success`,
