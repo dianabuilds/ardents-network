@@ -25,7 +25,7 @@ func TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest(t 
 		Outcome string `json:"outcome"`
 		Files   int    `json:"files"`
 	}
-	if err := json.Unmarshal(output, &receipt); err != nil || receipt.Outcome != "verified-initial-bundle" || receipt.Files != 7 {
+	if err := json.Unmarshal(output, &receipt); err != nil || receipt.Outcome != "verified-initial-bundle" || receipt.Files != 6 {
 		t.Fatalf("headless enrollment result: %v %s", err, output)
 	}
 	if err := os.WriteFile(filepath.Join(bundle, "SHA256SUMS"), []byte("changed-before-parse\n"), 0o600); err != nil {
@@ -71,10 +71,8 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 		t.Fatal(err)
 	}
 	artifactName := "ardents-" + runtime.GOOS + "-" + runtime.GOARCH
-	custodyName := "ardents-custody-" + runtime.GOOS + "-" + runtime.GOARCH
 	if runtime.GOOS == "windows" {
 		artifactName += ".exe"
-		custodyName += ".exe"
 	}
 	artifact, err := os.ReadFile(command)
 	if err != nil {
@@ -84,7 +82,7 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	targetPath := "ardents/" + platform + "/endpoint"
 	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v5",
+		"schema=ardents-closed-alpha-enrollment-v6",
 		"cohort=closed-cohort-1",
 		"release=alpha-1",
 		"platform=" + platform,
@@ -97,19 +95,14 @@ func enrollmentBundle(t *testing.T, command string) (string, string, string) {
 	files := map[string][]byte{
 		"1.root.json":     []byte("synthetic trusted root\n"),
 		"RELEASE":         []byte(descriptor),
-		custodyName:       []byte("separately manifested authority custody command"),
 		artifactName:      artifact,
 		"timestamp.json":  []byte("synthetic metadata\n"),
 		"1.snapshot.json": []byte("synthetic snapshot\n"),
 		"1.targets.json":  []byte("synthetic targets\n"),
 	}
 	for name, contents := range files {
-		mode := os.FileMode(0o600)
-		if name == custodyName {
-			mode = 0o700
-		}
 		if name != artifactName {
-			writeEnrollmentFile(t, filepath.Join(bundle, name), contents, mode)
+			writeEnrollmentFile(t, filepath.Join(bundle, name), contents, 0o600)
 		}
 	}
 	names := make([]string, 0, len(files))

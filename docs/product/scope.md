@@ -75,7 +75,10 @@ its actual remaining consumers; it does not automatically delete stored files.
 ## Product core
 
 Ardents connects a local Application to an opaque Service Target through an
-authenticated Endpoint-selected Route. The network does not turn a Person,
+authenticated Endpoint-selected Route. The product target is protected
+exchange of arbitrary Application bytes. Messages, images, audio, documents
+and files are Application uses of that Connection. The network carries
+ordered bytes and the Application owns their meaning and presentation. The network does not turn a Person,
 Device, Persona, Node identity, transport identity, Service Target, Credential,
 or Capability into another concept.
 
@@ -149,10 +152,12 @@ documents. The Service Connection carries opaque Application bytes. Binary
 stream scenarios exercise that layer through a dedicated qualification
 workload. The C0 participant CLI implements the document journey.
 
-The v5 bundle also ships `ardents-custody` for offline Authority operations
-under [ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
-The protected Linux bundle supplies a separate document worker. Endpoint
-requests its launch through systemd using the installed worker resources.
+The participant installs the v6 Endpoint distribution selected by
+[ADR-0131](../adr/0131-distribute-authority-custody-separately.md).
+Its protected Linux variant supplies the document worker and systemd
+resources. Systemd starts the worker on Endpoint's request. The offline
+Service or Admission Authority operator obtains and verifies the separate
+`ardents-custody` artifact before running any Vault ceremony.
 
 Infrastructure operators use `ardents infrastructure provision` for offline
 Network inputs and `ardents infrastructure sign-release` for fixed Release
@@ -277,7 +282,7 @@ The Network audit candidate is the headless maintained product surface:
 - the typed local Connection Interface in `internal/application/connection`
   and separately authorized Administration Interface in
   `internal/application/administration`;
-- the enrollment-v5 headless artifact lane and the maintained deterministic,
+- the enrollment-v6 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
   qualification profiles.
 

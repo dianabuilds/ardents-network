@@ -19,11 +19,11 @@ import (
 func fixture(t *testing.T) (Request, map[string][]byte) {
 	t.Helper()
 	files := map[string][]byte{
-		"ardents-linux-amd64": []byte("original program"), "ardents-custody-linux-amd64": []byte("custody"),
-		"1.root.json": []byte("root"), "timestamp.json": []byte("metadata"),
+		"ardents-linux-amd64": []byte("original program"),
+		"1.root.json":         []byte("root"), "timestamp.json": []byte("metadata"),
 		"1.snapshot.json": []byte("snapshot"), "1.targets.json": []byte("targets"),
 	}
-	files["RELEASE"] = []byte("schema=ardents-closed-alpha-enrollment-v5\ncohort=cohort\nrelease=release\nplatform=linux-amd64\nenvironment=alpha\nnetwork=network\ntarget_path=ardents/linux-amd64/endpoint\nartifact=ardents-linux-amd64\ntrusted_root=1.root.json\n")
+	files["RELEASE"] = []byte("schema=ardents-closed-alpha-enrollment-v6\ncohort=cohort\nrelease=release\nplatform=linux-amd64\nenvironment=alpha\nnetwork=network\ntarget_path=ardents/linux-amd64/endpoint\nartifact=ardents-linux-amd64\ntrusted_root=1.root.json\n")
 	root := t.TempDir()
 	return Request{BundleRoot: root, ExecutablePath: filepath.Join(root, "ardents-linux-amd64")}, files
 }
@@ -93,7 +93,7 @@ func TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner(t *testing.T) 
 			}
 			if profile == "windows" {
 				files["RELEASE"] = []byte(strings.ReplaceAll(string(files["RELEASE"]), "linux-amd64", "windows-amd64"))
-				for _, command := range []string{"ardents", "ardents-custody"} {
+				for _, command := range []string{"ardents"} {
 					old := command + "-linux-amd64"
 					name := command + "-windows-amd64.exe"
 					files[name] = files[old]
@@ -134,12 +134,22 @@ func TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner(t *testing.T) 
 	}
 }
 
-func TestBundleRequiresCustodyAndRefusesForeignCompanions(t *testing.T) {
+func TestBundleRefusesForeignCompanions(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		mutate func(map[string][]byte)
 	}{
-		{"missing-custody", func(f map[string][]byte) { delete(f, "ardents-custody-linux-amd64") }},
+		{"custody", func(f map[string][]byte) { f["ardents-custody-linux-amd64"] = []byte("custody") }},
+		{"custody-as-program", func(f map[string][]byte) {
+			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("artifact=ardents-"), []byte("artifact=ardents-custody-"), 1)
+			f["ardents-custody-linux-amd64"] = f["ardents-linux-amd64"]
+			delete(f, "ardents-linux-amd64")
+		}},
+		{"custody-as-trust-root", func(f map[string][]byte) {
+			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("trusted_root=1.root.json"), []byte("trusted_root=ardents-custody-linux-amd64"), 1)
+			f["ardents-custody-linux-amd64"] = f["1.root.json"]
+			delete(f, "1.root.json")
+		}},
 		{"retired-node", func(f map[string][]byte) { f["ardents-node-linux-amd64"] = []byte("node") }},
 		{"retired-control", func(f map[string][]byte) { f["ardents-control-linux-amd64"] = []byte("control") }},
 		{"retired-catalog", func(f map[string][]byte) { f["catalog.ac1"] = []byte("catalog") }},
@@ -174,10 +184,10 @@ func TestBundleRefusalStagesReturnNoProvenance(t *testing.T) {
 		want   error
 	}{
 		{"retired", func(_ *testing.T, _ *Request, f map[string][]byte) {
-			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-v2"), 1)
+			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v6"), []byte("enrollment-v2"), 1)
 		}, ErrInventory},
 		{"unknown-version", func(_ *testing.T, _ *Request, f map[string][]byte) {
-			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-v9"), 1)
+			f["RELEASE"] = bytes.Replace(f["RELEASE"], []byte("enrollment-v6"), []byte("enrollment-v9"), 1)
 		}, ErrInventory},
 		{"duplicate-field", func(_ *testing.T, _ *Request, f map[string][]byte) {
 			f["RELEASE"] = append(f["RELEASE"], []byte("cohort=other\n")...)
@@ -215,10 +225,10 @@ func TestBundlePinPrecedesAnyManifestOrDescriptorInterpretation(t *testing.T) {
 }
 
 func TestRetiredDescriptorRefusesBeforeCompanionInventoryWork(t *testing.T) {
-	for _, version := range []string{"v1", "v2", "v3", "v4"} {
+	for _, version := range []string{"v1", "v2", "v3", "v4", "v5"} {
 		t.Run(version, func(t *testing.T) {
 			r, files := fixture(t)
-			files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-"+version), 1)
+			files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v6"), []byte("enrollment-"+version), 1)
 			writeFixture(t, &r, files)
 			if err := os.WriteFile(filepath.Join(r.BundleRoot, "timestamp.json"), []byte("changed"), 0o600); err != nil {
 				t.Fatal(err)

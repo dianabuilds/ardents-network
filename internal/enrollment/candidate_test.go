@@ -60,16 +60,16 @@ func TestCandidateRetainsUntrustedImmutableInventoryWithoutInitialProvenance(t *
 }
 
 func TestCandidateChecksActualBytesAndCompleteInventory(t *testing.T) {
-	for _, scenario := range []string{"stale-manifest", "extra", "partial-protected", "missing-custody", "malformed", "retired"} {
+	for _, scenario := range []string{"stale-manifest", "extra", "partial-protected", "foreign-custody", "malformed", "retired"} {
 		t.Run(scenario, func(t *testing.T) {
 			r, files := protectedFixture(t)
 			switch scenario {
 			case "partial-protected":
 				delete(files, "ardents-text-reader.socket")
-			case "missing-custody":
-				delete(files, "ardents-custody-linux-amd64")
+			case "foreign-custody":
+				files["ardents-custody-linux-amd64"] = []byte("custody")
 			case "retired":
-				files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v5"), []byte("enrollment-v2"), 1)
+				files["RELEASE"] = bytes.Replace(files["RELEASE"], []byte("enrollment-v6"), []byte("enrollment-v5"), 1)
 			}
 			writeFixture(t, &r, files)
 			var err error

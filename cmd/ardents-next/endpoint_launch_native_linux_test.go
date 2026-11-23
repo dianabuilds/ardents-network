@@ -425,7 +425,7 @@ func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAd
 	return provisionPlatformLedLaunchFixtureWithSuccessor(t, refreshMS, f, false)
 }
 
-func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int, f *networkAdmissionFixture, successor bool) *platformLedLaunchStand {
+func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int, f *networkAdmissionFixture, successor bool, predecessor ...string) *platformLedLaunchStand {
 	t.Helper()
 	ctx := t.Context()
 	stand := &platformLedLaunchStand{binary: compiledCommand(t), f: f}
@@ -557,11 +557,24 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 	// The worker executable must be a genuine compiled text worker, not fixture
 	// placeholder bytes: socket activation spawns it under confinement.
 	resources["ardents-text-linux-amd64"] = buildEndpointWorkerBinary(t)
-	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
+	var legacyCustody [][]byte
+	if len(predecessor) != 0 {
+		oldProgram, err := os.ReadFile(filepath.Join(predecessor[0], "ardents-linux-amd64"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		offlineCustody, err := os.ReadFile(filepath.Join(predecessor[0], "ardents-custody-linux-amd64"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resources["ardents-linux-amd64"] = oldProgram
+		legacyCustody = append(legacyCustody, offlineCustody)
+	}
+	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1, legacyCustody...)
 	bundle, initialProgram = platformNativeDistribution(t, bundle, filepath.Join(stand.base, "initial-distribution"))
 	// Provision establishes Release floors at metadata version 1.
 	// Advance the signed metadata while retaining the exact staged release and descriptor.
-	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1)
+	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1, legacyCustody...)
 	stand.distribution, _ = platformNativeDistribution(t, candidateBundle, filepath.Join(stand.base, "candidate-distribution"))
 	request := string(installationRequestBytes(t, bundle, pin, stand.floors))
 	request = platformLedDualDeclaration(t, request, stand.base)
@@ -609,11 +622,14 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 	stand.administrationSock = filepath.Join(stand.base, "administration", "socket")
 
 	if successor {
-		original, err := os.ReadFile(initialProgram)
+		current, err := os.ReadFile(stand.binary)
 		if err != nil {
 			t.Fatal(err)
 		}
-		resources["ardents-linux-amd64"] = append(original, []byte("signed successor fixture")...)
+		if len(predecessor) == 0 {
+			current = append(current, []byte("signed successor fixture")...)
+		}
+		resources["ardents-linux-amd64"] = current
 		updated, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, rootAuthority, 3, 2)
 		stand.successorDistribution, _ = platformNativeDistribution(t, updated, filepath.Join(stand.base, "successor-distribution"))
 		stand.successorRoot = filepath.Join(stand.base, "successor")

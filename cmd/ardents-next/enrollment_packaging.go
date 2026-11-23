@@ -20,6 +20,12 @@ func runEnrollmentCommand(ctx context.Context, args []string, out, diagnostic io
 			return 2
 		}
 		_, err = fmt.Fprintln(out, enrollment.ExecutableArtifactName(args[1], args[2]))
+	case "check-candidate":
+		if len(args) != 2 {
+			fmt.Fprintln(diagnostic, "usage: ardents enrollment check-candidate <bundle-root>")
+			return 2
+		}
+		_, err = enrollment.ReadCandidate(ctx, args[1])
 	case "check-protected-generation":
 		err = checkProtectedEnrollmentGeneration(args[1:])
 	default:

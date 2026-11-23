@@ -463,7 +463,7 @@ still determine whether the launch can accept work.
 |---|---|
 | `network accept-epoch --config PATH` | Verify signed Epoch, inputs and materializations with the Network State owner. Reports whether the accepted Epoch is current or pending. The bounded JSON uses `network`, `epoch`, `inputs` and `materials`. |
 | `network accept-profile --config PATH` | Submit a signed `ARDCPR03` to an existing State root using `network` and `profile` in a bounded JSON plan. An exact retry is harmless. A different valid digest records durable conflict. |
-| `enrollment verify <bundle-root> <manifest-sha256>` | Recheck the running executable and the pinned v5 inventory, including the Authority Custody executable. Establish first-execution trust using the external pin procedure. |
+| `enrollment verify <bundle-root> <manifest-sha256>` | Recheck the running executable and the pinned v6 Endpoint inventory. Establish first-execution trust using the external pin procedure. |
 | `diagnostics timeline` | Read app or journalctl JSON lines from standard input and project bounded local runtime events. |
 | `endpoint withdraw <administration-socket>` | Send a withdrawal request to the local Administration socket and render its bounded receipt. The Publisher must expose that socket to the authorized local caller. |
 
@@ -846,6 +846,25 @@ shape and fails with the standard usage error before any platform, filesystem,
 supervisor, or Network effect.
 
 ## `ardents-custody`
+
+The offline Authority operator obtains the standalone executable for the
+intended release and platform. Obtain its release identity, filename, and
+lowercase SHA-256 digest from the authenticated release owner through a
+channel independent of the download. Verify the exact copy in the operator's
+private directory before first execution:
+
+```sh
+set -eu
+artifact=/absolute/private/path/ardents-custody-linux-amd64
+expected=64-lowercase-hex-characters-from-the-release-owner
+test -f "$artifact" && test ! -L "$artifact"
+test "$(sha256sum "$artifact" | cut -d ' ' -f1)" = "$expected"
+chmod 0700 "$artifact"
+```
+
+The release build produces this program from `./cmd/ardents-custody` and
+publishes its exact bytes as a separate release asset. Vault and ceremony
+inputs travel through their own workflows.
 
 `ardents-custody` is separate from Endpoint, Release, and Update. It accepts no
 Authority material or password through flags, environment, configuration, or an

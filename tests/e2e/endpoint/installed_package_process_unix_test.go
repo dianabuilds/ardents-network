@@ -40,6 +40,20 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	if output, err := builder.CombinedOutput(); err != nil {
 		t.Fatalf("build Ubuntu package: %v\n%s", err, output)
 	}
+	foreign := filepath.Join(staticRoot, "ardents-custody-linux-amd64")
+	writeEnrollmentFile(t, foreign, []byte("foreign Custody distribution"), 0o600)
+	rejected := filepath.Join(t.TempDir(), "rejected.deb")
+	rejectBuilder := exec.Command("sh", packageBuilder(t))
+	rejectBuilder.Env = append(append([]string(nil), builder.Env...), "ARDENTS_PACKAGE_OUTPUT="+rejected)
+	if output, err := rejectBuilder.CombinedOutput(); err == nil || !strings.Contains(string(output), "invalid enrollment inventory") {
+		t.Fatalf("package builder accepted unexpected Custody payload: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(rejected); !os.IsNotExist(err) {
+		t.Fatalf("refused build created a package: %v", err)
+	}
+	if err := os.Remove(foreign); err != nil {
+		t.Fatal(err)
+	}
 	installUbuntuPackage(t, packagePath, imageRoot)
 	if err := os.Chmod(imageRoot, 0o755); err != nil {
 		t.Fatal(err)
@@ -87,10 +101,12 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	if err := os.WriteFile(v2Program, v2, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	v2Bundle, v2Enrolled := packageEnrollmentBundle(t, v2Program)
+	v2Static := packageStaticEnrollment(t, v2Bundle, filepath.Base(v2Enrolled))
 	v2Package := filepath.Join(t.TempDir(), "ardents-v2.deb")
 	v2Builder := exec.Command("sh", packageBuilder(t))
 	v2Builder.Env = append(os.Environ(), "ARDENTS_PACKAGE_VERSION=0.0.0~alpha2", "ARDENTS_PACKAGE_PROGRAM="+v2Program,
-		"ARDENTS_PACKAGE_STATIC_ROOT="+staticRoot, "ARDENTS_PACKAGE_OUTPUT="+v2Package)
+		"ARDENTS_PACKAGE_STATIC_ROOT="+v2Static, "ARDENTS_PACKAGE_OUTPUT="+v2Package)
 	if output, err := v2Builder.CombinedOutput(); err != nil {
 		t.Fatalf("build upgraded Ubuntu package: %v\n%s", err, output)
 	}
@@ -122,7 +138,6 @@ func packageEnrollmentBundle(t *testing.T, command string) (string, string) {
 	t.Helper()
 	platform := runtime.GOOS + "-" + runtime.GOARCH
 	artifactName := "ardents-" + platform
-	custodyName := "ardents-custody-" + platform
 	artifact, err := os.ReadFile(command)
 	if err != nil {
 		t.Fatal(err)
@@ -135,14 +150,14 @@ func packageEnrollmentBundle(t *testing.T, command string) (string, string) {
 		t.Fatal(err)
 	}
 	descriptor := strings.Join([]string{
-		"schema=ardents-closed-alpha-enrollment-v5", "cohort=closed-cohort-1", "release=alpha-1", "platform=" + platform,
+		"schema=ardents-closed-alpha-enrollment-v6", "cohort=closed-cohort-1", "release=alpha-1", "platform=" + platform,
 		"environment=alpha", "network=alpha-network-1", "target_path=" + targetPath, "artifact=" + artifactName, "trusted_root=1.root.json",
 	}, "\n") + "\n"
-	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact, custodyName: []byte("custody")}
+	files := map[string][]byte{"1.root.json": rootBytes, "RELEASE": []byte(descriptor), artifactName: artifact}
 	for name, contents := range metadataFiles {
 		files[name] = contents
 	}
-	names := []string{"1.root.json", "1.snapshot.json", "1.targets.json", "RELEASE", artifactName, custodyName, "timestamp.json"}
+	names := []string{"1.root.json", "1.snapshot.json", "1.targets.json", "RELEASE", artifactName, "timestamp.json"}
 	for _, name := range names {
 		mode := os.FileMode(0o600)
 		if name == artifactName {
