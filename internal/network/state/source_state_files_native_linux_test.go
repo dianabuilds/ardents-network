@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package main
+package state
 
 import (
 	"bytes"
@@ -31,12 +31,10 @@ func TestSourcePreparationNativeStateCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	program := filepath.Join(root, "ardents-next")
-	binary, err := os.ReadFile(compiledCommand(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(program, binary, 0555); err != nil {
-		t.Fatal(err)
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", program, "./cmd/ardents-next")
+	build.Dir = "../../.."
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build canonical Source command: %v %s", err, out)
 	}
 	if err := os.Chmod(program, 0555); err != nil {
 		t.Fatal(err)
@@ -52,17 +50,27 @@ func TestSourcePreparationNativeStateCommand(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	run := func(gid uint32) ([]byte, error) {
+	run := func(gid uint32, groups []uint32) ([]byte, error) {
 		cmd := exec.CommandContext(t.Context(), program, "source", "prepare-state", planPath, bundlePath)
-		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid}}
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, Groups: groups}}
 		return cmd.CombinedOutput()
 	}
-	if out, err := run(0); err == nil || bytes.Contains(out, []byte("state-prepared")) ||
-		len(sourceHistoryBytes(t, plan.Network.Root)) != 0 || len(sourceHistoryBytes(t, plan.ParticipationRoot)) != 0 {
-		t.Fatalf("foreign primary group reached Source preparation: %v %s", err, out)
+	for _, test := range []struct {
+		name  string
+		group uint32
+		extra []uint32
+	}{
+		{name: "foreign primary group", group: 0},
+		{name: "foreign supplementary group", group: uid, extra: []uint32{0}},
+	} {
+		if out, err := run(test.group, test.extra); err == nil || !bytes.Contains(out, []byte(`"first_owner":"input"`)) ||
+			bytes.Contains(out, []byte("state-prepared")) || len(sourceHistoryBytes(t, plan.Network.Root)) != 0 ||
+			len(sourceHistoryBytes(t, plan.ParticipationRoot)) != 0 {
+			t.Fatalf("%s reached Source preparation: %v %s", test.name, err, out)
+		}
 	}
 	const receipt = "{\"operation\":\"source.prepare-state\",\"outcome\":\"state-prepared\"}\n"
-	if out, err := run(uid); err != nil || string(out) != receipt {
+	if out, err := run(uid, nil); err != nil || string(out) != receipt {
 		t.Fatalf("fixed principal failed preparing Source State: %v %s", err, out)
 	}
 	stateBefore := sourceHistoryBytes(t, plan.Network.Root)
@@ -70,7 +78,7 @@ func TestSourcePreparationNativeStateCommand(t *testing.T) {
 	if len(stateBefore) == 0 || len(participationBefore) == 0 {
 		t.Fatal("preparation receipt without both histories")
 	}
-	if out, err := run(uid); err == nil || bytes.Contains(out, []byte("state-prepared")) ||
+	if out, err := run(uid, nil); err == nil || bytes.Contains(out, []byte("state-prepared")) ||
 		!reflect.DeepEqual(stateBefore, sourceHistoryBytes(t, plan.Network.Root)) ||
 		!reflect.DeepEqual(participationBefore, sourceHistoryBytes(t, plan.ParticipationRoot)) {
 		t.Fatalf("repeated preparation changed a retained history: %v %s", err, out)

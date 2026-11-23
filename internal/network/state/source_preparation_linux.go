@@ -11,7 +11,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 )
 
@@ -51,20 +50,9 @@ func SourcePreparationConfig(plan servingdeclaration.ServingDeclaration) (Config
 	}, nil
 }
 
-// PrepareInitialSource authenticates the first Epoch and initializes empty
-// participation in two existing vacant roots. Check must reobserve the caller's
-// original inputs and roots until the caller joins their Close.
-func PrepareInitialSource(ctx context.Context, plan servingdeclaration.ServingDeclaration, bundle source.Bundle, check func() error) (result error) {
-	if ctx == nil || check == nil {
-		return errSourcePreparation
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	config, err := SourcePreparationConfig(plan)
-	if err != nil {
-		return err
-	}
+// prepare authenticates the first Epoch before initializing empty participation.
+func (preparation sourceStatePreparation) prepare(ctx context.Context, check func() error) (result error) {
+	config := preparation.config
 	config.PermitWork = check
 	if err := check(); err != nil {
 		return err
@@ -77,13 +65,13 @@ func PrepareInitialSource(ctx context.Context, plan servingdeclaration.ServingDe
 	if _, err := owner.Current(); !errors.Is(err, ErrNoCurrentGeneration) {
 		return errors.Join(errSourcePreparation, err)
 	}
-	if _, err := owner.AcceptEpoch(ctx, bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
+	if _, err := owner.AcceptEpoch(ctx, preparation.bundle.Epoch, preparation.bundle.Inputs, preparation.bundle.Materials); err != nil {
 		return err
 	}
 	if err := check(); err != nil {
 		return err
 	}
-	if err := duty.Initialize(ctx, duty.Config{Root: plan.ParticipationRoot, Clock: time.Now}); err != nil {
+	if err := duty.Initialize(ctx, duty.Config{Root: preparation.participation, Clock: time.Now}); err != nil {
 		return err
 	}
 	return check()
