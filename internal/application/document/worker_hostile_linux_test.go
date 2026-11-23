@@ -1,4 +1,4 @@
-//go:build linux && text_worker_hostile
+//go:build linux && document_worker_hostile
 
 // The qualification artifact uses the same runtime defaults as the fixed worker.
 //go:debug containermaxprocs=0

@@ -725,7 +725,8 @@ every current affected interval. The new canonical Go1.27.2 participant and
 tagged startup binaries still retain `http2Server.HandleStreams`, but current
 verbose binary scans report no affected symbols or imported packages. Their
 module-only OpenPGP finding remains separate: complete Linux/amd64
-`text_worker_installed` dependency/test closures with CGO off/on have no OpenPGP
+`text_worker_installed` (now `document_worker_installed`) dependency/test
+closures with CGO off/on have no OpenPGP
 or gRPC xDS imports and no package/dependency errors. Normal-tag Windows/Linux
 closures were separately rechecked. This establishes scoped advisory
 applicability for those exact artifacts and closures, not general dependency

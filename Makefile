@@ -44,7 +44,7 @@ HEADLESS_SUFFIX := $(if $(filter windows,$(HEADLESS_GOOS)),.exe,)
 HEADLESS_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/headless-artifacts/$(HEADLESS_PLATFORM)
 HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
-# The text_worker_installed surface only runs on dedicated Ubuntu hosts, so no
+# The document_worker_installed surface only runs on dedicated Ubuntu hosts, so no
 # runtime gate compiles it. This target cross-compiles the tagged Linux test
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
@@ -192,7 +192,7 @@ installed-tag-compile-check: export GOARCH := amd64
 installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/platform/systemd
-	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
+	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
 .PHONY: node-process-check
 .PHONY: node-development-check

@@ -969,7 +969,7 @@ func journeyPrebuildBinaries(t *testing.T, repoRoot string) (string, string) {
 func journeyCompileParticipant(t *testing.T, repoRoot string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "journey.test")
-	cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_pair_native,text_worker_installed",
+	cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_pair_native,document_worker_installed",
 		"-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "./cmd/ardents-next")
 	cmd.Dir = repoRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -1453,7 +1453,7 @@ func journeyCrossHostBinaries(t *testing.T, repoRoot string) (string, string, st
 		}
 		return path
 	}
-	participant := build("journey.test", "./cmd/ardents-next", "test", "-c", "-tags=endpoint_pair_native,text_worker_installed", "-trimpath", "-buildvcs=false", "-ldflags=-w")
+	participant := build("journey.test", "./cmd/ardents-next", "test", "-c", "-tags=endpoint_pair_native,document_worker_installed", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	next := build("ardents-next", "./cmd/ardents-next", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	text := build("ardents-text", "./internal/application/document/worker", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	return participant, next, text

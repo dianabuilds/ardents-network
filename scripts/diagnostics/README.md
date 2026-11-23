@@ -188,7 +188,7 @@ not an operator-facing monitoring check or a product readiness qualification.
 
 ```sh
 diag static -out /evidence/static-a -timeout 15m
-# Both ordinary Linux and text_worker_installed Staticcheck, plus vet and unchecked-error/type-assertion analysis.
+# Both ordinary Linux and document_worker_installed Staticcheck, plus vet and unchecked-error/type-assertion analysis.
 # Full dependency/reachability gates need explicit online access:
 docker compose -f scripts/diagnostics/compose.yaml --profile online run --rm online \
   run -raw -out /evidence/vulnerability-a -timeout 15m -- govulncheck ./...

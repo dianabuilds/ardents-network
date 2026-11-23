@@ -155,7 +155,7 @@ func collect(mode string, args []string) error {
 		if len(command) != 0 {
 			return errors.New("static takes no positional command")
 		}
-		command = []string{"sh", "-c", "go vet ./...; a=$?; staticcheck -checks 'SA*,S1*,QF*' ./...; b=$?; staticcheck -checks 'SA*,S1*,QF*' -tags text_worker_installed ./...; c=$?; errcheck -blank -asserts -ignoretests ./...; d=$?; test $a -eq 0 && test $b -eq 0 && test $c -eq 0 && test $d -eq 0"}
+		command = []string{"sh", "-c", "go vet ./...; a=$?; staticcheck -checks 'SA*,S1*,QF*' ./...; b=$?; staticcheck -checks 'SA*,S1*,QF*' -tags document_worker_installed ./...; c=$?; errcheck -blank -asserts -ignoretests ./...; d=$?; test $a -eq 0 && test $b -eq 0 && test $c -eq 0 && test $d -eq 0"}
 		*raw = true // Analyzer text is evidence, never projected into metrics.
 	}
 	if len(command) == 0 {

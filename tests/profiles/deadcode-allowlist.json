@@ -1584,7 +1584,7 @@
           "internal/admission/attempts.OpenRetained"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/admission/attempts)",
-        "rationale": "These exact internal/admission/attempts functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/admission/attempts functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1593,7 +1593,7 @@
           "internal/admission/stock.OpenRetained"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/admission/stock)",
-        "rationale": "These exact internal/admission/stock functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/admission/stock functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1602,7 +1602,7 @@
           "internal/network/duty.OpenRetainedOperation"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/duty)",
-        "rationale": "These exact internal/network/duty functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/network/duty functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1611,7 +1611,7 @@
           "internal/network/epoch.VerifyInitialClosedRecord"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/epoch)",
-        "rationale": "These exact internal/network/epoch functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/network/epoch functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1627,7 +1627,7 @@
           "internal/network/state.sourceRepair.close"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/state)",
-        "rationale": "These exact internal/network/state functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/network/state functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1641,7 +1641,7 @@
           "internal/network/state/durable.verifyRetainedLayout"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/state/durable)",
-        "rationale": "These exact internal/network/state/durable functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/network/state/durable functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1674,7 +1674,7 @@
           "internal/route/join.joinContextOpening.bind"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/route/join)",
-        "rationale": "These exact internal/route/join functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/route/join functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1735,7 +1735,7 @@
           "internal/route/selection.writeGeneration"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/route/selection)",
-        "rationale": "These exact internal/route/selection functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/route/selection functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1745,7 +1745,7 @@
           "internal/execution/worker.ObserveInstanceStream"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/execution/worker)",
-        "rationale": "These exact internal/execution/worker functions are covered by the native-tagged Linux installed test (text_worker_installed) against the real qualification inventory and reached by the pending Linux qualification runner composition. Windows excludes the Linux-only native test executable and refuses native worker activation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "These exact internal/execution/worker functions are covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification runner composition. Windows excludes the Linux-only native test executable and refuses native worker activation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -1754,7 +1754,7 @@
           "internal/execution/runtime.Owner.LaunchStreamQualification"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/execution/runtime)",
-        "rationale": "This exact internal/execution/runtime function is covered by the native-tagged Linux installed test (text_worker_installed) against the real qualification inventory and reached by the pending Linux qualification composition. Windows excludes the Linux-only native test executable and refuses native stream qualification launch, so the function is fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "rationale": "This exact internal/execution/runtime function is covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification composition. Windows excludes the Linux-only native test executable and refuses native stream qualification launch, so the function is fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       }

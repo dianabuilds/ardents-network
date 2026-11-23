@@ -722,7 +722,7 @@ closure remain environment failures. An occupied-UDP control verifies candidate
 rejection and TCP release. Carrier assertions and operations are never retried.
 
 The signed-Network command fixture keeps its shared state in both checked
-profiles. Only `text_worker_installed` adds receiving-root reopen controls and
+profiles. Only `document_worker_installed` adds receiving-root reopen controls and
 their joined verification callbacks; ordinary tests have no dormant copies of
 those fields. Both profiles retain genuine Network owners and their own checks.
 
@@ -860,7 +860,7 @@ one-use Connection claim and original-caller cancellation through physical
 descendant join. Setup-only invocations must refuse Reader authority. The
 driver requires the exact ordinary Reader subcase to have executed and passed;
 these local operations grant no Service Connection or readiness. Build its test binary
-with `text_worker_installed` from `internal/execution/runtime` and
+with `document_worker_installed` from `internal/execution/runtime` and
 install it at `/usr/lib/ardents/qualification/execution-runtime.test` in the
 dedicated manager. The driver requires independent binary/unit digests through
 the existing `ARDENTS_TEXT_LIFECYCLE_SHA256` and
@@ -2085,7 +2085,7 @@ separately required.
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained
 Windows and Linux production builds, then for their test executables, with the
 selected native build tags enabled (`network_signing_native`,
-`text_worker_installed`, `installation_native`, `node_process_native`,
+`document_worker_installed`, `installation_native`, `node_process_native`,
 `startup_manager_native`, `network_preparation_native`,
 `forwarding_platform_native`, `join_platform_native`,
 `descriptor_platform_native`, `heapdumpcapture`). The analyzer only compiles the
@@ -3241,7 +3241,7 @@ qualification (#391 S2: two separately admitted managers, publish/link/read over
 the Carrier). The transitional guarded-start/ACK/recovery orchestration is neither
 exercised nor retired (ADR-0125 D6).
 
-With both `endpoint_launch_native` and `text_worker_installed`, the
+With both `endpoint_launch_native` and `document_worker_installed`, the
 `TestNativeEndpointReplacementWithPublisher` driver requests an actual Text
 Snapshot through the public Administration socket and requires an accepting Link.
 It checks that the original publisher unit's cgroup contains the installed
@@ -3332,7 +3332,7 @@ dependency; its bounded use and patched-systemd applicability are recorded in
 
 The `endpoint_pair_native` build tag additionally selects
 `cmd/ardents-next/endpoint_journey_native_linux_test.go` (compiled together with
-`text_worker_installed`), the #391 S2.2 journey harness. It reuses one unchanged
+`document_worker_installed`), the #391 S2.2 journey harness. It reuses one unchanged
 platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`):
 the participant receives only public signed Network material and actual
 permission requests/responses over a local fixture channel, independently

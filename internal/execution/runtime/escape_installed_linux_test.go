@@ -1,4 +1,4 @@
-//go:build linux && text_worker_installed
+//go:build linux && document_worker_installed
 
 package runtime
 
@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/execution"
 )
 
-// The separately pinned text_worker_escape artifact attempts forbidden host
+// The separately pinned document_worker_escape artifact attempts forbidden host
 // effects before HELLO. Real qualified launch plus independently observed host
 // listeners are required; ordinary Text readiness cannot substitute for it.
 func TestInstalledExecutionEscapeMatrix(t *testing.T) {

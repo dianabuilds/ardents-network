@@ -1,4 +1,4 @@
-//go:build linux && (endpoint_launch_native || endpoint_pair_native || text_worker_installed)
+//go:build linux && (endpoint_launch_native || endpoint_pair_native || document_worker_installed)
 
 package main
 
