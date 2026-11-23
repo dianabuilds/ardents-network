@@ -1848,7 +1848,13 @@ selected Carriers.
   extraction.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. On Linux it also runs the Ubuntu
-  package installation check. This is the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
+  package installation check. The standalone target runs the strict serial
+  race suite after the core checks. Full CI runs the same core checks and the
+  two halves of the ordered race inventory on separate Ubuntu runners.
+  Each half keeps the original serial execution, shuffle, race instrumentation
+  and timeout. Both halves and the core job must pass on the same revision.
+  The Make jobs restore the Go caches in the paths they actually use.
+  Pull request CI uses `scripts/select-pr-checks.go`
   to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
   affected valid Fuzz declarations execute their deterministic seed corpus through

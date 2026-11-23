@@ -20,7 +20,11 @@ func assertQualityWiring(t *testing.T, root string) {
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)",
 		"$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln",
 		"$(MAKE) --output-sync=target e2e",
+		"check: check-core",
 		"$(MAKE) --output-sync=target test-race",
+		"RACE_TEST_FLAGS := -short -race -shuffle=on -count=1 -timeout=15m",
+		"go test -p 1 $(UNIT_PACKAGES) $(RACE_TEST_FLAGS)",
+		"go test -p 1 $$packages $(RACE_TEST_FLAGS)",
 		"GOTOOLCHAIN := local",
 		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
 	} {
@@ -42,7 +46,11 @@ func assertQualityWiring(t *testing.T, root string) {
 	}
 	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
 	goVersion := moduleGoVersion(t, root)
-	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base", "fail-fast: false", "-timeout=5m", "330s go test", "fetch-depth: 0", "qualification-scripts:", "Management.Automation.Language.Parser", "needs.select.outputs.powershell == 'true'", "workflow_dispatch:", "push:", "branches: [main]", "run: make check"} {
+	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base", "fail-fast: false", "-timeout=5m", "330s go test", "fetch-depth: 0", "qualification-scripts:", "Management.Automation.Language.Parser", "needs.select.outputs.powershell == 'true'", "workflow_dispatch:", "push:", "branches: [main]",
+		"run: make check-core", "shard: [0, 1]", "run: make test-race-shard RACE_SHARD=",
+		"needs: [select, qualification-scripts, affected, full, full-race]",
+		"RACE_RESULT: ${{ needs.full-race.result }}", `test "$RACE_RESULT" = success`, `test "$RACE_RESULT" = skipped`,
+		"GOCACHE: /tmp/ardents-network-quality/go-build", "GOMODCACHE: /tmp/ardents-network-quality/go-mod"} {
 		if !bytes.Contains(workflow, []byte(required)) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}
