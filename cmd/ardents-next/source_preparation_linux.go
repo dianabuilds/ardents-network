@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
@@ -142,24 +143,24 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 	if os.Geteuid() != 0 {
 		return nil, errNetworkPreparation
 	}
-	plan, err := openSigningInput(ctx, path, 64<<10, false)
+	plan, err := artifactio.OpenProtectedInput(ctx, path, 64<<10, false)
 	if err != nil {
 		return nil, err
 	}
-	inputs := []*signingInput{plan}
+	inputs := []*artifactio.ProtectedInput{plan}
 	defer func() {
 		for i := len(inputs) - 1; i >= 0; i-- {
-			err = errors.Join(err, inputs[i].close())
+			err = errors.Join(err, inputs[i].Close())
 		}
 		err = errors.Join(err, ctx.Err())
 		if err != nil {
 			receipt = nil
 		}
 	}()
-	if err = requirePreparationExt4(plan.file); err != nil {
+	if err = requirePreparationExt4(plan.Descriptor()); err != nil {
 		return nil, err
 	}
-	p, reference, err := decodeSourcePreparation(plan.raw)
+	p, reference, err := decodeSourcePreparation(plan.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +195,7 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 			return errNetworkPreparation
 		}
 		for _, input := range inputs {
-			if e := input.check(ctx); e != nil {
+			if e := input.Check(ctx); e != nil {
 				return e
 			}
 		}
@@ -214,19 +215,19 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 				return nil, errNetworkPreparation
 			}
 		}
-		input, e := openSigningInput(ctx, declared.Path, 64<<10, false)
+		input, e := artifactio.OpenProtectedInput(ctx, declared.Path, 64<<10, false)
 		if e != nil {
 			return nil, e
 		}
 		inputs = append(inputs, input)
-		if e = requirePreparationExt4(input.file); e != nil {
+		if e = requirePreparationExt4(input.Descriptor()); e != nil {
 			return nil, e
 		}
-		if sha256.Sum256(input.raw) != [32]byte(declared.Commitment) {
+		if sha256.Sum256(input.Bytes()) != [32]byte(declared.Commitment) {
 			return nil, errNetworkPreparation
 		}
-		artifacts = append(artifacts, networkOutputFile{name, input.raw})
-		return input.raw, check()
+		artifacts = append(artifacts, networkOutputFile{name, input.Bytes()})
+		return input.Bytes(), check()
 	}
 	if err = check(); err != nil {
 		return nil, err
@@ -297,7 +298,7 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 		return nil, err
 	}
 	if observe != nil {
-		observe("inputs-read", plan.file)
+		observe("inputs-read", plan.Descriptor())
 	}
 	if err = persistNetworkFiles(ctx, destination, artifacts, false, check, observe); err != nil {
 		return nil, err

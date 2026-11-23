@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
@@ -201,7 +203,7 @@ func TestNetworkSigningInfrastructureRefusesNonExt4Input(t *testing.T) {
 		t.Fatal(err)
 	}
 	raw, err := executeInfrastructurePreparation(t.Context(), []string{"prepare-runtime-descriptor", "source", "one", "1", path, path, destination}, nil)
-	if !errors.Is(err, errNetworkPreparation) || raw != nil {
+	if !errors.Is(err, artifacts.ErrNotExt4) || raw != nil {
 		t.Fatalf("expected native filesystem refusal, got %q %v", raw, err)
 	}
 	if _, err := os.Lstat(destination); !errors.Is(err, os.ErrNotExist) {

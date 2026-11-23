@@ -16,8 +16,7 @@ import (
 type preparationPath = artifacts.DirectoryChain
 
 func requirePreparationExt4(file *os.File) error {
-	var fs syscall.Statfs_t
-	if err := syscall.Fstatfs(int(file.Fd()), &fs); err != nil || fs.Type != 0xef53 {
+	if err := artifacts.RequireExt4(file); err != nil {
 		return errors.Join(errNetworkPreparation, err)
 	}
 	return nil

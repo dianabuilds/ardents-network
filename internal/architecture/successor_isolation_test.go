@@ -85,6 +85,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/systemd/infrastructure_prestart_linux_test.go",
 			"internal/release/infrastructure/admission.go",
 			"internal/release/infrastructure/source_release_inspection_linux.go",
+			"internal/release/infrastructure/preparation_linux.go",
 			"internal/platform/cgroup/source_quiescence_linux.go",
 			"internal/network/state/source_inspection_linux.go",
 			"internal/network/state/source_preparation_linux.go",
@@ -101,6 +102,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-next/source_state_preparation_linux.go",
 			"cmd/ardents-next/source_state_preparation_linux_test.go",
 			"internal/platform/artifacts/directory_linux.go",
+			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/input_linux.go",
 			"internal/platform/artifacts/receipt_linux.go",
 			"cmd/ardents-next/source_inspection_linux.go",
@@ -716,7 +718,11 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
-			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go":
+			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
+				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
+				"cmd/ardents-next/network_keys_linux.go", "cmd/ardents-next/network_keys_native_linux_test.go",
+				"cmd/ardents-next/source_preparation_linux.go", "cmd/ardents-next/platform_files_linux.go",
+				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go":
 				return true
 			}
 		}
@@ -930,7 +936,10 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/release/endpoint" || dependency == modulePath+"/internal/endpoint/launch" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
 			return true
 		}
-		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
+		if source == "cmd/ardents-next/infrastructure_linux.go" {
+			return dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release"
+		}
+		if (source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/forwarding_artifact_linux_test.go" && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
