@@ -13,6 +13,7 @@ func offlineOperatorFile(source string) bool {
 	}
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
+		"cmd/ardents-next/issuance_export_linux.go",
 		"cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_keys_native_linux_test.go",
 		"cmd/ardents-next/network_preparation.go", "cmd/ardents-next/network_signing.go",
 		"cmd/ardents-next/network_profile_signing.go", "cmd/ardents-next/node_certificate_linux.go",
@@ -207,6 +208,8 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/node/provisioning"
 	case "cmd/ardents-next/network_keys_native_linux_test.go":
 		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts"
+	case "cmd/ardents-next/issuance_export_linux.go":
+		return dependency == modulePath+"/internal/admission/issuance" || dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/infrastructure_operator.go":
 		return dependency == modulePath+"/internal/node/provisioning" ||
 			dependency == modulePath+"/internal/release/infrastructure/signing"

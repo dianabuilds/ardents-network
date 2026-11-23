@@ -78,10 +78,12 @@ admission prepare-binding: profile_file,expected_profile(network,issuer,signer,
 start,end),binding(existing ledger fields except keys),binding_file.
 All config16KiB strict JSON with exact fields/no duplicate/null/case aliases;
 lowercase hex, whole-second UTC, canonical paths; distinct non-nested roots.
-Export raw profile or existing Admission binding JSON via exclusive/idempotent
-owner-only output and sync. Outputs must be outside the three selected roots;
-export directories and ancestors containing retained or pending successor-state
-files refuse before writing, including binding exports. Export refusal retains
+Platform Artifacts publishes the raw profile or Admission binding JSON as an
+exclusive, owner-only file and syncs its original directory. An exact retry
+syncs the original file and directory. The CLI checks the destination against
+the three selected roots before performing domain work. An export refuses
+before writing if its directory or an ancestor contains retained or pending
+state files. This also applies to binding exports. Export refusal retains
 committed roots. Inspection
 permits future/expired inventories; it grants no current authority. Diagnostics
 and OTel expose fixed operation/phase/outcome/duration only; collector failure
