@@ -30,7 +30,7 @@ type Reader struct {
 }
 
 func (owner *Reader) Open(ctx context.Context, request application.Request) (_ application.Stream, result error) {
-	if ctx == nil || owner == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || request.Destination != application.TargetLink {
+	if ctx == nil || owner == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || request.Destination != application.TargetLink || request.Application != application.Document {
 		return nil, application.Refuse(application.Outcome{Class: application.ServiceUnavailable})
 	}
 	// Operation admission boundary: full-content installed observation. Inner
