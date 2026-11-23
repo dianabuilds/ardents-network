@@ -10,12 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 038168330a84a93c6503fd8a49da730d5a8f8f0f
+          ref: 86c11fe8e714854ac137a05589fe3ec7e65c93d1
           path: candidate
           persist-credentials: false
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 296adfc54decd3829dbb5306cf958c6ad22155a4
+          ref: 32fd2b8b9b81dc369a47c8fdd6bf0f59ce8b9168
           path: predecessor
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -31,8 +31,8 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 038168330a84a93c6503fd8a49da730d5a8f8f0f
-          test "$(git -C ../predecessor rev-parse HEAD)" = 296adfc54decd3829dbb5306cf958c6ad22155a4
+          test "$(git rev-parse HEAD)" = 86c11fe8e714854ac137a05589fe3ec7e65c93d1
+          test "$(git -C ../predecessor rev-parse HEAD)" = 32fd2b8b9b81dc369a47c8fdd6bf0f59ce8b9168
           git show -s --format='candidate=%H tree=%T'
           mkdir -m 0700 "$RUNNER_TEMP/v5-artifacts"
           (cd ../predecessor
