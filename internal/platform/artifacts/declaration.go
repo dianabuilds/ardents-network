@@ -3,10 +3,14 @@ package artifacts
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"slices"
 	"strings"
 )
+
+// ErrInput reports an unavailable or invalid original artifact input.
+var ErrInput = errors.New("original source preparation input unavailable")
 
 // DecodeDeclaration requires exactly the named non-null JSON fields.
 func DecodeDeclaration(raw []byte, value any, fields ...string) error {

@@ -1719,7 +1719,7 @@ all roles; neither memory retention nor a self-signed leaf proves installation.
 
 | Input → current producer → verifier / consumer | Actual evidence boundary and remaining mechanism |
 |---|---|
-| Canonical unsigned initial Record/Epoch/closed profile → `network_preparation.go` and Network epoch/closedprofile public owners → ordinary verification and State acceptance | Public preparation is implemented. No private signer, State acceptance or independence follows from unsigned bytes |
+| Canonical unsigned initial Record/Epoch/closed profile → Provisioning and Network epoch/closedprofile public owners → ordinary verification and State acceptance | Public preparation is implemented. No private signer, State acceptance or independence follows from unsigned bytes |
 | Exact signed Record and initial Epoch → `network_signing.go`, original protected purpose-specific key/pin/time → canonical verifier and `network accept-epoch` in `network.go` | Genuine finite sign/output chain exists; Record generation one and initial Epoch only, not arbitrary successor issuance or operational bootstrap |
 | Exact signed profile → `network_profile_signing.go` and fixed public transcript → closedprofile.Verify and `network accept-profile` | Genuine producer; independent State signer is distinct from in-body Admission authority. Acceptance receipt is not current runtime permission |
 | State and 1..64 Node private keys → `internal/node/provisioning` → each separate signer and public receipt verifier | Fresh original 0700/0600 root-controlled outputs; no NodeID/assignment, authority grant, runtime credential placement or renewal service. Offline Node-key file cannot simply be handed to a non-root runtime |

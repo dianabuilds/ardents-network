@@ -14,6 +14,8 @@ func offlineOperatorFile(source string) bool {
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
 		"cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_keys_native_linux_test.go",
+		"cmd/ardents-next/network_preparation.go", "cmd/ardents-next/network_signing.go",
+		"cmd/ardents-next/network_profile_signing.go", "cmd/ardents-next/node_certificate_linux.go",
 		"internal/release/infrastructure/preparation_linux.go",
 		"internal/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
@@ -187,7 +189,21 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "cmd/ardents-next/network_keys.go":
+	case "internal/node/provisioning/network_artifact_preparation.go":
+		switch dependency {
+		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
+			return true
+		}
+	case "cmd/ardents-next/network_signing.go":
+		switch dependency {
+		case modulePath + "/internal/node/provisioning", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
+			return true
+		}
+	case "cmd/ardents-next/network_profile_signing.go":
+		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/network/closedprofile"
+	case "cmd/ardents-next/node_certificate_linux.go":
+		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/network/epoch"
+	case "cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_preparation.go":
 		return dependency == modulePath+"/internal/node/provisioning"
 	case "cmd/ardents-next/network_keys_native_linux_test.go":
 		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts"

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // This fixed purpose borrows the original offline signing custody and output
@@ -34,7 +35,7 @@ func admitNodeCertificate(raw, signed []byte, pin string) (*networkSigning, erro
 	if err != nil {
 		return nil, errNetworkSigning
 	}
-	_, prepared, err := prepareNetworkPublic("prepare-initial-node-record", plan.Record)
+	_, prepared, err := provisioning.PrepareInitialNodeRecord(plan.Record)
 	digest := sha256.Sum256(signed)
 	if err != nil || pin != hex.EncodeToString(digest[:]) {
 		return nil, errNetworkSigning
