@@ -28,7 +28,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	if args[0] == "prepare-descriptor" || args[0] == "prepare-runtime-descriptor" || args[0] == "prepare-runtime-inventory" || args[0] == "prepare-inventory" {
+	if args[0] == "prepare-runtime-descriptor" || args[0] == "prepare-runtime-inventory" {
 		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 		raw, err := executeInfrastructurePreparation(ctx, args, nil)
@@ -104,17 +104,10 @@ func sourceReleaseEnvironment(environment, network string, ref time.Time) releas
 // Public preparation borrows the existing original native input/output custody.
 // It never writes metadata, installs a program, creates a history or starts work.
 func executeInfrastructurePreparation(ctx context.Context, args []string, observe func(string, *os.File)) (result []byte, err error) {
-	if ctx == nil || os.Geteuid() != 0 || len(args) == 0 {
+	if ctx == nil || os.Geteuid() != 0 || len(args) < 2 {
 		return nil, infrastructure.ErrInput
 	}
-	operation, args := args[0], args[1:]
-	invocation := "source"
-	if operation == "prepare-runtime-descriptor" || operation == "prepare-runtime-inventory" {
-		if len(args) == 0 {
-			return nil, infrastructure.ErrInput
-		}
-		invocation, args = args[0], args[1:]
-	}
+	operation, invocation, args := args[0], args[1], args[2:]
 	switch invocation {
 	case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
 	default:
@@ -167,7 +160,7 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 	}
 	var destination, name string
 	switch operation {
-	case "prepare-descriptor", "prepare-runtime-descriptor":
+	case "prepare-runtime-descriptor":
 		if len(args) != 5 || !infrastructurePreparationPath(args[4]) {
 			return nil, infrastructure.ErrInput
 		}
@@ -188,7 +181,7 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 			return nil, err
 		}
 		destination, name = args[4], descriptorName
-	case "prepare-inventory", "prepare-runtime-inventory":
+	case "prepare-runtime-inventory":
 		if len(args) != 2 || !infrastructurePreparationPath(args[0]) || !infrastructurePreparationPath(args[1]) ||
 			args[1] == args[0] || strings.HasPrefix(args[1], args[0]+"/") {
 			return nil, infrastructure.ErrInput
