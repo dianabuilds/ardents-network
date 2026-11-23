@@ -4,11 +4,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"path"
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 type managerValue = systemd.Value
@@ -19,7 +20,7 @@ type managerProperties = systemd.Properties
 // transfer). It grants no installation, start, replacement or recovery authority;
 // the runtime remains the sole domain admission owner.
 func VerifyPlatformConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest, checkProgram, manifest, pin string) error {
-	return verifyEndpointConfiguration(version, unit, service, request, generationDigest, []string{checkProgram, "platform", "check", manifest, pin})
+	return verifyEndpointConfiguration(version, unit, service, request, generationDigest, platformCheckArgs(checkProgram, manifest, pin))
 }
 
 func verifyEndpointConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest string, preExec []string) error {

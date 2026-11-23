@@ -45,7 +45,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, ok := initialReleaseInputs(verified, reference)
+	input, ok := endpointrelease.InitialInputs(verified, reference)
 	if !ok {
 		t.Fatal("missing initial inputs")
 	}
@@ -71,7 +71,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	next, ok := candidateReleaseInputs(candidate, reference)
+	next, ok := endpointrelease.CandidateInputs(candidate, reference)
 	if !ok {
 		t.Fatal("missing candidate inputs")
 	}
@@ -82,7 +82,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stale, ok := candidateReleaseInputs(old, reference)
+	stale, ok := endpointrelease.CandidateInputs(old, reference)
 	if !ok {
 		t.Fatal("missing old candidate inputs")
 	}

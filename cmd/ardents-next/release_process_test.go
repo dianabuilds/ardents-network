@@ -20,6 +20,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -262,7 +263,7 @@ func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
 	if !ok || !facts.Protected || len(bundle.Names()) != 15 {
 		t.Fatal("fixture lacks genuinely verified protected inventory")
 	}
-	input, ok := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+	input, ok := generationauthorization.InitialInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
 	// This metadata-only fixture models the protected linux-amd64 artifact,
 	// not execution of that artifact on the current developer host.
 	input.Local.Architecture = "amd64"

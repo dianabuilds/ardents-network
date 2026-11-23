@@ -1,5 +1,3 @@
-//go:build linux
-
 package systemd
 
 // PlatformUnitTemplate is the canonical platform-led infrastructure unit
