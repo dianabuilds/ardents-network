@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func signingNativeParent(t *testing.T) string {
@@ -415,24 +417,24 @@ func TestNetworkSigningOriginalRefusalCannotRevive(t *testing.T) {
 
 func testSigningOriginalRefusalCannotRevive(t *testing.T, arguments func(*testing.T) []string) {
 	args := arguments(t)
-	input, err := openSigningInput(t.Context(), args[4], 16<<10, true)
+	input, err := artifactio.OpenProtectedInput(t.Context(), args[4], 16<<10, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	borrowed := input.raw
+	borrowed := input.Bytes()
 	if err = os.Chmod(args[4], 0644); err != nil {
 		t.Fatal(err)
 	}
-	if input.check(t.Context()) == nil {
+	if input.Check(t.Context()) == nil {
 		t.Fatal("changed original access accepted")
 	}
 	if err = os.Chmod(args[4], 0600); err != nil {
 		t.Fatal(err)
 	}
-	if input.check(t.Context()) == nil {
+	if input.Check(t.Context()) == nil {
 		t.Fatal("restoration revived original private input")
 	}
-	if err = input.close(); err != nil {
+	if err = input.Close(); err != nil {
 		t.Fatal(err)
 	}
 	for _, b := range borrowed {
@@ -440,11 +442,11 @@ func testSigningOriginalRefusalCannotRevive(t *testing.T, arguments func(*testin
 			t.Fatal("owned plaintext input not cleared")
 		}
 	}
-	fresh, err := openSigningInput(t.Context(), args[4], 16<<10, true)
+	fresh, err := artifactio.OpenProtectedInput(t.Context(), args[4], 16<<10, true)
 	if err != nil {
 		t.Fatal("fresh independent input control", err)
 	}
-	if err = fresh.close(); err != nil {
+	if err = fresh.Close(); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -11,13 +11,14 @@ import (
 	"path/filepath"
 	"syscall"
 
+	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 )
 
 // Sequential pre-start composition retains existing native file owners. There
 // is no live runtime root, shared lease, journal, observer goroutine or mutex.
 type platformFiles struct {
-	inputs      []*signingInput
+	inputs      []*artifactio.ProtectedInput
 	directories []*preparationPath
 	resources   []*sourceInputFile
 }
@@ -74,15 +75,15 @@ func (f *platformFiles) Read(path string, maximum int64, executable bool) ([]byt
 	if !platformPath(path) {
 		return nil, errPlatformInput
 	}
-	input, err := openSigningInput(context.Background(), path, maximum, false)
+	input, err := artifactio.OpenProtectedInput(context.Background(), path, maximum, false)
 	if err != nil {
 		return nil, err
 	}
 	f.inputs = append(f.inputs, input)
-	if executable && input.info.Mode().Perm() != 0555 {
+	if executable && input.Info().Mode().Perm() != 0555 {
 		return nil, errPlatformInput
 	}
-	return input.raw, nil
+	return input.Bytes(), nil
 }
 
 func (f *platformFiles) readAccount(name string) (uint32, error) {
@@ -104,7 +105,7 @@ func (f *platformFiles) readAccount(name string) (uint32, error) {
 func (f *platformFiles) Check(ctx context.Context) error {
 	var result error
 	for _, input := range f.inputs {
-		result = errors.Join(result, input.check(ctx))
+		result = errors.Join(result, input.Check(ctx))
 	}
 	for _, p := range f.directories {
 		result = errors.Join(result, signingAncestors(p))
@@ -127,7 +128,7 @@ func (f *platformFiles) Close() error {
 	}
 	f.resources = nil
 	for i := len(f.inputs) - 1; i >= 0; i-- {
-		result = errors.Join(result, f.inputs[i].close())
+		result = errors.Join(result, f.inputs[i].Close())
 	}
 	f.inputs = nil
 	for i := len(f.directories) - 1; i >= 0; i-- {
@@ -151,7 +152,7 @@ func platformOwnExecutable(path string, wanted []byte) (result error) {
 		return err
 	}
 	original, err := os.Lstat(path)
-	if err != nil || !os.SameFile(actual, original) || !signingFileAllowed(original, false) {
+	if err != nil || !os.SameFile(actual, original) || !artifactio.ProtectedFileMode(original, false) {
 		return errPlatformInput
 	}
 	raw, err := io.ReadAll(io.LimitReader(self, 64<<20+1))

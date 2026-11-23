@@ -16,6 +16,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func admitInitialKeyPlan(raw []byte) (int, error) {
@@ -72,12 +74,12 @@ func prepareInitialKeys(ctx context.Context, plan, destination string,
 	if os.Geteuid() != 0 {
 		return nil, errInitialKeys
 	}
-	input, err := openSigningInput(ctx, plan, 1024, false)
+	input, err := artifactio.OpenProtectedInput(ctx, plan, 1024, false)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, input.close(), ctx.Err()) }()
-	count, err := admitInitialKeyPlan(input.raw)
+	defer func() { err = errors.Join(err, input.Close(), ctx.Err()) }()
+	count, err := admitInitialKeyPlan(input.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +95,7 @@ func prepareInitialKeys(ctx context.Context, plan, destination string,
 	}()
 	seen := map[string]bool{}
 	for i := 0; i <= count; i++ {
-		if err = errors.Join(input.check(ctx), ctx.Err()); err != nil {
+		if err = errors.Join(input.Check(ctx), ctx.Err()); err != nil {
 			return nil, err
 		}
 		pub, key, e := generate()
@@ -139,6 +141,6 @@ func prepareInitialKeys(ctx context.Context, plan, destination string,
 		return nil, err
 	}
 	files = append(files, networkOutputFile{"public-receipt.json", append(public, '\n')})
-	err = persistNetworkFiles(ctx, destination, files, true, func() error { return input.check(ctx) }, observe)
+	err = persistNetworkFiles(ctx, destination, files, true, func() error { return input.Check(ctx) }, observe)
 	return receipt, err
 }
