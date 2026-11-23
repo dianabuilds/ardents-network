@@ -200,6 +200,24 @@
       },
       {
         "symbols": [
+          "internal/endpoint.presentationGuard",
+          "internal/endpoint/publisher.DocumentContract",
+          "internal/endpoint/publisher.independentRoots",
+          "internal/endpoint/reader.checkedOutput.Write",
+          "internal/endpoint/reader.newResultStream",
+          "internal/endpoint/reader.resultStream.Close",
+          "internal/endpoint/reader.resultStream.CloseInput",
+          "internal/endpoint/reader.resultStream.Done",
+          "internal/endpoint/reader.resultStream.Read",
+          "internal/endpoint/reader.resultStream.Write"
+        ],
+        "classification": "P1-B batch 3 de-tagged next unlocked pure leaves with Linux-native genuine consumers (#794, #691)",
+        "rationale": "These exact functions were accidentally Linux-bound pure Go whose composed symbols are already portable: the Endpoint network presentation guard (authority.go, composes stock.Presentation/network.RuntimeView/funding.NetworkFacts), the Publisher root-isolation predicate (roots.go, composes pathgrammar.Strict) and fixed document stream contract (contract.go, composes Operation.BindStreamContract/document.MaximumBytes), and the Reader local Text result projection (result.go, composes application/connection.Outcome and application/document.NewSnapshot over io.Pipe). Batch 3 dropped their Linux build constraints after per-file purity verification at origin/dev: each adds no native mechanism. Their genuine production consumers remain Linux-tagged (endpoint/participant_linux.go for presentationGuard; publisher/opening_linux.go for independentRoots/DocumentContract; reader/reader_linux.go for newResultStream/resultStream, itself behind the unchanged !linux LaunchReader refusal), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Reader projection (result_test.go) and the root-isolation predicate (roots_test.go), so those are production-dead but not test-dead; DocumentContract and presentationGuard have no portable test (their consumers construct a live Operation/RuntimeView only beside the Linux composition) and carry a separate reviewed test_dead allowance. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals (publisher opening_other.go/snapshot_other.go, reader reader_worker_other.go, session route_other.go), and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",
+        "owner": "Product Owner and Codex; Endpoint, Publisher and Reader owners",
+        "retirement": "Remove each exact Windows entry when a selected genuine portable production consumer reaches it (a later dependency-chain batch unlocks the publisher/reader Open compositions after the runtime native worker seam, route/introduction slot-history and route/selection #793 Windows owner-only fix), or when the owning contract is retired. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
           "internal/route/role.Authority.ObserveHello",
           "internal/route/role.Authority.observeMember"
         ],
@@ -1684,6 +1702,16 @@
         "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their behavior tests remain Linux-tagged because they exercise the genuine native flock lease and /sys interface counters through Budget.transact/measureHosting (reservation_linux_test.go, additional_reservation_linux_test.go, budget_linux_test.go, deadline_linux_test.go, snapshot_linux_test.go). The bounded read (boundedFile) now has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the new portable session route-reservation helper test (session/reservation_test.go) reaches Release through releaseRouteReservation, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Linux-only reservation test files and the native lease refuses with ErrUnsupportedPlatform (platform_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; hosting provider-period accounting",
         "retirement": "Remove each exact Windows entry when a selected genuine portable test or production path reaches it (a later dependency-chain batch unlocks the node/endpoint reservation consumers), or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
+      },
+      {
+        "symbols": [
+          "internal/endpoint.presentationGuard",
+          "internal/endpoint/publisher.DocumentContract"
+        ],
+        "classification": "Linux-native Endpoint presentation guard and Publisher document contract covered by Linux-tagged consumers, no Windows test path (P1-B batch 3 #794)",
+        "rationale": "Batch 3 de-tagged the pure Endpoint network presentation guard (authority.go) and Publisher fixed document stream contract (contract.go) to portable. Their genuine consumers construct the required live state only beside the Linux composition: presentationGuard is composed by endpoint/participant_linux.go with a real network.RuntimeView, and DocumentContract by publisher/opening_linux.go and the cmd/ardents-next installed connection scenarios with a live execution/runtime.Operation. No portable test can construct that qualified Operation/RuntimeView without the native worker and installed observation, so these two functions are exercised only by Linux-tagged consumers and tests. Windows excludes those Linux-only files, so they are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; they also carry the batch-3 windows-production allowance. The Reader result projection and Publisher root-isolation predicate de-tagged in the same batch have portable behavior tests (result_test.go, roots_test.go) and are not test-dead. The Linux native-tag test analysis remains empty.",
+        "owner": "Product Owner and Codex; Endpoint presentation binding and Publisher document contract",
+        "retirement": "Remove each exact Windows entry when a selected genuine portable test or production path reaches it (a later dependency-chain batch unlocks the installed participant and publisher Open compositions), or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [
