@@ -1,10 +1,7 @@
 package selection
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -109,24 +106,7 @@ func openClosedSetsMode(config ClosedSetConfig, opening closedSetOpening, acquir
 }
 
 func inspectClosedSetRoot(root string) error {
-	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) > 10 {
-		return errors.New("closed Entry root bound exceeded")
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		allowed := name == closedSetMarker || name == rootLockName || name == "current" || name == "watermark" ||
-			strings.HasPrefix(name, "state-") || strings.HasPrefix(name, ".stage-") || strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-")
-		info, err := os.Lstat(filepath.Join(root, name))
-		if err != nil || !allowed || !info.Mode().IsRegular() {
-			return errors.New("closed Entry root entry unavailable")
-		}
-	}
-	marker, err := readBounded(filepath.Join(root, closedSetMarker), 64)
-	if err != nil || string(marker) != "ardents-entry-set-v1\n" {
-		return errors.New("closed Entry root marker unavailable")
-	}
-	return nil
+	return inspectStoreRoot(root, closedSetGrammar())
 }
 
 func loadClosedSets(root string) (closedSetState, string, error) {
@@ -144,7 +124,7 @@ func loadClosedSets(root string) (closedSetState, string, error) {
 			return closedSetState{}, "", errors.New("closed Entry pointer invalid")
 		}
 		pointed, err := readClosedSetGeneration(root, name)
-		if err != nil || pointed.Generation > floor.generation || pointed.Generation == floor.generation && name != floor.name {
+		if err != nil || pointerViolatesFloor(pointed.Generation, name, floor) {
 			return closedSetState{}, "", errors.New("closed Entry pointer violates floor")
 		}
 	}
@@ -167,23 +147,7 @@ func loadClosedSets(root string) (closedSetState, string, error) {
 }
 
 func readClosedSetGeneration(root, name string) (closedSetState, error) {
-	if !stateName.MatchString(name) {
-		return closedSetState{}, errors.New("closed Entry generation name invalid")
-	}
-	raw, err := readBounded(filepath.Join(root, "state-"+name), maximumStateBytes)
-	if err != nil || sha256Hex(raw) != name {
-		return closedSetState{}, errors.New("closed Entry generation invalid")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	var retained closedSetState
-	if err := decoder.Decode(&retained); err != nil {
-		return closedSetState{}, err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) || !validClosedSetState(retained) {
-		return closedSetState{}, errors.New("closed Entry state invalid")
-	}
-	return retained, nil
+	return readStoreGeneration(root, name, closedSetGrammar())
 }
 
 func validClosedSetState(retained closedSetState) bool {
@@ -212,32 +176,8 @@ func validClosedSetState(retained closedSetState) bool {
 }
 
 func (owner *ClosedSets) commitClosedSet(next closedSetState) error {
-	if next.Generation == ^uint64(0) {
-		return errors.New("closed Entry generation exhausted")
-	}
-	next.Generation = owner.state.Generation + 1
-	next.Previous = owner.name
-	if !validClosedSetState(next) {
-		return errors.New("closed Entry commit invalid")
-	}
-	raw, err := json.Marshal(next)
-	if err != nil || len(raw) > maximumStateBytes {
-		return errors.New("closed Entry state bound exceeded")
-	}
-	name := sha256Hex(raw)
-	if err := writeGeneration(owner.root, filepath.Join(owner.root, "state-"+name), raw); err != nil {
-		return err
-	}
-	if _, err := readClosedSetGeneration(owner.root, name); err != nil {
-		return err
-	}
-	if err := replaceWatermark(owner.root, next.Generation, name); err != nil {
-		return err
-	}
-	if err := replaceCurrent(owner.root, name); err != nil {
-		return err
-	}
-	if err := cleanupGenerations(owner.root, name, next.Previous); err != nil {
+	next, name, err := commitStoreGeneration(owner.root, owner.state, owner.name, next, closedSetGrammar())
+	if err != nil {
 		return err
 	}
 	owner.state, owner.name = next, name

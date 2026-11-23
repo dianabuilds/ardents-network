@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const (
@@ -16,23 +18,7 @@ const (
 )
 
 func inspectRoot(root string, create bool) error {
-	info, err := os.Lstat(root)
-	if os.IsNotExist(err) {
-		if !create {
-			return errors.New("local role state root does not exist")
-		}
-		if err := os.MkdirAll(root, 0o700); err != nil {
-			return err
-		}
-		info, err = os.Lstat(root)
-	}
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return errors.New("local role state root is not an owned directory")
-	}
-	return nil
+	return durablefile.InspectRoot(root, create, "local role state root does not exist", "local role state root is not an owned directory")
 }
 
 func validateRootPermissions(root string) error {
@@ -127,16 +113,5 @@ func prepareRoot(root string, create bool) error {
 }
 
 func writeExclusive(path string, raw []byte) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err = file.Write(raw); err == nil {
-		err = file.Sync()
-	}
-	closeErr := file.Close()
-	if err != nil {
-		return err
-	}
-	return closeErr
+	return durablefile.WriteExclusive(path, raw)
 }
