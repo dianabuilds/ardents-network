@@ -6,7 +6,7 @@ import (
 )
 
 // Wait reports terminal owner failure or returns after ctx cancellation.
-func (s *networkState) Wait(ctx context.Context) error {
+func (s *State) Wait(ctx context.Context) error {
 	s.mu.RLock()
 	serverDone, automaticDone, terminalErr := s.serverDone, s.automaticDone, s.terminalErr
 	s.mu.RUnlock()
@@ -42,12 +42,12 @@ func (s *networkState) Wait(ctx context.Context) error {
 
 // Close prevents further work through this Store and releases its root lease.
 // Concurrent callers wait for the same cleanup and observe its terminal result.
-func (s *networkState) Close() error {
+func (s *State) Close() error {
 	s.closeOnce.Do(func() { s.closeErr = s.closeOwned() })
 	return s.closeErr
 }
 
-func (s *networkState) closeOwned() error {
+func (s *State) closeOwned() error {
 	s.mu.Lock()
 	s.closed = true
 	s.closing = true

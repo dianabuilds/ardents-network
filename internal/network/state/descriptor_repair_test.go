@@ -27,7 +27,7 @@ import (
 // ardents-node account, so quiescence is per-unit, never an account-wide process
 // scan. Descriptor claims the same sole node-duty fence class as Forwarding/JOIN;
 // publication floors and spend obligations are never repairable here.
-func descriptorRepairFixture(t *testing.T) *networkState {
+func descriptorRepairFixture(t *testing.T) *State {
 	t.Helper()
 	s, decision := newControlCommitFixture(t, false)
 	public, err := hex.DecodeString("c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631")

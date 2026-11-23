@@ -5,15 +5,15 @@ import "errors"
 // RefillPlan returns copied receiver intent for the exact retained refill
 // or the bounded Control stock needed before other issuance. The application
 // supplies whether that issuance consumes a Control token and authorizes delivery.
-func (owner *Owner) RefillPlan(requested [][32]byte, class uint8, requiresAdmissionToken bool) ([][32]byte, error) {
-	if err := owner.beginUse(); err != nil {
+func (o *Owner) RefillPlan(requested [][32]byte, class uint8, requiresAdmissionToken bool) ([][32]byte, error) {
+	if err := o.beginUse(); err != nil {
 		return nil, err
 	}
-	defer owner.users.Done()
-	observed, at, observedErr := owner.observeAndLock()
-	defer owner.mu.Unlock()
-	profile, now, err := owner.current(observed, at, observedErr)
-	permission := owner.permission
+	defer o.users.Done()
+	observed, at, observedErr := o.observeAndLock()
+	defer o.mu.Unlock()
+	profile, now, err := o.current(observed, at, observedErr)
+	permission := o.permission
 	if err != nil || !permission.CurrentFor(profile, now) {
 		return nil, errors.New("admission stock for the issuer is unavailable")
 	}

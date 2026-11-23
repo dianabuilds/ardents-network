@@ -114,13 +114,11 @@ func openWith(ctx context.Context, config Config, flush func(string) error) (*Ro
 	fail := func(cause error) (*Root, error) { return nil, errors.Join(cause, lease.release()) }
 	if !marked {
 		// Reinspect after acquiring the lease; another initializer may have won.
-		if raw, readErr := readRegular(filepath.Join(path, markerName), int64(len(marker))); readErr == nil {
-			if string(raw) != marker {
-				return fail(errors.New("publication marker invalid"))
+		raw, readErr := readRegular(filepath.Join(path, markerName), int64(len(marker)))
+		if readErr != nil {
+			if !errors.Is(readErr, os.ErrNotExist) {
+				return fail(readErr)
 			}
-		} else if !errors.Is(readErr, os.ErrNotExist) {
-			return fail(readErr)
-		} else {
 			entries, err = scan(path, 1)
 			if err != nil || len(entries) != 1 || entries[0].Name() != lockName {
 				return fail(errors.New("publication root changed before claim"))
@@ -128,6 +126,8 @@ func openWith(ctx context.Context, config Config, flush func(string) error) (*Ro
 			if err = exclusive(filepath.Join(path, markerName), []byte(marker)); err != nil {
 				return fail(err)
 			}
+		} else if string(raw) != marker {
+			return fail(errors.New("publication marker invalid"))
 		}
 	}
 	raw, err := readRegular(filepath.Join(path, markerName), int64(len(marker)))

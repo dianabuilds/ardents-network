@@ -1,8 +1,9 @@
 package stock
 
 import (
-	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 	"time"
+
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
 )
 
 // batch is one admitted blind issuance batch. Blinding state and finalized

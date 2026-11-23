@@ -215,7 +215,11 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 	}()
 	name := floorGenerationID(payload, roots)
 	directory := filepath.Join(s.path, "generations", name)
-	if _, err = os.Lstat(directory); errors.Is(err, os.ErrNotExist) {
+	_, err = os.Lstat(directory)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if errors.Is(err, os.ErrNotExist) {
 		stage, err := os.MkdirTemp(filepath.Join(s.path, "generations"), ".stage-")
 		if err != nil {
 			return err
@@ -244,8 +248,6 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 		if err = s.flush(filepath.Join(s.path, "generations")); err != nil {
 			return err
 		}
-	} else if err != nil {
-		return err
 	} else {
 		stored, err := readFloorGeneration(s.path, name)
 		if err != nil {

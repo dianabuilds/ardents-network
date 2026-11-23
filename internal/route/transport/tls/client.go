@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // OpenRole creates one fresh Endpoint-to-role inner TLS channel over

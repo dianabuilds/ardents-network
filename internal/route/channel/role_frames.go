@@ -2,8 +2,9 @@ package channel
 
 import (
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"net"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 func SendHello(conn net.Conn, h ardp.Hello) error {

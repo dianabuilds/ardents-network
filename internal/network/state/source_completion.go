@@ -11,7 +11,7 @@ import (
 type SourceCompletion struct{ original *sourceCompletion }
 
 type sourceCompletion struct {
-	owner  *networkState
+	owner  *State
 	joined chan error
 	once   sync.Once
 	result error
@@ -21,7 +21,7 @@ type sourceCompletion struct {
 // physical Close starts. An already latched retirement failure is not cleared.
 // Once retained, Close joins State and releases its storage lease but preserves
 // the producer. A new Source cannot claim it; inspection also refuses it.
-func (s *networkState) RetainSourceCompletion() (SourceCompletion, error) {
+func (s *State) RetainSourceCompletion() (SourceCompletion, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closing || !s.config.sourceInfo.Serving || s.serverDone == nil || s.sourceCompletion != nil {

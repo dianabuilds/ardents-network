@@ -3,10 +3,11 @@ package introduction
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"io"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/role"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )

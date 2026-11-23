@@ -3,8 +3,9 @@ package channel
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
 
 // refillCapacityDelta means no output started: release serialization before

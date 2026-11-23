@@ -10,7 +10,7 @@ var errRefreshUnavailable = errors.New("finite sources are temporarily unavailab
 var errClockUncertain = errors.New("clock confidence is outside the two-second bound")
 var errRefreshActive = errors.New("network state refresh is already active")
 
-func (s *networkState) runAutomaticRefresh(ctx context.Context, ticks <-chan time.Time, results chan<- error) {
+func (s *State) runAutomaticRefresh(ctx context.Context, ticks <-chan time.Time, results chan<- error) {
 	defer s.work.Done()
 	if ticks == nil {
 		ticker := time.NewTicker(s.config.automatic)

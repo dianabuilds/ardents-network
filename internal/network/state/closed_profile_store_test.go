@@ -88,11 +88,11 @@ func TestAcceptClosedProfileRetriesInterruptedPublication(t *testing.T) {
 	}
 }
 
-func closedProfileStoreFixture(t *testing.T) (*networkState, []byte) {
+func closedProfileStoreFixture(t *testing.T) (*State, []byte) {
 	return closedProfileStoreFixtureAt(t, t.TempDir())
 }
 
-func closedProfileStoreFixtureAt(t *testing.T, rootPath string) (*networkState, []byte) {
+func closedProfileStoreFixtureAt(t *testing.T, rootPath string) (*State, []byte) {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
@@ -107,7 +107,7 @@ func closedProfileStoreFixtureAt(t *testing.T, rootPath string) (*networkState, 
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = root.Close() })
-	store := &networkState{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
+	store := &State{config: config{closedProfileAuthority: authority.Public().(ed25519.PublicKey), clock: func() time.Time { return now }, observe: func() time.Time { return now }}, storage: root,
 		current: &epoch.Decision{Snapshot: epoch.Snapshot{Generation: fmt.Sprintf("%x", generation), NetworkID: network, Epoch: 9, Digest: epochDigest,
 			EpochValidFrom: now.Truncate(time.Hour), ValidUntil: now.Truncate(time.Hour).Add(2 * time.Hour), Profile: closedRouteProfile},
 			Candidates: []epoch.Candidate{{

@@ -7,11 +7,12 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 	"math/big"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 )
 
 func TestExporterIndependentKeyAndCommitmentDomains(t *testing.T) {

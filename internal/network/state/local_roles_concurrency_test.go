@@ -20,7 +20,7 @@ func TestSourceExposureRetentionWaitsForConflictReader(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reader.Close()
-	state := &networkState{config: config{root: t.TempDir(), localRoles: root, clock: time.Now,
+	state := &State{config: config{root: t.TempDir(), localRoles: root, clock: time.Now,
 		sourceInfo: source.Details{Identities: [2][32]byte{{1}, {2}}, Families: [2]string{"source-a", "source-b"}}}}
 	done := make(chan error, 1)
 	go func() { done <- state.retainSourceExposures(time.Now().Add(time.Hour)) }()

@@ -8,9 +8,10 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"math/big"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 )
 
 const (

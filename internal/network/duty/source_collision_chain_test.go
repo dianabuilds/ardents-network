@@ -38,7 +38,7 @@ func openStoreWithClock(t *testing.T) (localDutyStore, string, func() time.Time)
 	return localDutyStore{store: store}, root, clock
 }
 
-// localDutyStore wraps the unexported *store so the external test package
+// localDutyStore wraps the *Store so the external test package
 // can call the four methods we need without naming the type directly.
 type localDutyStore struct {
 	store interface {

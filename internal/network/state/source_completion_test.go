@@ -47,7 +47,7 @@ func TestSourceCompletionRetainsProducerUntilOriginalCommandFinishes(t *testing.
 			}
 			// A released State lease is insufficient: the retained producer still
 			// refuses a successor while command input/process cleanup is pending.
-			successor := &networkState{config: s.config, current: s.current}
+			successor := &State{config: s.config, current: s.current}
 			if err := successor.retainSourceServer(); err == nil {
 				t.Fatal("State.Close alone enabled a successor")
 			}
@@ -71,7 +71,7 @@ func TestSourceCompletionRetainsProducerUntilOriginalCommandFinishes(t *testing.
 				if err := copy.Finish(nil); err != nil {
 					t.Fatal(err)
 				}
-				if err := (&networkState{config: s.config, current: s.current}).retainSourceServer(); err == nil {
+				if err := (&State{config: s.config, current: s.current}).retainSourceServer(); err == nil {
 					t.Fatal("copied completion removed successor guard")
 				}
 				if err := successor.releaseSourceServer(); err != nil {

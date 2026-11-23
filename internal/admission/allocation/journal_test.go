@@ -1,8 +1,9 @@
 package allocation
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/admission"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 func TestAdmissionJournalAcceptsCompleteHourlyReservationSet(t *testing.T) {

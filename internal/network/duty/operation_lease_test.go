@@ -149,7 +149,7 @@ func TestRetainedOperationDoesNotRecreateMissingLease(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg.Create = false
-	for _, open := range []func() (*store, error){func() (*store, error) { return Open(cfg) }, func() (*store, error) { return OpenOperation(context.Background(), cfg) }} {
+	for _, open := range []func() (*Store, error){func() (*Store, error) { return Open(cfg) }, func() (*Store, error) { return OpenOperation(context.Background(), cfg) }} {
 		got, err := open()
 		if err == nil {
 			_ = got.Close()

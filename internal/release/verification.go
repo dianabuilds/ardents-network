@@ -244,5 +244,5 @@ func reject(outcome Outcome, notice string, cause error) Decision {
 
 // Err retains the causal context or physical failure without exposing it in
 // the bounded consumer report.
-func (d Decision) Err() error           { return d.cause }
+func (decision Decision) Err() error    { return decision.cause }
 func detailInvalidMessage(error) string { return "release metadata refused" }

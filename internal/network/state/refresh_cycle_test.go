@@ -22,7 +22,7 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	config.sourceInfo.Identities = [2][32]byte{{1}, {2}}
 	config.sourceInfo.Exposures = [2][32]byte{{3}, {4}}
 	config.sourceInfo.Families = [2]string{"source-family-one", "source-family-two"}
-	initial := &networkState{config: config, storage: storage}
+	initial := &State{config: config, storage: storage}
 	if err := initial.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer storage.Close()
-	restarted := &networkState{config: config, storage: storage}
+	restarted := &State{config: config, storage: storage}
 	if err := restarted.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}

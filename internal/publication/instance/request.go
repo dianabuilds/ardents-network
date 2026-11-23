@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 	"errors"
+
 	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 

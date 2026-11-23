@@ -69,7 +69,7 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer storage.Close()
-	reopened := &networkState{config: s.config, storage: storage, current: &current}
+	reopened := &State{config: s.config, storage: storage, current: &current}
 	if err := reopened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +217,7 @@ func TestManualSourceVerifiedPendingConflictCommitFailureRetiresOwner(t *testing
 	assertFailedVerifiedConflict(t, s, failure, name, raw)
 }
 
-func assertFailedVerifiedConflict(t *testing.T, s *networkState, failure error, name string, raw []byte) {
+func assertFailedVerifiedConflict(t *testing.T, s *State, failure error, name string, raw []byte) {
 	t.Helper()
 	if _, err := s.Current(); err == nil {
 		t.Fatal("retired State served the predecessor")
@@ -241,12 +241,12 @@ func assertFailedVerifiedConflict(t *testing.T, s *networkState, failure error, 
 	}
 }
 
-func newVerifiedPendingConflictFixture(t *testing.T) (*networkState, networkfixture.Epoch, epoch.Decision) {
+func newVerifiedPendingConflictFixture(t *testing.T) (*State, networkfixture.Epoch, epoch.Decision) {
 	t.Helper()
 	return newVerifiedConflictFixture(t, true)
 }
 
-func newVerifiedConflictFixture(t *testing.T, pending bool) (*networkState, networkfixture.Epoch, epoch.Decision) {
+func newVerifiedConflictFixture(t *testing.T, pending bool) (*State, networkfixture.Epoch, epoch.Decision) {
 	t.Helper()
 	now := time.Unix(1_800_000_100, 0).UTC()
 	networkID := sha256.Sum256([]byte("verified pending conflict commit network"))
@@ -346,7 +346,7 @@ func TestPersistedConflictKeepsDiagnosticSnapshotButRefusesSource(t *testing.T) 
 	if snapshot, err := s.Current(); err != nil || !snapshot.Conflicting || snapshot.Freshness != "conflicting" {
 		t.Fatalf("persisted conflict diagnostic: %+v, %v", snapshot, err)
 	}
-	assertBusy := func(owner *networkState) {
+	assertBusy := func(owner *State) {
 		t.Helper()
 		for _, request := range requests {
 			response := owner.resolveDistributionRequest(context.Background(), request)
@@ -364,7 +364,7 @@ func TestPersistedConflictKeepsDiagnosticSnapshotButRefusesSource(t *testing.T) 
 		t.Fatal(err)
 	}
 	defer storage.Close()
-	reopened := &networkState{config: s.config, storage: storage, current: &current}
+	reopened := &State{config: s.config, storage: storage, current: &current}
 	if err := reopened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
@@ -467,7 +467,7 @@ func TestActiveControlCommitFailureKeepsCorrectSourceDuty(t *testing.T) {
 	}
 }
 
-func newControlCommitFixture(t *testing.T, serving bool) (*networkState, epoch.Decision) {
+func newControlCommitFixture(t *testing.T, serving bool) (*State, epoch.Decision) {
 	t.Helper()
 	decision, networkID := sourceResolverGoldenDecision(t)
 	root := t.TempDir()
@@ -476,7 +476,7 @@ func newControlCommitFixture(t *testing.T, serving bool) (*networkState, epoch.D
 		t.Fatal(err)
 	}
 	now := time.Unix(1_800_000_100, 0).UTC()
-	s := &networkState{storage: storage, current: &decision,
+	s := &State{storage: storage, current: &decision,
 		config: config{root: root, networkID: networkID, clock: func() time.Time { return now }, observe: func() time.Time { return now }, anchorWall: now, anchorMono: time.Now(),
 			localRoles: filepath.Join(t.TempDir(), "roles"), sourceInfo: source.Details{Serving: serving}}}
 	if err := persistDecision(storage, &decision, true); err != nil {

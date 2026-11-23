@@ -13,21 +13,21 @@ type PeerClose struct {
 	child  framing.PeerClose
 }
 
-func (joined *Joined) DecodedPeerClose() (PeerClose, error) {
-	if joined == nil || joined.acquisition == nil || joined.session == nil || joined.lane == nil {
+func (j *Joined) DecodedPeerClose() (PeerClose, error) {
+	if j == nil || j.acquisition == nil || j.session == nil || j.lane == nil {
 		return PeerClose{}, errors.New("original JOIN peer CLOSE evidence absent")
 	}
-	joined.acquisition.mu.Lock()
-	original := joined.acquisition.stream == joined
-	joined.acquisition.mu.Unlock()
+	j.acquisition.mu.Lock()
+	original := j.acquisition.stream == j
+	j.acquisition.mu.Unlock()
 	if !original {
 		return PeerClose{}, errors.New("original JOIN peer CLOSE evidence absent")
 	}
-	child, err := joined.lane.DecodedPeerClose()
+	child, err := j.lane.DecodedPeerClose()
 	if err != nil {
 		return PeerClose{}, err
 	}
-	return PeerClose{stream: joined, child: child}, nil
+	return PeerClose{stream: j, child: child}, nil
 }
 
 func (proof PeerClose) CheckOriginal(joined *Joined) error {

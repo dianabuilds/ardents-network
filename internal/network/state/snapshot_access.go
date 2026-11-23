@@ -12,7 +12,7 @@ import (
 var ErrNoCurrentGeneration = errors.New("network state has no current generation")
 
 // Current returns a copy of the current immutable Snapshot.
-func (s *networkState) Current() (Snapshot, error) {
+func (s *State) Current() (Snapshot, error) {
 	if s.config.permitWork != nil {
 		if err := s.config.permitWork(); err != nil {
 			return Snapshot{}, err
@@ -44,7 +44,7 @@ func (s *networkState) Current() (Snapshot, error) {
 	return s.snapshotWithDistribution(now), nil
 }
 
-func (s *networkState) snapshotWithDistribution(now time.Time) Snapshot {
+func (s *State) snapshotWithDistribution(now time.Time) Snapshot {
 	if s.current == nil {
 		return Snapshot{}
 	}

@@ -55,7 +55,7 @@ func TestSourcePredecessorRetirementUpdatesOriginalProducer(t *testing.T) {
 			}
 		}
 		// Retiring an old handler is not completion of the original Source.
-		successor := &networkState{config: s.config, current: s.current}
+		successor := &State{config: s.config, current: s.current}
 		if err := successor.retainSourceServer(); !errors.Is(err, duty.ErrLocalRoleProducerRetained) {
 			t.Fatal("handler join admitted a new Source lifetime", lastJoined, err)
 		}

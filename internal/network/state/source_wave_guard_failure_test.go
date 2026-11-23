@@ -19,7 +19,7 @@ func TestFailedSourceGuardReleaseRetiresState(t *testing.T) {
 	if err := os.WriteFile(blockedRoot, []byte("blocked"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	state := &networkState{config: config{
+	state := &State{config: config{
 		root: t.TempDir(), localRoles: blockedRoot, clock: time.Now,
 		sourceInfo: source.Details{Configured: true, Identities: [2][32]byte{{1}, {2}}, Families: [2]string{"first", "second"}},
 	}}
@@ -42,7 +42,7 @@ func TestUncertainSourceWaveCommitKeepsLiveGuard(t *testing.T) {
 	}
 	defer storage.Close()
 	roleRoot := filepath.Join(t.TempDir(), "roles")
-	state := &networkState{config: config{root: root, localRoles: roleRoot, clock: func() time.Time { return now },
+	state := &State{config: config{root: root, localRoles: roleRoot, clock: func() time.Time { return now },
 		sourceInfo: source.Details{Configured: true, Identities: [2][32]byte{{1}, {2}}, Families: [2]string{"first", "second"}, OrderSeed: [32]byte{1}}},
 		storage: storage}
 	if _, _, err := state.startSourceWave(now); err != nil {
@@ -88,7 +88,7 @@ func TestSourceWaveRefusesBeforeContactWhenDutyCapacityIsFull(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer storage.Close()
-	state := &networkState{config: config{root: root, localRoles: roleRoot, clock: func() time.Time { return now },
+	state := &State{config: config{root: root, localRoles: roleRoot, clock: func() time.Time { return now },
 		sourceInfo: source.Details{Configured: true, Identities: [2][32]byte{{1}, {2}}, Families: [2]string{"first", "second"}, OrderSeed: [32]byte{1}}},
 		storage: storage}
 	if _, _, err := state.startSourceWave(now); !errors.Is(err, duty2.ErrInstallationSourceExhausted) {

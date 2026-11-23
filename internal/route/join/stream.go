@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 )
 
 // Joined is one protected physical stream, not an authenticated Service

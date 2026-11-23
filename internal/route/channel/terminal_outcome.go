@@ -2,6 +2,7 @@ package channel
 
 import (
 	"errors"
+
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 

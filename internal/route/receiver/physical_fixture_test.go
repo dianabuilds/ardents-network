@@ -3,11 +3,12 @@ package receiver
 import (
 	"bytes"
 	"context"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 // lifecycleConn gates actual physical output and completion independently.

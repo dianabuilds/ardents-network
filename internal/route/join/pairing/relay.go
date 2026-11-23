@@ -203,12 +203,13 @@ func (s *joinSide) pump(peer *joinSide) joinPumpResult {
 			n := binary.BigEndian.Uint32(f.Body)
 			if n == 0 || n > framing.Window-peer.credit {
 				err = errors.New("route JOIN credit exceeds consumption")
-			} else if p.sealed {
-				// The header started while live, but this validated control
-				// now belongs only to joining. Grant and forward nothing.
-				p.owner.mu.Unlock()
-				return joinPumpResult{}
 			} else {
+				if p.sealed {
+					// The header started while live, but this validated control
+					// now belongs only to joining. Grant and forward nothing.
+					p.owner.mu.Unlock()
+					return joinPumpResult{}
+				}
 				peer.credit += n
 			}
 		case ardp.KindEOF:

@@ -34,7 +34,7 @@ func CommitRetainedControlForTest(root string, epochFloor uint64, epochDigest, p
 
 // VerifySourceCandidateForTest drives one Source bundle through the exact
 // wave-intake choke point against the opened State's retained decisions.
-func VerifySourceCandidateForTest(store *networkState, epoch []byte, inputs, materials [][]byte) error {
+func VerifySourceCandidateForTest(store *State, epoch []byte, inputs, materials [][]byte) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	_, err := store.verifySourceBundle(source.Bundle{Epoch: epoch, Inputs: inputs, Materials: materials},

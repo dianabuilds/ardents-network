@@ -14,7 +14,7 @@ import (
 
 var errSourceRoleCollision = errors.New("source role collides with a Candidate View member")
 
-func (s *networkState) rejectSourceCollisions() error {
+func (s *State) rejectSourceCollisions() error {
 	for _, decision := range []*epoch.Decision{s.current, s.pendingDecision} {
 		if decision != nil && sourceCollides(s.config.sourceInfo, decision) {
 			return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
@@ -23,7 +23,7 @@ func (s *networkState) rejectSourceCollisions() error {
 	return nil
 }
 
-func (s *networkState) rejectDecisionSourceCollisions(decision *epoch.Decision) error {
+func (s *State) rejectDecisionSourceCollisions(decision *epoch.Decision) error {
 	if sourceCollides(s.config.sourceInfo, decision) {
 		return fmt.Errorf("%w: identity, family, or endpoint", errSourceRoleCollision)
 	}
@@ -57,15 +57,15 @@ func epochDecisionCollides(decision *epoch.Decision, identity [32]byte, family, 
 	return false
 }
 
-func (s *networkState) retainSourceExposures(notAfter time.Time) error {
+func (s *State) retainSourceExposures(notAfter time.Time) error {
 	return s.replaceSourceExposures(notAfter, "exposed")
 }
 
-func (s *networkState) holdSourceExposures(notAfter time.Time) error {
+func (s *State) holdSourceExposures(notAfter time.Time) error {
 	return s.replaceSourceExposures(notAfter, "live")
 }
 
-func (s *networkState) replaceSourceExposures(notAfter time.Time, state string) error {
+func (s *State) replaceSourceExposures(notAfter time.Time, state string) error {
 	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: !s.config.retainedHistory})
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (s *networkState) replaceSourceExposures(notAfter time.Time, state string) 
 // The contact owner calls this only after both contacts have joined and the
 // terminal wave state has been committed. The current and pending generations
 // may outlive the journal deadline, so their exposure bound takes precedence.
-func (s *networkState) releaseSourceWave() error {
+func (s *State) releaseSourceWave() error {
 	if !s.config.sourceInfo.Configured || s.distribution.cycleActive {
 		return nil
 	}
@@ -93,7 +93,7 @@ func (s *networkState) releaseSourceWave() error {
 }
 
 // Called under the State lock while the Refresh owner is still active.
-func (s *networkState) releaseSourceWaveLocked() error {
+func (s *State) releaseSourceWaveLocked() error {
 	if err := s.releaseSourceWave(); err != nil {
 		s.terminalErr = fmt.Errorf("release direct Source contact guard: %w", err)
 		s.retireStateLocked()
@@ -102,7 +102,7 @@ func (s *networkState) releaseSourceWaveLocked() error {
 	return nil
 }
 
-func (s *networkState) releaseJoinedSourceWave() error {
+func (s *State) releaseJoinedSourceWave() error {
 	if !s.config.sourceInfo.Configured || s.distribution.cycleID == 0 {
 		return nil
 	}
@@ -125,7 +125,7 @@ func (s *networkState) releaseJoinedSourceWave() error {
 // A reopened root owns no old contacts. Only the durable exposure history can
 // tie a previous wave to the configured Source pair; if it disagrees, keep the
 // old producer guard intact until the operator restores that plan.
-func (s *networkState) recoverSourceWaveGuard() error {
+func (s *State) recoverSourceWaveGuard() error {
 	if !s.distribution.cycleActive && len(s.distribution.history) == 0 {
 		return nil
 	}
@@ -145,7 +145,7 @@ func (s *networkState) recoverSourceWaveGuard() error {
 	return s.releaseJoinedSourceWave()
 }
 
-func (s *networkState) retainSourceServer() error {
+func (s *State) retainSourceServer() error {
 	if s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
@@ -174,7 +174,7 @@ func sourceServerDuty(decision *epoch.Decision) duty.Duty {
 // The original State calls this only after its last accepted handler joins.
 // This updates its already claimed producer; a new State must still use Claim.
 // Retained opening refuses lost history instead of creating a fresh journal.
-func (s *networkState) releaseSourcePredecessors() error {
+func (s *State) releaseSourcePredecessors() error {
 	if s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
@@ -199,7 +199,7 @@ func servingDutySet(decision *epoch.Decision, predecessors []duty.Duty) []duty.D
 	return append(duties, current)
 }
 
-func (s *networkState) releaseSourceServer() error {
+func (s *State) releaseSourceServer() error {
 	if !s.config.sourceInfo.Serving {
 		return nil
 	}

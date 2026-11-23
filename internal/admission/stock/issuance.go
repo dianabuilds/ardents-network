@@ -3,9 +3,10 @@ package stock
 import (
 	"bytes"
 	"errors"
+	"time"
+
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	admissiontoken "github.com/dianabuilds/ardents-network/internal/admission/token"
-	"time"
 )
 
 // IssuanceIntent pins an application-selected delivery identity, without

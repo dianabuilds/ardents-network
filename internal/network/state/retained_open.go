@@ -5,7 +5,7 @@ import "github.com/dianabuilds/ardents-network/internal/network/state/durable"
 // OpenRetained opens already-initialized State history.
 // It cannot initialize missing State/participation histories. Signed acceptance,
 // conflict, time, serving and joined failure rules remain identical to Open.
-func OpenRetained(input Config) (*networkState, error) {
+func OpenRetained(input Config) (*State, error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err

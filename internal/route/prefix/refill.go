@@ -3,8 +3,9 @@ package prefix
 import (
 	"context"
 	"errors"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"net"
+
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 type prefixRefill struct{ cancel context.CancelFunc }

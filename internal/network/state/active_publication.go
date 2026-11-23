@@ -12,11 +12,11 @@ import (
 
 // commitActiveDecision coordinates the serving Source duty, immutable Epoch,
 // distribution floor, in-memory decision, and active pointer in that order.
-func (s *networkState) commitActiveDecision(decision *epoch.Decision, state distributionState) error {
+func (s *State) commitActiveDecision(decision *epoch.Decision, state distributionState) error {
 	return s.commitActiveDecisionWithControl(decision, state, s.storage.CommitControl)
 }
 
-func (s *networkState) commitActiveDecisionWithControl(decision *epoch.Decision, state distributionState, commit func(string, []byte) error) (result error) {
+func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state distributionState, commit func(string, []byte) error) (result error) {
 	if decision == nil {
 		// Preserve the historical zero-value path: an unverified decision
 		// reaches the same durable refusal without a nil dereference.

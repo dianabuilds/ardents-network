@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 	"io"
 	"runtime"
+
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 )
 
 type issuanceResult struct {

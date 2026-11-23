@@ -8,7 +8,7 @@ import (
 )
 
 func TestAutomaticRefreshRecordsTerminalFailure(t *testing.T) {
-	owner := &networkState{}
+	owner := &State{}
 	ticks := make(chan time.Time)
 	owner.work.Add(1)
 	go owner.runAutomaticRefresh(context.Background(), ticks, nil)
@@ -23,7 +23,7 @@ func TestAutomaticRefreshRecordsTerminalFailure(t *testing.T) {
 }
 
 func TestWaitReportsTerminalAutomaticFailureAlongsideSourceServer(t *testing.T) {
-	owner := &networkState{config: config{automatic: time.Second}, serverDone: make(chan struct{}), automaticDone: make(chan struct{})}
+	owner := &State{config: config{automatic: time.Second}, serverDone: make(chan struct{}), automaticDone: make(chan struct{})}
 	ticks := make(chan time.Time)
 	owner.work.Add(1)
 	go func() {
@@ -49,7 +49,7 @@ func TestWaitDoesNotMaskTerminalFailureWithCanceledSource(t *testing.T) {
 	serverDone, automaticDone := make(chan struct{}), make(chan struct{})
 	close(serverDone)
 	close(automaticDone)
-	owner := &networkState{serverDone: serverDone, automaticDone: automaticDone,
+	owner := &State{serverDone: serverDone, automaticDone: automaticDone,
 		serverErr: context.Canceled, terminalErr: failure}
 	if err := owner.Wait(context.Background()); !errors.Is(err, failure) {
 		t.Fatalf("Wait returned %v, want resource failure", err)

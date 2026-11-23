@@ -2,8 +2,9 @@ package document_test
 
 import (
 	"bytes"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 )
 
 func TestSnapshotServesOneImmutableDocument(t *testing.T) {

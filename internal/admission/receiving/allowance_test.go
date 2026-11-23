@@ -1,10 +1,11 @@
 package receiving_test
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 )
 
 func TestAllowancePreservesOriginalDeadlineAndReplacesRemaining(t *testing.T) {

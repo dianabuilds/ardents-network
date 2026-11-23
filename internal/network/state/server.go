@@ -7,7 +7,7 @@ import (
 	source2 "github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-func (s *networkState) serveSource(ctx context.Context, ready chan<- error) error {
+func (s *State) serveSource(ctx context.Context, ready chan<- error) error {
 	return s.config.source.Serve(ctx, ready,
 		func() bool {
 			if s.config.permitWork != nil && s.config.permitWork() != nil {
@@ -23,7 +23,7 @@ func (s *networkState) serveSource(ctx context.Context, ready chan<- error) erro
 
 // A response can keep predecessor bytes after a successor is published. The
 // last accepted handler releases those predecessor guards after it closes.
-func (s *networkState) sourceConnectionActive(delta int) {
+func (s *State) sourceConnectionActive(delta int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if delta > 0 {
@@ -42,7 +42,7 @@ func (s *networkState) sourceConnectionActive(delta int) {
 	s.servingPredecessors = nil
 }
 
-func (s *networkState) resolveDistributionRequest(_ context.Context, request source2.Message) source2.Message {
+func (s *State) resolveDistributionRequest(_ context.Context, request source2.Message) source2.Message {
 	if s.config.permitWork != nil && s.config.permitWork() != nil {
 		return source2.Message{Status: "busy"}
 	}

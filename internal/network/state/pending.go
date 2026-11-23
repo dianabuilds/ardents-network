@@ -9,7 +9,7 @@ import (
 
 // commitPendingDecision writes the authenticated generation before the
 // control journal can name it. History reconciliation precedes this operation.
-func (s *networkState) commitPendingDecision(decision *epoch.Decision, next distributionState) error {
+func (s *State) commitPendingDecision(decision *epoch.Decision, next distributionState) error {
 	if decision == nil {
 		// Preserve the historical zero-value staging refusal.
 		decision = &epoch.Decision{}
@@ -32,7 +32,7 @@ func (s *networkState) commitPendingDecision(decision *epoch.Decision, next dist
 	return nil
 }
 
-func (s *networkState) recoverPendingState() error {
+func (s *State) recoverPendingState() error {
 	state := s.distribution
 	if state.pendingDigest == [32]byte{} {
 		return nil
