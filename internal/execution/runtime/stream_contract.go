@@ -13,7 +13,7 @@ type StreamContract struct {
 }
 
 // BindStreamContract admits the workload's original limits, not peer fields.
-// Ordinary text composition supplies its request/response bounds; trusted
+// Ordinary document composition supplies its request/response bounds; trusted
 // qualification composition may supply the existing 64MiB directional bound.
 // Once bound, this operation cannot select a different contract for recovery.
 func (operation *Operation) BindStreamContract(send, receive uint64) (StreamContract, error) {

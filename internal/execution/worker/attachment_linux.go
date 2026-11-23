@@ -32,18 +32,18 @@ func newAttachment(connection *net.UnixConn, pid, uid uint32) *Attachment {
 // SetDeadline moves the bound socket's I/O deadline; the zero time releases it.
 func (attachment *Attachment) SetDeadline(deadline time.Time) error {
 	if attachment == nil || attachment.connection == nil {
-		return errors.New("text worker attachment is unavailable")
+		return errors.New("document worker attachment is unavailable")
 	}
 	return attachment.connection.SetDeadline(deadline)
 }
 
 func prepareSocket(connection *net.UnixConn) error {
 	if connection == nil {
-		return errors.New("text worker socket is unavailable")
+		return errors.New("document worker socket is unavailable")
 	}
 	raw, err := connection.SyscallConn()
 	if err != nil {
-		return errors.New("text worker socket is unavailable")
+		return errors.New("document worker socket is unavailable")
 	}
 	var socketErr error
 	err = raw.Control(func(fd uintptr) {
@@ -52,20 +52,20 @@ func prepareSocket(connection *net.UnixConn) error {
 		// used as the worker Principal.
 		peer, peerErr := syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
 		if peerErr != nil || peer.Pid != 1 || peer.Uid != 0 || peer.Gid != 0 {
-			socketErr = errors.New("text worker listener is not the system manager")
+			socketErr = errors.New("document worker listener is not the system manager")
 			return
 		}
 		socketErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1)
 	})
 	if err != nil || socketErr != nil {
-		return errors.New("text worker socket provenance is unavailable")
+		return errors.New("document worker socket provenance is unavailable")
 	}
 	return nil
 }
 
 func (attachment *Attachment) Read(body []byte) (int, error) {
 	if attachment == nil || attachment.connection == nil || attachment.pid == 0 {
-		return 0, errors.New("text worker attachment is unavailable")
+		return 0, errors.New("document worker attachment is unavailable")
 	}
 	if len(body) == 0 {
 		return 0, nil
@@ -113,14 +113,14 @@ func checkControl(control []byte, flags int, pid, uid uint32, hasBytes bool) err
 		}
 	}
 	if invalid || hasBytes && credentials != 1 || !hasBytes && credentials > 1 {
-		return errors.New("text worker attachment credentials or descriptors are invalid")
+		return errors.New("document worker attachment credentials or descriptors are invalid")
 	}
 	return nil
 }
 
 func (attachment *Attachment) Write(body []byte) (int, error) {
 	if attachment == nil || attachment.connection == nil {
-		return 0, errors.New("text worker attachment is unavailable")
+		return 0, errors.New("document worker attachment is unavailable")
 	}
 	return attachment.connection.Write(body)
 }

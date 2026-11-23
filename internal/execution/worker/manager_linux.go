@@ -53,7 +53,7 @@ type managerQuery func(context.Context, string, string, string, string, ...strin
 
 func readCleanupProperties(ctx context.Context, instance Instance, query managerQuery) (properties, properties, error) {
 	if ctx == nil || query == nil || !validUnit(instance.inv, instance.Name, instance.Role) || instance.Invocation == [16]byte{} {
-		return nil, nil, errors.New("text worker cleanup identity is invalid")
+		return nil, nil, errors.New("document worker cleanup identity is invalid")
 	}
 	// A name path may load a collected unit again without its invocation.
 	// The original invocation path only resolves that retained invocation;
@@ -64,12 +64,12 @@ func readCleanupProperties(ctx context.Context, instance Instance, query manager
 
 func readNamedProperties(ctx context.Context, inv inventory, unit, role string, query managerQuery) (properties, properties, error) {
 	if ctx == nil || query == nil || !validUnit(inv, unit, role) {
-		return nil, nil, errors.New("text worker unit identity is invalid")
+		return nil, nil, errors.New("document worker unit identity is invalid")
 	}
 	var paths []string
 	answer, err := query(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", unit)
 	if err != nil || answer.Type != "o" || json.Unmarshal(answer.Data, &paths) != nil || len(paths) != 1 || !strings.HasPrefix(paths[0], "/org/freedesktop/systemd1/unit/") {
-		return nil, nil, errors.New("text worker system manager binding is unavailable")
+		return nil, nil, errors.New("document worker system manager binding is unavailable")
 	}
 	return readPropertiesAtPath(ctx, paths[0], query)
 }
@@ -80,7 +80,7 @@ func readPropertiesAtPath(ctx context.Context, path string, query managerQuery) 
 		answer, err := query(ctx, path, "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.systemd1."+kind)
 		var payload []properties
 		if err != nil || answer.Type != "a{sv}" || json.Unmarshal(answer.Data, &payload) != nil || len(payload) != 1 || payload[0] == nil {
-			return nil, nil, errors.New("text worker effective properties are unavailable")
+			return nil, nil, errors.New("document worker effective properties are unavailable")
 		}
 		observations[index] = payload[0]
 	}
@@ -105,22 +105,22 @@ func managerCall(ctx context.Context, path, iface, method, signature string, arg
 		// Keep a bounded, input-free reason while preserving the refusal.
 		// The system bus response and stderr are never included in diagnostics.
 		if ctx.Err() != nil {
-			return value{}, errors.New("text worker system manager query was cancelled")
+			return value{}, errors.New("document worker system manager query was cancelled")
 		}
 		if bounded.Err() != nil {
-			return value{}, errors.New("text worker system manager query timed out")
+			return value{}, errors.New("document worker system manager query timed out")
 		}
-		return value{}, errors.New("text worker system manager query failed")
+		return value{}, errors.New("document worker system manager query failed")
 	}
 	var answer value
 	decoder := json.NewDecoder(bytes.NewReader(output.Bytes()))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&answer); err != nil {
-		return value{}, errors.New("text worker system manager response is invalid")
+		return value{}, errors.New("document worker system manager response is invalid")
 	}
 	var trailing any
 	if decoder.Decode(&trailing) != io.EOF {
-		return value{}, errors.New("text worker system manager response has trailing data")
+		return value{}, errors.New("document worker system manager response has trailing data")
 	}
 	return answer, nil
 }

@@ -36,7 +36,7 @@ type Cleanup struct {
 // cleanup completion and must not wait for Close or start another worker.
 func NewCleanup(instance Instance, firstFailure func(error)) (*Cleanup, error) {
 	if instance.PID == 0 || instance.UID == 0 || instance.Invocation == [16]byte{} || firstFailure == nil {
-		return nil, errors.New("text worker cleanup identity is unavailable")
+		return nil, errors.New("document worker cleanup identity is unavailable")
 	}
 	events, err := pinCgroup(instance)
 	if err != nil {
@@ -57,7 +57,7 @@ func (owner *Cleanup) reportFailure(err error) {
 
 func (owner *Cleanup) Close() error {
 	if owner == nil {
-		return errors.New("text worker cleanup owner is absent")
+		return errors.New("document worker cleanup owner is absent")
 	}
 	owner.once.Do(func() {
 		owner.err = owner.join()
@@ -99,10 +99,10 @@ func (owner *Cleanup) joinObserved(
 		// The manager may disappear while the original cgroup is still live.
 		// Keep observing its pinned descriptor without stopping another unit.
 		return owner.waitOriginalCgroup(ctx, read, initialErr,
-			errors.New("text worker cleanup invocation is unavailable"), true)
+			errors.New("document worker cleanup invocation is unavailable"), true)
 	}
 	if !sameCleanupInstance(owner.instance, unit, service) {
-		identityErr := errors.New("text worker cleanup invocation changed")
+		identityErr := errors.New("document worker cleanup invocation changed")
 		owner.reportFailure(identityErr)
 		return owner.waitOriginalCgroup(ctx, read, initialErr,
 			identityErr, false)
@@ -141,7 +141,7 @@ func (owner *Cleanup) waitOriginalCgroup(
 		}
 		select {
 		case <-ctx.Done():
-			result := errors.Join(initialErr, identityErr, errors.New("text worker cgroup cleanup did not complete"))
+			result := errors.Join(initialErr, identityErr, errors.New("document worker cgroup cleanup did not complete"))
 			owner.reportFailure(result)
 			return result
 		case <-ticker.C:
@@ -171,7 +171,7 @@ func sameCleanupInstance(instance Instance, unit, service properties) bool {
 
 func stopInstance(ctx context.Context, inv inventory, name, role string) error {
 	if ctx == nil || ctx.Err() != nil || !validUnit(inv, name, role) {
-		return errors.New("text worker stop identity is invalid")
+		return errors.New("document worker stop identity is invalid")
 	}
 	// systemctl waits for the manager's stop job by default. The fixed command
 	// inherits the unprivileged Endpoint account; it cannot request a password,
@@ -180,7 +180,7 @@ func stopInstance(ctx context.Context, inv inventory, name, role string) error {
 	command.Env = []string{"PATH=/usr/bin:/bin", "LANG=C", "LC_ALL=C"}
 	command.Stdout, command.Stderr = io.Discard, io.Discard
 	if runOriginalCommand(command) != nil || ctx.Err() != nil {
-		return errors.New("text worker system manager stop failed")
+		return errors.New("document worker system manager stop failed")
 	}
 	return nil
 }

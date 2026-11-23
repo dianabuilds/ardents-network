@@ -10,7 +10,18 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
-var errDocumentUsage = errors.New("usage: ardents publish <absolute-administration-socket> <absolute-document-file> | ardents link <absolute-administration-socket> | ardents read <absolute-application-socket>\nPublish accepts a UTF-8 document and succeeds only after Descriptor acknowledgement. Read accepts a Target Link on standard input. Link and withdrawal use separate Administration authorization. Withdraw with ardents endpoint withdraw <administration-socket>")
+var errDocumentUsage = errors.New(`Usage
+  ardents publish <absolute-administration-socket> <absolute-document-file>
+  ardents link <absolute-administration-socket>
+  ardents read <absolute-application-socket>
+  ardents endpoint withdraw <absolute-administration-socket>
+
+The C0 document application accepts bounded UTF-8. Publish succeeds after
+Descriptor acknowledgement. Read takes a Target Link on standard input.
+Publishing, link presentation and withdrawal require Administration authorization.
+
+For installed host and infrastructure actions, run ardents help operator.
+For release tooling, run ardents help release.`)
 
 func runDocumentCommand(ctx context.Context, arguments []string, diagnostic io.Writer) int {
 	if err := executeDocumentCommand(ctx, arguments); err != nil {

@@ -1,7 +1,7 @@
-# Text-Service Application confinement
+# Document Application confinement
 
 Status: **selected closed Ubuntu design**, for the Product Owner's
-[text-document workload](../product/protected-service-workload.md).
+[document workload](../product/protected-service-workload.md).
 R-099's job/platform prerequisite is now resolved for this scope.
 No Windows, generic browser or arbitrary-Application profile is admitted.
 
@@ -13,6 +13,54 @@ checks require no participant input/output or durable-root effects. Repeated
 refused launches exceed the 64-session capacity without leaking slots or
 poisoning the local generation. This verifies refusal and portable ordering,
 not a Windows confinement or Application execution profile.
+
+## Proposed migration of signed worker names
+
+This proposal records the cutover design. Acceptance requires a decision updating [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md) and the qualification below.
+
+The nine-file protected group is nested in v6 Enrollment. Its descriptor is
+`ardents-protected-endpoint-artifact-v1`. Enrollment, Release authorization,
+the sealed-generation inventory and installed-file verification independently
+bind its file names. The installed worker artifact document
+`ardents-text-worker-artifact-v1` binds the executable, four systemd units and
+polkit rule by installed path and digest. The chroot, Endpoint unit
+dependencies and tmpfiles declaration bind related paths.
+
+Use `ardents-document-worker` for the proposed executable, with
+`ardents-document-reader` and `ardents-document-publisher` socket and
+service families and runtime sockets under `/run/ardents-document-worker`.
+Define a v2 protected descriptor and worker artifact document with one exact
+inventory and path map. The signed Release target inventory, archive, Debian
+payload and installed pre-start project that same set. Reject mixed groups,
+including a group whose individual files have valid digests.
+
+Authorize a forward transition from an independently verified exact v1
+predecessor. Retain the original systemd unit reference through successful
+stop. Require stopped original activation sockets, empty job inventory and
+empty worker cgroups. Under the retained Release lease, authenticate a strictly
+newer v2 generation, preserve root identity and authority floors, and stage
+its complete resource set in a distinct immutable generation. Keep the
+predecessor evidence until the successor's first use has been verified.
+
+The host delivery must record the transition durably before replacing shared
+unit resources. Staging prepares the new files before switching the Endpoint
+unit. At activation, require the predecessor sockets and units to be
+unstartable and the loaded successor to match the complete v2 inventory,
+including sockets, rule and worker chroot. An interrupted cutover stays
+unavailable while resources are partial. Recovery reobserves the original
+stopped generation and exact staged bytes before resuming, or admits a newly
+authorized forward generation. Previously committed Release floors and the
+original mutable root identities survive both paths.
+
+Acceptance requires positive and mixed-inventory controls in packaging,
+portable signed-grammar tests, and an Ubuntu/systemd transition from the exact
+deployed v1. The native test covers live, uncertain and tampered predecessor
+refusal, interruptions during staging and activation, retained root identities
+and floors, authenticated first use, the document journey and joined stop.
+
+`ARDTXT01` and the serialized `text_token_root` are separate wire and
+declaration identities. Keep their interpretation and bytes through this
+cutover. A later edition requires its own compatibility decision.
 
 ## Selected boundary
 

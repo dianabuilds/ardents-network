@@ -58,7 +58,7 @@ type published struct {
 }
 
 func (owner *Publisher) Publish(context.Context) error {
-	return errors.New("text publication requires an authorized snapshot")
+	return errors.New("document publication requires an authorized snapshot")
 }
 
 func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte) (result error) {

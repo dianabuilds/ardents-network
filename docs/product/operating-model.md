@@ -70,7 +70,7 @@ stronger quantitative claims and changed accepted budgets require new evidence.
 [successor architecture](../technical/common-privacy-architecture.md):
 split circuits, confidential control, one-use admission and traffic driven by
 useful work. [ADR-0081](../adr/0081-select-closed-protected-service-contract.md)
-completes the [closed text-Service contract](protected-service-workload.md),
+completes the [closed document Service contract](protected-service-workload.md),
 including selected dependencies and Ubuntu confinement. Target Link comes first;
 canonical naming needs its real authority producer. Public wire and stronger
 traffic-observer claims remain unselected.

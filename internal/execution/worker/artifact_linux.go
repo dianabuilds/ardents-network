@@ -37,15 +37,15 @@ func loadArtifact(inv inventory) (*Artifact, error) {
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
 	if decoder.Decode(&manifest) != nil || manifest.Schema != inv.schema || len(manifest.Files) != 6 {
-		return nil, errors.New("text worker artifact reference is invalid")
+		return nil, errors.New("document worker artifact reference is invalid")
 	}
 	canonical, err := json.Marshal(manifest)
 	if err != nil || !bytes.Equal(bytes.TrimSpace(body), canonical) {
-		return nil, errors.New("text worker artifact reference is not canonical")
+		return nil, errors.New("document worker artifact reference is not canonical")
 	}
 	var extra any
 	if decoder.Decode(&extra) != io.EOF {
-		return nil, errors.New("text worker artifact reference has trailing data")
+		return nil, errors.New("document worker artifact reference has trailing data")
 	}
 	artifact := &Artifact{inv: inv, files: make(map[string][32]byte, 6)}
 	paths := []string{inv.root + "/" + inv.prefix, inv.rule}
@@ -56,12 +56,12 @@ func loadArtifact(inv inventory) (*Artifact, error) {
 		encoded, ok := manifest.Files[path]
 		decoded, err := hex.DecodeString(encoded)
 		if !ok || err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != encoded {
-			return nil, errors.New("text worker artifact digest is invalid")
+			return nil, errors.New("document worker artifact digest is invalid")
 		}
 		var digest [32]byte
 		copy(digest[:], decoded)
 		if digest == [32]byte{} {
-			return nil, errors.New("text worker artifact digest is absent")
+			return nil, errors.New("document worker artifact digest is absent")
 		}
 		artifact.files[path] = digest
 	}
@@ -76,18 +76,18 @@ func loadArtifact(inv inventory) (*Artifact, error) {
 // and inode; a later substituted root is refused.
 func (artifact *Artifact) Verify() error {
 	if artifact == nil || len(artifact.files) != 6 {
-		return errors.New("text worker artifact is unavailable")
+		return errors.New("document worker artifact is unavailable")
 	}
 	root, err := installedPath(artifact.inv.root, true)
 	if err != nil || root.Mode().Perm() != 0555 {
-		return errors.New("text worker immutable root is unavailable")
+		return errors.New("document worker immutable root is unavailable")
 	}
 	identity, ok := root.Sys().(*syscall.Stat_t)
 	if !ok {
-		return errors.New("text worker root identity is unavailable")
+		return errors.New("document worker root identity is unavailable")
 	}
 	if artifact.rootInode != 0 && (artifact.rootDevice != uint64(identity.Dev) || artifact.rootInode != identity.Ino) {
-		return errors.New("text worker private root was substituted")
+		return errors.New("document worker private root was substituted")
 	}
 	if err := verifyRootInventory(artifact.inv); err != nil {
 		return err
@@ -99,7 +99,7 @@ func (artifact *Artifact) Verify() error {
 		}
 		body, err := readInstalledFile(path, limit)
 		if err != nil || sha256.Sum256(body) != digest {
-			return errors.New("text worker installed artifact was substituted")
+			return errors.New("document worker installed artifact was substituted")
 		}
 	}
 	if artifact.rootInode == 0 {
@@ -112,17 +112,17 @@ func (artifact *Artifact) Verify() error {
 // component. The final open additionally refuses symlinks and checks identity.
 func installedPath(path string, directory bool) (os.FileInfo, error) {
 	if !pathgrammar.Strict(path) {
-		return nil, errors.New("text worker installed path is invalid")
+		return nil, errors.New("document worker installed path is invalid")
 	}
 	for current := path; ; current = filepath.Dir(current) {
 		info, err := os.Lstat(current)
 		if err != nil {
-			return nil, errors.New("text worker installed path is unavailable")
+			return nil, errors.New("document worker installed path is unavailable")
 		}
 		stat, ok := info.Sys().(*syscall.Stat_t)
 		if !ok || stat.Uid != 0 || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm()&0022 != 0 ||
 			(current != path && !info.IsDir()) || (current == path && directory && !info.IsDir()) {
-			return nil, errors.New("text worker installed path is not root-controlled")
+			return nil, errors.New("document worker installed path is not root-controlled")
 		}
 		if current == "/" {
 			break
@@ -134,24 +134,24 @@ func installedPath(path string, directory bool) (os.FileInfo, error) {
 func readInstalledFile(path string, maximum int64) ([]byte, error) {
 	before, err := installedPath(path, false)
 	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > maximum {
-		return nil, errors.New("text worker installed file is invalid")
+		return nil, errors.New("document worker installed file is invalid")
 	}
 	fd, err := syscall.Open(path, syscall.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
-		return nil, errors.New("text worker installed file is unavailable")
+		return nil, errors.New("document worker installed file is unavailable")
 	}
 	file := os.NewFile(uintptr(fd), path)
 	defer file.Close()
 	opened, err := file.Stat()
 	if err != nil || !os.SameFile(before, opened) || !opened.Mode().IsRegular() {
-		return nil, errors.New("text worker installed file changed")
+		return nil, errors.New("document worker installed file changed")
 	}
 	body, readErr := io.ReadAll(io.LimitReader(file, maximum+1))
 	after, statErr := file.Stat()
 	closeErr := file.Close()
 	if readErr != nil || statErr != nil || closeErr != nil || int64(len(body)) != before.Size() ||
 		!os.SameFile(before, after) || !before.ModTime().Equal(after.ModTime()) || before.Size() != after.Size() {
-		return nil, errors.New("text worker installed file changed or could not be read")
+		return nil, errors.New("document worker installed file changed or could not be read")
 	}
 	return body, nil
 }
@@ -164,28 +164,28 @@ func verifyRootInventory(inv inventory) error {
 	seen := 0
 	err := filepath.WalkDir(inv.root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			return errors.New("text worker root inventory is unavailable")
+			return errors.New("document worker root inventory is unavailable")
 		}
 		if path == inv.root {
 			return nil
 		}
 		relative, err := filepath.Rel(inv.root, path)
 		if err != nil {
-			return errors.New("text worker root path is invalid")
+			return errors.New("document worker root path is invalid")
 		}
 		directory := directories[relative]
 		if !directory && relative != inv.prefix {
-			return errors.New("text worker root contains an extra resource")
+			return errors.New("document worker root contains an extra resource")
 		}
 		info, err := installedPath(path, directory)
 		if err != nil || info.Mode().Perm() != 0555 || (!directory && !info.Mode().IsRegular()) {
-			return errors.New("text worker root resource is mutable or invalid")
+			return errors.New("document worker root resource is mutable or invalid")
 		}
 		seen++
 		return nil
 	})
 	if err != nil || seen != len(directories)+1 {
-		return errors.New("text worker root inventory is invalid")
+		return errors.New("document worker root inventory is invalid")
 	}
 	return nil
 }
