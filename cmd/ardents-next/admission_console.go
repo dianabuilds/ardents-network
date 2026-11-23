@@ -2,18 +2,16 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // Local command facts are explicit operator assertions, never Network authority.
@@ -33,89 +31,7 @@ func admissionObserver(path string) func() (admission.AuthorityFacts, time.Time,
 	}
 }
 
-func decodeAdmissionObject(raw []byte, value any) error {
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.UseNumber()
-	if err := uniqueJSON(d); err != nil {
-		return err
-	}
-	if _, err := d.Token(); err != io.EOF {
-		return errors.New("trailing input")
-	}
-	if err := exactAdmissionFields(raw, reflect.TypeOf(value).Elem()); err != nil {
-		return err
-	}
-	d = json.NewDecoder(bytes.NewReader(raw))
-	d.DisallowUnknownFields()
-	return d.Decode(value)
-}
-
-// encoding/json deliberately accepts case-insensitive field aliases. Local
-// authority/configuration inputs require the exact documented field spelling.
-func exactAdmissionFields(raw []byte, t reflect.Type) error {
-	if t == reflect.TypeFor[time.Time]() {
-		return nil
-	}
-	switch t.Kind() {
-	case reflect.Struct:
-		var fields map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &fields); err != nil {
-			return err
-		}
-		allowed := map[string]reflect.Type{}
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if !f.IsExported() {
-				continue
-			}
-			name := strings.Split(f.Tag.Get("json"), ",")[0]
-			if name == "-" {
-				continue
-			}
-			if name == "" {
-				name = f.Name
-			}
-			allowed[name] = f.Type
-		}
-		for name, value := range fields {
-			kind, ok := allowed[name]
-			if !ok {
-				return errors.New("unknown field")
-			}
-			if err := exactAdmissionFields(value, kind); err != nil {
-				return err
-			}
-		}
-	case reflect.Array, reflect.Slice:
-		// A named type with its own JSON decoder owns its wire grammar. In
-		// particular, public Network preparation IDs require exact hex strings
-		// rather than encoding/json's default integer-array representation.
-		decoder := reflect.TypeFor[json.Unmarshaler]()
-		if t.Implements(decoder) || reflect.PointerTo(t).Implements(decoder) {
-			return nil
-		}
-		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
-			return nil
-		}
-		var values []json.RawMessage
-		if err := json.Unmarshal(raw, &values); err != nil {
-			return err
-		}
-		// encoding/json pads short arrays and discards excess elements. Refuse
-		// either change before decoding identities or fixed command bounds.
-		if t.Kind() == reflect.Array && len(values) != t.Len() {
-			return errors.New("invalid array length")
-		}
-		for _, v := range values {
-			if err := exactAdmissionFields(v, t.Elem()); err != nil {
-				return err
-			}
-		}
-	case reflect.Pointer:
-		return exactAdmissionFields(raw, t.Elem())
-	}
-	return nil
-}
+func decodeAdmissionObject(raw []byte, value any) error { return artifacts.DecodeObject(raw, value) }
 
 func admissionConfig(args []string, value any) error {
 	return admissionConfigBounded(args, value, 64<<10)

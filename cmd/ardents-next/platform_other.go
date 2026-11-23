@@ -7,6 +7,6 @@ import (
 	"io"
 )
 
-func runPlatform(_ context.Context, _ []string, out io.Writer) int {
+func runPlatformNative(_ context.Context, _ []string, out io.Writer) int {
 	return unsupportedPlatformRefusal(out, "platform")
 }

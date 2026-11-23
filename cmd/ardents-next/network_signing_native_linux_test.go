@@ -37,7 +37,7 @@ func signingNativeParent(t *testing.T) string {
 	if err != nil {
 		t.Fatal("invalid environment", err)
 	}
-	if err = errors.Join(signingAncestors(ancestors), ancestors.Close()); err != nil {
+	if err = errors.Join(ancestors.CheckRootAccess(), ancestors.Close()); err != nil {
 		t.Fatal("invalid environment: root-controlled direct ancestors required", err)
 	}
 	var fs syscall.Statfs_t

@@ -34,7 +34,7 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 	if err != nil {
 		t.Fatal("invalid native environment", err)
 	}
-	if err := signingAncestors(p); err != nil {
+	if err := p.CheckRootAccess(); err != nil {
 		_ = p.Close()
 		t.Fatal("invalid root-controlled ancestors", err)
 	}

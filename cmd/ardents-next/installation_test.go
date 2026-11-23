@@ -5,10 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-
 	"os"
 	"path/filepath"
-
 	"sync/atomic"
 	"testing"
 	"time"
@@ -21,7 +19,7 @@ import (
 // These portable authentication tests model the selected linux-amd64 bundle,
 // independently of the developer host. They do not authorize local execution.
 func installationFixtureInputs(bundle enrollment.Bundle, ref time.Time) (release.Inputs, bool) {
-	in, ok := initialReleaseInputs(bundle, ref)
+	in, ok := endpointrelease.InitialInputs(bundle, ref)
 	in.Local.Architecture = "amd64"
 	return in, ok
 }
@@ -85,7 +83,7 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	candidateInput, ok := candidateReleaseInputs(c, ref)
+	candidateInput, ok := endpointrelease.CandidateInputs(c, ref)
 	candidateInput.Local.Architecture = "amd64"
 	if !ok {
 		t.Fatal("candidate composition refused")
@@ -171,7 +169,7 @@ func TestInstallationCandidateCannotBootstrapCompleteTrust(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in, _ := candidateReleaseInputs(c, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+	in, _ := endpointrelease.CandidateInputs(c, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
 	in.Local.Architecture = "amd64"
 	v, err := release.Open(filepath.Join(t.TempDir(), "fresh-history"))
 	if err != nil {

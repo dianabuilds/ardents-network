@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 type hostingPlan struct {
@@ -15,44 +16,7 @@ type hostingPlan struct {
 	Policy hosting.Policy `json:"policy"`
 }
 
-// Check every object, including nested input, for duplicate keys before
-// typed decoding. Unknown fields and omitted required top-level fields refuse.
-func uniqueJSON(d *json.Decoder) error {
-	t, err := d.Token()
-	if err != nil {
-		return err
-	}
-	if t == nil {
-		return errors.New("invalid-input")
-	}
-	switch t {
-	case json.Delim('{'):
-		seen := map[string]bool{}
-		for d.More() {
-			key, err := d.Token()
-			if err != nil {
-				return err
-			}
-			name, ok := key.(string)
-			if !ok || seen[name] {
-				return errors.New("invalid-input")
-			}
-			seen[name] = true
-			if err := uniqueJSON(d); err != nil {
-				return err
-			}
-		}
-		_, err = d.Token()
-	case json.Delim('['):
-		for d.More() {
-			if err := uniqueJSON(d); err != nil {
-				return err
-			}
-		}
-		_, err = d.Token()
-	}
-	return err
-}
+func uniqueJSON(d *json.Decoder) error { return artifacts.UniqueJSON(d) }
 
 func decodeHostingPlan(raw []byte, operation string) (hostingPlan, error) {
 	var p hostingPlan

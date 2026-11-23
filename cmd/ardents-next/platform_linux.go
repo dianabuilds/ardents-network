@@ -15,9 +15,12 @@ import (
 	"strings"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
@@ -40,14 +43,7 @@ type platformLaunch struct {
 // unit emits bytes only. initialize-trust is a separate explicit first-pin
 // action. check is the mandatory privileged ExecStartPre: retained Release only,
 // no installation/start/stop/recovery effect and no accepting receipt to replay.
-func runPlatform(ctx context.Context, args []string, out io.Writer) int {
-	if ctx != nil && ctx.Err() == nil && len(args) == 1 && args[0] == "template" {
-		_, err := io.WriteString(out, platformUnitTemplate)
-		if err == nil {
-			return 0
-		}
-		return 1
-	}
+func runPlatformNative(ctx context.Context, args []string, out io.Writer) int {
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) < 2 {
 		return 2
 	}
@@ -67,7 +63,7 @@ func runPlatform(ctx context.Context, args []string, out io.Writer) int {
 	}
 	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	files := &platformFiles{}
+	files := &artifacts.PlatformInputs{}
 	err := executePlatformCheck(bounded, args, out, files)
 	err = errors.Join(err, files.Close(), bounded.Err())
 	if err != nil {
@@ -76,7 +72,7 @@ func runPlatform(ctx context.Context, args []string, out io.Writer) int {
 	return 0
 }
 
-func executePlatformCheck(ctx context.Context, args []string, out io.Writer, files *platformFiles) (result error) {
+func executePlatformCheck(ctx context.Context, args []string, out io.Writer, files *artifacts.PlatformInputs) (result error) {
 	path := args[1]
 	if !platformBelow("/etc/ardents", path) {
 		return errPlatformInput
@@ -86,11 +82,14 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 		return err
 	}
 	var launch platformLaunch
-	if decodeAdmissionObject(raw, &launch) != nil || !validPlatformLaunch(launch) {
+	if decodeAdmissionObject(raw, &launch) != nil {
 		return errPlatformInput
 	}
 	if launch.Role == "endpoint" {
-		return executeEndpointPlatformCheck(ctx, args, out, files, launch, raw)
+		return executeEndpointPlatformCheck(ctx, args, out, files, raw)
+	}
+	if !validPlatformLaunch(launch) {
+		return errPlatformInput
 	}
 	digest := sha256.Sum256(raw)
 	pin := hex.EncodeToString(digest[:])
@@ -164,7 +163,7 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 	}
 	// The privileged precheck itself must be the original private enrolled
 	// executable. The public runtime copy is independently compared above.
-	if err := platformOwnExecutable(filepath.Join(launch.Distribution, infrastructure.ProgramName), program); err != nil {
+	if err := artifacts.CheckRunningExecutable(filepath.Join(launch.Distribution, infrastructure.ProgramName), program); err != nil {
 		return err
 	}
 	var sourceInspection state.SourceInspection
@@ -175,7 +174,7 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 		defer func() { result = errors.Join(result, sourceInspection.Close()) }()
 	}
 	if args[0] == "check" {
-		uid, err := files.readAccount(platformUser(launch))
+		uid, err := readPlatformAccount(files, platformUser(launch))
 		if err != nil {
 			return err
 		}
@@ -262,30 +261,13 @@ func platformDigest(raw []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// Keep unit arguments literal: no escaping, expansion, specifiers, aliases or
-// service-writable ancestors may select another executable/configuration.
-func platformPath(path string) bool {
-	if !absoluteAdmissionPath(path) || path == "/" || len(path) > 4096 {
-		return false
-	}
-	for _, c := range path {
-		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("/._-", c)) {
-			return false
-		}
-	}
-	return true
-}
-
-func platformBelow(parent, path string) bool {
-	return platformPath(path) && strings.HasPrefix(path, parent+"/")
-}
+func platformPath(value string) bool          { return pathgrammar.LiteralPOSIXPath(value) }
+func platformBelow(parent, value string) bool { return requestinput.PlatformBelow(parent, value) }
 
 func validPlatformLaunch(p platformLaunch) bool {
 	switch p.Role {
 	case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
 		return validInfraPlatformLaunch(p)
-	case "endpoint":
-		return validEndpointPlatformLaunch(p)
 	default:
 		return false
 	}
@@ -322,13 +304,6 @@ func validInfraPlatformLaunch(p platformLaunch) bool {
 }
 
 func platformPlanInputs(role string, raw []byte) ([]string, error) {
-	if role == "endpoint" {
-		decl, err := platformEndpointDeclaration(raw)
-		if err != nil {
-			return nil, err
-		}
-		return platformEndpointInputs(decl)
-	}
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(raw, &fields) != nil {
 		return nil, errPlatformInput
@@ -358,13 +333,6 @@ func equalPlatformRoots(a, b []string) bool {
 // This projection limits platform write access to exactly the declared domain
 // roots. No root is opened, initialized, inspected as clean or repaired here.
 func platformPlanRoots(role string, raw []byte) ([]string, error) {
-	if role == "endpoint" {
-		decl, err := platformEndpointDeclaration(raw)
-		if err != nil {
-			return nil, err
-		}
-		return platformEndpointRoots(decl)
-	}
 	var fields map[string]json.RawMessage
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()

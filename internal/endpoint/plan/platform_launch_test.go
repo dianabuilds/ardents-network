@@ -1,6 +1,4 @@
-//go:build linux
-
-package main
+package plan_test
 
 import (
 	"strings"
@@ -40,8 +38,8 @@ func endpointDeclFixture() requestinput.Declaration {
 	}
 }
 
-func endpointLaunchFixture() platformLaunch {
-	return platformLaunch{
+func endpointLaunchFixture() requestinput.PlatformLaunch {
+	return requestinput.PlatformLaunch{
 		Role:          "endpoint",
 		Distribution:  "/var/lib/ardents/artifacts/release-one",
 		ReleaseRoot:   "/var/lib/ardents/release-trust",
@@ -59,33 +57,33 @@ func endpointLaunchFixture() platformLaunch {
 }
 
 func TestValidEndpointPlatformLaunchRejectsExpansionAndWritableTrust(t *testing.T) {
-	for name, change := range map[string]func(*platformLaunch){
-		"role-escape":    func(p *platformLaunch) { p.Role = "other" },
-		"program-layout": func(p *platformLaunch) { p.Program = "/usr/lib/ardents/ardents-linux-amd64" },
-		"program-base": func(p *platformLaunch) {
+	for name, change := range map[string]func(*requestinput.PlatformLaunch){
+		"role-escape":    func(p *requestinput.PlatformLaunch) { p.Role = "other" },
+		"program-layout": func(p *requestinput.PlatformLaunch) { p.Program = "/usr/lib/ardents/ardents-linux-amd64" },
+		"program-base": func(p *requestinput.PlatformLaunch) {
 			p.Program = "/var/lib/ardents/endpoint/generations/" + strings.Repeat("a", 64) + "/ardents-node-linux-amd64"
 		},
-		"specifier":     func(p *platformLaunch) { p.Program += "%i" },
-		"configuration": func(p *platformLaunch) { p.Configuration = "/var/lib/ardents/endpoint.json" },
-		"newline":       func(p *platformLaunch) { p.Distribution += "\nExecStart=/bin/sh" },
-		"trust":         func(p *platformLaunch) { p.ReleaseRoot = p.WritableRoots[0] },
-		"artifact":      func(p *platformLaunch) { p.Distribution = p.WritableRoots[0] },
-		"program-trust": func(p *platformLaunch) { p.WritableRoots[0] = "/var/lib/ardents/endpoint/generations" },
-		"overlap":       func(p *platformLaunch) { p.WritableRoots[1] = p.WritableRoots[0] + "/child" },
-		"pin":           func(p *platformLaunch) { p.ConfigSHA256 = strings.Repeat("z", 64) },
-		"input-count":   func(p *platformLaunch) { delete(p.Inputs, "/etc/ardents/client.key") },
-		"mutable-input": func(p *platformLaunch) {
+		"specifier":     func(p *requestinput.PlatformLaunch) { p.Program += "%i" },
+		"configuration": func(p *requestinput.PlatformLaunch) { p.Configuration = "/var/lib/ardents/endpoint.json" },
+		"newline":       func(p *requestinput.PlatformLaunch) { p.Distribution += "\nExecStart=/bin/sh" },
+		"trust":         func(p *requestinput.PlatformLaunch) { p.ReleaseRoot = p.WritableRoots[0] },
+		"artifact":      func(p *requestinput.PlatformLaunch) { p.Distribution = p.WritableRoots[0] },
+		"program-trust": func(p *requestinput.PlatformLaunch) { p.WritableRoots[0] = "/var/lib/ardents/endpoint/generations" },
+		"overlap":       func(p *requestinput.PlatformLaunch) { p.WritableRoots[1] = p.WritableRoots[0] + "/child" },
+		"pin":           func(p *requestinput.PlatformLaunch) { p.ConfigSHA256 = strings.Repeat("z", 64) },
+		"input-count":   func(p *requestinput.PlatformLaunch) { delete(p.Inputs, "/etc/ardents/client.key") },
+		"mutable-input": func(p *requestinput.PlatformLaunch) {
 			delete(p.Inputs, "/etc/ardents/client.key")
 			p.Inputs[p.WritableRoots[0]+"/client.key"] = strings.Repeat("d", 64)
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p := endpointLaunchFixture()
-			if !validPlatformLaunch(p) {
+			if !p.Valid() {
 				t.Fatal("healthy endpoint declaration refused")
 			}
 			change(&p)
-			if validPlatformLaunch(p) {
+			if p.Valid() {
 				t.Fatal("unsafe endpoint platform declaration accepted")
 			}
 		})
@@ -94,7 +92,7 @@ func TestValidEndpointPlatformLaunchRejectsExpansionAndWritableTrust(t *testing.
 
 func TestPlatformEndpointRootsProjectsMutableRootsAndSocketParents(t *testing.T) {
 	decl := endpointDeclFixture()
-	roots, err := platformEndpointRoots(decl)
+	roots, err := requestinput.PlatformWritableRoots(decl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +115,7 @@ func TestPlatformEndpointRootsProjectsMutableRootsAndSocketParents(t *testing.T)
 	}
 	// Reader-only drops Publication/Instance and the administration/publisher parents.
 	decl.Headless.Role = "reader"
-	roots, err = platformEndpointRoots(decl)
+	roots, err = requestinput.PlatformWritableRoots(decl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +138,7 @@ func TestPlatformEndpointRootsRefusesImmutableOverlapAndInvalidPaths(t *testing.
 		t.Run(name, func(t *testing.T) {
 			decl := endpointDeclFixture()
 			change(&decl)
-			if _, err := platformEndpointRoots(decl); err == nil {
+			if _, err := requestinput.PlatformWritableRoots(decl); err == nil {
 				t.Fatal("unsafe endpoint write allowance accepted")
 			}
 		})
@@ -149,7 +147,7 @@ func TestPlatformEndpointRootsRefusesImmutableOverlapAndInvalidPaths(t *testing.
 
 func TestPlatformEndpointInputsBindsReadOnlyCredentialPair(t *testing.T) {
 	decl := endpointDeclFixture()
-	inputs, err := platformEndpointInputs(decl)
+	inputs, err := requestinput.PlatformSourceCredentials(decl)
 	if err != nil || len(inputs) != 2 || inputs[0] != "/etc/ardents/client.crt" || inputs[1] != "/etc/ardents/client.key" {
 		t.Fatal("credential pair not bound exactly", inputs, err)
 	}
@@ -164,7 +162,7 @@ func TestPlatformEndpointInputsBindsReadOnlyCredentialPair(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			decl := endpointDeclFixture()
 			change(&decl)
-			if _, err := platformEndpointInputs(decl); err == nil {
+			if _, err := requestinput.PlatformSourceCredentials(decl); err == nil {
 				t.Fatal("unbound/mutable endpoint credential admitted")
 			}
 		})

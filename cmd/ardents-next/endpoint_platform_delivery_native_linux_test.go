@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 )
 
 func platformNativeDistribution(t *testing.T, src, dst string) (string, string) {
@@ -43,15 +45,15 @@ func platformNativeLaunch(t *testing.T, requestPath, distribution string) platfo
 	if err != nil {
 		t.Fatal(err)
 	}
-	decl, err := platformEndpointDeclaration(raw)
+	decl, err := requestinput.DecodeDeclaration(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots, err := platformEndpointRoots(decl)
+	roots, err := requestinput.PlatformWritableRoots(decl)
 	if err != nil {
 		t.Fatal(err)
 	}
-	credentials, err := platformEndpointInputs(decl)
+	credentials, err := requestinput.PlatformSourceCredentials(decl)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -392,8 +392,11 @@ consumer establishes neither Service readiness nor installed startup acceptance.
 ### Protected Endpoint platform delivery
 
 The transitional `ardents-next installation` command family is retired.
-Platform commands own trust initialization, signed generation staging and
-pre-start verification. Existing installation data remains on disk.
+Platform commands drive trust initialization, signed generation staging and
+pre-start verification through the Endpoint launch owner.
+`ardents platform template` emits the fixed infrastructure template on
+Windows, macOS and Ubuntu for offline preparation. Endpoint activation and
+pre-start verification use the admitted Ubuntu system manager. Existing installation data remains on disk.
 
 Before first Endpoint runtime, the actual runtime principal runs
 `ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE SIGNED_PROFILE`.
