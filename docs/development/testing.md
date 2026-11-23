@@ -2099,11 +2099,17 @@ Windows and Linux production builds, then for their test executables, with the
 selected native build tags enabled (`network_signing_native`,
 `document_worker_installed`, `installation_native`, `node_process_native`,
 `startup_manager_native`, `network_preparation_native`,
-`forwarding_platform_native`, `join_platform_native`,
+`endpoint_platform_native`, `endpoint_launch_native`, `endpoint_pair_native`,
+`source_installed_native`, `forwarding_platform_native`, `join_platform_native`,
 `descriptor_platform_native`, `heapdumpcapture`). The analyzer only compiles the
 program; it does not execute the native stands. Including the native tags lets
 native-tagged test coverage count, so a function exercised only by a native test
-is not reported as unreachable.
+is not reported as unreachable. Compile-counted coverage is not executed proof:
+a native test keeps code alive in this analysis whether or not a make lane runs
+it. Executed proof comes only from the selected make legs below (or an explicit
+manual run); the platform-installed gates are compile-checked-only via
+`make platform-installed-compile-check` and are executed solely by a manual
+root-driver run on an admitted host.
 
 Production results must match
 [`tests/profiles/deadcode-allowlist.json`](../../tests/profiles/deadcode-allowlist.json)
@@ -3128,12 +3134,15 @@ through actual systemd and socket-activated Worker lifetimes.
 
 The `endpoint_platform_native` build tag selects
 `cmd/ardents-next/endpoint_platform_native_linux_test.go`
-(`TestNativeEndpointPlatformPrestartTrustTransfer`). It is a real-host
+(`TestNativeEndpointPlatformPrestartTrustTransfer` and
+`TestNativeEndpointPlatformStagesGeneration`). It is a real-host
 qualification run under a root driver on an admitted Ubuntu/systemd manager
 (systemd 249/255, `/usr/bin/busctl --system`, cgroup v2); missing privileges or
 manager are an invalid environment and fail, never a passing skip. It is not a
-`make quick-check` lane: the ordinary suite excludes the tag, while
-`scripts/check-deadcode.go` compiles it so its native-test coverage counts.
+`make quick-check` executed lane: the ordinary suite excludes the tag. It is
+compile-checked-only by `make platform-installed-compile-check`, and
+`scripts/check-deadcode.go` compiles it so its native-test coverage counts;
+executed proof is the explicit manual root-driver run on the admitted host.
 
 The test provisions genuine platform delivery on the real host: a dedicated
 `ardents-endpoint` account (unique 100-999 UID/GID, nologin, `/nonexistent`), an
@@ -3176,8 +3185,10 @@ under a root driver on an admitted Ubuntu/systemd manager (systemd 249/255,
 `/usr/bin/busctl --system`, cgroup v2, kernel supplying the processresource
 memory-event counters); missing privileges or manager are an invalid
 environment and fail, never a passing skip. It is not a `make quick-check`
-lane: the ordinary suite excludes the tag, while `scripts/check-deadcode.go`
-compiles it so its native-test coverage counts.
+executed lane: the ordinary suite excludes the tag. It is compile-checked-only by
+`make platform-installed-compile-check`, and `scripts/check-deadcode.go` compiles
+it so its native-test coverage counts; executed proof is the explicit manual
+root-driver run on the admitted host.
 
 The test provisions genuine installed Source delivery on the real host: a
 dedicated `ardents-source` account (unique 100-999 UID/GID, nologin,
@@ -3216,8 +3227,11 @@ The `endpoint_launch_native` build tag selects
 (`TestNativeEndpointPlatformLedLaunch` + `...Refusals`), a real-host root-driver
 qualification on an admitted Ubuntu/systemd manager (systemd 249/255,
 `/usr/bin/busctl --system`, cgroup v2). Missing privileges or manager fail, never
-a passing skip. It is not a `make quick-check` lane; the ordinary suite excludes
-the tag while `scripts/check-deadcode.go` compiles it so native coverage counts.
+a passing skip. It is not a `make quick-check` executed lane; the ordinary suite
+excludes the tag. It is compile-checked-only by
+`make platform-installed-compile-check`, and `scripts/check-deadcode.go` compiles
+it so native coverage counts; executed proof is the explicit manual root-driver
+run on the admitted host.
 
 It proves the FULL platform-led launch chain to protected text Service readiness
 for ONE dual-role (publisher+reader) Endpoint (#391 S1): genuine Network State +
@@ -3268,14 +3282,17 @@ This is real-host replacement evidence with a live Worker and fixture authority.
 
 The `endpoint_launch_native` build tag additionally selects
 `cmd/ardents-next/endpoint_idle_native_linux_test.go`
-(`TestNativeEndpointPlatformLedIdle`), a real-host root-driver measurement on an
-admitted Ubuntu/systemd manager (systemd 249/255, cgroup v2). Run it explicitly,
-for example `go test -tags endpoint_launch_native -run
+(`TestNativeEndpointPlatformLedIdle` and
+`TestNET32IdleFreshBoundaryBypassesRecentHostingSample`), a real-host root-driver
+measurement on an admitted Ubuntu/systemd manager (systemd 249/255, cgroup v2).
+Run it explicitly, for example `go test -tags endpoint_launch_native -run
 '^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./cmd/ardents-next`;
 missing privileges or manager are an invalid environment and fail, never a
 passing skip. Like the sibling native qualifications it is not a `make
-quick-check` lane and has no profiles.json entry; `scripts/check-deadcode.go`
-compiles the tag so its native-test coverage counts.
+quick-check` executed lane and has no profiles.json entry; it is
+compile-checked-only by `make platform-installed-compile-check`, and
+`scripts/check-deadcode.go` compiles the tag so its native-test coverage counts.
+Executed proof is the explicit manual root-driver run on the admitted host.
 
 It reuses the full-launch stand to provision ONE platform-led Endpoint to Service
 readiness and leaves it idle — no publication, no Application job — so the only
@@ -3327,9 +3344,11 @@ bound at their host paths. Both guests must reach protected text Service readine
 with positive and causal-refusal evidence and distinct original InvocationIDs;
 passing skips are refused. Joined cleanup terminates both machines and removes the
 cloned rootfs. Missing privileges, tools, platform or freshness are invalid
-environments, never a passing skip. It is not a `make quick-check` lane; the
-ordinary suite excludes the tag while `scripts/check-deadcode.go` compiles it so
-native coverage counts.
+environments, never a passing skip. It is not a `make quick-check` executed lane;
+the ordinary suite excludes the tag. It is compile-checked-only by
+`make platform-installed-compile-check`, and `scripts/check-deadcode.go` compiles
+it so native coverage counts; executed proof is the explicit manual root-driver
+run on the admitted host.
 
 This is component/acceptance evidence with fixture Release/Network authority for
 two independently admitted managers reaching platform-led Service readiness. It is
@@ -3408,8 +3427,10 @@ that participant:
   finite publication and bootstrap deadlines require a quiet controller host
   (concurrent heavy load is an invalid environment for the timing-sensitive
   exchange, not a reason to widen a product bound). It is not a `make quick-check`
-  lane; the ordinary suite excludes the tag while `scripts/check-deadcode.go`
-  compiles it so native coverage counts.
+  executed lane; the ordinary suite excludes the tag. It is compile-checked-only
+  by `make platform-installed-compile-check`, and `scripts/check-deadcode.go`
+  compiles it so native coverage counts; executed proof is the explicit manual
+  root-driver run on the admitted host.
 
 Supporting product defect repair (same change): the fixed worker
 inherited-descriptor audit (`internal/application/document`) admits and
@@ -3695,6 +3716,66 @@ remains in the same signing profile; the former
 `TestDescriptorPreparationNativeActualBuildRecordsAndPublicPlan` build-records
 control and `prepare-descriptor-release-plan.py` retired with the orchestration.
 These are offline signing controls, not installed or independent-builder claims.
+
+### Executed offline Release-signing chain and Source initial preparation (#773)
+
+`make network-signing-check` executes the previously compile-only initial/forward
+Release-signing chain in `internal/release/infrastructure/signing` as selected
+legs (proof-integrity #773, D6 pattern): the Forwarding and JOIN
+`InitialReleasePurposeAndKeyCustody` and `ForwardReleasePreservesRootAndRaisesFloors`
+controls, and the Descriptor and Source `InitialReleasePurposeAndKeyCustody`
+controls. The Descriptor forward twin keeps its own
+`descriptor-forward-release-check` lane. These legs require the same-source static
+`ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM`/`_SHA256` signer plus the role-specific
+static `ARDENTS_FORWARDING_NEXT_PROGRAM`, `ARDENTS_JOIN_NEXT_PROGRAM`,
+`ARDENTS_DESCRIPTOR_NEXT_PROGRAM` and `ARDENTS_SOURCE_NEXT_PROGRAM` with their
+`_SHA256` pins, on the root/ext4 protected-ancestor stand; the canonical platform
+unit template is produced by `ardents-next platform template`. They are offline
+signing controls, not installed or independent-builder claims.
+
+The same target also executes
+`TestSourcePreparationNativeInitialNetworkAndNonrootState`
+(`internal/node/provisioning`): genuine initial Source key/plan/Record/Epoch
+preparation through the pinned `ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM`, then
+actual nonroot State acceptance in an OS child with numeric UID/GID199 under a
+separate root-owned 0755 `ARDENTS_SOURCE_STATE_FIXTURE_PARENT`. A prepared root is
+not automatically adopted and initial participation is retained. This is offline
+preparation evidence, not an installed Source account/unit or Startup/serving
+qualification.
+
+### Worker inherited-descriptor audit (executed, #773)
+
+`make worker-descriptor-audit-check` (`worker-descriptor-audit-linux`) executes
+`TestVerifyWorkerDescriptors{ClosesManagerCgroupControl,IgnoresCloseOnExecForeign,RefusesForeignAuthority}`
+(`internal/application/document`, `document_worker_installed`) against a real
+unified cgroup v2. The audit replaces process stdio with the fixed worker's
+inherited socket/null shape, opens the caller's own-cgroup `cpu.max`, and proves
+the manager-passed resource control is verified and closed, foreign authority
+(own-cgroup migration surface/directory, foreign regular file, foreign local
+socket) is refused, and a close-on-exec foreign descriptor is ignored. It needs
+only the caller's own unified cgroup placement and a clean descriptor table — no
+root, installed worker or Service — and is compile-checked cross-platform via
+`installed-tag-compile-check`. The pure path/name policy remains separately
+covered by `TestManagerCgroupControlTargetPolicy`.
+
+### Compile-checked-only installed replacement/latency gates (#773 honest surface)
+
+`TestSourceReplacementReloadCancellationNative` (`cmd/ardents-next`,
+`network_signing_native`) and the cold/warm latency pair
+`TestNativeEndpointColdWarmLatency` (`cmd/ardents-next`) +
+`TestNativeEndpointColdWarmLatencyParticipant` (`internal/endpoint`,
+`endpoint_launch_native`) are installed real-host gates, not offline signing
+controls. The replacement cut ptrace-observes the genuine
+`installation replace-source` command's systemd Reload socket and requires a live
+installed Source and system manager; the latency driver requires
+`/usr/bin/busctl --system`, a loaded `ardents-endpoint.service` qualification unit
+and a platform-led installed root. They cannot run in the disposable diagnostic
+container, so they have no automated executed make lane: they are
+compile-checked-only (the replacement cut via `network-signing-compile-check`, the
+latency pair via `platform-installed-compile-check`) and are executed solely by an
+explicit manual root-driver run on an admitted Ubuntu/systemd host. Their
+native-test coverage counts in the deadcode analysis, which is compile evidence,
+not executed proof.
 
 ### Descriptor read-only Store inspection mechanism (retained)
 
