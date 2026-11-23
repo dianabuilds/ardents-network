@@ -459,16 +459,17 @@ runtime commands, the four retained repair commands (Forwarding/JOIN/Descriptor/
 Introduction) and the `ardents-next node prepare-plan` operator command (#673,
 ADR-0125 decision 6 keeps configuration validation with the runtime owner). It
 returns declaration facts only; it performs no State acceptance, root creation,
-hosting initialization or signing, and supplies no universal role policy. The
-`state.Config` conversion (`networkStateConfig`) and the per-role process profile
-and root-separation policy stay in `cmd/ardents-next` composition; the node domain
-does not import `network/state`. The five runtime commands share the
+hosting initialization or signing, and supplies no universal role policy. The runtime commands convert their declaration into `state.Config`.
+Node validates the role and independent roots for recovery.
+`internal/release/infrastructure/launch` retains the original public plan and
+actual manager while Network State decides whether to repair. The Node domain
+remains independent of `network/state`. The five runtime commands share the
 command-owned State acquisition, joined retirement and JSON outcome projection
 in `node_lifecycle_linux.go`. Each invocation retains its own genuine typed
 constructor and role roots. Introduction retained repair now consumes the
 same full Introduction declaration grammar as its runtime (the former six-field
-repair subset is normalized). `node prepare-plan` writes the role's exact plan
-JSON from operator inputs with before-effect typed refusals; it codifies the
+repair subset is normalized). `node prepare-plan` delegates exclusive production of the role plan JSON to
+`internal/node/provisioning` with before-effect typed refusals; it codifies the
 native installed provisioning recipe without acquiring any provisioning effect.
 Source's separate serving declaration grammar is unchanged. The operator
 procedure is recorded in `docs/operations/node-role-platform-lifecycle.md`.

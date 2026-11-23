@@ -134,6 +134,15 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/node.RepairDeclaration"
+        ],
+        "classification": "portable original Node repair declaration behind Linux custody",
+        "rationale": "The native Linux retained repair validates the role and original ordered roots through this portable decoder before opening the manager. Portable tests exercise role substitution and overlapping roots. Windows production refuses the native repair before file effects.",
+        "owner": "Node declarations and infrastructure repair",
+        "retirement": "Remove this entry when native repair gains a supported Windows production caller or its owning contract is retired."
+      },
+      {
+        "symbols": [
           "internal/admission/issuance.DecodeInstalledResultSetup",
           "internal/platform/systemd.InfrastructureAccount",
           "internal/platform/systemd.InfrastructureUnit.Render",

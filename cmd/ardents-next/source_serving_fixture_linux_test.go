@@ -10,7 +10,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
+
+type sourceInputs = artifacts.ObservedInputs
+
+var errSourceInput = artifacts.ErrObservedInput
 
 func acquireSourceInputs(ctx context.Context, path string) (sourceInputs, servingdeclaration.ServingDeclaration, error) {
 	return serving.AcquireInputs(ctx, path, nil)

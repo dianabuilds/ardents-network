@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
@@ -62,13 +61,6 @@ func admissionTime(value string) (time.Time, error) {
 		return time.Time{}, errors.New("invalid-input")
 	}
 	return t, nil
-}
-func admissionNumber(value string, bits int) (uint64, error) {
-	n, err := strconv.ParseUint(value, 10, bits)
-	if err != nil || strconv.FormatUint(n, 10) != value {
-		return 0, errors.New("invalid-input")
-	}
-	return n, nil
 }
 func decodeAdmissionPlan(raw []byte) (admissionPlan, error) {
 	fields, err := issuerConfigObject(raw, "root", "binding")
