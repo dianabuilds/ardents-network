@@ -205,7 +205,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				output, err := process.Output()
 				if err != nil {
 					journeyDumpJournal(t)
-					t.Fatalf("stream connect: %v: %s", err, &diagnostic)
+					response.Failure = fmt.Sprintf("stream connect: %v: %s", err, &diagnostic)
 				}
 				response.Body = output
 			case "stream-result":
@@ -216,7 +216,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				publisherProcess = nil
 				if err != nil {
 					journeyDumpJournal(t)
-					t.Fatalf("stream publish: %v: %s", err, &publisherDiagnostic)
+					response.Failure = fmt.Sprintf("stream publish: %v: %s", err, &publisherDiagnostic)
 				}
 				response.Body = publisherOutput.Bytes()
 			case "withdraw":
@@ -938,6 +938,9 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		sent := bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000)
 		read := exchange(1, installedPairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent})
 		received := exchange(0, installedPairMessage{Operation: "stream-result"})
+		if read.Failure != "" || received.Failure != "" {
+			t.Fatalf("installed byte stream stopped (received %d/%d bytes): reader %s; publisher %s", len(read.Body), len(received.Body), read.Failure, received.Failure)
+		}
 		if read.Original != identities[1] || received.Original != identities[0] ||
 			!bytes.Equal(read.Body, body) || !bytes.Equal(received.Body, sent) {
 			t.Fatal("installed byte-stream exchange changed bytes or original Endpoint identities")
