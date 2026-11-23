@@ -1872,9 +1872,14 @@ selected Carriers.
   published. A deleted Go package without a current owner selects the repository
   architecture check; changed surviving consumers retain their narrow checks.
   Independent selected jobs all finish and report their failures. The exact
-  integration candidate must pass the CI core, race and portable gates; a direct
-  integration without that CI result runs `make check` once on the exact source.
-  A push to `main` runs the complete gate again as a post-integration baseline.
+  integration candidate must pass the CI core, race and portable gates. Verify
+  the integrated tree matches the checked candidate; if it differs, run the
+  gate on the integrated commit. A successful `quality` workflow dispatch on
+  a branch pointing at the exact candidate covers a direct fast-forward after
+  verifying the run's commit; otherwise run `make check` once. Protected
+  `main` requires an up-to-date PR and its `go` status for all users. Verify
+  that protection before relying on the PR gate. Merging the checked tree does
+  not start a second full gate. Manual dispatch provides an independent baseline.
 - `make staticcheck` also runs `standalone-staticcheck`: each maintained ignored
   Go entrypoint in `scripts/` is analyzed separately with `GOOS=linux`,
   `GOARCH=amd64` and `CGO_ENABLED=0`. The select-pr entrypoint uses its two

@@ -51,7 +51,7 @@ func assertQualityWiring(t *testing.T, root string) {
 	}
 	workflow := readProjectFile(t, root, ".github/workflows/quality.yml")
 	goVersion := moduleGoVersion(t, root)
-	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base", "fail-fast: false", "-timeout=5m", "330s go test", "fetch-depth: 0", "qualification-scripts:", `test "$(git rev-parse HEAD^2)" = "$PR_HEAD"`, `PR_BASE="$(git rev-parse HEAD^1)"`, "Management.Automation.Language.Parser", "needs.select.outputs.powershell == 'true'", "workflow_dispatch:", "push:", "branches: [main]",
+	for _, required := range []string{"contents: read", "go-version: " + goVersion, "cache: true", "go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base", "fail-fast: false", "-timeout=5m", "330s go test", "fetch-depth: 0", "qualification-scripts:", `test "$(git rev-parse HEAD^2)" = "$PR_HEAD"`, `PR_BASE="$(git rev-parse HEAD^1)"`, "Management.Automation.Language.Parser", "needs.select.outputs.powershell == 'true'", "workflow_dispatch:",
 		`run: make check-core UNIT_TEST_FLAGS="-shuffle=on -count=1 -timeout=15m"`, "shard: [0, 1, 2, 3]", "run: make test-race-shard RACE_SHARD=",
 		"make --no-print-directory race-shard-packages RACE_SHARD=", "make tools-install DIAGNOSTIC_PARSERS_ONLY=1",
 		`RACE_TEST_FLAGS="-race -shuffle=on -count=1 -timeout=15m"`, "--full-gate-matrix",
@@ -63,6 +63,9 @@ func assertQualityWiring(t *testing.T, root string) {
 		if !bytes.Contains(workflow, []byte(required)) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}
+	}
+	if bytes.Contains(workflow, []byte("  push:\n")) {
+		t.Error("quality workflow must not repeat the protected PR gate after merge")
 	}
 	assertPinnedActions(t, workflow)
 	selection := readProjectFile(t, root, "docs/development/ownership.json")

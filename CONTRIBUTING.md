@@ -26,9 +26,12 @@ must leave the project buildable and its product boundary honest.
 4. Add or update behavioral and failure-path tests with code and run the
    focused checks needed while writing. Pull request CI runs the complete
    `make check` coverage and portable checks on the integration candidate.
-   For direct integration without that CI result, run `make check` once on the
-   exact candidate. The [testing model](docs/development/testing.md) owns the
-   commands, environments and qualification boundaries.
+   Verify that the integrated tree matches the checked candidate; if it differs,
+   run the gate on the integrated commit. For a direct fast-forward, dispatch
+   `quality` on a branch pointing at the candidate and verify the successful
+   run's commit; otherwise run `make check` once on that candidate. The
+   [testing model](docs/development/testing.md) owns the commands, environments
+   and qualification boundaries.
 5. Promote changed behavior to its current documentation owner and review
    `git diff --check`. Keep caches, generated evidence, credentials, binaries,
    and unrelated edits out of the change.
@@ -54,7 +57,12 @@ the local pre-commit check for staged whitespace errors. Pull requests run
 the affected package, consumer and fixture checks, the complete core and race
 gates, and the Windows and macOS portable checks in CI. A successful CI run
 for the current integration candidate supplies the pre-integration gate.
-CI also runs the full gate after a push to `main` as a post-integration baseline.
+Protected `main` requires the up-to-date PR's `go` status for all users.
+Before relying on the PR gate, verify that protection still requires an
+up-to-date PR and the `go` status for administrators as well. The same tree is
+not tested again after merge. For an independent baseline, dispatch the
+`quality` workflow on a branch pointing at the desired commit and verify the
+run's commit.
 
 Keep dependency caches, build outputs, and test evidence outside the repository.
 The Makefile configures the quality cache under the system temporary directory;

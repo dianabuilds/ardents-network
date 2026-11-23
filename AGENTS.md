@@ -201,9 +201,12 @@ verification, or acceptance obligations.
   not an exemption, and a passing scanner does not prove ongoing support.
 - Run focused tests while writing code. Pull request CI runs the complete
   `make check` coverage and portable checks on the integration candidate before
-  integration. For direct integration without that CI result, run `make check`
-  once on the exact candidate. Do not weaken or bypass a failing gate. Tools are
-  installed only through the explicit `make tools-install` command.
+  integration. Verify the integrated tree matches the checked candidate. If it
+  differs, run the gate on the integrated commit. For a direct fast-forward,
+  dispatch `quality` on a branch pointing at the candidate and verify the
+  successful run's commit before integration; otherwise run `make check` once
+  on that candidate. Do not weaken or bypass a failing gate. Tools are installed
+  only through the explicit `make tools-install` command.
 - Tests belong to one checked execution profile. A missing selected Docker,
   binary, privilege, platform, or orchestration prerequisite is an invalid
   environment, not a passing skip; retries never erase an earlier failure.
