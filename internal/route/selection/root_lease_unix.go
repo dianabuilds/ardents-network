@@ -3,10 +3,11 @@
 package selection
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 type rootLease struct{ file *os.File }
@@ -24,25 +25,17 @@ func acquireRetainedRootLease(root string) (rootLease, error) {
 	return openRootLease(root, os.O_RDWR)
 }
 
+// openRootLease retains the lease only after the shared strict identity check
+// (regular file, single link), matching the sibling duty and State durable
+// owners so a substituted lease inode can never become the Entry fence (G1).
 func openRootLease(root string, flags int) (rootLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, 0o600)
+	file, err := durablefile.OpenLease(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, "", "acquire exclusive Entry state lease")
 	if err != nil {
 		return rootLease{}, err
-	}
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		_ = file.Close()
-		return rootLease{}, fmt.Errorf("acquire exclusive Entry state lease: %w", err)
 	}
 	return rootLease{file: file}, nil
 }
 
 func (lease rootLease) release() error {
-	if lease.file == nil {
-		return nil
-	}
-	if err := syscall.Flock(int(lease.file.Fd()), syscall.LOCK_UN); err != nil {
-		_ = lease.file.Close()
-		return err
-	}
-	return lease.file.Close()
+	return durablefile.ReleaseLease(lease.file)
 }

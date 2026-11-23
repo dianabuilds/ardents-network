@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 func writeGeneration(root, name string, raw []byte) error {
@@ -46,67 +46,13 @@ func writeGeneration(root, name string, raw []byte) error {
 }
 
 func replaceFile(root, prefix, name, content string) error {
-	temporary, err := os.CreateTemp(root, "."+prefix+"-")
-	if err != nil {
-		return err
-	}
-	path := temporary.Name()
-	defer func() { _ = os.Remove(path) }()
-	if err = temporary.Chmod(0o600); err == nil {
-		_, err = temporary.WriteString(content)
-	}
-	if err == nil {
-		err = temporary.Sync()
-	}
-	closeErr := temporary.Close()
-	if err != nil {
-		return err
-	}
-	if closeErr != nil {
-		return closeErr
-	}
-	if err := os.Rename(path, filepath.Join(root, name)); err != nil {
-		return err
-	}
-	return syncDirectory(root)
+	return durablefile.ReplaceFile(root, "."+prefix+"-", name, []byte(content))
 }
 
 func cleanupGenerations(root, current, previous string) error {
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "state-") {
-			continue
-		}
-		name := strings.TrimPrefix(entry.Name(), "state-")
-		if name != current && name != previous {
-			if err := os.Remove(filepath.Join(root, entry.Name())); err != nil && !errors.Is(err, os.ErrNotExist) {
-				return err
-			}
-		}
-	}
-	return syncDirectory(root)
+	return durablefile.CleanupGenerations(root, current, previous)
 }
 
 func readBounded(path string, maximum int64) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	raw, err := io.ReadAll(io.LimitReader(file, maximum+1))
-	if err != nil {
-		_ = file.Close()
-		return nil, err
-	}
-	if int64(len(raw)) > maximum {
-		_ = file.Close()
-		return nil, fmt.Errorf("bounded local role file exceeds %d bytes", maximum)
-	}
-	closeErr := file.Close()
-	if closeErr != nil {
-		return nil, closeErr
-	}
-	return raw, nil
+	return durablefile.ReadBounded(path, maximum, fmt.Sprintf("bounded local role file exceeds %d bytes", maximum))
 }

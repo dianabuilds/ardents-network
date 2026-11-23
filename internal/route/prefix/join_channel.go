@@ -59,7 +59,7 @@ func (p *Prefix) openJoinChannel(ctx, caller context.Context, duty network.Retai
 	done := make(chan struct{})
 	t.interruption.done = done
 	t.interruption.stop = context.AfterFunc(ctx, func() { defer close(done); _ = t.parent.Close() })
-	secured, err := roletls.OpenRole(ctx, t.parent, member.PublicKey, minDeadline(setup, time.Now().Add(10*time.Second)))
+	secured, err := roletls.OpenRole(ctx, t.parent, member.PublicKey, framing.MinDeadline(setup, time.Now().Add(10*time.Second)))
 	if err != nil {
 		return t, err
 	}

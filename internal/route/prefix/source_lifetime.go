@@ -168,15 +168,24 @@ func (scope *SourceScope) Close() error {
 		}
 		scope.turn <- struct{}{}
 		defer func() { <-scope.turn }()
+		// The physical turn serializes retirement/opening; mu guards the
+		// accepting state. No state lock holds physical I/O, and Close never
+		// calls a Responder, preserving the Source-before-Responder order.
+		scope.mu.Lock()
 		current := scope.current
+		scope.mu.Unlock()
 		for _, generation := range scope.generations {
 			scope.retireGeneration(generation)
 		}
+		var finalWork error
 		if current != nil {
-			scope.work = current.work
+			finalWork = current.work
 		}
 		scope.cancel()
+		scope.mu.Lock()
+		scope.work = finalWork
 		scope.closeErr = errors.Join(scope.work, scope.failure, scope.cleanup)
+		scope.mu.Unlock()
 		close(scope.joined)
 	})
 	return scope.closeErr

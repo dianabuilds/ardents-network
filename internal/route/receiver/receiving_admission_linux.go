@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"net"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -77,12 +76,4 @@ func receiveAdmission(ctx context.Context, a role.Authority, admit Admit, bindin
 	}
 	_, err = a.Hello(h, false)
 	return grant, errors.Join(err, ctx.Err())
-}
-
-// minDeadline preserves the original role/parent setup bound.
-func minDeadline(a, b time.Time) time.Time {
-	if a.Before(b) {
-		return a
-	}
-	return b
 }

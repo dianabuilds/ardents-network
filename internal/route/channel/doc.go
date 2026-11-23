@@ -2,6 +2,9 @@
 // scheduling, credit and byte accounting, parent exchanges and joined physical
 // retirement. It consumes an already selected ordered transport and observes
 // caller-supplied currentness; it grants no Network or Admission authority.
+// MinDeadline is the one shared pure setup/cleanup bound for every Route
+// owner: the earlier original deadline wins, and equal deadlines keep the
+// first argument's exact reading. It grants no deadline authority.
 //
 // New starts the sole reader after the caller's accepted handshake. Prepare
 // and PrepareJoined defer that transfer until Start, so refusal can close an
@@ -40,9 +43,10 @@
 // behavior tests, and a test listed under several clusters verifies each of
 // them.
 //
-//   - core: session.go, joined_session.go, role_frames.go, request_context.go.
-//     Tests: session_lifecycle_test.go, join_input_test.go, role_frames_test.go,
-//     open_lane_test.go, deadline_effect_test.go.
+//   - core: session.go, joined_session.go, role_frames.go, request_context.go,
+//     deadline_bound.go. Tests: session_lifecycle_test.go, join_input_test.go,
+//     role_frames_test.go, open_lane_test.go, deadline_effect_test.go,
+//     deadline_bound_test.go.
 //   - lane: lane.go, record_capacity.go. Tests: lane_stop_test.go,
 //     lane_notify_test.go, credit_batch_test.go, credit_close_test.go,
 //     credit_retirement_test.go, nested_control_close_test.go, open_lane_test.go.

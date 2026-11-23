@@ -796,7 +796,7 @@ func (r *Receiver) openNode(ctx context.Context, a role.Authority) (_ *framing.S
 	if err != nil {
 		return nil, nil, err
 	}
-	end := minDeadline(minDeadline(next.NotAfter(), local.NotAfter()), a.Profile.NotAfter)
+	end := framing.MinDeadline(framing.MinDeadline(next.NotAfter(), local.NotAfter()), a.Profile.NotAfter)
 	control, err := r.queues.HoldControl()
 	if err != nil {
 		return nil, nil, err
@@ -806,7 +806,7 @@ func (r *Receiver) openNode(ctx context.Context, a role.Authority) (_ *framing.S
 			control()
 		}
 	}()
-	request := transport.ClosedNodeCarrierRequest{CarrierProfile: transport.CarrierProfile(next.CarrierProfile), Endpoint: next.Endpoint, Certificate: r.config.Certificate, ExpectedPeerKey: next.PublicKey, Deadline: minDeadline(end, time.Now().Add(10*time.Second))}
+	request := transport.ClosedNodeCarrierRequest{CarrierProfile: transport.CarrierProfile(next.CarrierProfile), Endpoint: next.Endpoint, Certificate: r.config.Certificate, ExpectedPeerKey: next.PublicKey, Deadline: framing.MinDeadline(end, time.Now().Add(10*time.Second))}
 	if err := transport.ValidateNodeRequest(ctx, request); err != nil {
 		return nil, nil, err
 	}
@@ -843,7 +843,7 @@ func (r *Receiver) openNode(ctx context.Context, a role.Authority) (_ *framing.S
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := conn.SetDeadline(minDeadline(h.Deadline, time.Now().Add(10*time.Second))); err != nil {
+	if err := conn.SetDeadline(framing.MinDeadline(h.Deadline, time.Now().Add(10*time.Second))); err != nil {
 		return nil, nil, err
 	}
 	if err := framing.SendHello(conn, h); err != nil {

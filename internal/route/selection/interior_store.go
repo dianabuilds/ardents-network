@@ -1,10 +1,7 @@
 package selection
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -114,7 +111,7 @@ func openInteriorStoreMode(root string, network [32]byte, domain uint8, opening 
 				return nil, errors.New("interior pointer invalid")
 			}
 			prior, err := readInteriorRecord(root, name)
-			if err != nil || prior.Generation > floor.generation || prior.Generation == floor.generation && name != floor.name {
+			if err != nil || pointerViolatesFloor(prior.Generation, name, floor) {
 				return nil, errors.New("interior pointer violates floor")
 			}
 		}
@@ -140,42 +137,10 @@ func openInteriorStoreMode(root string, network [32]byte, domain uint8, opening 
 	return s, nil
 }
 func inspectInteriorRoot(root string) error {
-	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) > 10 {
-		return errors.New("interior root bound exceeded")
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		allowed := name == interiorMarker || name == rootLockName || name == "current" || name == "watermark" || strings.HasPrefix(name, "state-") || strings.HasPrefix(name, ".stage-") || strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-")
-		info, err := os.Lstat(filepath.Join(root, name))
-		if err != nil || !allowed || !info.Mode().IsRegular() {
-			return errors.New("interior root entry unavailable")
-		}
-	}
-	marker, err := readBounded(filepath.Join(root, interiorMarker), 64)
-	if err != nil || string(marker) != "ardents-interior-set-v1\n" {
-		return errors.New("interior marker unavailable")
-	}
-	return nil
+	return inspectStoreRoot(root, interiorGrammar())
 }
 func readInteriorRecord(root, name string) (interiorRecord, error) {
-	if !stateName.MatchString(name) {
-		return interiorRecord{}, errors.New("interior generation invalid")
-	}
-	raw, err := readBounded(filepath.Join(root, "state-"+name), maximumStateBytes)
-	if err != nil || sha256Hex(raw) != name {
-		return interiorRecord{}, errors.New("interior generation unavailable")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	var record interiorRecord
-	if err := decoder.Decode(&record); err != nil {
-		return interiorRecord{}, err
-	}
-	if decoder.Decode(&struct{}{}) != io.EOF || !validInteriorRecord(record) {
-		return interiorRecord{}, errors.New("interior record invalid")
-	}
-	return record, nil
+	return readStoreGeneration(root, name, interiorGrammar())
 }
 func validInteriorRecord(record interiorRecord) bool {
 	if record.Version != 1 || record.Network == [32]byte{} || closedAdjacentIndex(record.Domain) < 0 || record.Generation == 0 ||
@@ -194,32 +159,8 @@ func validInteriorRecord(record interiorRecord) bool {
 	return record.Set.Check(candidates, record.Entries, record.Set.Chosen, record.Domain) == nil
 }
 func (s *interiorStore) commit(next interiorRecord) error {
-	if s.record.Generation == ^uint64(0) {
-		return errors.New("interior generation exhausted")
-	}
-	next.Generation = s.record.Generation + 1
-	next.Previous = s.name
-	if !validInteriorRecord(next) {
-		return errors.New("interior commit invalid")
-	}
-	raw, err := json.Marshal(next)
-	if err != nil || len(raw) > maximumStateBytes {
-		return errors.New("interior record exceeds bound")
-	}
-	name := sha256Hex(raw)
-	if err := writeGeneration(s.root, filepath.Join(s.root, "state-"+name), raw); err != nil {
-		return err
-	}
-	if _, err := readInteriorRecord(s.root, name); err != nil {
-		return err
-	}
-	if err := replaceWatermark(s.root, next.Generation, name); err != nil {
-		return err
-	}
-	if err := replaceCurrent(s.root, name); err != nil {
-		return err
-	}
-	if err := cleanupGenerations(s.root, name, next.Previous); err != nil {
+	next, name, err := commitStoreGeneration(s.root, s.record, s.name, next, interiorGrammar())
+	if err != nil {
 		return err
 	}
 	s.record, s.name = next, name

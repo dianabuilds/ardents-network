@@ -1,16 +1,9 @@
 package selection
 
-import "os"
+import (
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
+)
 
 func syncDirectory(path string) error {
-	directory, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	err = directory.Sync()
-	closeErr := directory.Close()
-	if err != nil {
-		return err
-	}
-	return closeErr
+	return durablefile.SyncDirectory(path)
 }

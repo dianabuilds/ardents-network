@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	issuertransport "github.com/dianabuilds/ardents-network/internal/route/issuer"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
@@ -154,7 +155,7 @@ func (p *Prefix) Issue(caller context.Context, end time.Time, begin func(IssuerB
 	if err != nil {
 		return err
 	}
-	secured, err := roletls.OpenRole(ctx, lane, member.PublicKey, minDeadline(end, time.Now().Add(10*time.Second)))
+	secured, err := roletls.OpenRole(ctx, lane, member.PublicKey, framing.MinDeadline(end, time.Now().Add(10*time.Second)))
 	if err != nil {
 		return err
 	}
