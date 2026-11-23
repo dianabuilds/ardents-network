@@ -889,10 +889,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/route_linux.go" || source == "cmd/ardents-next/route_submission_linux_test.go") && dependency == modulePath+"/internal/route/capsule" {
 			return true
 		}
-		if source == "cmd/ardents-next/publication_instance.go" && dependency == modulePath+"/internal/publication/instance" {
-			return true
-		}
-		if source == "cmd/ardents-next/publication.go" && dependency == modulePath+"/internal/publication/durable" {
+		if source == "cmd/ardents-next/publication.go" && (dependency == modulePath+"/internal/publication/durable" || dependency == modulePath+"/internal/publication/instance") {
 			return true
 		}
 		if source == "internal/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/endpoint/launch" || dependency == modulePath+"/internal/execution" || dependency == modulePath+"/internal/execution/runtime") {
