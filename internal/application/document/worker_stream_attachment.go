@@ -10,6 +10,7 @@ import (
 
 var (
 	errWorkerRelayProtocol = errors.New("byte-stream worker framing did not complete")
+	errWorkerRelayClosed   = errors.New("byte-stream worker attachment closed before completion")
 	errWorkerRelayRead     = errors.New("byte-stream source read failed")
 	errWorkerRelayWrite    = errors.New("byte-stream destination write failed")
 )
@@ -17,6 +18,8 @@ var (
 // ByteStreamFailure projects fixed categories without exposing peer, path or bytes.
 func ByteStreamFailure(err error) string {
 	switch {
+	case errors.Is(err, errWorkerRelayClosed):
+		return errWorkerRelayClosed.Error()
 	case errors.Is(err, errWorkerRelayProtocol):
 		return errWorkerRelayProtocol.Error()
 	case errors.Is(err, errWorkerRelayRead):
@@ -82,14 +85,15 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 		for {
 			frame, err := readWorkerFrame(attachment)
 			if err != nil {
-				receiveDone <- err
 				select {
 				case <-finishing:
 					if err == io.EOF {
+						receiveDone <- err
 						return
 					}
 				default:
 				}
+				receiveDone <- errors.Join(errWorkerRelayClosed, err)
 				cancel()
 				return
 			}
