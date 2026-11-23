@@ -917,7 +917,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			installedPairSend(t, conn, installedPairMessage{Operation: "permission", Role: request.Role, Body: response})
 		}
 	}
-	body := []byte("one platform-led request across independently admitted managers\n")
+	body := bytes.Repeat([]byte("one platform-led document across independently admitted managers\n"), 600)
 	identities := [2][3]string{}
 	identities[0] = startAdmit(0, "publisher")
 	publishOperation := "publish"
