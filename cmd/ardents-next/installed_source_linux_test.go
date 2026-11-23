@@ -74,10 +74,10 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 		}
 	}
 	clear(clientKey)
-	headless := installedHeadless{NetworkStateRoot: plan.Root, LocalRoleStateRoot: filepath.Join(dir, "participant-roles"),
+	headless := endpoint.HeadlessPlan{NetworkStateRoot: plan.Root, LocalRoleStateRoot: filepath.Join(dir, "participant-roles"),
 		TimeConfidenceFile: clockPath, NetworkID: hex.EncodeToString(plan.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authorityKey[:])},
 		NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authorityKey[:])}
-	declared := installedSource{ClockObservedAt: time.Now().UTC().Format(time.RFC3339), OrderSeed: hex.EncodeToString(f.spec.Seed[:]),
+	declared := endpoint.SourcePlan{ClockObservedAt: time.Now().UTC().Format(time.RFC3339), OrderSeed: hex.EncodeToString(f.spec.Seed[:]),
 		RefreshIntervalMS: 1000, ClientCertificate: clientPath, ClientKey: keyPath}
 	// Reserve both addresses together before opening either owner.
 	var held [2]net.Listener

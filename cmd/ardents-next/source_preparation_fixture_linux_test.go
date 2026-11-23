@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && (network_signing_native || node_process_native)
 
 package main
 
@@ -18,12 +18,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
-type installedHeadless = endpoint.HeadlessPlan
-type installedSource = endpoint.SourcePlan
-
 // All CA, leaves and keys are explicitly external fixture credentials. Product
 // preparation receives only their public files and opaque private declarations.
-func sourcePreparationFixture(t *testing.T, parent string, headless installedHeadless) (map[string]any, []tls.Certificate) {
+func sourcePreparationFixture(t *testing.T, parent string, headless endpoint.HeadlessPlan) (map[string]any, []tls.Certificate) {
 	t.Helper()
 	server, client, unauthorized, root, serverPin, clientPin := sourceNativeTLS(t)
 	second, _, _, secondRoot, secondPin, _ := sourceNativeTLS(t)
@@ -40,7 +37,7 @@ func sourcePreparationFixture(t *testing.T, parent string, headless installedHea
 	}
 	if headless.NetworkID == "" {
 		pub := ed25519.NewKeyFromSeed(make([]byte, 32)).Public().(ed25519.PublicKey)
-		headless = installedHeadless{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-participation"), TimeConfidenceFile: filepath.Join(parent, "clock"), NetworkID: hexID([32]byte{8}), NetworkAuthorities: []string{hex.EncodeToString(pub)}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(pub)}
+		headless = endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-participation"), TimeConfidenceFile: filepath.Join(parent, "clock"), NetworkID: hexID([32]byte{8}), NetworkAuthorities: []string{hex.EncodeToString(pub)}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(pub)}
 	}
 	now := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
 	p := map[string]any{"schema": "ardents-source-trust-preparation-v1", "reference_time": now, "clock_observed_at": now, "client": headless,

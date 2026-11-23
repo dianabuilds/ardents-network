@@ -21,7 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
-var errSourceTrustPreparation = errors.New("Source public trust preparation unavailable")
+var errSourceTrustPreparation = errors.New("source public trust preparation unavailable")
 
 type sourcePublicFile struct {
 	Path       string              `json:"path"`
