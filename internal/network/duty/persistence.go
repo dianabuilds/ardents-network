@@ -2,20 +2,18 @@ package duty
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
-var stateName = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var stateName = durablefile.GenerationName
 
 func loadState(root string) (durableState, string, error) {
 	watermarkGeneration, watermarkName, hasWatermark, err := loadWatermark(root)
@@ -106,23 +104,7 @@ func strictDecodeGeneration(raw []byte, value any) error {
 }
 
 func loadWatermark(root string) (uint64, string, bool, error) {
-	raw, err := readBounded(filepath.Join(root, "watermark"), 96)
-	if os.IsNotExist(err) {
-		return 0, "", false, nil
-	}
-	if err != nil {
-		return 0, "", false, err
-	}
-	line := strings.TrimSuffix(string(raw), "\n")
-	parts := strings.Split(line, " ")
-	if len(parts) != 2 || string(raw) != line+"\n" || !stateName.MatchString(parts[1]) {
-		return 0, "", false, errors.New("local role watermark is invalid")
-	}
-	generation, err := strconv.ParseUint(parts[0], 10, 64)
-	if err != nil || generation == 0 || fmt.Sprintf("%d %s\n", generation, parts[1]) != string(raw) {
-		return 0, "", false, errors.New("local role watermark is invalid")
-	}
-	return generation, parts[1], true, nil
+	return durablefile.LoadWatermark(root, readBounded, "local role watermark is invalid")
 }
 
 func (store *store) commit(next durableState) error {
@@ -221,6 +203,5 @@ func validTransitGrantSpends(spends []transitGrantSpend) bool {
 }
 
 func sha256Hex(raw []byte) string {
-	digest := sha256.Sum256(raw)
-	return hex.EncodeToString(digest[:])
+	return durablefile.SHA256Hex(raw)
 }

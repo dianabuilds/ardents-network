@@ -428,7 +428,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
-		"internal/admission", "internal/connection", "internal/custody", "internal/endpoint",
+		"internal/admission", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
 		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/node",
 		"internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
@@ -630,15 +630,16 @@ func successorImportAllowed(source, dependency string) bool {
 	owner := path.Dir(source)
 	permitted := map[string][]string{
 		"internal/processresource":                   {},
+		"internal/durablefile":                       {},
 		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/network":                           {},
 		"internal/network/closedprofile":             {},
-		"internal/network/duty":                      {},
+		"internal/network/duty":                      {"durablefile"},
 		"internal/network/epoch":                     {},
 		"internal/network/source":                    {"network/epoch"},
 		"internal/network/source/servingdeclaration": {},
 		"internal/network/state":                     {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable"},
-		"internal/network/state/durable":             {},
+		"internal/network/state/durable":             {"durablefile"},
 		"internal/admission":                         {"admission/issuerprofile"},
 		"internal/admission/issuerprofile":           {},
 		"internal/admission/allocation":              {"admission"},
@@ -661,7 +662,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/connection/wire":                   {},
 		"internal/reachability":                      {"publication"},
 		"internal/enrollment":                        {},
-		"internal/release":                           {},
+		"internal/release":                           {"durablefile"},
 		"internal/execution":                         {},
 		"internal/execution/runtime":                 {"execution", "execution/worker"},
 		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit"},
@@ -685,7 +686,7 @@ func successorImportAllowed(source, dependency string) bool {
 
 		"internal/route/introduction": {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
 		"internal/route/capsule":      {},
-		"internal/route/selection":    {"route", "network"},
+		"internal/route/selection":    {"route", "network", "durablefile"},
 		"internal/route/role":         {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
 		"internal/route/join":         {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
 		"internal/route/join/pairing": {"route/ardp", "route/channel", "route/role"},

@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const (
@@ -20,7 +22,7 @@ const (
 )
 
 var floorRoles = [...]string{"root", "timestamp", "snapshot", "targets"}
-var floorGenerationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var floorGenerationName = durablefile.GenerationName
 var stagedGenerationName = regexp.MustCompile(`^\.stage-[0-9]{1,10}$`)
 var stagedPointerName = regexp.MustCompile(`^\.current-[0-9]{1,10}$`)
 

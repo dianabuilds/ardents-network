@@ -1,8 +1,9 @@
 package selection
 
 import (
-	"errors"
 	"os"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // rootLockName is the exclusive-lease file shared by every claimed Entry
@@ -14,20 +15,7 @@ const rootLockName = ".ardents-entry-state-lock"
 
 // inspectRoot creates or validates the owned directory for one Entry root.
 func inspectRoot(root string) error {
-	info, err := os.Lstat(root)
-	if os.IsNotExist(err) {
-		if err := os.MkdirAll(root, 0o700); err != nil {
-			return err
-		}
-		info, err = os.Lstat(root)
-	}
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		return errors.New("entry state root is not an owned directory")
-	}
-	return nil
+	return durablefile.InspectRoot(root, true, "", "entry state root is not an owned directory")
 }
 
 // validateRootPermissions enforces the owner-only access floor for one
@@ -43,16 +31,5 @@ func validateRootPermissions(root string) error {
 // writeExclusive creates one new owner-only file and durably writes its
 // exact bytes, refusing any pre-existing target.
 func writeExclusive(path string, raw []byte) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err = file.Write(raw); err == nil {
-		err = file.Sync()
-	}
-	closeErr := file.Close()
-	if err != nil {
-		return err
-	}
-	return closeErr
+	return durablefile.WriteExclusive(path, raw)
 }

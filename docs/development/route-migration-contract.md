@@ -147,7 +147,10 @@ complete registration.
 
 The current Route implementation lives at `internal/route`. Its local imports
 are restricted to the current registered owners and exact package-map edges.
-It must never import or execute a predecessor implementation, including code
+`internal/route/selection` additionally consumes the shared pure durable-file
+mechanism leaf `internal/durablefile` (R1, #764), a new foundation mechanism with
+no old-runtime lineage; this is a registered package-map edge, not a predecessor
+import. It must never import or execute a predecessor implementation, including code
 formerly at these same canonical paths before legacy retirement. Old packages, commands and
 tests must not consume new Route; no canonical installed exception remains. The
 prohibition includes subpackages,

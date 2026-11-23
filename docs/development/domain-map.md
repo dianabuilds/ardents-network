@@ -164,6 +164,20 @@ Public infrastructure descriptor and inventory preparation belongs to
 `internal/release/infrastructure`. Platform Artifacts supplies the retained
 root-controlled input, ext4 check and exclusive durable output.
 
+The owner-only generation stores share one pure durable-file mechanism leaf,
+`internal/durablefile` (R1, #764): the content-addressed generation grammar,
+bounded reads, exclusive creation, staged replacement, generation pruning, the
+watermark floor codec, owned-root inspection, directory sync and the exclusive
+Unix root lease with its strict regular-file/single-link identity check. It is a
+mechanism, not an owner: it holds no lease, root, marker, schema, authority or
+lifecycle, and every helper takes caller paths, bytes, names and refusal prose
+only. `internal/route/selection`, `internal/network/duty` and
+`internal/network/state/durable` consume it while keeping their distinct markers,
+locks, schemas, roots and refusal text; `internal/release` shares only the
+generation-name grammar. `internal/publication/instance` keeps its separate
+joined-error, TOCTOU-hardened private custody. A shared technical mechanism does
+not merge authorities, roots, leases or lifecycle owners.
+
 Source artifact authentication in `internal/release/infrastructure` joins the
 Release verifier before returning inspection facts. Enrollment owns original
 distribution provenance and the initial pin. Release owns retained trust and
