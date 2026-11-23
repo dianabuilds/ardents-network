@@ -1,0 +1,63 @@
+name: Worker qualification source relocation proof
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  activation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 849a84fdb8a96b187ec64667420f4ce7538d6145
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Build and test the relocated Go worker
+        shell: bash
+        env:
+          CGO_ENABLED: '0'
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 849a84fdb8a96b187ec64667420f4ce7538d6145
+          git show -s --format='candidate=%H tree=%T'
+          go test -v ./tests/qualification/worker-lifecycle/stream-worker
+          go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/ardents-stream-qualification" ./tests/qualification/worker-lifecycle/stream-worker
+          go test -c -tags document_worker_installed -trimpath -buildvcs=false -o "$RUNNER_TEMP/worker-stream.test" ./internal/execution/worker
+          sha256sum "$RUNNER_TEMP/ardents-stream-qualification" "$RUNNER_TEMP/worker-stream.test"
+      - name: Run the relocated native driver and systemd Role activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "$ID:$VERSION_ID" = ubuntu:24.04
+          test "$(uname -m)" = x86_64
+          test "$(systemctl --version | awk 'NR == 1 { print $2 }')" = 255
+          test -r /sys/fs/cgroup/cgroup.controllers
+          sudo -n systemctl start polkit.service
+          getent passwd ardents-endpoint >/dev/null || sudo -n useradd --system --no-create-home --user-group --shell /usr/sbin/nologin ardents-endpoint
+          sudo -n install -D -o root -g root -m 0555 "$RUNNER_TEMP/worker-stream.test" /usr/lib/ardents/qualification/worker-stream.test
+          testhash=$(sha256sum "$RUNNER_TEMP/worker-stream.test" | cut -d ' ' -f1)
+          cat > "$RUNNER_TEMP/ardents-endpoint.service" <<'UNIT'
+          [Unit]
+          Description=Worker stream activation qualification Endpoint
+
+          [Service]
+          Type=exec
+          RemainAfterExit=no
+          ExitType=main
+          Restart=no
+          RestartMode=normal
+          User=ardents-endpoint
+          Group=ardents-endpoint
+          RuntimeMaxSec=150s
+          ExecStart=/usr/lib/ardents/qualification/worker-stream.test -test.run=^TestInstalledStreamWorkerActivation$ -test.v -test.timeout=2m
+          UNIT
+          unithash=$(sha256sum "$RUNNER_TEMP/ardents-endpoint.service" | cut -d ' ' -f1)
+          sudo -n install -o root -g root -m 0644 "$RUNNER_TEMP/ardents-endpoint.service" /run/systemd/system/ardents-endpoint.service
+          sudo -n python3 packaging/stream-qualification-worker/install.py "$RUNNER_TEMP/ardents-stream-qualification"
+          sudo -n env ARDENTS_TEXT_LIFECYCLE_SHA256="$testhash" ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256="$unithash" sh tests/qualification/worker-lifecycle/run-ubuntu.sh stream-activation
