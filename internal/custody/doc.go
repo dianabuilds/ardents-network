@@ -30,7 +30,7 @@
 //     durability_windows.go. Tests: interrupted_publication_test.go,
 //     filesystem_failure_linux_test.go, service_failure_linux_test.go,
 //     bundle_publication_test.go.
-//   - C3 envelope: canonical_envelope.go, public_envelope_inspection.go.
+//   - C3 envelope: canonical_envelope.go.
 //     Tests: envelope_vector_test.go, admission_kdf_test.go.
 //   - C4 authority-state: authority_state.go, authority_floor.go (floor
 //     rules), record_comparison.go. Tests: admission_recovery_test.go,

@@ -141,9 +141,8 @@ const (
 // EnvelopeInfo is the public header metadata admitted from one canonical
 // envelope. Digest covers the exact canonical envelope bytes.
 type EnvelopeInfo struct {
-	Purpose        Purpose
-	CiphertextSize uint64
-	Digest         [32]byte
+	Purpose Purpose
+	Digest  [32]byte
 }
 
 // AuthorityReceipt is the non-secret lifecycle projection of an authenticated
