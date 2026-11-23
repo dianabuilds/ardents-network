@@ -15,7 +15,7 @@ the single protection construction.
 
 ## Outcome and supported scope
 
-One owner publishes an immutable UTF-8 text document through a Service. A User
+One owner publishes an immutable UTF-8 document through a Service. A User
 opens its explicit Target Link, receives the
 document, and reads its safely rendered text. The User chooses a Service,
 not peers, a route, a proxy, padding or a security level.

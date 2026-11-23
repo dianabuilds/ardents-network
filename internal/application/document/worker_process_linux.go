@@ -28,7 +28,7 @@ import (
 // accepted socket.
 func RunInheritedWorker(mode WorkerMode) error {
 	if mode != ReaderWorker && mode != PublisherWorker {
-		return errors.New("text worker mode is unavailable")
+		return errors.New("document worker mode is unavailable")
 	}
 	if err := verifyWorkerDescriptors(); err != nil {
 		return err
@@ -37,7 +37,7 @@ func RunInheritedWorker(mode WorkerMode) error {
 	// Closing this connection interrupts blocked I/O so cancellation can join.
 	connection, err := net.FileConn(os.Stdin)
 	if err != nil {
-		return errors.New("text worker attachment cannot be polled")
+		return errors.New("document worker attachment cannot be polled")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -47,37 +47,37 @@ func RunInheritedWorker(mode WorkerMode) error {
 func verifyWorkerDescriptors() error {
 	input, err := os.Stdin.Stat()
 	if err != nil || input.Mode()&os.ModeSocket == 0 {
-		return errors.New("text worker input attachment is invalid")
+		return errors.New("document worker input attachment is invalid")
 	}
 	output, err := os.Stdout.Stat()
 	if err != nil || !os.SameFile(input, output) {
-		return errors.New("text worker output attachment is invalid")
+		return errors.New("document worker output attachment is invalid")
 	}
 	address, err := syscall.Getsockname(0)
 	if _, ok := address.(*syscall.SockaddrUnix); err != nil || !ok {
-		return errors.New("text worker attachment is not local")
+		return errors.New("document worker attachment is not local")
 	}
 	stderr, err := os.Stderr.Stat()
 	if err != nil {
-		return errors.New("text worker diagnostics attachment is invalid")
+		return errors.New("document worker diagnostics attachment is invalid")
 	}
 	null, err := os.Stat("/dev/null")
 	if err != nil || stderr.Mode()&os.ModeCharDevice == 0 || null.Mode()&os.ModeCharDevice == 0 {
-		return errors.New("text worker diagnostics attachment is invalid")
+		return errors.New("document worker diagnostics attachment is invalid")
 	}
 	// PrivateDevices creates a private /dev/null inode; the inherited null
 	// stderr may name the host inode. The kernel device identity must match.
 	stderrStat, stderrOK := stderr.Sys().(*syscall.Stat_t)
 	nullStat, nullOK := null.Sys().(*syscall.Stat_t)
 	if !stderrOK || !nullOK || stderrStat.Rdev != nullStat.Rdev {
-		return errors.New("text worker diagnostics attachment is invalid")
+		return errors.New("document worker diagnostics attachment is invalid")
 	}
 	// Go's runtime may initialize epoll/eventfd descriptors before ReadDir.
 	// FD_CLOEXEC distinguishes those post-exec descriptors from authority that
 	// actually survived into this executable.
 	directory, err := syscall.Open("/proc/self/fd", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
 	if err != nil {
-		return errors.New("text worker descriptor inventory is unavailable")
+		return errors.New("document worker descriptor inventory is unavailable")
 	}
 	defer syscall.Close(directory)
 	// Resolved lazily: a manager that passes no control descriptor (systemd 249)
@@ -87,7 +87,7 @@ func verifyWorkerDescriptors() error {
 	for {
 		n, err := syscall.ReadDirent(directory, buffer[:])
 		if err != nil {
-			return errors.New("text worker descriptor inventory is unavailable")
+			return errors.New("document worker descriptor inventory is unavailable")
 		}
 		if n == 0 {
 			return nil
@@ -96,28 +96,28 @@ func verifyWorkerDescriptors() error {
 		for _, entry := range entries {
 			fd, err := strconv.Atoi(entry)
 			if err != nil {
-				return errors.New("text worker inherited a foreign descriptor")
+				return errors.New("document worker inherited a foreign descriptor")
 			}
 			if fd <= 2 || fd == directory {
 				continue
 			}
 			survived, err := descriptorSurvivedExec(fd)
 			if err != nil {
-				return errors.New("text worker descriptor inventory is unavailable")
+				return errors.New("document worker descriptor inventory is unavailable")
 			}
 			if survived {
 				if ownCgroupPath == "" {
 					path, pathErr := workerUnifiedCgroupPath()
 					if pathErr != nil {
-						return errors.New("text worker inherited a foreign descriptor")
+						return errors.New("document worker inherited a foreign descriptor")
 					}
 					ownCgroupPath = path
 				}
 				if !managerCgroupControlFD(fd, ownCgroupPath) {
-					return errors.New("text worker inherited a foreign descriptor")
+					return errors.New("document worker inherited a foreign descriptor")
 				}
 				if err := syscall.Close(fd); err != nil {
-					return errors.New("text worker descriptor inventory is unavailable")
+					return errors.New("document worker descriptor inventory is unavailable")
 				}
 			}
 		}
@@ -176,11 +176,11 @@ func workerUnifiedCgroupPath() (string, error) {
 			continue
 		}
 		if !strings.HasPrefix(path, "/") || strings.Contains(path, "..") {
-			return "", errors.New("text worker unified cgroup placement is invalid")
+			return "", errors.New("document worker unified cgroup placement is invalid")
 		}
 		return path, nil
 	}
-	return "", errors.New("text worker unified cgroup placement is unavailable")
+	return "", errors.New("document worker unified cgroup placement is unavailable")
 }
 
 func descriptorSurvivedExec(fd int) (bool, error) {

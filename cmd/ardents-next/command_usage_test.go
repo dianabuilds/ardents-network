@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -42,5 +43,41 @@ func TestPlatformTemplateIsAvailableWithoutNativeActivation(t *testing.T) {
 	code := run(t.Context(), []string{"platform", "template"}, &out, &diagnostic)
 	if code != 0 || diagnostic.Len() != 0 || out.String() != platformUnitTemplate {
 		t.Fatalf("platform template: code=%d, stderr=%q", code, diagnostic.String())
+	}
+}
+
+func TestBuiltHelpShowsTheSelectedRole(t *testing.T) {
+	binary := compiledCommand(t)
+	for _, test := range []struct {
+		name string
+		args []string
+		want []string
+		omit []string
+	}{
+		{"participant", []string{"--help"}, []string{"ardents publish", "ardents read", "ardents endpoint withdraw", "bounded UTF-8"}, []string{"ardents-custody", "serve-retained"}},
+		{"operator", []string{"help", "operator"}, []string{"ardents enrollment verify", "ardents platform unit", "source serve-retained", "offline ardents-custody"}, []string{"ardents publish", "check-candidate"}},
+		{"release", []string{"help", "release"}, []string{"ardents enrollment check-candidate", "<document-worker> <release-identity>", "ardents infrastructure sign-release", "separate release assets"}, []string{"ardents publish", "serve-retained"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			output, err := exec.CommandContext(t.Context(), binary, test.args...).Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range test.want {
+				if !strings.Contains(string(output), want) {
+					t.Errorf("help lacks %q", want)
+				}
+			}
+			for _, omit := range test.omit {
+				if strings.Contains(string(output), omit) {
+					t.Errorf("help unexpectedly includes %q", omit)
+				}
+			}
+		})
+	}
+	result, err := exec.CommandContext(t.Context(), binary, "help", "unknown").Output()
+	exit, ok := err.(*exec.ExitError)
+	if !ok || exit.ExitCode() != 2 || len(result) != 0 || !bytes.Contains(exit.Stderr, []byte("help [operator|release]")) {
+		t.Fatalf("unknown help: stdout=%q error=%v", result, err)
 	}
 }

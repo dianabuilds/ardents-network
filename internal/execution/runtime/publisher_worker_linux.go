@@ -17,7 +17,7 @@ import (
 // Execution retains artifact, Job, operation and original descendant cleanup.
 func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, snapshot []byte) (*Invocation, error) {
 	if len(snapshot) > document.MaximumBytes {
-		return nil, errors.New("text snapshot is invalid")
+		return nil, errors.New("document snapshot is invalid")
 	}
 	body := bytes.Clone(snapshot)
 	defer clear(body)

@@ -70,9 +70,9 @@ func onlyInstalledConnectionStoppedWorker(err error, role string) bool {
 		return onlyInstalledConnectionStoppedWorker(wrapped.Unwrap(), role)
 	}
 	if role == "initiator" {
-		return err.Error() == "text reader worker ended or emitted output before Connection transfer"
+		return err.Error() == "document reader worker ended or emitted output before Connection transfer"
 	}
-	return role == "publisher" && (err.Error() == "text Publisher worker exchange was interrupted" ||
+	return role == "publisher" && (err.Error() == "document Publisher worker exchange was interrupted" ||
 		err.Error() == "qualified worker attachment ended unexpectedly")
 }
 

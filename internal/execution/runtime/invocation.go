@@ -195,7 +195,7 @@ func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, su
 	if reader {
 		readerCaller = ctx
 	}
-	invocation, err := owner.launchInitializedJob(job, surface, textProtocol{snapshot: snapshot}, publisher, readerCaller)
+	invocation, err := owner.launchInitializedJob(job, surface, documentProtocol{snapshot: snapshot}, publisher, readerCaller)
 	if err != nil {
 		return nil, err
 	}

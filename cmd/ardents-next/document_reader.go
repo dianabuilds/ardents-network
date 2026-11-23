@@ -15,7 +15,7 @@ import (
 var errDocumentInput = errors.New("document destination or local input is invalid")
 
 // readDocument owns the trusted UI's input/output for one explicit read. It sends
-// only the typed destination and fixed text request over AAI3; the Endpoint
+// only the typed destination and fixed document request over AAI3; the Endpoint
 // remains responsible for canonical Target admission, confinement and Route.
 // It neither starts an unconfined worker nor retries another connection.
 func readDocument(ctx context.Context, socket string, input io.ReadCloser, output io.WriteCloser) error {

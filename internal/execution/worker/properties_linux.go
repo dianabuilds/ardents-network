@@ -17,21 +17,21 @@ func verifyPropertiesVersion(inv inventory, unit, service properties, name, role
 		return errors.New("worker manager version unavailable")
 	}
 	if !cgroupPath(inv, cgroup, name, role) || pid == 0 {
-		return errors.New("text worker process binding is invalid")
+		return errors.New("document worker process binding is invalid")
 	}
 	if !workerUnitBindingVerified(inv, unit, service, name, role, cgroup) {
-		return errors.New("text worker unit binding is unavailable")
+		return errors.New("document worker unit binding is unavailable")
 	}
 	if !unit.exact("BindsTo", "as", []string{"ardents-endpoint.service"}) || !unitAfterEndpoint(unit) {
-		return errors.New("text worker Endpoint lifetime binding is unavailable")
+		return errors.New("document worker Endpoint lifetime binding is unavailable")
 	}
 	if !service.exact("Delegate", "b", false) || !unit.exact("DropInPaths", "as", []string{}) || !unit.exact("JoinsNamespaceOf", "as", []string{}) || !service.exact("MainPID", "u", pid) {
-		return errors.New("text worker unit composition is unavailable")
+		return errors.New("document worker unit composition is unavailable")
 	}
 	for _, key := range []string{"DynamicUser", "NoNewPrivileges", "PrivateNetwork", "PrivateIPC", "PrivateDevices", "PrivateTmp",
 		"ProtectControlGroups", "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs", "RestrictSUIDSGID", "LockPersonality", "MemoryDenyWriteExecute"} {
 		if !service.exact(key, "b", true) {
-			return errors.New("text worker required hardening is unavailable")
+			return errors.New("document worker required hardening is unavailable")
 		}
 	}
 	user := inv.user(role) + strings.TrimSuffix(strings.TrimPrefix(name, inv.prefix+"-"+role+"@"), ".service")
@@ -40,13 +40,13 @@ func verifyPropertiesVersion(inv inventory, unit, service properties, name, role
 		"StandardInput": "socket", "StandardOutput": "socket", "StandardError": "null", "NotifyAccess": "none",
 		"RootImage": "", "NetworkNamespacePath": "", "IPCNamespacePath": "", "PAMName": ""} {
 		if !service.exact(key, "s", want) {
-			return errors.New("text worker required boundary is unavailable")
+			return errors.New("document worker required boundary is unavailable")
 		}
 	}
 	for key, want := range map[string]uint64{"CapabilityBoundingSet": 0, "AmbientCapabilities": 0, "RestrictNamespaces": 0,
 		"MemoryMax": 128 << 20, "TasksMax": 32, "LimitCORE": 0, "LimitCORESoft": 0, "TimeoutStopUSec": 2_000_000} {
 		if !service.exact(key, "t", want) {
-			return errors.New("text worker resource or privilege bound is unavailable")
+			return errors.New("document worker resource or privilege bound is unavailable")
 		}
 	}
 	for key, signature := range map[string]string{"SupplementaryGroups": "as", "ReadWritePaths": "as", "BindPaths": "a(ssbt)",
@@ -66,16 +66,16 @@ func verifyPropertiesVersion(inv inventory, unit, service properties, name, role
 			}
 		}
 		if !service.exact(key, signature, []any{}) {
-			return errors.New("text worker inherited resources are unavailable")
+			return errors.New("document worker inherited resources are unavailable")
 		}
 	}
 	if !sliceVerified(inv, service) {
-		return errors.New("text worker owner slice is unavailable")
+		return errors.New("document worker owner slice is unavailable")
 	}
 	if !service.exact("Environment", "as", []string{"GOMAXPROCS=2", "GOMEMLIMIT=96MiB"}) ||
 		!service.exact("SystemCallArchitectures", "as", []string{"native"}) ||
 		!service.exact("RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX"}}) {
-		return errors.New("text worker execution policy is unavailable")
+		return errors.New("document worker execution policy is unavailable")
 	}
 	if err := verifyExec(inv, service, role, pid); err != nil {
 		return err
@@ -91,7 +91,7 @@ func verifyExec(inv inventory, service properties, role string, pid uint32) erro
 	value, ok := service["ExecStartEx"]
 	var entries [][]json.RawMessage
 	if !ok || value.Type != "a(sasasttttuii)" || json.Unmarshal(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
-		return errors.New("text worker executable binding is unavailable")
+		return errors.New("document worker executable binding is unavailable")
 	}
 	parts := entries[0]
 	var program string
@@ -100,12 +100,12 @@ func verifyExec(inv inventory, service properties, role string, pid uint32) erro
 	if json.Unmarshal(parts[0], &program) != nil || program != "/"+inv.prefix || json.Unmarshal(parts[1], &arguments) != nil ||
 		len(arguments) != 2 || arguments[0] != program || arguments[1] != "worker-"+role ||
 		strings.TrimSpace(string(parts[2])) != "[]" || json.Unmarshal(parts[7], &observedPID) != nil || observedPID != pid {
-		return errors.New("text worker executable binding is unavailable")
+		return errors.New("document worker executable binding is unavailable")
 	}
 	// A populated monotonic start observation excludes an unstarted template.
 	started, err := strconv.ParseUint(string(parts[4]), 10, 64)
 	if err != nil || started == 0 {
-		return errors.New("text worker executable has not started")
+		return errors.New("document worker executable has not started")
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func verifySyscalls(service properties) error {
 	var names []string
 	if !ok || value.Type != "(bas)" || json.Unmarshal(value.Data, &parts) != nil || len(parts) != 2 ||
 		strings.TrimSpace(string(parts[0])) != "false" || json.Unmarshal(parts[1], &names) != nil {
-		return errors.New("text worker syscall policy is unavailable")
+		return errors.New("document worker syscall policy is unavailable")
 	}
 	denied := make(map[string]bool, len(names))
 	for _, name := range names {
@@ -143,7 +143,7 @@ func verifySyscalls(service properties) error {
 	// syscalls: systemd 249 correctly omits s390 PCI calls from amd64 output.
 	for _, name := range strings.Fields("add_key bpf chroot delete_module finit_module fsconfig fsmount fsopen fspick init_module io_uring_enter io_uring_register io_uring_setup ioperm iopl kexec_file_load kexec_load keyctl mount mount_setattr move_mount open_tree pciconfig_iobase pciconfig_read pciconfig_write perf_event_open pivot_root process_vm_readv process_vm_writev ptrace reboot request_key swapoff swapon umount umount2 userfaultfd") {
 		if !denied[name] {
-			return errors.New("text worker syscall denial is unavailable")
+			return errors.New("document worker syscall denial is unavailable")
 		}
 	}
 	return nil

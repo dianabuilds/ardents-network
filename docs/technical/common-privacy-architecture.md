@@ -3,7 +3,7 @@
 Status: **selected successor construction** under
 [ADR-0078](../adr/0078-select-common-split-circuit-privacy.md).
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) completes
-the closed Link-first text-Service design contract. Selection
+the closed Link-first document Service design contract. Selection
 does not qualify an implementation or change the currently running C0 bytes.
 
 ## Reader route and authoritative owners
