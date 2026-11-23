@@ -34,7 +34,7 @@ func (s *Session) FinishRole() (result error) {
 		return errors.New("route role termination unavailable")
 	}
 	s.finishingRole = true
-	end := minDeadline(s.end, time.Now().Add(time.Second))
+	end := MinDeadline(s.end, time.Now().Add(time.Second))
 	s.mu.Unlock()
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(s.ctx, func() { defer close(interrupted); s.Retire(s.ctx.Err()) })

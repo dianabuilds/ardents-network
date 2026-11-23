@@ -229,7 +229,7 @@ func (s *Session) Live() bool {
 // WaitTerminal joins the sole dedicated reader within the original channel
 // horizon. Its caller still joins the writer and physical owner through Close.
 func (s *Session) WaitTerminal(bound time.Time) error {
-	if err := s.conn.SetReadDeadline(minDeadline(s.end, bound)); err != nil {
+	if err := s.conn.SetReadDeadline(MinDeadline(s.end, bound)); err != nil {
 		return err
 	}
 	<-s.readerDone
@@ -674,7 +674,7 @@ func (s *Session) newLaneLocked(id uint32) *Lane {
 	l.hardEnd = s.end
 	l.handshake = s.pending
 	if s.pending {
-		l.end = minDeadline(s.end, time.Now().Add(10*time.Second))
+		l.end = MinDeadline(s.end, time.Now().Add(10*time.Second))
 		l.readEnd = l.end
 		l.writeEnd = l.end
 	}
@@ -705,7 +705,7 @@ func (s *Session) Open(ctx, caller context.Context, body []byte) (*Lane, error) 
 	// Allocation and complete OPEN emission share one bounded operation. The
 	// peer enforces monotonically increasing IDs, so a later allocation must
 	// not enter physical scheduling ahead of an earlier caller.
-	openEnd := minDeadline(minDeadline(opened.Deadline, s.end), time.Now().Add(10*time.Second))
+	openEnd := MinDeadline(MinDeadline(opened.Deadline, s.end), time.Now().Add(10*time.Second))
 	timer := time.NewTimer(time.Until(openEnd))
 	defer timer.Stop()
 	select {
@@ -775,13 +775,6 @@ func (s *Session) Open(ctx, caller context.Context, body []byte) (*Lane, error) 
 		return nil, errors.Join(err, closeErr)
 	}
 	return l, nil
-}
-
-func minDeadline(a, b time.Time) time.Time {
-	if b.Before(a) {
-		return b
-	}
-	return a
 }
 
 // Done signals sole-reader retirement. Close still joins every writer and child.

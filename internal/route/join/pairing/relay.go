@@ -272,7 +272,7 @@ func (s *joinSide) interruptRelay() error {
 		s.pair.interruptErr = errors.Join(s.pair.interruptErr, readErr)
 		s.pair.owner.mu.Unlock()
 	}
-	return errors.Join(readErr, s.deadline(minDeadline(s.hello.Deadline, now.Add(time.Second)), true))
+	return errors.Join(readErr, s.deadline(framing.MinDeadline(s.hello.Deadline, now.Add(time.Second)), true))
 }
 
 func (p *joinPair) relay(sides [2]*joinSide) {
@@ -335,7 +335,7 @@ func (p *joinPair) relay(sides [2]*joinSide) {
 	// Only joined writers may emit terminal frames. Their old absolute bounds
 	// still apply; no failed started write becomes a clean terminal result.
 	for _, s := range sides {
-		end := minDeadline(s.hello.Deadline, time.Now().Add(time.Second))
+		end := framing.MinDeadline(s.hello.Deadline, time.Now().Add(time.Second))
 		err := s.deadline(end, true)
 		if err == nil {
 			err = s.writeFrame(ardp.Frame{Kind: ardp.KindClose, Lane: 1, Body: []byte{first.status}})

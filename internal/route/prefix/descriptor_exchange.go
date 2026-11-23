@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
@@ -203,7 +204,7 @@ func (p *Prefix) exchangeDescriptor(ctx, caller context.Context, end time.Time, 
 	if err != nil {
 		return nil, err
 	}
-	secured, err := roletls.OpenRole(ctx, lane, member.PublicKey, minDeadline(end, time.Now().Add(10*time.Second)))
+	secured, err := roletls.OpenRole(ctx, lane, member.PublicKey, framing.MinDeadline(end, time.Now().Add(10*time.Second)))
 	if err != nil {
 		return nil, err
 	}
