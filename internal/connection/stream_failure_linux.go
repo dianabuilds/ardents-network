@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"os"
 )
 
@@ -14,7 +15,11 @@ import (
 func StreamFailureReason(err error) string {
 	switch {
 	case errors.Is(err, errRecoveryExhausted):
-		return "Service Connection recovery bound reached"
+		const exhausted = "Service Connection recovery bound reached"
+		if lost, ok := errors.AsType[originalAttachmentFailure](err); ok {
+			return exhausted + " after " + attachmentFailureReason(lost.cause)
+		}
+		return exhausted
 	case errors.Is(err, errIntegrity):
 		return "Service Connection rejected an integrity contradiction"
 	case errors.Is(err, os.ErrDeadlineExceeded):
@@ -25,5 +30,18 @@ func StreamFailureReason(err error) string {
 		return "Service Connection was truncated"
 	default:
 		return ""
+	}
+}
+
+func attachmentFailureReason(err error) string {
+	switch {
+	case errors.Is(err, os.ErrDeadlineExceeded), errors.Is(err, context.DeadlineExceeded):
+		return "the original attachment timed out"
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		return "the original attachment was truncated"
+	case errors.Is(err, io.EOF), errors.Is(err, io.ErrClosedPipe), errors.Is(err, net.ErrClosed):
+		return "the original attachment closed"
+	default:
+		return "the original attachment failed"
 	}
 }

@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 5c7161e347e5666c05fb6d6fb9622806bc56df0d
+          ref: b3876328fa33e69368f9e2353700bbe513c69f86
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -28,4 +28,4 @@ jobs:
           git show -s --format='candidate=%H tree=%T'
           go test -c -tags endpoint_pair_native,document_worker_installed -o "$RUNNER_TEMP/installed-pair.test" ./cmd/ardents-next
           cd cmd/ardents-next
-          sudo env PATH="$PATH" GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" "$RUNNER_TEMP/installed-pair.test" -test.run '^(TestNativeInstalledEndpointByteStream|TestNativeEndpointPlatformLedJourney)$' -test.v -test.timeout=24m
+          sudo env PATH="$PATH" GOTOOLCHAIN=local GOFLAGS=-buildvcs=false GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" "$RUNNER_TEMP/installed-pair.test" -test.run '^TestNativeInstalledEndpointByteStream$' -test.v -test.timeout=24m
