@@ -716,7 +716,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
-			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go":
+			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go":
 				return true
 			}
 		}

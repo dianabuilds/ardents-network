@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 var errSourceInput = errors.New("original Source input unavailable")
@@ -244,65 +244,31 @@ func (inputs sourceInputs) Check() error {
 	return nil
 }
 
-func sourceInputMetadata(original, current os.FileInfo) bool {
-	a, aok := original.Sys().(*syscall.Stat_t)
-	b, bok := current.Sys().(*syscall.Stat_t)
-	if !aok || !bok || !os.SameFile(original, current) || original.Mode() != current.Mode() || a.Uid != b.Uid || a.Gid != b.Gid {
-		return false
-	}
-	return a.Nlink == b.Nlink && a.Ctim == b.Ctim && a.Mtim == b.Mtim && original.Size() == current.Size()
-}
-
 func (f *sourceInputFile) check() error {
-	if err := f.checkAncestors(); err != nil {
-		return err
-	}
-	before, err := f.file.Stat()
-	if err != nil || !sourceInputMetadata(f.info, before) {
-		return errSourceInput
-	}
-	if err := f.checkLink(); err != nil {
-		return err
-	}
-	raw := make([]byte, len(f.raw)+1)
-	defer clear(raw)
-	n, err := f.file.ReadAt(raw, 0)
+	var observe func(*os.File)
 	if f.observe != nil {
-		f.observe("check", f.file)
+		observe = func(file *os.File) { f.observe("check", file) }
 	}
-	if err != nil && err != io.EOF || !bytes.Equal(raw[:n], f.raw) {
-		return errSourceInput
-	}
-	after, err := f.file.Stat()
-	if err != nil || !sourceInputMetadata(f.info, after) {
-		return errSourceInput
-	}
-	// A retained descriptor alone cannot detect an ancestor/path substitution
-	// which happened during the read. Reobserve both sides before handoff.
-	if err := f.checkAncestors(); err != nil {
-		return err
-	}
-	return f.checkLink()
+	return sourceInputCheckError(f.parent.CheckRetainedFile(f.file, f.info, f.raw, observe))
 }
 
 func (f *sourceInputFile) checkLink() error {
-	linked, err := f.parent.OpenFile(f.file.Name())
-	if err != nil {
-		return errors.Join(errSourceInput, err)
-	}
-	observed, statErr := linked.Stat()
-	if err = errors.Join(statErr, linked.Close()); err != nil {
-		return errors.Join(errSourceInput, err)
-	}
-	if !sourceInputMetadata(f.info, observed) {
+	return sourceInputCheckError(f.parent.CheckRetainedFileLink(f.file.Name(), f.info))
+}
+
+func (f *sourceInputFile) checkAncestors() error {
+	if f.parent.CheckOriginalAccess() != nil {
 		return errSourceInput
 	}
 	return nil
 }
 
-func (f *sourceInputFile) checkAncestors() error {
-	if err := f.parent.CheckOriginalAccess(); err != nil {
+func sourceInputCheckError(err error) error {
+	if err == artifacts.ErrInput {
 		return errSourceInput
+	}
+	if err != nil {
+		return errors.Join(errSourceInput, err)
 	}
 	return nil
 }

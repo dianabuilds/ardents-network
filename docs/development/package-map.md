@@ -335,6 +335,7 @@ remain. No old Forwarding, JOIN or Descriptor runtime is used.
 | File `cmd/ardents-next/release.go` | Files `internal/enrollment` and `internal/release` for initial and candidate Release inputs used by both software delivery paths |
 | File `cmd/ardents-next/platform_endpoint_staging_linux.go` | File `internal/enrollment`; `internal/release/endpoint`; `internal/endpoint/launch`; `internal/release` for first-delivery floor verification and signed successor staging under the retained Release lease |
 | File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/enrollment`; `internal/release`; `internal/release/infrastructure`; `internal/network/state`; `internal/network/duty`; `tests/epochfixture/network`; `github.com/theupdateframework/go-tuf/v2/metadata` |
+| File `cmd/ardents-next/source_custody_linux.go` | File `internal/platform/artifacts` for retained runtime resource reobservation alongside the Source declaration owner |
 | File `cmd/ardents-next/platform_files_linux.go` | File `internal/platform/process` for the validated dedicated account ID from retained local account records |
 | File `cmd/ardents-next/platform_unit_linux.go` | File `internal/platform/systemd` for canonical infrastructure unit rendering and exact loaded pre-start comparison |
 
@@ -840,17 +841,15 @@ independent kernel quiescence under both retained leases; no caller-supplied
 process-death callback grants authority. The command retains the public plan
 without loading a private transport key and initializes no runtime or root.
 
-`source_custody_linux.go` and its native scheduling/file-custody tests use only
-the standard library. Its genuine consumer is the existing Source command;
-the unexported lifetime retains original fixed files/ancestors, synchronous
-denial, native-use joins and copied terminal results. Source and platform
-composition use the original descriptor chain borrowed through
-`network_preparation_linux.go`. `internal/platform/artifacts` implements one
-physical traversal and keeps original-owner reobservation distinct from the
-root-controlled check used before signing reads. The CLI retains role-specific
-input policy and deadlines. State/Source preserve their own effects and
-join; command cancellation can start that same original Close while native
-input observation is held.
+The Source command retains its files, synchronous denial, native-use joins
+and terminal result in `source_custody_linux.go`. Source and platform
+pre-start share original directory traversal and retained file reobservation
+through `internal/platform/artifacts`. The file check reobserves original
+directory access, the retained descriptor, linked identity and exact bytes.
+Root-controlled signing remains a separate access check. Each command
+retains its role-specific input policy and deadlines. State and Source own
+their own effects and joins. Command cancellation can start the original
+Close while native input observation is held.
 
 `source_state_linux_test.go` additionally imports only new `network/duty` and
 `network/source` for actual serving/guard retirement on failed readiness output.
