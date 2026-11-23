@@ -427,11 +427,15 @@ arguments, timeout and receipts. Native tests use the Endpoint preparer for
 failure controls and the compiled command for actual preparation. The process
 test additionally consumes `network/source`, `network/state` and independent
 `tests/epochfixture/network`.
-Linux-only `network/source/public_trust.go` owns public X.509 observation, sharing runtime
+Portable `network/source/public_trust.go` owns public X.509 observation, sharing runtime
 declaration/collision/key-digest mechanisms without constructing a live Plan
-for callers. Its platform matches its genuine native preparation consumer;
-other platforms retain runtime and explicit command refusal, without test-only
-public observation reachability. It adds only standard-library imports. The existing installed
+for callers. P1-B batch 1 (#781, #691) dropped its accidental Linux constraint
+after per-file purity verification: it composes only portable Source helpers and
+adds only standard-library imports, with no native mechanism. Its portable
+behavior test executes on the windows/macos lane; the genuine production
+consumer remains the Linux `endpoint/source_trust_preparation_linux.go`, so the
+observation is windows-production-dead under a reviewed deadcode allowance, and
+other platforms retain runtime and explicit command refusal. The existing installed
 Source composer retains one pure `installedNetworkAuthority` projection used by
 both runtime and preparation; private loading remains runtime-only. Native
 finite output uses `internal/platform/artifacts` through the Linux command
@@ -502,9 +506,16 @@ first-failure projection inside the established single terminal report. Node's
 library; it records local phase/cause/elapsed facts without foreign I/O, authority
 or private identity. Process-resource failure facts retain original numeric
 measurements separately from Node's physical cleanup causes.
-`processresource/failure_linux.go` exposes the copied native failure projection
-only on Linux, where the genuine Node consumer exists. Shared policy/fact
-representation remains portable; unsupported-platform commands refuse acquisition.
+`processresource/failure.go` owns the copied failure projection portably: P1-B
+batch 1 (#781, #691) merged the former `failure_linux.go` `Failure` projection
+into the already-portable fact representation after verifying it is pure
+(`errors` only, no native mechanism). Its portable behavior test executes on the
+windows/macos lane. The genuine Node consumers remain Linux
+(`node/failure_projection_linux.go`, `cmd/ardents-next/source_failure_linux.go`),
+so `Failure` is windows-production-dead under a reviewed deadcode allowance. The
+native process/cgroup observation mechanism stays Linux (`native_linux.go`) with
+its unchanged `!linux` typed refusal (`native_other.go`); unsupported-platform
+commands refuse acquisition.
 
 [ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
 for the nearest closed release. The QUIC adapter and its import grants retire;
@@ -800,7 +811,7 @@ Git history; no current package may import or start a lab Module.
 | `internal/connection` | `package connection` | Immutable initial recipient logical/Attachment binding under the exact qualified Execution operation, sealed independently verified Publication and original local Work Safety bounds. Refuse substitution, extension and recovery without retained continuity. Real non-test consumer: `publication/runtime` capsule opening. The one-use initial authentication consumer composes logical send/receive and Terminal state with a checked original Execution byte contract and joined TLS users; Publication NextAuthentication consumes a genuine initial delivery and the same Source-bound Responder JOIN. Reader's initial Source factory retains the same genuine Source across independent Target-Link/Descriptor verification, Introduction submission, JOIN and Instance authentication; original history and Rendezvous selection remain caller-owned. Recovery and real two-role command/worker acceptance remain required. Copied contexts grant no Instance TLS, accepted replay, Responder, ordered stream or Application bytes; full two-role command/recovery acceptance remains separate. | `internal/execution/runtime`, `internal/publication`, `internal/route/capsule`, `internal/connection/wire`, `internal/publication/instance`, `internal/route/join`; `internal/network`, `internal/reachability`, `internal/route`, `internal/route/introduction`, `internal/route/prefix`, `internal/route/selection` only in `initiator_source.go`; `internal/route/prefix` additionally only in `publisher_recovery.go` for retained original Source/Responder recovery scope; `internal/application/connection` only in `stream.go` and `stream_test.go`; standard library |
 | `internal/connection/wire` | `package wire` | Closed canonical Service Connection v3 records, immutable logical/Attachment transcripts, TLS exporter binding and one-use verified initial request receipt. Genuine non-test callers are Connection recipient binding and Instance Service key use. Pure checked values grant no local permission, accepting Publication or Route. No generic signer or owner callback. | Standard library only |
 | `internal/reachability` | `package reachability` | Construct the canonical public Descriptor transcript and independently verify its completed signature; verify bounded private Descriptor v3, independently selected lookup Target/current profile and publication delegation before receiving effects; own the separate receiving Store root, durable conflict floors and bounded interrupted-write recovery. The bounded `RepairRetainedStoreStage` clears only an uncertain staging file of an EXISTING retained root under its exclusive lease after validating every committed floor (the Store half of platform-led Descriptor repair, called after independent dead-unit proofs); it initializes no missing root, resets/evicts no floor, promotes no staging, deletes no foreign entry and grants no publication or runtime authority, and `OpenStore`/`OpenRetainedStore` behavior is unchanged. Store retains original native root/records/marker/lock/committed-record custody and sync descriptor, permanent operational denial, separately serialized publications and joined original borrows before first physical release. Receiver consumes Check without foreign observer recursion; request refusal cannot retire a healthy owner. Local History retains only context-private monotonic facts and the exact joined lookup flight; no offline proof cache. Pure verification, history and floor transitions are portable; native Linux/Windows lease and directory synchronization remain mechanisms. No Route selection/transport, private Instance authority or readiness. | `internal/publication`, `golang.org/x/sys/windows` through `store_platform_windows.go` only, `internal/pathgrammar`, standard library |
-| `internal/hosting` | `package hosting` | Shared durable provider-period accounting, work/cleanup deadlines, opaque reservations and bounded confirmed persisted snapshots; separate Linux read-only existing-history inspection retains original policy/principal/lease and requires returned reservations, without charging or refunding. No placement or network authority. | `internal/pathgrammar`, standard library |
+| `internal/hosting` | `package hosting` | Shared durable provider-period accounting, work/cleanup deadlines, opaque reservations and bounded confirmed persisted snapshots. Reservation accounting (`reservation.go`) and the bounded read (`counter_file.go`) are portable pure Go (P1-B batch 1, #781); the durable flock lease and `/proc`/`/sys` counter measurement stay Linux (`platform_linux.go`) with unchanged `!linux` typed refusals (`platform_other.go`), and their behavior tests remain Linux. Separate Linux read-only existing-history inspection retains original policy/principal/lease and requires returned reservations, without charging or refunding. No placement or network authority. | `internal/pathgrammar`, standard library |
 | `internal/admission/issuance` | `package issuance` | Own immutable offline RSA material, unsigned inventory, immutable signed issuer profiles and durable confirmed blind-token results; exclusive Linux leases, no live authority. | `internal/admission`, `internal/admission/issuerprofile`, `internal/admission/issuerprofile/signing`, `github.com/cloudflare/circl/blindsign/blindrsa`, `internal/admission/quota`, `internal/pathgrammar`, standard library |
 | `internal/admission/issuer` | `package issuer` | Compose offline and current-authority open/debit/sign/retain/close and pinned issuer profile preparation/inspection; retain the primary result and every acquired owner cleanup before finite command projection. No quota arithmetic or private signing implementation. | `internal/admission`, `internal/admission/issuance`, `internal/admission/issuerprofile/signing`, `internal/admission/quota`, `internal/pathgrammar`, standard library |
 | `internal/admission/issuerprofile/signing` | `package signing` | Import independently pinned Ed25519 Node key into exclusive immutable Linux storage; sign only opaque validated issuer-profile requests. No private-key or general signing API. | `internal/admission/issuerprofile`, `internal/pathgrammar`, standard library |

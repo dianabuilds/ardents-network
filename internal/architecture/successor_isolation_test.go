@@ -135,8 +135,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/systemd/node_slots_linux_test.go",
 			"internal/platform/systemd/source_object_linux_test.go",
 			"internal/platform/systemd/source_manager_linux.go",
-			"internal/release/static_metadata.go",
-			"internal/release/static_metadata_test.go",
 			"internal/release/history_binding_linux.go",
 			"internal/release/history_binding_linux_test.go",
 		} {
@@ -164,6 +162,22 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 			if !selected {
 				t.Errorf("portable infrastructure artifact file %s excluded on %s", name, target)
+			}
+		}
+		// The static metadata projection is a pure JSON adapter (P1-B batch 1,
+		// #781): it composes only portable Release helpers and executes its
+		// behavior test on every mandatory target. The native history binding
+		// above stays Linux-only.
+		for _, name := range []string{
+			"internal/release/static_metadata.go",
+			"internal/release/static_metadata_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable static metadata file %s excluded on %s", name, target)
 			}
 		}
 		for _, tagged := range []bool{false, true} {
