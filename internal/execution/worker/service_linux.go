@@ -83,7 +83,7 @@ func readEndpointProperties(ctx context.Context) (properties, properties, error)
 // It grants no activation, launch or stop permission.
 func readActivationSocketProperties(ctx context.Context, inv inventory, role string) (properties, properties, error) {
 	if ctx == nil || role != "reader" && role != "publisher" {
-		return nil, nil, errors.New("Application activation socket observation is unavailable")
+		return nil, nil, errors.New("worker activation socket observation is unavailable")
 	}
 	if err := verifyPlatform(ctx); err != nil {
 		return nil, nil, err
