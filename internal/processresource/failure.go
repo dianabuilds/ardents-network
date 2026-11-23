@@ -34,8 +34,7 @@ func retainFailure(cause error, phase string, observation Observation, original 
 	elapsed := now.Sub(original.started).Milliseconds()
 	facts := FailureFacts{Phase: phase, ElapsedMS: &elapsed}
 	facts.Cause = "native-evidence"
-	var refusal *admissionFailure
-	if errors.As(cause, &refusal) {
+	if refusal, ok := errors.AsType[*admissionFailure](cause); ok {
 		facts.Cause = refusal.reason
 	}
 	if deadline, ok := original.caller.Deadline(); ok {

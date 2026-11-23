@@ -4,22 +4,21 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
-	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 func validateConfig(input Config) (config, error) {
 	if input.Root == "" {
 		return config{}, errors.New("state root is required")
 	}
-	root, err := filepath.Abs(input.Root)
-	if err != nil {
-		return config{}, fmt.Errorf("resolve state root: %w", err)
+	if !pathgrammar.Strict(input.Root) {
+		return config{}, errors.New("state root must be an absolute clean path")
 	}
+	root := input.Root
 	if input.Threshold < 1 || input.Threshold > len(input.Authorities) {
 		return config{}, errors.New("authority threshold is outside the authority set")
 	}
@@ -42,11 +41,10 @@ func validateConfig(input Config) (config, error) {
 		return config{}, errors.New("clock observation has multiple owners")
 	}
 	if input.ClockObservationFile != "" {
-		observationPath, pathErr := filepath.Abs(input.ClockObservationFile)
-		if pathErr != nil {
-			return config{}, fmt.Errorf("resolve clock observation file: %w", pathErr)
+		if !pathgrammar.Strict(input.ClockObservationFile) {
+			return config{}, errors.New("clock observation file must be an absolute clean path")
 		}
-		observe = fileClockObserver(observationPath)
+		observe = fileClockObserver(input.ClockObservationFile)
 	}
 	if observe == nil {
 		fixed := input.ClockObservation.UTC()
@@ -76,11 +74,8 @@ func validateConfig(input Config) (config, error) {
 		return config{}, errors.New("direct Source work requires local role state")
 	}
 	localRoles := input.LocalRoleStateRoot
-	if localRoles != "" {
-		localRoles, err = filepath.Abs(localRoles)
-		if err != nil {
-			return config{}, fmt.Errorf("resolve local role state root: %w", err)
-		}
+	if localRoles != "" && !pathgrammar.Strict(localRoles) {
+		return config{}, errors.New("local role state root must be an absolute clean path")
 	}
 	acceptedProfile := input.AcceptedProfile
 	if acceptedProfile == "" {

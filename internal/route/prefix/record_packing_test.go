@@ -10,6 +10,7 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -52,8 +53,8 @@ func testNestedRecordPacking(t *testing.T, laneWrite bool) {
 		cancel()
 		_ = left.Close()
 		_ = right.Close()
-		for index := len(sessions) - 1; index >= 0; index-- {
-			_ = sessions[index].Close()
+		for _, session := range slices.Backward(sessions) {
+			_ = session.Close()
 		}
 	})
 	end := time.Now().Add(5 * time.Second)

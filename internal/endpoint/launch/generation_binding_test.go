@@ -66,7 +66,7 @@ func installedObservationFixture(t *testing.T) (generationSelection, generationB
 	}
 	files := map[string][]byte{}
 	resources := map[string]string{}
-	for _, name := range strings.Fields("ardents-linux-amd64 ardents-text-linux-amd64 ardents-text-reader@.service ardents-text-publisher@.service ardents-text-reader.socket ardents-text-publisher.socket 50-ardents-text.rules ardents-text.conf ardents-endpoint.service") {
+	for name := range strings.FieldsSeq("ardents-linux-amd64 ardents-text-linux-amd64 ardents-text-reader@.service ardents-text-publisher@.service ardents-text-reader.socket ardents-text-publisher.socket 50-ardents-text.rules ardents-text.conf ardents-endpoint.service") {
 		files[name] = []byte("static component " + name)
 		if name == "ardents-endpoint.service" {
 			files[name] = []byte(endpointTemplateFixture)

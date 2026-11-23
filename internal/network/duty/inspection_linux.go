@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // participationInspection is independently instantiated native read custody.
@@ -40,7 +42,7 @@ type inspectionLeaf struct {
 }
 
 func openParticipationInspection(ctx context.Context, path string, uid, gid uint32) (result *participationInspection, err error) {
-	if ctx == nil || ctx.Err() != nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || os.Geteuid() != 0 {
+	if ctx == nil || ctx.Err() != nil || !pathgrammar.Strict(path) || os.Geteuid() != 0 {
 		return nil, errors.New("invalid retained participation inspection")
 	}
 	s := &participationInspection{ctx: ctx, path: path, files: map[string]*inspectionLeaf{}, parents: map[string]*os.File{}, parentInfo: map[string]os.FileInfo{}, uid: uid, gid: gid}

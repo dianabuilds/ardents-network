@@ -44,8 +44,8 @@ func retainedLayoutEntry(relative string, directory bool) bool {
 		if name == rootLockName || name == rootMarkerName || name == "current" {
 			return true
 		}
-		if strings.HasPrefix(name, "closed-profile-state-") {
-			return generationName.MatchString(strings.TrimPrefix(name, "closed-profile-state-"))
+		if after, ok := strings.CutPrefix(name, "closed-profile-state-"); ok {
+			return generationName.MatchString(after)
 		}
 		return strings.HasPrefix(name, "closed-profile-") && strings.HasSuffix(name, ".bin") && generationName.MatchString(strings.TrimSuffix(strings.TrimPrefix(name, "closed-profile-"), ".bin"))
 	}

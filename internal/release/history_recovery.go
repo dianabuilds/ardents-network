@@ -156,7 +156,7 @@ func floorPayloadPrefix(raw []byte) bool {
 			return false
 		}
 		raw = raw[len(literal):]
-		for i := 0; i < 64; i++ {
+		for range 64 {
 			if len(raw) == 0 {
 				return true
 			}

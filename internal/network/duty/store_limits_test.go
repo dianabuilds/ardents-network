@@ -23,7 +23,7 @@ func TestStoreDistinguishesRecordLimit(t *testing.T) {
 	defer store.Close()
 
 	seed := make([]duty.Duty, 0, 64)
-	for index := 0; index < 64; index++ {
+	for index := range 64 {
 		seed = append(seed, ordinaryInitiatorDuty(byte(index+1), byte(index+101), now))
 	}
 	if err := store.Replace([32]byte{1}, seed); err != nil {
@@ -49,7 +49,7 @@ func TestStoreRejectsOversizedReplacementWithRecordLimit(t *testing.T) {
 	defer store.Close()
 
 	duties := make([]duty.Duty, 0, 65)
-	for index := 0; index < 65; index++ {
+	for index := range 65 {
 		duties = append(duties, ordinaryInitiatorDuty(byte(index+1), byte(index+101), now))
 	}
 	if err := store.Replace([32]byte{1}, duties); !errors.Is(err, duty.ErrLocalRoleRecordLimit) {

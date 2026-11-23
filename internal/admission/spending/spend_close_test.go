@@ -32,14 +32,12 @@ func TestCloseRetainsJoinedFailure(t *testing.T) {
 	start := make(chan struct{})
 	var callers sync.WaitGroup
 	for range 32 {
-		callers.Add(1)
-		go func() {
-			defer callers.Done()
+		callers.Go(func() {
 			<-start
 			if result := ledger.Close(); result != first {
 				t.Errorf("concurrent Close = %v; want retained %v", result, first)
 			}
-		}()
+		})
 	}
 	close(start)
 	callers.Wait()

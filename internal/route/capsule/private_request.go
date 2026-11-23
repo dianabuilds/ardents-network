@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -33,10 +34,8 @@ type Request struct {
 }
 
 func validRequest(v Request) bool {
-	for _, field := range [][32]byte{v.Network, v.Target, v.PublicationDigest, v.RendezvousNode, v.JoinSecret, v.HandshakeContext, v.ProfileDigest, v.ConnectionNonce, v.InitiatorBinding} {
-		if field == [32]byte{} {
-			return false
-		}
+	if slices.Contains([][32]byte{v.Network, v.Target, v.PublicationDigest, v.RendezvousNode, v.JoinSecret, v.HandshakeContext, v.ProfileDigest, v.ConnectionNonce, v.InitiatorBinding}, [32]byte{}) {
+		return false
 	}
 	return v.Revision != 0 && v.RendezvousDutyGeneration != 0 && v.AttachmentGeneration != 0 &&
 		v.Deadline.Unix() > 0 && v.Deadline == v.Deadline.UTC().Truncate(time.Second) &&

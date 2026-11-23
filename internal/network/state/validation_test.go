@@ -25,7 +25,6 @@ func TestOfflineValidationFailsClosed(t *testing.T) {
 		{"missing materialization", func(value *fixture, _ *state2.Config) { value.materializations = nil }},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			value := newFixture(t)

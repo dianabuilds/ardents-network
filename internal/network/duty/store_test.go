@@ -257,7 +257,7 @@ func TestInstallationDirectSourceCapAcceptsExactlyAtCap(t *testing.T) {
 	}
 	defer store.Close()
 	batchDuties := make([]duty.Duty, 0, 64)
-	for offset := 0; offset < 64; offset++ {
+	for offset := range 64 {
 		identity := [32]byte{byte(offset + 1)}
 		family := [32]byte{byte(offset + 101)}
 		batchDuties = append(batchDuties, duty.Duty{Identity: identity, Family: family,
@@ -284,7 +284,7 @@ func TestInstallationDirectSourceCapRejectsOverCap(t *testing.T) {
 	}
 	defer store.Close()
 	first := make([]duty.Duty, 0, 64)
-	for offset := 0; offset < 64; offset++ {
+	for offset := range 64 {
 		identity := [32]byte{byte(offset + 1)}
 		family := [32]byte{byte(offset + 101)}
 		first = append(first, duty.Duty{Identity: identity, Family: family,
@@ -294,7 +294,7 @@ func TestInstallationDirectSourceCapRejectsOverCap(t *testing.T) {
 		t.Fatalf("seed Replace: %v", err)
 	}
 	overflow := make([]duty.Duty, 0, 64)
-	for offset := 0; offset < 64; offset++ {
+	for offset := range 64 {
 		identity := [32]byte{byte(offset + 65)}
 		family := [32]byte{byte(offset + 165)}
 		overflow = append(overflow, duty.Duty{Identity: identity, Family: family,
@@ -317,7 +317,7 @@ func TestInstallationDirectSourceCapDoesNotApplyToOtherClasses(t *testing.T) {
 	}
 	defer store.Close()
 	batchDuties := make([]duty.Duty, 0, 32)
-	for offset := 0; offset < 32; offset++ {
+	for offset := range 32 {
 		identity := [32]byte{byte(offset + 1)}
 		family := [32]byte{byte(offset + 101)}
 		batchDuties = append(batchDuties, duty.Duty{Identity: identity, Family: family,
@@ -343,7 +343,7 @@ func TestInstallationDirectSourceCapIsAtomic(t *testing.T) {
 	defer store.Close()
 	buildBatch := func(prefix byte) []duty.Duty {
 		result := make([]duty.Duty, 0, 64)
-		for offset := 0; offset < 64; offset++ {
+		for offset := range 64 {
 			identity := [32]byte{prefix, byte(offset + 1)}
 			family := [32]byte{prefix, byte(offset + 101)}
 			result = append(result, duty.Duty{Identity: identity, Family: family,
@@ -381,7 +381,7 @@ func TestInstallationDirectSourceCapIsAtomic(t *testing.T) {
 	}
 	// The store must hold exactly 64 direct-source duties from the surviving call.
 	conflictCount := 0
-	for offset := 0; offset < 64; offset++ {
+	for offset := range 64 {
 		identity := [32]byte{0x10, byte(offset + 1)}
 		if conflict, err := store.Conflict(identity, [32]byte{}); err != nil {
 			t.Fatal(err)
@@ -389,7 +389,7 @@ func TestInstallationDirectSourceCapIsAtomic(t *testing.T) {
 			conflictCount++
 		}
 	}
-	for offset := 0; offset < 64; offset++ {
+	for offset := range 64 {
 		identity := [32]byte{0x20, byte(offset + 1)}
 		if conflict, err := store.Conflict(identity, [32]byte{}); err != nil {
 			t.Fatal(err)

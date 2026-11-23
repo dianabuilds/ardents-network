@@ -247,10 +247,7 @@ func (connection *client) Write(source []byte) (int, error) {
 	}
 	written := 0
 	for len(source) > 0 {
-		length := len(source)
-		if length > maximumFrame {
-			length = maximumFrame
-		}
+		length := min(len(source), maximumFrame)
 		if err := writeData(connection.connection, source[:length]); err != nil {
 			return written, err
 		}

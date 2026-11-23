@@ -128,7 +128,7 @@ if [ -z "$network" ] || [ -z "$target_path" ] || grep -q "$(printf '\r')" "$rele
   "target_path=$target_path" \
   "artifact=$endpoint_name" \
   'trusted_root=1.root.json' | cmp -s - "$release_descriptor"; then
-  echo 'alpha bundle RELEASE has an invalid v5 descriptor' >&2
+  echo 'alpha bundle RELEASE has an invalid v6 descriptor' >&2
   exit 2
 fi
 

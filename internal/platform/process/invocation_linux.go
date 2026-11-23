@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 var errInput = errors.New("installation process: invalid input")
@@ -71,7 +73,7 @@ func retainFixed(ctx context.Context, expected Expected, policy invocationPolicy
 	if ctx == nil || expected.PID == 0 || expected.UID == 0 || expected.GID == 0 ||
 		expected.UID == ^uint32(0) || expected.GID == ^uint32(0) ||
 		expected.Invocation == [16]byte{} ||
-		!filepath.IsAbs(expected.InstallationRoot) || filepath.Clean(expected.InstallationRoot) != expected.InstallationRoot ||
+		!pathgrammar.Strict(expected.InstallationRoot) ||
 		expected.InstallationRoot == "/" || strings.ContainsRune(expected.InstallationRoot, 0) ||
 		expected.ProgramIdentity == nil {
 		return nil, errInput

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -53,10 +54,5 @@ func assertRepositoryContainsNoArtifacts(t *testing.T, root string) {
 }
 
 func pathHasSegment(path, wanted string) bool {
-	for _, segment := range strings.Split(filepath.ToSlash(path), "/") {
-		if segment == wanted {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Split(filepath.ToSlash(path), "/"), wanted)
 }

@@ -22,7 +22,7 @@ func TestUnsupportedNativeLaunchJoinsRefusedLocalJobWithoutPoisoningGeneration(t
 	})
 	// More than the finite 64-session capacity distinguishes original joined
 	// refusal from leaked reservations or a poisoned generation.
-	for attempt := 0; attempt < 70; attempt++ {
+	for range 70 {
 		prepared, err := owner.Prepare(t.Context(), principal, execution.Connection)
 		if prepared != nil || err == nil || !strings.Contains(err.Error(), "native platform is unavailable") {
 			t.Fatal("unsupported native worker supplied preparation provenance")

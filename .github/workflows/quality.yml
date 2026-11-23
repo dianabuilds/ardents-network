@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 29660b9771dad0de3cfd0f0c0606e27561b8748e
+          ref: 48cdbb58ccf4395638cecf7c5ed26d3a372ecba4
           path: candidate
           persist-credentials: false
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -31,7 +31,7 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 29660b9771dad0de3cfd0f0c0606e27561b8748e
+          test "$(git rev-parse HEAD)" = 48cdbb58ccf4395638cecf7c5ed26d3a372ecba4
           test "$(git -C ../predecessor rev-parse HEAD)" = 32fd2b8b9b81dc369a47c8fdd6bf0f59ce8b9168
           git show -s --format='candidate=%H tree=%T'
           mkdir -m 0700 "$RUNNER_TEMP/v5-artifacts"
@@ -68,7 +68,7 @@ jobs:
             GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" TMPDIR="$native_dir" \
             ARDENTS_PREBUILT_NEXT="$RUNNER_TEMP/ardents-v6" ARDENTS_ENROLLMENT_V5_ARTIFACTS="$RUNNER_TEMP/v5-artifacts" \
             "$RUNNER_TEMP/v6-migration.test" -test.run '^TestNativeEndpointEnrollmentV5ToV6$' -test.timeout=6m -test.v
-      - name: Validate the released archive and offline process
+      - name: Validate the released archive, offline process and Debian package
         working-directory: candidate
         shell: bash
         env:
@@ -76,14 +76,6 @@ jobs:
         run: |
           set -euo pipefail
           make headless-check
-      - name: Validate Debian package independently
-        if: ${{ !cancelled() }}
-        working-directory: candidate
-        shell: bash
-        env:
-          GOTOOLCHAIN: local
-        run: |
-          set -euo pipefail
           sudo -n env PATH="$PATH" GOTOOLCHAIN=local GOENV=off \
             GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
             go test -tags packagee2e ./tests/e2e/endpoint -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$' -count=1 -v

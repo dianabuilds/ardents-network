@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
@@ -49,7 +50,7 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 	// They must not overlap one another or the declared independent clock file.
 	isolated := append(append([]string(nil), paths...), plan.TimeConfidenceFile)
 	for i, path := range isolated {
-		if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
+		if !pathgrammar.Strict(path) || path == "/" {
 			return errors.New("invalid participant history path")
 		}
 		for _, previous := range isolated[:i] {

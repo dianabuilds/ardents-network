@@ -29,8 +29,11 @@ func (a ForwardingAuthorization) InitialFacts() (enrollment.InfrastructureFacts,
 
 func AuthenticateForwardingCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, input release.Inputs) (ForwardingAuthorization, error) {
 	f, ok := c.Facts()
-	if !ok || f.Invocation != "forwarding" || ctx == nil || v == nil {
+	if !ok || f.Invocation != "forwarding" || ctx == nil || v == nil || f.Platform != "linux-amd64" || input.TargetPath != ProgramTarget || input.Local.Platform != f.Platform || input.Local.Architecture != "amd64" || input.Local.RefTime.IsZero() {
 		return ForwardingAuthorization{}, ErrInput
+	}
+	if err := ctx.Err(); err != nil {
+		return ForwardingAuthorization{}, err
 	}
 	floors, err := v.CurrentFloors(ctx)
 	if err != nil {

@@ -22,7 +22,7 @@ func TestInitialClosedPreparationMatchesIndependentEncodingAndOrdinaryVerificati
 	network := [32]byte{9}
 	input := epoch2.InitialClosedEpoch{NetworkID: network, AssignmentSeed: [32]byte{8}, ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), Domains: []string{"a", "b"}, AuthorityKeys: []ed25519.PublicKey{public}}
 	var fixtureRecords []networkfixture.Record
-	for index := 0; index < 3; index++ {
+	for index := range 3 {
 		_, nodeKey, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
 			t.Fatal(err)

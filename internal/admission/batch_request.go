@@ -145,7 +145,7 @@ func decodeBatch(raw []byte) (ClosedTokenBatchRequest, error) {
 		return ClosedTokenBatchRequest{}, errors.New("closed token batch count is invalid")
 	}
 	request.BlindedRequests = make([][]byte, 0, count)
-	for index := 0; index < count; index++ {
+	for range count {
 		request.BlindedRequests = append(request.BlindedRequests, append([]byte(nil), raw[offset:offset+closedTokenRequestSize]...))
 		offset += closedTokenRequestSize
 	}

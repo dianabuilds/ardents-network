@@ -61,7 +61,7 @@ func runBridgeRetirement(t *testing.T, fault error) {
 	init := Init{Role: ReaderRole, Profile: ClientToPublisher, Nonce: [32]byte{1}, Seed: [32]byte{2}}
 	var streams []BoundStream
 	wrote := make(chan struct{}, 1)
-	for index := 0; index < 64; index++ {
+	for index := range 64 {
 		id := uint32(1 + 2*index)
 		if index >= 16 {
 			id = 129 + uint32(index-16)*2

@@ -115,7 +115,7 @@ func Inspect(raw []byte, expected PublicPins) (Inspection, error) {
 		return Inspection{}, ErrInvalid
 	}
 	keys := make([]Key, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		off := 90 + i*357
 		if binary.BigEndian.Uint16(body[off+9:off+11]) != 346 {
 			return Inspection{}, ErrInvalid

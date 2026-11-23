@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
@@ -121,8 +122,8 @@ func inspectSourceRelease(ctx context.Context, local release.LocalEnvironment, d
 // Check lexical independence and refuse a symlinked history ancestor before
 // Release can take its native lease or create a history directory.
 func independentSourceReleaseHistory(distribution, history string) bool {
-	if !filepath.IsAbs(distribution) || filepath.Clean(distribution) != distribution ||
-		!filepath.IsAbs(history) || filepath.Clean(history) != history {
+	if !pathgrammar.Strict(distribution) ||
+		!pathgrammar.Strict(history) {
 		return false
 	}
 	contains := func(parent, child string) bool {

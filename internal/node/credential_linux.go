@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // credential retains the exact runtime TLS material through Route join. It
@@ -20,7 +22,7 @@ type credential struct {
 }
 
 func loadCredential(certPath, keyPath string) (_ *credential, result error) {
-	if !filepath.IsAbs(certPath) || !filepath.IsAbs(keyPath) || filepath.Clean(certPath) != certPath || filepath.Clean(keyPath) != keyPath {
+	if !pathgrammar.Strict(certPath) || !pathgrammar.Strict(keyPath) {
 		return nil, errors.New("invalid Node credential paths")
 	}
 	cert, err := readCredentialFile(certPath, false)
@@ -103,7 +105,7 @@ func protectedCredentialAccess(info os.FileInfo, uid, gid uint32) bool {
 }
 
 func protectedCredentialAncestors(path string) error {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
+	if !pathgrammar.Strict(path) || path == "/" {
 		return errors.New("protected Node credential path unavailable")
 	}
 	for directory := filepath.Dir(path); ; directory = filepath.Dir(directory) {
