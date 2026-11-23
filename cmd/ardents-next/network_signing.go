@@ -40,6 +40,13 @@ type networkSignedArtifact struct {
 	raw  []byte
 }
 
+func preparationObject(raw []byte, value any, keys ...string) error {
+	if !requiredAdmissionObject(raw, keys...) || decodeAdmissionObject(raw, value) != nil {
+		return errNetworkPreparation
+	}
+	return nil
+}
+
 func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*networkSigning, error) {
 	if !isNetworkSigning(operation) || len(raw) > maximumNetworkPreparationPlan {
 		return nil, errNetworkSigning

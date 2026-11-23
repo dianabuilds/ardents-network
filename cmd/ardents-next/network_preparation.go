@@ -20,13 +20,6 @@ func isNetworkPreparation(operation string) bool {
 	return operation == "prepare-initial-node-record" || operation == "prepare-initial-epoch" || operation == "prepare-closed-profile"
 }
 
-func preparationObject(raw []byte, value any, keys ...string) error {
-	if !requiredAdmissionObject(raw, keys...) || decodeAdmissionObject(raw, value) != nil {
-		return errNetworkPreparation
-	}
-	return nil
-}
-
 func prepareNetworkPublic(operation string, raw []byte) (string, []byte, error) {
 	switch operation {
 	case "prepare-initial-node-record":
