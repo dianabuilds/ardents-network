@@ -89,6 +89,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/cgroup/source_quiescence_linux.go",
 			"internal/network/state/source_inspection_linux.go",
 			"internal/network/state/source_preparation_linux.go",
+			"internal/endpoint/source_trust_preparation_linux.go",
 			"internal/network/state/inspection_state_linux.go",
 			"internal/network/state/node_inspection_linux.go",
 			"internal/network/state/durable/inspection_linux.go",
@@ -463,7 +464,8 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "cmd/ardents-next/endpoint_construction_linux.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
 			"cmd/ardents-next/endpoint_history_linux.go", "cmd/ardents-next/endpoint_history_linux_test.go",
-			"cmd/ardents-next/installed_endpoint_linux.go", "cmd/ardents-next/installed_source_linux.go",
+			"cmd/ardents-next/installed_endpoint_linux.go", "cmd/ardents-next/source_preparation_linux.go",
+			"cmd/ardents-next/source_preparation_fixture_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go",
 			"cmd/ardents-next/installed_source_linux_test.go", "cmd/ardents-next/source_preparation_process_linux_test.go":
 			return true
 		default:
@@ -721,8 +723,8 @@ func successorImportAllowed(source, dependency string) bool {
 			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
 				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
 				"cmd/ardents-next/network_keys_linux.go", "cmd/ardents-next/network_keys_native_linux_test.go",
-				"cmd/ardents-next/source_preparation_linux.go", "cmd/ardents-next/platform_files_linux.go",
-				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go":
+				"cmd/ardents-next/platform_files_linux.go",
+				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go":
 				return true
 			}
 		}
@@ -912,9 +914,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/node_prepare_plan.go" || source == "cmd/ardents-next/node_prepare_plan_test.go") && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
-		if source == "cmd/ardents-next/source_preparation_linux.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/processresource") {
-			return true
-		}
 		if (source == "cmd/ardents-next/source_state_preparation_linux.go" || source == "cmd/ardents-next/source_state_preparation_linux_test.go") && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
@@ -1063,7 +1062,6 @@ func successorImportAllowed(source, dependency string) bool {
 				"cmd/ardents-next/source_lifecycle_native_linux_test.go",
 				"cmd/ardents-next/source_linux.go",
 				"cmd/ardents-next/source_native_linux_test.go",
-				"cmd/ardents-next/source_preparation_linux.go",
 				"cmd/ardents-next/source_preparation_process_linux_test.go",
 				"cmd/ardents-next/source_repair_inputs_linux.go",
 				"cmd/ardents-next/source_state_preparation_linux.go",

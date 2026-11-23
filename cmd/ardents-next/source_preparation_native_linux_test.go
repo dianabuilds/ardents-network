@@ -16,12 +16,15 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func sourcePreparationArguments(t *testing.T) (map[string]any, string, string) {
 	t.Helper()
 	parent := signingNativeParent(t)
-	p, _ := sourcePreparationFixture(t, parent, installedHeadless{})
+	p, _ := sourcePreparationFixture(t, parent, endpoint.HeadlessPlan{})
 	plan, output := filepath.Join(parent, "plan.json"), filepath.Join(parent, "output")
 	if e := os.WriteFile(plan, sourcePreparationJSON(t, p), 0600); e != nil {
 		t.Fatal(e)
@@ -57,7 +60,7 @@ func TestSourcePreparationNativePublicOnlyCommand(t *testing.T) {
 			t.Fatal("private path effect", err)
 		}
 	}
-	client := p["client"].(installedHeadless)
+	client := p["client"].(endpoint.HeadlessPlan)
 	roots := []string{client.NetworkStateRoot, client.LocalRoleStateRoot}
 	for _, member := range p["sources"].([]map[string]any) {
 		roots = append(roots, member["state_root"].(string), member["participation_root"].(string))
@@ -173,7 +176,7 @@ func TestSourcePreparationNativeCommitmentsAndCustody(t *testing.T) {
 				if runSourcePreparation(ctx, []string{"prepare-trust", plan, output}, &sourcePreparationFailWriter{}) == 0 {
 					t.Fatal("receipt failure accepted")
 				}
-			} else if result, err := executeSourcePreparation(ctx, plan, output, observe); err == nil || result != nil {
+			} else if result, err := endpoint.PrepareSourceTrust(ctx, plan, output, observe); err == nil || result != nil {
 				t.Fatal("causal refusal missing", fault, err)
 			}
 			// Every created prefix stays non-adoptable, including receipt failure.
@@ -264,7 +267,7 @@ func TestSourcePreparationNativeReferenceExpiry(t *testing.T) {
 				}
 			}
 		}
-		if _, e := executeSourcePreparation(t.Context(), plan, output, observe); e == nil {
+		if _, e := endpoint.PrepareSourceTrust(t.Context(), plan, output, observe); e == nil {
 			t.Fatal("expired original reference accepted")
 		}
 		if late && !reached {
@@ -274,7 +277,7 @@ func TestSourcePreparationNativeReferenceExpiry(t *testing.T) {
 		if e := os.WriteFile(plan, sourcePreparationJSON(t, p), 0600); e != nil {
 			t.Fatal(e)
 		}
-		if _, e := executeSourcePreparation(t.Context(), plan, output+"-healthy", nil); e != nil {
+		if _, e := endpoint.PrepareSourceTrust(t.Context(), plan, output+"-healthy", nil); e != nil {
 			t.Fatal("fresh observation control", e)
 		}
 	}
@@ -306,7 +309,7 @@ func TestSourcePreparationNativePublicMountRefusal(t *testing.T) {
 	if e = syscall.Fstatfs(int(f.Fd()), &fs); e != nil || fs.Type != 0x01021994 {
 		t.Fatal("invalid environment: original control is not tmpfs", e)
 	}
-	if requirePreparationExt4(f) == nil {
+	if e := artifacts.RequireExt4(f); !errors.Is(e, artifacts.ErrNotExt4) {
 		t.Fatal("actual non-ext4 public descriptor accepted")
 	}
 }
@@ -321,13 +324,13 @@ func TestSourcePreparationNativeChild(t *testing.T) {
 		if e := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &syscall.Rlimit{Cur: 32, Max: 32}); e != nil {
 			t.Fatal("invalid environment", e)
 		}
-		_, e := executeSourcePreparation(t.Context(), plan, output, nil)
+		_, e := endpoint.PrepareSourceTrust(t.Context(), plan, output, nil)
 		if !errors.Is(e, syscall.EFBIG) {
 			t.Fatal("actual partial-write failure absent", e)
 		}
 		return
 	}
-	_, e := executeSourcePreparation(t.Context(), plan, output, func(label string, _ *os.File) {
+	_, e := endpoint.PrepareSourceTrust(t.Context(), plan, output, func(label string, _ *os.File) {
 		if label == phase {
 			if _, e := fmt.Fprintln(os.Stdout, label); e != nil {
 				t.Fatal(e)
