@@ -17,20 +17,22 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 )
 
-func profileConfigObject(raw []byte, names ...string) (map[string]json.RawMessage, error) {
+func issuerConfigObject(raw []byte, names ...string) (map[string]json.RawMessage, error) {
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()
 	if uniqueJSON(d) != nil {
 		return nil, issuance.ErrInvalid
 	}
-	if _, e := d.Token(); e != io.EOF || !requiredAdmissionObject(raw, names...) {
+	if _, err := d.Token(); err != io.EOF {
 		return nil, issuance.ErrInvalid
 	}
 	var fields map[string]json.RawMessage
-	e := json.Unmarshal(raw, &fields)
-	return fields, e
+	if json.Unmarshal(raw, &fields) != nil || !requiredAdmissionFields(fields, names...) {
+		return nil, issuance.ErrInvalid
+	}
+	return fields, nil
 }
-func profilePath(raw json.RawMessage) (string, error) {
+func issuerConfigPath(raw json.RawMessage) (string, error) {
 	var path string
 	if json.Unmarshal(raw, &path) != nil || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return "", issuance.ErrInvalid
@@ -39,7 +41,7 @@ func profilePath(raw json.RawMessage) (string, error) {
 }
 func decodeIdentityBinding(raw []byte) (signing.Binding, error) {
 	var b signing.Binding
-	fields, e := profileConfigObject(raw, "network", "node", "signer")
+	fields, e := issuerConfigObject(raw, "network", "node", "signer")
 	if e != nil {
 		return b, e
 	}
@@ -64,7 +66,7 @@ func decodeIdentityBinding(raw []byte) (signing.Binding, error) {
 }
 func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
 	var p issuer.ProfilePlan
-	fields, e := profileConfigObject(raw, "identity_root", "identity_binding", "key_root", "key_binding", "profile_root", "profile_file")
+	fields, e := issuerConfigObject(raw, "identity_root", "identity_binding", "key_root", "key_binding", "profile_root", "profile_file")
 	if e != nil {
 		return p, "", e
 	}
@@ -72,7 +74,7 @@ func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
 		name   string
 		target *string
 	}{{"identity_root", &p.IdentityRoot}, {"key_root", &p.KeyRoot}, {"profile_root", &p.ProfileRoot}} {
-		*item.target, e = profilePath(fields[item.name])
+		*item.target, e = issuerConfigPath(fields[item.name])
 		if e != nil {
 			return p, "", e
 		}
@@ -85,22 +87,22 @@ func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
 	if e != nil {
 		return p, "", e
 	}
-	output, e := profilePath(fields["profile_file"])
+	output, e := issuerConfigPath(fields["profile_file"])
 	if e == nil && !issuanceOutputOutsideRoots(output, p.IdentityRoot, p.KeyRoot, p.ProfileRoot) {
 		return p, "", issuance.ErrInvalid
 	}
 	return p, output, e
 }
 func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
-	fields, e := profileConfigObject(ctxRaw, "profile_file", "expected_profile", "binding", "binding_file")
+	fields, e := issuerConfigObject(ctxRaw, "profile_file", "expected_profile", "binding", "binding_file")
 	if e != nil {
 		return "", nil, e
 	}
-	source, e := profilePath(fields["profile_file"])
+	source, e := issuerConfigPath(fields["profile_file"])
 	if e != nil {
 		return "", nil, e
 	}
-	output, e := profilePath(fields["binding_file"])
+	output, e := issuerConfigPath(fields["binding_file"])
 	if e != nil {
 		return "", nil, e
 	}
@@ -116,40 +118,26 @@ func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
 	if e != nil {
 		return "", nil, issuance.ErrInvalid
 	}
-	baseFields, e := profileConfigObject(fields["binding"], "network", "issuer", "authority", "profile", "duty", "start", "end")
+	baseFields, e := issuerConfigObject(fields["binding"], "network", "issuer", "authority", "profile", "duty", "start", "end")
 	if e != nil {
 		return "", nil, e
 	}
-	_, keys, _ := verified.Snapshot()
-	entries := make([]admissionKeyInput, 0, len(keys))
-	for _, k := range keys {
-		entries = append(entries, admissionKeyInput{Window: time.Unix(int64(k.Window), 0).UTC().Format(time.RFC3339), Class: strconv.FormatUint(uint64(k.Class), 10), SPKI: hex.EncodeToString(k.SPKI)})
-	}
-	baseFields["keys"], e = json.Marshal(entries)
-	if e != nil {
-		return "", nil, e
-	}
-	encoded, e := json.Marshal(baseFields)
-	if e != nil {
-		return "", nil, e
-	}
-	wrapper, e := json.Marshal(map[string]any{"root": output, "binding": json.RawMessage(encoded)})
-	if e != nil {
-		return "", nil, e
-	}
-	parsed, e := decodeAdmissionPlan(wrapper, "initialize")
-	if e != nil {
-		return "", nil, e
-	}
-	parsed.Binding.Keys = nil
-	bound, e := quota.PrepareLedgerBinding(parsed.Binding, verified)
-	if e != nil {
+	base, err := decodeAdmissionBinding(fields["binding"], baseFields)
+	if err != nil {
 		return "", nil, issuance.ErrInvalid
 	}
-	// The previously parsed binding establishes the canonical input spelling;
-	// the domain owner establishes matching inventory and independently pinned facts.
-	if len(bound.Keys) != len(entries) {
+	bound, err := quota.PrepareLedgerBinding(base, verified)
+	if err != nil {
 		return "", nil, issuance.ErrInvalid
 	}
-	return output, encoded, nil
+	entries := make([]admissionKeyInput, 0, len(bound.Keys))
+	for _, key := range bound.Keys {
+		entries = append(entries, admissionKeyInput{Window: time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), Class: strconv.FormatUint(uint64(key.Class), 10), SPKI: hex.EncodeToString(key.SPKI)})
+	}
+	baseFields["keys"], err = json.Marshal(entries)
+	if err != nil {
+		return "", nil, err
+	}
+	encoded, err := json.Marshal(baseFields)
+	return output, encoded, err
 }

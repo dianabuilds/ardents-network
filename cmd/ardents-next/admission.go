@@ -90,7 +90,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	defer clear(raw)
-	p, err := decodeAdmissionPlan(raw, args[0])
+	p, err := decodeAdmissionPlan(raw)
 	if err != nil {
 		return write()
 	}
