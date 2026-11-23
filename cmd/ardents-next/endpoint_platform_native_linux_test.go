@@ -352,7 +352,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	}
 	endpointPlatformNativeCredentials(t, stand)
 
-	roots, err := platformEndpointRoots(stand.decl)
+	roots, err := requestinput.PlatformWritableRoots(stand.decl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +443,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 		t.Fatal(err)
 	}
 	checkProgram := filepath.Join(stand.distribution, "ardents-linux-amd64")
-	stand.unit, err = renderEndpointPlatformUnit(base, checkProgram, stand.manifest, stand.pin)
+	stand.unit, err = endpointunit.RenderPlatform(base, checkProgram, stand.manifest, stand.pin)
 	if err != nil {
 		t.Fatal(err)
 	}

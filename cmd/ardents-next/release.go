@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 // verify-initial requires independently pinned bytes and keeps Release history
@@ -35,7 +36,7 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 	if !ok || facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
 		return enrollmentReport(out, "release-incompatible", 1)
 	}
-	in, ok := initialReleaseInputs(bundle, ref)
+	in, ok := generationauthorization.InitialInputs(bundle, ref)
 	if !ok {
 		return enrollmentReport(out, "release-invalid", 1)
 	}
@@ -75,43 +76,4 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 		return 2
 	}
 	return code
-}
-
-func initialReleaseInputs(bundle enrollment.Bundle, ref time.Time) (release.Inputs, bool) {
-	f, ok := bundle.Facts()
-	if !ok {
-		return release.Inputs{}, false
-	}
-	root, ok := bundle.File(f.TrustedRoot)
-	if !ok {
-		return release.Inputs{}, false
-	}
-	artifact, ok := bundle.File(f.Artifact)
-	if !ok {
-		return release.Inputs{}, false
-	}
-	files := make(map[string][]byte)
-	for _, name := range bundle.MetadataNames() {
-		files["https://release.invalid/metadata/"+name], _ = bundle.File(name)
-	}
-	return release.Inputs{RootBytes: root, Files: files, TargetPath: f.TargetPath, Artifact: artifact, Local: release.LocalEnvironment{Environment: f.Environment, Network: f.Network, Platform: f.Platform, Architecture: runtime.GOARCH, RefTime: ref.UTC()}}, true
-}
-
-func candidateReleaseInputs(c enrollment.Candidate, ref time.Time) (release.Inputs, bool) {
-	f, ok := c.Facts()
-	if !ok {
-		return release.Inputs{}, false
-	}
-	root, rootOK := c.File(f.TrustedRoot)
-	program, programOK := c.File(f.Artifact)
-	if !rootOK || !programOK {
-		return release.Inputs{}, false
-	}
-	files := make(map[string][]byte)
-	for _, name := range c.MetadataNames() {
-		files["https://release.invalid/metadata/"+name], _ = c.File(name)
-	}
-	return release.Inputs{RootBytes: root, Artifact: program, Files: files, TargetPath: f.TargetPath,
-		Local: release.LocalEnvironment{Platform: f.Platform, Architecture: runtime.GOARCH,
-			Environment: f.Environment, Network: f.Network, RefTime: ref.UTC()}}, true
 }

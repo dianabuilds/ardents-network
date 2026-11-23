@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"net"
 	"os"
 	"os/exec"
@@ -20,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -53,7 +53,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err != nil {
 		t.Fatal("invalid environment: original public workspace ancestors unavailable", err)
 	}
-	if err = errors.Join(signingAncestors(ancestors), ancestors.Close()); err != nil {
+	if err = errors.Join(ancestors.CheckRootAccess(), ancestors.Close()); err != nil {
 		t.Fatal("invalid environment: root-controlled direct ancestors required", err)
 	}
 	var fs syscall.Statfs_t

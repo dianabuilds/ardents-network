@@ -13,13 +13,6 @@ import (
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-func signingAncestors(p *preparationPath) error {
-	if err := p.CheckRootAccess(); err != nil {
-		return errors.Join(errNetworkSigning, err)
-	}
-	return nil
-}
-
 func parseNetworkSigningKey(raw []byte) (ed25519.PrivateKey, error) {
 	key, err := artifactio.ParseEd25519Key(raw)
 	if err != nil {

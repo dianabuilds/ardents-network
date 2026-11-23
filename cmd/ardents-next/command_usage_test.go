@@ -36,3 +36,11 @@ func TestInfrastructureRejectsMissingAndUnknownOperation(t *testing.T) {
 		}
 	}
 }
+
+func TestPlatformTemplateIsAvailableWithoutNativeActivation(t *testing.T) {
+	var out, diagnostic bytes.Buffer
+	code := run(t.Context(), []string{"platform", "template"}, &out, &diagnostic)
+	if code != 0 || diagnostic.Len() != 0 || out.String() != platformUnitTemplate {
+		t.Fatalf("platform template: code=%d, stderr=%q", code, diagnostic.String())
+	}
+}

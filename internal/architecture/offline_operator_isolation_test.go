@@ -49,7 +49,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "internal/platform/artifacts/directory_linux.go", "internal/platform/artifacts/input_linux.go",
-		"internal/platform/artifacts/private_file_publication_linux.go":
+		"internal/platform/artifacts/private_file_publication_linux.go", "internal/platform/artifacts/platform_inputs_linux.go":
 		return dependency == modulePath+"/internal/pathgrammar"
 	case "internal/release/infrastructure/preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
