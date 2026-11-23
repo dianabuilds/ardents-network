@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check platform-installed-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -49,7 +49,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./internal/execution/runtime ./internal/execution/worker ./cmd/ardents-next
+INSTALLED_TAG_COMPILE_PACKAGES := ./internal/execution/runtime ./internal/execution/worker ./internal/application/document ./cmd/ardents-next
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"
@@ -60,7 +60,7 @@ endif
 # Installed integrity checks freshly compare the whole signed executable. Omit
 # DWARF from distributed commands while retaining symbols for stacks/profiles.
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false -ldflags=-w
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check network-signing-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check platform-installed-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check network-signing-compile-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -204,6 +204,24 @@ installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/platform/systemd
 	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
+
+# Platform-installed gates are compile-checked only: their executed proof is a
+# manual root-driver run on an admitted Ubuntu/systemd host (see testing.md), not
+# an automated make lane. This target keeps their test binaries compiling so the
+# compile-checked-only surface is an explicit gate, not a deadcode side effect.
+platform-installed-compile-check: export GOOS := linux
+platform-installed-compile-check: export GOARCH := amd64
+platform-installed-compile-check: export CGO_ENABLED := 0
+platform-installed-compile-check:
+	$(INSTALLED_TAG_COMPILE_MKDIR)
+	go test -c -tags endpoint_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-platform-installed.test" ./cmd/ardents-next
+	go test -c -tags endpoint_launch_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-launch-installed.test" ./cmd/ardents-next
+	go test -c -tags endpoint_pair_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-pair-installed.test" ./cmd/ardents-next
+	go test -c -tags source_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-installed.test" ./cmd/ardents-next
+	go test -c -tags join_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-platform-installed.test" ./cmd/ardents-next
+	go test -c -tags forwarding_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-platform-installed.test" ./cmd/ardents-next
+	go test -c -tags descriptor_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-platform-installed.test" ./cmd/ardents-next
+	go test -c -tags endpoint_launch_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-latency-participant.test" ./internal/endpoint
 
 .PHONY: node-process-check
 .PHONY: node-development-check
@@ -459,6 +477,9 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNativeOutputSubstitutionRefuses$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(NetworkSigningInitialKeys|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^Test(Forwarding|Join)PreparationNative(InitialReleasePurposeAndKeyCustody|ForwardReleasePreservesRootAndRaisesFloors)$$|^TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^TestSourcePreparationNativeInitialNetworkAndNonrootState$$' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64
@@ -484,3 +505,8 @@ descriptor-store-inspection-check:
 descriptor-forward-release-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-forward-release-check requires explicit root/ext4 canonical artifact stand"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m
+
+.PHONY: worker-descriptor-audit-check
+worker-descriptor-audit-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "worker-descriptor-audit-check requires Linux unified cgroup v2"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags document_worker_installed ./internal/application/document -run '^TestVerifyWorkerDescriptors' -count=1 -v -timeout=1m
