@@ -2,8 +2,6 @@ name: quality
 
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -35,9 +33,12 @@ jobs:
       - name: Select affected tests and consumers
         id: selection
         env:
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --powershell "$RUNNER_TEMP/powershell.txt"
+          set -euo pipefail
+          test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
+          PR_BASE="$(git rev-parse HEAD^1)"
+          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --full-gate-matrix --powershell "$RUNNER_TEMP/powershell.txt"
           python3 - <<'PY'
           import json, os
           with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
@@ -148,7 +149,6 @@ jobs:
             )
           done < "$RUNNER_TEMP/check-groups"
   full:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -165,15 +165,14 @@ jobs:
       - name: Install pinned quality tools
         run: make tools-install
       - name: Run the core maintained gate
-        run: make check-core
+        run: make check-core UNIT_TEST_FLAGS="-shuffle=on -count=1 -timeout=15m"
   full-race:
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]
+        shard: [0, 1, 2, 3]
     env:
       QUALITY_CACHE_ROOT: /tmp/ardents-network-quality-race-${{ matrix.shard }}
       GOCACHE: /tmp/ardents-network-quality-race-${{ matrix.shard }}/go-build
@@ -186,13 +185,17 @@ jobs:
         with:
           go-version: 1.27.4
           cache: true
-      - name: Install pinned quality tools
-        run: make tools-install
+      - name: Install diagnostic parsers for architecture tests
+        run: |
+          packages="$(make --no-print-directory race-shard-packages RACE_SHARD=${{ matrix.shard }})"
+          if printf '%s\n' "$packages" | grep -qx 'github.com/dianabuilds/ardents-network/internal/architecture'; then
+            make tools-install DIAGNOSTIC_PARSERS_ONLY=1
+          fi
       - name: Run serial race shard
-        run: make test-race-shard RACE_SHARD=${{ matrix.shard }}
+        run: make test-race-shard RACE_SHARD=${{ matrix.shard }} RACE_TEST_FLAGS="-race -shuffle=on -count=1 -timeout=15m"
   go:
     if: always()
-    needs: [select, qualification-scripts, affected, full, full-race]
+    needs: [select, qualification-scripts, affected, full, full-race, portable]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
@@ -203,20 +206,22 @@ jobs:
           POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
           FULL_RESULT: ${{ needs.full.result }}
           RACE_RESULT: ${{ needs.full-race.result }}
+          PORTABLE_RESULT: ${{ needs.portable.result }}
           EVENT: ${{ github.event_name }}
         run: |
           if [[ "$EVENT" == pull_request ]]; then
             test "$SELECTION" = success
             test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
             test "$POWERSHELL_RESULT" = success || test "$POWERSHELL_RESULT" = skipped
-            test "$FULL_RESULT" = skipped
-            test "$RACE_RESULT" = skipped
+            test "$FULL_RESULT" = success
+            test "$RACE_RESULT" = success
           else
             test "$SELECTION" = skipped
             test "$GROUP_RESULT" = skipped
             test "$FULL_RESULT" = success
             test "$RACE_RESULT" = success
           fi
+          test "$PORTABLE_RESULT" = success
   portable:
     # ADR-0129 mandatory-target evidence: compile and portable-unit verification
     # on Windows and macOS. This lane is NOT native qualification; C0
@@ -250,13 +255,12 @@ jobs:
       - name: Vet every package for the target platform
         run: go vet ./...
       - name: Run the portable deterministic unit inventory
-        # Mirrors the `make unit` invocation on the common inventory without
-        # the Linux-only supplement; reading the manifest directly avoids a
-        # host make dependency. No build-error filtering and no platform skip.
+        # Run the entire common inventory with four independent packages in
+        # parallel. Native cells remain outside this portable profile.
         run: |
           set -euo pipefail
           packages=()
           while IFS= read -r package || [[ -n "$package" ]]; do
             if [[ -n "$package" ]]; then packages+=("$package"); fi
           done < tests/profiles/deterministic-packages.txt
-          go test -p 1 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m
+          go test -p 4 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m

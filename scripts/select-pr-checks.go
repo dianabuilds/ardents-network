@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -58,7 +59,11 @@ func main() {
 	matrixPath := flag.String("matrix", "", "write bounded GitHub job matrix")
 	powershellPath := flag.String("powershell", "", "write whether qualification PowerShell changed")
 	execute := flag.Bool("execute", false, "run affected checks")
+	fullGateMatrix := flag.Bool("full-gate-matrix", false, "omit groups covered by the concurrently required full CI gate")
 	flag.Parse()
+	if *fullGateMatrix && (*matrixPath == "" || *execute || runtime.GOOS != "linux") {
+		fail(errors.New("full-gate-matrix requires a Linux CI matrix without direct execution"))
+	}
 	checks, powershell, err := selectChecks(*base, *head)
 	if err != nil {
 		fail(err)
@@ -67,7 +72,15 @@ func main() {
 		fmt.Printf("selected package=%s race=%t run=%q reason=%s\n", check.pkg, check.race, check.run, check.reason)
 	}
 	if *matrixPath != "" {
-		if err := writeMatrix(*matrixPath, checks); err != nil {
+		matrixChecks := checks
+		if *fullGateMatrix {
+			matrixChecks, err = checksOutsideFullGate(".", checks)
+			if err != nil {
+				fail(err)
+			}
+			fmt.Printf("full gate covers %d selected package groups; retaining %d\n", len(checks)-len(matrixChecks), len(matrixChecks))
+		}
+		if err := writeMatrix(*matrixPath, matrixChecks); err != nil {
 			fail(err)
 		}
 	}
@@ -428,6 +441,48 @@ func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 		}
 	}
 	return declarations, race, nil
+}
+
+// checksOutsideFullGate preserves checks that the mandatory full CI run does
+// not cover, including race-instrumented process tests and isolated scenarios.
+func checksOutsideFullGate(root string, checks []check) ([]check, error) {
+	readProfile := func(names ...string) (map[string]bool, error) {
+		packages := make(map[string]bool)
+		for _, name := range names {
+			body, err := os.ReadFile(filepath.Join(root, "tests", "profiles", name))
+			if err != nil {
+				return nil, err
+			}
+			for _, entry := range strings.Fields(string(body)) {
+				packages[entry] = true
+			}
+		}
+		if len(packages) == 0 {
+			return nil, errors.New("full test profile is empty")
+		}
+		return packages, nil
+	}
+	unit, err := readProfile("deterministic-packages.txt", "deterministic-linux-packages.txt")
+	if err != nil {
+		return nil, fmt.Errorf("read full unit profiles: %w", err)
+	}
+	remaining := make([]check, 0, len(checks))
+	for _, selected := range checks {
+		covered := unit[selected.pkg]
+		if covered && selected.run != "^$" {
+			names := strings.Split(strings.TrimSuffix(strings.TrimPrefix(selected.run, "^("), ")$"), "|")
+			for _, name := range names {
+				if dedicatedPRCheck(name) || expensiveEndpointPRCheck(selected.pkg, name) {
+					covered = false
+					break
+				}
+			}
+		}
+		if !covered {
+			remaining = append(remaining, selected)
+		}
+	}
+	return remaining, nil
 }
 
 func writeMatrix(path string, checks []check) error {

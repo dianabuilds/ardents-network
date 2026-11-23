@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: f62a8850d9439225e1f9d3d8a2847a1a20542932
+          ref: 2b301090d8eab8073f8a4aeb2dbcb1c4312afd57
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -26,10 +26,10 @@ jobs:
           CGO_ENABLED: '0'
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = f62a8850d9439225e1f9d3d8a2847a1a20542932
+          test "$(git rev-parse HEAD)" = 2b301090d8eab8073f8a4aeb2dbcb1c4312afd57
           git show -s --format='candidate=%H tree=%T'
           go build -trimpath -buildvcs=false -ldflags=-w -o "$RUNNER_TEMP/ardents-source" ./cmd/ardents-next
-          go test -c -tags source_installed_native,source_lifecycle_native -o "$RUNNER_TEMP/source.test" ./cmd/ardents-next
+          go test -c -tags source_installed_native,node_process_native -o "$RUNNER_TEMP/source.test" ./cmd/ardents-next
       - name: Exercise original Source under Ubuntu systemd
         shell: bash
         env:
@@ -47,4 +47,6 @@ jobs:
           sudo -n env PATH="$PATH" GOTOOLCHAIN=local CGO_ENABLED=0 GOENV=off \
             GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
             ARDENTS_PREBUILT_NEXT="$RUNNER_TEMP/ardents-source" \
-            "$RUNNER_TEMP/source.test" -test.run '^TestNativeSource(InstalledLifecycle|RetainedLifecycle)$' -test.timeout=9m -test.v
+            ARDENTS_NODE_NATIVE_COMMAND="$RUNNER_TEMP/ardents-source" \
+            ARDENTS_NODE_NATIVE_COMMAND_SHA256="$(sha256sum "$RUNNER_TEMP/ardents-source" | cut -d " " -f 1)" \
+            "$RUNNER_TEMP/source.test" -test.run '^TestNativeSource(InstalledLifecycle|RetainedLifecycle|AuthenticatedDistributionAndJoinedRetirement|OriginalInputsRetire)$' -test.timeout=9m -test.v
