@@ -15,8 +15,16 @@ var (
 	errWorkerRelayWrite    = errors.New("byte-stream destination write failed")
 )
 
+type byteStreamFirstFailure struct{ cause error }
+
+func (failure byteStreamFirstFailure) Error() string { return "original byte-stream exchange failed" }
+func (failure byteStreamFirstFailure) Unwrap() error { return failure.cause }
+
 // ByteStreamFailure projects fixed categories without exposing peer, path or bytes.
 func ByteStreamFailure(err error) string {
+	if first, ok := errors.AsType[byteStreamFirstFailure](err); ok {
+		err = first.cause
+	}
 	switch {
 	case errors.Is(err, errWorkerRelayClosed):
 		return errWorkerRelayClosed.Error()
@@ -78,6 +86,14 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 		defer writeMu.Unlock()
 		return writeWorkerFrame(attachment, frame)
 	}
+	var firstFailure error
+	var retainFailure sync.Once
+	fail := func(err error) {
+		if err != nil {
+			retainFailure.Do(func() { firstFailure = err })
+			cancel()
+		}
+	}
 	results := make(chan error, 4)
 	receiveDone := make(chan error, 1)
 	finishing := make(chan struct{})
@@ -93,13 +109,18 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 					}
 				default:
 				}
-				receiveDone <- errors.Join(errWorkerRelayClosed, err)
-				cancel()
+				if !errors.Is(err, io.EOF) {
+					err = errors.Join(errWorkerRelayProtocol, err)
+				} else {
+					err = errors.Join(errWorkerRelayClosed, err)
+				}
+				fail(err)
+				receiveDone <- err
 				return
 			}
 			if frame.id != 1 && frame.id != 3 {
+				fail(errWorkerRelayProtocol)
 				receiveDone <- errWorkerRelayProtocol
-				cancel()
 				return
 			}
 			index := (frame.id - 1) / 2
@@ -117,8 +138,8 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 				default:
 				}
 			}
+			fail(errWorkerRelayProtocol)
 			receiveDone <- errWorkerRelayProtocol
-			cancel()
 			return
 		}
 	}()
@@ -126,16 +147,12 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 		id := uint32(2*index + 1)
 		go func() {
 			err := sendWorkerBytes(child, port, id, credits[index], write)
-			if err != nil {
-				cancel()
-			}
+			fail(err)
 			results <- err
 		}()
 		go func() {
 			err := receiveWorkerBytes(child, port, incoming[index], write)
-			if err != nil {
-				cancel()
-			}
+			fail(err)
 			results <- err
 		}()
 	}
@@ -153,7 +170,11 @@ func BridgeByteStreamWorker(ctx context.Context, attachment io.ReadWriteCloser, 
 		return errors.Join(result, ctx.Err())
 	}
 	cancel()
-	return errors.Join(result, <-receiveDone, ctx.Err())
+	result = errors.Join(result, <-receiveDone, ctx.Err())
+	if firstFailure != nil {
+		return errors.Join(byteStreamFirstFailure{cause: firstFailure}, result)
+	}
+	return result
 }
 
 func sendWorkerBytes(ctx context.Context, port io.Reader, id uint32, credit <-chan uint32, write func(workerFrame) error) error {

@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"crypto/tls"
 	"encoding/hex"
 	"testing"
 )
@@ -29,6 +30,26 @@ func TestApplicationProfileContexts(t *testing.T) {
 	recovered, replacement, err := Contexts(identity, [32]byte{12}, 2)
 	if err != nil || recovered != stream || replacement == streamAttachment {
 		t.Fatalf("replacement changed the logical binding or reused the attachment: %v", err)
+	}
+
+	binding := &TLSBinding{connection: &tls.Conn{}, key: [32]byte{13}, exporter: [32]byte{14}}
+	request := Challenge{
+		Network: identity.Network, Target: identity.Target, InstanceGeneration: identity.InstanceGeneration,
+		Context: stream, Nonce: [32]byte{15},
+	}
+	proof, err := NewContinuity(binding.key, RoleInitiator, 1, 0, 0, 0, stream, binding.exporter)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedStream := request
+	expectedStream.Nonce = [32]byte{}
+	expectedDocument := expectedStream
+	expectedDocument.Context = document
+	if receipt, err := VerifyInitialRequest(binding, expectedDocument, request, proof); err == nil || receipt != nil {
+		t.Fatal("byte-stream request obtained an Instance signing receipt for the document profile")
+	}
+	if _, err := VerifyInitialRequest(binding, expectedStream, request, proof); err != nil {
+		t.Fatal("matching byte-stream request did not obtain its original receipt:", err)
 	}
 
 	identity.Application = 255

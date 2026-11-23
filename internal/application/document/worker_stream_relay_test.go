@@ -167,3 +167,10 @@ func (port pipeRelayPort) Read(body []byte) (int, error)  { return port.input.Re
 func (port pipeRelayPort) Write(body []byte) (int, error) { return port.output.Write(body) }
 func (port pipeRelayPort) CloseInput() error              { return port.output.Close() }
 func (port pipeRelayPort) Close() error                   { return errors.Join(port.input.Close(), port.output.Close()) }
+
+func TestByteStreamFailurePrefersFirstCauseOverCancellationCleanup(t *testing.T) {
+	err := errors.Join(byteStreamFirstFailure{cause: errWorkerRelayRead}, errWorkerRelayClosed)
+	if got := ByteStreamFailure(err); got != errWorkerRelayRead.Error() {
+		t.Fatal(got)
+	}
+}
