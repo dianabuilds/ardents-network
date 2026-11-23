@@ -81,6 +81,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/enrollment/descriptor_inventory_linux_test.go",
 			"internal/enrollment/infrastructure_process_linux.go",
 			"internal/platform/systemd/infrastructure_unit_linux.go",
+			"internal/platform/systemd/infrastructure_prestart_linux.go",
+			"internal/platform/systemd/infrastructure_prestart_linux_test.go",
 			"internal/release/infrastructure/admission.go",
 			"internal/release/infrastructure/source_release_inspection_linux.go",
 			"internal/platform/cgroup/source_quiescence_linux.go",
@@ -541,7 +543,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/endpoint_latency_native_linux_test.go" && dependency == modulePath+"/internal/route/transport" {
 		return true
 	}
-	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
+	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
 	if source == "internal/network/state/source_repair_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/process") {

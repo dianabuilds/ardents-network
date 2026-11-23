@@ -93,7 +93,7 @@ platform-launch-unit:
 	go test ./internal/network/state -run '^Test(Source(Participation|Completion).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
 	go test ./internal/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
 	go test ./internal/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
-	go test ./internal/platform/systemd -run '^TestPlatformSiblingVocabularyPreservesFixedNodeExclusion$$' -count=1 -timeout=3m
+	go test ./internal/platform/systemd -run '^TestPlatform(SiblingVocabularyPreservesFixedNodeExclusion|PrestartRejectsDifferentLoadedInvocationAndPolicy)$$' -count=1 -timeout=3m
 
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)

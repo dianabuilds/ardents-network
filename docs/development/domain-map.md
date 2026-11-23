@@ -320,7 +320,9 @@ start, stop/restart, stopped replacement and original-cut recovery) is retired
 delivery: `source prepare-state`, `ardents-next platform initialize-trust`/`unit`,
 `systemctl start ardents-source` with the mandatory `platform check`
 ExecStartPre gate and `source serve-retained`, stop/relaunch/forward program
-change, and `source repair-retained` for a dead retained producer. Release
+change, and `source repair-retained` for a dead retained producer. The existing
+`internal/platform/systemd` owner renders the canonical infrastructure unit and
+compares the loaded policy with the admitted command and actual ControlPID. Release
 retains trust/floors; State alone supplies opaque signed/time/participation
 inspection. Native manager matching and zero-execution observations grant no
 semantic authority. The [Source lifecycle owner](../technical/network-route-node.md#source-lifecycle-and-forward-program-change)
