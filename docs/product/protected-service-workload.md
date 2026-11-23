@@ -50,14 +50,14 @@ must survive for process confinement to hold.
 ## Participant interface for arbitrary data
 
 [ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
-selects this interface. Implementation and installed qualification are pending.
+selects this interface. Installed qualification is pending.
 The [command reference](../reference/commands.md) lists current commands.
 
 | Person | Installs | Selected action |
 |---|---|---|
 | Sender or receiver using an Application | The protected Endpoint distribution and a locally authorized Application delivered for its exact confinement profile | The Application opens the recipient's Service through the local Application Interface. The sender and the receiving Service exchange ordered bytes using their Application's protocol. |
 | Participant using the command line | The protected Endpoint distribution with a confined byte-stream Application | `ardents stream connect APPLICATION_SOCKET --link-file PRIVATE_LINK_FILE` reads bytes from standard input and writes response bytes to standard output. The participant supplies the Link in a private local input, keeping it out of process arguments and reserving standard input for data. |
-| Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | The operator runs `ardents stream publish ADMINISTRATION_SOCKET` starts the locally authorized fixed worker and attaches the operator's standard input and output for one exchange. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
+| Service operator exposing a byte-stream Application | The protected Endpoint distribution and the signed, confined Service worker for the chosen Application | Run `ardents stream publish ADMINISTRATION_SOCKET` to start the locally authorized fixed worker and attach the operator's standard input and output for one exchange. `ardents link ADMINISTRATION_SOCKET` and explicit withdrawal use the same Service lifecycle as the document Application. |
 
 The stream command keeps diagnostics on standard error and reports a
 complete exchange only after authenticated terminal completion. Standard output
