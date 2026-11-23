@@ -134,7 +134,10 @@ func TestReceivingAuthorityFailureAfterSpendRetainsBurnAndReleasesCapacity(t *te
 }
 
 func TestReceivingRefillPreservesDeadlineAndTransferredReservations(t *testing.T) {
-	stock, h, p := issuedStockFixture(t)
+	// Advance within the admitted hour. Crossing its end tests expiry instead
+	// of reservation transfer and preservation of the original allowance.
+	now := time.Date(2026, time.January, 2, 3, 30, 0, 0, time.UTC)
+	stock, h, p := issuedStockFixtureAt(t, now, 1)
 	a, err := stock.Begin(nextIntent(h))
 	if err != nil {
 		t.Fatal(err)
