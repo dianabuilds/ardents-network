@@ -147,12 +147,13 @@ controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
 Participants use one command, `ardents`. The C0 document application uses
-`ardents publish`, `ardents link` and `ardents read`. The Service Connection carries opaque Application bytes. Binary
-stream scenarios exercise that layer through a dedicated qualification
-workload. The current participant CLI implements the document journey.
-[ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
-selects bidirectional exchange of arbitrary Application bytes for the next
-participant profile. Its implementation and installed qualification are pending.
+`ardents publish`, `ardents link` and `ardents read`. The Service Connection
+carries opaque Application bytes. The protected Ubuntu Endpoint candidate
+implements the bidirectional profile selected by
+[ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md).
+Participants use `ardents stream publish`, `ardents link` and
+`ardents stream connect` to exchange arbitrary data. Installed qualification
+exercises byte-exact delivery in both directions through the public CLI.
 
 The participant installs the v6 Endpoint distribution selected by
 [ADR-0131](../adr/0131-distribute-authority-custody-separately.md).
