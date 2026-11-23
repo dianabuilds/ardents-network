@@ -257,6 +257,38 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 	}
 }
 
+// P1-B batch 3 (#794, #691) de-tagged the next verified pure leaves whose
+// composed symbols are already portable: the Reader local Text result
+// projection, the Publisher root-isolation predicate and fixed document stream
+// contract, and the Endpoint network presentation guard. They add no native
+// mechanism, so every mandatory target must select them and their portable
+// behavior tests. Their genuine production consumers (reader/publisher Open and
+// the installed participant) remain Linux-tagged behind unchanged !linux typed
+// refusals, so the de-tagged helpers stay Windows-production-dead only.
+func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/endpoint/reader/result.go",
+			"internal/endpoint/reader/result_test.go",
+			"internal/endpoint/publisher/roots.go",
+			"internal/endpoint/publisher/roots_test.go",
+			"internal/endpoint/publisher/contract.go",
+			"internal/endpoint/authority.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable P1-B batch 3 file %s excluded on %s", name, target)
+			}
+		}
+	}
+}
+
 // The shared channel has no native mechanism. Check actual Go file selection,
 // including tests: a passing suite must not silently omit an inherited OS file.
 func TestSuccessorRouteChannelRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
@@ -1265,6 +1297,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/admission/spending" || owner == "internal/network/duty" || owner == "internal/network/state/durable") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
+	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
+		return true
+	}
 	if source == "internal/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
@@ -1307,10 +1342,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/release/infrastructure/source_transition_scope_linux.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
-	if source == "internal/endpoint/reader/result_linux.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
+	if source == "internal/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
 		return true
 	}
-	if source == "internal/endpoint/publisher/contract_linux.go" && dependency == modulePath+"/internal/application/document" {
+	if source == "internal/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
 	// OTel composition is confined to the exact command package.
@@ -1402,7 +1437,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed Reader retains original worker", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/execution/runtime", true},
 		{"installed Reader consumes authenticated Source", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/connection", true},
 		{"installed Reader local byte contract", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/application/connection", true},
-		{"installed Reader local Text projection", "internal/endpoint/reader/result_linux.go", modulePath + "/internal/application/document", true},
+		{"installed Reader local Text projection", "internal/endpoint/reader/result.go", modulePath + "/internal/application/document", true},
 		{"installed participant owns Reader listener", "internal/endpoint/participant_linux.go", modulePath + "/internal/application/connection", true},
 		{"first participant preparation initializes participation", "internal/endpoint/history_preparation_linux.go", modulePath + "/internal/network/duty", true},
 		{"first participant preparation initializes selection history", "internal/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
@@ -1458,6 +1493,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Receiver uses genuine Descriptor Store", "internal/route/receiver/descriptor_linux.go", modulePath + "/internal/reachability", true},
 		{"Carrier cannot acquire Descriptor authority", "internal/route/transport/tls/node.go", modulePath + "/internal/reachability", false},
 		{"Reachability cannot own physical Prefix", "internal/reachability/lookup_history.go", modulePath + "/internal/route/prefix", false},
+		{"Shared owner-only root DACL enforcement", "internal/durablefile/owner_root_windows.go", "golang.org/x/sys/windows", true},
+		{"Owner-only root mechanism test verifies the physical DACL", "internal/durablefile/owner_root_windows_test.go", "golang.org/x/sys/windows", true},
+		{"Selection Windows floor consumes the shared mechanism", "internal/route/selection/root_permissions_windows.go", "golang.org/x/sys/windows", false},
+		{"Selection Windows floor test verifies the physical DACL", "internal/route/selection/root_permissions_windows_test.go", "golang.org/x/sys/windows", true},
 		{"Store native Windows lease and sync", "internal/reachability/store_platform_windows.go", "golang.org/x/sys/windows", true},
 		{"Descriptor rules cannot use native Windows mechanisms", "internal/reachability/descriptor.go", "golang.org/x/sys/windows", false},
 		{"Store rules cannot use native Windows mechanisms", "internal/reachability/store.go", "golang.org/x/sys/windows", false},
