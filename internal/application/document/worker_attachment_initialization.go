@@ -38,7 +38,11 @@ func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode W
 	defer clear(body)
 	digest := sha256.Sum256(body)
 	var header [77]byte
-	copy(header[:8], "ARDTWP01")
+	if mode == ByteStreamWorker {
+		copy(header[:8], "ARDSWP01")
+	} else {
+		copy(header[:8], "ARDTWP01")
+	}
 	header[8] = byte(mode)
 	copy(header[9:41], nonce[:])
 	binary.BigEndian.PutUint32(header[41:45], uint32(len(body)))

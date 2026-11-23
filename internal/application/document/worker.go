@@ -58,7 +58,7 @@ func RunWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMo
 	if err := writeWorkerReadiness(attachment, initial); err != nil {
 		return err
 	}
-	if mode == ByteStreamWorker {
+	if initial.mode == ByteStreamWorker {
 		return relayWorkerStreams(attachment)
 	}
 	owner := workerMultiplexer{initial: initial, streams: make(map[uint32]*workerStream)}

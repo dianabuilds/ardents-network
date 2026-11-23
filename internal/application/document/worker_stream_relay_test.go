@@ -2,9 +2,12 @@ package document
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"io"
+	"net"
 	"testing"
+	"time"
 )
 
 func TestByteStreamWorkerRelaysBothDirectionsAndHalfClose(t *testing.T) {
@@ -35,5 +38,33 @@ func TestByteStreamWorkerRelaysBothDirectionsAndHalfClose(t *testing.T) {
 	}
 	if output.Len() != 0 {
 		t.Fatal("unexpected additional worker output")
+	}
+}
+
+func TestInstalledRoleWorkerSelectsStreamByExplicitInitialization(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	host, isolated := net.Pipe()
+	defer host.Close()
+	done := make(chan error, 1)
+	go func() { done <- RunWorker(ctx, isolated, ReaderWorker) }()
+
+	if err := InitializeWorker(ctx, host, ByteStreamWorker, [32]byte{1}, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, frame := range []workerFrame{
+		{kind: 1, id: 1}, {kind: 1, id: 3},
+		{kind: 2, id: 1, body: []byte{255}},
+	} {
+		if err := writeWorkerFrame(host, frame); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := readWorkerFrame(host); err != nil || got.id != 3 || !bytes.Equal(got.body, []byte{255}) {
+		t.Fatalf("installed role did not select its relay: %+v, %v", got, err)
+	}
+	_ = host.Close()
+	if err := <-done; err == nil {
+		t.Fatal("unconfirmed completion was accepted")
 	}
 }

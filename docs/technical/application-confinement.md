@@ -166,6 +166,13 @@ worker/verdict boundaries. These checks do not change the installed launch,
 Grant, duration, connection-count or bitrate contract and do not admit another
 worker inventory.
 
+The byte-stream profile selects a distinct INIT on the same fixed installed
+worker entrypoints. The signed executable must implement that INIT and
+acknowledge the original nonce before Endpoint grants the Job. The existing
+document INIT bytes and fixed unit command lines retain their meaning. A
+released predecessor executable that lacks the byte-stream INIT refuses the
+new operation during initialization.
+
 ## Required installed properties
 
 The unit must include these effective properties; unknown or unavailable
