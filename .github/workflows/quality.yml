@@ -38,6 +38,10 @@ jobs:
           test "$(uname -m)" = x86_64
           test "$(systemctl --version | awk 'NR == 1 { print $2 }')" = 255
           test -r /sys/fs/cgroup/cgroup.controllers
+          stat -c "%A %U:%G %n" /usr/share/polkit-1 /usr/share/polkit-1/rules.d || true
+          test -d /usr/share/polkit-1 && test ! -L /usr/share/polkit-1
+          sudo -n chown root:root /usr/share/polkit-1
+          sudo -n chmod 0755 /usr/share/polkit-1
           sudo -n install -d -o root -g root -m 0755 /usr/share/polkit-1/rules.d
           sudo -n systemctl start polkit.service
           getent passwd ardents-endpoint >/dev/null || sudo -n useradd --system --no-create-home --user-group --shell /usr/sbin/nologin ardents-endpoint
