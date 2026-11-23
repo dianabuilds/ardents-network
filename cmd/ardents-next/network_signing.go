@@ -6,12 +6,8 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"time"
 
@@ -102,58 +98,6 @@ func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*n
 		}
 	}
 	return s, nil
-}
-
-func parseNetworkSigningKey(raw []byte) (key ed25519.PrivateKey, err error) {
-	block, rest := pem.Decode(raw)
-	if block == nil {
-		return nil, errNetworkSigning
-	}
-	defer clear(block.Bytes)
-	canonical := pem.EncodeToMemory(block)
-	defer clear(canonical)
-	if len(rest) != 0 || block.Type != "PRIVATE KEY" || len(block.Headers) != 0 || !bytes.Equal(canonical, raw) {
-		return nil, errNetworkSigning
-	}
-	// ParsePKCS8PrivateKey deliberately ignores ASN.1 remainder and accepts
-	// other algorithms. Admit one complete canonical Ed25519 structure first:
-	// unsupported private objects must never be constructed merely to reject them.
-	var encoding struct {
-		Version    int
-		Algorithm  pkix.AlgorithmIdentifier
-		PrivateKey []byte
-	}
-	remainder, decodeErr := asn1.Unmarshal(block.Bytes, &encoding)
-	defer clear(encoding.PrivateKey)
-	if decodeErr != nil || len(remainder) != 0 || encoding.Version != 0 || !encoding.Algorithm.Algorithm.Equal(asn1.ObjectIdentifier{1, 3, 101, 112}) || len(encoding.Algorithm.Parameters.FullBytes) != 0 {
-		return nil, errNetworkSigning
-	}
-	canonicalDER, marshalErr := asn1.Marshal(encoding)
-	defer clear(canonicalDER)
-	if marshalErr != nil || !bytes.Equal(canonicalDER, block.Bytes) {
-		return nil, errNetworkSigning
-	}
-	var seed []byte
-	remainder, decodeErr = asn1.Unmarshal(encoding.PrivateKey, &seed)
-	defer clear(seed)
-	if decodeErr != nil || len(remainder) != 0 || len(seed) != ed25519.SeedSize {
-		return nil, errNetworkSigning
-	}
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	key, ok := parsed.(ed25519.PrivateKey)
-	if err != nil || !ok || len(key) != ed25519.PrivateKeySize {
-		clear(key)
-		return nil, errNetworkSigning
-	}
-	// Ed25519's cached public half must agree with its seed. Never admit an
-	// inconsistent private key simply because Public() exposes its cached half.
-	derived := ed25519.NewKeyFromSeed(key[:ed25519.SeedSize])
-	defer clear(derived)
-	if !bytes.Equal(derived, key) {
-		clear(key)
-		return nil, errNetworkSigning
-	}
-	return key, nil
 }
 
 // No private material crosses into Network. The fixed transcripts below

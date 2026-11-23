@@ -725,7 +725,6 @@ func successorImportAllowed(source, dependency string) bool {
 			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
-				"cmd/ardents-next/network_keys_linux.go", "cmd/ardents-next/network_keys_native_linux_test.go",
 				"cmd/ardents-next/platform_files_linux.go",
 				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go":
 				return true
