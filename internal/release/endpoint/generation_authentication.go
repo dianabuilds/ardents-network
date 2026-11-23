@@ -1,4 +1,4 @@
-// Fresh generation authorization and original installed continuity admission.
+// Package endpoint handles fresh generation authorization and original installed continuity admission.
 package endpoint
 
 import (

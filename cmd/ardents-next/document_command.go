@@ -48,8 +48,7 @@ func documentFailure(err error) string {
 	case errors.Is(err, errDocumentInput):
 		return "document destination or local input is invalid"
 	}
-	var refusal connection.SetupRefusalError
-	if errors.As(err, &refusal) {
+	if refusal, ok := errors.AsType[connection.SetupRefusalError](err); ok {
 		switch refusal.Outcome().Class {
 		case connection.LocalCancellation:
 			return "read cancelled"

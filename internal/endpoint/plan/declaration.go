@@ -26,8 +26,8 @@ type Permission struct {
 type Headless struct {
 	Role                 string     `json:"role,omitempty"`
 	ApplicationTokenRoot string     `json:"text_token_root,omitempty"`
-	ReaderPermission     Permission `json:"reader_permission,omitempty"`
-	PublisherPermission  Permission `json:"publisher_permission,omitempty"`
+	ReaderPermission     Permission `json:"reader_permission"`
+	PublisherPermission  Permission `json:"publisher_permission"`
 	Schema               string     `json:"schema"`
 	NetworkStateRoot     string     `json:"network_state_root"`
 	// NetworkSourcePlan is an optional existing direct-Source plan. When it
@@ -155,7 +155,7 @@ func decodeAuthorities(encoded []string, maximum int) (map[[32]byte]ed25519.Publ
 		if _, duplicate := values[identity]; duplicate {
 			return nil, errors.New("duplicate declared authority key")
 		}
-		values[identity] = ed25519.PublicKey(public)
+		values[identity] = public
 	}
 	return values, nil
 }

@@ -15,8 +15,8 @@ func TestReplacementPreflightPreservesPendingByteState(t *testing.T) {
 		t.Fatal(err)
 	}
 	pending, err := send.beginWrite()
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || pending == nil {
+		t.Fatal("pending writer unavailable", err)
 	}
 	if err := send.acknowledge(1, 2); err != nil {
 		t.Fatal(err)

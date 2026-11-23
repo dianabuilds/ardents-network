@@ -15,8 +15,11 @@ func TestAcquisitionRecoveryConsumesOriginalSelectorsAndDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	started, changed, expired, err := history.Start(now, [32]byte{1})
-	if err != nil || !changed || expired || started.Facts().Deadline != now.Add(15*time.Second).Unix() || started.Facts().Order != [2]uint8{1, 0} {
-		t.Fatalf("start = %+v (%v)", started.Facts(), err)
+	if err != nil {
+		t.Fatal("start:", err)
+	}
+	if !changed || expired || started.Facts().Deadline != now.Add(15*time.Second).Unix() || started.Facts().Order != [2]uint8{1, 0} {
+		t.Fatalf("start = %+v", started.Facts())
 	}
 	contact, disposition, err := started.BeginLatest(1, [32]byte{10})
 	if err != nil || !disposition.Contact || !disposition.Changed {
@@ -40,8 +43,11 @@ func TestAcquisitionRecoveryConsumesOriginalSelectorsAndDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	resumed, changed, expired, err := reopened.Start(now.Add(3*time.Second), [32]byte{2})
-	if err != nil || !changed || expired || resumed.Facts().Deadline != started.Facts().Deadline || resumed.Facts().Seed != started.Facts().Seed || resumed.Facts().Outcomes[2] != 9 {
-		t.Fatalf("resume = %+v (%v)", resumed.Facts(), err)
+	if err != nil {
+		t.Fatal("resume:", err)
+	}
+	if !changed || expired || resumed.Facts().Deadline != started.Facts().Deadline || resumed.Facts().Seed != started.Facts().Seed || resumed.Facts().Outcomes[2] != 9 {
+		t.Fatalf("resume = %+v", resumed.Facts())
 	}
 	consumed, disposition, err := resumed.BeginLatest(1, [32]byte{10})
 	if err != nil || disposition.Contact || !disposition.Changed || disposition.Outcome != 9 {
@@ -55,8 +61,11 @@ func TestAcquisitionRecoveryConsumesOriginalSelectorsAndDeadline(t *testing.T) {
 		t.Fatal("recorded interruption changed on second recovery")
 	}
 	terminal, changed, expired, err := consumed.Start(now.Add(15*time.Second), [32]byte{2})
-	if err != nil || !changed || !expired || terminal.Facts().Active || terminal.Facts().Deadline != started.Facts().Deadline || terminal.Facts().Failures != 1 {
-		t.Fatalf("deadline was renewed: %+v (%v)", terminal.Facts(), err)
+	if err != nil {
+		t.Fatal("deadline:", err)
+	}
+	if !changed || !expired || terminal.Facts().Active || terminal.Facts().Deadline != started.Facts().Deadline || terminal.Facts().Failures != 1 {
+		t.Fatalf("deadline was renewed: %+v", terminal.Facts())
 	}
 	if _, _, _, err := terminal.Start(now.Add(16*time.Second), [32]byte{2}); !errors.Is(err, ErrAcquisitionBackoff) {
 		t.Fatal("new cycle bypassed durable backoff")
@@ -78,8 +87,11 @@ func TestAcquisitionClosureRetainsConsumedResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	finished, err := contact.Finish(now.Add(time.Second), [4]uint8{})
-	if err != nil || finished.Facts().Outcomes[0] != 9 || finished.Facts().Attempts[0] != 3 || finished.Facts().Failures != 1 {
-		t.Fatalf("lost result was treated as success: %+v (%v)", finished.Facts(), err)
+	if err != nil {
+		t.Fatal("finish:", err)
+	}
+	if finished.Facts().Outcomes[0] != 9 || finished.Facts().Attempts[0] != 3 || finished.Facts().Failures != 1 {
+		t.Fatalf("lost result was treated as success: %+v", finished.Facts())
 	}
 	recovered, err := RestoreAcquisition(finished.Facts())
 	if err != nil {
@@ -134,13 +146,19 @@ func TestAcquisitionBackoffAndRecoveryPreserveBounds(t *testing.T) {
 	}
 	for iteration, delay := range []int64{30, 60, 120, 240, 480, 900, 900} {
 		history, err = history.Finish(now, [4]uint8{2})
-		if err != nil || history.Facts().NextAttempt != now.Unix()+delay || history.Facts().Failures != uint64(iteration+1) {
-			t.Fatalf("backoff %d = %+v (%v)", iteration, history.Facts(), err)
+		if err != nil {
+			t.Fatalf("backoff %d: %v", iteration, err)
+		}
+		if history.Facts().NextAttempt != now.Unix()+delay || history.Facts().Failures != uint64(iteration+1) {
+			t.Fatalf("backoff %d = %+v", iteration, history.Facts())
 		}
 	}
 	finished, err := history.Finish(now, [4]uint8{1, 1})
-	if err != nil || finished.Facts().Failures != 0 || finished.Facts().Backoff != 0 || finished.Facts().NextAttempt != 0 {
-		t.Fatalf("successful wave did not clear backoff: %+v (%v)", finished.Facts(), err)
+	if err != nil {
+		t.Fatal("successful wave:", err)
+	}
+	if finished.Facts().Failures != 0 || finished.Facts().Backoff != 0 || finished.Facts().NextAttempt != 0 {
+		t.Fatalf("successful wave did not clear backoff: %+v", finished.Facts())
 	}
 	facts := history.Facts()
 	facts.Failures = math.MaxInt64

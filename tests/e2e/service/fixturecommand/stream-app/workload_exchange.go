@@ -53,9 +53,7 @@ func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]by
 	}
 	transfers := make(chan transfer, 2)
 	var writes sync.WaitGroup
-	writes.Add(1)
-	go func() {
-		defer writes.Done()
+	writes.Go(func() {
 		hash, buffer := sha256.New(), make([]byte, 16_381)
 		written := 0
 		for written < sendCount {
@@ -81,7 +79,7 @@ func exchange(connection io.ReadWriter, role string, sendSeed, expectSeed [32]by
 		var digest [32]byte
 		copy(digest[:], hash.Sum(nil))
 		transfers <- transfer{digest: digest, count: uint32(written), sending: true}
-	}()
+	})
 	go func() {
 		hash := sha256.New()
 		value, expected := make([]byte, 16_381), make([]byte, 16_381)

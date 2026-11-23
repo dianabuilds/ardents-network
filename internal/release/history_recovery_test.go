@@ -2,6 +2,7 @@ package release
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -47,7 +48,8 @@ func TestHistoryProcessInterruption(t *testing.T) {
 			cmd := exec.CommandContext(t.Context(), executable, "-test.run=^TestHistoryProcessInterruption$", "-test.count=1")
 			cmd.Env = append(os.Environ(), "ARDENTS_RELEASE_CRASH_TEST_PHASE="+phase, "ARDENTS_RELEASE_CRASH_TEST_ROOT="+root)
 			output, err := cmd.CombinedOutput()
-			if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 77 {
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || exit.ExitCode() != 77 {
 				t.Fatalf("crash boundary not established: %v %s", err, output)
 			}
 			v, err := Open(root)

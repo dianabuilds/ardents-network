@@ -165,7 +165,7 @@ func validateClosedTokenBatchConfig(config ClosedTokenBatchConfig) (admission.To
 	}
 	if config.Permission.HolderKey != [32]byte(config.HolderKey.Public().(ed25519.PublicKey)) ||
 		config.Permission.Maxima[first.Class-1] < uint32(len(config.Contexts)) ||
-		admission.VerifyPermission(config.Permission, ed25519.PublicKey(config.Profile.IssuanceAuthorityKey[:]), config.Profile.NetworkID,
+		admission.VerifyPermission(config.Permission, config.Profile.IssuanceAuthorityKey[:], config.Profile.NetworkID,
 			config.Profile.IssuerNodeID, config.Profile.IssuerDutyGeneration, config.Now) != nil {
 		return admission.TokenKey{}, errors.New("closed token batch permission is invalid")
 	}

@@ -33,7 +33,7 @@ func TestHistoryStorageFailureStopsClaimsAndRetainsOriginalClose(t *testing.T) {
 	verifyErr := errors.New("original retained root unavailable")
 	closeErr := errors.New("original physical lease release failed")
 	store := &refusedHistoryStorage{verifyErr: verifyErr, closeErr: closeErr}
-	history := &History{slotSnapshot: slotSnapshot{entries: make(map[[32]byte]time.Time)}, store: store}
+	history := &History{entries: make(map[[32]byte]time.Time), store: store}
 	registry, err := NewRegistry(history)
 	if err != nil {
 		t.Fatal(err)

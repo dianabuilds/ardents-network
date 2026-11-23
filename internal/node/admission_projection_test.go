@@ -16,15 +16,13 @@ func TestAdmissionFactsProjectOriginalNetworkObservation(t *testing.T) {
 	var spki [346]byte
 	spki[0], spki[345] = 0x30, 0x01
 	profile := network.ProfileFacts{
-		ProfileBinding: network.ProfileBinding{
-			Network:     [32]byte{1},
-			Generation:  [32]byte{2},
-			EpochDigest: [32]byte{3},
-			Digest:      [32]byte{4},
-			Epoch:       7,
-			NotBefore:   notBefore,
-			NotAfter:    notAfter,
-		},
+		Network:              [32]byte{1},
+		Generation:           [32]byte{2},
+		EpochDigest:          [32]byte{3},
+		Digest:               [32]byte{4},
+		Epoch:                7,
+		NotBefore:            notBefore,
+		NotAfter:             notAfter,
 		IssuanceAuthorityKey: [32]byte{5},
 		IssuerNodeID:         [32]byte{6},
 		IssuerDutyGeneration: 9,

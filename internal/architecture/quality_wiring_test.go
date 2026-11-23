@@ -78,7 +78,7 @@ func assertQualityWiring(t *testing.T, root string) {
 
 func moduleGoVersion(t *testing.T, root string) string {
 	t.Helper()
-	for _, line := range strings.Split(string(readProjectFile(t, root, "go.mod")), "\n") {
+	for line := range strings.SplitSeq(string(readProjectFile(t, root, "go.mod")), "\n") {
 		if version, found := strings.CutPrefix(strings.TrimSpace(line), "go "); found {
 			return version
 		}

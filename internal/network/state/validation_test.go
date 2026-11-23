@@ -66,10 +66,10 @@ func TestOpenFailsOnCorruptCurrentGeneration(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshotReceipt, err := store.AcceptEpoch(context.Background(), value.epoch, value.inputs, value.materializations)
-	snapshot := snapshotReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
+	snapshot := snapshotReceipt.Snapshot
 	epochPath := filepath.Join(root, "generations", snapshot.Generation, "epoch.bin")
 	epoch, err := os.ReadFile(epochPath)
 	if err != nil {

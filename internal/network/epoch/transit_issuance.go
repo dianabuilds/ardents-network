@@ -2,8 +2,6 @@ package epoch
 
 import "errors"
 
-const MaxTransitIssuanceProfileBytes = maximumTransitIssuanceProfileBytes
-
 const DomainTransitIssuance = transitIssuanceDomain
 
 const (

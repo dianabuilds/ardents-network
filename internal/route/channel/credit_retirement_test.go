@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"io"
 	"net"
 	"runtime"
@@ -13,6 +12,8 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 )
@@ -340,8 +341,7 @@ func TestNestedCloseRetainsActualLowerWriteOwner(t *testing.T) {
 	if !errors.As(parent.PhysicalFailure(), &retained) || retained != write {
 		t.Fatal("nested Close replaced the lower owner's actual witness")
 	}
-	var upperClose *physicalCloseFailure
-	if errors.As(child.PhysicalFailure(), &upperClose) {
+	if upperClose, ok := errors.AsType[*physicalCloseFailure](child.PhysicalFailure()); ok {
 		t.Fatal("borrower Close minted a physical socket-close witness", upperClose)
 	}
 	if TerminalFailureStage(child.PhysicalFailure()) != "peer-retired-write" {

@@ -62,7 +62,7 @@ func TestRecipientBindingTranscriptSeparatesLogicalAndAttachmentFacts(t *testing
 	// Explicit independent fixed-offset transcript, rather than calling a
 	// production encoder. Offsets pin the u64 generation and safety ordering.
 	raw := make([]byte, 283)
-	copy(raw, []byte("ardents-service-context-v3\x00"))
+	copy(raw, "ardents-service-context-v3\x00")
 	value := proof.Delegation()
 	copy(raw[27:59], value.Network[:])
 	copy(raw[59:91], value.Target[:])
@@ -83,7 +83,7 @@ func TestRecipientBindingTranscriptSeparatesLogicalAndAttachmentFacts(t *testing
 		t.Fatal("immutable logical transcript bytes differ")
 	}
 	attachmentRaw := make([]byte, 102)
-	copy(attachmentRaw, []byte("ardents-attachment-context-v3\x00"))
+	copy(attachmentRaw, "ardents-attachment-context-v3\x00")
 	copy(attachmentRaw[30:62], logical[:])
 	copy(attachmentRaw[62:94], digest[:])
 	binary.BigEndian.PutUint64(attachmentRaw[94:102], 1)

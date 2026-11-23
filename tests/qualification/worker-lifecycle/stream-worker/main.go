@@ -51,7 +51,7 @@ type streamReadWriter struct {
 	io.Writer
 }
 
-// Closing inherited descriptors interrupts both directions and lets the worker
+// Close interrupts both directions through inherited descriptors and lets the worker
 // join its reader. In-memory bounded command fixtures have no OS descriptor.
 func (stream *streamReadWriter) Close() error {
 	stream.once.Do(func() {

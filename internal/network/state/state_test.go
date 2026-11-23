@@ -30,10 +30,10 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 	}
 
 	snapshotReceipt, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
-	snapshot := snapshotReceipt.Snapshot
 	if err != nil {
 		t.Fatalf("accept genesis: %v", err)
 	}
+	snapshot := snapshotReceipt.Snapshot
 	if snapshot.Epoch != 1 || snapshot.ViewLength != 2 || snapshot.RejectedLength != 6 {
 		t.Fatalf("unexpected snapshot: %+v", snapshot)
 	}
@@ -189,10 +189,10 @@ func TestOpenFailsClosedWhenNonEmptyRootLacksCurrentPointer(t *testing.T) {
 		t.Fatal(err)
 	}
 	acceptedReceipt, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
-	accepted := acceptedReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
+	accepted := acceptedReceipt.Snapshot
 	if err := os.Remove(filepath.Join(root, "current")); err != nil {
 		t.Fatal(err)
 	}
@@ -249,10 +249,10 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 		t.Fatalf("accept genesis: %v", err)
 	}
 	wantReceipt, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
-	want := wantReceipt.Snapshot
 	if err != nil {
 		t.Fatalf("accept successor: %v", err)
 	}
+	want := wantReceipt.Snapshot
 	if want.Epoch != 2 {
 		t.Fatalf("successor epoch=%d, want 2", want.Epoch)
 	}
@@ -322,15 +322,15 @@ func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
 		t.Fatal(err)
 	}
 	firstReceipt, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
 	first := firstReceipt.Snapshot
-	if err != nil {
-		t.Fatal(err)
-	}
 	secondReceipt, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
-	second := secondReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
+	second := secondReceipt.Snapshot
 	if err := os.WriteFile(filepath.Join(config.Root, "current"), []byte(first.Generation+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -363,10 +363,10 @@ func TestOpenRequiresDistributionJournalForActiveEpoch(t *testing.T) {
 		t.Fatal(err)
 	}
 	acceptedReceipt, err := store.AcceptEpoch(context.Background(), fixture.epoch, fixture.inputs, fixture.materializations)
-	accepted := acceptedReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
+	accepted := acceptedReceipt.Snapshot
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}

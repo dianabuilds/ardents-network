@@ -47,15 +47,15 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 	}
 	defer connection.Close()
 	secondViewReceipt, err := serving.AcceptEpoch(context.Background(), second.epoch, second.inputs, second.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
 	secondView := secondViewReceipt.Snapshot
-	if err != nil {
-		t.Fatal(err)
-	}
 	thirdViewReceipt, err := serving.AcceptEpoch(context.Background(), third.epoch, third.inputs, third.materializations)
-	thirdView := thirdViewReceipt.Snapshot
 	if err != nil {
 		t.Fatal(err)
 	}
+	thirdView := thirdViewReceipt.Snapshot
 	if firstView.SourceNodeID != secondView.SourceNodeID || firstView.SourceFamily == secondView.SourceFamily ||
 		secondView.SourceNodeID == thirdView.SourceNodeID || secondView.SourceFamily != thirdView.SourceFamily {
 		t.Fatalf("expected family-only then identity-only Source transitions: A=%x/%q B=%x/%q C=%x/%q",
