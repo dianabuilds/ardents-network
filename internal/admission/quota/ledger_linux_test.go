@@ -82,7 +82,7 @@ func TestDurableDebitsRetryQuotaAndCopies(t *testing.T) {
 		t.Fatal(got)
 	}
 	copyHandle := *l
-	if got := debitOutcome(copyHandle, t.Context(), raw, f, Bootstrap); got != AlreadyDebited {
+	if got := debitOutcome(&copyHandle, t.Context(), raw, f, Bootstrap); got != AlreadyDebited {
 		t.Fatal(got)
 	}
 	if got := debitOutcome(l, t.Context(), raw, f, Admitted); got != Conflict {
