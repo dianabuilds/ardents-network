@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -26,22 +24,17 @@ type issuancePlan struct {
 
 func decodeIssuancePlan(raw []byte) (issuancePlan, error) {
 	var p issuancePlan
-	d := json.NewDecoder(bytes.NewReader(raw))
-	d.UseNumber()
-	if uniqueJSON(d) != nil {
-		return p, issuance.ErrInvalid
+	fields, err := issuerConfigObject(raw, "root", "binding", "inventory_file")
+	if err != nil {
+		return p, err
 	}
-	if _, err := d.Token(); err != io.EOF {
-		return p, issuance.ErrInvalid
+	p.Root, err = issuerConfigPath(fields["root"])
+	if err != nil {
+		return p, err
 	}
-	if !requiredAdmissionObject(raw, "root", "binding", "inventory_file") {
-		return p, issuance.ErrInvalid
-	}
-	var fields map[string]json.RawMessage
-	_ = json.Unmarshal(raw, &fields)
-	if json.Unmarshal(fields["root"], &p.Root) != nil || json.Unmarshal(fields["inventory_file"], &p.InventoryFile) != nil ||
-		!filepath.IsAbs(p.Root) || filepath.Clean(p.Root) != p.Root || !filepath.IsAbs(p.InventoryFile) || filepath.Clean(p.InventoryFile) != p.InventoryFile {
-		return p, issuance.ErrInvalid
+	p.InventoryFile, err = issuerConfigPath(fields["inventory_file"])
+	if err != nil {
+		return p, err
 	}
 	if !issuanceOutputOutsideRoots(p.InventoryFile, p.Root) {
 		return p, issuance.ErrInvalid
