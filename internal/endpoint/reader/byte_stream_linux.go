@@ -9,6 +9,7 @@ import (
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/connection"
 )
 
 type localByteStreamPort struct {
@@ -38,7 +39,10 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 		if err == nil {
 			err = op.ExchangeByteStream(ctx, pending.read.contract, local, pending.service)
 			if err != nil {
-				reason = document.ByteStreamFailure(err)
+				reason = connection.StreamFailureReason(err)
+				if reason == "" {
+					reason = document.ByteStreamFailure(err)
+				}
 			}
 		}
 		if err == nil {
