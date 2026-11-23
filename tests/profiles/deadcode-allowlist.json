@@ -140,6 +140,9 @@
           "internal/application/document.receiveWorkerBytes",
           "internal/application/document.relayWorkerStreams",
           "internal/application/document.sendWorkerBytes",
+          "internal/connection.originalAttachmentFailure.Error",
+          "internal/connection.originalAttachmentFailure.Unwrap",
+          "internal/connection.recoveryFailure",
           "internal/connection/wire.ProfileForOperation"
         ],
         "classification": "portable byte-stream protocol with Ubuntu-only protected composition",

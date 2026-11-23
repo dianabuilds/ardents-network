@@ -14,7 +14,13 @@ import (
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
 )
 
-func serveByteStream(ctx context.Context, publisher *publicationruntime.Publisher, operation *executionruntime.Operation, port document.ByteStreamPort) error {
+func serveByteStream(ctx context.Context, publisher *publicationruntime.Publisher, operation *executionruntime.Operation, port document.ByteStreamPort) (result error) {
+	phase := "Publisher stream admission failed"
+	defer func() {
+		if result != nil {
+			result = bytePublicationFailure{phase: phase, cause: result}
+		}
+	}()
 	defer port.Close()
 	if local, ok := port.(*publishedBytePort); ok {
 		lifetime, cancel := context.WithCancel(ctx)
@@ -40,9 +46,11 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 	}()
 	exchange, cancel := context.WithTimeout(ctx, application.ReaderTimeout)
 	defer cancel()
+	phase = "Publisher worker exchange failed"
 	if err := operation.ExchangeByteStream(exchange, contract, port, stream); err != nil {
 		return err
 	}
+	phase = "Publisher did not obtain authenticated terminal completion"
 	select {
 	case outcome, open := <-stream.Done():
 		if !open || outcome.Class != application.CleanClose {
@@ -51,6 +59,7 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 	case <-exchange.Done():
 		return exchange.Err()
 	}
+	phase = "Publisher could not join the original stream"
 	// The initiator can still be exchanging final authenticated controls.
 	// Keep the original Publication and Instance until that attachment joins.
 	select {
@@ -61,6 +70,7 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 	case <-exchange.Done():
 		return exchange.Err()
 	}
+	phase = "Publisher could not withdraw the completed stream"
 	return publisher.Withdraw(ctx)
 }
 
@@ -107,7 +117,7 @@ func (port *publishedBytePort) finish(err error) {
 		_ = port.Close()
 		outcome := application.Outcome{Class: application.CleanClose}
 		if err != nil {
-			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: document.ByteStreamFailure(err)}
+			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: publishedByteStreamFailureReason(err)}
 		}
 		port.done <- outcome
 		close(port.done)
@@ -131,4 +141,22 @@ func (stream *publishedByteStream) Close() error {
 	_ = stream.write.Close()
 	<-stream.port.joined
 	return stream.port.err
+}
+
+type bytePublicationFailure struct {
+	phase string
+	cause error
+}
+
+func (failure bytePublicationFailure) Error() string { return failure.phase }
+func (failure bytePublicationFailure) Unwrap() error { return failure.cause }
+
+func publishedByteStreamFailureReason(err error) string {
+	if failure, ok := errors.AsType[bytePublicationFailure](err); ok {
+		if failure.phase == "Publisher worker exchange failed" {
+			return document.ByteStreamFailure(failure.cause)
+		}
+		return failure.phase
+	}
+	return "Publisher byte-stream cleanup failed"
 }
