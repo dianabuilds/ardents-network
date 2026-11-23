@@ -310,7 +310,12 @@ Every command fails closed on malformed, unavailable, or unqualified input.
 Its bounded input belongs to the owning Module; a plan is not an ambient
 configuration format or an authority source.
 
-## `ardents-next`
+## Infrastructure and Endpoint operator commands
+
+The Endpoint distribution exposes `ardents`. Its Go command source is
+`cmd/ardents-next`. Infrastructure examples using `ardents-next` refer to a
+reviewed source build or the program bound by the role's signed distribution.
+Follow that distribution's exact program and unit paths on managed hosts.
 
 ### Public Network preparation in the isolated command
 
@@ -411,7 +416,7 @@ Windows, macOS and Ubuntu for offline preparation. Endpoint activation and
 pre-start verification use the admitted Ubuntu system manager. Existing installation data remains on disk.
 
 Before first Endpoint runtime, the actual runtime principal runs
-`ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE SIGNED_PROFILE`.
+`ardents endpoint prepare-history HEADLESS_PLAN BUNDLE SIGNED_PROFILE`.
 The bounded v2 Headless declaration supplies only trust, clock and storage
 targets here; it is not accepting runtime-plan validation. `BUNDLE` uses the
 existing Source bundle framing and `SIGNED_PROFILE` the signed closed profile.
@@ -431,13 +436,12 @@ other platforms refuse before reading the declaration.
 `ardents` is the Endpoint and Network State command adapter.
 
 The Portable per-user `endpoint user-unit`/`endpoint enroll` start route is
-retired (#617 S3.5); platform delivery owns first execution. Use `ardents-next
-platform unit` with `endpoint construct-plan` and `prepare-history`, then
-`ardents-next endpoint start-installed` under the platform unit. The
+retired (#617 S3.5); platform delivery owns first execution. Use `ardents platform unit` with `endpoint construct-plan` and `prepare-history`, then
+`ardents endpoint start-installed` under the platform unit. The
 [independently pinned Ubuntu verification procedure](portable-enrollment.md)
 still applies before running a downloaded program.
 
-After Endpoint `platform initialize-trust`, `ardents-next platform
+After Endpoint `platform initialize-trust`, `ardents platform
 stage-endpoint <request>` seals the independently pinned generation using
 the already committed Release metadata. Run it as the enrolled executable.
 The host must provide the dedicated Endpoint account and its empty private
@@ -467,7 +471,7 @@ paths for the executable, the four Worker units and the polkit rule.
 Endpoint independently compares these files to the sealed generation.
 
 After staging, initialize the domain histories through their owning
-commands. Install the output of `ardents-next platform unit <launch>`
+commands. Install the output of `ardents platform unit <launch>`
 as the fixed Endpoint system unit, reload systemd, and start that unit.
 Its pre-start check and the Endpoint's original runtime observations
 still determine whether the launch can accept work.
