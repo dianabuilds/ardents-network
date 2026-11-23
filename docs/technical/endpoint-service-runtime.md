@@ -13,7 +13,7 @@ The per-user Portable Endpoint command surface is retired under the same ADR
 (#617 S3.5): `ardents endpoint enroll/enroll-installed/headless/user-unit/
 installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery`
 return typed refusals before input or root effects, and their legacy command
-implementations are removed. The canonical protected text Endpoint launch is the
+implementations are removed. The canonical protected Endpoint launch is the
 platform-led system-unit composition in `ardents-next`. An explicit
 `platform initialize-trust <launch> <independent-enrollment-pin>` authenticates
 the initial protected Endpoint bundle through Enrollment and establishes both
