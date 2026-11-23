@@ -7,10 +7,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const (
@@ -26,7 +27,7 @@ const (
 	maximumOwnedStagingEntries = maximumStateGenerations
 )
 
-var generationName = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var generationName = durablefile.GenerationName
 
 // Root owns the only writer lease and physical State-root transaction.
 type Root struct {
@@ -302,22 +303,7 @@ func verifyRootWritable(root string) error {
 }
 
 func readBoundedFile(path string, maximum int64) ([]byte, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	contents, readErr := io.ReadAll(io.LimitReader(file, maximum+1))
-	closeErr := file.Close()
-	if readErr != nil {
-		return nil, readErr
-	}
-	if closeErr != nil {
-		return nil, closeErr
-	}
-	if int64(len(contents)) > maximum {
-		return nil, errors.New("file exceeds its framing bound")
-	}
-	return contents, nil
+	return durablefile.ReadBounded(path, maximum, "file exceeds its framing bound")
 }
 
 func readBoundedDirectory(path string, maximum int) ([]os.DirEntry, error) {

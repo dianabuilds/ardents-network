@@ -1,12 +1,7 @@
 package selection
 
 import (
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 type generationWatermark struct {
@@ -15,28 +10,13 @@ type generationWatermark struct {
 }
 
 func loadWatermark(root string) (generationWatermark, bool, error) {
-	raw, err := readBounded(filepath.Join(root, "watermark"), 96)
-	if os.IsNotExist(err) {
-		return generationWatermark{}, false, nil
+	generation, name, exists, err := durablefile.LoadWatermark(root, readBounded, "entry generation watermark is invalid")
+	if err != nil || !exists {
+		return generationWatermark{}, exists, err
 	}
-	if err != nil {
-		return generationWatermark{}, false, err
-	}
-	line := strings.TrimSuffix(string(raw), "\n")
-	parts := strings.Split(line, " ")
-	if len(parts) != 2 || string(raw) != line+"\n" || !stateName.MatchString(parts[1]) {
-		return generationWatermark{}, false, errors.New("entry generation watermark is invalid")
-	}
-	generation, err := strconv.ParseUint(parts[0], 10, 64)
-	if err != nil || generation == 0 || fmt.Sprintf("%d %s\n", generation, parts[1]) != string(raw) {
-		return generationWatermark{}, false, errors.New("entry generation watermark is invalid")
-	}
-	return generationWatermark{generation: generation, name: parts[1]}, true, nil
+	return generationWatermark{generation: generation, name: name}, true, nil
 }
 
 func replaceWatermark(root string, generation uint64, name string) error {
-	if generation == 0 || !stateName.MatchString(name) {
-		return errors.New("entry generation watermark value is invalid")
-	}
-	return replaceOwnedFile(root, ".watermark-", "watermark", []byte(fmt.Sprintf("%d %s\n", generation, name)))
+	return durablefile.ReplaceWatermark(root, generation, name, "entry generation watermark value is invalid")
 }

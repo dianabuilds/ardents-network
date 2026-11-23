@@ -130,7 +130,7 @@ func (o *Pairing) Serve(ctx context.Context, conn net.Conn, hello ardp.Hello, li
 		clear(s.request.Secret[:])
 		clear(s.request.Context[:])
 	}()
-	setup := minDeadline(hello.Deadline, capacity.reserved.Add(30*time.Second))
+	setup := framing.MinDeadline(hello.Deadline, capacity.reserved.Add(30*time.Second))
 	if err := s.deadline(setup, false); err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (o *Pairing) Serve(ctx context.Context, conn net.Conn, hello ardp.Hello, li
 	if !time.Now().Before(s.request.Deadline) || s.request.Deadline.After(hello.Deadline) {
 		return errors.Join(errors.New("route JOIN setup deadline invalid"), s.refuse())
 	}
-	setup = minDeadline(setup, s.request.Deadline)
+	setup = framing.MinDeadline(setup, s.request.Deadline)
 	o.mu.Lock()
 	if err := ctx.Err(); err != nil {
 		o.mu.Unlock()
@@ -181,7 +181,7 @@ func (o *Pairing) Serve(ctx context.Context, conn net.Conn, hello ardp.Hello, li
 	p.sides[s.request.Side-1] = s
 	paired := p.sides[0] != nil && p.sides[1] != nil
 	if paired {
-		p.setup = minDeadline(p.setup, setup)
+		p.setup = framing.MinDeadline(p.setup, setup)
 		close(p.matched)
 	}
 	o.mu.Unlock()
@@ -347,12 +347,4 @@ func (p *joinPair) run() {
 	}
 	// No data reader exists until both actual result writes have returned.
 	p.relay(sides)
-}
-
-// Setup and terminal cleanup retain the earlier original absolute bound.
-func minDeadline(a, b time.Time) time.Time {
-	if a.Before(b) {
-		return a
-	}
-	return b
 }

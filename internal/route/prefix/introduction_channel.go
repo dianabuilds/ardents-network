@@ -147,12 +147,12 @@ func (p *Prefix) openIntroductionChannel(ctx context.Context, duty network.Retai
 	done := make(chan struct{})
 	t.interruption.done = done
 	t.interruption.stop = context.AfterFunc(child, func() { defer close(done); _ = t.lane.Close() })
-	secured, err := roletls.OpenRole(child, t.lane, member.PublicKey, minDeadline(end, time.Now().Add(10*time.Second)))
+	secured, err := roletls.OpenRole(child, t.lane, member.PublicKey, framing.MinDeadline(end, time.Now().Add(10*time.Second)))
 	if err != nil {
 		return nil, err
 	}
 	t.conn = transport.Retain(secured)
-	if err := t.conn.SetDeadline(minDeadline(end, time.Now().Add(10*time.Second))); err != nil {
+	if err := t.conn.SetDeadline(framing.MinDeadline(end, time.Now().Add(10*time.Second))); err != nil {
 		return nil, err
 	}
 	hello, err := a.FreshHello(end, purpose, false)

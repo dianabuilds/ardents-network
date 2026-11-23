@@ -399,7 +399,7 @@ func (l *Lane) closeAfterJoin(status byte, returned func() error) error {
 // the same finite bound. Payload is interrupted immediately. Called under mu.
 func (l *Lane) interruptOutputLocked() *outputDeadline {
 	if l.cleanupEnd.IsZero() {
-		l.cleanupEnd = minDeadline(l.end, time.Now().Add(time.Second))
+		l.cleanupEnd = MinDeadline(l.end, time.Now().Add(time.Second))
 	}
 	if l.s.stopped || l.s.ctx.Err() != nil || l.s.active != l || l.s.activeKind == ardp.KindClose {
 		// Original cancellation already denies new effects, even before the
@@ -411,11 +411,11 @@ func (l *Lane) interruptOutputLocked() *outputDeadline {
 	}
 	end := time.Now()
 	if l.s.activeKind == ardp.KindCredit || l.s.activeControl {
-		l.s.activeEnd = minDeadline(l.s.activeEnd, l.cleanupEnd)
+		l.s.activeEnd = MinDeadline(l.s.activeEnd, l.cleanupEnd)
 		end = l.s.activeEnd
 	}
-	l.s.activeDeadline.cutoff = minDeadline(l.s.activeDeadline.cutoff, end)
-	l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, end)
+	l.s.activeDeadline.cutoff = MinDeadline(l.s.activeDeadline.cutoff, end)
+	l.s.activeDeadline.end = MinDeadline(l.s.activeDeadline.end, end)
 	l.s.activeDeadline.control = l.s.activeControl || l.s.activeKind == ardp.KindCredit
 	return l.retainOutputDeadlineLocked()
 }
@@ -425,15 +425,15 @@ func (l *Lane) interruptOutputLocked() *outputDeadline {
 // but its owning retirement must reach the real physical output at every layer.
 func (l *Lane) boundControlOutput(end time.Time) error {
 	l.s.mu.Lock()
-	l.writeEnd = minDeadline(l.end, end)
+	l.writeEnd = MinDeadline(l.end, end)
 	l.signalLocked()
 	if l.s.stopped || l.s.ctx.Err() != nil || l.s.active != l {
 		l.s.mu.Unlock()
 		return nil
 	}
-	l.s.activeEnd = minDeadline(l.s.activeEnd, end)
-	l.s.activeDeadline.cutoff = minDeadline(l.s.activeDeadline.cutoff, end)
-	l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, end)
+	l.s.activeEnd = MinDeadline(l.s.activeEnd, end)
+	l.s.activeDeadline.cutoff = MinDeadline(l.s.activeDeadline.cutoff, end)
+	l.s.activeDeadline.end = MinDeadline(l.s.activeDeadline.end, end)
 	l.s.activeDeadline.control = l.s.activeControl || l.s.activeKind == ardp.KindCredit
 	deadline := l.retainOutputDeadlineLocked()
 	l.s.mu.Unlock()
@@ -517,9 +517,9 @@ func (l *Lane) SetWriteDeadline(t time.Time) error {
 	// than this data-write deadline. TLS half-close must not interrupt its
 	// already started frame. Actual lane/parent retirement still bounds it.
 	if l.s.active == l && l.s.activeKind != ardp.KindCredit && !l.s.activeControl {
-		l.s.activeDeadline.end = minDeadline(t, l.s.activeEnd)
+		l.s.activeDeadline.end = MinDeadline(t, l.s.activeEnd)
 		if !l.s.activeDeadline.cutoff.IsZero() {
-			l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, l.s.activeDeadline.cutoff)
+			l.s.activeDeadline.end = MinDeadline(l.s.activeDeadline.end, l.s.activeDeadline.cutoff)
 		}
 		deadline := l.retainOutputDeadlineLocked()
 		l.s.mu.Unlock()
@@ -579,13 +579,13 @@ func (l *Lane) Finish() {
 
 func (l *Lane) frameDeadline(f ardp.Frame, terminal bool) time.Time {
 	if terminal {
-		return minDeadline(l.cleanupEnd, l.s.end)
+		return MinDeadline(l.cleanupEnd, l.s.end)
 	}
 	if f.Kind == ardp.KindCredit {
 		return l.end
 	}
 	if f.Kind == ardp.KindOpen {
-		return minDeadline(l.openEnd, l.writeEnd)
+		return MinDeadline(l.openEnd, l.writeEnd)
 	}
 	return l.writeEnd
 }
@@ -605,17 +605,17 @@ func (l *Lane) Bound(end time.Time) error {
 		return errors.New("route child horizon invalid")
 	}
 	l.hardEnd = end
-	l.end = minDeadline(l.end, end)
-	l.readEnd = minDeadline(l.readEnd, l.end)
-	l.writeEnd = minDeadline(l.writeEnd, l.end)
+	l.end = MinDeadline(l.end, end)
+	l.readEnd = MinDeadline(l.readEnd, l.end)
+	l.writeEnd = MinDeadline(l.writeEnd, l.end)
 	l.signalLocked()
 	if l.s.active == l && l.s.activeEnd.After(l.end) && !l.s.stopped && l.s.ctx.Err() == nil {
 		// This shortens the original lane horizon, unlike a temporary payload
 		// write deadline. An already started CREDIT must obey the new original
 		// bound too, while retaining its physical result until joined Close.
 		l.s.activeEnd = l.end
-		l.s.activeDeadline.cutoff = minDeadline(l.s.activeDeadline.cutoff, l.end)
-		l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, l.end)
+		l.s.activeDeadline.cutoff = MinDeadline(l.s.activeDeadline.cutoff, l.end)
+		l.s.activeDeadline.end = MinDeadline(l.s.activeDeadline.end, l.end)
 		l.s.activeDeadline.control = l.s.activeControl || l.s.activeKind == ardp.KindCredit
 		deadline := l.retainOutputDeadlineLocked()
 		l.s.mu.Unlock()

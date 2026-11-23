@@ -3,11 +3,12 @@
 package durable
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 type rootLease struct{ file *os.File }
@@ -25,21 +26,9 @@ func acquireRetainedRootLease(root string) (rootLease, error) {
 }
 
 func openRootLease(root string, flags int) (rootLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, 0o600)
+	file, err := durablefile.OpenLease(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, "open state-root lease", "acquire exclusive state-root lease")
 	if err != nil {
-		return rootLease{}, fmt.Errorf("open state-root lease: %w", err)
-	}
-	info, err := file.Stat()
-	if err != nil {
-		return rootLease{}, errors.Join(err, file.Close())
-	}
-	native, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || !info.Mode().IsRegular() || native.Nlink != 1 {
-		return rootLease{}, errors.Join(errors.New("invalid history lease identity"), file.Close())
-	}
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		_ = file.Close()
-		return rootLease{}, fmt.Errorf("acquire exclusive state-root lease: %w", err)
+		return rootLease{}, err
 	}
 	return rootLease{file: file}, nil
 }
@@ -59,14 +48,5 @@ func (lease rootLease) release() error {
 }
 
 func syncDirectory(path string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	err = file.Sync()
-	closeErr := file.Close()
-	if err != nil {
-		return err
-	}
-	return closeErr
+	return durablefile.SyncDirectory(path)
 }

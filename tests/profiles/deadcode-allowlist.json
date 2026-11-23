@@ -630,7 +630,6 @@
           "internal/route/join/pairing.joinSide.readFrame",
           "internal/route/join/pairing.joinSide.refuse",
           "internal/route/join/pairing.joinSide.writeFrame",
-          "internal/route/join/pairing.minDeadline",
           "internal/route/prefix.Borrow.ChangedActivity",
           "internal/route/prefix.Borrow.ReturnJoined",
           "internal/route/prefix.IntroductionChannel.Borrow",
@@ -685,7 +684,6 @@
           "internal/route/prefix.Prefix.sealLocked",
           "internal/route/prefix.Prefix.watch",
           "internal/route/prefix.interruptPrefixOpening",
-          "internal/route/prefix.minDeadline",
           "internal/route/prefix.openPrefix",
           "internal/route/prefix.prefixOpening.finish",
           "internal/route/prefix.prefixOpening.publishBorrow",
@@ -1242,6 +1240,29 @@
       },
       {
         "symbols": [
+          "internal/route/selection.closedSetGrammar",
+          "internal/route/selection.interiorGrammar",
+          "internal/route/selection.commitStoreGeneration",
+          "internal/route/selection.inspectStoreRoot",
+          "internal/route/selection.pointerViolatesFloor",
+          "internal/route/selection.readStoreGeneration"
+        ],
+        "classification": "Linux-native successor composition, no Windows production path (internal/route/selection generation-store mechanism)",
+        "rationale": "These exact internal/route/selection functions are the shared parameterized generation-store mechanism (R2, #764) behind the closed Entry set and local Interior set durable owners. They are reached by the genuine Linux native composition but Windows refuses the corresponding native durable operation before opening these owners, so they are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. The grammars are constructed on demand so the owner validators keep their original reviewed platform dead profile. Linux-tagged store tests retain behavior coverage. No Windows native/runtime support is granted.",
+        "owner": "Product Owner and Codex; successor platform-led delivery",
+        "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
+          "internal/durablefile.ReplaceWatermark"
+        ],
+        "classification": "Linux-native successor composition, no Windows production path (internal/durablefile)",
+        "rationale": "This exact internal/durablefile helper is the shared watermark-floor replacement (R1, #764) consumed only by the internal/route/selection durable owner, whose native composition Windows refuses before opening. It is production-dead on windows-amd64 only; the other durablefile helpers remain Windows-reachable through their duty/State/release consumers, and Linux production reachability is unchanged and required. No Windows native/runtime support is granted.",
+        "owner": "Product Owner and Codex; successor platform-led delivery",
+        "retirement": "Remove this exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
           "internal/admission/stock.OpenRetained"
         ],
         "classification": "Linux-native successor composition, no Windows production path (internal/admission/stock)",
@@ -1732,7 +1753,13 @@
           "internal/route/selection.validateOwnerOnlyRoot",
           "internal/route/selection.validateRootPermissions",
           "internal/route/selection.writeExclusive",
-          "internal/route/selection.writeGeneration"
+          "internal/route/selection.writeGeneration",
+          "internal/route/selection.closedSetGrammar",
+          "internal/route/selection.interiorGrammar",
+          "internal/route/selection.commitStoreGeneration",
+          "internal/route/selection.inspectStoreRoot",
+          "internal/route/selection.pointerViolatesFloor",
+          "internal/route/selection.readStoreGeneration"
         ],
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/route/selection)",
         "rationale": "These exact internal/route/selection functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
