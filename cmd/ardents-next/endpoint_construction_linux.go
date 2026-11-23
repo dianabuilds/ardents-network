@@ -45,11 +45,19 @@ func runEndpointPlanConstruction(ctx context.Context, args []string, diagnostic 
 	if err != nil {
 		return 1
 	}
+	var declared endpoint.SourcePlan
+	if decodeAdmissionObject(sourceRaw, &declared) != nil {
+		return 1
+	}
 	declarationRaw, err := readBounded(args[2], 8<<10)
 	if err != nil {
 		return 1
 	}
-	if err := endpoint.PreparePlans(ctx, config, sourceRaw, declarationRaw, args[3]); err != nil {
+	var declaration endpoint.PlanDeclaration
+	if decodeAdmissionObject(declarationRaw, &declaration) != nil {
+		return 1
+	}
+	if err := endpoint.PreparePlans(ctx, config, declared, declaration, args[3]); err != nil {
 		return 1
 	}
 	if json.NewEncoder(diagnostic).Encode(map[string]string{"phase": "plan-construction", "outcome": "constructed"}) != nil {

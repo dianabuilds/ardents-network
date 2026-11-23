@@ -9,18 +9,12 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // PreparePlans authenticates and renders the operator declarations, then
 // writes both canonical files into the selected output directory.
-func PreparePlans(ctx context.Context, network state.Config, sourceRaw, declarationRaw []byte, directory string) error {
-	declared, err := constructSourceDeclaration(sourceRaw)
-	if err != nil {
-		return err
-	}
-	var declaration PlanDeclaration
-	if err := artifacts.DecodeObject(declarationRaw, &declaration); err != nil {
+func PreparePlans(ctx context.Context, network state.Config, declared SourcePlan, declaration PlanDeclaration, directory string) error {
+	if err := validateSourcePlanDeclaration(declared); err != nil {
 		return err
 	}
 	_, headless, source, err := ConstructPlans(ctx, network, declaration, declared)
@@ -30,25 +24,22 @@ func PreparePlans(ctx context.Context, network state.Config, sourceRaw, declarat
 	return persistConstructedPlans(ctx, directory, headless, source)
 }
 
-// constructSourceDeclaration decodes the distributed Source plan artifact —
-// the grammar `source prepare-trust` emits — with exact fields, its fixed
-// schema, exactly two complete members and the established bounded refresh
-// grammar.
-func constructSourceDeclaration(raw []byte) (SourcePlan, error) {
-	var declared SourcePlan
-	if artifacts.DecodeObject(raw, &declared) != nil || declared.Schema != "ardents-source-plan-v1" ||
+// validateSourcePlanDeclaration checks the distributed Source plan produced
+// by source prepare-trust before opening the retained Network State.
+func validateSourcePlanDeclaration(declared SourcePlan) error {
+	if declared.Schema != "ardents-source-plan-v1" ||
 		len(declared.Sources) != 2 || declared.OrderSeed == "" || declared.ClockObservedAt == "" ||
 		declared.ClientCertificate == "" || declared.ClientKey == "" ||
 		declared.RefreshIntervalMS < 100 || declared.RefreshIntervalMS > 60000 {
-		return SourcePlan{}, errors.New("source plan declaration is unavailable")
+		return errors.New("source plan declaration is unavailable")
 	}
 	for _, member := range declared.Sources {
 		if member.Address == "" || member.ServerName == "" || member.Identity == "" || member.Family == "" ||
 			member.EndpointHandle == "" || member.RootCA == "" || member.LeafKeyDigest == "" {
-			return SourcePlan{}, errors.New("source plan declaration is unavailable")
+			return errors.New("source plan declaration is unavailable")
 		}
 	}
-	return declared, nil
+	return nil
 }
 
 // persistConstructedPlans durably renders both plan files. Existing bytes are
