@@ -695,8 +695,8 @@ Each remediation wave has one cohesive root cause and follows:
 retained failing proof
   -> minimal coherent repair boundary
   -> implementation and current-owner documentation
-  -> make quick-check while editing
-  -> make check before integration
+  -> focused tests while editing
+  -> full CI gate on the integration candidate, or make check for direct integration
   -> affected higher profiles
   -> finding disposition and qualification-impact update
 ```

@@ -80,8 +80,9 @@ format-check architecture:
 vet:
 	go vet ./...
 
+UNIT_TEST_FLAGS := -short -shuffle=on -count=1 -timeout=15m
 unit:
-	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1 -timeout=15m
+	go test -p 1 $(UNIT_PACKAGES) $(UNIT_TEST_FLAGS)
 
 # Pure launch policy/Release handoff and independently retained Route history.
 # This target starts no system manager, runtime listener or installed process.
@@ -152,13 +153,17 @@ RACE_TEST_FLAGS := -short -race -shuffle=on -count=1 -timeout=15m
 test-race:
 	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) $(RACE_TEST_FLAGS)
 
-.PHONY: test-race-shard
-# A shard keeps its tests serial. CI runs the two shards on separate hosts.
+.PHONY: race-shard-packages test-race-shard
+# Each shard remains serial and runs on its own CI host. Keep the two most
+# expensive packages apart while distributing the rest of the full inventory.
+race-shard-packages:
+	@set -eu; \
+	case "$(RACE_SHARD)" in 0|1|2|3) ;; *) echo "RACE_SHARD must be 0, 1, 2 or 3" >&2; exit 2;; esac; \
+	printf '%s\n' $(UNIT_PACKAGES) | awk -v shard="$(RACE_SHARD)" '{ assigned = ($$0 ~ /\/internal\/custody$$/) ? 3 : (NR-1)%4; if (assigned == shard) print }'
+
 test-race-shard:
 	@set -eu; \
-	case "$(RACE_SHARD)" in 0|1) ;; *) echo "RACE_SHARD must be 0 or 1" >&2; exit 2;; esac; \
-	half=$$((($(words $(UNIT_PACKAGES)) + 1) / 2)); \
-	packages=$$(printf '%s\n' $(UNIT_PACKAGES) | awk -v shard="$(RACE_SHARD)" -v half="$$half" '(NR > half) == shard'); \
+	packages=$$($(MAKE) --no-print-directory race-shard-packages RACE_SHARD=$(RACE_SHARD)); \
 	test -n "$$packages"; \
 	$(RACE_TEST_PREFIX) go test -p 1 $$packages $(RACE_TEST_FLAGS)
 

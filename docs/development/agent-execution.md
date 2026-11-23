@@ -71,7 +71,7 @@ by the completed domain model:
    product consumers with genuine new authority and durable owners, successful
    and causal refusal paths, concurrency, persistence and joined resource
    termination. Cover every affected new domain, both selected Carriers where
-   applicable, and the required quick/full gates on the final source. A moved
+   applicable, and the required full gate on the final integration candidate. A moved
    source file, old-runtime bridge, fake successful neighbor or prior-revision
    pass cannot satisfy integration. Repair discovered defects at their owners;
    retain failures and source-matched evidence without weakening gates.
