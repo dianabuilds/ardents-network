@@ -151,6 +151,9 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      GOCACHE: /tmp/ardents-network-quality/go-build
+      GOMODCACHE: /tmp/ardents-network-quality/go-mod
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -161,11 +164,35 @@ jobs:
           cache: true
       - name: Install pinned quality tools
         run: make tools-install
-      - name: Run the complete maintained gate
-        run: make check
+      - name: Run the core maintained gate
+        run: make check-core
+  full-race:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    env:
+      QUALITY_CACHE_ROOT: /tmp/ardents-network-quality-race-${{ matrix.shard }}
+      GOCACHE: /tmp/ardents-network-quality-race-${{ matrix.shard }}/go-build
+      GOMODCACHE: /tmp/ardents-network-quality-race-${{ matrix.shard }}/go-mod
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Install pinned quality tools
+        run: make tools-install
+      - name: Run serial race shard
+        run: make test-race-shard RACE_SHARD=${{ matrix.shard }}
   go:
     if: always()
-    needs: [select, qualification-scripts, affected, full]
+    needs: [select, qualification-scripts, affected, full, full-race]
     runs-on: ubuntu-24.04
     timeout-minutes: 1
     steps:
@@ -175,6 +202,7 @@ jobs:
           GROUP_RESULT: ${{ needs.affected.result }}
           POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
           FULL_RESULT: ${{ needs.full.result }}
+          RACE_RESULT: ${{ needs.full-race.result }}
           EVENT: ${{ github.event_name }}
         run: |
           if [[ "$EVENT" == pull_request ]]; then
@@ -182,10 +210,12 @@ jobs:
             test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
             test "$POWERSHELL_RESULT" = success || test "$POWERSHELL_RESULT" = skipped
             test "$FULL_RESULT" = skipped
+            test "$RACE_RESULT" = skipped
           else
             test "$SELECTION" = skipped
             test "$GROUP_RESULT" = skipped
             test "$FULL_RESULT" = success
+            test "$RACE_RESULT" = success
           fi
   portable:
     # ADR-0129 mandatory-target evidence: compile and portable-unit verification
