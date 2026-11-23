@@ -15,13 +15,6 @@ import (
 
 type preparationPath = artifacts.DirectoryChain
 
-func requirePreparationExt4(file *os.File) error {
-	if err := artifacts.RequireExt4(file); err != nil {
-		return errors.Join(errNetworkPreparation, err)
-	}
-	return nil
-}
-
 func openPreparationParent(path string) (*preparationPath, error) {
 	return openPreparationDirectories(context.Background(), path, nil)
 }
