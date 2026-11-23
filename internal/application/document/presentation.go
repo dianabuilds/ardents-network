@@ -17,7 +17,7 @@ import (
 // commands or bidi controls. Ordinary text, including links, is inert output.
 func WritePlainText(output io.Writer, body []byte) error {
 	if output == nil || len(body) > MaximumBytes || !utf8.Valid(body) {
-		return errors.New("text presentation is invalid")
+		return errors.New("document presentation is invalid")
 	}
 	writer := bufio.NewWriterSize(output, 16<<10)
 	const hex = "0123456789abcdef"
@@ -40,7 +40,7 @@ func WritePlainText(output io.Writer, body []byte) error {
 // interruption and closing of the output, which can outlive the setup bound.
 func PresentLocal(ctx context.Context, socket, link string, output io.Writer) error {
 	if ctx == nil || output == nil {
-		return errors.New("text presentation is invalid")
+		return errors.New("document presentation is invalid")
 	}
 	bounded, cancel := context.WithTimeout(ctx, connection.ReaderTimeout)
 	defer cancel()

@@ -26,15 +26,27 @@ bind its file names. The installed worker artifact document
 polkit rule by installed path and digest. The chroot, Endpoint unit
 dependencies and tmpfiles declaration bind related paths.
 
-Use `ardents-application-worker` for the proposed executable, with
-`ardents-application-reader` and `ardents-application-publisher` socket and
-service families and runtime sockets under `/run/ardents-application-worker`.
-The executable serves both the document and byte-stream profiles. The signed
-resource names describe the worker's installed roles.
-Define a v2 protected descriptor and worker artifact document with one exact
-inventory and path map. The signed Release target inventory, archive, Debian
-payload and installed pre-start project that same set. Reject mixed groups,
-including a group whose individual files have valid digests.
+The proposed v2 inventory uses one worker executable for the document and
+byte-stream profiles. Each row below must change together at cutover.
+
+| Resource | v1 identity | Proposed v2 identity |
+|---|---|---|
+| Protected descriptor schema | `ardents-protected-endpoint-artifact-v1` | `ardents-protected-endpoint-artifact-v2` |
+| Worker artifact file and schema | `/etc/ardents/text-worker-artifact.json`, `ardents-text-worker-artifact-v1` | `/etc/ardents/application-worker-artifact.json`, `ardents-application-worker-artifact-v2` |
+| Worker archive member | `ardents-text-linux-amd64` | `ardents-application-worker-linux-amd64` |
+| Worker chroot and executable | `/usr/lib/ardents/text-worker-root/ardents-text` | `/usr/lib/ardents/application-worker-root/ardents-application-worker` |
+| Four worker units | `ardents-text-{reader,publisher}.socket and ardents-text-{reader,publisher}@.service` | `ardents-application-{reader,publisher}.socket and ardents-application-{reader,publisher}@.service` |
+| Runtime socket directory | `/run/ardents-text` | `/run/ardents-application-worker` |
+| Dynamic worker user prefixes | `ardtxt-r-`, `ardtxt-p-` | `ardapp-r-`, `ardapp-p-` |
+| polkit and tmpfiles members | `50-ardents-text.rules`, `ardents-text.conf` | `50-ardents-application-worker.rules`, `ardents-application-worker.conf` |
+| Endpoint systemd unit | `ardents-endpoint.service` with v1 activation dependencies and description | `ardents-endpoint.service` with v2 activation dependencies and description `Ardents protected Endpoint` |
+
+The Endpoint executable member and the `protected-endpoint.json` member
+retain their names. The signed Release target inventory, archive, Debian
+payload and installed pre-start project the exact v2 name set, paths, unit
+contents and file digests. Update polkit unit matches, tmpfiles and the
+runtime verification of socket paths, dynamic users and cgroups against that
+same inventory. Reject mixed groups even when individual file digests verify.
 
 Authorize a forward transition from an independently verified exact v1
 predecessor. Retain the original systemd unit reference through successful

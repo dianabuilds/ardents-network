@@ -22,7 +22,7 @@ const (
 // joined stream cleanup. No failure retries or emits a second request.
 func Read(ctx context.Context, stream connection.Stream) (body []byte, resultErr error) {
 	if ctx == nil || stream == nil {
-		return nil, errors.New("text read is unavailable")
+		return nil, errors.New("document read is unavailable")
 	}
 	stop := context.AfterFunc(ctx, func() { _ = stream.Close() })
 	defer func() {

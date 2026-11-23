@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/execution/worker"
 )
 
-// Fixed bounded INIT belongs to Text. This platform seam performs only that
+// Fixed bounded document INIT belongs to the document Application. This platform seam performs only that
 // destination-free exchange; common launch owns Job, artifact and Grant checks.
 func initializeWorker(ctx context.Context, attachment *worker.Attachment, role string, nonce [32]byte, snapshot []byte) error {
 	mode := document.ReaderWorker

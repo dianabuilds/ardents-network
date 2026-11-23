@@ -79,11 +79,11 @@ func readEndpointProperties(ctx context.Context) (properties, properties, error)
 	return readFixedUnitProperties(ctx, "ardents-endpoint.service", "Service")
 }
 
-// readActivationSocketProperties observes a fixed text activation socket.
+// readActivationSocketProperties observes a fixed Application activation socket.
 // It grants no activation, launch or stop permission.
 func readActivationSocketProperties(ctx context.Context, inv inventory, role string) (properties, properties, error) {
 	if ctx == nil || role != "reader" && role != "publisher" {
-		return nil, nil, errors.New("text activation socket observation is unavailable")
+		return nil, nil, errors.New("Application activation socket observation is unavailable")
 	}
 	if err := verifyPlatform(ctx); err != nil {
 		return nil, nil, err
