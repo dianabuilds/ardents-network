@@ -344,9 +344,33 @@ func TestNetworkSigningInitialKeysNonrootChild(t *testing.T) {
 
 func TestNetworkSigningInitialKeysNonroot(t *testing.T) {
 	sourceArtifactNativeParent(t)
-	// /proc/self/exe addresses this exact original test image after credentials
-	// change, without creating an executable under an insecure ancestor.
-	cmd := exec.Command("/proc/self/exe", "-test.run=^TestNetworkSigningInitialKeysNonrootChild$", "-test.timeout=10s")
+	// The Go driver may keep the original image below a root-only build
+	// directory. Re-execute its exact bytes under a traversable fixture root so
+	// credential admission is exercised even with a private driver TMPDIR.
+	root, err := os.MkdirTemp("/tmp", "ardents-initial-keys-nonroot-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(root); err != nil {
+			t.Error(err)
+		}
+	})
+	raw, err := os.ReadFile("/proc/self/exe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := filepath.Join(root, "provisioning.test")
+	if err := os.WriteFile(program, raw, 0500); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(program, 0555); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(root, 0755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(program, "-test.run=^TestNetworkSigningInitialKeysNonrootChild$", "-test.timeout=10s")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 65534, Gid: 65534}}
 	cmd.Env = append(os.Environ(), "ARDENTS_INITIAL_KEYS_NONROOT=1")
 	if raw, e := cmd.CombinedOutput(); e != nil {
