@@ -3,7 +3,8 @@
 ## Host quick-check prerequisites
 
 Select the registered Go toolchain and GNU Make on PATH before running
-`make quick-check`; nested build proofs and the commit hook invoke `make` too.
+`make quick-check`; nested build proofs invoke `make` too. The commit hook
+checks the staged diff and does not invoke the full build.
 The architecture helper tests also require Python 3.11 or newer for
 `ExceptionGroup`/`BaseExceptionGroup` and the registered PowerShell release.
 On macOS, put the chosen Python installation's `libexec/bin` and the explicitly
@@ -1854,20 +1855,21 @@ selected Carriers.
   Each half keeps the original serial execution, shuffle, race instrumentation
   and timeout. Both halves and the core job must pass on the same revision.
   The Make jobs restore the Go caches in the paths they actually use.
-  Pull request CI uses `scripts/select-pr-checks.go`
-  to run the changed Go owners,
+  Pull request CI runs the same core and race gates in parallel, and also uses
+  `scripts/select-pr-checks.go` to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
   affected valid Fuzz declarations execute their deterministic seed corpus through
   ordinary `go test -run` in direct execution and split matrix jobs. PR selection
-  does not enable mutation fuzzing, and unrelated checks remain excluded.
-  declaration selection and transitive race requirements reach a monotone closure
+  does not enable mutation fuzzing. The separate full gates cover the complete
+  inventory. Declaration selection and transitive race requirements reach a monotone closure
   independently of package visitation order, including already selected consumers.
   Package and dependency loading errors fail selection before a matrix is
   published. A deleted Go package without a current owner selects the repository
   architecture check; changed surviving consumers retain their narrow checks.
   Independent selected jobs all finish and report their failures. The exact
-  candidate must still pass `make check` before integration, and a push to
-  `main` repeats that complete gate.
+  integration candidate must pass the CI core, race and portable gates; a direct
+  integration without that CI result runs `make check` once on the exact source.
+  A push to `main` runs the complete gate again as a post-integration baseline.
 - `make staticcheck` also runs `standalone-staticcheck`: each maintained ignored
   Go entrypoint in `scripts/` is analyzed separately with `GOOS=linux`,
   `GOARCH=amd64` and `CGO_ENABLED=0`. The select-pr entrypoint uses its two
@@ -2980,8 +2982,8 @@ The `portable` CI lane in `.github/workflows/quality.yml` executes that common
 inventory on `windows-latest` and `macos-latest`. On each runner it builds
 (`go build ./...`) and vets (`go vet ./...`) every package with `CGO_ENABLED=0`
 and the repository Go toolchain, then runs the common deterministic inventory
-with the same `make unit` invocation (`-p 1 -short -shuffle=on -count=1
--timeout=15m`), reading `tests/profiles/deterministic-packages.txt` directly and
+with four packages in parallel (`-p 4 -short -shuffle=on -count=1 -timeout=15m`),
+reading `tests/profiles/deterministic-packages.txt` directly and
 omitting the Linux-only supplement. Native cells (`linux` and `*_native` build
 constraints) are excluded by their build tags on those runners, never as passing
 skips; the lane runs no native profile. This is ADR-0129 mandatory-target compile

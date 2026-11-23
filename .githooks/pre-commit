@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 set -eu
 
-exec make quick-check
+exec git diff --cached --check

@@ -199,9 +199,11 @@ verification, or acceptance obligations.
   its maintenance and vulnerability acceptance rule. Every known finding needs
   a fix or scoped, reproducible non-applicability evidence; severity alone is
   not an exemption, and a passing scanner does not prove ongoing support.
-- Run `make quick-check` while writing code and `make check` before integration.
-  Do not weaken or bypass a failing gate. Tools are installed only through the
-  explicit `make tools-install` command.
+- Run focused tests while writing code. Pull request CI runs the complete
+  `make check` coverage and portable checks on the integration candidate before
+  integration. For direct integration without that CI result, run `make check`
+  once on the exact candidate. Do not weaken or bypass a failing gate. Tools are
+  installed only through the explicit `make tools-install` command.
 - Tests belong to one checked execution profile. A missing selected Docker,
   binary, privilege, platform, or orchestration prerequisite is an invalid
   environment, not a passing skip; retries never erase an earlier failure.
