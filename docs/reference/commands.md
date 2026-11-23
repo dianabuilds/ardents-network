@@ -189,10 +189,8 @@ acceptance. Existing partial output or diagnostic history is never reused.
 The Linux-amd64 infrastructure commands in `ardents-next` implement public
 artifact preparation and separate Source authentication under ADR-0123:
 
-- `infrastructure prepare-descriptor <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes `infrastructure-source.json`.
-- `infrastructure prepare-inventory <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json`, after actual signed metadata are supplied.
-- `infrastructure prepare-runtime-descriptor <role> <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes the exact descriptor for the selected role.
-- `infrastructure prepare-runtime-inventory <role> <seven-file-directory> <fresh-output>` writes the corresponding inventory. The fixed roles are `source`, `forwarding`, `issuer`, `descriptor`, `introduction` and `join`.
+- `infrastructure prepare-runtime-descriptor <role> <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes `infrastructure-<role>.json`.
+- `infrastructure prepare-runtime-inventory <role> <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json` for the selected role and its signed metadata. The fixed roles are `source`, `forwarding`, `issuer`, `descriptor`, `introduction` and `join`.
 - `infrastructure authenticate-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time>` checks its actual executing artifact and two fresh Release proofs.
 - `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
 
@@ -683,8 +681,8 @@ bootstrap/public receipts contain only their reviewed finite commitments and lim
 Canonical public Source artifact preparation uses:
 
 ```text
-ardents-next infrastructure prepare-descriptor RELEASE_ID VERSION PROGRAM TEMPLATE FRESH_OUTPUT
-ardents-next infrastructure prepare-inventory SEVEN_FILE_DISTRIBUTION FRESH_OUTPUT
+ardents infrastructure prepare-runtime-descriptor source RELEASE_ID VERSION PROGRAM TEMPLATE FRESH_OUTPUT
+ardents infrastructure prepare-runtime-inventory source SEVEN_FILE_DISTRIBUTION FRESH_OUTPUT
 ```
 
 These Linux root operations retain original protected native ext4 inputs and

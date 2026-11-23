@@ -226,7 +226,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 		}
 	}
 	inventoryOutput := filepath.Join(parent, "previous-inventory")
-	runInfrastructureFixtureCommand(t, nextPath, "prepare-inventory", previous, inventoryOutput)
+	runInfrastructureFixtureCommand(t, nextPath, "prepare-runtime-inventory", "source", previous, inventoryOutput)
 	inventoryRaw, err := os.ReadFile(filepath.Join(inventoryOutput, "infrastructure-enrollment.json"))
 	if err != nil {
 		t.Fatal(err)

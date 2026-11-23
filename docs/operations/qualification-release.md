@@ -191,8 +191,9 @@ Prepare every actual metadata variant and inventory before the exact bootstrap
 receipt is accepted; a later dynamic variant cannot silently join its cohort.
 
 ADR-0123 accepts a distinct Source program and generation contract.
-`ardents-next infrastructure prepare-descriptor` and `prepare-inventory`
-produce the public artifacts through Infrastructure and Enrollment. The
+`ardents infrastructure prepare-runtime-descriptor source` and
+`ardents infrastructure prepare-runtime-inventory source` produce the public
+artifacts through Infrastructure and Enrollment. The
 [command forms](../reference/commands.md) also cover the fixed Node roles.
 Use the actual canonical compiled Linux-amd64 `ardents-next` command bytes, the
 canonical platform unit template, a release identity and positive version to

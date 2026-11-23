@@ -120,7 +120,7 @@ func exerciseSourceReleaseCoherence(t *testing.T, input sourceTimestampNativeInp
 		}
 	}
 	inventory := filepath.Join(input.parent, "incoherent-inventory")
-	runInfrastructureFixtureCommand(t, input.nextProgram, "prepare-inventory", distribution, inventory)
+	runInfrastructureFixtureCommand(t, input.nextProgram, "prepare-runtime-inventory", "source", distribution, inventory)
 	if err := os.WriteFile(filepath.Join(distribution, "infrastructure-enrollment.json"), read(inventory, "infrastructure-enrollment.json"), 0600); err != nil {
 		t.Fatal(err)
 	}
