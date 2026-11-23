@@ -38,6 +38,7 @@ jobs:
           test "$(uname -m)" = x86_64
           test "$(systemctl --version | awk 'NR == 1 { print $2 }')" = 255
           test -r /sys/fs/cgroup/cgroup.controllers
+          sudo -n install -d -o root -g root -m 0755 /usr/share/polkit-1/rules.d
           sudo -n systemctl start polkit.service
           getent passwd ardents-endpoint >/dev/null || sudo -n useradd --system --no-create-home --user-group --shell /usr/sbin/nologin ardents-endpoint
           sudo -n install -D -o root -g root -m 0555 "$RUNNER_TEMP/worker-stream.test" /usr/lib/ardents/qualification/worker-stream.test
