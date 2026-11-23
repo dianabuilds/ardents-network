@@ -60,9 +60,9 @@ done
 
 # Rejoin the staged program and its static inventory for the same closed
 # grammar and byte checks used by Enrollment, without running the payload.
-endpoint_artifact=$(cd "$repository" && go run ./cmd/ardents-next enrollment artifact-name ardents linux-amd64)
+endpoint_artifact=$(cd "$repository" && go run -buildvcs=false ./cmd/ardents-next enrollment artifact-name ardents linux-amd64)
 ln "$package_stage/usr/lib/ardents/ardents" "$static_destination/$endpoint_artifact"
-(cd "$repository" && go run ./cmd/ardents-next enrollment check-candidate "$static_destination")
+(cd "$repository" && go run -buildvcs=false ./cmd/ardents-next enrollment check-candidate "$static_destination")
 rm "$static_destination/$endpoint_artifact"
 
 dpkg-deb --build --root-owner-group "$package_stage" "$ARDENTS_PACKAGE_OUTPUT"

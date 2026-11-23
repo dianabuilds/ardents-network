@@ -14,16 +14,19 @@ forward-only lifecycle.
 
 ## Process boundaries
 
-New headless alpha bundles contain the Endpoint and Authority Custody
-executables under [ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
-Protected Endpoint delivery adds the fixed text Application worker and its
-resources. The qualification worker has its own installed verification lane.
+Headless v6 bundles carry the Endpoint program and its Enrollment and
+Release inputs. Protected Endpoint delivery supplies the signed document
+worker and its managed resources. The offline Authority operator verifies
+a separate `ardents-custody` executable under
+[ADR-0131](../adr/0131-distribute-authority-custody-separately.md). The
+qualification worker has a separate installed verification lane.
 
 | Artifact lane | Entrypoint | Disposition | Boundary |
 |---|---|---|---|
 | Offline operator preparation and signing | ardents infrastructure provision, ardents infrastructure sign-release | retained tooling | Verified initial Network artifacts, protected role-specific key and Release production, and the separate Source Timestamp purpose |
-| Offline Authority operator | ardents-custody | retained tooling | Interactive Service and Admission Authority creation, issuance, verification and recovery. |
-| Network participant and domain composition | ardents-next | maintained | Network, Node and Endpoint composition. The signed Endpoint artifact retains the `ardents-<platform>` filename. |
+| Offline Authority operator | ardents-custody | separate offline release artifact | Interactive Service and Admission Authority creation, issuance, verification and recovery. |
+| Endpoint participant | ardents | participant distribution | Enrollment and platform-led Endpoint runtime. The document Application uses `publish`, `link` and `read`. |
+| Source and Node operator | ardents source, ardents node | installed infrastructure | Distinct pinned role inventories use the same command build for serving and retained role duties. |
 | Installed document worker | signed worker artifact `ardents-text` | automatic | Fixed confined Reader/Publisher worker entrypoints invoked by systemd. |
 | Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints, built from the qualification fixture. |
 
@@ -41,7 +44,8 @@ Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 | Binary | Routes | Classification |
 |---|---|---|
 | ardents-next | network accept-epoch / accept-profile / inspect | bounded State intake and diagnostics |
-| ardents-next | enrollment verify | read-only initial artifact and pin verification |
+| ardents | enrollment verify | read-only initial artifact and pin verification |
+| reviewed build executable | enrollment artifact-name / check-candidate / check-protected-generation | deterministic packaging and static inventory validation, independent of runtime authority |
 | ardents-next | source prepare-state | offline first signed State and empty participation history |
 | ardents-next | infrastructure prepare-runtime-descriptor / prepare-runtime-inventory | public artifact preparation for fixed roles |
 | ardents-next | admission initialize / issuance issue | initialize a fresh quota root and use confirmed accounting through the Issuer |

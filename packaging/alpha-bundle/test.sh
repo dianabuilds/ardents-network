@@ -155,7 +155,7 @@ ardents-text.conf"
   mkdir "$protected_unpack"
   tar -xzf "$scratch/protected-first.tar.gz" -C "$protected_unpack"
   protected_bundle="$protected_unpack/ardents-alpha-usable-alpha-test-1-$platform"
-  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 16
+  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 15
   (cd "$protected_bundle" && sha256sum --strict --check SHA256SUMS)
   cmp -s "$static_root/protected-endpoint.json" "$protected_bundle/protected-endpoint.json"
   printf 'substitution\n' > "$static_root/ardents-text.conf"
