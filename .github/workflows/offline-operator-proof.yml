@@ -41,7 +41,7 @@ jobs:
           native=$(sudo -n mktemp -d /ardents-network-operator.XXXXXX)
           trap 'sudo -n rm -f "$native/ardents"; sudo -n rmdir "$native"' EXIT
           sudo -n install -m 0555 "$RUNNER_TEMP/ardents" "$native/ardents"
-          cmp "$RUNNER_TEMP/ardents" "$native/ardents"
+          sudo -n cmp "$RUNNER_TEMP/ardents" "$native/ardents"
           sudo -n env TMPDIR="$native" PATH="$PATH" GOTOOLCHAIN=local CGO_ENABLED=0 GOENV=off \
             GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
             "$RUNNER_TEMP/offline-owner.test" -test.run '^(TestNetworkSigning|TestPublicNetworkPreparationPortable)' -test.timeout=4m -test.v |
