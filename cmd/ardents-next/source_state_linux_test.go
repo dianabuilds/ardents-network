@@ -226,13 +226,15 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 	}
 	defer owner.Close()
 	receipt := sourceStateCloseReceipt{owner, make(chan error, 1)}
-	target.Store(inputs.files[2].file)
+	target.Store(inputs.Files()[2].Descriptor())
 	armed.Store(true)
-	_, deny := context.WithCancel(inputs.ctx)
+	_, deny := context.WithCancel(inputs.Context())
 	defer deny()
 	joined := make(chan error, 1)
 	notice := sourceNotice{make(chan struct{})}
-	go func() { joined <- superviseSource(inputs.ctx, receipt, inputs.Check, deny, io.Discard, notice, nil) }()
+	go func() {
+		joined <- superviseSource(inputs.Context(), receipt, inputs.Check, deny, io.Discard, notice, nil)
+	}()
 	defer func() {
 		select {
 		case <-release:
@@ -259,8 +261,8 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 		default:
 		}
 	}
-	for _, f := range inputs.files {
-		if _, err := f.file.Stat(); err != nil {
+	for _, f := range inputs.Files() {
+		if _, err := f.Descriptor().Stat(); err != nil {
 			t.Fatal("composition released input before held original observation joined", err)
 		}
 	}
@@ -268,7 +270,7 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 	err = <-joined
 	if unavailable {
 		var terminal *sourceTerminal
-		if !errors.As(err, &terminal) || terminal.firstOwner != "completion" {
+		if !errors.As(err, &terminal) || terminal.FirstOwner != "completion" {
 			t.Fatal("failed unavailable notice became success after actual use joined", err)
 		}
 	} else if err != nil {
@@ -328,8 +330,8 @@ func TestSourceOriginalCustodySurvivesHeldStateCloseAndLateInputFailure(t *testi
 		joined <- superviseSource(t.Context(), held, check, deny, failedSourceOutput{output}, io.Discard, inputs.Close)
 	}()
 	<-held.entered
-	for _, f := range inputs.files {
-		if _, err := f.file.Stat(); err != nil {
+	for _, f := range inputs.Files() {
+		if _, err := f.Descriptor().Stat(); err != nil {
 			t.Fatal("original input released while State Close remains held", err)
 		}
 	}
@@ -345,7 +347,7 @@ func TestSourceOriginalCustodySurvivesHeldStateCloseAndLateInputFailure(t *testi
 	}
 	// A real independently failed original descriptor arrives after output
 	// failure and synchronous denial, while State still retains its borrowers.
-	if err := inputs.files[2].file.Close(); err != nil {
+	if err := inputs.Files()[2].Descriptor().Close(); err != nil {
 		t.Fatal(err)
 	}
 	close(held.release)
@@ -399,14 +401,16 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	selected.Store(inputs.files[2].file)
+	selected.Store(inputs.Files()[2].Descriptor())
 	ready := make(chan struct{})
 	output := sourceFailureWriter(func(raw []byte) (int, error) { close(ready); return len(raw), nil })
 	notice := sourceNotice{make(chan struct{})}
 	joined := make(chan error, 1)
-	_, deny := context.WithCancel(inputs.ctx)
+	_, deny := context.WithCancel(inputs.Context())
 	defer deny()
-	go func() { joined <- superviseSource(inputs.ctx, owner, inputs.Check, deny, output, notice, inputs.Close) }()
+	go func() {
+		joined <- superviseSource(inputs.Context(), owner, inputs.Check, deny, output, notice, inputs.Close)
+	}()
 	defer func() {
 		select {
 		case <-release:
@@ -432,7 +436,7 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 	close(release)
 	err = <-joined
 	var terminal *sourceTerminal
-	if !errors.Is(err, os.ErrClosed) || !errors.As(err, &terminal) || terminal.firstOwner != "completion" {
+	if !errors.Is(err, os.ErrClosed) || !errors.As(err, &terminal) || terminal.FirstOwner != "completion" {
 		t.Fatal("late independent input Close erased failed unavailable notice", err)
 	}
 	first := inputs.Close()

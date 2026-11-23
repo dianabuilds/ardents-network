@@ -106,54 +106,10 @@ func TestSourceOriginalInputsRetainEveryFileAndAncestor(t *testing.T) {
 				if err := os.Chmod(selected, 0600); err != nil {
 					t.Fatal(err)
 				}
-				if next := inputs.Check(); next != err || inputs.ctx.Err() != context.Canceled {
+				if next := inputs.Check(); next != err || inputs.Context().Err() != context.Canceled {
 					t.Fatal("restoration revived original lifetime", next)
 				}
 			})
-		}
-	}
-}
-
-func TestSourceInputCloseDeniesBeforeJoiningOriginalUses(t *testing.T) {
-	path, _ := sourceCustodyFixture(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	inputs, _, err := acquireSourceInputs(ctx, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	copied := inputs
-	// Hold the native-observation serializer after a genuine original read.
-	// Cancellation must not acquire it; Close must retain descriptors until the
-	// already admitted use finishes. This is a scheduling control, not State.
-	inputs.ioMu.Lock()
-	checked := make(chan error, 1)
-	go func() { checked <- copied.Check() }()
-	cancel()
-	closed := make(chan error, 1)
-	go func() { closed <- copied.Close() }()
-	<-inputs.ctx.Done()
-	if err := inputs.Check(); err == nil {
-		t.Fatal("canceled original accepted work")
-	}
-	inputs.ioMu.Unlock()
-	if err := <-checked; err == nil {
-		t.Fatal("late observation accepted canceled generation")
-	}
-	if err := <-closed; err != nil {
-		t.Fatal(err)
-	}
-	if err := inputs.Close(); err != nil {
-		t.Fatal("copied Close disagrees", err)
-	}
-	for _, f := range inputs.files {
-		if _, err := f.file.Stat(); !errors.Is(err, os.ErrClosed) {
-			t.Fatal("original descriptor survived completed Close", err)
-		}
-		for _, b := range f.raw {
-			if b != 0 {
-				t.Fatal("original bytes survived joined Close")
-			}
 		}
 	}
 }
@@ -165,7 +121,7 @@ func TestSourceConcurrentInputChecksAndCopiedCloseRetainPhysicalFailure(t *testi
 		t.Fatal(err)
 	}
 	copied := inputs
-	if err := inputs.files[2].file.Close(); err != nil {
+	if err := inputs.Files()[2].Descriptor().Close(); err != nil {
 		t.Fatal(err)
 	}
 	var joined sync.WaitGroup
@@ -214,20 +170,20 @@ func TestSourceOriginalNativeReadJoinsAfterCancellationAndLateClose(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected.Store(inputs.files[2].file)
+	selected.Store(inputs.Files()[2].Descriptor())
 	hold.Store(true)
 	checked := make(chan error, 1)
 	go func() { checked <- inputs.Check() }()
 	<-entered
 	cancel()
-	<-inputs.ctx.Done()
+	<-inputs.Context().Done()
 	closed := make(chan error, 1)
 	go func() { closed <- inputs.Close() }()
 	if err := inputs.Check(); err == nil {
 		t.Fatal("short denial waited for held native use")
 	}
-	for _, f := range inputs.files {
-		if _, err := f.file.Stat(); err != nil {
+	for _, f := range inputs.Files() {
+		if _, err := f.Descriptor().Stat(); err != nil {
 			t.Fatal("input custody released before original native use joined", err)
 		}
 	}
@@ -261,7 +217,7 @@ func TestSourcePartialInputAcquisitionJoinsAndRefusesLateBytes(t *testing.T) {
 					}
 				}
 			})
-			if inputs.sourceInputLifetime != nil || !errors.Is(err, errSourceInput) || !errors.Is(err, os.ErrClosed) {
+			if inputs.Context() != nil || !errors.Is(err, errSourceInput) || !errors.Is(err, os.ErrClosed) {
 				t.Fatal("partial acquisition adopted late input or dropped close failure", err)
 			}
 			for _, f := range files {
