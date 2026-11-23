@@ -134,6 +134,20 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/application/administration.server.handleByteStream",
+          "internal/application/document.BridgeByteStreamWorker",
+          "internal/application/document.receiveWorkerBytes",
+          "internal/application/document.relayWorkerStreams",
+          "internal/application/document.sendWorkerBytes",
+          "internal/connection/wire.ProfileForOperation"
+        ],
+        "classification": "portable byte-stream protocol with Ubuntu-only protected composition",
+        "rationale": "The fixed worker/application exchange and the authenticated profile binding are used by the real installed Linux Participant. Portable component tests still exercise the buffer, framing and transcript mechanisms. The Windows Administration adapter refuses before any worker or stream effect, and the installed Connection handshake is Linux-only.",
+        "owner": "Execution, Application Connection and the installed Endpoint",
+        "retirement": "Remove exact entries as supported Windows composition admits them or the associated protocol is retired."
+      },
+      {
+        "symbols": [
           "internal/network/closedprofile.Prepare",
           "internal/network/epoch.PrepareInitialClosedEpoch",
           "internal/network/epoch.PrepareInitialClosedRecord",
@@ -330,7 +344,6 @@
           "internal/connection.BindRecipient",
           "internal/connection.RecipientBinding.Check",
           "internal/connection.RecipientBinding.Contexts",
-          "internal/connection.deriveRecipientBinding",
           "internal/publication.TargetLink",
           "internal/publication/durable.Generation.Advance",
           "internal/publication/durable.Generation.Check",

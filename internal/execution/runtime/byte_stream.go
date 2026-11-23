@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/application/document"
-	"github.com/dianabuilds/ardents-network/internal/execution"
 )
 
 type byteStreamInput struct {
@@ -47,14 +46,4 @@ func (operation *Operation) ExchangeByteStream(ctx context.Context, contract Str
 	case input.incoming <- exchange:
 	}
 	return <-exchange.done
-}
-
-// LaunchByteStreamReader admits the fixed Connection surface for a reader.
-func (owner *Owner) LaunchByteStreamReader(ctx context.Context, principal [32]byte) (*Invocation, error) {
-	return owner.LaunchByteStream(ctx, principal, execution.Connection)
-}
-
-// LaunchByteStreamPublisher admits the fixed Administration surface for publication.
-func (owner *Owner) LaunchByteStreamPublisher(ctx context.Context, principal [32]byte) (*Invocation, error) {
-	return owner.LaunchByteStream(ctx, principal, execution.Administration)
 }

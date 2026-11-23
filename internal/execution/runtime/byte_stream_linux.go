@@ -48,13 +48,23 @@ func (byteStreamConsumer) observe(invocation *Invocation) {
 	}()
 }
 
-// LaunchByteStream initializes the already verified worker through its fixed
+// launchByteStream initializes the already verified worker through its fixed
 // role entrypoint. The local authority still admits the original surface.
-func (owner *Owner) LaunchByteStream(ctx context.Context, principal [32]byte, surface execution.Surface) (*Invocation, error) {
+func (owner *Owner) launchByteStream(ctx context.Context, principal [32]byte, surface execution.Surface) (*Invocation, error) {
 	switch surface {
 	case execution.Connection, execution.Administration:
 		return owner.launchApplicationInvocation(ctx, principal, surface, byteStreamProtocol{}, surface == execution.Administration, surface == execution.Connection)
 	default:
 		return nil, errors.New("byte-stream worker surface is invalid")
 	}
+}
+
+// LaunchByteStreamReader admits the fixed Connection surface for a reader.
+func (owner *Owner) LaunchByteStreamReader(ctx context.Context, principal [32]byte) (*Invocation, error) {
+	return owner.launchByteStream(ctx, principal, execution.Connection)
+}
+
+// LaunchByteStreamPublisher admits the fixed Administration surface for publication.
+func (owner *Owner) LaunchByteStreamPublisher(ctx context.Context, principal [32]byte) (*Invocation, error) {
+	return owner.launchByteStream(ctx, principal, execution.Administration)
 }

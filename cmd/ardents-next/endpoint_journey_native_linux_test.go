@@ -127,7 +127,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 		installedPairSend(t, conn, installedPairMessage{Operation: "ready", Original: original, Principals: participant.principals})
 		for {
 			command := installedPairReceive(t, conn)
-			if command.Operation != "restart" && installedStartupIdentity(t) != original {
+			if command.Operation != "restart" && command.Operation != "stream-result" && installedStartupIdentity(t) != original {
 				t.Fatal("journey command lost original installed participant")
 			}
 			response := installedPairMessage{Operation: command.Operation, Original: original}
@@ -206,6 +206,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				if err != nil {
 					journeyDumpJournal(t)
 					response.Failure = fmt.Sprintf("stream connect: %v: %s", err, &diagnostic)
+					t.Log(response.Failure)
 				}
 				response.Body = output
 			case "stream-result":
@@ -217,6 +218,9 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				if err != nil {
 					journeyDumpJournal(t)
 					response.Failure = fmt.Sprintf("stream publish: %v: %s", err, &publisherDiagnostic)
+					t.Log(response.Failure)
+				} else {
+					response.Original = installedStartupIdentity(t)
 				}
 				response.Body = publisherOutput.Bytes()
 			case "withdraw":

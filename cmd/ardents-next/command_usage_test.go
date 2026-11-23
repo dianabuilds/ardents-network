@@ -55,7 +55,7 @@ func TestBuiltHelpShowsTheSelectedRole(t *testing.T) {
 		want []string
 		omit []string
 	}{
-		{"participant", []string{"--help"}, []string{"ardents publish", "ardents read", "ardents endpoint withdraw", "bounded UTF-8"}, []string{"ardents-custody", "serve-retained"}},
+		{"participant", []string{"--help"}, []string{"ardents stream publish", "ardents stream connect", "arbitrary bytes", "ardents publish", "ardents read", "ardents endpoint withdraw"}, []string{"ardents-custody", "serve-retained", "bounded UTF-8"}},
 		{"operator", []string{"help", "operator"}, []string{"ardents enrollment verify", "ardents platform unit", "source serve-retained", "offline ardents-custody"}, []string{"ardents publish", "check-candidate"}},
 		{"release", []string{"help", "release"}, []string{"ardents enrollment check-candidate", "<document-worker> <release-identity>", "ardents infrastructure sign-release", "separate release assets"}, []string{"ardents publish", "serve-retained"}},
 	} {
