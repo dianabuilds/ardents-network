@@ -2,8 +2,9 @@ package state
 
 import (
 	"errors"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"time"
+
+	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 )
 
 // Acquisition and Epoch/profile floors share this application's commit. These

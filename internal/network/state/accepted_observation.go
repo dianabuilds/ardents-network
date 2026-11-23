@@ -2,12 +2,13 @@ package state
 
 import (
 	"errors"
+
 	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )
 
 // closedRuntimeAvailableLocked requires s.mu and performs no time observation.
-func (s *networkState) closedRuntimeAvailableLocked() error {
+func (s *State) closedRuntimeAvailableLocked() error {
 	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.conflicting {
 		return errors.New("closed profile is unavailable")
 	}
@@ -24,7 +25,7 @@ func (s *networkState) closedRuntimeAvailableLocked() error {
 // expiry at the durable read boundary can be tested without clock-call counts.
 // It returns the observed view so the caller reuses a single observation rather
 // than observing the same immutable state twice (audit NW-2).
-func (s *networkState) currentMembershipLocked(load func([32]byte) (durable.ClosedProfileState, []byte, error)) (membership, networkdomain.TrustedTime, networkdomain.RuntimeView, error) {
+func (s *State) currentMembershipLocked(load func([32]byte) (durable.ClosedProfileState, []byte, error)) (membership, networkdomain.TrustedTime, networkdomain.RuntimeView, error) {
 	if err := s.closedRuntimeAvailableLocked(); err != nil {
 		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
 	}

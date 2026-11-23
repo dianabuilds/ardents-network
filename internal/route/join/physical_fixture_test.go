@@ -2,10 +2,11 @@ package join
 
 import (
 	"context"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"net"
 	"testing"
 	"time"
+
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 // This fixture starts only real physical framing; it supplies no authority,

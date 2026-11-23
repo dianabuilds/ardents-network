@@ -2741,7 +2741,7 @@ Neither category substitutes for the other.
 | CREDIT retirement: queued controls remain unemitted; started controls retain original cleanup bounds, late failures and capacity until join | `internal/route/channel/credit_close_test.go` and `credit_retirement_test.go`; portable actual pipe output and controlled completion, without authority substitutes |
 | Dedicated framing termination: local CLOSE still requires the peer's inner CLOSE; incoming CLOSE interrupts payload output and joins its result before release | `internal/route/channel/dedicated_close_test.go` and `peer_close_writer_test.go`; portable physical I/O, including raw EOF and refusal controls |
 | Paired JOIN terminal race: an opposite seal preserves an already started valid CLOSE and its refusal status, while denying payload and new input | `internal/route/join/relay_test.go`, `TestJoinRelaySealKeepsAlreadyStartedOppositeTerminal`; actual pipe header barrier. The same receiving pairing and relay sources execute on Windows and Linux without native dependencies |
-| Retained selection rules: exact original profile/duties, observation expiry floor, context-local choice retention and conflict exclusions | `internal/route/selection/entry_set_test.go`, `leg_test.go` and `rendezvous_test.go`; actual execution on Windows and Linux. Supplied-fact Network models test local rules, not authenticated intake or durable-root qualification. Native durable owners have separate Linux tests |
+| Retained selection rules and store behavior: exact original profile/duties, observation expiry floor, context-local choice retention and conflict exclusions; closed Entry/Interior store lifecycle, retained-history loss refusal, generation guards, installation seal/borrow retention and standalone-owner retention | `internal/route/selection/entry_set_test.go`, `leg_test.go`, `rendezvous_test.go`, `closed_sets_test.go`, `closed_adjacent_domains_test.go`, `generation_store_test.go`, `interior_store_test.go`, `interior_refusal_test.go`, `installation_test.go`, `installation_history_test.go` and `selection_owner_test.go`; actual execution on Windows and Linux, opening real stores through the platform owner-only floor (Windows protected-DACL enforcement). Supplied-fact Network models test local rules and store behavior, not authenticated intake or transport. Physical lease corruption, foreign-uid and Mkfifo identity controls keep separate native tags |
 | Network observations consumed by Route: profile/member expiry during durable reads, older caller time cannot revive a duty, and concurrently published Epoch/profile/member facts cannot mix generations | `internal/network/state/closed_runtime_view_test.go` and `membership_transition_test.go`; actual new State storage and signed-generation controls. These scenarios verify particular input guarantees; migrated source and earlier acceptance do not establish general absence of Network defects. Route's genuine command tests separately reobserve authority around transport and irreversible effects |
 | Introduction snapshot format: independently specified canonical bytes, exact binding/generation, sorted distinct hashes, original expiry/time floor and damaged/rebound refusal | `internal/route/introduction/slot_snapshot_test.go`; portable format tests. Actual durable History consumes this same codec; its Linux lease/sync/reopen controls remain in `slot_history_linux_test.go`. Codec success supplies no durable ACK or registration authority |
 | Original Introduction native custody and short denial: root/lease/snapshot loss and restoration, identical native substitution and same-inode byte restoration permanently refuse; Stop returns during held actual durable replacement while Close retains lease until writer join and separate reopen retains the late claim | `internal/route/introduction/history_custody_linux_test.go`; actual independently leased Linux roots, original staging/snapshot descriptors, root inotify witness and write/sync/rename/readback. Replacement-boundary controls substitute identical bytes after actual Rename or move/restore the root before pin publication; the failed original retains its cause and visible durable claim through separate strict reopen. Scheduling changes only a real transaction's return; no accepting storage or authority fixture. Full receiving/holder TCP/TLS regressions prepare Registry before Receiver and close it after physical join. Process-crash and power-loss evidence remain distinct obligations |
@@ -2992,6 +2992,39 @@ so it refuses every writable root (a production defect, separate from this
 tests-only change); admission/stock composes the Linux-only presentation journal
 (`admission/attempts`). Their Linux-tagged behavior tests and every
 native/platform-boundary test keep their tags; no production behavior changed.
+
+P1-C continuation (#800, #691) de-tagged the route/selection store behavior
+tests batch 1 deferred, after the Windows owner-only root floor defect (#793)
+was fixed by the shared durablefile `EnforceOwnerOnlyRoot` protected-DACL
+enforcement (#799): the closed Entry set lifecycle (`closed_sets_test.go`),
+adjacent-domain separation and legacy-set refusal
+(`closed_adjacent_domains_test.go`), the retained-generation exhaustion,
+trailing-data and canonical-byte guards (`generation_store_test.go`), Interior
+reopen retention (`interior_store_test.go`), Interior borrow refusal without
+retained-root mutation (`interior_refusal_test.go`), installation seal,
+late-borrow currentness, role exclusion and shared-entry retention
+(`installation_test.go`), and retained-installation history-loss refusals
+(`installation_history_test.go`). They open real stores and execute in the
+portable deterministic inventory on Windows and macOS; on Windows the shared
+mechanism enforces the owner-only protected DACL instead of checking mode bits
+synthesized from the read-only attribute. A new portable standalone-owner test
+(`selection_owner_test.go`) covers `Open` choice retention, private-installation
+release and overlap/incomplete-setup refusal without root creation. The
+remaining 10 windows-test-dead selection allowances are retired EXACT both ways
+and the selection windows-test-dead entry is removed; the Linux native-tag test
+analysis remains empty. The symlink-alias refusal test is portable on the
+established Windows symlink-test precedent (duty and State retained-lease
+Windows tests create symlinks and fail on error, never skip). Platform-boundary
+controls keep their tags: the physical Unix lease-file corruption split into
+`installation_cleanup_linux_test.go` (the Windows lease holds a
+`syscall.Handle`, not an `*os.File`), the flock EBADF joined-release control
+(`closed_set_open_cleanup_linux_test.go`), the foreign-uid root gate
+(`root_hardening_linux_test.go`) and the `!windows` Mkfifo lease identity
+(`root_lease_identity_unix_test.go`). The selection-side blocker of the session
+`Open*` and Publisher/Reader Open boundary decisions is cleared; those
+compositions remain Linux-bound on the remaining introduction slot-history,
+receiver and declarations seams. Tests-only; no production behavior changed and
+no weaker accepting path.
 
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their

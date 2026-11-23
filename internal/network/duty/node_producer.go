@@ -164,7 +164,7 @@ func (handle *NodeProducer) Close(ctx context.Context) error {
 	return err
 }
 
-func (original *nodeProducer) match(store *store) error {
+func (original *nodeProducer) match(store *Store) error {
 	expected, err := originalNodeRestriction(original.participation, original.phase)
 	if err != nil {
 		return err

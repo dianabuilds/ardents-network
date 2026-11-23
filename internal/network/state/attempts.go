@@ -5,11 +5,11 @@ import "errors"
 // checkSourceExposureCapacity refuses a changed plan before its first contact
 // could grow the durable history beyond the decoder's fixed bound. A validated
 // Source plan contains two distinct exposure identities.
-func (s *networkState) checkSourceExposureCapacity() error {
+func (s *State) checkSourceExposureCapacity() error {
 	return sourceExposureCapacity(s.distribution, s.config.sourceInfo.Exposures)
 }
 
-func (s *networkState) beginLatestAttempt(index int) (bool, byte, error) {
+func (s *State) beginLatestAttempt(index int) (bool, byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if index < 0 || index > 1 {
@@ -27,7 +27,7 @@ func (s *networkState) beginLatestAttempt(index int) (bool, byte, error) {
 	return contact, outcome, nil
 }
 
-func (s *networkState) beginDigestAttempt(source int, digest [32]byte) error {
+func (s *State) beginDigestAttempt(source int, digest [32]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if source < 0 || source > 1 {
@@ -40,7 +40,7 @@ func (s *networkState) beginDigestAttempt(source int, digest [32]byte) error {
 	return s.commitDistribution(state)
 }
 
-func (s *networkState) finishDigestAttempt(source int, responseCompleted bool) error {
+func (s *State) finishDigestAttempt(source int, responseCompleted bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	state, err := proposeDigestCompletion(s.distribution, source, responseCompleted)

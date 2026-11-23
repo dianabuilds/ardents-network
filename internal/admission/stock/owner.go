@@ -3,10 +3,11 @@ package stock
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/attempts"
 )
 
 // Owner retains one context's holder and stock. It owns no transport, worker,

@@ -11,8 +11,10 @@
 // physical leg replacement; failures and new exclusions cannot redraw them.
 // Entry-pair eligibility/draw/bounds, retained Leg checks and recipient selection
 // are portable rules. entry_set.go owns no filesystem, lease or live authority.
-// The Linux installation/selection owner separately owns leased durable roots;
-// its platform constraint does not constrain checking an already retained Leg.
+// The durable store owner opens on Windows and Linux through the platform
+// owner-only floor; the installed endpoint preparation and funding compositions
+// remain Linux, and that platform constraint does not constrain checking an
+// already retained Leg.
 //
 // Navigation: portable rules compose with the leased durable-root owner.
 // Test naming follows docs/development/repository-layout.md; a test listed
@@ -28,14 +30,18 @@
 //   - durable-root: root.go, atomic_files.go, watermark.go, directory_sync.go,
 //     root_lease_unix.go, root_lease_windows.go, root_permissions_unix.go,
 //     root_permissions_windows.go. Tests: root_hardening_linux_test.go,
+//     root_lease_identity_unix_test.go, root_permissions_windows_test.go,
 //     closed_set_open_cleanup_linux_test.go; atomic persistence is exercised
 //     through the store tests below.
 //   - entry-store: closed_sets.go, closed_set_store.go. Tests:
 //     closed_sets_test.go, closed_set_open_cleanup_linux_test.go,
-//     closed_adjacent_domains_test.go.
+//     closed_adjacent_domains_test.go, generation_store_test.go.
 //   - interior-store: interior_store.go. Tests: interior_store_test.go,
-//     interior_refusal_linux_test.go.
+//     interior_refusal_test.go, generation_store_test.go.
 //   - composition: installation.go, selection_owner.go (Borrow returns the
-//     serialized Owner). Tests: installation_linux_test.go,
-//     installation_history_linux_test.go.
+//     serialized Owner). Tests: installation_test.go,
+//     installation_history_test.go, selection_owner_test.go,
+//     installation_cleanup_linux_test.go. The store behavior tests execute on
+//     Windows and Linux through the platform owner-only floor; the physical
+//     lease-corruption, foreign-uid and Mkfifo identity controls stay native.
 package selection

@@ -25,7 +25,7 @@ import (
 // Linux public adapter separately requires the actual original manager and the
 // per-unit cgroup. Introduction shares the ardents-node account, so quiescence is
 // per-unit, never an account-wide process scan.
-func introductionRepairFixture(t *testing.T) *networkState {
+func introductionRepairFixture(t *testing.T) *State {
 	t.Helper()
 	s, decision := newControlCommitFixture(t, false)
 	public, err := hex.DecodeString("c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631")

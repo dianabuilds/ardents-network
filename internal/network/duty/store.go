@@ -9,10 +9,10 @@ import (
 
 // Open claims one initialized local-role root, or creates it only when Create
 // is explicit. Every retained generation is verified before return.
-func Open(input Config) (*store, error) {
+func Open(input Config) (*Store, error) {
 	return open(input, nil)
 }
-func open(input Config, ctx context.Context) (openedStore *store, resultErr error) {
+func open(input Config, ctx context.Context) (openedStore *Store, resultErr error) {
 	return openMode(input, ctx, false)
 }
 
@@ -31,14 +31,14 @@ func Initialize(ctx context.Context, input Config) error {
 	return errors.Join(owner.Close(), ctx.Err())
 }
 
-func openMode(input Config, ctx context.Context, fresh bool) (openedStore *store, resultErr error) {
+func openMode(input Config, ctx context.Context, fresh bool) (openedStore *Store, resultErr error) {
 	return openStoreMode(input, ctx, fresh, false)
 }
 
 // OpenRetainedOperation holds an existing participation lease without cleaning
 // staging, recovering pointers or creating history. Recovery callers must refuse
 // every uncertain prefix before deciding their one permitted domain effect.
-func OpenRetainedOperation(ctx context.Context, input Config) (*store, error) {
+func OpenRetainedOperation(ctx context.Context, input Config) (*Store, error) {
 	if ctx == nil || input.Create {
 		return nil, errors.New("retained participation requires an existing history")
 	}
@@ -47,7 +47,7 @@ func OpenRetainedOperation(ctx context.Context, input Config) (*store, error) {
 	return openStoreMode(input, bounded, false, true)
 }
 
-func openStoreMode(input Config, ctx context.Context, fresh, retained bool) (openedStore *store, resultErr error) {
+func openStoreMode(input Config, ctx context.Context, fresh, retained bool) (openedStore *Store, resultErr error) {
 	if ctx != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -137,7 +137,7 @@ func openStoreMode(input Config, ctx context.Context, fresh, retained bool) (ope
 	if err != nil {
 		return nil, err
 	}
-	store := &store{root: root, clock: input.Clock, lease: lease, state: state, current: current}
+	store := &Store{root: root, clock: input.Clock, lease: lease, state: state, current: current}
 	if current == "" {
 		if !input.Create {
 			return nil, errors.New("local role state is not initialized")
@@ -151,21 +151,21 @@ func openStoreMode(input Config, ctx context.Context, fresh, retained bool) (ope
 }
 
 // Replace atomically replaces one producer's complete current duty set.
-func (store *store) Replace(producer [32]byte, duties []Duty) error {
+func (store *Store) Replace(producer [32]byte, duties []Duty) error {
 	return store.replace(producer, duties, false)
 }
 
 // Claim records a new producer only when no record for it is retained. Expiry
 // does not establish the original producer's completion. The same exclusive
 // operation observes absence and commits; this cannot adopt an old producer.
-func (store *store) Claim(producer [32]byte, duties []Duty) error {
+func (store *Store) Claim(producer [32]byte, duties []Duty) error {
 	if len(duties) == 0 {
 		return errors.New("local role claim has no duties")
 	}
 	return store.replace(producer, duties, true)
 }
 
-func (store *store) replace(producer [32]byte, duties []Duty, claim bool) error {
+func (store *Store) replace(producer [32]byte, duties []Duty, claim bool) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil || producer == ([32]byte{}) {
@@ -190,11 +190,11 @@ func (store *store) replace(producer [32]byte, duties []Duty, claim bool) error 
 }
 
 // Remove atomically removes every duty owned by producer.
-func (store *store) Remove(producer [32]byte) error { return store.Replace(producer, nil) }
+func (store *Store) Remove(producer [32]byte) error { return store.Replace(producer, nil) }
 
 // Conflict reads the held current generation and reports one effective
 // non-Initiator identity or family collision.
-func (store *store) Conflict(identity, family [32]byte) (bool, error) {
+func (store *Store) Conflict(identity, family [32]byte) (bool, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil {
@@ -207,7 +207,7 @@ func (store *store) Conflict(identity, family [32]byte) (bool, error) {
 }
 
 // Close releases the exclusive root lease once and retains its terminal result.
-func (store *store) Close() error {
+func (store *Store) Close() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed {

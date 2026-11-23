@@ -152,14 +152,14 @@ func (b *JoinBorrow) OpenChannel(ctx, caller context.Context, duty network.Retai
 	return terminal, side, err
 }
 
-func (source *Prefix) borrowJoin(ctx context.Context, responder *Prefix, interrupt func(), join func() error) (*JoinBorrow, error) {
-	if ctx == nil || ctx.Err() != nil || source == nil || source.config.Leg.EntryMember.RoleDomain != 1 || responder != nil && (responder.config.Leg.EntryMember.RoleDomain != 3 || responder.source != source) {
+func (p *Prefix) borrowJoin(ctx context.Context, responder *Prefix, interrupt func(), join func() error) (*JoinBorrow, error) {
+	if ctx == nil || ctx.Err() != nil || p == nil || p.config.Leg.EntryMember.RoleDomain != 1 || responder != nil && (responder.config.Leg.EntryMember.RoleDomain != 3 || responder.source != p) {
 		return nil, errors.New("route JOIN original roles unavailable")
 	}
 	// All pair transitions lock Source before Responder. Neither observation,
 	// physical I/O nor join runs while these generation locks are held.
-	source.lifetimeMu.Lock()
-	defer source.lifetimeMu.Unlock()
+	p.lifetimeMu.Lock()
+	defer p.lifetimeMu.Unlock()
 	if responder != nil {
 		responder.lifetimeMu.Lock()
 		defer responder.lifetimeMu.Unlock()
@@ -167,13 +167,13 @@ func (source *Prefix) borrowJoin(ctx context.Context, responder *Prefix, interru
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	for _, original := range []*Prefix{source, responder} {
+	for _, original := range []*Prefix{p, responder} {
 		if original != nil && original.localCurrent() != nil {
 			return nil, errors.New("route JOIN original prefix retired")
 		}
 	}
-	borrow := &JoinBorrow{source: source, responder: responder}
-	for i, original := range []*Prefix{source, responder} {
+	borrow := &JoinBorrow{source: p, responder: responder}
+	for i, original := range []*Prefix{p, responder} {
 		if original != nil {
 			borrow.claims[i] = &Borrow{owner: original, interrupt: interrupt, join: join, active: func() bool { return true }}
 			original.retainBorrowLocked(borrow.claims[i])
@@ -265,16 +265,16 @@ func (p *Prefix) observeOriginal() (network.RuntimeView, error) {
 // Prefix owns these generation locks and their currentness checks; its consumer
 // supplies only its own bounded state handoff, never observation, I/O or join.
 // Every pair transition acquires Source before its original Responder.
-func (source *Prefix) CommitPair(responder *Prefix, handoff func(checkOriginal func() error) error) error {
-	source.lifetimeMu.Lock()
-	defer source.lifetimeMu.Unlock()
+func (p *Prefix) CommitPair(responder *Prefix, handoff func(checkOriginal func() error) error) error {
+	p.lifetimeMu.Lock()
+	defer p.lifetimeMu.Unlock()
 	if responder != nil {
 		responder.lifetimeMu.Lock()
 		defer responder.lifetimeMu.Unlock()
 	}
 	return handoff(func() error {
 		var result error
-		for _, original := range []*Prefix{source, responder} {
+		for _, original := range []*Prefix{p, responder} {
 			if original != nil {
 				result = errors.Join(result, original.localCurrent())
 			}

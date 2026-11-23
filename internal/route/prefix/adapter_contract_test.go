@@ -7,13 +7,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 	"io"
 	"math/big"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 )
 
 func transportCertificate(t *testing.T, start, end time.Time) (tls.Certificate, [32]byte) {

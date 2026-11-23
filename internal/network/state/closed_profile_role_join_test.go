@@ -7,9 +7,10 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"testing"
 	"time"
+
+	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
@@ -155,7 +156,7 @@ func testClosedProfileRoleJoinCase(t *testing.T, uncertain bool) {
 
 // Exercise the runtime projection with signed Epoch inputs and durable profile
 // acceptance, including reopening after an uncertain directory sync.
-func assertSignedRuntimeRecords(t *testing.T, owner *networkState, generation [32]byte, records ...networkfixture.Record) {
+func assertSignedRuntimeRecords(t *testing.T, owner *State, generation [32]byte, records ...networkfixture.Record) {
 	t.Helper()
 	view, err := owner.CurrentRuntime()
 	if err != nil {

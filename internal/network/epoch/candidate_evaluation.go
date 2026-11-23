@@ -2,6 +2,7 @@ package epoch
 
 import (
 	"errors"
+
 	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 )
 

@@ -3,6 +3,7 @@ package token
 import (
 	"crypto/rsa"
 	"errors"
+
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 )
 

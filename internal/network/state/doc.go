@@ -29,7 +29,7 @@
 // public binding facts grant no RuntimeView, producer or Installation right;
 // original reader and descriptor joins precede returning its existing leases.
 //
-// Navigation: one aggregate (networkState) owns every cluster below; each
+// Navigation: one aggregate (State) owns every cluster below; each
 // cluster is a method or adapter family sharing its lock, commit boundary and
 // joined retirement. The durable subpackage owns the physical State root.
 // Test naming follows docs/development/repository-layout.md; a test listed

@@ -6,9 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/theupdateframework/go-tuf/v2/metadata"
 	"path/filepath"
 	"testing"
+
+	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
 func TestTwoFreshTargetsShareMetadataAndRejectSubstitutedGeneration(t *testing.T) {

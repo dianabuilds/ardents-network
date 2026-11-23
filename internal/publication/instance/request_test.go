@@ -7,9 +7,10 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/publication"
 	"reflect"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 
 // External Authority issuance is fixture input, not a maintained signing API.

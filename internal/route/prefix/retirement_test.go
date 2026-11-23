@@ -3,13 +3,14 @@ package prefix
 import (
 	"context"
 	"errors"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 // Idle tests exercise physical lifetime only, with real pipe reader/close

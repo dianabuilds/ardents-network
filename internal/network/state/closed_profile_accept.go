@@ -32,11 +32,11 @@ type ProfileReceipt struct {
 // AcceptClosedProfile verifies and durably accepts the sole profile for the
 // current closed Route Epoch. A second valid digest becomes durable conflict;
 // callers never select a winner by arrival order.
-func (s *networkState) AcceptClosedProfile(raw []byte) (ProfileReceipt, error) {
+func (s *State) AcceptClosedProfile(raw []byte) (ProfileReceipt, error) {
 	return s.acceptClosedProfileWithCommit(raw, s.storage.CommitClosedProfile)
 }
 
-func (s *networkState) acceptClosedProfileWithCommit(raw []byte, commit func(durable.ClosedProfileState, []byte) error) (ProfileReceipt, error) {
+func (s *State) acceptClosedProfileWithCommit(raw []byte, commit func(durable.ClosedProfileState, []byte) error) (ProfileReceipt, error) {
 	if s.config.permitWork != nil {
 		if err := s.config.permitWork(); err != nil {
 			return ProfileReceipt{}, err
@@ -100,7 +100,7 @@ func (s *networkState) acceptClosedProfileWithCommit(raw []byte, commit func(dur
 
 // verifyClosedProfileLocked supplies the exact current authenticated Epoch
 // context; the grammar verifier itself has no State acceptance authority.
-func (s *networkState) verifyClosedProfileLocked(raw []byte, generation [32]byte, now time.Time) (closedprofile.Profile, error) {
+func (s *State) verifyClosedProfileLocked(raw []byte, generation [32]byte, now time.Time) (closedprofile.Profile, error) {
 	context := closedprofile.Context{
 		StateGeneration: generation, NetworkID: s.current.Snapshot.NetworkID,
 		EpochDigest: s.current.Snapshot.Digest, Epoch: s.current.Snapshot.Epoch,

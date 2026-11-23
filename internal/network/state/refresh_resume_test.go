@@ -66,7 +66,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer storage.Close()
-			resumed := &networkState{config: initial.config, current: &decision, storage: storage, workContext: context.Background()}
+			resumed := &State{config: initial.config, current: &decision, storage: storage, workContext: context.Background()}
 			if err := resumed.loadDistributionState(); err != nil {
 				t.Fatal(err)
 			}
@@ -117,7 +117,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			if want == 0 {
 				want = sourceOutcomeInterrupted
 			}
-			check := func(s *networkState) {
+			check := func(s *State) {
 				t.Helper()
 				d := s.distribution
 				if d.outcomes[digestSlot] != want {
@@ -158,7 +158,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer storage.Close()
-			reopened := &networkState{config: resumed.config, current: &decision, storage: storage, workContext: context.Background()}
+			reopened := &State{config: resumed.config, current: &decision, storage: storage, workContext: context.Background()}
 			if err := reopened.loadDistributionState(); err != nil {
 				t.Fatal(err)
 			}

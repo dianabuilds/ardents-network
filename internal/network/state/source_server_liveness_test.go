@@ -23,13 +23,13 @@ func TestSourceResolverRefusesTerminalOwnerFailure(t *testing.T) {
 
 	for _, test := range []struct {
 		name string
-		fail func(*networkState)
+		fail func(*State)
 	}{
-		{name: "automatic refresh", fail: func(s *networkState) { s.automaticErr = errors.New("automatic refresh failed") }},
-		{name: "external work refusal", fail: func(s *networkState) { s.config.permitWork = func() error { return errors.New("work unavailable") } }},
+		{name: "automatic refresh", fail: func(s *State) { s.automaticErr = errors.New("automatic refresh failed") }},
+		{name: "external work refusal", fail: func(s *State) { s.config.permitWork = func() error { return errors.New("work unavailable") } }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			s := &networkState{config: config{networkID: networkID}, current: &decision}
+			s := &State{config: config{networkID: networkID}, current: &decision}
 			before := s.resolveDistributionRequest(context.Background(), request)
 			if before.Status != "ok" || before.ObjectDigest != decision.Header.Digest || len(before.Payload) == 0 {
 				t.Fatalf("healthy Source response: status=%q digest=%x payload=%d", before.Status, before.ObjectDigest, len(before.Payload))

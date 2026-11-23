@@ -22,7 +22,7 @@ import (
 // These are domain-admission and durable-commit tests over real signed State
 // and participation. They do not manufacture a successful native death proof;
 // the Linux public adapter separately requires the actual original manager.
-func sourceRepairFixture(t *testing.T) *networkState {
+func sourceRepairFixture(t *testing.T) *State {
 	t.Helper()
 	s, _ := newControlCommitFixture(t, true)
 	public, err := hex.DecodeString("c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631")

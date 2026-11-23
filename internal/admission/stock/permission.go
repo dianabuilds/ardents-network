@@ -31,27 +31,27 @@ type permission struct {
 // BootstrapAllowance is the number of fresh bootstrap batches left for this
 // permission. Exact retry does not consume another batch; retirement and failed
 // transport do not refund the allocation.
-func (permission *permission) BootstrapAllowance() uint8 {
-	if permission == nil || permission.batches >= 2 {
+func (perm *permission) BootstrapAllowance() uint8 {
+	if perm == nil || perm.batches >= 2 {
 		return 0
 	}
-	return 2 - permission.batches
+	return 2 - perm.batches
 }
 
 // HasAccepted inspects retained state under the Owner lock.
-func (permission *permission) HasAccepted() bool {
-	return permission != nil && permission.accepted != (admission.Permission{})
+func (perm *permission) HasAccepted() bool {
+	return perm != nil && perm.accepted != (admission.Permission{})
 }
 
-func (permission *permission) HasPending() bool {
-	return permission != nil && permission.pending != nil
+func (perm *permission) HasPending() bool {
+	return perm != nil && perm.pending != nil
 }
 
 // CurrentFor binds retained permission to freshly supplied authority facts.
-func (permission *permission) CurrentFor(profile admission.AuthorityFacts, now time.Time) bool {
-	return permission != nil && permission.profile == profile &&
-		permission.accepted.Signature != [64]byte{} &&
-		!now.Before(permission.accepted.NotBefore) && now.Before(permission.accepted.NotAfter)
+func (perm *permission) CurrentFor(profile admission.AuthorityFacts, now time.Time) bool {
+	return perm != nil && perm.profile == profile &&
+		perm.accepted.Signature != [64]byte{} &&
+		!now.Before(perm.accepted.NotBefore) && now.Before(perm.accepted.NotAfter)
 }
 
 // requestScope is the exact current authority and allocation
@@ -80,15 +80,15 @@ func newRequestScope(profile admission.AuthorityFacts, now time.Time,
 // retainedRequest returns an exact same-hour request without exposing its
 // retained public backing bytes. An expired owner leaves the caller free to
 // retire it before creating a fresh holder.
-func (permission *permission) retainedRequest(scope requestScope) ([]byte, [32]byte, bool, error) {
-	if !scope.window.Before(permission.request.Permission.NotAfter) {
+func (perm *permission) retainedRequest(scope requestScope) ([]byte, [32]byte, bool, error) {
+	if !scope.window.Before(perm.request.Permission.NotAfter) {
 		return nil, [32]byte{}, false, nil
 	}
-	if permission.profile != scope.profile || permission.request.Permission.NotBefore != scope.window ||
-		permission.request.Permission.Maxima != scope.maxima {
+	if perm.profile != scope.profile || perm.request.Permission.NotBefore != scope.window ||
+		perm.request.Permission.Maxima != scope.maxima {
 		return nil, [32]byte{}, true, errors.New("admission permission request cannot be replaced in its hour")
 	}
-	return bytes.Clone(permission.public), permission.digest, true, nil
+	return bytes.Clone(perm.public), perm.digest, true, nil
 }
 
 func preparePermission(scope requestScope) (*permission, []byte, [32]byte, error) {
@@ -110,21 +110,21 @@ func preparePermission(scope requestScope) (*permission, []byte, [32]byte, error
 
 // acceptResponse verifies the signed response against this owner's exact
 // retained request and only then changes its accepted permission.
-func (pending *permission) acceptResponse(profile admission.AuthorityFacts, now time.Time,
+func (perm *permission) acceptResponse(profile admission.AuthorityFacts, now time.Time,
 	digest [32]byte, permission admission.Permission) error {
-	if pending == nil || digest == [32]byte{} || pending.digest != digest || pending.profile != profile {
+	if perm == nil || digest == [32]byte{} || perm.digest != digest || perm.profile != profile {
 		return errors.New("admission permission response has no matching live request")
 	}
-	expected := pending.request.Permission
+	expected := perm.request.Permission
 	expected.Signature = permission.Signature
 	if permission != expected || admission.VerifyPermission(permission, profile.IssuanceAuthorityKey[:],
 		profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, now) != nil {
 		return errors.New("admission permission response does not match its approved request")
 	}
-	if pending.accepted != (admission.Permission{}) && pending.accepted != permission {
+	if perm.accepted != (admission.Permission{}) && perm.accepted != permission {
 		return errors.New("admission permission response conflicts")
 	}
-	pending.accepted = permission
+	perm.accepted = permission
 	return nil
 }
 

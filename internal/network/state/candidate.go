@@ -8,7 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
-func (s *networkState) verifySourceBundle(bundle source.Bundle, current *epoch2.Decision) (epoch2.Decision, error) {
+func (s *State) verifySourceBundle(bundle source.Bundle, current *epoch2.Decision) (epoch2.Decision, error) {
 	if len(bundle.Materials) != 1 {
 		return epoch2.Decision{}, errors.New("source withheld the requested materialization index")
 	}

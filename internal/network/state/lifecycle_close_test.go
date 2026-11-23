@@ -26,7 +26,7 @@ func TestCloseRetainsTerminalAndSourceReleaseFailures(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			state := &networkState{storage: storage, serverErr: test.serverErr, automaticErr: test.automaticErr, terminalErr: test.terminalErr}
+			state := &State{storage: storage, serverErr: test.serverErr, automaticErr: test.automaticErr, terminalErr: test.terminalErr}
 			state.config.sourceInfo.Serving = true
 			state.config.localRoles = filepath.Join(t.TempDir(), "absent-local-role-root")
 			state.config.clock = time.Now
@@ -66,7 +66,7 @@ func TestCloseTreatsSourceCancellationAsExpected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := &networkState{storage: storage, serverErr: context.Canceled}
+	state := &State{storage: storage, serverErr: context.Canceled}
 	if err := state.Close(); err != nil {
 		t.Fatalf("Close() = %v, want nil for expected Source cancellation", err)
 	}
@@ -79,7 +79,7 @@ func TestConcurrentCloseWaitsForCleanupAndRetainsFailure(t *testing.T) {
 	}
 	terminalErr := errors.New("source server failed")
 	canceled := make(chan struct{})
-	state := &networkState{
+	state := &State{
 		storage:    storage,
 		serverErr:  terminalErr,
 		workCancel: func() { close(canceled) },
@@ -124,7 +124,7 @@ func TestCloseDoesNotTurnScheduledRefreshIntoTerminalFailure(t *testing.T) {
 	defer cancel()
 	ticks := make(chan time.Time)
 	joined := make(chan struct{})
-	owner := &networkState{storage: storage}
+	owner := &State{storage: storage}
 	owner.work.Add(1)
 	go func() {
 		defer close(joined)

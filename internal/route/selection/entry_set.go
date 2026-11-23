@@ -3,10 +3,11 @@ package selection
 import (
 	"crypto/rand"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/route"
 	"math/big"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
 // ClosedSetMember is a public State binding, not a transport or admission.

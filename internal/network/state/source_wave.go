@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
-func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error) {
+func (s *State) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	seed := s.config.sourceInfo.OrderSeed
 	if !s.distribution.cycleActive && seed == [32]byte{} {
 		if _, err := rand.Read(seed[:]); err != nil {
@@ -35,11 +35,11 @@ func (s *networkState) startSourceWave(now time.Time) ([2]int, time.Time, error)
 	}
 	return order, deadline, nil
 }
-func (s *networkState) completeSourceWave(started time.Time, base *epoch.Decision, results []sourceResult) (Snapshot, error) {
+func (s *State) completeSourceWave(started time.Time, base *epoch.Decision, results []sourceResult) (Snapshot, error) {
 	return s.completeSourceWaveWithConflictCommit(started, base, results, s.storage.CommitControl)
 }
 
-func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, base *epoch.Decision, results []sourceResult, commit func(string, []byte) error) (snapshot Snapshot, resultErr error) {
+func (s *State) completeSourceWaveWithConflictCommit(started time.Time, base *epoch.Decision, results []sourceResult, commit func(string, []byte) error) (snapshot Snapshot, resultErr error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() {
@@ -91,7 +91,7 @@ func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, b
 	return s.publishSelectedEpoch(selection, now, selected, summary)
 }
 
-func (s *networkState) recordSourceConflictWithControl(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte, commit func(string, []byte) error) error {
+func (s *State) recordSourceConflictWithControl(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte, commit func(string, []byte) error) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
@@ -108,7 +108,7 @@ func sameGeneration(current, base *epoch.Decision) bool {
 	return current.Snapshot.Generation == base.Snapshot.Generation && current.Snapshot.Digest == base.Snapshot.Digest
 }
 
-func (s *networkState) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
+func (s *State) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
@@ -151,7 +151,7 @@ func summarizeSourceWave(state distributionState, results []sourceResult) source
 	return summary
 }
 
-func (s *networkState) commitDeferredSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *State) commitDeferredSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	if selected == nil {
 		// Preserve the historical zero-value ValidFrom bound.
 		selected = &epoch.Decision{}
@@ -171,7 +171,7 @@ func (s *networkState) commitDeferredSourceWave(now time.Time, selected *epoch.D
 
 }
 
-func (s *networkState) commitPendingSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *State) commitPendingSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
@@ -183,7 +183,7 @@ func (s *networkState) commitPendingSourceWave(now time.Time, selected *epoch.De
 	return s.snapshotWithDistribution(now), nil
 }
 
-func (s *networkState) commitActiveSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *State) commitActiveSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	if selected == nil {
 		// Preserve the historical zero-value floor and digest comparison.
 		selected = &epoch.Decision{}

@@ -20,7 +20,7 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 	pending.Header.ValidUntil = beforeExpiry.Add(time.Second)
 	predecessor := completionEpoch(1, 1, beforeExpiry)
 	current := &predecessor
-	opened := &networkState{config: config{root: root, localRoles: root + "-roles",
+	opened := &State{config: config{root: root, localRoles: root + "-roles",
 		clock: func() time.Time { return beforeExpiry }, observe: func() time.Time { return beforeExpiry },
 		anchorWall: beforeExpiry, anchorMono: time.Now().Add(-1100 * time.Millisecond)}, storage: storage, current: current,
 		pendingDecision: &pending}
@@ -46,7 +46,7 @@ func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testin
 	defer storage.Close()
 	started := time.Unix(1_800_000_000, 0).UTC()
 	predecessor := completionEpoch(1, 1, started)
-	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
+	opened := &State{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
 		storage: storage, current: &predecessor}
 	opened.distribution.epochFloor = opened.current.Snapshot.Epoch
 	opened.distribution.epochDigest = opened.current.Snapshot.Digest
@@ -75,7 +75,7 @@ func TestCompleteSourceWaveRecordsPendingConflictBeforeCompletionClockFailure(t 
 	pending := completionEpoch(2, 2, started)
 	competing := completionEpoch(2, 3, started)
 	predecessor := completionEpoch(1, 1, started)
-	opened := &networkState{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
+	opened := &State{config: config{root: root, clock: func() time.Time { return started }, observe: func() time.Time { return time.Time{} }},
 		storage: storage, current: &predecessor, pendingDecision: &pending}
 	opened.distribution.epochFloor = opened.current.Snapshot.Epoch
 	opened.distribution.epochDigest = opened.current.Snapshot.Digest

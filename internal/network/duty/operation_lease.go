@@ -14,7 +14,7 @@ const operationLeaseWait = time.Second
 // only. An incomplete initial root claim still fails before waiting; this does
 // not adopt a competing initializer. Long-lived owners use Open and continue
 // to refuse duplicate ownership.
-func OpenOperation(ctx context.Context, input Config) (*store, error) {
+func OpenOperation(ctx context.Context, input Config) (*Store, error) {
 	if ctx == nil {
 		return nil, errors.New("local role operation context is absent")
 	}

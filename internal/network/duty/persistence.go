@@ -107,7 +107,7 @@ func loadWatermark(root string) (uint64, string, bool, error) {
 	return durablefile.LoadWatermark(root, readBounded, "local role watermark is invalid")
 }
 
-func (store *store) commit(next durableState) error {
+func (store *Store) commit(next durableState) error {
 	next.Version = durableStateVersion
 	next.Generation = store.state.Generation + 1
 	next.Previous = store.current

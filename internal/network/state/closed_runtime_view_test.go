@@ -2,9 +2,10 @@ package state
 
 import (
 	"errors"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"testing"
 	"time"
+
+	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
 )

@@ -22,7 +22,7 @@ var errStateClosed = errors.New("network state is closed")
 var errSourceObjectMismatch = errors.New("source response object identity mismatch")
 
 // Refresh waits for the complete two-source wave and accepts its highest valid state.
-func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
+func (s *State) Refresh(ctx context.Context) (Snapshot, error) {
 	if s.config.permitWork != nil {
 		if err := s.config.permitWork(); err != nil {
 			return Snapshot{}, err
@@ -102,7 +102,7 @@ func (s *networkState) Refresh(ctx context.Context) (Snapshot, error) {
 	return s.completeSourceWave(now, current, observed)
 }
 
-func (s *networkState) fetchAndVerify(ctx context.Context, index int, current *epoch.Decision) sourceResult {
+func (s *State) fetchAndVerify(ctx context.Context, index int, current *epoch.Decision) sourceResult {
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source2.Message{
@@ -162,7 +162,7 @@ func failedSourceResult(index, outcomeIndex int, observations [4]byte, err error
 	return sourceResult{index: index, slot: outcomeIndex, observations: observations, err: err}
 }
 
-func (s *networkState) fetchSource(ctx context.Context, index int, request source2.Message) (source2.Message, error) {
+func (s *State) fetchSource(ctx context.Context, index int, request source2.Message) (source2.Message, error) {
 	response, err := s.config.fetchSourceOperation(ctx, index, request)
 	if err != nil {
 		return response, err
@@ -173,7 +173,7 @@ func (s *networkState) fetchSource(ctx context.Context, index int, request sourc
 	return response, nil
 }
 
-func (s *networkState) finishRefresh() error {
+func (s *State) finishRefresh() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	defer func() { s.refreshing = false }()

@@ -5,6 +5,6 @@ import (
 )
 
 // OpenWithAutomaticTicksForTest opens State with test-owned automatic ticks.
-func OpenWithAutomaticTicksForTest(input Config, ticks <-chan time.Time, results chan<- error) (*networkState, error) {
+func OpenWithAutomaticTicksForTest(input Config, ticks <-chan time.Time, results chan<- error) (*State, error) {
 	return open(input, ticks, results)
 }

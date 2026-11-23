@@ -3,8 +3,9 @@ package release
 import (
 	"errors"
 	"fmt"
-	"github.com/theupdateframework/go-tuf/v2/metadata"
 	"time"
+
+	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
 type protocolState struct {

@@ -52,7 +52,7 @@ type distributionState struct {
 	sourceOrder         [2]byte
 }
 
-func (s *networkState) loadDistributionState() error {
+func (s *State) loadDistributionState() error {
 	name, raw, err := s.storage.LoadControl()
 	if err != nil {
 		return fmt.Errorf("load distribution security state: %w", err)
@@ -80,7 +80,7 @@ func (s *networkState) loadDistributionState() error {
 	return s.recoverPendingState()
 }
 
-func (s *networkState) recoverDistributionActive(state distributionState) error {
+func (s *State) recoverDistributionActive(state distributionState) error {
 	name := fmt.Sprintf("%x", state.epochDigest)
 	decision, err := loadStoredChain(s.config, s.storage, name)
 	if err != nil {
@@ -100,11 +100,11 @@ func (s *networkState) recoverDistributionActive(state distributionState) error 
 	return nil
 }
 
-func (s *networkState) commitDistribution(state distributionState) error {
+func (s *State) commitDistribution(state distributionState) error {
 	return s.commitDistributionWithControl(state, s.storage.CommitControl)
 }
 
-func (s *networkState) commitDistributionWithControl(state distributionState, commit func(string, []byte) error) error {
+func (s *State) commitDistributionWithControl(state distributionState, commit func(string, []byte) error) error {
 	if s.closed {
 		return errors.New("network state is closed")
 	}
@@ -131,7 +131,7 @@ func (s *networkState) commitDistributionWithControl(state distributionState, co
 
 // retireStateLocked makes an unsafe publication or lost role guard terminal.
 // Runtime callers hold s.mu; Open may call this before publishing the owner.
-func (s *networkState) retireStateLocked() {
+func (s *State) retireStateLocked() {
 	s.closed = true
 	s.invalidateRuntime()
 	if s.workCancel != nil {

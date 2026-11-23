@@ -74,11 +74,11 @@ func Open(ctx context.Context, root string, b Binding) (Store, error) {
 }
 
 // Inventory returns a defensive public copy while this owner remains open.
-func (s Store) Inventory() (Inventory, error) {
-	if s.state == nil {
+func (store Store) Inventory() (Inventory, error) {
+	if store.state == nil {
 		return Inventory{}, ErrClosed
 	}
-	v := s.state
+	v := store.state
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if v.closed {
@@ -91,11 +91,11 @@ func (s Store) Inventory() (Inventory, error) {
 }
 
 // Close releases the shared lease once and retains the result on every copy.
-func (s Store) Close() error {
-	if s.state == nil {
+func (store Store) Close() error {
+	if store.state == nil {
 		return ErrClosed
 	}
-	v := s.state
+	v := store.state
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if !v.closed {
@@ -107,11 +107,11 @@ func (s Store) Close() error {
 
 // Check validates original material and lease before dependent effects. A
 // detected loss is terminal for every copy, even if the path is restored.
-func (s Store) Check() error {
-	if s.state == nil {
+func (store Store) Check() error {
+	if store.state == nil {
 		return ErrClosed
 	}
-	v := s.state
+	v := store.state
 	v.mu.Lock()
 	defer v.mu.Unlock()
 	if v.closed {

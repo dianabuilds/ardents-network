@@ -28,7 +28,7 @@ type NodeParticipation struct {
 // RetainNode owns classification and validity of the local exclusion. Node
 // reports its phase; it cannot choose an ordinary-Initiator exemption or turn
 // its assignment into a Direct Source exposure record.
-func (store *store) RetainNode(producer [32]byte, participation NodeParticipation, phase NodePhase) error {
+func (store *Store) RetainNode(producer [32]byte, participation NodeParticipation, phase NodePhase) error {
 	restriction, err := nodeParticipationRestriction(participation, phase)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (store *store) RetainNode(producer [32]byte, participation NodeParticipatio
 // Network-owned projections agree (including Forwarding). A different original
 // lifetime projection replaces exactly one record, never a second fence or an
 // intermediate time-held live record while physical users remain.
-func (store *store) retainOriginalNode(producer [32]byte, participation NodeParticipation, phase NodePhase) error {
+func (store *Store) retainOriginalNode(producer [32]byte, participation NodeParticipation, phase NodePhase) error {
 	original, err := originalNodeRestriction(participation, phase)
 	if err != nil {
 		return err

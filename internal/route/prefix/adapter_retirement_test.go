@@ -2,11 +2,12 @@ package prefix_test
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"io"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 func TestPhysicalCloseInterruptsAndJoinsReader(t *testing.T) {
