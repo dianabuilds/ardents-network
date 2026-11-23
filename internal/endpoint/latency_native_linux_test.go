@@ -42,7 +42,7 @@ import (
 //   - COLD: each attempt provisions a FRESH hour-scoped permission (external
 //     approval), a fresh Stock holder and fresh Entry/Interior/Hosting roots, so
 //     the read has no retained token stock, prepared prefix or destination cache
-//     and must consume the cold Source bootstrap allowance (funding/source_linux.go
+//     and must consume the cold Source bootstrap allowance (funding/source.go
 //     requires BootstrapRemaining==2; the two bootstrap batches exhaust it).
 //   - WARM: one retained holder/permission/selection context; a priming read
 //     funds the stock, then each measured read is a new Connection 1-30 s after
@@ -512,7 +512,7 @@ func (p *latencyParticipant) coldLoop(ctx context.Context, t *testing.T, link st
 // retained token stock, and FRESH Entry/Interior selection and Hosting roots, so
 // the read has no private destination cache, token stock or prepared prefix and
 // must consume the cold Source bootstrap allowance. This is the code-derived
-// cold boundary: funding/source_linux.go requires BootstrapRemaining==2, which
+// cold boundary: funding/source.go requires BootstrapRemaining==2, which
 // only a never-bootstrapped permission satisfies. The durable Network authority
 // and the warm context's floors are untouched; each cold attempt is an
 // independent fresh context (its own journal and provider period), not a reset
