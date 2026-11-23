@@ -58,7 +58,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	if len(args) != 3 && len(args) != 4 {
 		return write()
 	}
-	if args[1] != "--config" || (args[0] != "initialize" && args[0] != "observe" && args[0] != "hold") {
+	if args[1] != "--config" || (args[0] != "initialize" && args[0] != "observe") {
 		return write()
 	}
 	r.Operation = "hosting." + args[0]
@@ -92,7 +92,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	o, telemetryErr := newObservation(endpoint)
 	finish := o.begin("ardents.hosting", r.Operation)
 	r.Phase = "execute"
-	err = executeHosting(ctx, args[0], p, &r, diagnostic)
+	err = executeHosting(ctx, args[0], p, &r)
 	r.Outcome = hostingOutcome(err)
 	finish(r.Phase, r.Outcome)
 	ok := o.close()
@@ -107,7 +107,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	return write()
 }
 
-func executeHosting(ctx context.Context, operation string, p hostingPlan, r *hostingResult, diagnostic io.Writer) (err error) {
+func executeHosting(ctx context.Context, operation string, p hostingPlan, r *hostingResult) (err error) {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
@@ -124,50 +124,10 @@ func executeHosting(ctx context.Context, operation string, p hostingPlan, r *hos
 			err = errors.Join(hosting.ErrUncertain, err, closeErr)
 		}
 	}()
-	if operation == "observe" {
-		view, e := b.Sample(ctx, time.Second)
-		if e == nil {
-			observation, at, until := view.Observation(), view.ObservedAt(), view.ValidUntil()
-			r.Observation, r.ObservedAt, r.ValidUntil = &observation, &at, &until
-		}
-		return e
+	view, err := b.Sample(ctx, time.Second)
+	if err == nil {
+		observation, at, until := view.Observation(), view.ObservedAt(), view.ValidUntil()
+		r.Observation, r.ObservedAt, r.ValidUntil = &observation, &at, &until
 	}
-	interval := time.Duration(p.HoldMS) * time.Millisecond
-	holdUntil := time.Now().Add(interval)
-	reservation, err := b.Reserve(ctx, hosting.ReservationRequest{Work: p.Work, Termination: p.Termination, WorkUntil: holdUntil, HoldUntil: holdUntil.Add(5 * time.Second)})
-	if err != nil {
-		return err
-	}
-	r.Phase = "hold"
-	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome string }{r.Operation, "hold", "reserved"})
-	defer func() {
-		cleanup, stop := context.WithTimeout(context.Background(), 5*time.Second)
-		defer stop()
-		if e := reservation.Release(cleanup); e != nil {
-			r.Phase = "release"
-			err = errors.Join(hosting.ErrUncertain, err, e)
-		}
-	}()
-	// Waiting for the durable reservation cannot extend its original window.
-	timer := time.NewTimer(time.Until(holdUntil))
-	defer timer.Stop()
-	tick := time.NewTicker(time.Second)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timer.C:
-			r.Phase = "release"
-			return nil
-		case <-tick.C:
-			view, e := b.Observe(ctx)
-			if e != nil {
-				return e
-			}
-			if view.Drain {
-				return hosting.ErrCapacity
-			}
-		}
-	}
+	return err
 }
