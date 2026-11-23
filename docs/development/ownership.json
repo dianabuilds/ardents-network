@@ -74,10 +74,10 @@
         "internal/application/connection/",
         "internal/application/document/",
         "packaging/document-worker/",
-        "tests/qualification/text-worker-policy/"
+        "tests/qualification/document-worker-policy/"
       ],
       "exclude_paths": [
-        "tests/profiles/text-worker-commands.txt"
+        "tests/profiles/document-worker-commands.txt"
       ]
     },
     {
@@ -93,10 +93,10 @@
       "include_prefixes": [
         "internal/application/document/",
         "packaging/document-worker/",
-        "tests/qualification/text-worker-policy/"
+        "tests/qualification/document-worker-policy/"
       ],
       "include_paths": [
-        "tests/profiles/text-worker-commands.txt"
+        "tests/profiles/document-worker-commands.txt"
       ]
     }
   ],
@@ -120,7 +120,7 @@
       "path_prefix": "packaging/stream-qualification-worker/",
       "race": true,
       "owners": [
-        {"package": "tests/qualification/text-worker-lifecycle/stream-worker", "test_pattern": "^Test"},
+        {"package": "tests/qualification/worker-lifecycle/stream-worker", "test_pattern": "^Test"},
         {"package": "internal/application/streamqualification", "test_pattern": "^Test"}
       ]
     }
@@ -159,17 +159,17 @@
     {
       "id": "text-worker-network",
       "owner": "network",
-      "path": "tests/qualification/text-worker-network"
+      "path": "tests/qualification/document-worker-network"
     },
     {
       "id": "text-worker-lifecycle",
       "owner": "network",
-      "path": "tests/qualification/text-worker-lifecycle"
+      "path": "tests/qualification/worker-lifecycle"
     },
     {
       "id": "text-worker-policy",
       "owner": "text-application",
-      "path": "tests/qualification/text-worker-policy"
+      "path": "tests/qualification/document-worker-policy"
     },
     {
       "id": "service-credential-response-linux",
@@ -187,7 +187,7 @@
     {
       "id": "text-worker",
       "owner": "text-application",
-      "commands": "tests/profiles/text-worker-commands.txt",
+      "commands": "tests/profiles/document-worker-commands.txt",
       "packaging": "packaging/document-worker"
     }
   ]
