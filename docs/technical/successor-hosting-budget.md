@@ -64,7 +64,9 @@ The command exposes `hosting initialize --config PATH` and
 collector URL. Configuration is a bounded regular file of at most 16 KiB with
 exact fields and no duplicates. Initialization takes the root and policy.
 Observation takes the root. Roots are canonical absolute paths.
-An unsupported platform refuses before reading config or touching storage.
+An unsupported platform refuses before reading config or touching storage. The
+reservation lifecycle is compiled with the Linux owner that measures and
+commits the native provider-period budget.
 
 Observe returns local used/reserved/remaining byte counts and protect/drain.
 The command uses Sample and includes observed_at and valid_until. A snapshot
