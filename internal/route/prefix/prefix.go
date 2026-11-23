@@ -554,8 +554,7 @@ func (p *Prefix) Close() error {
 // OpeningRetirement extracts only the physical retirement of a failed opening.
 // Ordinary setup refusal with clean retirement grants no terminal failure.
 func OpeningRetirement(err error) error {
-	var failed *prefixOpeningFailure
-	if errors.As(err, &failed) {
+	if failed, ok := errors.AsType[*prefixOpeningFailure](err); ok {
 		return failed.retirement
 	}
 	return nil

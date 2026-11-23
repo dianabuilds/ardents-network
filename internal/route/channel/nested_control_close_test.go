@@ -71,7 +71,7 @@ func nestedTLSControlClose(t *testing.T, failure string) {
 	physical.armed.Store(true)
 	body := make([]byte, 4)
 	binary.BigEndian.PutUint32(body, 1)
-	kind := uint8(ardp.KindCredit)
+	kind := ardp.KindCredit
 	if failure == "payload" {
 		kind = ardp.KindBytes
 	}

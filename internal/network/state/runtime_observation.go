@@ -10,7 +10,10 @@ import networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 // at its operation's admission points, outside every State lock.
 func (s *networkState) CurrentRuntime() (networkdomain.RuntimeView, error) {
 	witness, err := s.CurrentRuntimeWitness()
-	return witness.View(), err
+	if err != nil {
+		return networkdomain.RuntimeView{}, err
+	}
+	return witness.View(), nil
 }
 
 // CurrentRuntimeWitness performs the same complete observation and additionally

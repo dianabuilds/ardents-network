@@ -74,7 +74,7 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 					return readErr
 				}
 				before := stream.recordProgressLocked()
-				if err := stream.acceptRecordLocked(records, record); err != nil {
+				if err := stream.acceptRecordLocked(record); err != nil {
 					if errors.Is(err, errBackpressure) {
 						changed = stream.changeLocked()
 						return nil
@@ -126,7 +126,7 @@ func (stream *Stream) failRecord(records *attachmentRecords, cause error) {
 	stream.failLocked(cause)
 }
 
-func (stream *Stream) acceptRecordLocked(records *attachmentRecords, record wire.Record) error {
+func (stream *Stream) acceptRecordLocked(record wire.Record) error {
 	switch {
 	case record.Data != nil:
 		if stream.settled {

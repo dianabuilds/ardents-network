@@ -3,6 +3,7 @@ package enrollment
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -68,8 +69,8 @@ func TestPackagingConsumersPreserveArtifactAndProtectedInventory(t *testing.T) {
 				t.Fatalf("packaging acceptance %s: %v", failure, err)
 			}
 			if failure != "none" {
-				code, ok := err.(*exec.ExitError)
-				if !ok || code.ExitCode() != 2 {
+				var code *exec.ExitError
+				if !errors.As(err, &code) || code.ExitCode() != 2 {
 					t.Fatalf("packaging refusal exit changed: %v", err)
 				}
 			}

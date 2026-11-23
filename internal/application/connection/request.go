@@ -7,11 +7,8 @@ import (
 )
 
 const (
-	// InterfaceVersion identifies the local protocol family, not a network
-	// protocol or an authority.
-	InterfaceVersion = "ardents-application-interface-v2"
-	magic            = "AAI3"
-	maximumTarget    = 512
+	magic         = "AAI3"
+	maximumTarget = 512
 )
 
 // DestinationTag identifies the only selected destination form. Name is

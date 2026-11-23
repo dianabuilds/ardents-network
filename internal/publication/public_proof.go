@@ -59,7 +59,7 @@ func verify(record []byte, target, network [32]byte, at time.Time, required uint
 		return Proof{}, err
 	}
 	commitment := sha256.Sum256(record[:len(record)-ed25519.SignatureSize])
-	if !ed25519.Verify(ed25519.PublicKey(value.Instance[:]), commitment[:], record[len(record)-ed25519.SignatureSize:]) {
+	if !ed25519.Verify(value.Instance[:], commitment[:], record[len(record)-ed25519.SignatureSize:]) {
 		return Proof{}, errors.New("publication Instance proof invalid")
 	}
 	return Proof{delegation: value, digest: sha256.Sum256(record)}, nil

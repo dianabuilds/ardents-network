@@ -276,7 +276,7 @@ func finishDescriptorResponse(conn net.Conn, lower io.Reader, borrowed []byte, s
 	return payload, nil
 }
 
-// Every operation uses the SAME acquired physical owner, never a later one.
+// LookupDescriptor uses the same acquired physical owner, never a later one.
 func (h *SourceHandle) LookupDescriptor(ctx context.Context, end time.Time, target [32]byte, history *reachability.History, excluded []route.Member) (reachability.Descriptor, error) {
 	if err := h.Check(); err != nil {
 		return reachability.Descriptor{}, err

@@ -18,7 +18,7 @@ func TestSendRecoveryImmediatelyReplaysRetainedSuffix(t *testing.T) {
 	}
 	input[0] = 'X'
 	first, err := ledger.beginWrite()
-	if err != nil || string(first.record.Payload) != "request" {
+	if err != nil || first == nil || string(first.record.Payload) != "request" {
 		t.Fatal("accepted bytes were not owned")
 	}
 	if err := ledger.acknowledge(1, 3); err != nil {
@@ -33,7 +33,7 @@ func TestSendRecoveryImmediatelyReplaysRetainedSuffix(t *testing.T) {
 	}
 	// No new Application input/EOF triggers this replay.
 	replay, err := ledger.beginWrite()
-	if err != nil || replay.record.Offset != 3 || replay.record.AttachmentGeneration != 2 || string(replay.record.Payload) != "uest" {
+	if err != nil || replay == nil || replay.record.Offset != 3 || replay.record.AttachmentGeneration != 2 || string(replay.record.Payload) != "uest" {
 		t.Fatal("immediate ordered suffix replay differs")
 	}
 	if current, err := ledger.finishWrite(replay, nil); !current || err != nil {
@@ -43,7 +43,7 @@ func TestSendRecoveryImmediatelyReplaysRetainedSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 	next, err := ledger.beginWrite()
-	if err != nil || next.record.Offset != 7 || string(next.record.Payload) != "ok" {
+	if err != nil || next == nil || next.record.Offset != 7 || string(next.record.Payload) != "ok" {
 		t.Fatal("later bytes overtook replay")
 	}
 	if err := ledger.accept([]byte("!")); !errors.Is(err, errIntegrity) {
@@ -231,7 +231,7 @@ func TestSendReplacementCannotAcknowledgeUnreplayedOldExposure(t *testing.T) {
 		t.Fatal("exact Continuity-committed ACK refused")
 	}
 	replay, err := ledger.beginWrite()
-	if err != nil || replay.record.Offset != 100 || len(replay.record.Payload) != 16384 {
+	if err != nil || replay == nil || replay.record.Offset != 100 || len(replay.record.Payload) != 16384 {
 		t.Fatal("replacement did not immediately expose first ordered suffix")
 	}
 	if err := ledger.acknowledge(2, 20000); !errors.Is(err, errIntegrity) {
@@ -258,8 +258,8 @@ func TestSendHeadCursorCompactionPreservesReplay(t *testing.T) {
 			t.Fatal(err)
 		}
 		ticket, err := ledger.beginWrite()
-		if err != nil {
-			t.Fatal(err)
+		if err != nil || ticket == nil {
+			t.Fatal("writer unavailable", err)
 		}
 		if !bytes.Equal(ticket.record.Payload, payload) {
 			t.Fatal("exposed payload differs")
@@ -285,7 +285,7 @@ func TestSendHeadCursorCompactionPreservesReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	ticket, err := ledger.beginWrite()
-	if err != nil || !bytes.Equal(ticket.record.Payload, suffix) {
+	if err != nil || ticket == nil || !bytes.Equal(ticket.record.Payload, suffix) {
 		t.Fatal("post-compaction replay differs")
 	}
 }

@@ -15,7 +15,7 @@ type Value struct {
 
 type Properties map[string]Value
 
-// Preserve signatures, integer precision and absence. Duplicate fields cannot
+// Decode preserves signatures, integer precision and absence. Duplicate fields cannot
 // replace an earlier required observation, even inside a variant dictionary.
 func Decode(raw []byte, target any) error {
 	if len(raw) == 0 || len(raw) > 64<<10 || !utf8.Valid(raw) {

@@ -114,9 +114,7 @@ func TestSourceScopeCloseConcurrentObserversAndResponder(t *testing.T) {
 	stop := make(chan struct{})
 	var observers sync.WaitGroup
 	for range 4 {
-		observers.Add(1)
-		go func() {
-			defer observers.Done()
+		observers.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -130,14 +128,13 @@ func TestSourceScopeCloseConcurrentObserversAndResponder(t *testing.T) {
 				_, _ = scope.CurrentHandle(t.Context())
 				_ = scope.Commit(func(func() error) error { return nil })
 			}
-		}()
+		})
 	}
 	const closers = 8
 	results := make(chan error, closers)
 	var closed sync.WaitGroup
 	for range closers {
-		closed.Add(1)
-		go func() { defer closed.Done(); results <- scope.Close() }()
+		closed.Go(func() { results <- scope.Close() })
 	}
 	acquired := make(chan error, 1)
 	go func() { _, err := scope.Acquire(t.Context()); acquired <- err }()

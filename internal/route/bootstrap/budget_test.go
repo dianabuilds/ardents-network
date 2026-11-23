@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"errors"
 	"runtime"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -143,6 +144,11 @@ func TestBootstrapPublicConcurrentOutputDoesNotInventClockRollback(t *testing.T)
 	t.Cleanup(func() { runtime.GOMAXPROCS(previous) })
 	b := NewBudget()
 	var claims []*Claim
+	defer func() {
+		for _, claim := range slices.Backward(claims) {
+			claim.ReleaseAfterJoin()
+		}
+	}()
 	for range 4 {
 		a := b.Adjacency()
 		for range 4 {
@@ -151,7 +157,6 @@ func TestBootstrapPublicConcurrentOutputDoesNotInventClockRollback(t *testing.T)
 				t.Fatal(err)
 			}
 			claims = append(claims, c)
-			defer c.ReleaseAfterJoin()
 		}
 	}
 	start := make(chan struct{})

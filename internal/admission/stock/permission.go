@@ -38,7 +38,7 @@ func (permission *permission) BootstrapAllowance() uint8 {
 	return 2 - permission.batches
 }
 
-// These predicates inspect retained state under the Owner lock.
+// HasAccepted inspects retained state under the Owner lock.
 func (permission *permission) HasAccepted() bool {
 	return permission != nil && permission.accepted != (admission.Permission{})
 }
@@ -117,7 +117,7 @@ func (pending *permission) acceptResponse(profile admission.AuthorityFacts, now 
 	}
 	expected := pending.request.Permission
 	expected.Signature = permission.Signature
-	if permission != expected || admission.VerifyPermission(permission, ed25519.PublicKey(profile.IssuanceAuthorityKey[:]),
+	if permission != expected || admission.VerifyPermission(permission, profile.IssuanceAuthorityKey[:],
 		profile.NetworkID, profile.IssuerNodeID, profile.IssuerDutyGeneration, now) != nil {
 		return errors.New("admission permission response does not match its approved request")
 	}

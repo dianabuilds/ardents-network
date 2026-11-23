@@ -15,7 +15,7 @@ func TestPhysicalCloseInterruptsAndJoinsReader(t *testing.T) {
 			now := time.Now()
 			serverCert, serverKey := transportCertificate(t, now.Add(-time.Hour), now.Add(time.Hour))
 			clientCert, clientKey := transportCertificate(t, now.Add(-time.Hour), now.Add(time.Hour))
-			endpoint := transportEndpoint(t, profile)
+			endpoint := transportEndpoint(t)
 			listener, err := listenTestSharedCarrier(profile, endpoint, serverCert, func(key [32]byte) bool { return key == clientKey }, 1)
 			if err != nil {
 				t.Fatal(err)

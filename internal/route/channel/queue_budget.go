@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// queueBudget belongs to one physical Route principal, not one connection.
+// Budget belongs to one physical Route principal, not one connection.
 // Control reservations and retained payload share its finite aggregate cap.
 type Budget struct {
 	mu                 sync.Mutex

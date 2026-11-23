@@ -22,6 +22,9 @@ func evaluate(ctx context.Context, in Inputs, store floorPersistence) Decision {
 	if decision.Outcome != "" {
 		return attachCurrentFloors(store, decision)
 	}
+	if verified == nil {
+		return attachCurrentFloors(store, reject(outcomeReleaseInvalid, "verified metadata is unavailable", nil))
+	}
 	rejectCurrent := func(outcome Outcome, notice string, cause error) Decision {
 		return attachCurrentFloors(store, reject(outcome, notice, cause))
 	}

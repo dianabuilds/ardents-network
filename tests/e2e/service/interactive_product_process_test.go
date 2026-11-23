@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	pty "github.com/aymanbagabas/go-pty"
+	"github.com/aymanbagabas/go-pty"
 )
 
 type interactiveProductInput struct {

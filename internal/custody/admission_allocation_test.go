@@ -79,8 +79,11 @@ func TestAdmissionConcurrentLastReservationHasOneWinner(t *testing.T) {
 		t.Fatalf("last reservation: successes=%d refusals=%d", successes, refusals)
 	}
 	receipt, err := fixture.vault.Execute(t.Context(), Operation{Kind: OperationVerifyVaultRecord, RecordID: fixture.created.RecordID, Expected: fixture.created.Authority.Binding}, &sequenceSecrets{values: [][]byte{fixture.password}})
-	if err != nil || receipt.Authority.Generation != 3 || receipt.Authority.Revision != 2 {
-		t.Fatalf("concurrent debit floor: %+v / %v", receipt.Authority, err)
+	if err != nil {
+		t.Fatal("read concurrent debit floor:", err)
+	}
+	if receipt.Authority.Generation != 3 || receipt.Authority.Revision != 2 {
+		t.Fatalf("concurrent debit floor: %+v", receipt.Authority)
 	}
 }
 

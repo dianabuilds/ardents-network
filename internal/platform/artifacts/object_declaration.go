@@ -46,12 +46,11 @@ func exactObjectFields(raw []byte, t reflect.Type) error {
 			return err
 		}
 		allowed := map[string]reflect.Type{}
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
+		for f := range t.Fields() {
 			if !f.IsExported() {
 				continue
 			}
-			name := strings.Split(f.Tag.Get("json"), ",")[0]
+			name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
 			if name == "-" {
 				continue
 			}

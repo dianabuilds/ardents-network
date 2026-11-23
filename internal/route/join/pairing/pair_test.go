@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"io"
 	"net"
 	"slices"
@@ -14,6 +12,9 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 // Invalid public preparation must not touch an unowned physical connection.
@@ -587,10 +588,16 @@ func TestJoinPairWaitsForBothActualResultsBeforeReadingData(t *testing.T) {
 		var observed [2]*joinReadObservation
 		var capacities [2]*Capacity
 		results := make(chan error, 2)
+		defer func() {
+			for i := len(peers) - 1; i >= 0; i-- {
+				if peers[i] != nil {
+					peers[i].Close()
+				}
+			}
+		}()
 		for i := range 2 {
 			local, remote := net.Pipe()
 			peers[i] = remote
-			defer remote.Close()
 			observed[i] = &joinReadObservation{Conn: local}
 			var err error
 			capacities[i], err = ReserveCapacity(queues)

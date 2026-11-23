@@ -1,4 +1,4 @@
-// Closed generation binding construction, frozen inventory and independent integrity rules.
+// Package launch constructs closed generation bindings and enforces frozen inventory and independent integrity rules.
 package launch
 
 import (

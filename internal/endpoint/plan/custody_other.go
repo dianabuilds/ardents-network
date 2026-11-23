@@ -4,8 +4,8 @@ package plan
 
 import "context"
 
-// Unsupported hosts have no physical custody representation or accepting
-// reader. Keeping the private marker permits the same portable Document grammar.
+// Origin has no physical custody representation on unsupported hosts, which
+// have no accepting reader. The private marker preserves the portable Document grammar.
 type Origin struct{}
 
 func readOwned(context.Context, string, bool) (Document, error) {

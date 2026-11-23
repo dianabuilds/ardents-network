@@ -97,7 +97,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 		return Receipt{}, err
 	}
 	if decision.Repeated() {
-		permission, signErr := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), decision.Permission())
+		permission, signErr := signAdmissionPermission(source.RootMaterial, decision.Permission())
 		if signErr != nil {
 			return Receipt{}, signErr
 		}
@@ -112,7 +112,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	}
 	defer clear(successor.RootMaterial)
 	defer clear(successor.AdmissionJournal)
-	permission, err := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), decision.Permission())
+	permission, err := signAdmissionPermission(source.RootMaterial, decision.Permission())
 	if err != nil {
 		return Receipt{}, err
 	}

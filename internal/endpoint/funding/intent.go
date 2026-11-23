@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network"
 )
 
-// These detached facts describe one observation, never a live permit.
+// NetworkFacts returns detached facts for one observation, never a live permit.
 func NetworkFacts(view network.RuntimeView) (admission.AuthorityFacts, time.Time, error) {
 	profile := view.Profile()
 	facts := admission.AuthorityFacts{NetworkID: profile.Network, StateGeneration: profile.Generation,
@@ -23,7 +23,7 @@ func NetworkFacts(view network.RuntimeView) (admission.AuthorityFacts, time.Time
 	return facts, now, facts.ValidateAt(now)
 }
 
-// Validate the pure draft against its same freshly observed Network view.
+// ValidateIntent checks the pure draft against its same freshly observed Network view.
 // Callers must still enter the actual owners' fresh effect and handoff gates.
 func ValidateIntent(view network.RuntimeView, intent stock.IssuanceIntent) error {
 	facts, now, err := NetworkFacts(view)

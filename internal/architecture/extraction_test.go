@@ -38,7 +38,7 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 		}
 	}
 	runCandidateGo(t, candidate, "test", "./cmd/ardents-next", "./cmd/ardents-custody", "./internal/execution", "./internal/application/administration", "./internal/application/connection")
-	for _, command := range strings.Fields(string(readProjectFile(t, candidate, "tests/profiles/headless-commands.txt"))) {
+	for command := range strings.FieldsSeq(string(readProjectFile(t, candidate, "tests/profiles/headless-commands.txt"))) {
 		buildCandidateCommand(t, root, candidate, command, filepath.Join(t.TempDir(), filepath.Base(command)))
 	}
 }
@@ -123,7 +123,7 @@ func buildCandidateCommand(t *testing.T, policyRoot, candidate, command, output 
 func canonicalGoBuildFlags(t *testing.T, candidate string) []string {
 	t.Helper()
 	const prefix = "override CANONICAL_GO_BUILD_FLAGS := "
-	for _, line := range strings.Split(string(readProjectFile(t, candidate, "Makefile")), "\n") {
+	for line := range strings.SplitSeq(string(readProjectFile(t, candidate, "Makefile")), "\n") {
 		if !strings.HasPrefix(line, prefix) {
 			continue
 		}

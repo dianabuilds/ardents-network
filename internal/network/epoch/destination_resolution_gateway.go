@@ -2,8 +2,6 @@ package epoch
 
 import "errors"
 
-const MaxDestinationResolutionProfileBytes = maximumDestinationResolutionProfileBytes
-
 const DomainDestinationResolution = destinationResolutionDomain
 
 const (

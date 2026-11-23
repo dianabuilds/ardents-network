@@ -16,7 +16,7 @@ func verifyInstanceProof(expected [32]byte, challenge Challenge, proof Proof) er
 	}
 	digest, err := ChallengeDigest(challenge)
 	if err != nil || digest != proof.ChallengeDigest ||
-		!ed25519.Verify(ed25519.PublicKey(expected[:]), digest[:], proof.Signature[:]) {
+		!ed25519.Verify(expected[:], digest[:], proof.Signature[:]) {
 		return errors.Join(errors.New("service Instance proof differs"), err)
 	}
 	return nil
