@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -472,8 +473,8 @@ func (p *Prefix) closeOpening() error {
 		physical = errors.Join(physical, p.entry.PhysicalFailure())
 	}
 	if p.release != nil {
-		for i := len(p.refillReturns) - 1; i >= 0; i-- {
-			cleanup := p.refillReturns[i]()
+		for _, release := range slices.Backward(p.refillReturns) {
+			cleanup := release()
 			joined = errors.Join(joined, cleanup)
 			physical = errors.Join(physical, cleanup)
 		}

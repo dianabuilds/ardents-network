@@ -92,7 +92,7 @@ func TestScheduleGivesEveryActiveStreamUsefulBytes(t *testing.T) {
 			order = append(order, id)
 		}
 		var output bytes.Buffer
-		for tick := 0; tick < 400; tick++ {
+		for tick := range 400 {
 			for _, stream := range streams {
 				stream.sendCredit = frameCreditWindow
 			}

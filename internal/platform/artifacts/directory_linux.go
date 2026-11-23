@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 func walkDirectories(ctx context.Context, path string, retain func(*os.File, *File, string) (*File, error)) (*File, error) {
@@ -49,7 +51,7 @@ type DirectoryChain struct {
 // is supplied each original directory must belong to root or that UID. The
 // caller independently admits each selected file before reading its contents.
 func OpenDirectoryChain(ctx context.Context, path string, owner *uint32) (*DirectoryChain, error) {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if !pathgrammar.Strict(path) {
 		return nil, ErrInput
 	}
 	chain := &DirectoryChain{}

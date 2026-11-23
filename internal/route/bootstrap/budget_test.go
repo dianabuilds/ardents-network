@@ -158,9 +158,7 @@ func TestBootstrapPublicConcurrentOutputDoesNotInventClockRollback(t *testing.T)
 	results := make(chan error, len(claims))
 	var workers sync.WaitGroup
 	for _, c := range claims {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			<-start
 			for range 1000 {
 				if err := c.ChargeOutput(1); err != nil {
@@ -169,7 +167,7 @@ func TestBootstrapPublicConcurrentOutputDoesNotInventClockRollback(t *testing.T)
 				}
 			}
 			results <- nil
-		}()
+		})
 	}
 	close(start)
 	workers.Wait()
@@ -191,13 +189,11 @@ func TestBootstrapConcurrentClaimsAndOutputShareOneDutyBudget(t *testing.T) {
 	for range 8 {
 		a := b.Adjacency()
 		for range 8 {
-			workers.Add(1)
-			go func() {
-				defer workers.Done()
+			workers.Go(func() {
 				if c, err := a.reserve(now, now.Add(10*time.Second)); err == nil {
 					results <- c
 				}
-			}()
+			})
 		}
 	}
 	workers.Wait()
@@ -211,8 +207,7 @@ func TestBootstrapConcurrentClaimsAndOutputShareOneDutyBudget(t *testing.T) {
 	}
 	output := make(chan error, len(claims))
 	for _, c := range claims {
-		workers.Add(1)
-		go func() { defer workers.Done(); output <- c.charge(now, 10000) }()
+		workers.Go(func() { output <- c.charge(now, 10000) })
 	}
 	workers.Wait()
 	close(output)
@@ -233,8 +228,7 @@ func TestBootstrapConcurrentClaimsAndOutputShareOneDutyBudget(t *testing.T) {
 	}
 	for _, c := range claims {
 		for range 2 {
-			workers.Add(1)
-			go func() { defer workers.Done(); c.ReleaseAfterJoin() }()
+			workers.Go(func() { c.ReleaseAfterJoin() })
 		}
 	}
 	workers.Wait()

@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/theupdateframework/go-tuf/v2/metadata"
 	"net/url"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
 const (
@@ -76,15 +77,13 @@ func customIdentity(target *metadata.TargetFiles) (targetIdentityDescriptor, err
 		return targetIdentityDescriptor{}, fmt.Errorf("decode target identity: %w", err)
 	}
 	descriptor := targetIdentityDescriptor{
-		targetIdentity: targetIdentity{
-			Platform: raw.Platform, Architecture: raw.Architecture,
-			Environment: raw.Environment, Network: raw.Network,
-			ReleaseIdentity: raw.ReleaseIdentity, ReleaseVersion: raw.ReleaseVersion,
-			SourceRevision: raw.SourceRevision, BuildInputCommitment: raw.BuildInputCommitment,
-			BuildIdentity: raw.BuildIdentity, DependencyIdentity: raw.DependencyIdentity,
-			SBOMIdentity: raw.SBOMIdentity, AttestationPolicy: raw.AttestationPolicy,
-			Qualification: raw.Qualification, BuildState: raw.BuildState, ProtocolPhase: raw.ProtocolPhase,
-		},
+		Platform: raw.Platform, Architecture: raw.Architecture,
+		Environment: raw.Environment, Network: raw.Network,
+		ReleaseIdentity: raw.ReleaseIdentity, ReleaseVersion: raw.ReleaseVersion,
+		SourceRevision: raw.SourceRevision, BuildInputCommitment: raw.BuildInputCommitment,
+		BuildIdentity: raw.BuildIdentity, DependencyIdentity: raw.DependencyIdentity,
+		SBOMIdentity: raw.SBOMIdentity, AttestationPolicy: raw.AttestationPolicy,
+		Qualification: raw.Qualification, BuildState: raw.BuildState, ProtocolPhase: raw.ProtocolPhase,
 		SchemaVersion:         raw.SchemaVersion,
 		Profile:               raw.Profile,
 		BuilderAttestations:   append([]builderAttestation(nil), raw.BuilderAttestations...),
@@ -236,7 +235,7 @@ func confineTargetPath(targetPath string) error {
 	if cleaned != decoded {
 		return errors.New("target path is not confined")
 	}
-	for _, segment := range strings.Split(decoded, "/") {
+	for segment := range strings.SplitSeq(decoded, "/") {
 		if segment == "." || segment == ".." {
 			return errors.New("target path escapes the offline envelope")
 		}

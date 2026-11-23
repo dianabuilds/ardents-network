@@ -292,7 +292,9 @@ func TestServingSourceDutyKeepsOpeningRoleRootAfterChdir(t *testing.T) {
 	openingDirectory := t.TempDir()
 	laterDirectory := t.TempDir()
 	t.Chdir(openingDirectory)
-	config.LocalRoleStateRoot = "roles"
+	// Configuration admits only absolute clean paths (G7, #772); the opening
+	// root is fixed at Open and must survive a later working-directory change.
+	config.LocalRoleStateRoot = filepath.Join(openingDirectory, "roles")
 
 	serving, err := state2.Open(config)
 	if err != nil {

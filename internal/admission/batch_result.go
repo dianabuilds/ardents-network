@@ -71,7 +71,7 @@ func DecodeClosedTokenBatchResult(raw []byte) (ClosedTokenBatchResult, error) {
 	if offset+count*closedTokenBlindElementSize > len(raw) {
 		return ClosedTokenBatchResult{}, errors.New("closed token batch result is truncated")
 	}
-	for index := 0; index < count; index++ {
+	for range count {
 		signature := append([]byte(nil), raw[offset:offset+closedTokenBlindElementSize]...)
 		if allZeroClosedTokenBytes(signature) {
 			return ClosedTokenBatchResult{}, errors.New("closed token batch signature is invalid")

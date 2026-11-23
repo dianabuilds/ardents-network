@@ -37,7 +37,7 @@ func parseManifest(raw []byte) (map[string]string, error) {
 	}
 	entries := make(map[string]string)
 	previous := ""
-	for _, line := range strings.Split(string(raw[:len(raw)-1]), "\n") {
+	for line := range strings.SplitSeq(string(raw[:len(raw)-1]), "\n") {
 		parts := strings.Split(line, "  ")
 		if len(parts) != 2 || !canonicalDigest(parts[0]) || !validName(parts[1]) ||
 			parts[1] == "SHA256SUMS" || previous >= parts[1] || len(entries) == maximumFiles {

@@ -8,6 +8,7 @@ import (
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"io"
 	"net"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -828,10 +829,8 @@ func containsPhysicalWrite(err error) bool {
 		return true
 	}
 	if joined, ok := err.(interface{ Unwrap() []error }); ok {
-		for _, child := range joined.Unwrap() {
-			if containsPhysicalWrite(child) {
-				return true
-			}
+		if slices.ContainsFunc(joined.Unwrap(), containsPhysicalWrite) {
+			return true
 		}
 	}
 	if wrapped, ok := err.(interface{ Unwrap() error }); ok {

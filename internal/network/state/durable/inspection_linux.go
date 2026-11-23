@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // Inspection owns independent read-only descriptors and an existing exclusive
@@ -41,7 +43,7 @@ type inspectionEntry struct {
 // Every retained leaf/ancestor has its own descriptor through joined Close;
 // descriptor/resource exhaustion refuses without deleting or pruning history.
 func OpenInspection(ctx context.Context, path string, limits Limits) (result *Inspection, err error) {
-	if ctx == nil || ctx.Err() != nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || os.Geteuid() != 0 || limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
+	if ctx == nil || ctx.Err() != nil || !pathgrammar.Strict(path) || os.Geteuid() != 0 || limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
 		return nil, errors.New("invalid retained State inspection")
 	}
 	s := &Inspection{ctx: ctx, root: &Root{path: path, limits: limits}, entries: map[string]*inspectionEntry{}, parents: map[string]*os.File{}, parentInfo: map[string]os.FileInfo{}}

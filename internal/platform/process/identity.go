@@ -9,7 +9,7 @@ import (
 
 func sourceRecoveryProcMount(body []byte) error {
 	found := false
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 5 || fields[4] != "/proc" {
 			continue
@@ -29,7 +29,7 @@ func sourceRecoveryProcMount(body []byte) error {
 			return errBinding
 		}
 		for _, options := range []string{fields[5], fields[separator+3]} {
-			for _, option := range strings.Split(options, ",") {
+			for option := range strings.SplitSeq(options, ",") {
 				name, value, _ := strings.Cut(option, "=")
 				if name == "subset" || name == "hidepid" && value != "0" && value != "off" {
 					return errBinding
@@ -47,7 +47,7 @@ func sourceRecoveryProcMount(body []byte) error {
 // principal. Missing, duplicated or malformed native fields are not absence.
 func sourceRecoveryPrincipal(body []byte, uid uint32) (bool, error) {
 	found, matched := false, false
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		name, value, _ := strings.Cut(line, ":")
 		if name != "Uid" {
 			continue
@@ -101,13 +101,13 @@ func credentials(body []byte, uid, gid uint32) error {
 		"NoNewPrivs": {"1"}, "CapInh": {"0000000000000000"}, "CapPrm": {"0000000000000000"}, "CapEff": {"0000000000000000"}, "CapBnd": {"0000000000000000"}, "CapAmb": {"0000000000000000"},
 	}
 	seen := map[string]bool{}
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		name, value, _ := strings.Cut(line, ":")
 		if name == "Groups" {
 			if seen[name] {
 				return errBinding
 			}
-			for _, group := range strings.Fields(value) {
+			for group := range strings.FieldsSeq(value) {
 				if group != strconv.FormatUint(uint64(gid), 10) {
 					return errBinding
 				}
@@ -135,7 +135,7 @@ func invocationMatches(body []byte, invocation [16]byte) bool {
 		return false
 	}
 	seen := false
-	for _, item := range bytes.Split(body[:len(body)-1], []byte{0}) {
+	for item := range bytes.SplitSeq(body[:len(body)-1], []byte{0}) {
 		if !bytes.HasPrefix(item, []byte("INVOCATION_ID=")) {
 			continue
 		}

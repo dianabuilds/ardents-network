@@ -11,6 +11,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 const (
@@ -81,7 +83,7 @@ func openLedger(root string, binding Binding, syncRoot func(string) error) (*Led
 }
 
 func openSpendHistory(root string, binding Binding, syncRoot func(string) error, opening spendOpening) (*Ledger, error) {
-	if !filepath.IsAbs(root) || filepath.Clean(root) != root || !validBinding(binding) {
+	if !pathgrammar.Strict(root) || !validBinding(binding) {
 		return nil, errors.New("closed spend ledger binding is invalid")
 	}
 	acquire := acquireClosedSpendLease

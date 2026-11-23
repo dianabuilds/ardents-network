@@ -12,7 +12,7 @@ import (
 
 // readTerminalLine keeps one original terminal reader. Polling bounds only
 // cancellation observation; it grants no second password attempt or deadline.
-func readTerminalLine(ctx context.Context, file *os.File, secret bool, ready func()) (value []byte, resultErr error) {
+func readTerminalLine(ctx context.Context, file *os.File, secret bool, ready func() error) (value []byte, resultErr error) {
 	fd := int(file.Fd())
 	defer func() {
 		if resultErr != nil {
@@ -28,7 +28,9 @@ func readTerminalLine(ctx context.Context, file *os.File, secret bool, ready fun
 		defer func() { resultErr = errors.Join(resultErr, term.Restore(fd, state)) }()
 	}
 	if ready != nil {
-		ready()
+		if err := ready(); err != nil {
+			return nil, err
+		}
 	}
 	var one [1]byte
 	defer clear(one[:])

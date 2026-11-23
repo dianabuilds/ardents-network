@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 	"math"
+	"slices"
 	"time"
 )
 
@@ -76,12 +77,7 @@ func (acquisition Acquisition) Facts() AcquisitionFacts {
 }
 
 func hasExposure(exposures [][32]byte, identity [32]byte) bool {
-	for _, retained := range exposures {
-		if retained == identity {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(exposures, identity)
 }
 
 // CheckExposures refuses growth before a changed plan's first contact.

@@ -261,7 +261,7 @@ func TestHeldServingSourceStillCountsAgainstInstallationCap(t *testing.T) {
 	}
 	now = seed.Add(2 * time.Second)
 	batch := make([]duty.Duty, 0, 64)
-	for index := 0; index < 64; index++ {
+	for index := range 64 {
 		batch = append(batch, duty.Duty{Identity: [32]byte{byte(index + 2)}, Family: [32]byte{byte(index + 102)},
 			Class: "direct-source", State: "exposed", NotAfter: now.Add(time.Hour)})
 	}

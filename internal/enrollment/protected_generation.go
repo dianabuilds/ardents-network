@@ -3,6 +3,7 @@ package enrollment
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 )
 
 type protectedDescriptor struct {
@@ -26,9 +27,7 @@ func ValidateProtectedGeneration(descriptor []byte, resources map[string][]byte,
 		return ErrInventory
 	}
 	files := make(map[string][]byte, len(resources)+1)
-	for name, body := range resources {
-		files[name] = body
-	}
+	maps.Copy(files, resources)
 	files["protected-endpoint.json"] = descriptor
 	protected, err := verifyProtected(files, "linux-amd64", "ardents-linux-amd64", releaseIdentity)
 	if err != nil {

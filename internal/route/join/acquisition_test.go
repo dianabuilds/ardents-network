@@ -3,14 +3,15 @@ package join
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 	"net"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 )
 
 // A failed setup's work refusal is distinct from its actual pipe close. This

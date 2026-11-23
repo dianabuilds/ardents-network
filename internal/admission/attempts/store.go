@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 const journalMarker = "ardents-token-attempts-v1\n"
@@ -31,7 +33,7 @@ func OpenRetained(root string, network [32]byte, clock func() time.Time) (*Journ
 // Only persistence can be substituted by fault tests; validation, lease and
 // retained attempt handling follow the same production path.
 func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot func(string) error, allowFresh bool) (*Journal, error) {
-	if !filepath.IsAbs(root) || filepath.Clean(root) != root || network == [32]byte{} || clock == nil || clock().IsZero() {
+	if !pathgrammar.Strict(root) || network == [32]byte{} || clock == nil || clock().IsZero() {
 		return nil, errors.New("admission token journal configuration invalid")
 	}
 	info, err := os.Lstat(root)

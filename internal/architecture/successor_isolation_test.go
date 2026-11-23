@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -430,7 +431,7 @@ func isMigratedDomain(name string) bool {
 	for _, root := range []string{
 		"internal/admission", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
 		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/node",
-		"internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
+		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
 	} {
 		if name == root || strings.HasPrefix(name, root+"/") {
@@ -631,50 +632,52 @@ func successorImportAllowed(source, dependency string) bool {
 	permitted := map[string][]string{
 		"internal/processresource":                   {},
 		"internal/durablefile":                       {},
-		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/pathgrammar":                       {},
+		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/network":                           {},
 		"internal/network/closedprofile":             {},
-		"internal/network/duty":                      {"durablefile"},
+		"internal/network/duty":                      {"durablefile", "pathgrammar"},
 		"internal/network/epoch":                     {},
 		"internal/network/source":                    {"network/epoch"},
 		"internal/network/source/servingdeclaration": {},
-		"internal/network/state":                     {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable"},
-		"internal/network/state/durable":             {"durablefile"},
+		"internal/network/state":                     {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
+		"internal/network/state/durable":             {"durablefile", "pathgrammar"},
 		"internal/admission":                         {"admission/issuerprofile"},
 		"internal/admission/issuerprofile":           {},
 		"internal/admission/allocation":              {"admission"},
 		"internal/custody":                           {"admission", "admission/allocation", "publication"},
-		"internal/admission/attempts":                {},
-		"internal/admission/spending":                {},
+		"internal/admission/attempts":                {"pathgrammar"},
+		"internal/admission/spending":                {"pathgrammar"},
 		"internal/admission/token":                   {"admission", "admission/issuerprofile"},
 		"internal/admission/receiving":               {"admission", "admission/token", "admission/spending"},
 		"internal/admission/stock":                   {"admission", "admission/allocation", "admission/attempts", "admission/token"},
-		"internal/admission/quota":                   {"admission", "admission/issuerprofile"},
-		"internal/admission/issuance":                {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing"},
-		"internal/admission/issuer":                  {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing"},
-		"internal/admission/issuerprofile/signing":   {"admission/issuerprofile"},
-		"internal/hosting":                           {},
+		"internal/admission/quota":                   {"admission", "admission/issuerprofile", "pathgrammar"},
+		"internal/admission/issuance":                {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
+		"internal/admission/issuer":                  {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing", "pathgrammar"},
+		"internal/admission/issuerprofile/signing":   {"admission/issuerprofile", "pathgrammar"},
+		"internal/hosting":                           {"pathgrammar"},
 		"internal/publication":                       {},
 		"internal/publication/durable":               {"publication"},
 		"internal/publication/instance":              {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
 		"internal/publication/runtime":               {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
 		"internal/connection":                        {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
 		"internal/connection/wire":                   {},
-		"internal/reachability":                      {"publication"},
-		"internal/enrollment":                        {},
-		"internal/release":                           {"durablefile"},
+		"internal/reachability":                      {"publication", "pathgrammar"},
+		"internal/enrollment":                        {"pathgrammar"},
+		"internal/release":                           {"durablefile", "pathgrammar"},
 		"internal/execution":                         {},
 		"internal/execution/runtime":                 {"execution", "execution/worker"},
-		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit"},
+		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit", "pathgrammar"},
 		"internal/release/endpoint":                  {"enrollment", "release"},
-		"internal/release/infrastructure":            {"enrollment", "release"},
+		"internal/release/infrastructure":            {"enrollment", "release", "pathgrammar"},
 		"internal/endpoint/launch":                   {"release/endpoint", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
-		"internal/platform/cgroup":                   {},
+		"internal/platform/cgroup":                   {"pathgrammar"},
+		"internal/platform/artifacts":                {"pathgrammar"},
 		"internal/endpoint/plan":                     {},
 
 		"internal/platform/systemd":    {},
-		"internal/platform/process":    {},
-		"internal/endpoint/generation": {},
+		"internal/platform/process":    {"pathgrammar"},
+		"internal/endpoint/generation": {"pathgrammar"},
 		"internal/endpoint/unit":       {"platform/systemd"},
 		"internal/route":               {},
 		"internal/route/ardp":          {},
@@ -684,7 +687,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/route/bootstrap":     {"route/ardp", "route/channel"},
 		"internal/route/transport/tls": {"route/transport"},
 
-		"internal/route/introduction": {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
+		"internal/route/introduction": {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission", "pathgrammar"},
 		"internal/route/capsule":      {},
 		"internal/route/selection":    {"route", "network", "durablefile"},
 		"internal/route/role":         {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
@@ -692,11 +695,11 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/route/join/pairing": {"route/ardp", "route/channel", "route/role"},
 		"internal/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
 		"internal/route/receiver":     {"route/issuer", "route/join/pairing", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
-		"internal/endpoint/session":   {"admission", "admission/stock", "endpoint/funding", "endpoint/publisher", "execution/runtime", "hosting", "reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection"},
-		"internal/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "endpoint/launch", "network", "network/source", "network/state"},
-		"internal/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection"},
+		"internal/endpoint/session":   {"admission", "admission/stock", "endpoint/funding", "endpoint/publisher", "execution/runtime", "hosting", "reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection", "pathgrammar"},
+		"internal/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "endpoint/launch", "network", "network/source", "network/state", "pathgrammar"},
+		"internal/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection", "pathgrammar"},
 		"internal/endpoint/reader":    {"endpoint/funding", "admission", "admission/stock", "connection", "execution/runtime", "hosting", "network", "reachability", "route/prefix", "route/selection"},
-		"internal/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection"},
+		"internal/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection", "pathgrammar"},
 		"cmd/ardents-next":            {"endpoint/session", "endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
@@ -1202,7 +1205,7 @@ func successorImportAllowed(source, dependency string) bool {
 	// OTel composition is confined to the exact command package.
 	// No arbitrary third-party bridge is permitted.
 	if owner == "cmd/ardents-next" {
-		for _, allowed := range []string{
+		if slices.Contains([]string{
 			"go.opentelemetry.io/otel/attribute",
 			"go.opentelemetry.io/otel/metric",
 			"go.opentelemetry.io/otel/sdk/metric",
@@ -1212,16 +1215,12 @@ func successorImportAllowed(source, dependency string) bool {
 			"go.opentelemetry.io/otel/sdk/trace",
 			"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp",
 			"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp",
-		} {
-			if dependency == allowed {
-				return true
-			}
+		}, dependency) {
+			return true
 		}
 		if strings.HasSuffix(source, "_test.go") {
-			for _, allowed := range []string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"} {
-				if dependency == allowed {
-					return true
-				}
+			if slices.Contains([]string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"}, dependency) {
+				return true
 			}
 		}
 	}

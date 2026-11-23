@@ -19,7 +19,7 @@ func generate(ctx context.Context, b Binding) ([]byte, error) {
 	raw := append([]byte(materialMagic), bindingBytes(b)...)
 	count := int((b.End.Unix()-b.Start.Unix())/3600) * 3
 	raw = binary.BigEndian.AppendUint16(raw, uint16(count))
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if err := ctx.Err(); err != nil {
 			clear(raw)
 			return nil, err
@@ -58,7 +58,7 @@ func decodeMaterial(raw []byte, b Binding) (Inventory, error) {
 	inventory := Inventory{Binding: b}
 	seen := map[[32]byte]bool{}
 	offset := 122
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if len(raw)-offset < 11 {
 			return Inventory{}, ErrUnavailable
 		}

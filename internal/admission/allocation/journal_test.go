@@ -7,7 +7,7 @@ import (
 
 func TestAdmissionJournalAcceptsCompleteHourlyReservationSet(t *testing.T) {
 	allocations := make([]reservation, 0, userLimit+publisherLimit)
-	for index := uint64(0); index < userLimit+publisherLimit; index++ {
+	for index := range userLimit + publisherLimit {
 		role := admission.AllocationUser
 		if index >= userLimit {
 			role = admission.AllocationPublisher

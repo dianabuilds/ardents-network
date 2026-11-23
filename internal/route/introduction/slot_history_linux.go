@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 const (
@@ -82,7 +83,7 @@ func InitializeHistory(root string, binding Binding, fact *spending.FreshRoot) (
 }
 
 func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoot func(string) error) (_ *History, result error) {
-	if !filepath.IsAbs(root) || filepath.Clean(root) != root || binding.NetworkID == [32]byte{} || binding.ProfileDigest == [32]byte{} || binding.ReceiverNodeID == [32]byte{} || binding.ReceiverDutyGeneration == 0 {
+	if !pathgrammar.Strict(root) || binding.NetworkID == [32]byte{} || binding.ProfileDigest == [32]byte{} || binding.ReceiverNodeID == [32]byte{} || binding.ReceiverDutyGeneration == 0 {
 		return nil, errors.New("introduction history binding invalid")
 	}
 	info, err := os.Lstat(root)

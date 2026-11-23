@@ -178,11 +178,29 @@ generation-name grammar. `internal/publication/instance` keeps its separate
 joined-error, TOCTOU-hardened private custody. A shared technical mechanism does
 not merge authorities, roots, leases or lifecycle owners.
 
+The maintained owners share one pure path-validation grammar leaf,
+`internal/pathgrammar` (G7, #772): a single strict predicate admitting only
+absolute, already-clean host paths, with no conversion and no filesystem
+observation. It is a mechanism, not an owner: it holds no root, marker, schema,
+authority or lifecycle, and each consumer keeps its distinct refusal prose and
+any additional root/NUL-rune/length bounds it genuinely needs. Admission,
+Endpoint, Enrollment, Execution worker, Hosting, Network State/duty, Node,
+Platform Artifacts/cgroup/process, Reachability, Release and Route Introduction
+consume it; the POSIX declaration wire grammar in `internal/endpoint/plan`, the
+pure Application zone and configured-root resolution operations stay separate.
+Network State configuration validation refuses relative and non-clean paths
+instead of silently absolutizing them (the one deliberate tightening; every
+production caller already supplies absolute clean paths). A shared grammar does
+not merge roots, custody or authority owners.
+
 Source artifact authentication in `internal/release/infrastructure` joins the
 Release verifier before returning inspection facts. Enrollment owns original
 distribution provenance and the initial pin. Release owns retained trust and
 floors. The independent inspection history is distinct from platform startup
-history. `ardents-next infrastructure` parses inputs and renders outcomes.
+history. Every role's candidate admission applies the same full platform/
+target/architecture/reference-time outer guard before trust observation, at one
+consistent depth (G5, #772); per-role authorization types remain distinct.
+`ardents-next infrastructure` parses inputs and renders outcomes.
 
 Admission's pure issuer-profile leaf supplies public-only Control inspection.
 The command verifies independent Network/issuer/Node-key pins, canonical signed

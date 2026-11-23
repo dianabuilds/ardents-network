@@ -10,6 +10,8 @@ import (
 	"slices"
 	"sync"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // Inspection independently retains complete existing receiving history under
@@ -50,7 +52,7 @@ func OpenInspection(ctx context.Context, root string, binding Binding, uid, gid 
 }
 
 func openInspection(ctx context.Context, root string, binding Binding, uid, gid uint32, observe func(string, *os.File)) (result Inspection, returned error) {
-	if ctx == nil || os.Geteuid() != 0 || !filepath.IsAbs(root) || filepath.Clean(root) != root || root == "/" || !validBinding(binding) {
+	if ctx == nil || os.Geteuid() != 0 || !pathgrammar.Strict(root) || root == "/" || !validBinding(binding) {
 		return result, errors.New("invalid retained spending inspection")
 	}
 	if err := ctx.Err(); err != nil {
