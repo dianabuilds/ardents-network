@@ -2,31 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"io"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
-
-var errInitialKeys = errors.New("initial Network key preparation unavailable")
-
-type initialKeyPublic struct {
-	Purpose string `json:"purpose"`
-	Index   *int   `json:"index,omitempty"`
-	File    string `json:"file"`
-	Public  string `json:"ed25519_public_hex"`
-	Digest  string `json:"public_sha256"`
-}
-
-type initialKeyReceipt struct {
-	Schema      string             `json:"schema"`
-	Operation   string             `json:"operation"`
-	Keys        []initialKeyPublic `json:"keys"`
-	Signed      bool               `json:"signed"`
-	State       bool               `json:"state_accepted"`
-	Installed   bool               `json:"installed_qualification"`
-	Independent bool               `json:"independent_custody"`
-}
 
 func runInitialKeys(ctx context.Context, args []string, out io.Writer) int {
 	if ctx == nil || len(args) != 3 || args[0] != "prepare-initial-keys" {
@@ -40,12 +20,11 @@ func runInitialKeys(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	receipt, err := executeInitialKeys(ctx, args[1], args[2])
+	receipt, err := provisioning.PrepareInitialNetworkKeys(ctx, args[1], args[2])
 	if err != nil {
 		return 1
 	}
-	raw, err := json.Marshal(receipt)
-	if err != nil || writeNetworkPreparationReceipt(ctx, out, append(raw, '\n')) != nil {
+	if writeNetworkPreparationReceipt(ctx, out, receipt) != nil {
 		return 1
 	}
 	if ctx.Err() != nil {

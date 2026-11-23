@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
 	"os"
@@ -17,6 +18,14 @@ func signingAncestors(p *preparationPath) error {
 		return errors.Join(errNetworkSigning, err)
 	}
 	return nil
+}
+
+func parseNetworkSigningKey(raw []byte) (ed25519.PrivateKey, error) {
+	key, err := artifactio.ParseEd25519Key(raw)
+	if err != nil {
+		return nil, errNetworkSigning
+	}
+	return key, nil
 }
 
 func executeNetworkSigning(ctx context.Context, args []string) (*networkSigningResult, error) {

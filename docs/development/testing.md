@@ -485,6 +485,12 @@ inventory and execution selector remain unchanged. Source's four native
 resource tests still require their own exact discovery and actual execution in
 `run-source-native.sh`; a role's PASS cannot qualify another profile.
 
+The initial Network key inventory uses the same profile. The compiled-command
+cases independently verify the State and Node key inventory, receipt and signed
+State chain. Provisioning runs the original generation/encoding refusals,
+retained-output reobservation, process cuts and non-root admission cases where
+the key preparation transaction is implemented.
+
 Node certificate provisioning uses the existing `network-signing-linux` native
 profile and its `TestNetworkSigningNodeCertificate*` cases. The real initial
 key, unsigned preparation and Record signer commands produce original inputs.

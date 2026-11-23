@@ -13,6 +13,7 @@ func offlineOperatorFile(source string) bool {
 	}
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
+		"cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_keys_native_linux_test.go",
 		"internal/release/infrastructure/preparation_linux.go",
 		"internal/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
@@ -73,7 +74,9 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/network/epoch", modulePath + "/internal/platform/artifacts":
 			return true
 		}
-	case "internal/node/provisioning/epoch_provision_linux.go",
+	case "internal/node/provisioning/initial_network_keys_linux.go",
+		"internal/node/provisioning/initial_network_keys_native_linux_test.go",
+		"internal/node/provisioning/epoch_provision_linux.go",
 		"internal/node/provisioning/forwarding_epoch_plan_linux_test.go",
 		"internal/node/provisioning/node_provisioning_role_linux.go",
 		"internal/node/provisioning/provisioning_key_linux.go",
@@ -184,6 +187,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
+	case "cmd/ardents-next/network_keys.go":
+		return dependency == modulePath+"/internal/node/provisioning"
+	case "cmd/ardents-next/network_keys_native_linux_test.go":
+		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/infrastructure_operator.go":
 		return dependency == modulePath+"/internal/node/provisioning" ||
 			dependency == modulePath+"/internal/release/infrastructure/signing"
