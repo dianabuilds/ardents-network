@@ -23,7 +23,7 @@ type testSuiteRoot struct {
 	Owner   string `json:"owner"`
 }
 
-const streamWorkerFixture = "./tests/qualification/text-worker-lifecycle/stream-worker"
+const streamWorkerFixture = "./tests/qualification/worker-lifecycle/stream-worker"
 
 func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
