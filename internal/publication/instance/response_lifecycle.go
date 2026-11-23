@@ -14,6 +14,26 @@ type Acceptance struct {
 	CredentialDigest [32]byte
 }
 
+// AcceptResponse applies an external response, checks the resulting public
+// Credential on the same original root, and joins Close before reporting it.
+func AcceptResponse(ctx context.Context, path string, raw []byte) (Acceptance, error) {
+	root, err := Open(ctx, path)
+	if err != nil {
+		return Acceptance{}, err
+	}
+	accepted, acceptErr := root.Accept(ctx, raw)
+	if acceptErr == nil {
+		credential, err := root.Credential(ctx)
+		if err != nil || credential.Delegation().Generation != accepted.Generation || credential.Digest() != accepted.CredentialDigest {
+			acceptErr = errors.Join(ErrUnavailable, err)
+		}
+	}
+	if err := errors.Join(acceptErr, root.Close(), ctx.Err()); err != nil {
+		return Acceptance{}, err
+	}
+	return accepted, nil
+}
+
 // Accept consumes one external untrusted response. Identical accepted retries
 // are idempotent; a different response cannot retain the original private key.
 func (root *Root) Accept(ctx context.Context, raw []byte) (Acceptance, error) {

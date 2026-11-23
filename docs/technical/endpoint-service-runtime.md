@@ -703,7 +703,9 @@ stable canonical public request and exact external signed-response transition.
 `publication instance-initialize <root> <network> <not-before> <not-after>` and
 `instance-request <root>` return the public request as JSON base64;
 `instance-accept <root> <response-file>` consumes untrusted raw response bytes.
-Exact accepted retries preserve the same public Credential digest. Foreign or
+The Instance owner reobserves the accepted Credential and joins the original
+root closure before the CLI emits its receipt. Exact accepted retries preserve
+the same public Credential digest. Foreign or
 changed responses terminally conflict; malformed pending responses reject.
 Terminal records redact private material. Ambiguous post-rename sync or original
 caller loss stops further receipts and clears the open owner's private bytes;
@@ -1250,8 +1252,9 @@ uint64 floor, and verifies retained signed records against the selected Target
 and Network at their signed NotBefore. Reopen resynchronizes retained floor,
 record and pointer barriers; an exact unavailable orphan is retired without
 lowering the floor. Foreign residue, lost floors and inconsistent records refuse.
-The command returns `publication-root-prepared` and a detached floor observation;
-it grants no Instance signing authority or accepting readiness. Predecessor roots
+The durable owner observes the floor and releases the original root before
+the command returns `publication-root-prepared` with the observed floor.
+Instance signing authority and Publisher readiness have separate lifetimes. Predecessor roots
 remain independent. Native directory-flush refusal remains failure.
 
 Publication persists public proof and its non-decreasing generation floor but
