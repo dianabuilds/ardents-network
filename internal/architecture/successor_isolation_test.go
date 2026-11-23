@@ -528,7 +528,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
-		"internal/admission", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
+		"internal/admission", "internal/canonicalcursor", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
 		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
@@ -777,17 +777,18 @@ func successorImportAllowed(source, dependency string) bool {
 	owner := path.Dir(source)
 	permitted := map[string][]string{
 		"internal/processresource":                   {},
+		"internal/canonicalcursor":                   {},
 		"internal/durablefile":                       {},
 		"internal/pathgrammar":                       {},
 		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/network":                           {},
-		"internal/network/closedprofile":             {},
+		"internal/network/closedprofile":             {"canonicalcursor"},
 		"internal/network/duty":                      {"durablefile", "pathgrammar"},
-		"internal/network/epoch":                     {},
-		"internal/network/source":                    {"network/epoch"},
+		"internal/network/epoch":                     {"canonicalcursor"},
+		"internal/network/source":                    {"canonicalcursor", "network/epoch"},
 		"internal/network/source/serving":            {"network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "processresource"},
 		"internal/network/source/servingdeclaration": {},
-		"internal/network/state":                     {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
+		"internal/network/state":                     {"canonicalcursor", "network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
 		"internal/network/state/durable":             {"durablefile", "pathgrammar"},
 		"internal/admission":                         {"admission/issuerprofile"},
 		"internal/admission/issuerprofile":           {},

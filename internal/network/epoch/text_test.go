@@ -1,8 +1,12 @@
 package epoch
 
-import "testing"
+import (
+	"testing"
 
-func TestDecoderText(t *testing.T) {
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
+)
+
+func TestDecodeText(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name      string
@@ -18,13 +22,13 @@ func TestDecoderText(t *testing.T) {
 		{name: "nonprinting", raw: []byte{1, ' '}, wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			reader := newDecoder(test.raw)
-			got, err := reader.text(3)
+			reader := canonicalcursor.NewDecoder(test.raw)
+			got, err := decodeText(&reader, 3)
 			if (err != nil) != test.wantError || got != test.want {
-				t.Fatalf("text(3) = %q, %v; want %q, error=%v", got, err, test.want, test.wantError)
+				t.Fatalf("decodeText(3) = %q, %v; want %q, error=%v", got, err, test.want, test.wantError)
 			}
-			if !test.wantError && !reader.done() {
-				t.Fatalf("consumed %d of %d bytes", reader.offset, len(test.raw))
+			if !test.wantError && !reader.Done() {
+				t.Fatalf("consumed %d of %d bytes", reader.Offset(), len(test.raw))
 			}
 		})
 	}

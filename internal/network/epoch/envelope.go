@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
 )
 
 const (
@@ -66,12 +68,12 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 	if len(raw) == 0 || len(raw) > maximumEpochBytes {
 		return epochEnvelope{}, errors.New("epoch framing length is invalid")
 	}
-	d := newDecoder(raw)
-	magic, err := d.bytes(4)
+	d := canonicalcursor.NewDecoder(raw)
+	magic, err := d.Bytes(4)
 	if err != nil || string(magic) != "AREP" {
 		return epochEnvelope{}, errors.New("epoch magic is invalid")
 	}
-	version, err := d.byte()
+	version, err := d.Byte()
 	if err != nil || (version != 1 && version != 2 && version != 3) {
 		return epochEnvelope{}, errors.New("epoch schema version is invalid")
 	}
@@ -90,19 +92,19 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 			return epochEnvelope{}, err
 		}
 	}
-	unsignedEnd := d.offset
-	signerCount, err := d.byte()
+	unsignedEnd := d.Offset()
+	signerCount, err := d.Byte()
 	if err != nil || signerCount == 0 || signerCount > 16 {
 		return epochEnvelope{}, errors.New("epoch signer count is invalid")
 	}
 	for range int(signerCount) {
-		idBytes, readErr := d.bytes(32)
+		idBytes, readErr := d.Bytes(32)
 		if readErr != nil {
 			return epochEnvelope{}, readErr
 		}
 		var id [32]byte
 		copy(id[:], idBytes)
-		signature, readErr := d.bytes(ed25519.SignatureSize)
+		signature, readErr := d.Bytes(ed25519.SignatureSize)
 		if readErr != nil {
 			return epochEnvelope{}, readErr
 		}
@@ -111,24 +113,24 @@ func parseEpoch(raw []byte) (epochEnvelope, error) {
 		}
 		epoch.signatures = append(epoch.signatures, epochSignature{id: id, signature: signature})
 	}
-	if !d.done() {
+	if !d.Done() {
 		return epochEnvelope{}, errors.New("epoch contains trailing bytes")
 	}
 	epoch.digest = sha256.Sum256(raw[:unsignedEnd])
 	return epoch, nil
 }
 
-func decodeTransitIssuanceDuty(d *decoder, epoch *epochEnvelope) error {
-	node, err := d.bytes(32)
+func decodeTransitIssuanceDuty(d *canonicalcursor.Decoder, epoch *epochEnvelope) error {
+	node, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(epoch.transitIssuanceNodeID[:], node)
-	length, err := d.uint16()
+	length, err := d.Uint16()
 	if err != nil || int(length) > maximumTransitIssuanceProfileBytes {
 		return errors.New("transit issuance profile length is invalid")
 	}
-	profile, err := d.bytes(int(length))
+	profile, err := d.Bytes(int(length))
 	if err != nil {
 		return err
 	}
@@ -139,17 +141,17 @@ func decodeTransitIssuanceDuty(d *decoder, epoch *epochEnvelope) error {
 	return nil
 }
 
-func decodeDestinationResolutionGateway(d *decoder, epoch *epochEnvelope) error {
-	node, err := d.bytes(32)
+func decodeDestinationResolutionGateway(d *canonicalcursor.Decoder, epoch *epochEnvelope) error {
+	node, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(epoch.destinationResolutionNodeID[:], node)
-	length, err := d.uint16()
+	length, err := d.Uint16()
 	if err != nil || int(length) > maximumDestinationResolutionProfileBytes {
 		return errors.New("destination resolution gateway profile length is invalid")
 	}
-	profile, err := d.bytes(int(length))
+	profile, err := d.Bytes(int(length))
 	if err != nil {
 		return err
 	}
@@ -160,33 +162,33 @@ func decodeDestinationResolutionGateway(d *decoder, epoch *epochEnvelope) error 
 	return nil
 }
 
-func decodeEpochCommitment(d *decoder, epoch *epochEnvelope) error {
-	network, err := d.bytes(32)
+func decodeEpochCommitment(d *canonicalcursor.Decoder, epoch *epochEnvelope) error {
+	network, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(epoch.networkID[:], network)
-	if epoch.number, err = d.uint64(); err != nil || epoch.number == 0 {
+	if epoch.number, err = d.Uint64(); err != nil || epoch.number == 0 {
 		return errors.New("epoch number is invalid")
 	}
-	previous, err := d.bytes(32)
+	previous, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(epoch.previous[:], previous)
-	from, err := d.int64()
+	from, err := d.Int64()
 	if err != nil {
 		return err
 	}
-	until, err := d.int64()
+	until, err := d.Int64()
 	if err != nil || until <= from {
 		return errors.New("epoch validity interval is invalid")
 	}
 	epoch.validFrom, epoch.validUntil = time.Unix(from, 0).UTC(), time.Unix(until, 0).UTC()
-	if epoch.cutoff, err = d.uint32(); err != nil || epoch.cutoff > 64 {
+	if epoch.cutoff, err = d.Uint32(); err != nil || epoch.cutoff > 64 {
 		return errors.New("epoch input cutoff is invalid")
 	}
-	profile, err := d.text(64)
+	profile, err := decodeText(d, 64)
 	if err != nil || !KnownProfile(profile) {
 		return errors.New("epoch profile is unsupported")
 	}
@@ -194,72 +196,72 @@ func decodeEpochCommitment(d *decoder, epoch *epochEnvelope) error {
 	return decodeViewCommitment(d, epoch)
 }
 
-func decodeViewCommitment(d *decoder, epoch *epochEnvelope) error {
+func decodeViewCommitment(d *canonicalcursor.Decoder, epoch *epochEnvelope) error {
 	for _, target := range []*[32]byte{&epoch.inputRoot, &epoch.viewRoot} {
-		value, err := d.bytes(32)
+		value, err := d.Bytes(32)
 		if err != nil {
 			return err
 		}
 		copy(target[:], value)
 	}
 	var err error
-	if epoch.viewLength, err = d.uint32(); err != nil || epoch.viewLength > 64 {
+	if epoch.viewLength, err = d.Uint32(); err != nil || epoch.viewLength > 64 {
 		return errors.New("view length is invalid")
 	}
-	rejected, err := d.bytes(32)
+	rejected, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(epoch.rejectedRoot[:], rejected)
-	if epoch.rejectedLength, err = d.uint32(); err != nil || epoch.rejectedLength > 64 {
+	if epoch.rejectedLength, err = d.Uint32(); err != nil || epoch.rejectedLength > 64 {
 		return errors.New("rejection length is invalid")
 	}
-	seed, err := d.bytes(32)
+	seed, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(epoch.assignmentSeed[:], seed)
-	algorithm, err := d.text(64)
+	algorithm, err := decodeText(d, 64)
 	if err != nil || algorithm != assignmentV1 {
 		return errors.New("assignment algorithm is unsupported")
 	}
 	return decodeSummaries(d, epoch)
 }
 
-func decodeSummaries(d *decoder, epoch *epochEnvelope) error {
+func decodeSummaries(d *canonicalcursor.Decoder, epoch *epochEnvelope) error {
 	var err error
-	if epoch.eligibleCount, err = d.uint32(); err != nil || epoch.eligibleCount > 64 {
+	if epoch.eligibleCount, err = d.Uint32(); err != nil || epoch.eligibleCount > 64 {
 		return errors.New("eligible count is invalid")
 	}
-	if epoch.eligibleCapacity, err = d.uint32(); err != nil {
+	if epoch.eligibleCapacity, err = d.Uint32(); err != nil {
 		return err
 	}
-	if epoch.familyCount, err = d.uint16(); err != nil || epoch.familyCount > 64 {
+	if epoch.familyCount, err = d.Uint16(); err != nil || epoch.familyCount > 64 {
 		return errors.New("family count is invalid")
 	}
-	if epoch.maxFamilyCount, err = d.uint16(); err != nil || epoch.maxFamilyCount > 64 {
+	if epoch.maxFamilyCount, err = d.Uint16(); err != nil || epoch.maxFamilyCount > 64 {
 		return errors.New("family concentration is invalid")
 	}
-	if epoch.maxFamilyCapacity, err = d.uint32(); err != nil {
+	if epoch.maxFamilyCapacity, err = d.Uint32(); err != nil {
 		return err
 	}
-	domainCount, err := d.byte()
+	domainCount, err := d.Byte()
 	if err != nil || domainCount == 0 || domainCount > 16 {
 		return errors.New("role domain count is invalid")
 	}
 	for range int(domainCount) {
-		domain, readErr := d.text(32)
+		domain, readErr := decodeText(d, 32)
 		if readErr != nil {
 			return readErr
 		}
 		if len(epoch.domains) > 0 && epoch.domains[len(epoch.domains)-1].id >= domain {
 			return errors.New("role domains are not in strict canonical order")
 		}
-		count, readErr := d.uint16()
+		count, readErr := d.Uint16()
 		if readErr != nil || count > 64 {
 			return errors.New("role domain count summary is invalid")
 		}
-		capacity, readErr := d.uint32()
+		capacity, readErr := d.Uint32()
 		if readErr != nil {
 			return readErr
 		}
