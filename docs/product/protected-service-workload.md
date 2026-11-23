@@ -91,6 +91,17 @@ that original binding. Use the existing transport and document grammar for
 document peers. An older peer, unknown profile, missing proof or profile
 mismatch must terminate the requested byte-stream operation without fallback.
 
+Use the existing encrypted Instance proof and Continuity setup to
+authenticate the profile. Both peers derive the expected Application binding
+from their own admitted local profile. The initiator derives it from the
+explicit operation, and the Publisher derives it from the verified Service
+configuration. Commit the byte-stream selection to the logical context that
+the Instance proves and Continuity retains. Preserve the exact existing
+document context transcript. A mismatch therefore fails the existing context
+verification without a new cleartext TLS negotiation field or a trial
+Application request. The two local owners must check this binding before they
+hand an authenticated stream to a data worker.
+
 Implementation needs explicit byte, time and concurrency bounds for both
 directions and a compatibility rule for peers that implement only the current
 document profile. Keep the document workload and its signed identities

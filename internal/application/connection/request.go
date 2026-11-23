@@ -44,7 +44,7 @@ func EncodeRequest(request Request) ([]byte, error) {
 func validRequest(request Request) error {
 	if (request.Destination != Name && request.Destination != TargetLink) || len(request.Value) == 0 ||
 		len(request.Value) > maximumTarget || !utf8.ValidString(request.Value) {
-		return errors.New("local text Connection destination is invalid")
+		return errors.New("local Application Connection destination is invalid")
 	}
 	return nil
 }
