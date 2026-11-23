@@ -31,7 +31,7 @@ func TestIssuerProfileUnsupportedCommandRefusesBeforeConfigRead(t *testing.T) {
 		{"issuance", "inspect-profile"}, {"admission", "prepare-binding"},
 		{"issuance", "initialize"}, {"issuance", "inspect"},
 		{"issuance", "initialize-results"}, {"issuance", "issue"},
-		{"admission", "initialize"}, {"admission", "debit"},
+		{"admission", "initialize"},
 	} {
 		cmd := exec.CommandContext(t.Context(), compiledCommand(t), append(args, "--config", missing)...)
 		raw, e := cmd.Output()

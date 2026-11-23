@@ -18,10 +18,10 @@ type admissionResult struct {
 	Outcome   admission.Outcome `json:"outcome"`
 }
 
-func admissionError(err error) admission.Outcome {
+func admissionInitializationOutcome(err error) admission.Outcome {
 	switch {
 	case err == nil:
-		return quota.Debited
+		return quota.Initialized
 	case errors.Is(err, quota.ErrUncertain):
 		return quota.Uncertain
 	case errors.Is(err, quota.ErrUnsupported):
@@ -48,7 +48,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	write := func() int {
 		code := 1
 		switch r.Outcome {
-		case quota.Initialized, quota.Debited, quota.AlreadyDebited:
+		case quota.Initialized:
 			code = 0
 		case admission.InvalidInput:
 			code = 2
@@ -63,7 +63,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	if len(args) != 3 && len(args) != 4 {
 		return write()
 	}
-	if args[1] != "--config" || args[0] != "initialize" && args[0] != "debit" {
+	if args[1] != "--config" || args[0] != "initialize" {
 		return write()
 	}
 	r.Operation = "admission." + args[0]
@@ -94,35 +94,13 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	if err != nil {
 		return write()
 	}
-	var batch []byte
-	if args[0] == "debit" {
-		batch, err = readBounded(p.BatchFile, 16<<10)
-		if err != nil {
-			return write()
-		}
-		defer clear(batch)
-	}
 	o, telemetryErr := newObservation(endpoint)
 	finish := o.begin("ardents.admission", r.Operation)
 	r.Phase = "execute"
 	if ctx.Err() != nil {
 		r.Outcome = admission.Canceled
-	} else if args[0] == "initialize" {
-		r.Outcome = admissionError(quota.Initialize(p.Root, p.Binding))
-		if r.Outcome == quota.Debited {
-			r.Outcome = quota.Initialized
-		}
 	} else {
-		ledger, openErr := quota.Open(p.Root, p.Binding)
-		if openErr != nil {
-			r.Outcome = admissionError(openErr)
-		} else {
-			r.Outcome = ledger.Debit(ctx, batch, p.Facts, p.Kind)
-			if ledger.Close() != nil {
-				r.Phase = "close"
-				r.Outcome = quota.Uncertain
-			}
-		}
+		r.Outcome = admissionInitializationOutcome(quota.Initialize(p.Root, p.Binding))
 	}
 	finish(r.Phase, string(r.Outcome))
 	ok := o.close()
