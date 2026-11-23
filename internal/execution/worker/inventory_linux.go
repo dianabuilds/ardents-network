@@ -4,10 +4,9 @@ package worker
 
 // inventory selects one closed root-installed worker artifact. It is private to
 // this package: no local Application request can select an inventory or path.
-// Ordinary Execution admits only the Text inventory through the public Activate;
-// the Stream inventory is admitted solely by the trusted qualification launch
-// path (ActivateStream), mirroring the predecessor Endpoint's private Inventory
-// design. A normal text job can neither select nor reach the stream artifact.
+// Ordinary Execution activates the fixed signed Application inventory for
+// document and byte-stream jobs. The separate qualification inventory is
+// reachable only through its trusted launch path (ActivateStream).
 type inventory struct {
 	prefix       string
 	root         string
@@ -20,7 +19,7 @@ type inventory struct {
 	cgroupPrefix string
 }
 
-var textInventory = inventory{
+var applicationInventory = inventory{
 	prefix:       "ardents-text",
 	root:         "/usr/lib/ardents/text-worker-root",
 	manifest:     "/etc/ardents/text-worker-artifact.json",

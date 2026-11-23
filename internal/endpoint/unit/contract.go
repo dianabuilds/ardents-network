@@ -194,8 +194,8 @@ func VerifyListeningSocket(unit, socket managerProperties, role string) error {
 }
 
 // VerifyListeningSocketAt verifies an activation socket for an explicit worker
-// inventory (socket unit name and listen path). The Text wrappers above preserve
-// the ordinary text boundary; the qualification Stream inventory supplies its own
+// inventory (socket unit name and listen path). The fixed Endpoint wrappers preserve
+// the installed Application inventory; the qualification inventory supplies its own
 // name/path. All other socket hardening is shared across inventories.
 func VerifyListeningSocketAt(unit, socket managerProperties, role, socketName, listenPath string) error {
 	return verifyActivationSocketState(unit, socket, role, "active", "listening", socketName, listenPath)

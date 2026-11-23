@@ -88,7 +88,7 @@ func decodeHeadless(input []byte) (decodedHeadless, error) {
 		return decodedHeadless{}, errHeadlessV1Retired
 	}
 	if raw.Role != "" && raw.Role != "reader" {
-		return decodedHeadless{}, errors.New("text runtime role is unavailable")
+		return decodedHeadless{}, errors.New("Endpoint runtime role is unavailable")
 	}
 	if raw.Schema != "ardents-headless-runtime-v2" || raw.NetworkStateRoot == "" || raw.EntryStateRoot == "" ||
 		raw.ApplicationSocket == "" || !posixpath.IsAbs(raw.ApplicationSocket) ||
@@ -123,10 +123,10 @@ func decodeHeadless(input []byte) (decodedHeadless, error) {
 	result.NetworkAuthorities = authorities
 	authority := make(ed25519.PublicKey, ed25519.PublicKeySize)
 	if err := decodeFixedHex(raw.ClosedProfileAuthority, authority); err != nil {
-		return decodedHeadless{}, fmt.Errorf("text State profile authority: %w", err)
+		return decodedHeadless{}, fmt.Errorf("Endpoint State profile authority: %w", err)
 	}
 	if _, pinned := authorities[sha256.Sum256(authority)]; !pinned {
-		return decodedHeadless{}, errors.New("text State profile authority is not pinned by State")
+		return decodedHeadless{}, errors.New("Endpoint State profile authority is not pinned by State")
 	}
 	result.ClosedProfileAuthority = authority
 	return result, nil
@@ -255,7 +255,7 @@ func decodeSource(input []byte) (decodedSource, error) {
 
 func validateTextFields(plan Headless) error {
 	if plan.TransitAcquisitionRoot != "" || plan.BytesEachDirection != 0 || plan.AlphaCorpusStateRoot != "" || plan.AlphaCorpusAuthority != "" || plan.AlphaCohort != "" {
-		return errors.New("text runtime plan cannot select legacy acquisition or interfaces")
+		return errors.New("Endpoint runtime plan cannot select legacy acquisition or interfaces")
 	}
 	paths := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.ApplicationSocket, plan.ReaderPermission.RequestPath, plan.ReaderPermission.ResponsePath}
 	permissions := []Permission{plan.ReaderPermission}
@@ -270,7 +270,7 @@ func validateTextFields(plan Headless) error {
 	seen := make(map[string]bool)
 	for _, path := range paths {
 		if !posixpath.IsAbs(path) || posixpath.Clean(path) != path || seen[path] {
-			return errors.New("text runtime paths must be distinct, absolute and canonical")
+			return errors.New("Endpoint runtime paths must be distinct, absolute and canonical")
 		}
 		seen[path] = true
 	}
@@ -281,7 +281,7 @@ func validateTextFields(plan Headless) error {
 		}
 		total := uint64(permission.Maxima[0]) + uint64(permission.Maxima[1]) + uint64(permission.Maxima[2])
 		if total == 0 || total > maximum {
-			return errors.New("text runtime allocation unavailable")
+			return errors.New("Endpoint runtime allocation unavailable")
 		}
 	}
 	return nil

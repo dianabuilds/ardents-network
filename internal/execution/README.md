@@ -9,7 +9,7 @@ failed cleanup retains that slot and the first terminal generation failure.
 
 `runtime` consumes exact local authority, serializes the shared fixed activation
 inventory and retains ambiguous activation obligations. It pins original cleanup
-before destination-free Text INIT and rechecks original artifact/invocation after
+before destination-free document INIT and rechecks original artifact/invocation after
 READY before constructing a fresh private byte Grant. Empty preparation joins
 that Grant and worker before returning a distinct completed-current provenance.
 That provenance grants no live worker operation. Failed original cleanup retains
@@ -32,7 +32,7 @@ therefore denies sibling effects while join remains pending; this report returns
 no cleanup capacity. A missing manager remains a provisional observation until
 original pinned removal or a retained failure is established.
 Ordinary Reader and selected-snapshot Publisher invocations instead retain the
-Text owner's sole initialized protocol reader. One original operation transfers
+document owner's sole initialized protocol reader. One original operation transfers
 one authenticated Connection stream under its checked directional byte contract;
 recovery cannot acquire another Job or submit another Application request.
 After complete authenticated Terminal, the Reader joins the Connection control
@@ -42,7 +42,7 @@ then joins the worker before exposing bytes through completed-current checking.
 Revocation or failed exchange retains failure; no pending result grants worker
 authority or successful cleanup.
 
-The Publisher Text consumer retains its original completed Stream borrow until
+The document Publisher consumer retains its original completed Stream borrow until
 the original control tail joins or the original operation is cancelled. Worker
 cleanup capacity remains held during this wait; refusal and cancellation still
 interrupt and join the same resources without a renewed Job or request.
@@ -52,12 +52,12 @@ native worker adapter remains separate: unsupported platforms return no
 activation, artifact or cleanup pin. The common owner joins the original refused
 local Job and returns its slot before another attempt; no participant console,
 durable Network/Stock/Hosting root or Route work can precede qualified launch.
-Only the Linux initialization seam borrows destination-free Text INIT. Portable
+Only the Linux initialization seam borrows destination-free document INIT. Portable
 composition and its refusal checks establish no Windows worker support.
 
 `worker` owns fixed installed artifacts, typed manager inventory/properties,
 per-read credentials and SCM_RIGHTS closure, pinned cgroup events and original
-stop/join. Its factory selects only the fixed Text artifact and admitted local
+stop/join. Its factory selects only the fixed signed Application worker artifact and admitted local
 surface; it exposes no Qualification inventory, Endpoint-wide cgroup pin or
 unconsumed artifact/attachment getters. Internal manager and file observations
 remain private mechanisms. Ordinary Execution admits Ubuntu24/systemd255 only. Installation's
@@ -97,7 +97,7 @@ qualification follows. Its driver and limits belong to the
 [Execution tree profile](../../tests/qualification/execution-tree/README.md).
 
 The separate [Execution escape profile](../../tests/qualification/execution-escape/README.md)
-uses the separately root-pinned adversarial Text artifact through this runtime.
+uses the separately root-pinned adversarial document worker artifact through this runtime.
 Independent host listeners require positive controls before launch and after
 original worker join on both local surfaces; any other contact fails. Original
 kernel event/proc descriptors observe cleanup, while retired operations refuse

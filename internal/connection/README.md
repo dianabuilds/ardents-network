@@ -39,7 +39,7 @@ Linux `make route-check` включает весь Connection вместе с с
 identity, operation, Work Safety границу или continuity secret. Физическое
 закрытие и retained cleanup outcome отделены от Application Done.
 Командные `publication-serve` и Reader `target_link` потребляют этот путь через
-исходные квалифицированные Text workers. Эти consumers сами по себе не являются
+исходные квалифицированные Application workers. Эти consumers сами по себе не являются
 полной installed/recovery/Terminal квалификацией.
 
 `publisher_authentication.go` выполняет coalesced request/response на исходном
@@ -95,7 +95,7 @@ Attachment cleanup failures. Отмена работы не создаёт от�
 `stream.go` и `stream_records.go` владеют ordered byte counters, ACK, half-close,
 Terminal exchange, сохранённым исходом и joined I/O; законченный контрольный
 хвост остаётся в исходных Work Safety/no-new-recovery пределах. Двухсторонние
-командные consumers используют эти владельцы через исходные Text workers;
+командные consumers используют эти владельцы через исходные Application workers;
 наличие API и consumers не квалифицирует полный установленный путь.
 Publisher Attachment владеет отдельной исходной `instance.ServiceLease`:
 отдельный физический Attachment может завершиться, сохранив logical Instance
@@ -145,7 +145,7 @@ continuity key, counters или Work Safety. Фактический отказ c
 `publication/runtime.NextAuthentication` потребляет завершённую initial delivery,
 исходное private opening и тот же Source-bound Responder JOIN перед Service TLS.
 `execution/runtime.DeliverPublisherStream` передаёт уже аутентифицированный поток
-единственному Text protocol reader той же исходной qualified invocation.
+единственному document protocol reader той же исходной qualified invocation.
 Это техническая byte boundary; она не удостоверяет Service вместо Connection.
 Обычная композиция обязана установить настоящий Route-backed replacement source
 до передачи Application bytes. Полный handoff не заменяется вызовом одного API.

@@ -13,11 +13,11 @@ import (
 )
 
 // streamProtocol is the fixed Stream qualification inventory. It mirrors the
-// ordinary Text launch path exactly (same gate, artifact, Job, Grant, lease and
+// ordinary protected launch path exactly (same gate, artifact, Job, Grant, lease and
 // joined cleanup) but activates the stream worker, performs the fixed stream
 // INIT/READY exchange and reobserves through the stream inventory. The trusted
 // qualification composition selects it only through LaunchStreamQualification;
-// ordinary Text jobs cannot reach it.
+// ordinary Application jobs cannot reach it.
 type streamProtocol struct {
 	explicitRole string
 	profile      streamqualification.Profile
@@ -102,7 +102,7 @@ func (input *streamQualificationInput) observe(invocation *Invocation) {
 }
 
 // streamWorkerBorrow adapts the retained attachment to the bridge while
-// rechecking the exact original operation on every I/O. It mirrors the Text
+// rechecking the exact original operation on every I/O. It mirrors the document
 // reader borrow: possession grants no authority, and Close captures final
 // authority before physical retirement and retains the first cleanup failure.
 type streamWorkerBorrow struct {

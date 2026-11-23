@@ -21,7 +21,7 @@ type readerConnectionInput struct {
 	attempted bool // Original Invocation useMu owns the one transfer attempt.
 }
 
-// ReaderResult retains bounded Text bytes privately until original Service I/O,
+// ReaderResult retains bounded document bytes privately until original Service I/O,
 // operation and worker descendants have joined. It is never live permission.
 type ReaderResult struct {
 	self       *ReaderResult
@@ -32,7 +32,7 @@ type ReaderResult struct {
 	used       bool
 }
 
-// DeliverReaderStream gives the sole initialized Text reader one authenticated
+// DeliverReaderStream gives the sole initialized document reader one authenticated
 // stream. A true transfer remains receiver-owned even if completion fails.
 // The caller closes its Operation and Invocation before consuming the result.
 func (operation *Operation) DeliverReaderStream(contract StreamContract, stream application.Stream) (transferred bool, result *ReaderResult, failure error) {

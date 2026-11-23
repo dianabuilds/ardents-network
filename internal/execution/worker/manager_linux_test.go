@@ -42,11 +42,11 @@ func TestDocumentWorkerUnitRejectsForeignAndAmbiguousInstances(t *testing.T) {
 		"ardents-stream-qualification-publisher@0-12-997.service",
 		"ardents-text-publisher@1-12-0.service", "ardents-text-publisher@01-12-997.service", "ardents-text-publisher@1-12-997.service/extra",
 		"ardents-text-reader@1-12-997.service", "ardents-text-publisher@1-12-997.service\n"} {
-		if validUnit(textInventory, name, "publisher") {
+		if validUnit(applicationInventory, name, "publisher") {
 			t.Fatalf("admitted foreign unit %q", name)
 		}
 	}
-	if !validUnit(textInventory, "ardents-text-publisher@0-12-997.service", "publisher") {
+	if !validUnit(applicationInventory, "ardents-text-publisher@0-12-997.service", "publisher") {
 		t.Fatal("first exact socket instance refused")
 	}
 	if !validUnit(streamInventory, "ardents-stream-qualification-publisher@0-12-997.service", "publisher") {
@@ -66,12 +66,12 @@ func TestDocumentWorkerExecutableObservationRejectsNullAndExtraCommands(t *testi
 		"[" + valid[1:len(valid)-1] + "," + valid[1:len(valid)-1] + "]",
 	} {
 		properties := properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: json.RawMessage(raw)}}
-		if verifyExec(textInventory, properties, "publisher", 42) == nil {
+		if verifyExec(applicationInventory, properties, "publisher", 42) == nil {
 			t.Fatal("unverified executable observation admitted")
 		}
 	}
 	properties := properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: json.RawMessage(valid)}}
-	if err := verifyExec(textInventory, properties, "publisher", 42); err != nil {
+	if err := verifyExec(applicationInventory, properties, "publisher", 42); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -82,7 +82,7 @@ func TestStreamWorkerExecutableObservationBindsQualificationProgram(t *testing.T
 	if err := verifyExec(streamInventory, observed, "publisher", 42); err != nil {
 		t.Fatal(err)
 	}
-	if verifyExec(textInventory, observed, "publisher", 42) == nil {
+	if verifyExec(applicationInventory, observed, "publisher", 42) == nil {
 		t.Fatal("text inventory admitted the qualification executable")
 	}
 	text := properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: json.RawMessage(`[["/ardents-text",["/ardents-text","worker-publisher"],[],1,1,0,0,42,0,0]]`)}}

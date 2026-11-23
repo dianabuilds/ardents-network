@@ -33,14 +33,14 @@ func TestDocumentWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 	name := "ardents-text-reader@0-12-997.service"
 	for _, group := range []string{"", "/" + name, "/system.slice/../" + name, "/system.slice//" + name,
 		"/system.slice/" + name + "/child", "/system.slice/other.service", "/system.slice/\n" + name} {
-		if cgroupPath(textInventory, group, name, "reader") {
+		if cgroupPath(applicationInventory, group, name, "reader") {
 			t.Fatalf("foreign cgroup path accepted: %q", group)
 		}
 	}
-	if !cgroupPath(textInventory, "/system.slice/"+name, name, "reader") {
+	if !cgroupPath(applicationInventory, "/system.slice/"+name, name, "reader") {
 		t.Fatal("installed worker cgroup path refused")
 	}
-	if cgroupPath(textInventory, "/system.slice/foreign.scope/"+name, name, "reader") {
+	if cgroupPath(applicationInventory, "/system.slice/foreign.scope/"+name, name, "reader") {
 		t.Fatal("nested foreign document worker cgroup accepted")
 	}
 	streamName := "ardents-stream-qualification-reader@0-12-997.service"
@@ -49,7 +49,7 @@ func TestDocumentWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 	// under the qualification root: inventory selection is not caller-visible.
 	for _, group := range []string{"/system.slice/" + streamName, qualificationRoot + streamName,
 		"/foreign" + qualificationRoot + streamName, qualificationRoot + "nested/" + streamName} {
-		if cgroupPath(textInventory, group, streamName, "reader") {
+		if cgroupPath(applicationInventory, group, streamName, "reader") {
 			t.Fatalf("foreign qualification cgroup path accepted: %q", group)
 		}
 	}
@@ -101,7 +101,7 @@ func TestDocumentWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 
 func cleanupObservation(t *testing.T) (Instance, properties, properties) {
 	t.Helper()
-	instance := Instance{inv: textInventory, Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: 42, UID: 61234, Invocation: [16]byte{1}}
+	instance := Instance{inv: applicationInventory, Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: 42, UID: 61234, Invocation: [16]byte{1}}
 	instance.Cgroup = "/system.slice/" + instance.Name
 	value := func(signature string, data any) value {
 		body, err := json.Marshal(data)
