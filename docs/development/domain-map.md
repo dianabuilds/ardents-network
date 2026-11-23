@@ -474,7 +474,8 @@ write their contents or interpret detached observations as runtime rights.
 Source's actual original plan/TLS/input lifetime and State Current/Wait/Close
 remain with its command/runtime owners. `internal/platform/artifacts` shares the
 Linux directory traversal and original-descriptor reobservation used by Source,
-platform pre-start, and offline Network commands. Each invocation retains its
+platform pre-start, and offline Network commands. It also owns the bounded
+regular-file read shared by Source and platform pre-start. Each invocation retains its
 own descriptors and its required access checks. This mechanism confers no
 State, signing, startup or Route authority. Node retains original duty, credential,
 participation producer and process protection. Unresolved live producers survive

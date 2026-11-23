@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
@@ -44,16 +43,16 @@ func (f *platformFiles) ReadRuntime(path string, maximum int64, private bool) ([
 	if err != nil {
 		return nil, err
 	}
-	input.info, err = input.file.Stat()
-	if err != nil || !input.info.Mode().IsRegular() || input.info.Size() < 1 || input.info.Size() > maximum {
-		return nil, errPlatformInput
-	}
-	stat, ok := input.info.Sys().(*syscall.Stat_t)
-	if !ok || stat.Nlink != 1 || input.info.Mode() != input.info.Mode().Perm() || input.info.Mode().Perm()&0022 != 0 || (!private && stat.Uid != 0) || (private && (input.info.Mode().Perm()&0077 != 0 || stat.Uid != 0 && (stat.Uid < 100 || stat.Uid > 999))) {
-		return nil, errPlatformInput
-	}
-	input.raw, err = io.ReadAll(io.LimitReader(input.file, maximum+1))
-	if err != nil || int64(len(input.raw)) != input.info.Size() || input.check() != nil {
+	input.info, input.raw, err = artifactio.ReadRetainedFile(input.file, maximum, func(mode os.FileMode, owner uint32) bool {
+		if mode != mode.Perm() || mode.Perm()&0022 != 0 {
+			return false
+		}
+		if !private {
+			return owner == 0
+		}
+		return mode.Perm()&0077 == 0 && (owner == 0 || owner >= 100 && owner <= 999)
+	}, nil)
+	if err != nil || input.check() != nil {
 		return nil, errPlatformInput
 	}
 	return input.raw, nil

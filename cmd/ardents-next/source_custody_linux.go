@@ -5,11 +5,9 @@ package main
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
@@ -128,23 +126,15 @@ func (l *sourceInputLifetime) acquire(path string, maximum int64, private bool) 
 	if err != nil {
 		return nil, l.refuse(errors.Join(errSourceInput, err))
 	}
-	f.info, err = f.file.Stat()
-	if err != nil || !f.info.Mode().IsRegular() || f.info.Size() < 1 || f.info.Size() > maximum {
-		return nil, l.refuse(errors.Join(errSourceInput, err))
-	}
-	s, ok := f.info.Sys().(*syscall.Stat_t)
-	if !ok || s.Nlink != 1 {
-		return nil, l.refuse(errSourceInput)
-	}
-	if private && (s.Uid != uid || f.info.Mode().Perm()&0077 != 0) {
-		return nil, l.refuse(errSourceInput)
-	}
-	f.raw, err = io.ReadAll(io.LimitReader(f.file, maximum+1))
+	var afterRead func(*os.File)
 	if l.observe != nil {
-		l.observe("read", f.file)
+		afterRead = func(file *os.File) { l.observe("read", file) }
 	}
-	if err != nil || int64(len(f.raw)) != f.info.Size() {
-		return nil, l.refuse(errors.Join(errSourceInput, err))
+	f.info, f.raw, err = artifacts.ReadRetainedFile(f.file, maximum, func(mode os.FileMode, owner uint32) bool {
+		return !private || owner == uid && mode.Perm()&0077 == 0
+	}, afterRead)
+	if err != nil {
+		return nil, l.refuse(sourceInputCheckError(err))
 	}
 	if err := errors.Join(f.check(), l.ctx.Err()); err != nil {
 		return nil, l.refuse(err)
