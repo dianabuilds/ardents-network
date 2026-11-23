@@ -6,7 +6,7 @@ Current work requires positive TCP/TLS integration and explicit deferred-QUIC
 pre-effect refusal without fallback. All other ownership, review and delivery
 obligations remain. Historical both-Carrier receipts retain their original scope.
 
-This engineering workflow applies to the authorized closed text-Service work.
+This engineering workflow applies to the authorized closed Alpha Service work.
 It changes neither the product contract nor the repository authority order.
 GitHub Issues in the C0 milestone own delivery state; this file is not a ledger.
 

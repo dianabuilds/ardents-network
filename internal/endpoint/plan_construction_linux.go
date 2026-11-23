@@ -24,21 +24,21 @@ import (
 // accepted retained Network State. Finite permission allocation bounds stay
 // with the installation request grammar.
 type PlanDeclaration struct {
-	Role                    string
-	NetworkStateRoot        string
-	LocalRoleStateRoot      string
-	ApplicationTokenRoot    string
-	EntryStateRoot          string
-	PublicationRoot         string
-	ServiceInstanceRoot     string
-	TimeConfidenceFile      string
-	ApplicationSocket       string
-	AdministrationSocket    string
-	BrokerID                string
-	ConnectionPrincipal     string
-	AdministrationPrincipal string
-	ReaderPermission        PermissionPlan
-	PublisherPermission     PermissionPlan
+	Role                    string         `json:"role"`
+	NetworkStateRoot        string         `json:"network_state_root"`
+	LocalRoleStateRoot      string         `json:"local_role_state_root"`
+	ApplicationTokenRoot    string         `json:"text_token_root"`
+	EntryStateRoot          string         `json:"entry_state_root"`
+	PublicationRoot         string         `json:"publication_root"`
+	ServiceInstanceRoot     string         `json:"service_instance_root"`
+	TimeConfidenceFile      string         `json:"time_confidence_file"`
+	ApplicationSocket       string         `json:"application_socket"`
+	AdministrationSocket    string         `json:"administration_socket"`
+	BrokerID                string         `json:"broker_id"`
+	ConnectionPrincipal     string         `json:"connection_principal"`
+	AdministrationPrincipal string         `json:"administration_principal"`
+	ReaderPermission        PermissionPlan `json:"reader_permission"`
+	PublisherPermission     PermissionPlan `json:"publisher_permission"`
 }
 
 // ConstructPlans renders the canonical headless and Source plan files for one

@@ -15,7 +15,7 @@ This document is the reader route and coverage map, not a second task ledger.
 
 ## One selected path
 
-First implement and qualify the complete closed text-Service journey by
+First implement and qualify the complete closed Service journey by
 Target Link on Ubuntu. It includes real enrollment/State/time inputs, private
 admission and reachability, publication, both protected legs, end-to-end
 Service authentication, confined reader and Publisher, resource exhaustion,
