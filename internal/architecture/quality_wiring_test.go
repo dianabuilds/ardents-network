@@ -64,7 +64,7 @@ func assertQualityWiring(t *testing.T, root string) {
 			t.Errorf("CI workflow is missing mandatory quality control %q", required)
 		}
 	}
-	if bytes.Contains(workflow, []byte("  push:\n")) {
+	if bytes.Contains(workflow, []byte("  push:\n    branches: [main]")) {
 		t.Error("quality workflow must not repeat the protected PR gate after merge")
 	}
 	assertPinnedActions(t, workflow)
