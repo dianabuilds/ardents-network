@@ -22,7 +22,7 @@ func TestCompiledCommandsRefuseUnsupportedPlatformExplicitly(t *testing.T) {
 		stderr    bool // refusal projects to diagnostic (stderr) rather than stdout
 	}{
 		{"platform", []string{"platform", "check", "/etc/ardents/unit"}, "platform", false},
-		{"infrastructure", []string{"infrastructure", "prepare-inventory", "/nonexistent-input", "/nonexistent-output"}, "infrastructure", false},
+		{"infrastructure", []string{"infrastructure", "prepare-runtime-inventory", "source", "/nonexistent-input", "/nonexistent-output"}, "infrastructure", false},
 		{"source", []string{"source", "serve-retained", "/nonexistent-source"}, "source", true},
 		{"source-repair", []string{"source", "repair-retained", "/nonexistent-source"}, "source.repair-retained", true},
 		{"source-prepare-trust", []string{"source", "prepare-trust", "/nonexistent-a", "/nonexistent-b"}, "source.prepare-trust", false},

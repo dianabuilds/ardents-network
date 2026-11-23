@@ -29,7 +29,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 		t.Fatal(err)
 	}
 	descriptorOut := filepath.Join(parent, "descriptor")
-	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "infrastructure", "prepare-descriptor", "infrastructure-fixture", "1", compiledCommand(t), template, descriptorOut)
+	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "infrastructure", "prepare-runtime-descriptor", "source", "infrastructure-fixture", "1", compiledCommand(t), template, descriptorOut)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("actual public descriptor %s %v", out, err)
 	}
@@ -41,7 +41,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 		t.Fatal(err)
 	}
 	inventoryOut := filepath.Join(parent, "inventory")
-	cmd = exec.CommandContext(t.Context(), compiledCommand(t), "infrastructure", "prepare-inventory", dir, inventoryOut)
+	cmd = exec.CommandContext(t.Context(), compiledCommand(t), "infrastructure", "prepare-runtime-inventory", "source", dir, inventoryOut)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("actual public inventory %s %v", out, err)
 	}
@@ -50,7 +50,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 		t.Fatal(err)
 	}
 	extra := filepath.Join(dir, "extra")
-	raw, err = executeInfrastructurePreparation(t.Context(), []string{"prepare-inventory", dir, filepath.Join(parent, "late-inventory")}, func(stage string, _ *os.File) {
+	raw, err = executeInfrastructurePreparation(t.Context(), []string{"prepare-runtime-inventory", "source", dir, filepath.Join(parent, "late-inventory")}, func(stage string, _ *os.File) {
 		if stage == "before-directory-sync" {
 			if err := os.WriteFile(extra, []byte("added after readback"), 0600); err != nil {
 				t.Fatal(err)
@@ -62,6 +62,25 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 	}
 	if err := os.Remove(extra); err != nil {
 		t.Fatal(err)
+	}
+	for _, retired := range []struct {
+		operation string
+		input     []string
+	}{
+		{"prepare-descriptor", []string{"infrastructure-fixture", "1", compiledCommand(t), template}},
+		{"prepare-inventory", []string{dir}},
+	} {
+		destination := filepath.Join(parent, "retired-"+retired.operation)
+		args := append(append([]string{"infrastructure", retired.operation}, retired.input...), destination)
+		cmd := exec.CommandContext(t.Context(), compiledCommand(t), args...)
+		out, err := cmd.CombinedOutput()
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) || exit.ExitCode() != 2 || len(out) != 0 {
+			t.Fatalf("retired %s returned %q, %v", retired.operation, out, err)
+		}
+		if _, err := os.Lstat(destination); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("retired %s touched output: %v", retired.operation, err)
+		}
 	}
 	oraclePin := writeInfrastructureOracleInventory(t, dir, files, 1)
 	if fmt.Sprintf("%x", sha256.Sum256(prepared)) != oraclePin {
@@ -181,7 +200,7 @@ func TestNetworkSigningInfrastructureRefusesNonExt4Input(t *testing.T) {
 	if err := os.WriteFile(path, []byte("public bytes"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := executeInfrastructurePreparation(t.Context(), []string{"prepare-descriptor", "one", "1", path, path, destination}, nil)
+	raw, err := executeInfrastructurePreparation(t.Context(), []string{"prepare-runtime-descriptor", "source", "one", "1", path, path, destination}, nil)
 	if !errors.Is(err, errNetworkPreparation) || raw != nil {
 		t.Fatalf("expected native filesystem refusal, got %q %v", raw, err)
 	}
@@ -201,7 +220,7 @@ func TestNetworkSigningInfrastructureReobservesOutputMetadata(t *testing.T) {
 			destination := filepath.Join(parent, "descriptor")
 			path := filepath.Join(destination, "infrastructure-source.json")
 			changed := false
-			raw, err := executeInfrastructurePreparation(t.Context(), []string{"prepare-descriptor", "one", "1", input, input, destination}, func(stage string, _ *os.File) {
+			raw, err := executeInfrastructurePreparation(t.Context(), []string{"prepare-runtime-descriptor", "source", "one", "1", input, input, destination}, func(stage string, _ *os.File) {
 				if stage != "closed" {
 					return
 				}
@@ -235,7 +254,7 @@ func TestNetworkSigningInfrastructureOriginalCustodyRefusesMutationAndLateClose(
 			if err := os.WriteFile(template, []byte("public template"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			args := []string{"prepare-descriptor", "one", "1", program, template, filepath.Join(parent, "output")}
+			args := []string{"prepare-runtime-descriptor", "source", "one", "1", program, template, filepath.Join(parent, "output")}
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			observed := false
