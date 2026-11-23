@@ -65,7 +65,7 @@ production outcomes or authorization to exceed existing product budgets.
 
 | Quantity | Selected bound and accounting |
 |---|---|
-| Reference request / response | 512 application bytes and 65,536 total response bytes; the text response includes its 13-byte header and 65,523 content bytes |
+| Reference request / response | 512 application bytes and 65,536 total response bytes; the document response includes its 13-byte header and 65,523 content bytes |
 | Cold response | p95 <=3 s from the authorized Reader request, including its worker launch, to the complete validated response; no private destination cache, token stock or prepared prefix |
 | Warm response | p95 <=1 s for a new Connection 1–30 s after a prior read in the same context; valid scoped cache/token stock, one target-free prefix and finite actual-work Node Carrier reuse allowed; retained local Rendezvous Node choice, no reserved join or open Service Connection |
 | Latency samples | 1,000 cold and 1,000 warm attempts per run, 3 declared seeds; report all outcomes and nearest-rank p50/p95/p99; a non-success in the normal reference counts as infinite completion time |
@@ -141,11 +141,11 @@ and there is no runtime flag, caller bool or arbitrary-program launch bypass.
 The deterministic scheduled-byte generator covers all 256 byte values in its
 fixed conformance window, including NUL and invalid UTF-8. Verification is
 offset-sensitive across unequal fragments; corruption and a one-byte-short
-workload cannot pass. This checks the laboratory corpus, not a text snapshot or
+workload cannot pass. This checks the laboratory corpus, not a document snapshot or
 an arbitrary Application payload contract.
 Register its exact test package/caller/profile with the implementing change.
 The real Endpoint, Node, Route and Service implementations remain unchanged
-between the text journey and these network measurements. Report Application
+between the document journey and these network measurements. Report Application
 work separately where NET-14 explicitly excludes it.
 
 ## Counting useful work and hosting cost
