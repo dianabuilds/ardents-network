@@ -2892,6 +2892,21 @@ artifacts keep their native tags and stands. The unsupported-platform worker
 entrypoint and snapshot import refuse explicitly; portable codec success
 grants no installed-worker, confinement or publication authority.
 
+P1-B batch 1 (#781, #691) de-tagged verified pure leaf production files to
+portable: hosting reservation accounting and bounded read, the processresource
+copied failure projection, `network/source` public X.509 observation, and the
+release static-metadata projection. The source public-trust observation, the
+release static-metadata projection and a new portable processresource
+failure-projection behavior test execute in the portable deterministic inventory
+on Windows and macOS. The hosting reservation behavior tests stay Linux because
+they exercise the native flock lease and `/sys` interface counters; the native
+mechanism seams (hosting platform lease, processresource native pin) keep their
+Linux tags and unchanged `!linux` typed refusals. De-tagged files add no native
+mechanism and no weaker accepting path; windows-production-dead symbols carry
+reviewed deadcode allowances. The enrollment infrastructure inventory and the
+introduction receiving registry remain Linux-bound non-leaves (they compose
+Linux-tagged native seams) and are recorded for a later batch.
+
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require
