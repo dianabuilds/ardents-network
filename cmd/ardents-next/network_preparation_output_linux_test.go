@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+
 	"io"
 	"os"
 	"os/exec"
@@ -14,7 +15,14 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
+
+func writeNetworkPreparation(ctx context.Context, path, name string, raw []byte) error {
+	return provisioning.PublishPreparedNetworkArtifact(ctx, path, name, raw, nil)
+}
 
 func preparationPrivateParent(t *testing.T) string {
 	t.Helper()
@@ -97,7 +105,7 @@ func TestNetworkPreparationNativeCustody(t *testing.T) {
 					t.Fatal(step, err)
 				}
 			}
-			err := persistNetworkPreparation(t.Context(), root, name, message, observe)
+			err := provisioning.PublishPreparedNetworkArtifact(t.Context(), root, name, message, observe)
 			if fault == "healthy" {
 				if err != nil {
 					t.Fatal(err)
@@ -137,8 +145,8 @@ func TestNetworkPreparationPublicationKeepsProtectedAccessSeparate(t *testing.T)
 	}
 	for _, sensitive := range []bool{false, true} {
 		protected := filepath.Join(parent, "protected")
-		files := []networkOutputFile{{name: "artifact", raw: payload}}
-		if err := persistNetworkFiles(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
+		files := []artifacts.Content{{Name: "artifact", Data: payload}}
+		if err := provisioning.PublishNetworkInventory(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
 			t.Fatal("protected inventory admitted outside its root-controlled ancestors", sensitive)
 		}
 		if _, err := os.Lstat(protected); !errors.Is(err, os.ErrNotExist) {
@@ -157,7 +165,7 @@ func TestNetworkPreparationCancellationRetainsIncompletePrefix(t *testing.T) {
 			if stage == "before" {
 				cancel()
 			}
-			err := persistNetworkPreparation(ctx, root, "profile.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
+			err := provisioning.PublishPreparedNetworkArtifact(ctx, root, "profile.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
 				if step == stage {
 					cancel()
 				}
@@ -202,7 +210,7 @@ func TestNetworkPreparationInterruptedWriterChild(t *testing.T) {
 		}
 		return
 	}
-	err := persistNetworkPreparation(context.Background(), os.Getenv("ARDENTS_PREPARATION_ROOT"), "epoch.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
+	err := provisioning.PublishPreparedNetworkArtifact(context.Background(), os.Getenv("ARDENTS_PREPARATION_ROOT"), "epoch.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
 		if step == os.Getenv("ARDENTS_PREPARATION_STAGE") {
 			_, _ = os.Stdout.Write([]byte("held\n"))
 			time.Sleep(time.Minute)
@@ -311,7 +319,7 @@ func TestNetworkPreparationNativeInputAndReceiptRefusals(t *testing.T) {
 			}
 			if fault == "oversize" {
 				path = filepath.Join(parent, "large")
-				if err := os.WriteFile(path, bytes.Repeat([]byte(" "), maximumNetworkPreparationPlan+1), 0600); err != nil {
+				if err := os.WriteFile(path, bytes.Repeat([]byte(" "), provisioning.MaximumNetworkPreparationPlan+1), 0600); err != nil {
 					t.Fatal(err)
 				}
 			}

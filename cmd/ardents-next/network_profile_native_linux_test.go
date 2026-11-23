@@ -13,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 func nativeProfileSigningArguments(t *testing.T) []string {
@@ -37,7 +39,7 @@ func nativeProfileSigningArguments(t *testing.T) []string {
 
 func writeNativeProfileArguments(t *testing.T, parent string, p map[string]any, key ed25519.PrivateKey, reference time.Time) []string {
 	t.Helper()
-	_, body, e := prepareNetworkPublic("prepare-closed-profile", preparationJSON(t, p))
+	_, body, e := provisioning.PrepareNetworkPublic("prepare-closed-profile", preparationJSON(t, p))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -60,7 +62,7 @@ func TestNetworkSigningProfileNativeCommit(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			acted := false
-			_, err := executeObservedNetworkSigning(ctx, args, func(stage string, f *os.File) {
+			_, err := provisioning.SignNetwork(ctx, args, func(stage string, f *os.File) {
 				var e error
 				if stage == "file-created" && !acted {
 					switch fault {
@@ -106,10 +108,10 @@ func TestNetworkSigningProfileNativeCommit(t *testing.T) {
 			if fault == "writer close" && !errors.Is(err, os.ErrClosed) {
 				t.Fatal("original physical failures lost", err)
 			}
-			if _, e := executeNetworkSigning(t.Context(), args); e == nil {
+			if _, e := signNetworkFixture(t.Context(), args); e == nil {
 				t.Fatal("signed or incomplete output adopted")
 			}
-			if _, e := executeNetworkSigning(t.Context(), nativeProfileSigningArguments(t)); e != nil {
+			if _, e := signNetworkFixture(t.Context(), nativeProfileSigningArguments(t)); e != nil {
 				t.Fatal("healthy profile control", e)
 			}
 		})
@@ -134,7 +136,7 @@ func TestNetworkSigningProfileActualExpiry(t *testing.T) {
 			p["not_after"] = until.Format(time.RFC3339)
 			args := writeNativeProfileArguments(t, signingNativeParent(t), p, key, now)
 			observed := false
-			_, err := executeObservedNetworkSigning(t.Context(), args, func(step string, _ *os.File) {
+			_, err := provisioning.SignNetwork(t.Context(), args, func(step string, _ *os.File) {
 				if step == barrier {
 					observed = true
 					if d := time.Until(until); d > 0 {
@@ -152,7 +154,7 @@ func TestNetworkSigningProfileActualExpiry(t *testing.T) {
 			if barrier != "inputs-read" && e != nil {
 				t.Fatal("incomplete output removed", e)
 			}
-			if _, e = executeNetworkSigning(t.Context(), nativeProfileSigningArguments(t)); e != nil {
+			if _, e = signNetworkFixture(t.Context(), nativeProfileSigningArguments(t)); e != nil {
 				t.Fatal("healthy profile control", e)
 			}
 		})
@@ -165,7 +167,7 @@ func TestNetworkSigningProfileContention(t *testing.T) {
 	start := make(chan struct{})
 	results := make(chan error, 2)
 	for range 2 {
-		wg.Go(func() { <-start; _, e := executeNetworkSigning(t.Context(), args); results <- e })
+		wg.Go(func() { <-start; _, e := signNetworkFixture(t.Context(), args); results <- e })
 	}
 	close(start)
 	wg.Wait()
@@ -226,10 +228,10 @@ func TestNetworkSigningProfileReceiptExpiry(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(args[5], "profile.bin")); err != nil {
 		t.Fatal("original output lost", err)
 	}
-	if _, err := executeNetworkSigning(t.Context(), args); err == nil {
+	if _, err := signNetworkFixture(t.Context(), args); err == nil {
 		t.Fatal("failed acknowledgement revived")
 	}
-	if _, err := executeNetworkSigning(t.Context(), nativeProfileSigningArguments(t)); err != nil {
+	if _, err := signNetworkFixture(t.Context(), nativeProfileSigningArguments(t)); err != nil {
 		t.Fatal("healthy receipt control", err)
 	}
 }

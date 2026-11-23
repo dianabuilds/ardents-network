@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // Each operation owns its root lease. Epoch intake and profile acceptance are
@@ -21,10 +22,10 @@ func runNetwork(ctx context.Context, args []string, out io.Writer) int {
 	if len(args) > 0 && args[0] == "prepare-initial-keys" {
 		return runInitialKeys(ctx, args, out)
 	}
-	if len(args) > 0 && isNetworkSigning(args[0]) {
+	if len(args) > 0 && provisioning.IsNetworkSigning(args[0]) {
 		return runNetworkSigning(ctx, args, out)
 	}
-	if len(args) > 0 && isNetworkPreparation(args[0]) {
+	if len(args) > 0 && provisioning.IsNetworkPreparation(args[0]) {
 		return runNetworkPreparation(ctx, args, out)
 	}
 	if ctx == nil || len(args) != 3 || (args[0] != "accept-epoch" && args[0] != "accept-profile" && args[0] != "inspect") {

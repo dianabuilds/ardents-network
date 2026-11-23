@@ -17,9 +17,10 @@ The runtime invocation declaration is domain-owned configuration validation
 (`plan_declaration.go`) mirroring `network/source/servingdeclaration.ServingDeclaration`, shared by
 the runtime, the retained repair commands and `node prepare-plan`. The codec
 returns declaration facts only; it accepts no State, creates no root, initializes
-no Hosting budget and signs nothing. The per-role process profile and
-root-separation policy stay in command composition; the shared byte grammar
-supplies no universal role policy. Source's separate serving grammar is unchanged.
+no Hosting budget and signs nothing. The provisioning owner writes the
+validated plan exclusively. The infrastructure launch owner holds the original
+declaration and manager through retained repair. Network State verifies the
+original dead invocation and decides the durable effect.
 
 The original joined completion obligation is domain-owned: ordinary removal
 requires the runtime's actual joined completion. Explicit bounded recovery may
@@ -49,8 +50,8 @@ the Issuer's separately prepared Admission/key/results roots).
    --output PLAN.json` writes the role's exact runtime plan JSON from operator
    inputs (`--descriptor-root` for Descriptor, `--introduction-root` for
    Introduction, `--issuance` and `--bootstrap-work` for Issuer). It validates the
-   closed grammar and the role policy gate and refuses before the single output
-   write. It performs no State acceptance, no `hosting.Initialize` and no root
+   closed grammar and role-specific roots before exclusive output creation. A
+   completed write and close precede the success receipt. It performs no State acceptance, no `hosting.Initialize` and no root
    creation; those stay the separate commands above. The produced plan decodes
    through the same node codec the runtime consumes.
 5. `ardents-next infrastructure prepare-runtime-descriptor ...` and

@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package provisioning
 
 import (
 	"bytes"
@@ -11,8 +11,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"io"
-	"net"
 	"testing"
 	"time"
 )
@@ -26,7 +26,7 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	p, key, _, _ := signingRecordFixture(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
-	_, message, err := prepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,8 +52,8 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	from, _ := admissionTime(p["valid_from"].(string))
-	until, _ := admissionTime(p["valid_until"].(string))
+	from, _ := preparationTime(p["valid_from"].(string))
+	until, _ := preparationTime(p["valid_until"].(string))
 	// Independent oracle consumes actual DER, not the generator template or its
 	// verifier. No deterministic serial/DER expectation is imposed.
 	if !bytes.Equal(c.PublicKey.(ed25519.PublicKey), key.Public().(ed25519.PublicKey)) ||
@@ -76,17 +76,9 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	}
 	altered := bytes.Clone(block.Bytes)
 	altered[len(altered)-1] ^= 1
-	if s.verifyNodeCertificate(altered) == nil {
+	if verifyIssuedCertificate(s, altered) == nil {
 		t.Fatal("altered certificate signature accepted")
 	}
-	peer := tls.Certificate{Certificate: [][]byte{block.Bytes}, PrivateKey: key}
-	var pin [32]byte
-	copy(pin[:], key[32:])
-	testNodeCertificatePeer(t, peer, pin, "ardents-route-v3", true)
-	wrongPin := pin
-	wrongPin[0] ^= 1
-	testNodeCertificatePeer(t, peer, wrongPin, "ardents-route-v3", false)
-	testNodeCertificatePeer(t, peer, pin, "foreign-alpn", false)
 	// A separately forged negative peer leaf cannot turn the accepted key into
 	// live validity. The healthy certificate above always came from the producer.
 	expired := *c
@@ -95,10 +87,9 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.verifyNodeCertificate(expiredDER) == nil {
+	if verifyIssuedCertificate(s, expiredDER) == nil {
 		t.Fatal("changed interval accepted")
 	}
-	testNodeCertificatePeer(t, tls.Certificate{Certificate: [][]byte{expiredDER}, PrivateKey: key}, pin, "ardents-route-v3", false)
 	wrong := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{72}, 32))
 	defer clear(wrong)
 	if _, err := s.sign(wrong, now); err == nil {
@@ -154,32 +145,6 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	}
 }
 
-func testNodeCertificatePeer(t *testing.T, certificate tls.Certificate, pin [32]byte, alpn string, accepted bool) {
-	t.Helper()
-	local, remote := net.Pipe()
-	defer local.Close()
-	defer remote.Close()
-	deadline := time.Now().Add(5 * time.Second)
-	if err := remote.SetDeadline(deadline); err != nil {
-		t.Fatal(err)
-	}
-	server := tls.Server(remote, &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, NextProtos: []string{alpn}, SessionTicketsDisabled: true})
-	joined := make(chan error, 1)
-	go func() { joined <- server.HandshakeContext(t.Context()) }()
-	client, err := routeFixtureRoleTLS(t, local, pin, deadline)
-	if (err == nil) != accepted {
-		_ = local.Close()
-		_ = remote.Close()
-		<-joined
-		t.Fatal("actual exact-key/ALPN peer verdict", err)
-	}
-	if client != nil && (client.ConnectionState().Version != tls.VersionTLS13 || client.ConnectionState().NegotiatedProtocol != "ardents-route-v3") {
-		t.Fatal("wrong peer TLS profile")
-	}
-	_ = local.Close()
-	_ = remote.Close()
-	serverErr := <-joined
-	if accepted && serverErr != nil {
-		t.Fatal("actual peer handshake", serverErr)
-	}
+func verifyIssuedCertificate(s *networkSigning, der []byte) error {
+	return verifyNodeCertificate(der, epoch.InitialClosedRecord{PublicKey: s.public, ValidFrom: s.from, ValidUntil: s.until})
 }

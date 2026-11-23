@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package provisioning
 
 import (
 	"context"
@@ -21,11 +21,12 @@ func parseNetworkSigningKey(raw []byte) (ed25519.PrivateKey, error) {
 	return key, nil
 }
 
-func executeNetworkSigning(ctx context.Context, args []string) (*networkSigningResult, error) {
-	return executeObservedNetworkSigning(ctx, args, nil)
-}
-
-func executeObservedNetworkSigning(ctx context.Context, args []string, observe func(string, *os.File)) (result *networkSigningResult, err error) {
+// SignNetwork publishes the exact signed inventory after joined input checks.
+// Optional observation reports the original custody cuts to qualification.
+func SignNetwork(ctx context.Context, args []string, observe func(string, *os.File)) (result *NetworkSigningResult, err error) {
+	if ctx == nil || len(args) != 6 || !IsNetworkSigning(args[0]) {
+		return nil, errNetworkSigning
+	}
 	if os.Geteuid() != 0 {
 		return nil, errNetworkSigning
 	}
@@ -36,12 +37,12 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 			err = errors.Join(err, admitted.checkTime(time.Now()))
 		}
 	}()
-	plan, err := artifactio.OpenProtectedInput(ctx, args[1], maximumNetworkPreparationPlan, false)
+	plan, err := artifactio.OpenProtectedInput(ctx, args[1], MaximumNetworkPreparationPlan, false)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plan.Close()) }()
-	prepared, err := artifactio.OpenProtectedInput(ctx, args[2], maximumNetworkPreparationPlan, false)
+	prepared, err := artifactio.OpenProtectedInput(ctx, args[2], MaximumNetworkPreparationPlan, false)
 	if err != nil {
 		return nil, err
 	}
@@ -83,16 +84,10 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 	if observe != nil {
 		observe("signed", secret.Descriptor())
 	}
-	err = persistNetworkSigning(ctx, args[5], artifacts, check, observe)
-	return &networkSigningResult{digest: sha256.Sum256(artifacts[0].raw), interval: operation.networkSigningInterval}, err
-}
-
-// Public signed artifacts borrow the native finite-file mechanism without
-// granting it signing or semantic authority.
-func persistNetworkSigning(ctx context.Context, path string, artifacts []networkSignedArtifact, check func() error, observe func(string, *os.File)) error {
-	files := make([]networkOutputFile, 0, len(artifacts))
-	for _, a := range artifacts {
-		files = append(files, networkOutputFile(a))
+	files := make([]artifactio.Content, len(artifacts))
+	for i, file := range artifacts {
+		files[i] = artifactio.Content{Name: file.name, Data: file.raw}
 	}
-	return persistNetworkFiles(ctx, path, files, false, check, observe)
+	err = PublishNetworkInventory(ctx, args[5], files, false, check, observe)
+	return &NetworkSigningResult{Digest: sha256.Sum256(artifacts[0].raw), interval: operation.networkSigningInterval}, err
 }

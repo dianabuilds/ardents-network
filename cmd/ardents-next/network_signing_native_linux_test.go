@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -33,7 +34,7 @@ func signingNativeParent(t *testing.T) string {
 	if err := os.Chmod(p, 0700); err != nil {
 		t.Fatal(err)
 	}
-	ancestors, err := openPreparationParent(p)
+	ancestors, err := artifactio.OpenDirectoryChain(t.Context(), p, nil)
 	if err != nil {
 		t.Fatal("invalid environment", err)
 	}
@@ -67,7 +68,7 @@ func nativeSigningArguments(t *testing.T) []string {
 	p, key, _, _ := signingRecordFixture(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
-	_, message, err := prepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := provisioning.PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func changeSigningTestTime(t *testing.T, args []string, from, until, reference t
 	plan["record"] = preparationJSON(t, record)
 	plan["reference_time"] = preparationJSON(t, reference.Format(time.RFC3339Nano))
 	if reprepare {
-		_, message, e := prepareNetworkPublic("prepare-initial-node-record", plan["record"])
+		_, message, e := provisioning.PrepareNetworkPublic("prepare-initial-node-record", plan["record"])
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -107,7 +108,7 @@ func changeSigningTestTime(t *testing.T, args []string, from, until, reference t
 			if readErr != nil {
 				t.Fatal(readErr)
 			}
-			key, keyErr := parseNetworkSigningKey(raw)
+			key, keyErr := artifactio.ParseEd25519Key(raw)
 			clear(raw)
 			if keyErr != nil {
 				t.Fatal(keyErr)
@@ -134,7 +135,7 @@ func TestNetworkSigningOriginalTimeAfterIO(t *testing.T) {
 			until := now.Add(3 * time.Second)
 			changeSigningTestTime(t, args, now.Add(-time.Minute), until, now, true)
 			observed := false
-			_, err := executeObservedNetworkSigning(t.Context(), args, func(step string, _ *os.File) {
+			_, err := provisioning.SignNetwork(t.Context(), args, func(step string, _ *os.File) {
 				if step != stage {
 					return
 				}
@@ -159,7 +160,7 @@ func TestNetworkSigningOriginalTimeAfterIO(t *testing.T) {
 				t.Fatal("uncertain output prefix removed", statErr)
 			}
 			control := nativeSigningArguments(t)
-			if _, e := executeNetworkSigning(t.Context(), control); e != nil {
+			if _, e := signNetworkFixture(t.Context(), control); e != nil {
 				t.Fatal("independent healthy time control", e)
 			}
 		})
@@ -240,7 +241,7 @@ func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			observed := false
-			artifacts, err := executeObservedNetworkSigning(ctx, args, func(step string, _ *os.File) {
+			artifacts, err := provisioning.SignNetwork(ctx, args, func(step string, _ *os.File) {
 				at := "inputs-read"
 				if fault == "late key replacement" {
 					at = "signed"
@@ -282,7 +283,7 @@ func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []
 				t.Fatal("causal input verdict", err)
 			}
 			if fault == "healthy" {
-				if artifacts.digest == [32]byte{} {
+				if artifacts.Digest == [32]byte{} {
 					t.Fatal("missing actual artifact")
 				}
 			} else if _, e := os.Lstat(args[5]); !os.IsNotExist(e) {
@@ -294,7 +295,7 @@ func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []
 				}
 			}
 			control := arguments(t)
-			if _, e := executeNetworkSigning(t.Context(), control); e != nil {
+			if _, e := signNetworkFixture(t.Context(), control); e != nil {
 				t.Fatal("independent healthy control", e)
 			}
 		})
@@ -311,11 +312,11 @@ func TestNetworkSigningDurableInventory(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			artifacts := []networkSignedArtifact{{"epoch.bin", bytes.Repeat([]byte{3}, 512)}, {"input-00.bin", []byte("input")}, {"material-00.bin", []byte("material")}}
+			artifacts := []artifactio.Content{{Name: "epoch.bin", Data: bytes.Repeat([]byte{3}, 512)}, {Name: "input-00.bin", Data: []byte("input")}, {"material-00.bin", []byte("material")}}
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			acted := false
-			err := persistNetworkSigning(ctx, root, artifacts, func() error { return ctx.Err() }, func(step string, f *os.File) {
+			err := provisioning.PublishNetworkInventory(ctx, root, artifacts, false, func() error { return ctx.Err() }, func(step string, f *os.File) {
 				if acted {
 					return
 				}
@@ -325,7 +326,7 @@ func TestNetworkSigningDurableInventory(t *testing.T) {
 					case "file replacement":
 						e = os.Rename(filepath.Join(root, "epoch.bin"), filepath.Join(parent, "original"))
 						if e == nil {
-							e = os.WriteFile(filepath.Join(root, "epoch.bin"), artifacts[0].raw, 0600)
+							e = os.WriteFile(filepath.Join(root, "epoch.bin"), artifacts[0].Data, 0600)
 						}
 						acted = true
 					case "hardlink":
@@ -376,7 +377,7 @@ func TestNetworkSigningDurableInventory(t *testing.T) {
 			if fault != "healthy" && fault != "existing" && !acted {
 				t.Fatal("fault did not execute")
 			}
-			if e := persistNetworkSigning(t.Context(), root, artifacts, func() error { return nil }, nil); e == nil {
+			if e := provisioning.PublishNetworkInventory(t.Context(), root, artifacts, false, func() error { return nil }, nil); e == nil {
 				t.Fatal("prefix adopted")
 			}
 		})
@@ -392,7 +393,7 @@ func TestNetworkSigningConcurrentOutput(t *testing.T) {
 	for range 2 {
 		wg.Go(func() {
 			<-start
-			results <- persistNetworkSigning(t.Context(), root, []networkSignedArtifact{{"node-record.bin", []byte("signed")}}, func() error { return nil }, nil)
+			results <- provisioning.PublishNetworkInventory(t.Context(), root, []artifactio.Content{{Name: "node-record.bin", Data: []byte("signed")}}, false, func() error { return nil }, nil)
 		})
 	}
 	close(start)
@@ -463,7 +464,7 @@ func TestNetworkSigningUnsupportedMount(t *testing.T) {
 		}
 	})
 	root := filepath.Join(parent, "signed")
-	if err = persistNetworkSigning(t.Context(), root, []networkSignedArtifact{{"node-record.bin", []byte("signed")}}, func() error { return nil }, nil); err == nil {
+	if err = provisioning.PublishNetworkInventory(t.Context(), root, []artifactio.Content{{Name: "node-record.bin", Data: []byte("signed")}}, false, func() error { return nil }, nil); err == nil {
 		t.Fatal("unsupported mount accepted")
 	}
 	if _, err = os.Stat(root); !os.IsNotExist(err) {
@@ -519,7 +520,7 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 		if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &syscall.Rlimit{Cur: 16, Max: 16}); err != nil {
 			t.Fatal(err)
 		}
-		_, err := executeObservedNetworkSigning(t.Context(), args, nil)
+		_, err := provisioning.SignNetwork(t.Context(), args, nil)
 		if !errors.Is(err, syscall.EFBIG) {
 			t.Fatal("actual partial write cause lost", err)
 		}
@@ -544,7 +545,7 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 	}
 	defer r.Close()
 	defer w.Close()
-	_, err = executeObservedNetworkSigning(t.Context(), args, func(step string, _ *os.File) {
+	_, err = provisioning.SignNetwork(t.Context(), args, func(step string, _ *os.File) {
 		if step == stage {
 			if _, e := os.Stdout.Write([]byte("held\n")); e != nil {
 				t.Fatal(e)
@@ -604,7 +605,7 @@ func testSigningActualPartialAndProcessCuts(t *testing.T, arguments func(*testin
 			if _, e := os.Stat(root); e != nil {
 				t.Fatal("original prefix missing", e)
 			}
-			if e := persistNetworkSigning(t.Context(), root, []networkSignedArtifact{{"node-record.bin", []byte("signed")}}, func() error { return nil }, nil); e == nil {
+			if e := provisioning.PublishNetworkInventory(t.Context(), root, []artifactio.Content{{Name: "node-record.bin", Data: []byte("signed")}}, false, func() error { return nil }, nil); e == nil {
 				t.Fatal("partial prefix adopted")
 			}
 		})
@@ -691,7 +692,7 @@ func testSigningStaticNativeRefusals(t *testing.T, arguments func(*testing.T) []
 				t.Fatal("invalid input created output", e)
 			}
 			control := arguments(t)
-			if _, e = executeNetworkSigning(t.Context(), control); e != nil {
+			if _, e = signNetworkFixture(t.Context(), control); e != nil {
 				t.Fatal("healthy control", e)
 			}
 		})

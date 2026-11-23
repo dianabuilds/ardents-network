@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package provisioning
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // This declaration admits only closed-profile signing. The State authority is
@@ -29,15 +28,16 @@ func admitClosedProfileSigning(raw, prepared []byte, pin string) (*networkSignin
 	if preparationObject(raw, &plan, "schema", "reference_time", "state_authority_key", "profile") != nil || plan.Schema != "ardents-closed-profile-signing-plan-v1" {
 		return nil, errNetworkSigning
 	}
-	authority, err := admissionHex(plan.Authority, ed25519.PublicKeySize)
-	if err != nil || [ed25519.PublicKeySize]byte(authority) == [ed25519.PublicKeySize]byte{} {
+	authorityPin, ok := decodeHex32(plan.Authority)
+	if !ok || authorityPin == [32]byte{} {
 		return nil, errNetworkSigning
 	}
-	reference, err := admissionTime(plan.Reference)
+	authority := authorityPin[:]
+	reference, err := preparationTime(plan.Reference)
 	if err != nil {
 		return nil, errNetworkSigning
 	}
-	input, body, err := provisioning.PrepareClosedNetworkProfile(plan.Profile)
+	input, body, err := PrepareClosedNetworkProfile(plan.Profile)
 	digest := sha256.Sum256(body)
 	if err != nil || pin != hex.EncodeToString(digest[:]) || !bytes.Equal(body, prepared) {
 		return nil, errNetworkSigning

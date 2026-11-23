@@ -6,6 +6,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
+// IndependentRoots checks the declared State root together with the role roots.
+func (network NodeNetwork) IndependentRoots(roots ...string) bool {
+	return separateRoots(append([]string{network.Root}, roots...)...)
+}
+
 func separateRoots(roots ...string) bool {
 	for i, root := range roots {
 		if !pathgrammar.Strict(root) {

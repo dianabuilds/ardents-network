@@ -86,7 +86,7 @@ func runSourceCommand(ctx context.Context, args []string, out, diagnostic io.Wri
 		case "prepare-state":
 			return runSourceStatePreparation(ctx, args[1:], out, diagnostic)
 		case "repair-retained":
-			return runSourceRepair(ctx, args[1:], out, diagnostic)
+			return runRepair(ctx, "source", args[1:], out, diagnostic)
 		}
 	}
 	return runSource(ctx, args, out, diagnostic)

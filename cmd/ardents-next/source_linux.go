@@ -7,7 +7,6 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source/serving"
-	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 )
 
 type sourceTerminal = serving.Terminal
@@ -36,8 +35,4 @@ func sourceEvents(out, diagnostic io.Writer) func(context.Context, serving.Event
 		}
 		return sourceReport(diagnostic, event.Phase, event.Outcome)
 	}
-}
-
-func validSourceServePlan(plan servingdeclaration.ServingDeclaration) bool {
-	return serving.ValidDeclaration(plan)
 }

@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+	"io"
 	"math/big"
 
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
@@ -24,8 +25,12 @@ func createNodeCertificate(facts epoch.InitialClosedRecord, key ed25519.PrivateK
 	if serial.Sign() <= 0 {
 		return nil, artifacts.ErrInput
 	}
+	return createNodeCertificateWithSerial(facts, key, rand.Reader, serial)
+}
+
+func createNodeCertificateWithSerial(facts epoch.InitialClosedRecord, key ed25519.PrivateKey, random io.Reader, serial *big.Int) ([]byte, error) {
 	leaf := &x509.Certificate{SerialNumber: serial, NotBefore: facts.ValidFrom, NotAfter: facts.ValidUntil, KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}, BasicConstraintsValid: true}
-	der, err := x509.CreateCertificate(rand.Reader, leaf, leaf, facts.PublicKey, key)
+	der, err := x509.CreateCertificate(random, leaf, leaf, facts.PublicKey, key)
 	if err != nil {
 		return nil, err
 	}

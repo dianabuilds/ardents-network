@@ -23,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -49,7 +50,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err := os.Chmod(parent, 0700); err != nil {
 		t.Fatal(err)
 	}
-	ancestors, err := openPreparationParent(parent)
+	ancestors, err := artifacts.OpenDirectoryChain(t.Context(), parent, nil)
 	if err != nil {
 		t.Fatal("invalid environment: original public workspace ancestors unavailable", err)
 	}
