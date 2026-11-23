@@ -2946,6 +2946,24 @@ files stay Linux because they compose the Linux `forwarding` lifetime and
 because it composes the Linux `sourceTerminal`. No de-tagged file adds a native
 mechanism or a weaker accepting path.
 
+P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
+production is already portable: the admission holder permission-request proof,
+the allocation request/decision quota grammar, the token closed-batch blind
+preparation, the epoch initial closed-record verification, and the route/join
+context lifecycle. They execute in the portable deterministic inventory on
+Windows and macOS, add no native mechanism and no weaker accepting path, and
+retire the matching windows-test-dead allowances. The join context test reaches
+the selection owner store chain only as compile-time reachability with nil role
+owners (it opens no selection root), so the epoch, join and selection store-chain
+allowances are retired while selection's own behavior tests stay Linux. Two
+batch-1 targets proved not genuinely portable and are deferred with evidence,
+not de-tagged: route/selection's Windows owner-only root floor tests POSIX mode
+bits that Windows synthesizes from the read-only attribute rather than the DACL,
+so it refuses every writable root (a production defect, separate from this
+tests-only change); admission/stock composes the Linux-only presentation journal
+(`admission/attempts`). Their Linux-tagged behavior tests and every
+native/platform-boundary test keep their tags; no production behavior changed.
+
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require
