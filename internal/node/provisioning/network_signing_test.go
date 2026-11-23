@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package provisioning
 
 import (
 	"bytes"
@@ -19,11 +19,11 @@ func signingRecordFixture(t *testing.T) (map[string]any, ed25519.PrivateKey, []b
 	t.Helper()
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{71}, 32))
 	p := preparationRecordPlan(key.Public().(ed25519.PublicKey))
-	_, message, err := prepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	reference, _ := admissionTime("2033-05-22T05:30:00Z")
+	reference, _ := preparationTime("2033-05-22T05:30:00Z")
 	return p, key, message, reference
 }
 
@@ -49,8 +49,8 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 		return s
 	}
 	s := admit(raw, message, preparationHex(digest[:]))
-	from, _ := admissionTime(p["valid_from"].(string))
-	until, _ := admissionTime(p["valid_until"].(string))
+	from, _ := preparationTime(p["valid_from"].(string))
+	until, _ := preparationTime(p["valid_until"].(string))
 	f, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: [32]byte{1}, NodeID: [32]byte{2}, Generation: 1, ValidFrom: from, ValidUntil: until, Family: "family-one", Endpoint: "127.0.0.1:4401", Carrier: p["carrier"].(string), Capability: 2, Capacity: 3, PrivateKey: key})
 	outputs, signErr := s.sign(key, reference)
 	if err != nil || signErr != nil || len(outputs) != 1 || outputs[0].name != "node-record.bin" || !bytes.Equal(outputs[0].raw, f.Raw) {
@@ -132,39 +132,14 @@ func TestNetworkSigningPrivateEncoding(t *testing.T) {
 }
 
 func TestNetworkSigningIndependentEpochOrdering(t *testing.T) {
-	from, _ := admissionTime("2033-05-22T05:20:00Z")
-	until := from.Add(time.Hour)
-	reference := from.Add(time.Minute)
-	stateKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{74}, 32))
+	plan, stateKey, inputs, f, reference := publicEpochFixture(t)
 	defer clear(stateKey)
-	var records []networkfixture.Record
-	var inputs [][]byte
-	for _, n := range []byte{5, 2} {
-		key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{n}, 32))
-		family := "family-two"
-		if n == 5 {
-			family = "family-five"
-		}
-		r, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: [32]byte{1}, NodeID: [32]byte{n}, Generation: 1, ValidFrom: from, ValidUntil: until, Family: family, Endpoint: fmt.Sprintf("127.0.0.1:%d", 4400+int(n)), Carrier: "ardents-carrier-tcp-tls-v2", Capability: 2, Capacity: 3, PrivateKey: key})
-		clear(key)
-		if err != nil {
-			t.Fatal(err)
-		}
-		records = append(records, r)
-		inputs = append(inputs, r.Raw)
-	}
-	domains := []string{"initiator", "introduction", "rendezvous", "responder"}
-	f, err := networkfixture.BuildEpoch(networkfixture.EpochSpec{NetworkID: [32]byte{1}, Number: 1, ValidFrom: from, ValidUntil: until, Inputs: inputs, Accepted: records, AssignmentSeed: [32]byte{13}, Domains: domains, Authorities: []ed25519.PrivateKey{stateKey}, Profile: "ardents-route-v3", Version: 3})
-	if err != nil {
-		t.Fatal(err)
-	}
-	p := map[string]any{"schema": "ardents-initial-epoch-plan-v1", "network_id": preparationIdentifier(1), "assignment_seed": preparationIdentifier(13), "valid_from": from.Format(time.RFC3339), "valid_until": until.Format(time.RFC3339), "domains": domains, "records": []string{preparationHex(inputs[0]), preparationHex(inputs[1])}, "authority_keys": []string{preparationHex(stateKey.Public().(ed25519.PublicKey))}}
-	_, message, err := prepareNetworkPublic("prepare-initial-epoch", preparationJSON(t, p))
+	_, message, err := PrepareNetworkPublic("prepare-initial-epoch", preparationJSON(t, plan))
 	if err != nil {
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(message)
-	s, err := admitNetworkSigning("sign-initial-epoch", signingDeclaration(t, "epoch", p, reference), message, preparationHex(digest[:]))
+	s, err := admitNetworkSigning("sign-initial-epoch", signingDeclaration(t, "epoch", plan, reference), message, preparationHex(digest[:]))
 	if err != nil {
 		t.Fatal(err)
 	}

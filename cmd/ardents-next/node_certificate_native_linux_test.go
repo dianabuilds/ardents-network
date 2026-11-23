@@ -6,16 +6,22 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // The complete production key/preparation/Record/certificate chain runs before
@@ -99,6 +105,30 @@ func TestNetworkSigningNodeCertificateCommand(t *testing.T) {
 	if json.Unmarshal(stdout, &receipt) != nil || receipt.Operation != args[0] || receipt.Digest != preparationHex(digest[:]) || !receipt.Verified || receipt.State || receipt.Installed {
 		t.Fatal("public receipt claims")
 	}
+	peer, err := tls.X509KeyPair(raw, before)
+	if err != nil {
+		t.Fatal("runtime key-pair compatibility", err)
+	}
+	leaf, err := x509.ParseCertificate(peer.Certificate[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	key := peer.PrivateKey.(ed25519.PrivateKey)
+	var pin [32]byte
+	copy(pin[:], key[32:])
+	testNodeCertificatePeer(t, peer, pin, "ardents-route-v3", true)
+	wrongPin := pin
+	wrongPin[0] ^= 1
+	testNodeCertificatePeer(t, peer, wrongPin, "ardents-route-v3", false)
+	testNodeCertificatePeer(t, peer, pin, "foreign-alpn", false)
+	expired := *leaf
+	now := time.Now()
+	expired.NotBefore, expired.NotAfter = now.Add(-2*time.Hour), now.Add(-time.Hour)
+	expiredDER, err := x509.CreateCertificate(rand.Reader, &expired, &expired, key.Public(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testNodeCertificatePeer(t, tls.Certificate{Certificate: [][]byte{expiredDER}, PrivateKey: key}, pin, "ardents-route-v3", false)
 	entries, err := os.ReadDir(args[5])
 	if err != nil || len(entries) != 1 || entries[0].Name() != "node-certificate.pem" {
 		t.Fatal("single public file", err)
@@ -124,7 +154,7 @@ func TestNetworkSigningNodeCertificateLateTime(t *testing.T) {
 			until := now.Add(3 * time.Second)
 			changeSigningTestTime(t, args, now.Add(-time.Minute), until, now, true)
 			acted := false
-			_, err := executeObservedNetworkSigning(t.Context(), args, func(step string, _ *os.File) {
+			_, err := provisioning.SignNetwork(t.Context(), args, func(step string, _ *os.File) {
 				if step == stage {
 					acted = true
 					if delay := time.Until(until); delay > 0 {
@@ -151,7 +181,7 @@ func TestNetworkSigningNodeCertificateFinalOutputAndPhysicalFailure(t *testing.T
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			acted := false
-			_, err := executeObservedNetworkSigning(ctx, args, func(step string, f *os.File) {
+			_, err := provisioning.SignNetwork(ctx, args, func(step string, f *os.File) {
 				if fault == "canceled-close" && step == "signed" {
 					acted = true
 					if e := f.Close(); e != nil {
@@ -195,7 +225,7 @@ func TestNetworkSigningNodeCertificateReceiptAndContention(t *testing.T) {
 	results := make(chan error, 2)
 	var wg sync.WaitGroup
 	for range 2 {
-		wg.Go(func() { <-start; _, err := executeNetworkSigning(t.Context(), args); results <- err })
+		wg.Go(func() { <-start; _, err := signNetworkFixture(t.Context(), args); results <- err })
 	}
 	close(start)
 	wg.Wait()
@@ -208,5 +238,35 @@ func TestNetworkSigningNodeCertificateReceiptAndContention(t *testing.T) {
 	}
 	if success != 1 {
 		t.Fatal("fresh output winners", success)
+	}
+}
+
+func testNodeCertificatePeer(t *testing.T, certificate tls.Certificate, pin [32]byte, alpn string, accepted bool) {
+	t.Helper()
+	local, remote := net.Pipe()
+	defer local.Close()
+	defer remote.Close()
+	deadline := time.Now().Add(5 * time.Second)
+	if err := remote.SetDeadline(deadline); err != nil {
+		t.Fatal(err)
+	}
+	server := tls.Server(remote, &tls.Config{Certificates: []tls.Certificate{certificate}, MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, NextProtos: []string{alpn}, SessionTicketsDisabled: true})
+	joined := make(chan error, 1)
+	go func() { joined <- server.HandshakeContext(t.Context()) }()
+	client, err := routeFixtureRoleTLS(t, local, pin, deadline)
+	if (err == nil) != accepted {
+		_ = local.Close()
+		_ = remote.Close()
+		<-joined
+		t.Fatal("actual exact-key/ALPN peer verdict", err)
+	}
+	if client != nil && (client.ConnectionState().Version != tls.VersionTLS13 || client.ConnectionState().NegotiatedProtocol != "ardents-route-v3") {
+		t.Fatal("wrong peer TLS profile")
+	}
+	_ = local.Close()
+	_ = remote.Close()
+	serverErr := <-joined
+	if accepted && serverErr != nil {
+		t.Fatal("actual peer handshake", serverErr)
 	}
 }

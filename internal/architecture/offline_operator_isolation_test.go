@@ -15,8 +15,7 @@ func offlineOperatorFile(source string) bool {
 	case "cmd/ardents-next/infrastructure_operator.go",
 		"cmd/ardents-next/issuance_export_linux.go",
 		"cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_keys_native_linux_test.go",
-		"cmd/ardents-next/network_preparation.go", "cmd/ardents-next/network_signing.go",
-		"cmd/ardents-next/network_profile_signing.go", "cmd/ardents-next/node_certificate_linux.go",
+		"cmd/ardents-next/network_preparation.go", "cmd/ardents-next/network_signing_command.go",
 		"internal/release/infrastructure/preparation_linux.go",
 		"internal/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
@@ -198,16 +197,24 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
 			return true
 		}
-	case "cmd/ardents-next/network_signing.go":
+	case "internal/node/provisioning/network_signing_declaration_linux.go":
 		switch dependency {
-		case modulePath + "/internal/node/provisioning", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
+		case modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile", modulePath + "/internal/platform/artifacts":
 			return true
 		}
-	case "cmd/ardents-next/network_profile_signing.go":
-		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/network/closedprofile"
-	case "cmd/ardents-next/node_certificate_linux.go":
-		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/network/epoch"
-	case "cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_preparation.go":
+	case "internal/node/provisioning/network_certificate_signing_linux.go",
+		"internal/node/provisioning/network_certificate_signing_linux_test.go":
+		return dependency == modulePath+"/internal/network/epoch"
+	case "internal/node/provisioning/network_profile_signing_linux.go":
+		return dependency == modulePath+"/internal/network/closedprofile"
+	case "internal/node/provisioning/network_output_linux.go", "internal/node/provisioning/network_signing_linux.go",
+		"internal/node/provisioning/network_preparation_linux.go":
+		return dependency == modulePath+"/internal/platform/artifacts"
+	case "internal/node/provisioning/network_signing_test.go":
+		return dependency == modulePath+"/tests/epochfixture/network"
+	case "internal/node/provisioning/network_profile_signing_test.go", "internal/node/provisioning/network_public_preparation_test.go":
+		return dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network"
+	case "cmd/ardents-next/network_keys.go", "cmd/ardents-next/network_preparation.go", "cmd/ardents-next/network_signing_command.go":
 		return dependency == modulePath+"/internal/node/provisioning"
 	case "cmd/ardents-next/network_keys_native_linux_test.go":
 		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts"

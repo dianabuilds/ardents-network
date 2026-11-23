@@ -15,6 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -178,7 +179,7 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 				}
 				q["records"] = []string{preparationHex(bad.Raw)}
 			}
-			if _, message, e := prepareNetworkPublic("prepare-initial-epoch", preparationJSON(t, q)); e == nil || message != nil {
+			if _, message, e := provisioning.PrepareNetworkPublic("prepare-initial-epoch", preparationJSON(t, q)); e == nil || message != nil {
 				t.Fatal("invalid Epoch preparation accepted")
 			}
 		})
@@ -226,7 +227,7 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 			if fault == "nested duplicate" {
 				raw = bytes.Replace(raw, []byte(`"class":1`), []byte(`"class":1,"class":1`), 1)
 			}
-			if _, message, e := prepareNetworkPublic("prepare-closed-profile", raw); e == nil || message != nil {
+			if _, message, e := provisioning.PrepareNetworkPublic("prepare-closed-profile", raw); e == nil || message != nil {
 				t.Fatal("invalid profile preparation accepted")
 			}
 		})

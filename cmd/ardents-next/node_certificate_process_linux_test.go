@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -30,7 +31,7 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 	if err := os.Chmod(parent, 0700); err != nil {
 		t.Fatal(err)
 	}
-	p, err := openPreparationParent(parent)
+	p, err := artifacts.OpenDirectoryChain(t.Context(), parent, nil)
 	if err != nil {
 		t.Fatal("invalid native environment", err)
 	}
@@ -70,7 +71,7 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 		if err != nil {
 			t.Fatal(err)
 		}
-		key, err := parseNetworkSigningKey(raw)
+		key, err := artifacts.ParseEd25519Key(raw)
 		clear(raw)
 		if err != nil {
 			t.Fatal(err)

@@ -225,7 +225,7 @@ does not decode Records, recompute assignment, redraw the seed or own SPKI rules
 Profile preparation rejects fractional or negative wire times before encoding;
 it verifies public grammar, not live membership or State readiness.
 
-Command composition owns a fresh output directory under an explicitly selected
+Node provisioning owns a fresh output directory under an explicitly selected
 caller-owned 0700 parent on native Linux ext4. It retains original directory
 descriptors, refuses symlinks/replacements and exclusively creates one 0600
 artifact. Exact write, file sync/close, readback, finite inventory, directory
@@ -238,7 +238,7 @@ Admission issuer-profile signing is not that right.
 
 The explicit `ardents-next network sign-initial-node-record` and
 `sign-initial-epoch` operations consume exact prepared artifacts and separately
-reviewed SHA-256 pins. Command composition retains original public/private
+reviewed SHA-256 pins. Node provisioning retains original public/private
 inputs and root-controlled ancestors, checks the fixed original reference and
 live validity before signing and output commit, and signs only the canonical
 Record message or initial Epoch digest. Network receives no private key.

@@ -725,6 +725,22 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
 		return true
 	}
+	if dependency == modulePath+"/internal/node/provisioning" {
+		switch source {
+		case "cmd/ardents-next/network.go", "cmd/ardents-next/network_preparation_test.go",
+			"cmd/ardents-next/network_preparation_chain_linux_test.go", "cmd/ardents-next/network_preparation_output_linux_test.go",
+			"cmd/ardents-next/network_signing_fixture_linux_test.go", "cmd/ardents-next/network_signing_native_linux_test.go",
+			"cmd/ardents-next/network_profile_native_linux_test.go", "cmd/ardents-next/node_certificate_native_linux_test.go":
+			return true
+		}
+	}
+	if source == "cmd/ardents-next/network_signing_fixture_linux_test.go" && (dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network") {
+		return true
+	}
+	if (source == "cmd/ardents-next/source_preparation_process_linux_test.go" || source == "cmd/ardents-next/node_certificate_process_linux_test.go" ||
+		source == "cmd/ardents-next/network_preparation_output_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
+		return true
+	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
@@ -836,7 +852,7 @@ func successorImportAllowed(source, dependency string) bool {
 				"cmd/ardents-next/forwarding_repair_linux.go", "cmd/ardents-next/descriptor_repair_linux.go",
 				"cmd/ardents-next/introduction_repair_linux.go", "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go", "cmd/ardents-next/source_custody_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
-				"cmd/ardents-next/network_signing_linux.go", "cmd/ardents-next/network_signing_native_linux_test.go",
+				"cmd/ardents-next/network_signing_native_linux_test.go",
 				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go":
 				return true
 			}

@@ -134,6 +134,32 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/network/closedprofile.Prepare",
+          "internal/network/epoch.PrepareInitialClosedEpoch",
+          "internal/network/epoch.PrepareInitialClosedRecord",
+          "internal/network/epoch.appendInitialPreparationText",
+          "internal/network/epoch.candidateCarrierEligible",
+          "internal/network/epoch.encodeInitialClosedEpoch",
+          "internal/network/epoch.initialPreparationInterval",
+          "internal/node/provisioning.PrepareClosedNetworkProfile",
+          "internal/node/provisioning.PrepareInitialEpoch",
+          "internal/node/provisioning.PrepareInitialNodeRecord",
+          "internal/node/provisioning.PrepareNetworkPublic",
+          "internal/node/provisioning.decodeHex32",
+          "internal/node/provisioning.preparationBytes.UnmarshalJSON",
+          "internal/node/provisioning.preparationID.UnmarshalJSON",
+          "internal/node/provisioning.preparationTime",
+          "internal/node/provisioning.profilePreparationKey.UnmarshalJSON",
+          "internal/node/provisioning.profilePreparationNode.UnmarshalJSON",
+          "internal/platform/artifacts.DecodeDeclaration"
+        ],
+        "classification": "portable unsigned Network formats behind native offline custody",
+        "rationale": "The fixed production preparation and signing paths use these functions after a native standalone original-file open. The non-Linux preparation and signing adapters refuse before custody acquisitions. Portable independent Record, Epoch and Closed Profile byte tests still execute these canonical format rules.",
+        "owner": "Offline Node provisioning and Network public formats",
+        "retirement": "Remove each exact entry if a supported Windows production caller reaches it or its owning format retires."
+      },
+      {
+        "symbols": [
           "internal/admission/issuance.DecodeInstalledResultSetup",
           "internal/platform/systemd.InfrastructureAccount",
           "internal/platform/systemd.InfrastructureUnit.Render",

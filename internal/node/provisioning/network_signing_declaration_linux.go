@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package provisioning
 
 import (
 	"bytes"
@@ -11,9 +11,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // The declaration embeds the exact public preparation plan, not arbitrary
@@ -41,14 +42,15 @@ type networkSignedArtifact struct {
 }
 
 func preparationObject(raw []byte, value any, keys ...string) error {
-	if _, err := issuerConfigObject(raw, keys...); err != nil || decodeAdmissionObject(raw, value) != nil {
+	var fields map[string]json.RawMessage
+	if artifacts.DecodeDeclaration(raw, &fields, keys...) != nil || artifacts.DecodeObject(raw, value) != nil {
 		return errNetworkPreparation
 	}
 	return nil
 }
 
 func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*networkSigning, error) {
-	if !isNetworkSigning(operation) || len(raw) > maximumNetworkPreparationPlan {
+	if !IsNetworkSigning(operation) || len(raw) > MaximumNetworkPreparationPlan {
 		return nil, errNetworkSigning
 	}
 	if operation == "sign-closed-profile" {
@@ -69,20 +71,20 @@ func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*n
 	if preparationObject(raw, &plan, "schema", "reference_time", field) != nil || plan.Schema != "ardents-initial-"+schemaPurpose+"-signing-plan-v1" {
 		return nil, errNetworkSigning
 	}
-	reference, err := admissionTime(plan.Reference)
+	reference, err := preparationTime(plan.Reference)
 	if err != nil {
 		return nil, errNetworkSigning
 	}
 	s := &networkSigning{operation: operation, networkSigningInterval: networkSigningInterval{reference: reference}}
 	if field == "record" {
-		input, message, err := provisioning.PrepareInitialNodeRecord(plan.Record)
+		input, message, err := PrepareInitialNodeRecord(plan.Record)
 		if err != nil {
 			return nil, errNetworkSigning
 		}
 		s.from, s.until = input.ValidFrom, input.ValidUntil
 		s.message, s.public, s.network = message, input.PublicKey, input.NetworkID
 	} else {
-		input, message, err := provisioning.PrepareInitialEpoch(plan.Epoch)
+		input, message, err := PrepareInitialEpoch(plan.Epoch)
 		if err != nil || len(input.AuthorityKeys) != 1 {
 			return nil, errNetworkSigning
 		}
