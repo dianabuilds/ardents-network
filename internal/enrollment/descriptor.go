@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-const bundleSchema = "ardents-closed-alpha-enrollment-v5"
+const bundleSchema = "ardents-closed-alpha-enrollment-v6"
 
 type descriptor struct{ values map[string]string }
 
@@ -30,13 +30,10 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	if values["schema"] != bundleSchema {
 		return descriptor{}, ErrInventory
 	}
-	custody := ExecutableArtifactName("ardents-custody", values["platform"])
-	seen := map[string]bool{"RELEASE": true, "SHA256SUMS": true, custody: true}
-	for _, name := range []string{values["artifact"], values["trusted_root"]} {
-		if !validName(name) || seen[name] {
-			return descriptor{}, ErrInventory
-		}
-		seen[name] = true
+	artifact, root := values["artifact"], values["trusted_root"]
+	if !validName(artifact) || artifact != ExecutableArtifactName("ardents", values["platform"]) ||
+		!validName(root) || releaseMetadataRole(root) != "root.json" {
+		return descriptor{}, ErrInventory
 	}
 	return descriptor{values: values}, nil
 }
@@ -44,8 +41,7 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 func (d descriptor) bind(files map[string][]byte) (Facts, error) {
 	platform, artifact := d.values["platform"], d.values["artifact"]
 	trustedRoot, release := d.values["trusted_root"], d.values["release"]
-	custody := ExecutableArtifactName("ardents-custody", platform)
-	static := map[string]bool{"RELEASE": true, artifact: true, trustedRoot: true, custody: true}
+	static := map[string]bool{"RELEASE": true, artifact: true, trustedRoot: true}
 	for name := range static {
 		if _, ok := files[name]; !ok {
 			return Facts{}, ErrInventory

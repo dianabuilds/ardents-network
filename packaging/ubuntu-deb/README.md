@@ -16,6 +16,10 @@ and purge.
 - `ARDENTS_PACKAGE_OUTPUT`: an absolute path outside the repository for the
   generated `.deb`.
 
+The builder uses the repository Go toolchain and the reviewed Enrollment
+implementation to check the exact staged v6 inventory and executable digest
+before producing the package.
+
 The package contains only:
 
 ```text

@@ -3,7 +3,7 @@
 Status: **current maintained technical contract.** This document defines the
 bounded first-artifact verification contract. The maintained
 `ardents-next enrollment verify` consumes `internal/enrollment`. The
-independent pin authenticates the exact v5 inventory.
+independent pin authenticates the exact v6 inventory.
 
 ## Interface and ownership
 
@@ -42,7 +42,7 @@ must reproduce the exact input; unknown/duplicate fields, alternate whitespace
 or ordering refuse. The maximum is 16 KiB, version is a positive int64, platform
 is `linux-amd64`, and release identity matches the enrolled release. Exactly
 nine lowercase SHA-256 digests bind the actual program/resource bytes. The
-protected group is optional in v5. Enrollment rejects a partial group.
+protected group is optional in v6. Enrollment rejects a partial group.
 
 `Verify(Request)` accepts one local Bundle Root, current executable path,
 independently delivered Alpha Enrollment Pin, declared local environment,
@@ -50,19 +50,23 @@ network, target path, architecture, and reference time. The only supported
 Installed-profile variation supplies one explicit package-owned executable in
 `ArtifactPath`; all remaining enrolled static files remain below Bundle Root.
 
-It returns a `Bundle` that retains the exact bytes for Release evaluation,
-the manifest-pinned Authority Custody executable, and the complete protected
-group when selected. Release input projection excludes the static inventory.
+It returns a `Bundle` that retains the exact bytes for Release evaluation
+and the complete protected group when selected. Release input projection excludes the static inventory.
 
-[ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md) defines the
-sole descriptor, `ardents-closed-alpha-enrollment-v5`. It names the cohort,
+[ADR-0131](../adr/0131-distribute-authority-custody-separately.md) defines the
+sole descriptor, `ardents-closed-alpha-enrollment-v6`. It names the cohort,
 release, platform, environment, network, target path, Endpoint artifact and
 trusted root in that order after the schema. The inventory requires the
-Endpoint and platform-named Authority Custody executables, the trusted root,
+canonical platform-named Endpoint executable, a canonical versioned trusted root,
 timestamp metadata and one direct snapshot and targets metadata file.
 Additional root metadata uses canonical versioned names. Release authenticates
 all metadata and owns threshold, expiry, rotation and retained trust policy.
-Prior descriptor versions return an inventory error.
+Prior descriptor versions return an inventory error. A previously installed
+v5 original remains authenticated by its own sealed binding and the retained
+Release history. The v6 command stages a strictly newer signed successor only
+after observing the original platform unit and Worker scopes cleanly stopped.
+The successor uses the original Release history and the exact mutable root
+identities. The archive's initial pin cannot authorize replacement.
 
 ## Acceptance sequence
 
@@ -79,7 +83,7 @@ agrees with the caller's cohort/release/platform/environment/network/target
 facts.
 6. Prove the running executable is the identical bundled artifact or the one
    declared package-owned artifact, then construct Release Decision inputs.
-7. Project the authenticated Endpoint and Custody bytes and the optional
+7. Project the authenticated Endpoint bytes and the optional
    protected group separately from versioned Release metadata.
 
 `ExecutableArtifactName` supplies platform-named executable identities.
@@ -145,7 +149,7 @@ platform support or attesting artifact provenance. Packaging calls
 protected checker reads the descriptor whose exact bytes Release must bind.
 
 The maintained Enrollment tests cover pin-before-parse, inventory rejection,
-executable substitution, retired descriptor refusal, and separation of v5
+executable substitution, retired descriptor refusal, and separation of v6
 static inventory from Release metadata. The headless artifact lane exercises
 these checks at the maintained owner. Historical receipts remain bound to
 their original artifacts.

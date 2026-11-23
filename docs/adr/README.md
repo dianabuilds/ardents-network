@@ -93,3 +93,4 @@ Create a new ADR only for a consequential, hard-to-reverse accepted trade-off.
 - [ADR-0128 — Retire the headless Node companion](0128-retire-headless-node-companion.md) selects the Custody-only companion inventory for new enrollment-v4 bundles and preserves v3 verification. Accepted 2026-11-21.
 - [ADR-0129 — Require Windows, Ubuntu and macOS support](0129-require-platform-portability.md) makes all three mandatory product targets and limits native code to unavoidable host dependencies.
 - [ADR-0130 — Retire Control and ACA1 from alpha bundles](0130-retire-control-and-aca1-from-alpha-bundles.md) selects the sole v5 Endpoint inventory with Authority Custody and the existing protected option.
+- [ADR-0131 — Distribute Authority Custody separately from Endpoint](0131-distribute-authority-custody-separately.md)

@@ -54,7 +54,7 @@ func TestHeadlessEvidenceNamesExistingPackageTests(t *testing.T) {
 func TestHeadlessEvidenceBindsTheExactBundleArtifacts(t *testing.T) {
 	root := repositoryRoot(t)
 	makefile := string(readProjectFile(t, root, "Makefile"))
-	artifactInputs := `./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"`
+	artifactInputs := `./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))"`
 	if !strings.Contains(makefile, artifactInputs) {
 		t.Fatal("headless evidence must package the exact Endpoint and Authority Custody artifacts")
 	}
