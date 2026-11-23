@@ -272,7 +272,6 @@
           "internal/network/duty.originalNodeRestriction",
           "internal/network/duty.store.RetainNode",
           "internal/network/duty.store.retainOriginalNode",
-          "internal/node.separateRoots",
           "internal/processresource.nativeCounter",
           "internal/processresource.nativeMemoryEvents",
           "internal/processresource.nativePressure"
