@@ -649,7 +649,11 @@ consumer cannot establish a supported Node installation or qualified host.
 receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
 Descriptor owners only when that exact duty requires them. Receiver supports
 TCP/TLS, refuses deferred QUIC before listening, reobserves authority and joins its work.
-That is an existing component consumer, not the complete Node runtime model.
+Platform Artifacts reads the effective user's bounded TLS files for this
+development command, while installed Node retains its separate credential
+policy. Issuer owns the canonical result after current-authority issuance;
+composition supplies the exact signer observation and Bootstrap or ordinary
+issuance selection. This command is an existing component consumer.
 
 `internal/node` composes original Forwarding, Issuer, Descriptor, Introduction and
 JOIN lifetimes through the real `cmd/ardents-next/node_forwarding_linux.go`,
