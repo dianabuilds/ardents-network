@@ -5,8 +5,6 @@ package runtime
 import (
 	"bytes"
 	"context"
-	"errors"
-	"sync"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
@@ -22,7 +20,16 @@ func (owner *Owner) LaunchReader(ctx context.Context, principal [32]byte) (*Invo
 func (invocation *Invocation) observeReaderAttachment() {
 	input := &readerConnectionInput{incoming: make(chan application.Stream), result: make(chan readerCompletion, 1), finish: make(chan struct{})}
 	invocation.readerInput = input
-	borrow := &readerWorkerBorrow{invocation: invocation}
+	// The initialized worker remains private. Its sole pending read may precede
+	// Operation creation; any returned protocol bytes and every write require the
+	// exact original Reader operation. The shared borrow keeps the Reader-specific
+	// check hook (reader caller plus CheckReader); Close captures final authority
+	// before I/O.
+	borrow := &workerBorrow{
+		invocation:  invocation,
+		unavailable: "original Reader operation is unavailable",
+		check:       readerOperationCheck,
+	}
 	go func() {
 		defer close(invocation.observationDone)
 		ready := make(chan []byte)
@@ -54,55 +61,4 @@ func (invocation *Invocation) observeReaderAttachment() {
 		invocation.job.Retire()
 		close(input.result)
 	}()
-}
-
-// The initialized worker remains private. Its sole pending read may precede
-// Operation creation; any returned protocol bytes and every write require the
-// exact original Reader operation. Close captures final authority before I/O.
-type readerWorkerBorrow struct {
-	invocation *Invocation
-	once       sync.Once
-	closeErr   error
-}
-
-func (borrow *readerWorkerBorrow) checkOperation() error {
-	invocation := borrow.invocation
-	invocation.useMu.Lock()
-	operation := invocation.operation
-	invocation.useMu.Unlock()
-	if operation == nil || operation.invocation != invocation {
-		return errors.New("original Reader operation is unavailable")
-	}
-	return errors.Join(invocation.readerCaller.Err(), operation.CheckReader())
-}
-
-func (borrow *readerWorkerBorrow) Read(body []byte) (int, error) {
-	if err := borrow.invocation.job.Check(); err != nil {
-		return 0, err
-	}
-	n, err := borrow.invocation.activation.Attachment.Read(body)
-	return n, errors.Join(err, borrow.checkOperation())
-}
-
-func (borrow *readerWorkerBorrow) Write(body []byte) (int, error) {
-	if err := borrow.checkOperation(); err != nil {
-		return 0, err
-	}
-	n, err := borrow.invocation.activation.Attachment.Write(body)
-	return n, errors.Join(err, borrow.checkOperation())
-}
-
-func (borrow *readerWorkerBorrow) Close() error {
-	borrow.once.Do(func() {
-		authority := borrow.checkOperation()
-		physical := borrow.invocation.activation.Attachment.Close()
-		borrow.closeErr = errors.Join(authority, physical)
-		borrow.invocation.useMu.Lock()
-		operation := borrow.invocation.operation
-		borrow.invocation.useMu.Unlock()
-		if operation != nil {
-			operation.RetainCleanup(physical)
-		}
-	})
-	return borrow.closeErr
 }
