@@ -148,8 +148,19 @@ fuzz:
 
 test: unit e2e
 
+RACE_TEST_FLAGS := -short -race -shuffle=on -count=1 -timeout=15m
 test-race:
-	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) -short -race -shuffle=on -count=1 -timeout=15m
+	$(RACE_TEST_PREFIX) go test -p 1 $(UNIT_PACKAGES) $(RACE_TEST_FLAGS)
+
+.PHONY: test-race-shard
+# A shard keeps its tests serial. CI runs the two shards on separate hosts.
+test-race-shard:
+	@set -eu; \
+	case "$(RACE_SHARD)" in 0|1) ;; *) echo "RACE_SHARD must be 0 or 1" >&2; exit 2;; esac; \
+	half=$$((($(words $(UNIT_PACKAGES)) + 1) / 2)); \
+	packages=$$(printf '%s\n' $(UNIT_PACKAGES) | awk -v shard="$(RACE_SHARD)" -v half="$$half" '(NR > half) == shard'); \
+	test -n "$$packages"; \
+	$(RACE_TEST_PREFIX) go test -p 1 $$packages $(RACE_TEST_FLAGS)
 
 build:
 	go build ./...
@@ -237,13 +248,16 @@ release-operation-compile-check:
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-release-keys" ./scripts/prepare-qualification-release-keys.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-release" ./scripts/sign-qualification-release.go
 
-check:
+check: check-core
+	$(MAKE) --output-sync=target test-race
+
+.PHONY: check-core
+check-core:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln deadcode
 	$(MAKE) --output-sync=target e2e
 ifeq ($(HEADLESS_GOOS),linux)
 	$(MAKE) --output-sync=target package-e2e
 endif
-	$(MAKE) --output-sync=target test-race
 
 DIAGNOSTIC_PARSER_ROOT ?= $(if $(GOBIN),$(GOBIN),$(shell go env GOPATH)/bin)
 
