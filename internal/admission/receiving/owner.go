@@ -3,11 +3,12 @@ package receiving
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 )
 
 // Observation is supplied by the external authority owner for this exact duty.

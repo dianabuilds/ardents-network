@@ -2,8 +2,9 @@ package duty
 
 import (
 	"errors"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"time"
+
+	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 )
 
 func participationHistory(records []dutyRecord) (networkdomain.LocalParticipation, error) {

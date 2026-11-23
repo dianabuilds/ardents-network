@@ -194,12 +194,11 @@ func TestPhysicalDeadlineCannotHoldStateOrOverwriteWinningInterruption(t *testin
 					t.Fatal("unstarted payload retired its healthy parent")
 				}
 				return
-			} else {
-				err := <-deadlineDone
-				deadlineDone = nil
-				if err != nil {
-					t.Fatal("original deadline effect failed", err)
-				}
+			}
+			deadlineErr := <-deadlineDone
+			deadlineDone = nil
+			if deadlineErr != nil {
+				t.Fatal("original deadline effect failed", deadlineErr)
 			}
 			physical.mu.Lock()
 			applied := physical.writeEnd

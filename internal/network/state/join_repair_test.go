@@ -26,7 +26,7 @@ import (
 // per-unit cgroup. JOIN shares the ardents-node account, so quiescence is
 // per-unit, never an account-wide process scan. Each pair participant owns its
 // own participation root and sole fence; the repair is per-invocation.
-func joinRepairFixture(t *testing.T) *networkState {
+func joinRepairFixture(t *testing.T) *State {
 	t.Helper()
 	s, decision := newControlCommitFixture(t, false)
 	public, err := hex.DecodeString("c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631")

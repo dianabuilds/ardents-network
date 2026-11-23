@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"io"
 	"sync"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 )
 
 type responseStream struct {

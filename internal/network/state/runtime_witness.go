@@ -42,7 +42,7 @@ func (w RuntimeWitness) SameOriginal(other RuntimeWitness) bool {
 
 // State admission mutex precedes runtimeMu. Readers may invalidate on a failed
 // physical observation while holding a State read lock; no reverse edge exists.
-func (s *networkState) invalidateRuntime() {
+func (s *State) invalidateRuntime() {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
 	if s.runtimeAdmission != nil {
@@ -51,7 +51,7 @@ func (s *networkState) invalidateRuntime() {
 	}
 }
 
-func (s *networkState) witnessLocked(view network.RuntimeView) RuntimeWitness {
+func (s *State) witnessLocked(view network.RuntimeView) RuntimeWitness {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
 	profile := view.ProfileBinding()

@@ -27,7 +27,7 @@ var nodeDutyRepairRoles = []struct {
 	name    string
 	display string
 	role    nodeDutyRepairRole
-	fixture func(*testing.T) *networkState
+	fixture func(*testing.T) *State
 }{
 	{"forwarding", "Forwarding", forwardingRepairRole, forwardingRepairFixture},
 	{"introduction", "Introduction", introductionRepairRole, introductionRepairFixture},

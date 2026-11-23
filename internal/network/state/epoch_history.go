@@ -13,7 +13,7 @@ import (
 // Candidates pass by pointer; a nil candidate contributes the same zero facts
 // as the historical zero value. The selected decision is returned by pointer
 // into the caller's candidate slice and is never mutated here.
-func (s *networkState) selectEpochHistory(candidates []*epoch.Decision) (*epoch.Decision, networkdomain.EpochSelection, error) {
+func (s *State) selectEpochHistory(candidates []*epoch.Decision) (*epoch.Decision, networkdomain.EpochSelection, error) {
 	facts := func(decision *epoch.Decision) networkdomain.EpochFacts {
 		if decision == nil {
 			return networkdomain.EpochFacts{}
@@ -60,7 +60,7 @@ func offlineEpochPending(selection networkdomain.EpochSelection, opening, confir
 	return disposition == networkdomain.EpochPending, err
 }
 
-func (s *networkState) publishSelectedEpoch(selection networkdomain.EpochSelection, now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
+func (s *State) publishSelectedEpoch(selection networkdomain.EpochSelection, now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	disposition, err := selection.DispositionAt(now)
 	if err != nil {
 		if commitErr := s.commitSourceFailure(now, summary.outcomes, summary.observedEpochs, summary.observedDigests); commitErr != nil {

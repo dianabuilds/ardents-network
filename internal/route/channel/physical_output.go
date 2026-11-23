@@ -1,11 +1,12 @@
 package channel
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"io"
 	"net"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // One exact selected frame owns its deadline across lower I/O and interruption.

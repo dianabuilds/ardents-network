@@ -19,11 +19,11 @@ type OfflineAcceptance struct {
 
 // AcceptEpoch returns the disposition of the supplied candidate as well as
 // the resulting State, so command receipts need not inspect the Epoch bytes.
-func (s *networkState) AcceptEpoch(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (OfflineAcceptance, error) {
+func (s *State) AcceptEpoch(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte) (OfflineAcceptance, error) {
 	return s.acceptWithConflictCommit(ctx, epoch, inputs, encodedMaterials, s.storage.CommitControl)
 }
 
-func (s *networkState) acceptWithConflictCommit(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte, commit func(string, []byte) error) (OfflineAcceptance, error) {
+func (s *State) acceptWithConflictCommit(ctx context.Context, epoch []byte, inputs [][]byte, encodedMaterials [][]byte, commit func(string, []byte) error) (OfflineAcceptance, error) {
 	if err := ctx.Err(); err != nil {
 		return OfflineAcceptance{}, err
 	}

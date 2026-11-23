@@ -3,11 +3,12 @@ package join
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 )
 
 // joinClaim is the acquisition's exact borrowed-generation contract. Production

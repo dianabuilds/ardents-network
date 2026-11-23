@@ -75,13 +75,10 @@ func verifyRootEntries(root string, create, claim bool) error {
 func prepareRoot(root string, create bool) error {
 	markerPath := filepath.Join(root, rootMarkerName)
 	marker, err := readBounded(markerPath, int64(len(rootMarker)))
-	if err == nil {
-		if !bytes.Equal(marker, []byte(rootMarker)) {
-			return errors.New("local role ownership marker is invalid")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
 		}
-	} else if !os.IsNotExist(err) {
-		return err
-	} else {
 		if !create {
 			return errors.New("local role state root is not initialized")
 		}
@@ -92,6 +89,8 @@ func prepareRoot(root string, create bool) error {
 		if err := writeExclusive(markerPath, []byte(rootMarker)); err != nil {
 			return err
 		}
+	} else if !bytes.Equal(marker, []byte(rootMarker)) {
+		return errors.New("local role ownership marker is invalid")
 	}
 	entries, err := os.ReadDir(root)
 	if err != nil || len(entries) > 9 {

@@ -117,7 +117,7 @@ func pairEnsureBaseRootfs(t *testing.T) string {
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "debootstrap", "--variant=minbase",
 			"--include=systemd,systemd-sysv,dbus,passwd,ca-certificates,iproute2,kmod",
-			"noble", base, "http://archive.ubuntu.com/ubuntu")
+			"noble", base, "https://archive.ubuntu.com/ubuntu")
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("invalid environment: base rootfs debootstrap failed: %v: %s", err, out)
 		}
@@ -143,7 +143,7 @@ func pairPatchBaseSystemd(t *testing.T, base string) {
 	// container. Enable the updates/security pockets and a static resolver so the
 	// patched noble systemd (>= .16) is actually reachable.
 	script := `set -e
-printf 'deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse\ndeb http://archive.ubuntu.com/ubuntu noble-security main restricted universe multiverse\n' > /etc/apt/sources.list
+printf 'deb https://archive.ubuntu.com/ubuntu noble main restricted universe multiverse\ndeb https://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse\ndeb https://archive.ubuntu.com/ubuntu noble-security main restricted universe multiverse\n' > /etc/apt/sources.list
 rm -f /etc/resolv.conf
 printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
 apt-get update

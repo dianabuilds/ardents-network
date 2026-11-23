@@ -16,7 +16,7 @@ import (
 func TestSourceParticipationFirstCreationAndRetainedReopen(t *testing.T) {
 	now := time.Unix(1800000000, 0).UTC()
 	root := filepath.Join(t.TempDir(), "participation")
-	s := &networkState{
+	s := &State{
 		config: config{root: "/test-state", localRoles: root, clock: func() time.Time { return now }, retainedHistory: true},
 		// These detached facts exercise local duty storage, not Network authentication.
 		current: &epoch.Decision{Snapshot: epoch.Snapshot{NodeID: [32]byte{1}, DeclaredFamily: "source-family", ValidUntil: now.Add(time.Hour)}},
@@ -42,8 +42,8 @@ func TestSourceParticipationFirstCreationAndRetainedReopen(t *testing.T) {
 func TestSourceParticipationRestartRequiresOriginalProducerRemoval(t *testing.T) {
 	now := time.Unix(1800000000, 0).UTC()
 	root := filepath.Join(t.TempDir(), "participation")
-	makeOwner := func() *networkState {
-		return &networkState{config: config{root: "/same-state", localRoles: root,
+	makeOwner := func() *State {
+		return &State{config: config{root: "/same-state", localRoles: root,
 			clock: func() time.Time { return now }, sourceInfo: source.Details{Serving: true}},
 			current: &epoch.Decision{Snapshot: epoch.Snapshot{NodeID: [32]byte{1}, DeclaredFamily: "source-family", ValidUntil: now.Add(time.Hour)}}}
 	}

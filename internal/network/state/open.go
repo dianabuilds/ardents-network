@@ -9,14 +9,14 @@ import (
 )
 
 // Open recovers one state root and verifies any current generation before use.
-func Open(input Config) (*networkState, error) {
+func Open(input Config) (*State, error) {
 	return open(input, nil, nil)
 }
 
 // OpenFresh is explicit initial preparation, never a recovery or retained
 // runtime opening. It requires a vacant existing root and refuses every prior
 // attempt. Ordinary signed acceptance and joined Close remain State-owned.
-func OpenFresh(input Config) (*networkState, error) {
+func OpenFresh(input Config) (*State, error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func OpenFresh(input Config) (*networkState, error) {
 	return activateState(resolved, storage, nil, nil)
 }
 
-func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *networkState, resultErr error) {
+func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *State, resultErr error) {
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	return activateState(resolved, storage, automaticTicks, automaticResults)
 }
 
-func activateState(resolved config, storage *durable.Root, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *networkState, resultErr error) {
+func activateState(resolved config, storage *durable.Root, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *State, resultErr error) {
 	opened := false
 	defer func() {
 		if !opened {
@@ -65,7 +65,7 @@ func activateState(resolved config, storage *durable.Root, automaticTicks <-chan
 			workCancel()
 		}
 	}()
-	runtime := &networkState{config: resolved, storage: storage, workContext: workContext,
+	runtime := &State{config: resolved, storage: storage, workContext: workContext,
 		workCancel: workCancel}
 	if err := runtime.recover(workContext, automaticTicks, automaticResults); err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func activateState(resolved config, storage *durable.Root, automaticTicks <-chan
 	return runtime, nil
 }
 
-func (s *networkState) recover(workContext context.Context, automaticTicks <-chan time.Time, automaticResults chan<- error) error {
+func (s *State) recover(workContext context.Context, automaticTicks <-chan time.Time, automaticResults chan<- error) error {
 	current, err := loadCurrent(s.config, s.storage)
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (s *networkState) recover(workContext context.Context, automaticTicks <-cha
 	return nil
 }
 
-func (s *networkState) startSource(workContext context.Context) error {
+func (s *State) startSource(workContext context.Context) error {
 	if !s.config.sourceInfo.Serving {
 		return nil
 	}

@@ -149,7 +149,7 @@ func TestDecisionPointerCollisionOutcomesMatchValueOracle(t *testing.T) {
 				sourceCollides(info, nil) || sourceCollides(info, &epoch.Decision{}) {
 				t.Fatal("nil/zero decision collided")
 			}
-			s := &networkState{config: config{sourceInfo: info}}
+			s := &State{config: config{sourceInfo: info}}
 			err := s.rejectDecisionSourceCollisions(&decision)
 			if wantAny && !errors.Is(err, errSourceRoleCollision) {
 				t.Fatalf("collision refusal = %v, want errSourceRoleCollision", err)
@@ -171,7 +171,7 @@ func TestSelectEpochHistoryPointerPreservesFacts(t *testing.T) {
 	now := time.Unix(1_800_000_100, 0).UTC()
 	predecessor := completionEpoch(1, 1, now)
 	successor := completionEpoch(2, 2, now)
-	s := &networkState{current: &predecessor,
+	s := &State{current: &predecessor,
 		distribution: distributionState{epochFloor: 1, epochDigest: predecessor.Header.Digest}}
 	candidates := []*epoch.Decision{&successor}
 	selected, selection, err := s.selectEpochHistory(candidates)
@@ -221,7 +221,7 @@ func nw7Successor(t *testing.T, current epoch.Decision, seed string) epoch.Decis
 	return successor
 }
 
-func assertPublishedDecisionBytes(t *testing.T, s *networkState, want epoch.Decision) {
+func assertPublishedDecisionBytes(t *testing.T, s *State, want epoch.Decision) {
 	t.Helper()
 	_, values, err := s.storage.LoadState()
 	if err != nil {
@@ -361,7 +361,7 @@ func TestCompleteSourceWavePointerPathPreservesResultFacts(t *testing.T) {
 }
 
 func TestNilDecisionCommitHelpersMatchZeroValue(t *testing.T) {
-	startCycle := func(s *networkState) {
+	startCycle := func(s *State) {
 		t.Helper()
 		now := s.config.clock()
 		wave := s.distribution

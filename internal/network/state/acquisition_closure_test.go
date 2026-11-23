@@ -19,7 +19,7 @@ func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
 	configuration := config{root: root, localRoles: filepath.Join(t.TempDir(), "roles"), clock: func() time.Time { return now },
 		sourceInfo: source.Details{Configured: true, OrderSeed: [32]byte{1}, Identities: [2][32]byte{{1}, {2}},
 			Exposures: [2][32]byte{{3}, {4}}, Families: [2]string{"source-one", "source-two"}}}
-	owner := &networkState{config: configuration, storage: storage}
+	owner := &State{config: configuration, storage: storage}
 	if err := owner.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer reopenedStorage.Close()
-	reopened := &networkState{config: configuration, storage: reopenedStorage}
+	reopened := &State{config: configuration, storage: reopenedStorage}
 	if err := reopened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}

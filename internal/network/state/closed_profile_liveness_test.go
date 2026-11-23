@@ -10,15 +10,15 @@ import (
 // ordinary acceptance test supplies the genuine profile verifier and store;
 // the observations here model owner failure, not replacement trust inputs.
 func TestClosedProfileProjectionStopsWithStateOwner(t *testing.T) {
-	for name, fail := range map[string]func(*networkState){
-		"missing time owner":        func(s *networkState) { s.config.observe = nil },
-		"automatic refresh failure": func(s *networkState) { s.automaticErr = errors.New("refresh failed") },
-		"external work refusal":     func(s *networkState) { s.config.permitWork = func() error { return errors.New("work unavailable") } },
-		"missing time observation":  func(s *networkState) { s.config.observe = func() time.Time { return time.Time{} } },
-		"stale time observation": func(s *networkState) {
+	for name, fail := range map[string]func(*State){
+		"missing time owner":        func(s *State) { s.config.observe = nil },
+		"automatic refresh failure": func(s *State) { s.automaticErr = errors.New("refresh failed") },
+		"external work refusal":     func(s *State) { s.config.permitWork = func() error { return errors.New("work unavailable") } },
+		"missing time observation":  func(s *State) { s.config.observe = func() time.Time { return time.Time{} } },
+		"stale time observation": func(s *State) {
 			s.config.observe = func() time.Time { return s.config.clock().Add(-3 * time.Second) }
 		},
-		"rollback behind retained floor": func(s *networkState) { s.distribution.trustedTimeFloor = s.config.clock().Add(3 * time.Second).Unix() },
+		"rollback behind retained floor": func(s *State) { s.distribution.trustedTimeFloor = s.config.clock().Add(3 * time.Second).Unix() },
 	} {
 		t.Run(name, func(t *testing.T) {
 			store, raw := closedProfileStoreFixture(t)

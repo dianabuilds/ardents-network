@@ -899,7 +899,7 @@ opaque blinding State is never serialized and no other CIRCL scheme or private
 cryptographic fork is admitted. Route capsule uses the selected standard-library
 HPKE mechanism; it does not restore the removed OHTTP/Naming importer.
 
-The current compiler is Go 1.27.4, with the selected x/net v0.60.0 closure and
+The current compiler is Go 1.27.4, with the candidate x/net v0.62.0 closure and
 exact compatibility tool builds specified above. Sigstore v1.11.0 and
 go-containerregistry v0.22.1 replace their earlier selections. `go.mod` and
 `go.sum` pin the full present closure; table entries below identify the same
@@ -923,17 +923,43 @@ The removed OHTTP/Naming tree has no maintained accepting caller. OTel is a
 separately reviewed finite command-composition use; it is not restored by that
 historical dependency chain.
 
+Candidate review 2026-11-23: the official Go module proxy identifies
+`golang.org/x/net v0.62.0` at upstream commit
+`3de643db506517b3e652a13cc0b56034cea6b8e6` and requires Go 1.26 or newer.
+Its module file requires `x/crypto v0.58.0`, `x/sys v0.49.0`,
+`x/term v0.47.0` and `x/text v0.43.0`; these are a single candidate closure,
+not independent version choices. Upstream advisories GO-2026-6866 and
+GO-2026-6860 identify v0.62.0 as the first release fixing both HTML findings.
+Candidate integration remains subject to fresh dependency, vulnerability,
+platform and test evidence; the prior v0.60.0 applicability receipt below
+does not qualify the updated closure.
+The subsequent Go advisory scan identified module-only GO-2026-5932 in
+`x/crypto v0.58.0`. The official module proxy identifies the fixing
+`x/crypto v0.59.0` tag at commit `6c966a7517bfc4fa0f268afb1fe663013ed932a5`;
+its module requires `x/sys v0.50.0`, `x/term v0.48.0` and `x/text v0.44.0`.
+The selected root module graph also contains `x/mod v0.42.0`,
+`x/sync v0.25.0` and `x/tools v0.52.0`; independently installed quality tools
+remain subject to their own pinned versions and admission rules.
+
+On 2026-11-23 at 21:47:40 UTC+05:30, `govulncheck v1.8.0 -json -test ./...`
+using Go 1.27.4 and `https://vuln.go.dev` reported no findings on macOS/arm64.
+The database reported its last modification as 2026-11-11T02:51:11Z. The
+scanned module-file SHA-256 values are `c547e67c324e0e90aa6cb3ebcc558bbbcecbc8730b92260d319c1f3f27c65b6c`
+for `go.mod` and `02b78ed728f9e19b3e1c74a131d5e51e64187fef0fb15b5725a48b75395e8fd2`
+for `go.sum`. This source-with-tests scan does not cover other build targets,
+native execution, or delivered artifacts; it does not qualify a release.
+
 Reviewed 2026-10-29 against the upstream Go advisory records
 [GO-2026-6866](https://github.com/golang/vulndb/blob/master/data/osv/GO-2026-6866.json)
 and [GO-2026-6860](https://github.com/golang/vulndb/blob/master/data/osv/GO-2026-6860.json).
-Both affect `golang.org/x/net/html` before v0.62.0. The retained v0.60.0 pin is
-not claimed to contain those HTML fixes. Its admitted network/HTTP use has no
+Both affect `golang.org/x/net/html` before v0.62.0. The earlier v0.60.0 pin did
+not contain those HTML fixes. Its then-admitted network/HTTP use had no
 affected package: actual `go list -deps -test` closures for `./cmd/...`,
 `./internal/...` and `./tests/...` exclude `x/net/html` and its children on
 Windows/amd64 with CGO0/1 and Linux/amd64 with CGO0/1. Native Linux CGO1 also
 checks the selected `network_signing_native` and `installation_native` tags.
 The same inspection renews the OpenPGP package exclusion recorded below.
-The verbose source scan reports these three module findings and no affected
+That earlier verbose source scan reported these three module findings and no affected
 imported package or symbol. This is package-absence evidence for the exact
 source/configurations, not a severity waiver or blanket safety claim. Retain
 the package lists, source/tool identities and original advisory observations;
@@ -945,11 +971,11 @@ use requires the fixing release and normal dependency admission first.
 |---|---|---|
 | `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause; exact reviewed blindrsa token mechanisms, separate holder/receiver/issuer owners |
 | `github.com/godbus/dbus/v5` | `v5.2.4` | BSD-2-Clause; private original system-manager connection, reviewed above |
-| `golang.org/x/crypto` | `v0.57.0` | BSD-3-Clause; selected support closure and purpose-scoped Custody Argon2 |
-| `golang.org/x/sys` | `v0.48.0` | BSD-3-Clause; native platform observations, ACL/locking and atomic file mechanisms |
-| `golang.org/x/term` | `v0.46.0` | BSD-3-Clause; separate interactive no-echo Custody adapter |
-| `golang.org/x/net` | `v0.60.0` | BSD-3-Clause; reviewed network/HTTP support closure, fixing renewal and exact source identities above |
-| `golang.org/x/text` | `v0.42.0` | BSD-3-Clause; transitive Go text support in the reviewed library graph; version required by the current x/net closure |
+| `golang.org/x/crypto` | `v0.59.0` | BSD-3-Clause; selected support closure and purpose-scoped Custody Argon2 |
+| `golang.org/x/sys` | `v0.50.0` | BSD-3-Clause; native platform observations, ACL/locking and atomic file mechanisms |
+| `golang.org/x/term` | `v0.48.0` | BSD-3-Clause; separate interactive no-echo Custody adapter |
+| `golang.org/x/net` | `v0.62.0` | BSD-3-Clause; reviewed network/HTTP support closure, fixing renewal and exact source identities above |
+| `golang.org/x/text` | `v0.44.0` | BSD-3-Clause; transitive Go text support in the reviewed library graph; version required by the current x/net closure |
 
 The former quic-go v0.63.0 pin and runtime adapters are removed under ADR-0122.
 The earlier v0.62.0 finding below remains unresolved for deferred QUIC. Current
@@ -961,7 +987,7 @@ closures are enumerated at their owners below/above.
 
 **Linux Source transition controller:** only Installation Infrastructure's
 `source_transition_scope_linux.go` uses the already selected
-`golang.org/x/sys v0.48.0/unix` for integer-only subreaper setup, from-birth
+`golang.org/x/sys v0.50.0/unix` for integer-only subreaper setup, from-birth
 pidfd signalling, non-reaping stop observations and polling. No first-party
 unsafe, cgo, primitive or dependency/version change is introduced. The dedicated
 canonical process has no other children and retains the launching thread until
@@ -970,7 +996,7 @@ This native mechanism is not recovery authority or installed qualification.
 
 **Forwarding installed QA:** only the new-command test owner
 `cmd/ardents-next/forwarding_installed_native_linux_test.go` additionally uses
-already selected `golang.org/x/sys v0.48.0/unix` for integer-only original pidfd
+already selected `golang.org/x/sys v0.50.0/unix` for integer-only original pidfd
 acquisition, polling and close. This test-only mechanism grants no production
 Forwarding import, native Start, bootstrap acceptance or installed qualification.
 No dependency version, first-party unsafe or cgo is introduced.
@@ -1136,9 +1162,9 @@ under its own behavior tests, callers and exact package-map imports.
 | `github.com/sigstore/protobuf-specs` | `v0.5.2` | Apache-2.0 | signature verification type closure |
 | `github.com/sigstore/sigstore` | `v1.11.0` | Apache-2.0 | public-key verification adapter used by maintained Release verification and its behavior fixtures |
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
-| `golang.org/x/crypto` | `v0.57.0` | BSD-3-Clause | raised cryptographic support closure |
-| `golang.org/x/sys` | `v0.48.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
-| `golang.org/x/term` | `v0.46.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
+| `golang.org/x/crypto` | `v0.59.0` | BSD-3-Clause | raised cryptographic support closure |
+| `golang.org/x/sys` | `v0.50.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
+| `golang.org/x/term` | `v0.48.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
 | `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260928230214-8a89bd6388cc` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.12` | BSD-3-Clause | signature protobuf runtime |
 
@@ -1188,7 +1214,7 @@ belongs in the repository.
 
 Status: **current maintained dependency under ADR-0021.** Password-derived
 Authority Custody uses `golang.org/x/crypto/argon2` from module
-`golang.org/x/crypto v0.57.0` (BSD-3-Clause). Other maintained cryptographic
+`golang.org/x/crypto v0.59.0` (BSD-3-Clause). Other maintained cryptographic
 owners select the same module version; integration must produce one shared
 exact root-module version, never parallel copies.
 
@@ -1202,8 +1228,8 @@ store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
 owns the maintained boundary.
 
 `cmd/ardents-custody` is the separate interactive Adapter. It imports only
-`golang.org/x/term v0.46.0` to reject non-terminals and retain/restore terminal
-mode. Exact Linux `terminal_line_linux.go` uses reviewed `x/sys v0.48.0/unix`
+`golang.org/x/term v0.48.0` to reject non-terminals and retain/restore terminal
+mode. Exact Linux `terminal_line_linux.go` uses reviewed `x/sys v0.50.0/unix`
 Poll/Read for bounded original input; Windows `terminal_line_windows.go` uses
 `x/sys/windows` console modes and original-thread CancelSynchronousIo, with
 standard-library Unicode console reading. Both disable echo before showing the
@@ -1226,7 +1252,7 @@ and `go mod verify`/`make vuln` repeat for final-source integration.
 
 The 2026-10-11 verbose scan retains module-only
 [GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932), whose affected packages are
-`golang.org/x/crypto/openpgp` and children, with no fixed version. Custody imports
+`golang.org/x/crypto/openpgp` and children, then without a fixed version. Custody imports
 only `argon2` from that module. `go list -deps -test ./cmd/... ./internal/...
 ./tests/...` under Windows and Linux and the canonical Custody binary scan
 reproduce exclusion of every affected package; the whole source scan reports

@@ -37,6 +37,6 @@ func (server *server) handleByteStream(local *net.UnixConn, raw []byte, started 
 		_ = application.WriteLocalStreamRefusal(local, err)
 		return true
 	}
-	_ = application.ServeLocalStream(ctx, local, stream)
+	_ = application.ServeLocalStream(ctx, local, stream, true)
 	return true
 }

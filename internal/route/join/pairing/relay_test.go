@@ -5,8 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"io"
 	"net"
 	"os"
@@ -15,6 +13,9 @@ import (
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 // Observe the actual pipe's deadline calls. A stopped nested framing lane

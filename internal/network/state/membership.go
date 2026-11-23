@@ -2,10 +2,11 @@ package state
 
 import (
 	"crypto/sha256"
+	"time"
+
 	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"time"
 )
 
 // membership retains the authenticated profile next to the domain binding.
@@ -16,7 +17,7 @@ type membership struct {
 	accepted     networkdomain.AcceptedState
 }
 
-func (s *networkState) bindCurrentMembership(profile closedprofile.Profile) (membership, error) {
+func (s *State) bindCurrentMembership(profile closedprofile.Profile) (membership, error) {
 	return bindAcceptedMembership(s.current, profile)
 }
 

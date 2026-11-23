@@ -14,7 +14,7 @@ func TestRetiredPermissionInspectorUsesUnknownCommandRefusal(t *testing.T) {
 	var out, diagnostic bytes.Buffer
 	args := []string{"inspect-permission", "private-permission", "private-facts"}
 	if code := run(context.Background(), args, &out, &diagnostic); code != 2 ||
-		out.Len() != 0 || diagnostic.String() != documentUsage+"\n" {
+		out.Len() != 0 || diagnostic.String() != participantUsage+"\n" {
 		t.Fatalf("retired command: code %d, stdout %q, stderr %q", code, out.String(), diagnostic.String())
 	}
 }

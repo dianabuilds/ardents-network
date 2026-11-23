@@ -2,9 +2,10 @@ package connection
 
 import (
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 	"math"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 )
 
 func preparedTerminals(t *testing.T) *terminalExchange {

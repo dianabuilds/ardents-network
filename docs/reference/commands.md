@@ -13,7 +13,7 @@ and signed infrastructure artifact preparation.
 | Offline Service or Admission Authority operator | Independently authenticated [standalone Custody executable](#ardents-custody) and a separate encrypted Vault | Run `ardents-custody create-service-authority` or `ardents-custody create-admission-authority` with the listed flags. The same utility issues, verifies and handles locked recovery. |
 | Release or qualification operator | Reviewed source, the pinned toolchain and an admitted stand for installed checks | Run `ardents enrollment check-candidate BUNDLE` for the packaging check. The installed worker is a signed resource, and qualification workers are built only by their test recipes. |
 
-The current participant commands expose the bounded document application.
+The Endpoint candidate exposes bidirectional Application streams and the existing document application.
 The product target is protected exchange of ordered Application bytes.
 Applications own the meaning and presentation of messages, images, audio,
 documents and files.
@@ -935,6 +935,25 @@ operation.
 
 The former Control executable and its retirement-only selectors are removed.
 The ACA1/ACA2 decisions remain historical evidence for their original inputs.
+
+## Bidirectional Application stream
+
+The protected Endpoint candidate offers one bidirectional Application exchange
+over the same authenticated Service Connection. The operator publishes a
+single-exchange Service with `ardents stream publish ADMINISTRATION_SOCKET`.
+After `ardents link ADMINISTRATION_SOCKET` supplies the Target Link, the
+participant stores it in a private regular file and runs
+`ardents stream connect APPLICATION_SOCKET --link-file PRIVATE_LINK_FILE`.
+Supply absolute paths and keep the Link file readable only by its owner.
+
+Use pipes for byte input and output on the selected installed Linux profile.
+Each direction carries up to 4 MiB. The exchange has independently bounded
+lifetime and may end earlier when authority or capacity expires. EOF on input
+ends sending while receiving remains available. The commands report errors on
+standard error and return success only after the authenticated terminal result.
+An interrupted exchange can leave partial output. A completed publication
+withdraws its Link. The installed two-Endpoint qualification gates support
+for this candidate.
 
 ## Document commands and worker
 

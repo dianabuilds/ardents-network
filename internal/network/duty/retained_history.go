@@ -57,7 +57,7 @@ func verifyRetainedHistory(root string) error {
 // Claim probe or write. Any other record refuses this serving-only repair.
 // Native process death remains the State
 // repair adapter's independent prerequisite; this method grants no repair right.
-func (store *store) CheckSourceProducer(producer [32]byte, expected Duty) error {
+func (store *Store) CheckSourceProducer(producer [32]byte, expected Duty) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil || producer == ([32]byte{}) || expected.Class != "direct-source" || expected.State != "live" {
@@ -87,7 +87,7 @@ func (store *store) CheckSourceProducer(producer [32]byte, expected Duty) error 
 // Any other record refuses this participation-only repair. Native process death
 // remains the repair adapter's independent prerequisite; this method grants no
 // repair right, and slot claims or spend obligations are never repairable here.
-func (store *store) CheckNodeProducer() ([32]byte, Duty, error) {
+func (store *Store) CheckNodeProducer() ([32]byte, Duty, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil {

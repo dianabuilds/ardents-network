@@ -3,7 +3,7 @@ package duty
 import "testing"
 
 func TestStoreCloseRetainsLeaseReleaseFailure(t *testing.T) {
-	owner := &store{lease: invalidReleaseLease(t)}
+	owner := &Store{lease: invalidReleaseLease(t)}
 	first := owner.Close()
 	if first == nil {
 		t.Fatal("Close hid the lease release failure")
