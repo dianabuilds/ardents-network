@@ -1,6 +1,9 @@
 name: Direct-Origin Source serving proof
 on:
   workflow_dispatch:
+  push:
+    branches: [codex/proof-direct-source-serving]
+
 permissions:
   contents: read
 jobs:
