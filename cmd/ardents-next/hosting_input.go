@@ -11,14 +11,11 @@ import (
 )
 
 type hostingPlan struct {
-	Root        string          `json:"root"`
-	Policy      hosting.Policy  `json:"policy"`
-	Work        hosting.Traffic `json:"work"`
-	Termination hosting.Traffic `json:"termination"`
-	HoldMS      uint64          `json:"hold_ms"`
+	Root   string         `json:"root"`
+	Policy hosting.Policy `json:"policy"`
 }
 
-// Check every object, including policy and traffic, for duplicate keys before
+// Check every object, including nested input, for duplicate keys before
 // typed decoding. Unknown fields and omitted required top-level fields refuse.
 func uniqueJSON(d *json.Decoder) error {
 	t, err := d.Token()
@@ -76,8 +73,6 @@ func decodeHostingPlan(raw []byte, operation string) (hostingPlan, error) {
 	switch operation {
 	case "initialize":
 		want = append(want, "policy")
-	case "hold":
-		want = append(want, "work", "termination", "hold_ms")
 	case "observe":
 	default:
 		return p, bad
@@ -92,19 +87,13 @@ func decodeHostingPlan(raw []byte, operation string) (hostingPlan, error) {
 		}
 	}
 	// encoding/json otherwise matches struct field names case-insensitively,
-	// accepting aliases such as tx/Tx as two writes to the same semantic field.
+	// accepting aliases such as provider/Provider as two writes to the same semantic field.
 	if operation == "initialize" && !exactHostingObject(fields["policy"], "provider", "start", "end", "unit", "quantity", "directions", "interfaces", "initial_used_bytes", "low_watermark_bytes") {
-		return p, bad
-	}
-	if operation == "hold" && (!exactHostingObject(fields["work"], "tx", "rx") || !exactHostingObject(fields["termination"], "tx", "rx")) {
 		return p, bad
 	}
 	d = json.NewDecoder(bytes.NewReader(raw))
 	d.DisallowUnknownFields()
 	if d.Decode(&p) != nil || !filepath.IsAbs(p.Root) || filepath.Clean(p.Root) != p.Root {
-		return p, bad
-	}
-	if operation == "hold" && (p.HoldMS == 0 || p.HoldMS > 60000) {
 		return p, bad
 	}
 	return p, nil

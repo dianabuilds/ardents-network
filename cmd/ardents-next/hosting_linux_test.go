@@ -41,119 +41,32 @@ func hostingInitializePlan(t *testing.T) hostingPlan {
 	return hostingPlan{Root: filepath.Join(t.TempDir(), "budget"), Policy: hosting.Policy{Provider: "private-provider", Start: now.Add(-time.Minute), End: now.Add(time.Hour), Unit: "B", Quantity: 1000000000, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1000}}
 }
 
-func TestHostingCompiledCLISharedBudgetCancelAndCrash(t *testing.T) {
+func TestHostingCompiledCLIInitializationAndObservation(t *testing.T) {
 	binary := compiledCommand(t)
-	command := func(operation, config string) (hostingResult, error) {
-		cmd := exec.CommandContext(t.Context(), binary, "hosting", operation, "--config", config)
+	plan := hostingInitializePlan(t)
+	command := func(operation string, input any) (hostingResult, error) {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), binary, "hosting", operation, "--config", hostingConfig(t, input))
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
 		var result hostingResult
-		if e := json.Unmarshal(out.Bytes(), &result); e != nil {
-			t.Fatalf("invalid CLI result %s %v", &out, e)
+		if decodeErr := json.Unmarshal(out.Bytes(), &result); decodeErr != nil {
+			t.Fatal("invalid Hosting result", &out, decodeErr)
 		}
 		return result, err
 	}
-	for _, episode := range []string{"complete", "cancel", "crash", "cleanup-failure"} {
-		t.Run(episode, func(t *testing.T) {
-			p := hostingInitializePlan(t)
-			if result, err := command("initialize", hostingConfig(t, map[string]any{"root": p.Root, "policy": p.Policy})); err != nil || result.Outcome != "completed" {
-				t.Fatalf("initialize %+v %v", result, err)
-			}
-			hold := map[string]any{"root": p.Root, "work": hosting.Traffic{Tx: 700000000}, "termination": hosting.Traffic{Rx: 100000000}, "hold_ms": uint64(5000)}
-			if episode == "complete" {
-				// This is a successful lifecycle oracle, not a 20ms storage
-				// latency promise. Reserve still enforces the original deadline.
-				hold["hold_ms"] = uint64(1000)
-				result, err := command("hold", hostingConfig(t, hold))
-				if err != nil || result.Outcome != "completed" {
-					t.Fatalf("complete %+v %v", result, err)
-				}
-			} else {
-				cmd := exec.CommandContext(t.Context(), binary, "hosting", "hold", "--config", hostingConfig(t, hold))
-				stderr, err := cmd.StderrPipe()
-				if err != nil {
-					t.Fatal(err)
-				}
-				var stdout bytes.Buffer
-				cmd.Stdout = &stdout
-				if err = cmd.Start(); err != nil {
-					t.Fatal(err)
-				}
-				joined := false
-				defer func() {
-					if !joined {
-						cmd.Process.Kill()
-						cmd.Wait()
-					}
-				}()
-				ready := make(chan error, 1)
-				go func() {
-					var event struct{ Phase, Outcome string }
-					e := json.NewDecoder(stderr).Decode(&event)
-					if e == nil && (event.Phase != "hold" || event.Outcome != "reserved") {
-						e = io.ErrUnexpectedEOF
-					}
-					ready <- e
-					io.Copy(io.Discard, stderr)
-				}()
-				select {
-				case e := <-ready:
-					if e != nil {
-						t.Fatal(e)
-					}
-				case <-time.After(3 * time.Second):
-					t.Fatal("hold readiness missing")
-				}
-				view, err := command("observe", hostingConfig(t, map[string]any{"root": p.Root}))
-				if err != nil || view.Observation == nil || view.Observation.ReservedBytes != 800000000 {
-					t.Fatalf("shared %+v %v", view, err)
-				}
-				refused, err := command("hold", hostingConfig(t, hold))
-				if err == nil || refused.Outcome != "budget-exhausted" {
-					t.Fatalf("competing reserve %+v %v", refused, err)
-				}
-				if episode == "cleanup-failure" {
-					if err := os.WriteFile(filepath.Join(p.Root, "budget.pending"), []byte("interrupted"), 0600); err != nil {
-						t.Fatal(err)
-					}
-				}
-				if episode == "cancel" || episode == "cleanup-failure" {
-					err = cmd.Process.Signal(os.Interrupt)
-				} else {
-					err = cmd.Process.Kill()
-				}
-				if err != nil {
-					t.Fatal(err)
-				}
-				err = cmd.Wait()
-				joined = true
-				if err == nil {
-					t.Fatal("interrupted process succeeded")
-				}
-				if episode == "cancel" {
-					var result hostingResult
-					if json.Unmarshal(stdout.Bytes(), &result) != nil || result.Outcome != "canceled" || cmd.ProcessState.ExitCode() != 130 {
-						t.Fatalf("cancel %s %v", &stdout, err)
-					}
-				}
-				if episode == "cleanup-failure" {
-					var result hostingResult
-					if json.Unmarshal(stdout.Bytes(), &result) != nil || result.Outcome != "storage-uncertain" || cmd.ProcessState.ExitCode() != 1 {
-						t.Fatalf("cleanup masked by cancel: %s %v", &stdout, err)
-					}
-					return
-				}
-			}
-			view, err := command("observe", hostingConfig(t, map[string]any{"root": p.Root}))
-			want := uint64(0)
-			if episode == "crash" {
-				want = 800000000
-			}
-			if err != nil || view.Observation == nil || view.Observation.ReservedBytes != want {
-				t.Fatalf("reopen %+v want %d %v", view, want, err)
-			}
-		})
+	if result, err := command("initialize", plan); err != nil || result.Outcome != "completed" {
+		t.Fatal("initialize", result, err)
+	}
+	hold := map[string]any{"root": plan.Root, "work": hosting.Traffic{Tx: 1000}, "termination": hosting.Traffic{Rx: 100}, "hold_ms": 1000}
+	if result, err := command("hold", hold); err == nil || result.Outcome != "invalid-input" {
+		t.Fatal("retired reservation command", result, err)
+	}
+	result, err := command("observe", map[string]string{"root": plan.Root})
+	if err != nil || result.Outcome != "completed" || result.Observation == nil ||
+		result.Observation.ReservedBytes != 0 || result.ObservedAt == nil || result.ValidUntil == nil {
+		t.Fatal("observation", result, err)
 	}
 }
 
