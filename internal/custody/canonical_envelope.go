@@ -156,7 +156,7 @@ func parseEnvelope(raw []byte) (envelope, EnvelopeInfo, []byte, []byte, []byte, 
 		clear(ciphertext)
 		return envelope{}, EnvelopeInfo{}, nil, nil, nil, err
 	}
-	return parsed, EnvelopeInfo{Purpose: parsed.Purpose, CiphertextSize: uint64(len(ciphertext)), Digest: sha256.Sum256(raw)}, salt, ciphertext, aad, nil
+	return parsed, EnvelopeInfo{Purpose: parsed.Purpose, Digest: sha256.Sum256(raw)}, salt, ciphertext, aad, nil
 }
 
 func fixedKDF(salt []byte) kdfProfile {

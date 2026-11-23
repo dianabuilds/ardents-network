@@ -853,7 +853,6 @@ Application data stream.
 | `issue-service-credential` | `--vault-root PATH --record ID --request PATH --response PATH` plus the exact public Service Authority binding | Before opening the Vault or asking for its password, requires the Custodian to type the lowercase `request_sha256` transferred independently from the requesting host. A mismatch fails without password entry, response, record, or floor mutation. The supported issuer additionally limits one Credential to 24 hours and its terminal horizon to 48 hours. It then writes the monotonic public response to the explicit new file and emits its deterministic encrypted successor record ID. An exact retry returns the same response; a different request cannot advance the stale record. |
 | `create-admission-authority` | `--vault-root PATH --environment-commitment HEX --network-commitment HEX --root-commitment HEX` | Creates a separate interactive admission Authority in Custody and emits its record ID, identity commitment, and public key as `ardents-admission-authority-v1`. |
 | `issue-admission-permission` | `--vault-root PATH --record ID --request PATH --permission-output PATH --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind admission --id-commitment HEX` | Requires the Custodian to enter the independently transferred request SHA-256 before opening the Vault or asking for its password. After verifying the exact admission Authority binding, writes the private permission to the explicit owner-only destination without replacing different bytes and emits a public receipt with only the permission digest. |
-| `inspect-envelope` | `--envelope PATH` | Validates and prints only canonical public envelope facts as `ardents-custody-inspection-v1`. It owns no Vault root and cannot create custody state. |
 | `verify-record` | `--vault-root PATH --record ID --environment-commitment HEX --network-commitment HEX --root-commitment HEX --kind service|name|admission --id-commitment HEX` | Reads one password from an interactive no-echo terminal, verifies one active encrypted record against exact public commitments, and prints bounded non-secret facts as `ardents-custody-verification-v1`. |
 | `export-recovery-bundle` | Exact vault record, public Authority commitments, and output Bundle path | Reads the record secret only from the terminal, writes a separately passworded Bundle, and test-restores it before success. |
 | `restore-recovery-bundle` | Empty destination Vault, public commitments, Bundle path | Reads the Bundle password from the terminal and writes only an `authority-locked` quarantine record. |
@@ -870,7 +869,7 @@ The custody command deliberately exposes no Service recovery activation. A
 restored Service Authority remains locked and issuance-unavailable. ADR-0105
 retired the never-exposed Namespace signing, submission, and reconciliation
 operations along with the subsystem itself; a restored Name Authority record
-remains inspectable, verifiable, exportable, and purgeable through the
+remains verifiable, exportable, and purgeable through the
 generic record commands, and no Namespace witness or activation route exists.
 
 The completed `ardents-release-custody` and `ardents-state-custody` local
