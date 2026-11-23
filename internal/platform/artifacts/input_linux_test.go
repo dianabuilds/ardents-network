@@ -123,3 +123,39 @@ func TestArtifactInputsReobserveEarlierNamespaceAfterLaterRead(t *testing.T) {
 		})
 	}
 }
+
+func TestDirectoryChainPreservesOriginalPathAndAccessPolicy(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "writable")
+	child := filepath.Join(root, "selected")
+	if err := os.MkdirAll(child, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(root, 0777); err != nil {
+		t.Fatal(err)
+	}
+	uid := uint32(os.Geteuid())
+	chain, err := OpenDirectoryChain(t.Context(), child, &uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := chain.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if err := chain.CheckOriginalAccess(); err != nil {
+		t.Fatal("original Source access to its directory refused", err)
+	}
+	if err := chain.CheckRootAccess(); !errors.Is(err, ErrInput) {
+		t.Fatal("protected operation accepted a writable ancestor", err)
+	}
+	if err := os.Rename(child, child+".original"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(child, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := chain.CheckOriginalAccess(); !errors.Is(err, ErrInput) {
+		t.Fatal("replacement directory accepted as the original", err)
+	}
+}

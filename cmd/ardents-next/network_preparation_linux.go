@@ -8,35 +8,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-// Each original directory descriptor stays open through final readback and
-// physical Close. All path components are opened relative to retained parents,
-// with NOFOLLOW; reobservation never adopts a replacement inode.
-type preparationDirectory struct {
-	file *os.File
-	name string
-	info os.FileInfo
-}
-
-type preparationPath struct{ directories []preparationDirectory }
-
-func (p *preparationPath) close() (err error) {
-	for i := len(p.directories) - 1; i >= 0; i-- {
-		err = errors.Join(err, p.directories[i].file.Close())
-	}
-	return
-}
-
-func openPreparationAt(parent *os.File, name string, flags int, mode uint32) (*os.File, error) {
-	fd, err := syscall.Openat(int(parent.Fd()), name, flags|syscall.O_CLOEXEC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, mode)
-	if err != nil {
-		return nil, err
-	}
-	return os.NewFile(uintptr(fd), name), nil
-}
+type preparationPath = artifacts.DirectoryChain
 
 func requirePreparationExt4(file *os.File) error {
 	var fs syscall.Statfs_t
@@ -50,84 +27,12 @@ func openPreparationParent(path string) (*preparationPath, error) {
 	return openPreparationDirectories(context.Background(), path, nil)
 }
 
-func openPreparationDirectories(ctx context.Context, path string, owner *uint32) (p *preparationPath, err error) {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
-		return nil, errNetworkPreparation
+func openPreparationDirectories(ctx context.Context, path string, owner *uint32) (*preparationPath, error) {
+	directories, err := artifacts.OpenDirectoryChain(ctx, path, owner)
+	if errors.Is(err, artifacts.ErrInput) {
+		return nil, errors.Join(errNetworkPreparation, err)
 	}
-	p = &preparationPath{}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, p.close())
-			p = nil
-		}
-	}()
-	f, err := os.Open("/")
-	if err != nil {
-		return p, err
-	}
-	info, err := f.Stat()
-	if err != nil {
-		return p, errors.Join(err, f.Close())
-	}
-	p.directories = append(p.directories, preparationDirectory{file: f, info: info})
-	if !preparationDirectoryOwner(info, owner) {
-		return p, errNetworkPreparation
-	}
-	for _, name := range strings.Split(strings.TrimPrefix(path, "/"), "/") {
-		if name == "" {
-			continue
-		}
-		if ctx != nil {
-			if err := ctx.Err(); err != nil {
-				return p, err
-			}
-		}
-		f, err = openPreparationAt(f, name, syscall.O_RDONLY|syscall.O_DIRECTORY, 0)
-		if err != nil {
-			return p, err
-		}
-		info, err = f.Stat()
-		if err != nil {
-			return p, errors.Join(err, f.Close())
-		}
-		p.directories = append(p.directories, preparationDirectory{file: f, name: name, info: info})
-		if !preparationDirectoryOwner(info, owner) {
-			return p, errNetworkPreparation
-		}
-	}
-	return p, nil
-}
-
-func preparationDirectoryOwner(info os.FileInfo, owner *uint32) bool {
-	if owner == nil {
-		return true
-	}
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	return ok && (stat.Uid == 0 || stat.Uid == *owner)
-}
-
-func (p *preparationPath) parent() *os.File { return p.directories[len(p.directories)-1].file }
-
-func (p *preparationPath) check() error {
-	for i, d := range p.directories {
-		current, err := d.file.Stat()
-		if err != nil || !os.SameFile(d.info, current) || !current.IsDir() || current.Mode() != d.info.Mode() {
-			return errors.Join(errNetworkPreparation, err)
-		}
-		if i == 0 {
-			continue
-		}
-		linked, err := openPreparationAt(p.directories[i-1].file, d.name, syscall.O_RDONLY|syscall.O_DIRECTORY, 0)
-		if err != nil {
-			return err
-		}
-		observed, e := linked.Stat()
-		err = errors.Join(e, linked.Close())
-		if err != nil || !os.SameFile(d.info, observed) {
-			return errors.Join(errNetworkPreparation, err)
-		}
-	}
-	return nil
+	return directories, err
 }
 
 func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err error) {
@@ -138,8 +43,8 @@ func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err e
 	if err != nil {
 		return nil, err
 	}
-	defer func() { err = errors.Join(err, p.close()) }()
-	f, err := openPreparationAt(p.parent(), filepath.Base(path), syscall.O_RDONLY, 0)
+	defer func() { err = errors.Join(err, p.Close()) }()
+	f, err := p.OpenFile(filepath.Base(path))
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +69,12 @@ func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err e
 	if !ok || final.Ctim != initial.Ctim || final.Nlink != 1 {
 		return nil, errNetworkPreparation
 	}
-	linked, e := openPreparationAt(p.parent(), filepath.Base(path), syscall.O_RDONLY, 0)
+	linked, e := p.OpenFile(filepath.Base(path))
 	if e != nil {
 		return nil, e
 	}
 	observed, e := linked.Stat()
-	e = errors.Join(e, linked.Close(), p.check(), ctx.Err())
+	e = errors.Join(e, linked.Close(), p.Check(), ctx.Err())
 	if e != nil || !os.SameFile(before, observed) {
 		return nil, errors.Join(errNetworkPreparation, e)
 	}

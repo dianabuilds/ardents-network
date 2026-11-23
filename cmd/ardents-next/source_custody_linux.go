@@ -143,7 +143,7 @@ func (l *sourceInputLifetime) acquireWithAccess(path string, maximum int64, acce
 	}
 	f := &sourceInputFile{parent: p, observe: l.observe}
 	l.files = append(l.files, f)
-	f.file, err = openPreparationAt(p.parent(), filepath.Base(path), syscall.O_RDONLY, 0)
+	f.file, err = p.OpenFile(filepath.Base(path))
 	if err != nil {
 		return nil, l.refuse(errors.Join(errSourceInput, err))
 	}
@@ -164,7 +164,7 @@ func (l *sourceInputLifetime) acquireWithAccess(path string, maximum int64, acce
 		if s.Uid != 0 && s.Uid != uid || f.info.Mode().Perm()&0022 != 0 {
 			return nil, l.refuse(errSourceInput)
 		}
-		if err := checkSourceStatePath(p, uid); err != nil {
+		if err := checkSourceStatePath(p); err != nil {
 			return nil, l.refuse(err)
 		}
 	}
@@ -244,14 +244,13 @@ func (inputs sourceInputs) Check() error {
 	return nil
 }
 
-func sourceInputMetadata(original, current os.FileInfo, directory bool) bool {
+func sourceInputMetadata(original, current os.FileInfo) bool {
 	a, aok := original.Sys().(*syscall.Stat_t)
 	b, bok := current.Sys().(*syscall.Stat_t)
 	if !aok || !bok || !os.SameFile(original, current) || original.Mode() != current.Mode() || a.Uid != b.Uid || a.Gid != b.Gid {
 		return false
 	}
-	// Ancestor directory contents may evolve; their identity/access may not.
-	return directory || a.Nlink == b.Nlink && a.Ctim == b.Ctim && a.Mtim == b.Mtim && original.Size() == current.Size()
+	return a.Nlink == b.Nlink && a.Ctim == b.Ctim && a.Mtim == b.Mtim && original.Size() == current.Size()
 }
 
 func (f *sourceInputFile) check() error {
@@ -259,7 +258,7 @@ func (f *sourceInputFile) check() error {
 		return err
 	}
 	before, err := f.file.Stat()
-	if err != nil || !sourceInputMetadata(f.info, before, false) {
+	if err != nil || !sourceInputMetadata(f.info, before) {
 		return errSourceInput
 	}
 	if err := f.checkLink(); err != nil {
@@ -275,7 +274,7 @@ func (f *sourceInputFile) check() error {
 		return errSourceInput
 	}
 	after, err := f.file.Stat()
-	if err != nil || !sourceInputMetadata(f.info, after, false) {
+	if err != nil || !sourceInputMetadata(f.info, after) {
 		return errSourceInput
 	}
 	// A retained descriptor alone cannot detect an ancestor/path substitution
@@ -287,7 +286,7 @@ func (f *sourceInputFile) check() error {
 }
 
 func (f *sourceInputFile) checkLink() error {
-	linked, err := openPreparationAt(f.parent.parent(), f.file.Name(), syscall.O_RDONLY, 0)
+	linked, err := f.parent.OpenFile(f.file.Name())
 	if err != nil {
 		return errors.Join(errSourceInput, err)
 	}
@@ -295,21 +294,15 @@ func (f *sourceInputFile) checkLink() error {
 	if err = errors.Join(statErr, linked.Close()); err != nil {
 		return errors.Join(errSourceInput, err)
 	}
-	if !sourceInputMetadata(f.info, observed, false) {
+	if !sourceInputMetadata(f.info, observed) {
 		return errSourceInput
 	}
 	return nil
 }
 
 func (f *sourceInputFile) checkAncestors() error {
-	if err := f.parent.check(); err != nil {
+	if err := f.parent.CheckOriginalAccess(); err != nil {
 		return errSourceInput
-	}
-	for _, d := range f.parent.directories {
-		current, err := d.file.Stat()
-		if err != nil || !sourceInputMetadata(d.info, current, true) {
-			return errSourceInput
-		}
 	}
 	return nil
 }
@@ -343,7 +336,7 @@ func (inputs sourceInputs) Close() error {
 			}
 			result = errors.Join(result, f.file.Close())
 		}
-		result = errors.Join(result, f.parent.close())
+		result = errors.Join(result, f.parent.Close())
 		clear(f.raw)
 	}
 	l.result = result

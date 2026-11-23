@@ -98,6 +98,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/artifacts/input_linux_test.go",
 			"cmd/ardents-next/source_state_preparation_linux.go",
 			"cmd/ardents-next/source_state_preparation_linux_test.go",
+			"internal/platform/artifacts/directory_linux.go",
 			"internal/platform/artifacts/input_linux.go",
 			"internal/platform/artifacts/receipt_linux.go",
 			"cmd/ardents-next/source_inspection_linux.go",

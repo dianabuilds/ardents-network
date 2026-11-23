@@ -481,10 +481,11 @@ retains explicit test-only signers and conveys no product signing qualification.
 Public Network preparation composition in exactly
 `cmd/ardents-next/network_preparation.go` imports `network/epoch` and
 `network/closedprofile` alongside the command's common dependencies. It calls
-their existing canonical unsigned preparation directly. Native input and fresh
-output custody remain standard-library mechanisms in
-`network_preparation_linux.go`, with explicit unsupported-platform refusal in
-`network_preparation_other.go`; no package or private signer is added.
+their existing canonical unsigned preparation directly. The Linux adapter
+`network_preparation_linux.go` borrows original directory custody from
+`internal/platform/artifacts`, the same owner used for publication through
+`network_output_linux.go`. It keeps public input size and file admission local.
+`network_preparation_other.go` refuses unsupported native effects.
 `network_preparation_chain_linux_test.go` may import those same two public
 owners and the already registered independent `tests/epochfixture/network`.
 It exercises exact prepared artifacts through test-only distinct-purpose
@@ -837,10 +838,12 @@ without loading a private transport key and initializes no runtime or root.
 `source_custody_linux.go` and its native scheduling/file-custody tests use only
 the standard library. Its genuine consumer is the existing Source command;
 the unexported lifetime retains original fixed files/ancestors, synchronous
-denial, native-use joins and copied terminal results. It borrows only unchanged
-direct-open/check/close primitives from `network_preparation_linux.go`, without
-offline signing's admission policy. No new package, dependency, authority or
-exported Interface is introduced. State/Source preserve their own effects and
+denial, native-use joins and copied terminal results. Source and platform
+composition use the original descriptor chain borrowed through
+`network_preparation_linux.go`. `internal/platform/artifacts` implements one
+physical traversal and keeps original-owner reobservation distinct from the
+root-controlled check used before signing reads. The CLI retains role-specific
+input policy and deadlines. State/Source preserve their own effects and
 join; command cancellation can start that same original Close while native
 input observation is held.
 

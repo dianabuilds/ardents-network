@@ -198,7 +198,7 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 			return nil, openErr
 		}
 		defer func() {
-			err = errors.Join(err, distribution.close())
+			err = errors.Join(err, distribution.Close())
 			if err != nil {
 				result = nil
 			}
@@ -216,10 +216,10 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 			if err := signingAncestors(distribution); err != nil {
 				return err
 			}
-			if _, err := distribution.parent().Seek(0, io.SeekStart); err != nil {
+			if _, err := distribution.Descriptor().Seek(0, io.SeekStart); err != nil {
 				return err
 			}
-			names, err := distribution.parent().Readdirnames(8)
+			names, err := distribution.Descriptor().Readdirnames(8)
 			if (err != nil && err != io.EOF) || len(names) != len(wanted) {
 				return errors.Join(infrastructure.ErrBinding, err)
 			}
