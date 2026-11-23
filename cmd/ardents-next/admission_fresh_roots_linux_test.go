@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 )
@@ -98,10 +99,12 @@ func TestIssuanceFreshKeysAndPredecessorRootRefusal(t *testing.T) {
 }
 
 func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
-	root, initialize, debit, _ := admissionCommandPlans(t)
-	command := func(operation string, config any) (admissionResult, error) {
+	raw, facts, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	root := filepath.Join(t.TempDir(), "ledger")
+	initialize := func(root string) (admissionResult, error) {
 		t.Helper()
-		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "admission", operation, "--config", hostingConfig(t, config))
+		config := hostingConfig(t, admissionInitializationConfig(root, binding))
+		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "initialize", "--config", config)
 		var output, diagnostic bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &output, &diagnostic
 		err := cmd.Run()
@@ -111,42 +114,46 @@ func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
 		}
 		return result, err
 	}
-	if result, err := command("initialize", initialize); err != nil || result.Outcome != quota.Initialized {
+	debit := func(want admission.Outcome) {
+		t.Helper()
+		ledger, err := quota.Open(root, binding)
+		if err != nil {
+			t.Fatal(err)
+		}
+		outcome, _ := ledger.DebitVerified(t.Context(), raw, facts, quota.Bootstrap)
+		if err := ledger.Close(); err != nil || outcome != want {
+			t.Fatal(outcome, err)
+		}
+	}
+	if result, err := initialize(root); err != nil || result.Outcome != quota.Initialized {
 		t.Fatal(result, err)
 	}
-	if result, err := command("debit", debit); err != nil || result.Outcome != quota.Debited {
-		t.Fatal(result, err)
-	}
+	debit(quota.Debited)
 	before := snapshotAdmissionRoot(t, root)
 	for range 2 {
-		if result, err := command("initialize", initialize); err == nil || result.Outcome == quota.Initialized {
+		if result, err := initialize(root); err == nil || result.Outcome == quota.Initialized {
 			t.Fatal("initialization accepted an existing spent root")
 		}
 		if !reflect.DeepEqual(before, snapshotAdmissionRoot(t, root)) {
 			t.Fatal("initialization changed spent history")
 		}
-		if result, err := command("debit", debit); err != nil || result.Outcome != quota.AlreadyDebited {
-			t.Fatal("initialization lost exact retry", result, err)
-		}
+		debit(quota.AlreadyDebited)
 	}
 	foreign := t.TempDir()
 	if err := os.WriteFile(filepath.Join(foreign, "closed-token-ledger"), []byte("ARDILG02synthetic spent history"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	initialize["root"], debit["root"] = foreign, foreign
 	before = snapshotAdmissionRoot(t, foreign)
 	for range 2 {
-		for _, operation := range []string{"initialize", "debit"} {
-			input := initialize
-			if operation == "debit" {
-				input = debit
-			}
-			if result, err := command(operation, input); err == nil || result.Outcome != quota.Unavailable {
-				t.Fatal("predecessor journal accepted", result, err)
-			}
-			if !reflect.DeepEqual(before, snapshotAdmissionRoot(t, foreign)) {
-				t.Fatal("predecessor journal changed")
-			}
+		if result, err := initialize(foreign); err == nil || result.Outcome != quota.Unavailable {
+			t.Fatal("predecessor journal accepted by initialization", result, err)
+		}
+		if ledger, err := quota.Open(foreign, binding); err == nil {
+			_ = ledger.Close()
+			t.Fatal("predecessor journal accepted by quota")
+		}
+		if !reflect.DeepEqual(before, snapshotAdmissionRoot(t, foreign)) {
+			t.Fatal("predecessor journal changed")
 		}
 	}
 }
@@ -184,25 +191,21 @@ func TestAdmissionFreshAuthorityRefusesPredecessorPermission(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := snapshotAdmissionRoot(t, root)
-	batch := filepath.Join(t.TempDir(), "batch")
-	config := map[string]any{"root": root, "binding": admissionBindingConfig(binding), "batch_file": batch, "facts": admissionFactsConfig(facts), "kind": "bootstrap"}
-	runBatch := func() (admissionResult, error) {
+	runBatch := func() (admission.Outcome, quota.DebitConfirmation) {
 		t.Helper()
-		if err := os.WriteFile(batch, raw, 0600); err != nil {
+		ledger, err := quota.Open(root, binding)
+		if err != nil {
 			t.Fatal(err)
 		}
-		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "debit", "--config", hostingConfig(t, config))
-		var output bytes.Buffer
-		cmd.Stdout = &output
-		err := cmd.Run()
-		var result admissionResult
-		if json.Unmarshal(output.Bytes(), &result) != nil {
-			t.Fatal("no structured debit outcome", err)
+		outcome, confirmation := ledger.DebitVerified(t.Context(), raw, facts, quota.Bootstrap)
+		if err := ledger.Close(); err != nil {
+			t.Fatal(err)
 		}
-		return result, err
+		return outcome, confirmation
 	}
-	if result, err := runBatch(); err == nil || result.Outcome != "invalid-signature" {
-		t.Fatal("predecessor authority admitted", result, err)
+	outcome, confirmation := runBatch()
+	if _, _, _, _, ok := confirmation.Snapshot(); outcome != admission.Signature || ok {
+		t.Fatal("predecessor authority admitted", outcome)
 	}
 	if !reflect.DeepEqual(before, snapshotAdmissionRoot(t, root)) {
 		t.Fatal("foreign permission changed quota")
@@ -211,7 +214,8 @@ func TestAdmissionFreshAuthorityRefusesPredecessorPermission(t *testing.T) {
 	// transcript and its 64-byte signature. The holder proof is unchanged.
 	transcript := append([]byte("ardents-issuance-permission-v1\x00"), raw[8:172]...)
 	copy(raw[172:236], ed25519.Sign(private, transcript))
-	if result, err := runBatch(); err != nil || result.Outcome != quota.Debited {
-		t.Fatal("new authority's permission refused", result, err)
+	outcome, confirmation = runBatch()
+	if _, _, _, _, ok := confirmation.Snapshot(); outcome != quota.Debited || !ok {
+		t.Fatal("new authority's permission refused", outcome)
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -21,130 +22,43 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func admissionCommandPlans(t *testing.T) (string, map[string]any, map[string]any, quota.LedgerBinding) {
-	t.Helper()
-	raw, f, b := admissionCommandFixture(t, 2, 1, 2, 1)
-	dir := t.TempDir()
-	root := filepath.Join(dir, "ledger")
-	batch := filepath.Join(dir, "batch")
+func admissionInitializationConfig(root string, binding quota.LedgerBinding) map[string]any {
+	return map[string]any{"root": root, "binding": admissionBindingConfig(binding)}
+}
+
+func TestAdmissionInitializationCompiledCLI(t *testing.T) {
+	raw, facts, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	root := filepath.Join(t.TempDir(), "ledger")
+	config := hostingConfig(t, admissionInitializationConfig(root, binding))
+	command := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "initialize", "--config", config)
+	var out, diagnostic bytes.Buffer
+	command.Stdout, command.Stderr = &out, &diagnostic
+	if err := command.Run(); err != nil {
+		t.Fatal(err, &out, &diagnostic)
+	}
+	var result admissionResult
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil || result.Outcome != quota.Initialized {
+		t.Fatal(result, err)
+	}
+	if bytes.Contains(diagnostic.Bytes(), []byte(root)) {
+		t.Fatal("path leaked")
+	}
+
+	before := snapshotAdmissionRoot(t, root)
+	batch := filepath.Join(t.TempDir(), "batch")
 	if err := os.WriteFile(batch, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	binding := admissionBindingConfig(b)
-	init := map[string]any{"root": root, "binding": binding}
-	debit := map[string]any{"root": root, "binding": binding, "batch_file": batch, "facts": admissionFactsConfig(f), "kind": "bootstrap"}
-	return root, init, debit, b
-}
-func TestAdmissionCompiledCLI(t *testing.T) {
-	binary := compiledCommand(t)
-	root, init, debit, b := admissionCommandPlans(t)
-	command := func(operation string, plan map[string]any, collector string) (admissionResult, error) {
-		args := []string{"admission", operation, "--config", hostingConfig(t, plan)}
-		if collector != "" {
-			args = append(args, collector)
-		}
-		cmd := exec.CommandContext(t.Context(), binary, args...)
-		var out, log bytes.Buffer
-		cmd.Stdout = &out
-		cmd.Stderr = &log
-		err := cmd.Run()
-		var result admissionResult
-		if e := json.Unmarshal(out.Bytes(), &result); e != nil {
-			t.Fatalf("invalid result %s %s %v", &out, &log, e)
-		}
-		if bytes.Contains(log.Bytes(), []byte(root)) {
-			t.Fatal("path leaked")
-		}
-		return result, err
+	retired := admissionInitializationConfig(root, binding)
+	retired["batch_file"], retired["facts"], retired["kind"] = batch, admissionFactsConfig(facts), "bootstrap"
+	command = exec.CommandContext(t.Context(), compiledCommand(t), "admission", "debit", "--config", hostingConfig(t, retired))
+	output, err := command.Output()
+	exit, ok := err.(*exec.ExitError)
+	if !ok || exit.ExitCode() != 2 || json.Unmarshal(output, &result) != nil || result.Outcome != "invalid-input" {
+		t.Fatalf("removed debit route did not refuse: %s (%v)", output, err)
 	}
-	if got, err := command("initialize", init, ""); err != nil || got.Outcome != quota.Initialized {
-		t.Fatal(got, err)
-	}
-	l, err := quota.Open(root, b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, err := command("debit", debit, ""); err == nil || got.Outcome != quota.Busy {
-		t.Fatal(got, err)
-	}
-	if err := l.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := command("debit", debit, "http://127.0.0.1:1"); err != nil || got.Outcome != quota.Debited {
-		t.Fatal(got, err)
-	}
-	if got, err := command("debit", debit, ""); err != nil || got.Outcome != quota.AlreadyDebited {
-		t.Fatal(got, err)
-	}
-	raw, _, _ := admissionCommandFixture(t, 2, 1, 2, 2)
-	if err := os.WriteFile(debit["batch_file"].(string), raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := command("debit", debit, ""); err != nil || got.Outcome != quota.Debited {
-		t.Fatal(got, err)
-	}
-	raw, _, _ = admissionCommandFixture(t, 2, 1, 2, 3)
-	_ = os.WriteFile(debit["batch_file"].(string), raw, 0600)
-	if got, err := command("debit", debit, ""); err == nil || got.Outcome != quota.Exhausted {
-		t.Fatal(got, err)
-	}
-	debit["kind"] = "admitted"
-	raw, _, _ = admissionCommandFixture(t, 2, 1, 2, 1)
-	_ = os.WriteFile(debit["batch_file"].(string), raw, 0600)
-	if got, err := command("debit", debit, ""); err == nil || got.Outcome != quota.Conflict {
-		t.Fatal(got, err)
-	}
-	// Synchronize actual SIGINT/Kill after commit with the first OTLP request.
-	// Collector shutdown is independent of operation cancellation.
-	for _, episode := range []string{"kill", "interrupt"} {
-		t.Run(episode, func(t *testing.T) {
-			_, fresh, request, _ := admissionCommandPlans(t)
-			if got, err := command("initialize", fresh, ""); err != nil || got.Outcome != quota.Initialized {
-				t.Fatal(got, err)
-			}
-			entered := make(chan struct{}, 2)
-			release := make(chan struct{})
-			collector := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				entered <- struct{}{}
-				select {
-				case <-r.Context().Done():
-				case <-release:
-				}
-			}))
-			defer collector.Close()
-			defer close(release)
-			cmd := exec.CommandContext(t.Context(), binary, "admission", "debit", "--config", hostingConfig(t, request), collector.URL)
-			var output bytes.Buffer
-			cmd.Stdout = &output
-			if err := cmd.Start(); err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { _ = cmd.Process.Kill() })
-			select {
-			case <-entered:
-			case <-t.Context().Done():
-				t.Fatal("collector not reached")
-			}
-			if episode == "kill" {
-				if err := cmd.Process.Kill(); err != nil {
-					t.Fatal(err)
-				}
-			} else {
-				if err := cmd.Process.Signal(os.Interrupt); err != nil {
-					t.Fatal(err)
-				}
-			}
-			err := cmd.Wait()
-			if episode == "interrupt" {
-				var result admissionResult
-				if err != nil || json.Unmarshal(output.Bytes(), &result) != nil || result.Outcome != quota.Debited {
-					t.Fatalf("committed cancellation %s %v", &output, err)
-				}
-			}
-			if got, err := command("debit", request, ""); err != nil || got.Outcome != quota.AlreadyDebited {
-				t.Fatal("process loss refunded", got, err)
-			}
-		})
+	if !reflect.DeepEqual(before, snapshotAdmissionRoot(t, root)) {
+		t.Fatal("removed debit route modified quota")
 	}
 }
 
@@ -159,12 +73,11 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 		w.Header().Set("Content-Type", "application/x-protobuf")
 	}))
 	defer server.Close()
-	root, init, debit, b := admissionCommandPlans(t)
-	if err := quota.Initialize(root, b); err != nil {
-		t.Fatal(err)
-	}
+	_, _, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	root := filepath.Join(t.TempDir(), "ledger")
+	init := admissionInitializationConfig(root, binding)
 	var out, log bytes.Buffer
-	if code := run(t.Context(), []string{"admission", "debit", "--config", hostingConfig(t, debit), server.URL}, &out, &log); code != 0 {
+	if code := run(t.Context(), []string{"admission", "initialize", "--config", hostingConfig(t, init), server.URL}, &out, &log); code != 0 {
 		t.Fatal(code, &out, &log)
 	}
 	mu.Lock()
@@ -175,11 +88,11 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 		t.Fatal("missing trace")
 	}
 	span := tr.ResourceSpans[0].ScopeSpans[0].Spans[0]
-	if span.Name != "admission.debit" || len(span.Attributes) != 3 || len(span.Events) != 0 || len(span.ParentSpanId) != 0 {
+	if span.Name != "admission.initialize" || len(span.Attributes) != 3 || len(span.Events) != 0 || len(span.ParentSpanId) != 0 {
 		t.Fatal("unsafe span")
 	}
 	for _, attr := range span.Attributes {
-		want := map[string]string{"operation": "admission.debit", "phase": "execute", "outcome": "debited-offline"}
+		want := map[string]string{"operation": "admission.initialize", "phase": "execute", "outcome": "initialized-offline"}
 		if want[attr.Key] != attr.Value.GetStringValue() {
 			t.Fatal("unexpected attribute", attr)
 		}
