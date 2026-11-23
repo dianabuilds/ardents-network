@@ -977,10 +977,13 @@ No dependency version, first-party unsafe or cgo is introduced.
 
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
-current process owner full control and nobody else. The module is a direct
-platform-specific product dependency. It avoids a child PowerShell process and
-avoids first-party `unsafe`. Unix builds retain the standard-library permission
-implementation.
+current process owner full control and nobody else. The owner-only store-root
+enforcement is the shared `internal/durablefile` mechanism
+(`owner_root_windows.go`, #793), consumed by `internal/route/selection` and
+`internal/network/duty`; the Windows lease owners keep their own lock handles.
+The module is a direct platform-specific product dependency. It avoids a child
+PowerShell process and avoids first-party `unsafe`. Unix builds retain the
+standard-library permission implementation.
 `x/sys` is the Go project's maintained, tagged operating-system support module;
 the selected version has the existing checksum/license review, passes the
 repository's offline build/tests and reachable vulnerability scan, and the
