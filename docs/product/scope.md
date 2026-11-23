@@ -143,13 +143,16 @@ the accepted Network contract. Infrastructure under one known effective
 controller is one family regardless of machine count or declared labels; if
 it cannot supply those assignments, the full installed journey is unavailable.
 Same-operator artifact and host diagnostics do not qualify that journey.
-The headless bundle delivers `ardents` for participants and `ardents-custody`
-for separate key operations. The protected document worker is launched by the
-installed Endpoint. Participants use `ardents publish`, `ardents link` and
-`ardents read` for bounded UTF-8 documents. This restriction belongs to the
-document application. The Service Connection transports opaque bytes, and the
-separate stream qualification exercises binary data, including invalid UTF-8.
-The C0 participant CLI exposes no general file-transfer command.
+Participants use one command, `ardents`. The C0 document application uses
+`ardents publish`, `ardents link` and `ardents read` for bounded UTF-8
+documents. The Service Connection carries opaque Application bytes. Binary
+stream scenarios exercise that layer through a dedicated qualification
+workload. The C0 participant CLI implements the document journey.
+
+The v5 bundle also ships `ardents-custody` for offline Authority operations
+under [ADR-0130](../adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
+The protected Linux bundle supplies a separate document worker. Endpoint
+requests its launch through systemd using the installed worker resources.
 
 Infrastructure operators use `ardents infrastructure provision` for offline
 Network inputs and `ardents infrastructure sign-release` for fixed Release
@@ -160,8 +163,8 @@ lookup.
 The readiness journey is: verify the supplied artifact before execution,
 create its supported local state, start the selected project-controlled
 components, publish one Service Instance, obtain a Target Link, establish a
-second Endpoint Service Connection, exchange bounded opaque Application bytes,
-and stop and restart without losing required durable state. A supported manual
+second Endpoint Service Connection, read the published document through that
+Connection, then stop and restart without losing required durable state. A supported manual
 replacement remains authenticated and explicit; automatic update is outside
 this profile.
 
@@ -181,8 +184,8 @@ the tracker is the one live task ledger.
 
 ### C0 command roles, state, and outcomes
 
-The `ardents` product CLI owns Endpoint enrollment, runtime, publication,
-local Application byte exchange and public verification. Its distinct
+The `ardents` product CLI owns Endpoint enrollment, runtime, document
+publication and reading, and public verification. Its
 `source` and `node` subcommands run the selected infrastructure roles.
 The offline infrastructure entrypoints prepare and sign their respective
 State and Release artifacts. `ardents-custody` creates the Service Authority
@@ -202,10 +205,10 @@ level diagnostic may add detail but cannot silently reinterpret one of these
 classes as success or fallback.
 
 The generic AAI2 Endpoint Connection route and the per-user Portable
-enrollment commands were removed with the old CLI. The protected text
-Application has its own fixed workload and confinement contract. Endpoint
+enrollment commands were removed with the old CLI. The document Application
+has its own fixed workload and confinement contract. Endpoint
 delivery uses the protected platform unit (ADR-0125). The read-only
-`ardents-next enrollment verify` operation checks the manifest against the
+`ardents enrollment verify` operation checks the manifest against the
 independent pin before parsing its enrollment facts. The historical persisted
 `alpha-enrollment.json` form was retired by ADR-0127. Enrollment verification
 grants no Resolution or Route authority.
@@ -265,16 +268,14 @@ Service Name access available.
 
 The Network audit candidate is the headless maintained product surface:
 
-- `ardents` and `ardents-custody`, plus the fixed
-  `ardents-text` worker;
+- the participant and infrastructure command `ardents`, the offline
+  `ardents-custody` command and the systemd document worker;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, enrollment,
-  Release, Custody, control-inspection, and resource Modules;
-- the Local Grant and session lifecycle owned by `internal/successor/execution`;
-- the selected typed local Application Interfaces for the successor Endpoint:
-  protected text Connection
-  under `internal/application/connection` and separately
-  authorized Administration under
+  Release, Custody and resource Modules;
+- the Local Grant and session lifecycle owned by `internal/execution`;
+- the typed local Connection Interface in `internal/application/connection`
+  and separately authorized Administration Interface in
   `internal/application/administration`;
 - the enrollment-v5 headless artifact lane and the maintained deterministic,
   process, race, and fuzz profiles, the architecture gate, and purpose-named
@@ -299,9 +300,8 @@ to the selected GitHub ledger. An audit does not qualify public operation.
 
 The maintained local Connection Interface is the typed v2 contract with
 AAI3 grammar in `internal/application/connection`; its Target-Link request is
-admitted only by the protected text composition and does not authorize a
-generic workload. The maintained Administration surface remains the separate
-v1 contract in `internal/application/administration`. Each owns its
+admitted only by the protected document composition. The Administration
+Interface has its own v1 contract in `internal/application/administration`. Each owns its
 versioned local contract, bounds, lifecycle, outcome grammar, local transport,
 and conformance evidence. The successor Endpoint composes the server behavior,
 and maintained commands use only the selected interface
@@ -313,8 +313,8 @@ host or extension is a current product surface.
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence
 inventory. Each maintained owned file and lane has exactly one owner. The
-current artifact lanes include the headless commands and fixed text worker
-inventory defined by [Enrollment](../technical/enrollment-verification.md).
+current artifact lanes include the headless commands and fixed document
+worker inventory defined by [Enrollment](../technical/enrollment-verification.md).
 The Application Interface remains a neutral shared seam; the isolated new
 command consumers have their explicit [command contracts](../reference/commands.md)
 and do not imply full installed product acceptance.

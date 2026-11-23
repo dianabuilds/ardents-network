@@ -7,7 +7,10 @@ release publisher. Private release/control keys never enter this script, its
 environment, its output, or the repository.
 
 The caller supplies one explicit `<goos>-<goarch>` and the exact already-built
-Endpoint and Authority Custody binaries. The static directory contains the
+Endpoint and Authority Custody binaries. Participants run the Endpoint
+executable as `ardents`. The offline Authority operator uses
+`ardents-custody`. [ADR-0130](../../docs/adr/0130-retire-control-and-aca1-from-alpha-bundles.md)
+requires both in the enrollment-v5 inventory. The static directory contains the
 descriptor, trusted root and one matching, non-zero decimal TUF metadata
 pair with its timestamp. For the initial generation it is:
 
@@ -66,13 +69,15 @@ record have been reviewed; GitHub Release/HTTPS is not bootstrap authority.
 
 ## Protected generation inventory
 
-For the selected linux-amd64 successor, additionally set
-`ARDENTS_ALPHA_BUNDLE_TEXT` to the already-built text executable. The same
-static root must then contain `protected-endpoint.json`, the two worker service
+For the protected linux-amd64 generation, build the document worker from
+`./internal/application/document/worker` and supply it through
+`ARDENTS_ALPHA_BUNDLE_TEXT`. The protected inventory records it as
+`ardents-text-linux-amd64`. The installed systemd units launch it. The same
+static root must contain `protected-endpoint.json`, the two worker service
 units, two worker sockets, `50-ardents-text.rules`, `ardents-text.conf` and
 `ardents-endpoint.service`. Any one of these inputs selects the whole required
-group; partial presence refuses. The headless bundle has seven manifest entries. A complete protected bundle has
-16, within the existing cap.
+group. Partial presence refuses. The headless bundle has seven manifest entries.
+A complete protected bundle has 16, within the existing cap.
 
 The descriptor must already exist before its exact bytes are signed as the
 protected target in the same Release set as the Endpoint executable. The
@@ -85,5 +90,6 @@ fresh Release authorization, execution permission or installed readiness.
 The packaging test also produces two identical protected archives, checks
 their complete manifests and unchanged descriptor, and refuses substituted
 or missing resources without an output archive. Those controls use synthetic
-unit/resource bytes and a real command binary as the text-byte fixture;
-they do not run or qualify a confined worker or the installed Service route.
+unit/resource bytes and a real command binary as a worker-byte fixture.
+Installed worker behavior has its own
+[network qualification profile](../../tests/qualification/text-worker-network/README.md).
