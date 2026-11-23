@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
@@ -29,7 +30,7 @@ func runSourceStatePreparation(ctx context.Context, args []string, out, diagnost
 		return sourceStartupFailure(diagnostic, "state", err, nil)
 	}
 	const receipt = "{\"operation\":\"source.prepare-state\",\"outcome\":\"state-prepared\"}\n"
-	if writeSourceReportContext(ctx, out, []byte(receipt)) != nil {
+	if artifacts.WriteReport(ctx, out, []byte(receipt)) != nil {
 		return 1
 	}
 	return 0

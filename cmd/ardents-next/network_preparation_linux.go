@@ -82,5 +82,5 @@ func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err e
 }
 
 func writeNetworkPreparationReceipt(ctx context.Context, out io.Writer, raw []byte) error {
-	return writeSourceReportContext(ctx, out, raw)
+	return artifacts.WriteReport(ctx, out, raw)
 }

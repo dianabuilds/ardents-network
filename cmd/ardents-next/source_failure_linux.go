@@ -3,10 +3,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
@@ -55,5 +57,5 @@ func sourceFailureReport(out io.Writer, phase string, operation, processClose er
 	if err != nil {
 		return err
 	}
-	return writeSourceReport(out, append(raw, '\n'))
+	return artifacts.WriteReport(context.Background(), out, append(raw, '\n'))
 }

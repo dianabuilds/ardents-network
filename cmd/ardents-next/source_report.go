@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func sourceReport(out io.Writer, phase, outcome string) error {
@@ -21,5 +23,5 @@ func sourceReportContext(ctx context.Context, out io.Writer, phase, outcome stri
 	if err != nil {
 		return err
 	}
-	return writeSourceReportContext(ctx, out, append(raw, '\n'))
+	return artifacts.WriteReport(ctx, out, append(raw, '\n'))
 }

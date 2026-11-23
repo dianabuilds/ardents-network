@@ -709,6 +709,12 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_failure_linux.go" && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
+		if dependency == modulePath+"/internal/platform/artifacts" {
+			switch source {
+			case "cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go":
+				return true
+			}
+		}
 		if source == "cmd/ardents-next/source_native_linux_test.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}

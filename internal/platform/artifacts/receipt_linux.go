@@ -10,18 +10,45 @@ import (
 	"time"
 )
 
+type outputKind uint8
+
+const (
+	receiptOutput outputKind = iota
+	reportOutput
+)
+
 // WriteReceipt completes one bounded write to the caller-owned output.
 func WriteReceipt(parent context.Context, out io.Writer, raw []byte) error {
+	return writeOutput(parent, out, raw, receiptOutput)
+}
+
+// WriteReport writes a command report without replacing its original writer
+// error with a receipt failure. An already canceled report never opens output.
+func WriteReport(parent context.Context, out io.Writer, raw []byte) error {
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	return writeOutput(parent, out, raw, reportOutput)
+}
+
+func writeOutput(parent context.Context, out io.Writer, raw []byte, kind outputKind) error {
 	ctx, cancel := context.WithTimeout(parent, time.Second)
 	defer cancel()
 	file, native := out.(*os.File)
 	if !native {
-		if err := ctx.Err(); err != nil {
-			return err
+		if kind == receiptOutput {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 		}
 		count, err := out.Write(raw)
-		if err != nil || count != len(raw) {
+		switch {
+		case kind == receiptOutput && (err != nil || count != len(raw)):
 			return errors.Join(io.ErrShortWrite, err)
+		case err != nil:
+			return err
+		case count != len(raw):
+			return io.ErrShortWrite
 		}
 		return ctx.Err()
 	}
@@ -30,6 +57,9 @@ func WriteReceipt(parent context.Context, out io.Writer, raw []byte) error {
 		return err
 	}
 	if info.Mode()&(os.ModeNamedPipe|os.ModeCharDevice|os.ModeSocket) == 0 {
+		if kind == reportOutput {
+			return errors.New("report for Source requires interruptible output")
+		}
 		return errors.New("artifact receipt requires interruptible native output")
 	}
 	fd := int(file.Fd())
