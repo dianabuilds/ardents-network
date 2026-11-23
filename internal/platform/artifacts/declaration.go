@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"slices"
-	"strings"
 )
 
 // ErrInput reports an unavailable or invalid original artifact input.
@@ -46,21 +44,4 @@ func DecodeDeclaration(raw []byte, value any, fields ...string) error {
 		return ErrInput
 	}
 	return nil
-}
-
-// UniqueOptions rejects repeated options except those explicitly repeated by the command.
-func UniqueOptions(args []string, repeatable ...string) bool {
-	seen := map[string]bool{}
-	for _, argument := range args {
-		if len(argument) < 2 || argument[0] != '-' {
-			continue
-		}
-		name := strings.TrimLeft(argument, "-")
-		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && !slices.Contains(repeatable, name) {
-			return false
-		}
-		seen[name] = true
-	}
-	return true
 }
