@@ -1998,11 +1998,11 @@ defines additional evidence obligations for a selected new scheme. These are
 design and qualification requirements; no new execution profile or automated
 anonymity verdict exists merely because the map names them.
 
-The selected installed text Endpoint and its context, token-journal, protected
+The selected installed protected Endpoint and its context, token-journal, protected
 publication and read component tests compile on Linux. Run those behavior
 checks in the existing Linux deterministic/race profiles; a Windows unit pass
 does not execute or qualify them. Windows retains the pre-existing Endpoint
-journey and an explicit unsupported text-command refusal. Shared State,
+journey and an explicit unsupported protected Application command refusal. Shared State,
 Custody, Node and protocol consumers keep their own platform contracts. The
 [measured Linux Endpoint test cost](https://github.com/dianabuilds/ardents-network/blob/4764ae1c567e93180f3aa643b2544abfdb2a67dc/docs/development/endpoint-test-cost.md) records one
 development baseline and the deliberate workload and Permission-hour waits;
@@ -2867,14 +2867,14 @@ goroutines, callbacks, locks, mutable admission, cancellation, or durable state,
 and must assert terminal join and state invariants in addition to race-detector
 cleanliness.
 
-The closed text Endpoint's durable Entry Set owner and its persistence and
+The protected Endpoint's durable Entry Set owner and its persistence and
 class-specific adjacency tests compile on Linux, matching their sole production
 consumer. Legacy Entry Invite validation and retained admission-history
 decoding remain portable; receiving-admission checks were retired with the old
 Initiator closure.
 
 Holder-request construction and its end-to-end Custody allocation tests run on
-Linux with the text Endpoint client. The shared request decoder, proof verifier,
+Linux with the protected Endpoint client. The shared request decoder, proof verifier,
 Custody command and authority storage remain portable; independent authority
 creation and allocation-journal tests stay in the portable profile.
 
@@ -2885,12 +2885,12 @@ signature checks and fixed result encoding remain available to receiving Nodes.
 Private Descriptor issuance round trips and Store tests that produce those
 proofs run on Linux with the Publisher. Independent receiving Gateway and wire
 checks remain portable. Protected context and coalesced initial-authentication
-tests run with the Linux text Endpoint; shared stream lifecycle tests remain
+tests run with the Linux protected Endpoint; shared stream lifecycle tests remain
 portable, including the common receipt-consumption representation.
 
 Snapshot construction/response tests are portable and execute in the portable
 deterministic inventory; published-Link client round trips execute on Linux with
-their text command consumer. Shared document-read and raw published-Link
+their document command consumer. Shared document-read and raw published-Link
 server framing tests remain portable; their failure checks are unchanged.
 
 The Text worker INIT/READY, frame, credit, reader/Publisher bridge and
