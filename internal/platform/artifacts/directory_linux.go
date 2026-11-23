@@ -79,9 +79,6 @@ func (d *DirectoryChain) last() *File { return d.directories[len(d.directories)-
 // Descriptor borrows the original final directory until Close.
 func (d *DirectoryChain) Descriptor() *os.File { return d.last().file }
 
-// Info reports the original metadata of the final directory.
-func (d *DirectoryChain) Info() os.FileInfo { return d.last().info }
-
 // OpenFile opens a direct entry relative to the retained final directory.
 func (d *DirectoryChain) OpenFile(name string) (*os.File, error) {
 	if name == "." || name == ".." || filepath.IsAbs(name) || filepath.Base(name) != name {
