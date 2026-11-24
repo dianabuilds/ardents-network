@@ -598,7 +598,7 @@ func successorImportAllowed(source, dependency string) bool {
 		first, _, _ := strings.Cut(dependency, "/")
 		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 	}
-	if source == "cmd/ardents-next/enrollment_packaging.go" && localImport {
+	if source == "cmd/ardents-next/enrollment.go" && localImport {
 		return local == "internal/enrollment"
 	}
 	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
@@ -1409,10 +1409,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"retained heap map does not import predecessor Endpoint", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
-		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment_packaging.go", modulePath + "/internal/enrollment", true},
-		{"packaging commands exclude retired Enrollment", "cmd/ardents-next/enrollment_packaging.go", modulePath + "/internal/successor/enrollment", false},
+		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
+		{"packaging commands exclude retired Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/successor/enrollment", false},
 		{"standalone packaging helpers cannot consume Enrollment", "scripts/packaging-check.go", modulePath + "/internal/enrollment", false},
-		{"packaging commands exclude Release authority", "cmd/ardents-next/enrollment_packaging.go", modulePath + "/internal/release", false},
+		{"packaging commands exclude Release authority", "cmd/ardents-next/enrollment.go", modulePath + "/internal/release", false},
 		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/enrollment", false},
 		{"Fixed Node Release signing uses exact artifact resources", "internal/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/release/infrastructure", true},
 		{"Fixed Node Release predecessor verifies genuine Release", "internal/release/infrastructure/signing/node_release_predecessor_linux.go", modulePath + "/internal/release", true},
