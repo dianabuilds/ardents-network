@@ -37,7 +37,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			var provisioned map[[32]byte][2]string
 			f, sockets, certificates := newRoleRouteFixtureConfigured(t, carrier, 3, false, false, func(f *networkAdmissionFixture, _ map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
 				if retirement == "certificate" {
-					provisioned = provisionNativeNodeCertificates(t, f, certificates, [32]byte{12}, [32]byte{13}, [32]byte{14}, [32]byte{15})
+					provisioned = nodefixture.ProvisionNodeCertificates(t, &f.spec, certificates, [32]byte{12}, [32]byte{13}, [32]byte{14}, [32]byte{15})
 				}
 			})
 			bundle, err := networkfixture.BuildClosed(f.spec)
@@ -184,4 +184,8 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			}
 		})
 	}
+}
+
+func TestNativeNodeProvisionedCertificateTCP(t *testing.T) {
+	testNativeNodeForwarding(t, "certificate")
 }

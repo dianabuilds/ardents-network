@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package main
+package node
 
 import (
 	"bytes"
@@ -19,14 +19,13 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-// Only State/Admission/cohort authorities are fixtures. Every selected Node key,
+// ProvisionNodeCertificates holds State, Admission and cohort authorities as fixtures. Every selected Node key,
 // canonical prepared and signed initial Record, and certificate comes from the
 // genuine command. Actual original paths are passed unchanged to Node runtime.
-func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, certificates map[[32]byte]tls.Certificate, ids ...[32]byte) map[[32]byte][2]string {
+func ProvisionNodeCertificates(t testing.TB, spec *networkfixture.ClosedSpec, certificates map[[32]byte]tls.Certificate, ids ...[32]byte) map[[32]byte][2]string {
 	t.Helper()
 	parent := t.TempDir()
 	if err := os.Chmod(parent, 0700); err != nil {
@@ -36,14 +35,11 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 	if err != nil {
 		t.Fatal("invalid native environment", err)
 	}
-	if err := p.CheckRootAccess(); err != nil {
-		_ = p.Close()
-		t.Fatal("invalid root-controlled ancestors", err)
+	accessErr := p.CheckRootAccess()
+	if closeErr := p.Close(); accessErr != nil || closeErr != nil {
+		t.Fatal("invalid root-controlled ancestors", accessErr, closeErr)
 	}
-	if err := p.Close(); err != nil {
-		t.Fatal(err)
-	}
-	command := nodefixture.PinnedCommand(t)
+	command := PinnedCommand(t)
 	run := func(args ...string) {
 		t.Helper()
 		if raw, err := exec.CommandContext(t.Context(), command, append([]string{"network"}, args...)...).CombinedOutput(); err != nil {
@@ -79,10 +75,10 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 		}
 		t.Cleanup(func() { clear(key) })
 		found := false
-		for j := range f.spec.Nodes {
-			if f.spec.Nodes[j].NodeID == id {
-				f.spec.Nodes[j].PrivateKey = key
-				f.spec.Nodes[j].Generation = 1
+		for j := range spec.Nodes {
+			if spec.Nodes[j].NodeID == id {
+				spec.Nodes[j].PrivateKey = key
+				spec.Nodes[j].Generation = 1
 				found = true
 			}
 		}
@@ -93,18 +89,18 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 	}
 	// Independent fixture supplies only isolated State/profile/Admission and
 	// fixed family assignment. Its Record bytes must equal genuine producer bytes.
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	bundle, err := networkfixture.BuildClosed(*spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.spec.Nodes = bundle.Nodes
+	spec.Nodes = bundle.Nodes
 	for i, n := range bundle.Nodes {
 		pair, selected := paths[n.NodeID]
 		if !selected {
 			continue
 		}
 		now := time.Now().UTC().Truncate(time.Second)
-		public := map[string]any{"schema": "ardents-initial-node-record-plan-v1", "network_id": hex.EncodeToString(f.spec.NetworkID[:]), "node_id": hex.EncodeToString(n.NodeID[:]), "valid_from": n.ValidFrom.Format(time.RFC3339), "valid_until": n.ValidUntil.Format(time.RFC3339), "family": n.Family, "endpoint": n.Endpoint, "carrier": n.Carrier, "capacity": n.Capacity, "public_key": hex.EncodeToString(n.PrivateKey[32:])}
+		public := map[string]any{"schema": "ardents-initial-node-record-plan-v1", "network_id": hex.EncodeToString(spec.NetworkID[:]), "node_id": hex.EncodeToString(n.NodeID[:]), "valid_from": n.ValidFrom.Format(time.RFC3339), "valid_until": n.ValidUntil.Format(time.RFC3339), "family": n.Family, "endpoint": n.Endpoint, "carrier": n.Carrier, "capacity": n.Capacity, "public_key": hex.EncodeToString(n.PrivateKey[32:])}
 		label := fmt.Sprintf("%02d", i)
 		plan := write("record-plan-"+label, public)
 		prepared := filepath.Join(parent, "prepared-"+label)
@@ -136,7 +132,10 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 		if err != nil {
 			t.Fatal(err)
 		}
-		private := cert.PrivateKey.(ed25519.PrivateKey)
+		private, ok := cert.PrivateKey.(ed25519.PrivateKey)
+		if !ok {
+			t.Fatal("native Node credential used a different key type")
+		}
 		t.Cleanup(func() { clear(private) })
 		leaf, err := x509.ParseCertificate(cert.Certificate[0])
 		if err != nil {
@@ -158,8 +157,3 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 	}
 	return paths
 }
-
-func TestNativeNodeProvisionedCertificateTCP(t *testing.T) {
-	testNativeNodeForwarding(t, "certificate")
-}
-func TestNativeJoinProvisionedCertificateTCP(t *testing.T) { nativeJoinWorkload(t, "certificate") }

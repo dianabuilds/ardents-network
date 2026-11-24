@@ -637,6 +637,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/endpoint" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/platform/artifacts" || local == "tests/epochfixture/network" || local == "internal/network/source/serving" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		}
 	}
+	if localImport && source == "tests/e2e/node/provisioning_linux.go" {
+		return local == "internal/platform/artifacts" || local == "tests/epochfixture/network"
+	}
 	if localImport && source == "tests/e2e/node/receiving_startup_native_linux_test.go" {
 		return local == "internal/hosting" || local == "internal/network/duty" || local == "internal/network/epoch" ||
 			local == "internal/processresource" || local == "tests/epochfixture/network"
@@ -712,7 +715,6 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 			"cmd/ardents-next/join_platform_native_linux_test.go",
 			"cmd/ardents-next/network_admission_fixture_linux_test.go", "cmd/ardents-next/node_authority_native_linux_test.go",
-			"cmd/ardents-next/node_certificate_process_linux_test.go",
 			"cmd/ardents-next/node_descriptor_native_linux_test.go", "cmd/ardents-next/node_introduction_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
 			"cmd/ardents-next/node_join_native_linux_test.go",
@@ -950,7 +952,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/network_signing_fixture_linux_test.go" && (dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network") {
 		return true
 	}
-	if (source == "cmd/ardents-next/source_preparation_process_linux_test.go" || source == "cmd/ardents-next/node_certificate_process_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
+	if (source == "cmd/ardents-next/source_preparation_process_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
 		return true
 	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
