@@ -28,6 +28,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -78,7 +79,7 @@ func TestNativeSourceOriginalInputsRetire(t *testing.T) {
 }
 
 func nativeSourceWorkload(t *testing.T, mode string) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	f := newNetworkAdmissionFixture(t)
 	bundle, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {

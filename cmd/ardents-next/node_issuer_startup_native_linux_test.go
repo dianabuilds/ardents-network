@@ -18,13 +18,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // Actual command refusals at distinct startup acquisitions. Prepared durable
 // bytes remain unchanged and acquired roots/producer return only after join.
 func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "role", "tls-key", "missing-results"} {

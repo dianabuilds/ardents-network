@@ -6,10 +6,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -27,55 +25,18 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
-
-// The root test driver stays outside every measured Node cgroup. Each child is
-// the genuine canonical command, independently hash-pinned by the native runner.
-// Signed fixture inputs and genuine Stock/State/Hosting supply every success;
-// no successful role, producer, grant or process observation is substituted.
-func nodeNativeCommand(t *testing.T) string {
-	t.Helper()
-	path := os.Getenv("ARDENTS_NODE_NATIVE_COMMAND")
-	want := os.Getenv("ARDENTS_NODE_NATIVE_COMMAND_SHA256")
-	if os.Geteuid() != 0 || !filepath.IsAbs(path) || len(want) != 64 {
-		t.Fatal("selected Node native root driver and pinned command unavailable")
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	hash := sha256.Sum256(raw)
-	if hex.EncodeToString(hash[:]) != want {
-		t.Fatal("selected native command digest differs")
-	}
-	return path
-}
 
 type nativeForwardingProcess struct {
 	unit       string
 	command    *exec.Cmd
 	stdout     io.ReadCloser
-	diagnostic nativeNodeDiagnostic
+	diagnostic nodefixture.DiagnosticBuffer
 	pid        int
 	joined     bool
 	signaled   bool
-}
-
-type nativeNodeDiagnostic struct {
-	mu     sync.Mutex
-	buffer bytes.Buffer
-}
-
-func (diagnostic *nativeNodeDiagnostic) Write(raw []byte) (int, error) {
-	diagnostic.mu.Lock()
-	defer diagnostic.mu.Unlock()
-	return diagnostic.buffer.Write(raw)
-}
-func (diagnostic *nativeNodeDiagnostic) String() string {
-	diagnostic.mu.Lock()
-	defer diagnostic.mu.Unlock()
-	return diagnostic.buffer.String()
 }
 
 func launchNativeForwarding(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
@@ -211,7 +172,7 @@ func (process *nativeForwardingProcess) failedJoin(t *testing.T, expectedOwner s
 }
 
 func testNativeNodeForwarding(t *testing.T, retirement string) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			var provisioned map[[32]byte][2]string
@@ -390,7 +351,7 @@ func seedNativeNodeState(t *testing.T, f *networkAdmissionFixture, bundle networ
 }
 
 func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRouteFixture(t, carrier)

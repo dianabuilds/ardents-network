@@ -59,6 +59,18 @@
     "linux-amd64": [
       {
         "symbols": [
+          "tests/e2e/node.DiagnosticBuffer.String",
+          "tests/e2e/node.DiagnosticBuffer.Write",
+          "tests/e2e/node.PinnedCommand",
+          "tests/e2e/node.verifyPinnedCommand"
+        ],
+        "classification": "native Node process-test driver",
+        "rationale": "Only the native Node and Source test drivers verify the pinned CLI and collect original child diagnostics; production commands never call these helpers.",
+        "owner": "Node process tests",
+        "retirement": "Remove when the native process test drivers retire."
+      },
+      {
+        "symbols": [
           "tests/e2e/source.NativeTLS",
           "tests/e2e/source.TrustPreparationFixture"
         ],

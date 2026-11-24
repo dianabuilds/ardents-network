@@ -26,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -47,7 +48,7 @@ func writeSourceFixtureKeys(t *testing.T, p map[string]any, credentials []tls.Ce
 }
 
 func TestNativeSourcePreparedCohort(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	parent := t.TempDir()
 	if err := os.Chmod(parent, 0700); err != nil {
 		t.Fatal(err)

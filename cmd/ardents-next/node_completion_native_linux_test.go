@@ -21,6 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -29,7 +30,7 @@ import (
 // even after the manager proves process termination. Neither process absence
 // nor a new caller may erase or adopt the unresolved producer.
 func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRouteFixture(t, carrier)
@@ -124,7 +125,7 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 // The real command retains State/process until join and never converts its
 // bounded unavailable report into successful withdrawal after failed cleanup.
 func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := descriptorRouteFixture(t, carrier)
@@ -227,7 +228,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 // The real command retains State/process until join and never converts its
 // bounded unavailable report into successful withdrawal after failed cleanup.
 func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := publicationRouteNetwork(t, carrier)
@@ -334,7 +335,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 // even after the manager proves process termination. Neither process absence
 // nor a new caller may erase or adopt the unresolved producer.
 func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, carrier, 1, false, true)
@@ -446,7 +447,7 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 // The real command retains State/process until join and never converts its
 // bounded unavailable report into successful withdrawal after failed cleanup.
 func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, carrier)

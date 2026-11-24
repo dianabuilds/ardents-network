@@ -42,6 +42,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -263,7 +264,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	defer closeClock()
 	holder := descriptorRouteStock(t, f)
 	proof, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	var peers []*nativeForwardingProcess
 	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
 		cert, key := nativeDescriptorCredential(t, certificates[id])
@@ -291,7 +292,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	}
 	unit := fmt.Sprintf("ardents-descriptor-operation-%d.service", os.Getpid())
 	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_DESCRIPTOR_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeDescriptorOperationBoundariesTCP$", "-test.timeout=30s")
-	var diagnostic nativeNodeDiagnostic
+	var diagnostic nodefixture.DiagnosticBuffer
 	command.Stdout, command.Stderr = &diagnostic, &diagnostic
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -660,7 +661,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
 	holder := nativeIntroductionStock(t, f)
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	var peers []*nativeForwardingProcess
 	for _, id := range [][32]byte{{21}, {22}, {23}, {24}} {
 		cert, key := nativeDescriptorCredential(t, certificates[id])
@@ -691,7 +692,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	}
 	unit := fmt.Sprintf("ardents-introduction-operation-%d.service", os.Getpid())
 	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_INTRODUCTION_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeIntroductionOperationBoundariesTCP$", "-test.timeout=30s")
-	var diagnostic nativeNodeDiagnostic
+	var diagnostic nodefixture.DiagnosticBuffer
 	command.Stdout, command.Stderr = &diagnostic, &diagnostic
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -1129,7 +1130,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
 	var peers []*joinCommandProcess
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
 		cert, key := nativeIssuerOperationCredential(t, certificates[id])
 		plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "spend_root": t.TempDir(), "hosting_root": nativeIssuerOperationBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
@@ -1182,7 +1183,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=60s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_ISSUER_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeIssuerOperationJoinAndExactRetryTCP$", "-test.timeout=30s")
-	var diagnostic nativeNodeDiagnostic
+	var diagnostic nodefixture.DiagnosticBuffer
 	command.Stdout, command.Stderr = &diagnostic, &diagnostic
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
@@ -1725,7 +1726,7 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	}
 	unit := fmt.Sprintf("ardents-join-operation-%d.service", os.Getpid())
 	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_JOIN_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", binary, "-test.v=true", "-test.run=^TestNativeJoinOperationBoundariesTCP$", "-test.timeout=30s")
-	var diagnostic nativeNodeDiagnostic
+	var diagnostic nodefixture.DiagnosticBuffer
 	command.Stdout, command.Stderr = &diagnostic, &diagnostic
 	if err := command.Start(); err != nil {
 		t.Fatal(err)

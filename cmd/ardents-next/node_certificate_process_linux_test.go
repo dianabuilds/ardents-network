@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -42,7 +43,7 @@ func provisionNativeNodeCertificates(t *testing.T, f *networkAdmissionFixture, c
 	if err := p.Close(); err != nil {
 		t.Fatal(err)
 	}
-	command := nodeNativeCommand(t)
+	command := nodefixture.PinnedCommand(t)
 	run := func(args ...string) {
 		t.Helper()
 		if raw, err := exec.CommandContext(t.Context(), command, append([]string{"network"}, args...)...).CombinedOutput(); err != nil {

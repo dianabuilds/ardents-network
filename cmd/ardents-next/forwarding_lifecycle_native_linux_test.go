@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -118,7 +119,7 @@ func joinRetainedForwarding(t *testing.T, p *nativeForwardingProcess, signal str
 }
 
 func TestNativeForwardingRetainedLifecycle(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	f, sockets, certificates := newRoleRouteFixtureConfigured(t, transport.ClosedCarrierTCP, 3, false, false, nil)
 	bundle, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {

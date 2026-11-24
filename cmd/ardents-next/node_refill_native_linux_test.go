@@ -23,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -30,7 +31,7 @@ import (
 // and parent refill execute inside the genuine original Node command, with its
 // native process guard, producer, receiving journal and Hosting reservations.
 func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, mode := range []string{"refill", "capacity-before-spend"} {

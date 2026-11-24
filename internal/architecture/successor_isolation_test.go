@@ -607,6 +607,23 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
+	// The native test drivers verify and observe the pinned command only.
+	if localImport && local == "tests/e2e/node" {
+		switch source {
+		case "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go", "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go",
+			"cmd/ardents-next/join_lifecycle_native_linux_test.go", "cmd/ardents-next/node_certificate_process_linux_test.go",
+			"cmd/ardents-next/node_completion_native_linux_test.go", "cmd/ardents-next/node_descriptor_native_linux_test.go",
+			"cmd/ardents-next/node_introduction_native_linux_test.go", "cmd/ardents-next/node_issuer_native_linux_test.go",
+			"cmd/ardents-next/node_issuer_startup_native_linux_test.go", "cmd/ardents-next/node_join_native_linux_test.go",
+			"cmd/ardents-next/node_join_startup_native_linux_test.go", "cmd/ardents-next/node_native_linux_test.go",
+			"cmd/ardents-next/node_operation_native_linux_test.go", "cmd/ardents-next/node_refill_native_linux_test.go",
+			"cmd/ardents-next/source_lifecycle_native_linux_test.go", "cmd/ardents-next/source_native_linux_test.go",
+			"cmd/ardents-next/source_preparation_process_linux_test.go":
+			return true
+		default:
+			return false
+		}
+	}
 	// These test drivers share only independently generated TLS fixture bytes.
 	if localImport && local == "tests/e2e/source" {
 		switch source {

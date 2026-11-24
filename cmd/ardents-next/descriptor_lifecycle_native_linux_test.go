@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -124,7 +125,7 @@ func joinRetainedDescriptor(t *testing.T, p *nativeForwardingProcess, signal str
 }
 
 func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	f, sockets, certificates := descriptorRouteFixtureConfigured(t, transport.ClosedCarrierTCP, nil)
 	bundle, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {

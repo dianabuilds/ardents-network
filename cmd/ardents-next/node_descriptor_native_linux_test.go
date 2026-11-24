@@ -26,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -112,7 +113,7 @@ func TestNativeDescriptorUndercoverageBeforeSpendTCP(t *testing.T) {
 // Restoring the declared inputs starts a separate original invocation after join;
 // it cannot revive the rejected one or rewrite an accepted durable floor.
 func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "unknown-field", "nested-roots", "role", "tls-key", "missing-hosting", "foreign-store", "foreign-spend"} {
@@ -228,7 +229,7 @@ func TestNativeDescriptorOriginalCommandFailureTCP(t *testing.T) {
 }
 
 func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := descriptorRouteFixture(t, carrier)

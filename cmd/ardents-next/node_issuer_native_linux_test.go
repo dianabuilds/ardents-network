@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -93,7 +94,7 @@ func TestNativeIssuerOriginalFailureTCP(t *testing.T) {
 
 func testNativeIssuerWorkload(t *testing.T, fault string) {
 	t.Helper()
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, carrier, 1, false, true)

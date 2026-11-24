@@ -30,6 +30,7 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -125,7 +126,7 @@ func joinRetainedSource(t *testing.T, p *nativeForwardingProcess, signal string)
 }
 
 func TestNativeSourceRetainedLifecycle(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	binaryBytes, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)

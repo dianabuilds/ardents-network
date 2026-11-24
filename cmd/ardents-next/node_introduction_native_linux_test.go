@@ -34,6 +34,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -58,7 +59,7 @@ func TestNativeIntroductionOriginalCommandFailureTCP(t *testing.T) {
 }
 
 func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
-	commandBinary := nodeNativeCommand(t)
+	commandBinary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := publicationRouteNetwork(t, carrier)
@@ -390,7 +391,7 @@ func startNativeIntroduction(t *testing.T, binary, plan string, index byte) *nat
 }
 
 func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "unknown-field", "nested-roots", "role", "tls-key", "missing-hosting", "foreign-history", "foreign-spend"} {

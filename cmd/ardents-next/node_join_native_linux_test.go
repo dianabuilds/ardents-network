@@ -23,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -35,7 +36,7 @@ func TestNativeJoinUndercoverageBeforeSpendTCP(t *testing.T) {
 }
 
 func nativeJoinWorkload(t *testing.T, mode string) {
-	binary := nodeNativeCommand(t)
+	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			var provisioned map[[32]byte][2]string
