@@ -1536,7 +1536,7 @@ func testNativeIssuerAuthorityChild(t *testing.T, path string) {
 			t.Fatal("late startup cancellation lost its original cause", err)
 		}
 		checkNativeFailedStartupCleanup(t, nativeOriginalAuthorityPlan{Network: plan.Network, Participation: plan.Participation, Spend: plan.Spend, Hosting: plan.Hosting, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey}, member, binding)
-		checkNativeIssuerRootsReleased(t, plan.Issuance)
+		nodefixture.RequireIssuerRootsReleased(t, plan.Issuance)
 		return
 	}
 	if err != nil {
@@ -1630,7 +1630,7 @@ func testNativeIssuerAuthorityChild(t *testing.T, path string) {
 		t.Fatal("original role did not join after releasing actual observation return")
 	}
 	result := original.Close()
-	checkNativeIssuerRootsReleased(t, plan.Issuance)
+	nodefixture.RequireIssuerRootsReleased(t, plan.Issuance)
 	first, _ := original.JoinedFailureOwners()
 	expected := "network"
 	if plan.Fault == "stop" || plan.Fault == "caller" {
@@ -1724,27 +1724,6 @@ func checkNativeIssuerRootsHeld(t *testing.T, p issuer.Plan) {
 	err = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 	if !errors.Is(err, syscall.EWOULDBLOCK) {
 		t.Fatal("unjoined Issuer lacks actual occupied result lease", err)
-	}
-}
-
-func checkNativeIssuerRootsReleased(t *testing.T, p issuer.Plan) {
-	t.Helper()
-	ledger, err := quota.Open(p.AdmissionRoot, p.AdmissionBinding)
-	if err != nil {
-		t.Fatal("joined quota lease unavailable", err)
-	}
-	defer ledger.Close()
-	keys, err := issuance.Open(t.Context(), p.KeyRoot, p.KeyBinding)
-	if err != nil {
-		t.Fatal("joined original key custody unavailable", err)
-	}
-	defer keys.Close()
-	results, err := issuance.OpenResults(t.Context(), p.ResultRoot, keys, p.AdmissionBinding)
-	if err != nil {
-		t.Fatal("joined original result lease unavailable", err)
-	}
-	if err := results.Close(); err != nil {
-		t.Fatal(err)
 	}
 }
 

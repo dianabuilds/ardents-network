@@ -1037,7 +1037,7 @@ func nativeIssuerOperationChild(t *testing.T, path string) {
 	if first != expected || cleanup != "" && cleanup != "route" {
 		t.Fatal("unexpected original issuing failure owners", first, cleanup)
 	}
-	checkNativeIssuerRootsReleased(t, p.Issuance)
+	nodefixture.RequireIssuerRootsReleased(t, p.Issuance)
 	nativeIssuerMarker(t, plan.Signals, "joined")
 }
 

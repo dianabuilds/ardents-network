@@ -207,7 +207,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				if err := os.Rename(held, material); err != nil {
 					t.Fatal(err)
 				}
-				checkNativeIssuerRootsReleased(t, f.plan)
+				nodefixture.RequireIssuerRootsReleased(t, f.plan)
 			default:
 				t.Fatal("unselected native Issuer failure", fault)
 			}
@@ -301,7 +301,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 						t.Fatal("startup refusal lost finite projection", event, decodeErr)
 					}
 					if expected == 1 {
-						requireNativeStartupFailure(t, event["first_failure"])
+						nodefixture.RequireStartupFailure(t, event["first_failure"])
 					}
 					if expected == 2 && (decodeErr == nil || len(event) != 0) {
 						t.Fatal("wrong profile reached accepting composition", event)
@@ -313,7 +313,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					if _, err := os.Stat(filepath.Join(spend, "closed-token-spends")); !os.IsNotExist(err) {
 						t.Fatal("early rejected acquisition reached Receiving", err)
 					}
-					checkNativeIssuerRootsReleased(t, f.plan)
+					nodefixture.RequireIssuerRootsReleased(t, f.plan)
 					if _, err := os.Stat(participation); err == nil {
 						view, err := f.current()
 						if err != nil {

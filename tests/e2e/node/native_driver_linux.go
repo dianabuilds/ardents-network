@@ -253,3 +253,20 @@ func JoinRetainedRole(t testing.TB, p *NativeProcess, signal string) (int, map[s
 	}
 	return code, event
 }
+
+// RequireStartupFailure checks the finite first-cause report of a refused startup.
+func RequireStartupFailure(t testing.TB, raw string) {
+	t.Helper()
+	var fact struct {
+		Kind, Phase, Cause string
+		ElapsedMS          *int64 `json:"elapsed_ms"`
+	}
+	decoder := json.NewDecoder(bytes.NewBufferString(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fact); err != nil || fact.Kind != "logical" || fact.Phase != "startup" || fact.Cause != "owner-refusal" || fact.ElapsedMS == nil || *fact.ElapsedMS < 0 {
+		t.Fatal("partial startup lost closed original first-cause projection", raw, err)
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		t.Fatal("startup diagnostic contains trailing data", err)
+	}
+}

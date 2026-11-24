@@ -637,6 +637,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/endpoint" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/platform/artifacts" || local == "tests/epochfixture/network" || local == "internal/network/source/serving" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		}
 	}
+	if localImport && source == "tests/e2e/node/issuer_inputs_linux.go" {
+		return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota"
+	}
 	if localImport && source == "tests/e2e/node/retained_lifecycle_native_linux_test.go" {
 		return local == "internal/hosting" || local == "internal/network/duty" ||
 			local == "internal/processresource" || local == "internal/reachability" || local == "tests/epochfixture/network"
