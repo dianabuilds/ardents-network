@@ -1,11 +1,10 @@
-//go:build linux
-
 package main
 
 import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -67,3 +66,73 @@ func (stream *applicationStreamFixture) Done() <-chan connection.Outcome { retur
 type streamOutputFixture struct{ bytes.Buffer }
 
 func (*streamOutputFixture) Close() error { return nil }
+
+func TestApplicationStreamTerminalInterruptsIdleInput(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	input, writer := io.Pipe()
+	defer writer.Close()
+	response := []byte{255, 0, 128}
+	stream := &applicationStreamFixture{
+		reader: bytes.NewReader(response),
+		eof:    make(chan struct{}),
+		done:   make(chan connection.Outcome, 1),
+	}
+	close(stream.eof)
+	stream.done <- connection.Outcome{Class: connection.CleanClose}
+
+	output := new(streamOutputFixture)
+	if err := exchangeApplicationStream(ctx, stream, input, output); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(output.Bytes(), response) {
+		t.Fatalf("terminal discarded output: %x", output.Bytes())
+	}
+}
+
+func TestApplicationStreamTerminalInterruptsBlockedWrite(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	stream := &streamWithBlockedWrite{
+		applicationStreamFixture: applicationStreamFixture{
+			reader: bytes.NewReader([]byte{42}),
+			eof:    make(chan struct{}),
+			done:   make(chan connection.Outcome, 1),
+		},
+		writing: make(chan struct{}),
+		closed:  make(chan struct{}),
+	}
+	go func() {
+		select {
+		case <-stream.writing:
+			close(stream.eof)
+			stream.done <- connection.Outcome{Class: connection.CleanClose}
+		case <-ctx.Done():
+			close(stream.eof)
+		}
+	}()
+	output := new(streamOutputFixture)
+	if err := exchangeApplicationStream(ctx, stream, io.NopCloser(bytes.NewReader([]byte{255})), output); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(output.Bytes(), []byte{42}) {
+		t.Fatalf("terminal discarded output: %x", output.Bytes())
+	}
+}
+
+type streamWithBlockedWrite struct {
+	applicationStreamFixture
+	writing chan struct{}
+	closed  chan struct{}
+}
+
+func (stream *streamWithBlockedWrite) Write([]byte) (int, error) {
+	close(stream.writing)
+	<-stream.closed
+	return 0, net.ErrClosed
+}
+
+func (stream *streamWithBlockedWrite) Close() error {
+	close(stream.closed)
+	return nil
+}

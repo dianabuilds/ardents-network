@@ -66,3 +66,28 @@ func openDocumentOutput() (*os.File, error) {
 	}
 	return output, nil
 }
+
+// openPrivateLinkFile refuses a substituted final symlink and opens without
+// blocking on a non-regular file. The caller checks the opened file's mode.
+func openPrivateLinkFile(path string) (*os.File, error) {
+	return os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOFOLLOW, 0)
+}
+
+// NewFile notices O_NONBLOCK and attaches inherited pipes to Go's poller.
+// Closing the owned duplicate then interrupts Read/Write instead of leaving a
+// thread trapped in a blocking syscall on the original inherited descriptor.
+func admissionConsoleFile(file *os.File) (*os.File, error) {
+	fd, err := syscall.Dup(int(file.Fd()))
+	if err != nil {
+		return nil, err
+	}
+	syscall.CloseOnExec(fd)
+	if err = syscall.SetNonblock(fd, true); err != nil {
+		return nil, errors.Join(err, syscall.Close(fd))
+	}
+	owned := os.NewFile(uintptr(fd), "admission-console")
+	if owned == nil {
+		return nil, errors.Join(errors.New("console unavailable"), syscall.Close(fd))
+	}
+	return owned, nil
+}

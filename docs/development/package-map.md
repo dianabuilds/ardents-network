@@ -1029,7 +1029,11 @@ vacant root descriptors and joins signed State acceptance and empty
 participation initialization. No runtime authority or
 transport is created; retained runtime openings remain noncreating.
 
-The Linux `cmd/ardents-next/stream_command_linux.go` CLI adapter uses only
+The command shares Linux descriptor operations across Admission, document and stream
+presentation in `cmd/ardents-next/command_io_linux.go`. Unsupported host
+command refusals are projected by `cmd/ardents-next/unsupported_platform_other.go`.
+
+The portable `cmd/ardents-next/stream_command.go` CLI adapter uses only
 `internal/application/connection` and the standard library for its local
 Application IPC and byte input/output. Endpoint retains admission authority.
 

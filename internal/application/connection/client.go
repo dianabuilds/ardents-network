@@ -89,6 +89,15 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	return dialLocalStream(ctx, path, request, destination.Application == ByteStream)
 }
 
+// DialPublishedStream requests the fixed byte-stream profile through local
+// Service Administration. Its established exchange uses the same byte frames.
+func DialPublishedStream(ctx context.Context, path string) (Client, error) {
+	if ctx == nil || path == "" {
+		return nil, errors.New("local Application dial input is invalid")
+	}
+	return dialLocalStream(ctx, path, []byte(PublishByteStreamRequest), true)
+}
+
 func dialLocalStream(ctx context.Context, path string, request []byte, directionalEOF bool) (Client, error) {
 	raw, err := (&net.Dialer{}).DialContext(ctx, "unix", path)
 	if err != nil {

@@ -2,12 +2,14 @@
   "common": [
     {
       "symbols": [
+        "tests/e2e/endpoint.FixtureDigest",
+        "tests/e2e/endpoint.SignedRelease",
         "tests/e2e/node.NewReleaseAuthority",
         "tests/e2e/node.ReleaseAuthority.RootBytes",
         "tests/e2e/node.ReleaseAuthority.Sign"
       ],
       "classification": "independent Release authority fixture",
-      "rationale": "The ephemeral fixture Root and quorum sign only test artifacts for the command and installed profiles.",
+      "rationale": "The independent Endpoint inventory and ephemeral fixture Root and quorum build and sign only test artifacts for the command and installed profiles.",
       "owner": "Process tests",
       "retirement": "Remove with the last signed command fixture."
     },
@@ -68,6 +70,45 @@
   ],
   "production": {
     "linux-amd64": [
+      {
+        "symbols": [
+          "tests/e2e/endpoint.BootPairGuest",
+          "tests/e2e/endpoint.BuildNativeWorker",
+          "tests/e2e/endpoint.BuildSignedNetwork",
+          "tests/e2e/endpoint.CopyNativeDistribution",
+          "tests/e2e/endpoint.CreateNativeAccount",
+          "tests/e2e/endpoint.EnsurePairBaseRootfs",
+          "tests/e2e/endpoint.GoEnv",
+          "tests/e2e/endpoint.InstallNativeUnit",
+          "tests/e2e/endpoint.NativeLaunch",
+          "tests/e2e/endpoint.NativeResources",
+          "tests/e2e/endpoint.PairGuest.Name",
+          "tests/e2e/endpoint.PairGuest.Rootfs",
+          "tests/e2e/endpoint.ReceivePairMessage",
+          "tests/e2e/endpoint.RepositoryRoot",
+          "tests/e2e/endpoint.RunStartupCommand",
+          "tests/e2e/endpoint.SendPairMessage",
+          "tests/e2e/endpoint.StageNativeEndpoint",
+          "tests/e2e/endpoint.StartupIdentity",
+          "tests/e2e/endpoint.SyncStartupPath",
+          "tests/e2e/endpoint.VerifyDistinctManagers",
+          "tests/e2e/endpoint.WriteStartupFile",
+          "tests/e2e/endpoint.pairChrootSystemdVersion",
+          "tests/e2e/endpoint.pairGuestBusReady",
+          "tests/e2e/endpoint.pairPatchBaseSystemd",
+          "tests/e2e/endpoint.pairReadlink",
+          "tests/e2e/endpoint.pairSystemdPatchLevel",
+          "tests/e2e/endpoint.pairTerminateGuest",
+          "tests/e2e/endpoint.pairWait",
+          "tests/e2e/endpoint.platformNativeWorkers",
+          "tests/e2e/endpoint.writePlatformNativeFile",
+          "tests/e2e/endpoint.writePlatformNativeLaunch"
+        ],
+        "classification": "native Endpoint process-test fixtures",
+        "rationale": "The admitted Linux Endpoint profiles use the independent enrolled resources, dedicated account, original process, signed Network inputs, and joined systemd manager fixtures. All callers belong to the real native test profiles.",
+        "owner": "Endpoint process tests",
+        "retirement": "Remove each exact entry when the native test caller retires or the helper moves into its owning test package."
+      },
       {
         "symbols": [
           "tests/e2e/node.DiagnosticBuffer.String",

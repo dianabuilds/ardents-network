@@ -62,8 +62,7 @@ func SignedRelease(t *testing.T, command string, platform string, protected, gen
 					protectedFiles[name] = []byte("independent protected resource " + name)
 				}
 			}
-			digest := sha256.Sum256(protectedFiles[name])
-			digests[name] = hex.EncodeToString(digest[:])
+			digests[name] = FixtureDigest(protectedFiles[name])
 		}
 		encoded, err := json.Marshal(digests)
 		if err != nil {

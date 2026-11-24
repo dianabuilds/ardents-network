@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
@@ -97,5 +98,24 @@ func TestUnsupportedPlatformRefusalExitCodes(t *testing.T) {
 	}
 	if code := unsupportedPlatformRefusal(unsupportedRefusalFailWriter{}, "platform"); code != 2 {
 		t.Fatalf("unwritable refusal returned %d", code)
+	}
+}
+
+func TestStreamCommandRefusesUnsupportedHostBeforeOpeningInputs(t *testing.T) {
+	socket := filepath.Join(t.TempDir(), "socket")
+	link := filepath.Join(t.TempDir(), "link")
+	for _, args := range [][]string{
+		{"publish", socket},
+		{"connect", socket, "--link-file", link},
+	} {
+		var diagnostic bytes.Buffer
+		if code := runStreamCommand(t.Context(), args, &diagnostic); code != 1 ||
+			diagnostic.String() != "Application stream failed: application stream requires the selected Linux host\n" {
+			t.Fatalf("%v: exit %d, diagnostics %q", args, code, diagnostic.String())
+		}
+	}
+	var diagnostic bytes.Buffer
+	if code := runStreamCommand(t.Context(), []string{"connect", socket}, &diagnostic); code != 2 {
+		t.Fatalf("invalid command exits %d: %s", code, diagnostic.String())
 	}
 }
