@@ -1,0 +1,39 @@
+name: Verify relocated native Source profile
+on:
+  push:
+    branches:
+      - codex/verify-native-source-c896b741
+permissions:
+  contents: read
+jobs:
+  source-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Confirm the original native prerequisites
+        run: |
+          set -euo pipefail
+          test "$(ps -p 1 -o comm=)" = systemd
+          systemctl --version
+          test -r /sys/fs/cgroup/cgroup.controllers
+          test -r /proc/pressure/cpu
+          test "$(stat -f -c %t /root 2>/dev/null || sudo stat -f -c %t /root)" = ef53
+          taskset --version
+          git log --oneline -2
+      - name: Build and run the pinned Source profile
+        run: |
+          set -euo pipefail
+          build="$(mktemp -d "$RUNNER_TEMP/source-artifacts.XXXXXX")"
+          stand="$(sudo mktemp -d /root/ardents-source-verification.XXXXXX)"
+          trap 'sudo rm -rf -- "$stand"' EXIT
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$build/ardents-next" ./cmd/ardents-next
+          go test -c -race -trimpath -buildvcs=false -tags node_process_native -o "$build/source.test" ./tests/e2e/node
+          go test -c -race -trimpath -buildvcs=false -tags node_process_native -o "$build/resource.test" ./internal/processresource
+          sudo install -m 0700 "$build/ardents-next" "$build/source.test" "$build/resource.test" "$stand/"
+          sudo mkdir -m 0700 "$stand/work"
+          sudo env TMPDIR="$stand/work"             ARDENTS_NODE_NATIVE_COMMAND="$stand/ardents-next"             ARDENTS_NODE_NATIVE_COMMAND_SHA256="$(sha256sum "$build/ardents-next" | cut -d ' ' -f 1)"             ARDENTS_SOURCE_NATIVE_TEST="$stand/source.test"             ARDENTS_SOURCE_NATIVE_TEST_SHA256="$(sha256sum "$build/source.test" | cut -d ' ' -f 1)"             ARDENTS_NODE_RESOURCE_TEST="$stand/resource.test"             ARDENTS_NODE_RESOURCE_TEST_SHA256="$(sha256sum "$build/resource.test" | cut -d ' ' -f 1)"             sh ./scripts/node/run-source-native.sh -timeout=3m
