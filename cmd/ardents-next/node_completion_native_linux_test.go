@@ -170,7 +170,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
 				t.Fatal("command exited before original producer join", err)
 			}
-			stateConfig, err := networkStateConfig(&networkPlan)
+			stateConfig, err := networkPlan.Config()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -276,7 +276,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
 				t.Fatal("command exited before original producer join", err)
 			}
-			stateConfig, err := networkStateConfig(&networkPlan)
+			stateConfig, err := networkPlan.Config()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -492,7 +492,7 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
 				t.Fatal("command exited before original producer join", err)
 			}
-			stateConfig, err := networkStateConfig(&networkPlan)
+			stateConfig, err := networkPlan.Config()
 			if err != nil {
 				t.Fatal(err)
 			}

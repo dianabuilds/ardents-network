@@ -55,7 +55,7 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(parent, "participation"),
 		Certificate: inputs[1], PrivateKey: inputs[2], ClientRoot: inputs[3],
 	}
-	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestSourceOriginalInputLossAfterStateRecoveryPrecedesExposureAndListener(t 
 						t.Fatal(err)
 					}
 					defer inputs.Close()
-					config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
+					config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -227,7 +227,7 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 		t.Fatal(err)
 	}
 	defer inputs.Close()
-	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +306,7 @@ func TestSourceOriginalCustodySurvivesHeldStateCloseAndLateInputFailure(t *testi
 		t.Fatal(err)
 	}
 	defer inputs.Close()
-	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +403,7 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 		t.Fatal(err)
 	}
 	defer inputs.Close()
-	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -472,8 +472,8 @@ func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
 	defer stopClock()
 	var key [32]byte
 	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan := networkAuthorityPlan{Root: filepath.Join(t.TempDir(), "state"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
-	config, err := networkStateConfig(&plan)
+	plan := state.AuthorityDeclaration{Root: filepath.Join(t.TempDir(), "state"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
+	config, err := plan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}

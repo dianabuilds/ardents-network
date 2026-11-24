@@ -228,7 +228,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			seed := func() networkAuthorityPlan { return seedNativeNodeState(t, f, bundle, clock) }
+			seed := func() state.AuthorityDeclaration { return seedNativeNodeState(t, f, bundle, clock) }
 			var processes []*nativeForwardingProcess
 			var budgets []string
 			var participation []string
@@ -364,12 +364,12 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 	}
 }
 
-func seedNativeNodeState(t *testing.T, f *networkAdmissionFixture, bundle networkfixture.Closed, clock string) networkAuthorityPlan {
+func seedNativeNodeState(t *testing.T, f *networkAdmissionFixture, bundle networkfixture.Closed, clock string) state.AuthorityDeclaration {
 	t.Helper()
 	var key [32]byte
 	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan := networkAuthorityPlan{Root: filepath.Join(t.TempDir(), "network"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
-	config, err := networkStateConfig(&plan)
+	plan := state.AuthorityDeclaration{Root: filepath.Join(t.TempDir(), "network"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
+	config, err := plan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 						if err != nil || conflict.Epoch.Digest != initial.Epoch.Digest {
 							t.Fatal("conflicting profile changed its original Epoch", err)
 						}
-						config, err := networkStateConfig(&networkPlan)
+						config, err := networkPlan.Config()
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -579,7 +579,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					if closeErr := owner.Close(); err != nil || closeErr != nil || observed.ReservedBytes != 0 {
 						t.Fatal("partial startup retained physical capacity", err, closeErr)
 					}
-					config, err := networkStateConfig(&networkPlan)
+					config, err := networkPlan.Config()
 					if err != nil {
 						t.Fatal(err)
 					}

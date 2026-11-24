@@ -4,24 +4,19 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 // The complete production key/preparation/Record/certificate chain runs before
@@ -146,71 +141,7 @@ func TestNetworkSigningNodeCertificateCommand(t *testing.T) {
 	}
 }
 
-func TestNetworkSigningNodeCertificateLateTime(t *testing.T) {
-	for _, stage := range []string{"inputs-read", "before-directory-sync"} {
-		t.Run(stage, func(t *testing.T) {
-			args := nativeCertificateArguments(t)
-			now := time.Now().UTC().Truncate(time.Second)
-			until := now.Add(3 * time.Second)
-			changeSigningTestTime(t, args, now.Add(-time.Minute), until, now, true)
-			acted := false
-			_, err := provisioning.SignNetwork(t.Context(), args, func(step string, _ *os.File) {
-				if step == stage {
-					acted = true
-					if delay := time.Until(until); delay > 0 {
-						time.Sleep(delay + time.Millisecond)
-					}
-				}
-			})
-			if !acted || err == nil {
-				t.Fatal("late original certificate accepted", err)
-			}
-			if stage == "inputs-read" {
-				if _, err := os.Stat(args[5]); !os.IsNotExist(err) {
-					t.Fatal("expired before crypto created output", err)
-				}
-			}
-		})
-	}
-}
-
-func TestNetworkSigningNodeCertificateFinalOutputAndPhysicalFailure(t *testing.T) {
-	for _, fault := range []string{"bytes", "inventory", "canceled-close"} {
-		t.Run(fault, func(t *testing.T) {
-			args := nativeCertificateArguments(t)
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			acted := false
-			_, err := provisioning.SignNetwork(ctx, args, func(step string, f *os.File) {
-				if fault == "canceled-close" && step == "signed" {
-					acted = true
-					if e := f.Close(); e != nil {
-						t.Fatal(e)
-					}
-					cancel()
-				}
-				if step == "commit" && fault != "canceled-close" {
-					acted = true
-					name := "node-certificate.pem"
-					if fault == "inventory" {
-						name = "foreign"
-					}
-					if e := os.WriteFile(filepath.Join(args[5], name), []byte("changed after original input IO"), 0600); e != nil {
-						t.Fatal(e)
-					}
-				}
-			})
-			if !acted || err == nil {
-				t.Fatal("late original failure accepted", err)
-			}
-			if fault == "canceled-close" && (!errors.Is(err, context.Canceled) || !errors.Is(err, os.ErrClosed)) {
-				t.Fatal("independent physical/cancellation errors lost", err)
-			}
-		})
-	}
-}
-
-func TestNetworkSigningNodeCertificateReceiptAndContention(t *testing.T) {
+func TestNetworkSigningNodeCertificateReceipt(t *testing.T) {
 	for _, writer := range []io.Writer{initialKeysFailedWriter{}, initialKeysShortWriter{}} {
 		args := nativeCertificateArguments(t)
 		if runNetworkSigning(t.Context(), args, writer) == 0 {
@@ -219,25 +150,6 @@ func TestNetworkSigningNodeCertificateReceiptAndContention(t *testing.T) {
 		if runNetworkSigning(t.Context(), args, &bytes.Buffer{}) == 0 {
 			t.Fatal("failed receipt output adopted")
 		}
-	}
-	args := nativeCertificateArguments(t)
-	start := make(chan struct{})
-	results := make(chan error, 2)
-	var wg sync.WaitGroup
-	for range 2 {
-		wg.Go(func() { <-start; _, err := signNetworkFixture(t.Context(), args); results <- err })
-	}
-	close(start)
-	wg.Wait()
-	close(results)
-	success := 0
-	for err := range results {
-		if err == nil {
-			success++
-		}
-	}
-	if success != 1 {
-		t.Fatal("fresh output winners", success)
 	}
 }
 

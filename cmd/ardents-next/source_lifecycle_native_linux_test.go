@@ -146,8 +146,8 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	}
 	var key [32]byte
 	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	networkPlan := networkAuthorityPlan{Root: stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
-	config, err := networkStateConfig(&networkPlan)
+	networkPlan := state.AuthorityDeclaration{Root: stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
+	config, err := networkPlan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}

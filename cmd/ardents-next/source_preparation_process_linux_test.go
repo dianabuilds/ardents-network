@@ -68,7 +68,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	}
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
-	var networks [2]networkAuthorityPlan
+	var networks [2]state.AuthorityDeclaration
 	for i := range networks {
 		networks[i] = seedNativeNodeState(t, f, bundle, clock)
 	}
@@ -253,7 +253,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := networkStateConfig((*networkAuthorityPlan)(serving.Network))
+	fresh, err := (*state.AuthorityDeclaration)(serving.Network).Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		t.Fatal("original physical Wait", waitErr, second.diagnostic.String())
 	}
 	for i := range networks {
-		reopened, e := networkStateConfig(&networks[i])
+		reopened, e := networks[i].Config()
 		if e != nil {
 			t.Fatal(e)
 		}

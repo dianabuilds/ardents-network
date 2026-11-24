@@ -369,7 +369,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if mode == "cpu-pressure" && (terminal.Resource == nil || terminal.Resource.Cause != "cpu-pressure" || terminal.Resource.Observation == nil || terminal.Resource.Observation.CPUPressure < 1 || terminal.Resource.Observation.CPUWindowStarted.IsZero()) {
 		t.Fatal("actual established overload absent", p.diagnostic.String())
 	}
-	config, err := networkStateConfig(&networkPlan)
+	config, err := networkPlan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}

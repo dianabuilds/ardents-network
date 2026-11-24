@@ -17,12 +17,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -224,27 +222,7 @@ func TestNetworkSigningInitialKeysStateChain(t *testing.T) {
 	}, keys...)
 }
 
-func TestNetworkSigningInitialKeysContentionAndOutput(t *testing.T) {
-	plan, root := initialKeyArguments(t, 2)
-	var wg sync.WaitGroup
-	results := make(chan error, 2)
-	start := make(chan struct{})
-	for range 2 {
-		wg.Go(func() { <-start; _, e := provisioning.PrepareInitialNetworkKeys(t.Context(), plan, root); results <- e })
-	}
-	close(start)
-	wg.Wait()
-	close(results)
-	wins := 0
-	for e := range results {
-		if e == nil {
-			wins++
-		}
-	}
-	if wins != 1 {
-		t.Fatal("exclusive winners", wins)
-	}
-	verifyInitialKeys(t, root, 2, nil)
+func TestNetworkSigningInitialKeysReceiptFailure(t *testing.T) {
 	for _, writer := range []io.Writer{initialKeysFailedWriter{}, initialKeysShortWriter{}} {
 		p, r := initialKeyArguments(t, 1)
 		if runNetwork(t.Context(), []string{"prepare-initial-keys", p, r}, writer) == 0 {
@@ -389,27 +367,10 @@ func TestNetworkSigningInitialKeysStaticRefusals(t *testing.T) {
 				}
 			}
 			p, r := initialKeyArguments(t, 1)
-			if _, e = provisioning.PrepareInitialNetworkKeys(t.Context(), p, r); e != nil {
-				t.Fatal("healthy control", e)
+			if code := runNetwork(t.Context(), []string{"prepare-initial-keys", p, r}, io.Discard); code != 0 {
+				t.Fatal("healthy control", code)
 			}
 		})
-	}
-	plan, _ := initialKeyArguments(t, 1)
-	parent, e := os.MkdirTemp("/dev/shm", "ardents-key-mount-")
-	if e != nil {
-		t.Fatal("tmpfs prerequisite", e)
-	}
-	t.Cleanup(func() {
-		if e := os.RemoveAll(parent); e != nil {
-			t.Error(e)
-		}
-	})
-	root := filepath.Join(parent, "keys")
-	if _, e = provisioning.PrepareInitialNetworkKeys(t.Context(), plan, root); e == nil {
-		t.Fatal("tmpfs accepted")
-	}
-	if _, e = os.Stat(root); !os.IsNotExist(e) {
-		t.Fatal("mount refusal created root", e)
 	}
 }
 

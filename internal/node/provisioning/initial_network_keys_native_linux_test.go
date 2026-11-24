@@ -377,3 +377,61 @@ func TestNetworkSigningInitialKeysNonroot(t *testing.T) {
 		t.Fatal("actual nonroot child", e, string(raw))
 	}
 }
+
+func TestNetworkSigningInitialKeysContention(t *testing.T) {
+	plan, root := initialKeyArguments(t, 2)
+	type result struct {
+		receipt []byte
+		err     error
+	}
+	start := make(chan struct{})
+	results := make(chan result, 2)
+	for range 2 {
+		go func() {
+			<-start
+			receipt, err := PrepareInitialNetworkKeys(t.Context(), plan, root)
+			results <- result{receipt, err}
+		}()
+	}
+	close(start)
+	var winner []byte
+	wins := 0
+	for range 2 {
+		result := <-results
+		if result.err == nil {
+			wins++
+			winner = result.receipt
+		}
+	}
+	if wins != 1 {
+		t.Fatal("exclusive winners", wins)
+	}
+	stored, err := os.ReadFile(filepath.Join(root, "public-receipt.json"))
+	if err != nil || !bytes.Equal(winner, stored) {
+		t.Fatal("winner did not retain the original receipt", err)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 4 {
+		t.Fatal("contention changed key inventory", entries, err)
+	}
+}
+
+func TestNetworkSigningInitialKeysRejectsTmpfs(t *testing.T) {
+	plan, _ := initialKeyArguments(t, 1)
+	parent, e := os.MkdirTemp("/dev/shm", "ardents-key-mount-")
+	if e != nil {
+		t.Fatal("tmpfs prerequisite", e)
+	}
+	t.Cleanup(func() {
+		if e := os.RemoveAll(parent); e != nil {
+			t.Error(e)
+		}
+	})
+	root := filepath.Join(parent, "keys")
+	if _, e = PrepareInitialNetworkKeys(t.Context(), plan, root); e == nil {
+		t.Fatal("tmpfs accepted")
+	}
+	if _, e = os.Stat(root); !os.IsNotExist(e) {
+		t.Fatal("mount refusal created root", e)
+	}
+}

@@ -46,7 +46,7 @@ import (
 // The only injected mechanism is scheduling the return of an actual completed
 // State observation. No successful authority, role or native reading is supplied.
 type nativeOriginalAuthorityPlan struct {
-	Network                        networkAuthorityPlan
+	Network                        state.AuthorityDeclaration
 	Participation, Spend, Hosting  string
 	Certificate, PrivateKey, Fault string
 	Successor                      networkfixture.Closed
@@ -158,7 +158,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &plan); err != nil {
 		t.Fatal(err)
 	}
-	config, err := networkStateConfig(&plan.Network)
+	config, err := plan.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +544,7 @@ func nativeExpiryFirstOwner(t *testing.T, result, networkExpiry error, fact *nod
 }
 
 type nativeDescriptorAuthorityPlan struct {
-	Network                                   networkAuthorityPlan
+	Network                                   state.AuthorityDeclaration
 	Participation, Spend, Hosting, Descriptor string
 	Certificate, PrivateKey, Fault            string
 	Successor                                 networkfixture.Closed
@@ -638,7 +638,7 @@ func nativeDescriptorAuthorityChild(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &plan); err != nil {
 		t.Fatal(err)
 	}
-	config, err := networkStateConfig(&plan.Network)
+	config, err := plan.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -942,7 +942,7 @@ func checkNativeDescriptorRetained(t *testing.T, plan nativeDescriptorAuthorityP
 }
 
 type nativeIntroductionAuthorityPlan struct {
-	Network                                     networkAuthorityPlan
+	Network                                     state.AuthorityDeclaration
 	Participation, Spend, Hosting, Introduction string
 	Certificate, PrivateKey, Fault              string
 	Successor                                   networkfixture.Closed
@@ -1039,7 +1039,7 @@ func nativeIntroductionAuthorityChild(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &plan); err != nil {
 		t.Fatal(err)
 	}
-	config, err := networkStateConfig(&plan.Network)
+	config, err := plan.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1382,7 +1382,7 @@ func checkNativeIntroductionRetained(t *testing.T, plan nativeIntroductionAuthor
 // The only injected mechanism is scheduling the return of an actual completed
 // State observation. No successful authority, role or native reading is supplied.
 type nativeIssuerAuthorityPlan struct {
-	Network                        networkAuthorityPlan
+	Network                        state.AuthorityDeclaration
 	Participation, Spend, Hosting  string
 	Certificate, PrivateKey, Fault string
 	Successor                      networkfixture.Closed
@@ -1476,7 +1476,7 @@ func testNativeIssuerAuthorityChild(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &plan); err != nil {
 		t.Fatal(err)
 	}
-	config, err := networkStateConfig(&plan.Network)
+	config, err := plan.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1748,7 +1748,7 @@ func checkNativeIssuerRootsReleased(t *testing.T, p issuer.Plan) {
 }
 
 type nativeJoinAuthorityPlan struct {
-	Network                        networkAuthorityPlan
+	Network                        state.AuthorityDeclaration
 	Participation, Spend, Hosting  string
 	Certificate, PrivateKey, Fault string
 	Successor                      networkfixture.Closed
@@ -1842,7 +1842,7 @@ func nativeJoinAuthorityChild(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &plan); err != nil {
 		t.Fatal(err)
 	}
-	config, err := networkStateConfig(&plan.Network)
+	config, err := plan.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}

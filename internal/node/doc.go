@@ -8,7 +8,9 @@
 // runtime, the retained repair commands and the node prepare-plan operator
 // command. It returns declaration facts only and opens no resource. It performs
 // no State acceptance, root creation, hosting initialization, signing or
-// processresource policy; command composition converts these declarations into
-// state.Config and applies the per-role process profile and root-separation
-// policy. The shared byte grammar supplies no universal role policy.
+// processresource policy. Node validates invocation root separation, and the
+// command binds the declared State and selected role constructor. After startup,
+// Node supervises the original invocation and releases borrowed authority only
+// after physical join. The shared declaration and supervision mechanisms leave
+// each role's operational policy with its owner.
 package node

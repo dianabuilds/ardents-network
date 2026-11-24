@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -267,7 +268,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				config := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				if id == [32]byte{17} {
 					config["descriptor_root"] = descriptorRoot
-					networkPlan := config["network"].(networkAuthorityPlan)
+					networkPlan := config["network"].(state.AuthorityDeclaration)
 					networkPlan.ClockObservationFile = descriptorClock
 					config["network"] = networkPlan
 					descriptorConfig = config
