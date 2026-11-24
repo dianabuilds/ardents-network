@@ -562,6 +562,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "tests/e2e/node/processfixture" {
 		switch source {
+		case "tests/e2e/node/descriptor_exchange_native_linux_test.go":
+			return true
 		case "tests/e2e/node/issuer_exchange_native_linux_test.go":
 			return true
 		case "internal/network/source/command/state_lifetime_linux_test.go",
@@ -688,6 +690,19 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/endpoint" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/platform/artifacts" || local == "tests/epochfixture/network" || local == "internal/network/source/serving" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		}
 	}
+	if localImport && source == "tests/e2e/node/processfixture/descriptor_input_linux.go" {
+		return local == "internal/admission"
+	}
+	if localImport && source == "tests/e2e/node/descriptor_exchange_native_linux_test.go" {
+		switch local {
+		case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
+			"internal/admission/token", "internal/endpoint/funding", "internal/hosting", "internal/network/duty",
+			"internal/network/epoch", "internal/network/state", "internal/processresource", "internal/reachability", "tests/epochfixture/network":
+			return true
+		default:
+			return false
+		}
+	}
 	if localImport && source == "tests/e2e/node/forwarding_exchange_native_linux_test.go" {
 		switch local {
 		case "internal/admission", "internal/admission/issuer", "internal/admission/quota",
@@ -801,7 +816,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 			"cmd/ardents-next/join_platform_native_linux_test.go",
 			"cmd/ardents-next/network_admission_fixture_linux_test.go", "cmd/ardents-next/node_authority_native_linux_test.go",
-			"cmd/ardents-next/node_descriptor_native_linux_test.go", "cmd/ardents-next/node_introduction_native_linux_test.go",
+			"cmd/ardents-next/node_introduction_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
 			"cmd/ardents-next/node_join_native_linux_test.go",
 			"cmd/ardents-next/node_operation_native_linux_test.go",
