@@ -1710,7 +1710,7 @@ validation); changing directory names cannot create new authority or erase histo
 Network alone binds signed member/key/family/assignment/endpoint/Carrier/windows.
 Node retains its original producer and admission latch; Receiver reobserves
 current authority at effects. Process protection is not Hosting byte capacity.
-`node/credential_linux.go` loads exact matching Ed25519 material with owner-only
+`node/credential_unix.go` (Unix-family, #850) loads exact matching Ed25519 material with owner-only
 private file access; Forwarding/Issuer/Descriptor/Introduction retain the loaded
 pair, whereas JOIN additionally pins and rechecks original files. Do not claim
 all five have JOIN's custody. Installation must independently bind inputs for

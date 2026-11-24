@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package generation
 
 import (
@@ -7,6 +9,8 @@ import (
 	"io"
 	"os"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 type fileObservation struct {
@@ -114,8 +118,12 @@ func fileObservationMatches(expected fileObservation, info os.FileInfo) bool {
 		return false
 	}
 	native, ok := info.Sys().(*syscall.Stat_t)
-	original, originalOK := expected.identity.Sys().(*syscall.Stat_t)
-	return ok && originalOK && native.Uid == 0 && native.Gid == expected.gid && native.Nlink == 1 && native.Ctim == original.Ctim
+	if !ok || native.Uid != 0 || native.Gid != expected.gid || native.Nlink != 1 {
+		return false
+	}
+	current, currentOK := durablefile.InodeChangeTime(info)
+	original, originalOK := durablefile.InodeChangeTime(expected.identity)
+	return currentOK && originalOK && current == original
 }
 
 func ownedFile(info os.FileInfo) bool {

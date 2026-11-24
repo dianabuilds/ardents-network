@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package generation
 
 import (
@@ -12,6 +14,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -248,9 +251,9 @@ func snapshotFileMatches(record fileObservation, info os.FileInfo) bool {
 	if !fileObservationMatches(record, info) {
 		return false
 	}
-	a, aOK := record.identity.Sys().(*syscall.Stat_t)
-	b, bOK := info.Sys().(*syscall.Stat_t)
-	return aOK && bOK && a.Ctim == b.Ctim
+	a, aOK := durablefile.InodeChangeTime(record.identity)
+	b, bOK := durablefile.InodeChangeTime(info)
+	return aOK && bOK && a == b
 }
 
 func (s *Snapshot) Observe() (returnedErr error) {
