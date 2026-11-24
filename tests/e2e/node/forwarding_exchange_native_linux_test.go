@@ -42,7 +42,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			waitForAdmissionHour(t)
+			processfixture.WaitAdmissionHour(t)
 			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 			listeners, certificates := addForwardingNodes(t, &spec, carrier, 3)
 			var provisioned map[[32]byte][2]string
@@ -245,19 +245,6 @@ func fundForwardingConsole(t *testing.T, send func(any) AdmissionReply, spec net
 	}
 	if reply := send(map[string]any{"operation": "complete", "payload": issued.Response}); reply.Outcome != "completed" {
 		t.Fatal("holder completion", reply.Outcome)
-	}
-}
-
-func waitForAdmissionHour(t *testing.T) {
-	t.Helper()
-	if remaining := time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)); remaining < time.Minute {
-		timer := time.NewTimer(remaining)
-		defer timer.Stop()
-		select {
-		case <-timer.C:
-		case <-t.Context().Done():
-			t.Fatal(t.Context().Err())
-		}
 	}
 }
 

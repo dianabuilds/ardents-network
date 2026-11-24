@@ -4,10 +4,8 @@ package node
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,7 +46,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			waitForAdmissionHour(t)
+			processfixture.WaitAdmissionHour(t)
 			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 			listeners, certificates := addForwardingNodes(t, &spec, carrier, 1)
 			for id := byte(16); id <= 21; id++ {
@@ -59,7 +57,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				case id >= 18:
 					subrole = 2
 				}
-				addJoinWorkloadNode(t, &spec, listeners, certificates, carrier, id, domain, subrole)
+				processfixture.AddReceivingFixtureNode(t, &spec, listeners, certificates, carrier, id, domain, subrole)
 			}
 			var provisioned map[[32]byte][2]string
 			if mode == "certificate" {
@@ -368,31 +366,6 @@ func wrapNativeJoinClose(owner string, err error) error {
 }
 
 func TestNativeJoinProvisionedCertificateTCP(t *testing.T) { nativeJoinWorkload(t, "certificate") }
-
-func addJoinWorkloadNode(t *testing.T, spec *networkfixture.ClosedSpec, listeners map[[32]byte]net.Listener, certificates map[[32]byte]tls.Certificate, carrier string, index, domain, subrole byte) {
-	t.Helper()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
-			t.Error(err)
-		}
-	})
-	_, key, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { clear(key) })
-	id := [32]byte{index}
-	listeners[id], certificates[id] = listener, processfixture.RoleCertificate(t, key)
-	spec.Nodes = append(spec.Nodes, networkfixture.ClosedNode{
-		RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: spec.NotBefore, ValidUntil: spec.NotAfter,
-			Endpoint: listener.Addr().String(), Carrier: carrier, Capability: 2, Capacity: 1, PrivateKey: key},
-		RoleDomain: domain, Subrole: subrole,
-	})
-}
 
 func fundNativeJoinStock(t *testing.T, spec networkfixture.ClosedSpec, bundle networkfixture.Closed, plan issuer.Plan, read func() (network.RuntimeView, error), role admission.AllocationRole) *stock.Owner {
 	t.Helper()

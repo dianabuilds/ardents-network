@@ -38,13 +38,16 @@ TestOriginalNativeIntroductionManagedMemoryPressureRetires
 TestOriginalNativeIntroductionProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIntroduction' | grep '^TestOriginalNativeIntroduction' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Introduction resource discovery differs' >&2; exit 2; }
-expected='TestNativeIntroductionOperationBoundariesTCP
+expected='TestNativeIntroductionOperationBoundariesTCP'
+discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIntroduction' | grep '^TestNativeIntroduction' | sort)
+test "$discovered" = "$expected" || { echo 'Introduction operation discovery differs' >&2; exit 2; }
+expected_owner='TestNativeIntroductionOriginalAuthorityAndJoinTCP
 TestNativeIntroductionOriginalCommandFailureTCP
 TestNativeIntroductionOriginalHistoryLossTCP
 TestNativeIntroductionRegisterSubmitWithdrawTCP
 TestNativeIntroductionUndercoverageBeforeSpendTCP'
-discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIntroduction' | grep '^TestNativeIntroduction' | sort)
-test "$discovered" = "$expected" || { echo 'Introduction workload discovery differs' >&2; exit 2; }
+discovered_owner=$("$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIntroduction' | grep '^TestNativeIntroduction' | sort)
+test "$discovered_owner" = "$expected_owner" || { echo 'Introduction owner discovery differs' >&2; exit 2; }
 
 unit=ardents-introduction-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \
@@ -53,7 +56,7 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeIntroduction' -test.timeout=90s
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroduction(RegisterSubmitWithdrawTCP|UndercoverageBeforeSpendTCP|OriginalHistoryLossTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeIntroduction(RegisterSubmitWithdrawTCP|UndercoverageBeforeSpendTCP|OriginalHistoryLossTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIntroductionOriginalAuthorityAndJoinTCP$' | grep -Fx TestNativeIntroductionOriginalAuthorityAndJoinTCP >/dev/null
 "$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeIntroductionOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP >/dev/null

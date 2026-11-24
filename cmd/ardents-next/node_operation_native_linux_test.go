@@ -240,7 +240,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	}
 	clock, closeClock := processfixture.StartObservedClock(t)
 	defer closeClock()
-	holder := nativeIntroductionStock(t, f)
+	holder := processfixture.IntroductionStock(t, f.spec, f.plan, f.current)
 	binary := processfixture.PinnedCommand(t)
 	var peers []*processfixture.NativeProcess
 	for _, id := range [][32]byte{{21}, {22}, {23}, {24}} {
