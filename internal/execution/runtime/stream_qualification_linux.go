@@ -5,7 +5,6 @@ package runtime
 import (
 	"context"
 	"errors"
-	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	"github.com/dianabuilds/ardents-network/internal/execution"
@@ -82,7 +81,11 @@ func (input *streamQualificationInput) observe(invocation *Invocation) {
 		var result streamQualificationResult
 		select {
 		case request := <-input.request:
-			borrow := &streamWorkerBorrow{invocation: invocation}
+			borrow := &workerBorrow{
+				invocation:  invocation,
+				unavailable: "original qualification operation is unavailable",
+				check:       streamOperationCheck,
+			}
 			report, err := streamqualification.RunConnections(request.ctx, borrow, input.init, request.supplied, request.observe)
 			result = streamQualificationResult{report: report, err: err}
 		case <-invocation.job.Context().Done():
@@ -99,58 +102,6 @@ func (input *streamQualificationInput) observe(invocation *Invocation) {
 		invocation.job.Retire()
 		close(input.result)
 	}()
-}
-
-// streamWorkerBorrow adapts the retained attachment to the bridge while
-// rechecking the exact original operation on every I/O. It mirrors the document
-// reader borrow: possession grants no authority, and Close captures final
-// authority before physical retirement and retains the first cleanup failure.
-type streamWorkerBorrow struct {
-	invocation *Invocation
-	once       sync.Once
-	closeErr   error
-}
-
-func (borrow *streamWorkerBorrow) checkOperation() error {
-	invocation := borrow.invocation
-	invocation.useMu.Lock()
-	operation := invocation.operation
-	invocation.useMu.Unlock()
-	if operation == nil || operation.invocation != invocation {
-		return errors.New("original qualification operation is unavailable")
-	}
-	return operation.Check()
-}
-
-func (borrow *streamWorkerBorrow) Read(body []byte) (int, error) {
-	if err := borrow.invocation.job.Check(); err != nil {
-		return 0, err
-	}
-	n, err := borrow.invocation.activation.Attachment.Read(body)
-	return n, errors.Join(err, borrow.checkOperation())
-}
-
-func (borrow *streamWorkerBorrow) Write(body []byte) (int, error) {
-	if err := borrow.checkOperation(); err != nil {
-		return 0, err
-	}
-	n, err := borrow.invocation.activation.Attachment.Write(body)
-	return n, errors.Join(err, borrow.checkOperation())
-}
-
-func (borrow *streamWorkerBorrow) Close() error {
-	borrow.once.Do(func() {
-		authority := borrow.checkOperation()
-		physical := borrow.invocation.activation.Attachment.Close()
-		borrow.closeErr = errors.Join(authority, physical)
-		borrow.invocation.useMu.Lock()
-		operation := borrow.invocation.operation
-		borrow.invocation.useMu.Unlock()
-		if operation != nil {
-			operation.RetainCleanup(physical)
-		}
-	})
-	return borrow.closeErr
 }
 
 // LaunchStreamQualification admits one exact local Connection session and
