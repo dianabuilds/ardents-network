@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+type issuanceBindingInput struct {
+	Network string `json:"network"`
+	Issuer  string `json:"issuer"`
+	Signer  string `json:"signer"`
+	Start   string `json:"start"`
+	End     string `json:"end"`
+}
+
 func TestIssuanceStrictInput(t *testing.T) {
 	base := map[string]any{"root": filepath.Join(t.TempDir(), "keys"), "inventory_file": filepath.Join(t.TempDir(), "public"), "binding": issuanceBindingInput{strings.Repeat("ab", 32), strings.Repeat("cd", 32), strings.Repeat("ef", 32), "2030-01-01T00:00:00Z", "2030-01-01T01:00:00Z"}}
 	raw, err := json.Marshal(base)
