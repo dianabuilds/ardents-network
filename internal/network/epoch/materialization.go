@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
+	"github.com/dianabuilds/ardents-network/internal/network/canonicalcursor"
 )
 
 const MaxMaterializationBytes = 35 << 10

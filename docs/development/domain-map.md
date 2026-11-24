@@ -180,13 +180,15 @@ joined-error, TOCTOU-hardened private custody. A shared technical mechanism does
 not merge authorities, roots, leases or lifecycle owners.
 
 The canonical Network byte grammars share one pure bounded cursor leaf,
-`internal/canonicalcursor` (R5, #804): bounded reads over one caller-supplied
-canonical byte slice, big-endian unsigned readers and the exact consumed-offset
-observation, with the single "truncated canonical bytes" bounds refusal formerly
-repeated byte-identically by every consumer. It is a mechanism, not a grammar or
-authority owner: it holds no root, marker, schema, authority or lifecycle, reads
-alias the caller's bytes, and each consumer keeps its distinct magic, field
-order, validation bounds and refusal prose. `internal/network/epoch`,
+`internal/network/canonicalcursor` (R5, #804): bounded reads over one
+caller-supplied canonical byte slice, big-endian unsigned readers and the exact
+consumed-offset observation, with the single "truncated canonical bytes" bounds
+refusal formerly repeated byte-identically by every consumer. It is a
+Network-domain mechanism, not a grammar or authority owner: every consumer is a
+network package, so the cursor lives inside the Network domain rather than as a
+top-level leaf (Phase 4, #834); it holds no root, marker, schema, authority or
+lifecycle, reads alias the caller's bytes, and each consumer keeps its distinct
+magic, field order, validation bounds and refusal prose. `internal/network/epoch`,
 `internal/network/closedprofile`, `internal/network/state` (distribution
 journal) and `internal/network/source` (bundle framing) consume it; Epoch's
 canonical text grammar stays in Epoch over the shared cursor. A shared technical

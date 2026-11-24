@@ -3,7 +3,7 @@ package epoch
 import (
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
+	"github.com/dianabuilds/ardents-network/internal/network/canonicalcursor"
 )
 
 func TestDecodeText(t *testing.T) {
