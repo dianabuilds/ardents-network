@@ -101,7 +101,7 @@ func (inspection SourceInspection) Check(ctx context.Context, raw []byte, uid, g
 	if err == nil && (s.closed || s.ctx.Err() != nil) {
 		err = errors.Join(errSourceInspectionClosed, s.parent.Err(), s.ctx.Err())
 	}
-	if err != nil && !(s.closed && s.parent.Err() == nil && sourceInspectionLocalClosure(err)) {
+	if err != nil && !(s.closed && s.parent.Err() == nil && inspectionLocalClosure(err, errSourceInspectionClosed)) {
 		s.terminal = errors.Join(s.terminal, err)
 	}
 	s.mu.Unlock()
@@ -181,7 +181,7 @@ func (s *sourceInspection) close() error {
 		if s.state != nil {
 			physical = errors.Join(physical, s.state.Close())
 		}
-		if s.parent.Err() == nil && sourceInspectionLocalClosure(physical) {
+		if s.parent.Err() == nil && inspectionLocalClosure(physical, errSourceInspectionClosed) {
 			physical = nil
 		}
 		s.mu.Lock()
@@ -189,22 +189,4 @@ func (s *sourceInspection) close() error {
 		s.mu.Unlock()
 	})
 	return s.closeErr
-}
-
-func sourceInspectionLocalClosure(err error) bool {
-	if err == nil {
-		return true
-	}
-	if many, ok := err.(interface{ Unwrap() []error }); ok {
-		for _, leaf := range many.Unwrap() {
-			if !sourceInspectionLocalClosure(leaf) {
-				return false
-			}
-		}
-		return true
-	}
-	if one, ok := err.(interface{ Unwrap() error }); ok {
-		return sourceInspectionLocalClosure(one.Unwrap())
-	}
-	return err == context.Canceled || err == errSourceInspectionClosed
 }
