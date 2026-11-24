@@ -1,13 +1,15 @@
 //go:build linux && node_process_native
 
-package main
+package node
 
 import (
 	"bytes"
-	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,12 +17,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -41,22 +49,75 @@ func TestNativeDescriptorOriginalCommandFailureTCP(t *testing.T) {
 
 func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 	binary := processfixture.PinnedCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
+	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			f, sockets, certificates := descriptorRouteFixture(t, carrier)
-			bundle, err := networkfixture.BuildClosed(f.spec)
+			waitForAdmissionHour(t)
+			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+			listeners, certificates := addForwardingNodes(t, &spec, carrier, 1)
+			for _, id := range []byte{17, 18} {
+				node := spec.Nodes[1]
+				node.NodeID, node.RoleDomain, node.Subrole = [32]byte{id}, 2, 5
+				node.Endpoint = "127.0.0.1:1"
+				if id == 17 {
+					listener, err := net.Listen("tcp", "127.0.0.1:0")
+					if err != nil {
+						t.Fatal(err)
+					}
+					t.Cleanup(func() { _ = listener.Close() })
+					listeners[node.NodeID] = listener
+					node.Endpoint = listener.Addr().String()
+				} else {
+					node.RoleDomain, node.Subrole = 4, 3
+				}
+				_, key, err := ed25519.GenerateKey(rand.Reader)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { clear(key) })
+				node.PrivateKey = key
+				certificates[node.NodeID] = processfixture.RoleCertificate(t, key)
+				spec.Nodes = append(spec.Nodes, node)
+			}
+			bundle, err := networkfixture.BuildClosed(spec)
 			if err != nil {
 				t.Fatal(err)
 			}
+			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
 			clock, closeClock := processfixture.StartObservedClock(t)
 			defer closeClock()
 			descriptorClock, closeDescriptorClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopDescriptorClock := func() { clockOnce.Do(closeDescriptorClock) }
 			defer stopDescriptorClock()
-			// Fixture signing/issuance is input preparation, outside measured role lifetimes.
-			holder := descriptorRouteStock(t, f)
-			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
+			seed := func() state.AuthorityDeclaration {
+				return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+			}
+			input := seed()
+			config, err := input.Config()
+			if err != nil {
+				t.Fatal(err)
+			}
+			authority, err := state.OpenRetained(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := authority.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			observe := func() (admission.AuthorityFacts, time.Time, error) {
+				view, err := authority.CurrentRuntime()
+				if err != nil {
+					return admission.AuthorityFacts{}, time.Time{}, err
+				}
+				return funding.NetworkFacts(view)
+			}
+			facts, now, err := observe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, target := processfixture.SignedDescriptor(t, facts, 3, [32]byte{18}, facts.Digest)
 			var processes []*processfixture.NativeProcess
 			var budgets, participations, spends []string
 			var descriptorConfig map[string]any
@@ -77,7 +138,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 						work = hosting.Traffic{Tx: 32 << 10, Rx: (32 << 10) - 1}
 					}
 				}
-				config := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+				config := map[string]any{"network": seed(), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				if id == [32]byte{17} {
 					config["descriptor_root"] = descriptorRoot
 					networkPlan := config["network"].(state.AuthorityDeclaration)
@@ -85,12 +146,14 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 					config["network"] = networkPlan
 					descriptorConfig = config
 				}
-				sockets[id]()
+				if err := listeners[id].Close(); err != nil {
+					t.Fatal(err)
+				}
 				var p *processfixture.NativeProcess
 				if id == [32]byte{17} {
-					p = processfixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, config), id[0])
+					p = processfixture.StartFreshRole(t, "descriptor", binary, writeNodePlan(t, config), id[0])
 				} else {
-					p = processfixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, config), id[0])
+					p = processfixture.StartFreshRole(t, "forwarding", binary, writeNodePlan(t, config), id[0])
 				}
 				processes = append(processes, p)
 				budgets = append(budgets, budget)
@@ -103,27 +166,25 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if err != nil || len(before) != 8+32+32+32+8 {
 				t.Fatal("Descriptor receiving root not genuine empty header", err, len(before))
 			}
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
-			if err != nil {
-				t.Fatal("genuine adjacent Forwarding unavailable", err)
+			budget := processfixture.ProcessBudget(t)
+			budgets = append(budgets, budget)
+			route := map[string]any{"entry_root": filepath.Join(t.TempDir(), "entry"), "interior_root": filepath.Join(t.TempDir(), "interior"),
+				"hosting_root": budget, "domain": 1, "deadline": time.Now().Add(30 * time.Second).UTC().Truncate(time.Second),
+				"work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			holder := map[string]any{"root": t.TempDir(), "network": seed(), "role": admission.AllocationUser, "route": route}
+			send, closeHolder := OpenAdmissionConsole(t, binary, "holder", writeNodePlan(t, holder))
+			fundDescriptorConsole(t, send, spec.Authority, issuerPlan, facts, now, observe)
+			if reply := send(map[string]string{"operation": "prefix-open"}); reply.Outcome != "completed" {
+				t.Fatal("genuine adjacent Forwarding unavailable", reply.Outcome, reply.Stage)
 			}
-			prefixJoined := false
-			defer func() {
-				if !prefixJoined {
-					if err := prefix.close(); err != nil {
-						if fault == "cancel" {
-							t.Error(err)
-						} else {
-							t.Log("retained original Source cleanup after forced failure", err)
-						}
-					}
-				}
-			}()
-			history := &reachability.History{}
-			defer history.Close()
+			publish := func(raw []byte) AdmissionReply {
+				return send(map[string]any{"operation": "descriptor-publish", "payload": raw})
+			}
+			lookup := func(target [32]byte) AdmissionReply {
+				return send(map[string]any{"operation": "descriptor-lookup", "target": target})
+			}
 			if fault == "undercoverage" {
-				if err := prefix.publishDescriptor(t.Context(), raw); err == nil {
+				if reply := publish(raw); reply.Outcome == "completed" {
 					t.Fatal("undersized Descriptor work admitted full Control")
 				}
 				after, err := os.ReadFile(journal)
@@ -141,17 +202,17 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				// after joined Stop, retaining the same unspent durable roots.
 				resolution.Stop(t, true)
 				descriptorConfig["work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
-				resolution = processfixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, descriptorConfig), 17)
+				resolution = processfixture.StartFreshRole(t, "descriptor", binary, writeNodePlan(t, descriptorConfig), 17)
 				processes[len(processes)-1] = resolution
 			}
-			if err := prefix.publishDescriptor(t.Context(), raw); err != nil {
-				t.Fatal("actual original Descriptor publish/ACK failed", err)
+			if reply := publish(raw); reply.Outcome != "completed" {
+				t.Fatal("actual original Descriptor publish/ACK failed", reply.Outcome, reply.Stage)
 			}
 			assertLookup := func() {
 				t.Helper()
-				got, err := prefix.lookupDescriptor(t.Context(), target, history)
-				if err != nil || !bytes.Equal(got, raw) {
-					t.Fatal("actual original Descriptor exact lookup failed", err)
+				reply := lookup(target)
+				if reply.Outcome != "completed" || !bytes.Equal(reply.Proof, raw) {
+					t.Fatal("actual original Descriptor exact lookup failed", reply.Outcome, reply.Stage)
 				}
 			}
 			assertLookup()
@@ -160,16 +221,16 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				t.Fatal("publish/lookup did not irreversibly spend genuine Control", err)
 			}
 			if fault == "cancel" {
-				connectOnly, _ := routeSignedDescriptor(t, f, 2, [32]byte{18})
+				connectOnly, _ := processfixture.SignedDescriptor(t, facts, 2, [32]byte{18}, facts.Digest)
 				broken := bytes.Clone(raw)
 				broken[len(broken)-1] ^= 1
-				foreignIntroduction, _ := routeSignedDescriptor(t, f, 3, [32]byte{12})
+				foreignIntroduction, _ := processfixture.SignedDescriptor(t, facts, 3, [32]byte{12}, facts.Digest)
 				for _, input := range [][]byte{connectOnly, broken, foreignIntroduction} {
-					if err := prefix.publishDescriptor(t.Context(), input); err == nil {
+					if reply := publish(input); reply.Outcome == "completed" {
 						t.Fatal("invalid signed input accepted")
 					}
 				}
-				if _, err := prefix.lookupDescriptor(t.Context(), [32]byte{99}, history); err == nil {
+				if reply := lookup([32]byte{99}); reply.Outcome == "completed" {
 					t.Fatal("foreign Target accepted")
 				}
 				assertLookup() // every healthy request refusal leaves the original usable
@@ -180,7 +241,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			}
 			switch fault {
 			case "cpu-pressure":
-				nodefixture.ExerciseNativeCPUPressure(t, resolution)
+				ExerciseNativeCPUPressure(t, resolution)
 				resolution.FailedJoin(t, "process")
 				var event map[string]string
 				var first struct{ Resource *processresource.FailureFacts }
@@ -218,14 +279,13 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			default:
 				t.Fatal("unselected Descriptor command fault", fault)
 			}
-			prefixErr := prefix.close()
-			prefixJoined = true
-			if prefixErr != nil {
+			if reply := send(map[string]string{"operation": "prefix-close"}); reply.Outcome != "completed" {
 				if fault == "cancel" {
-					t.Fatal("original Source/prefix did not physically join", prefixErr)
+					t.Fatal("original holder prefix did not physically join", reply.Outcome, reply.Stage)
 				}
-				t.Log("retained original Source cleanup after forced failure", prefixErr)
+				t.Log("retained original holder cleanup after forced failure", reply.Outcome, reply.Stage)
 			}
+			closeHolder()
 			// All original callers stop before any peer is waited, preserving the
 			// distinction between deliberate cancellation and manufactured peer loss.
 			signals := []string{"kill", "--kill-whom=main", "--signal=SIGINT"}
@@ -244,11 +304,11 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if !resolution.Joined {
 				t.Fatal("Descriptor manager completion absent")
 			}
-			fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: descriptorRoot, Network: f.profile.NetworkID})
+			fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: descriptorRoot, Network: facts.NetworkID})
 			if err != nil {
 				t.Fatal("actual Store lease/custody did not reopen after original join", err)
 			}
-			got, outcome, lookupErr := fresh.Lookup(target, f.profile.Digest, time.Now())
+			got, outcome, lookupErr := fresh.Lookup(target, facts.Digest, time.Now())
 			if err := fresh.Close(); err != nil || lookupErr != nil || outcome != reachability.Accepted || !bytes.Equal(got, raw) {
 				t.Fatal("ACK did not retain exact durable proof", outcome, lookupErr, err)
 			}
@@ -256,7 +316,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				t.Fatal("original Close changed irreversible spends", err)
 			}
 			for index, root := range participations {
-				view, err := f.current()
+				view, err := authority.CurrentRuntime()
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -279,12 +339,50 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				observed, err := budget.Observe(context.Background())
+				observed, err := budget.Observe(t.Context())
 				closeErr := budget.Close()
 				if err != nil || closeErr != nil || observed.ReservedBytes != 0 {
 					t.Fatal("original Hosting returned before or failed after join", err, closeErr, observed.ReservedBytes)
 				}
 			}
 		})
+	}
+}
+
+func fundDescriptorConsole(t *testing.T, send func(any) AdmissionReply, authority ed25519.PrivateKey, plan issuer.Plan,
+	facts admission.AuthorityFacts, now time.Time, observe func() (admission.AuthorityFacts, time.Time, error)) {
+	t.Helper()
+	request := send(map[string]any{"operation": "request", "maxima": [3]uint32{8, 4, 0}})
+	if request.Outcome != "completed" {
+		t.Fatal("holder request", request.Outcome)
+	}
+	raw := processfixture.FixturePermission(t, request.Request, facts, authority, now)
+	if imported := send(map[string]any{"operation": "import", "digest": request.Digest, "payload": raw}); imported.Outcome != "completed" {
+		t.Fatal("holder import", imported.Outcome)
+	}
+	challenge := func(id, class uint8) token.ClosedTokenContext {
+		return token.ClosedTokenContext{NetworkID: facts.NetworkID, ProfileDigest: facts.Digest, IssuerNodeID: facts.IssuerNodeID,
+			ReceiverNodeID: [32]byte{id}, ReceiverDutyGeneration: 9, Class: class, WindowStart: now.UTC().Truncate(time.Hour)}
+	}
+	var forwards, controls []token.ClosedTokenContext
+	for id := byte(12); id < 16; id++ {
+		forwards = append(forwards, challenge(id, 2))
+	}
+	for range 8 {
+		controls = append(controls, challenge(17, 1))
+	}
+	for i, challenges := range [][]token.ClosedTokenContext{forwards, controls} {
+		intent := stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{byte(41 + i)}, ProfileDigest: facts.Digest}, Bootstrap: true, Deadline: facts.NotAfter}
+		batch := send(map[string]any{"operation": "begin", "intent": intent})
+		if batch.Outcome != "completed" {
+			t.Fatal("holder begin", batch.Outcome, batch.Stage)
+		}
+		issued := issuer.IssueCurrent(t.Context(), plan, batch.Request, quota.Bootstrap, observe)
+		if issued.Outcome != "issued-offline" {
+			t.Fatal("issuer refused genuine handle", issued.Outcome)
+		}
+		if completed := send(map[string]any{"operation": "complete", "payload": issued.Response}); completed.Outcome != "completed" {
+			t.Fatal("holder completion", completed.Outcome)
+		}
 	}
 }

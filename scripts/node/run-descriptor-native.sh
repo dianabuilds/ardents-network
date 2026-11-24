@@ -36,12 +36,13 @@ TestOriginalNativeDescriptorProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeDescriptor' | grep '^TestOriginalNativeDescriptor' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Descriptor resource discovery differs' >&2; exit 2; }
 expected='TestNativeDescriptorOperationBoundariesTCP
-TestNativeDescriptorOriginalAuthorityAndJoinTCP
-TestNativeDescriptorOriginalCommandFailureTCP
-TestNativeDescriptorPublishLookupAndReopenTCP
-TestNativeDescriptorUndercoverageBeforeSpendTCP'
+TestNativeDescriptorOriginalAuthorityAndJoinTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeDescriptor' | grep '^TestNativeDescriptor' | sort)
 test "$discovered" = "$expected" || { echo 'Descriptor workload discovery differs' >&2; exit 2; }
+
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorOriginalCommandFailureTCP$' | grep -Fx TestNativeDescriptorOriginalCommandFailureTCP >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorPublishLookupAndReopenTCP$' | grep -Fx TestNativeDescriptorPublishLookupAndReopenTCP >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorUndercoverageBeforeSpendTCP$' | grep -Fx TestNativeDescriptorUndercoverageBeforeSpendTCP >/dev/null
 
 unit=ardents-descriptor-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \
@@ -50,13 +51,13 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeDescriptor' -test.timeout=90s
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptor(PublishLookupAndReopenTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptor(PublishLookupAndReopenTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOperationBoundariesTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorPartialStartupRefusalsTCP$' | grep -Fx TestNativeDescriptorPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorPartialStartupRefusalsTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUndercoverageBeforeSpendTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorUndercoverageBeforeSpendTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorRetainedLifecycle$' | grep -Fx 'TestNativeDescriptorRetainedLifecycle' >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorRetainedLifecycle$' -test.timeout=3m
