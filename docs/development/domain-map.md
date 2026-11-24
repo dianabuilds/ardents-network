@@ -669,10 +669,8 @@ composition supplies the exact signer observation and Bootstrap or ordinary
 issuance selection. This command is an existing component consumer.
 
 `internal/node` composes original Forwarding, Issuer, Descriptor, Introduction and
-JOIN lifetimes through the real `cmd/ardents-next/node_forwarding_linux.go`,
-`node_issuer_linux.go`, `node_descriptor_linux.go`, `node_introduction_linux.go`
-and `node_join_linux.go`
-consumers. JOIN surrounds the existing Receiver/Pairing with exact original process,
+JOIN lifetimes through the typed CLI adapters in
+`cmd/ardents-next/node_roles_linux.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
 producer and fixed TLS custody, full class-2 reserve-before-spend and retained
 joined completion. Matching, both RESULT writes, credit, EOF and CLOSE remain
 Route rules. It grants no refill, Service authority or automatic replacement.
