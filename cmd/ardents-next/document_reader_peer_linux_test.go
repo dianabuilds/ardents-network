@@ -63,7 +63,7 @@ func (peer *documentReadPeer) Open(ctx context.Context, request connection.Reque
 	input, requestSink := io.Pipe()
 	response, output := io.Pipe()
 	bounded, cancel := context.WithCancel(ctx)
-	stream := &textReadStream{request: requestSink, response: response, input: input, output: output,
+	stream := &documentReadStream{request: requestSink, response: response, input: input, output: output,
 		cancel: cancel, finished: make(chan struct{}), done: make(chan connection.Outcome, 1)}
 	go func() {
 		defer close(stream.finished)
@@ -100,7 +100,7 @@ func (peer *documentReadPeer) Open(ctx context.Context, request connection.Reque
 	return stream, nil
 }
 
-type textReadStream struct {
+type documentReadStream struct {
 	request  *io.PipeWriter
 	response *io.PipeReader
 	input    *io.PipeReader
@@ -111,11 +111,11 @@ type textReadStream struct {
 	once     sync.Once
 }
 
-func (stream *textReadStream) Read(body []byte) (int, error)   { return stream.response.Read(body) }
-func (stream *textReadStream) Write(body []byte) (int, error)  { return stream.request.Write(body) }
-func (stream *textReadStream) CloseInput() error               { return stream.request.Close() }
-func (stream *textReadStream) Done() <-chan connection.Outcome { return stream.done }
-func (stream *textReadStream) Close() error {
+func (stream *documentReadStream) Read(body []byte) (int, error)   { return stream.response.Read(body) }
+func (stream *documentReadStream) Write(body []byte) (int, error)  { return stream.request.Write(body) }
+func (stream *documentReadStream) CloseInput() error               { return stream.request.Close() }
+func (stream *documentReadStream) Done() <-chan connection.Outcome { return stream.done }
+func (stream *documentReadStream) Close() error {
 	stream.once.Do(func() {
 		stream.cancel()
 		_ = stream.request.Close()
