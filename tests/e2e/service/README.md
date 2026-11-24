@@ -7,6 +7,8 @@ covers:
 - readiness timeout and cleanup for the Service command;
 - authenticated Publisher acquisition of one local Application attachment;
 - at-most-once headless Service Instance acquisition across processes;
+- publication root floor preservation and the Service Instance public
+  request, acceptance, retry and conflicting-response exchange;
 - a Publisher Application-to-Service stream through the maintained product
   commands and their selected State assignments;
 - the interactive local Application journey; and
