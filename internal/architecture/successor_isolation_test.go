@@ -983,7 +983,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_lifecycle_linux.go" && dependency == modulePath+"/internal/node" {
 			return true
 		}
-		if source == "cmd/ardents-next/node_failure_linux.go" && dependency == modulePath+"/internal/node" {
+		if source == "cmd/ardents-next/node_report_linux.go" && dependency == modulePath+"/internal/node" {
 			return true
 		}
 		if source == "cmd/ardents-next/node_process.go" && dependency == modulePath+"/internal/processresource" {

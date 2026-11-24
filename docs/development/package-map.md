@@ -470,7 +470,7 @@ check exact signatures and certificates, while command tests retain the original
 process, physical refusal and signed State chain controls. Unsupported platforms
 refuse the native operation through its owner adapter.
 
-`cmd/ardents-next/node_failure_linux.go` imports exactly
+`cmd/ardents-next/node_report_linux.go` imports exactly
 `internal/node` and the standard library to encode its copied original
 first-failure projection inside the established single terminal report. Node's
 `failure_projection.go` imports only `processresource` and the standard
@@ -491,7 +491,7 @@ into the already-portable fact representation after verifying it is pure
 (`errors` only, no native mechanism). Its portable behavior test executes on the
 windows/macos lane. Its genuine Node consumer `node/failure_projection.go` is now
 portable, but that projection's own command consumers remain Linux
-(`cmd/ardents-next/source_linux.go`, `node_failure_linux.go`), so
+(`cmd/ardents-next/source_linux.go`, `node_report_linux.go`), so
 `Failure` and the Node projection stay windows-production-dead under reviewed
 deadcode allowances. The native process/cgroup observation mechanism stays Linux
 (`native_linux.go`) with its unchanged `!linux` typed refusal (`native_other.go`);
@@ -512,10 +512,12 @@ Its local controller transfers public signed Network inputs and actual permissio
 requests/responses between separately installed participants. It neither imports
 private Instance/Publication runtime nor transfers a live domain owner.
 
-The five runtime roles share the original command State lifetime in
-`cmd/ardents-next/node_lifecycle_linux.go`, importing `network/state`,
-`node` and `route/role`. Role-specific CLI files retain their typed plan,
-profile, root checks and constructor. Each Node joins before its State closes.
+The five runtime roles share joined invocation supervision in `internal/node`.
+The supervisor waits for physical completion before releasing the borrowed
+Network authority, including after a retirement timeout.
+`cmd/ardents-next/node_lifecycle_linux.go` imports `network/state`, `node`
+and `route/role` to acquire the original State, bind the constructor and render
+the CLI result. The command passes the original State release to the supervisor.
 
 The original JOIN command in exactly `cmd/ardents-next/node_roles_linux.go`
 additionally imports `internal/node` and `internal/processresource`.
