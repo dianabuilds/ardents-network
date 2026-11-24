@@ -916,7 +916,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_join_startup_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
-		if source == "cmd/ardents-next/node_join_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
+		if source == "cmd/ardents-next/node_roles_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_join_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/transport") {
@@ -970,16 +970,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/node/issuer_linux.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
 			return true
 		}
-		if source == "cmd/ardents-next/node_issuer_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
-			return true
-		}
-		if source == "cmd/ardents-next/node_introduction_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
-			return true
-		}
 		if source == "internal/node/introduction_linux.go" && dependency == modulePath+"/internal/route/introduction" {
-			return true
-		}
-		if source == "cmd/ardents-next/node_descriptor_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
 		if source == "internal/node/descriptor_linux.go" && dependency == modulePath+"/internal/reachability" {
@@ -989,9 +980,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_failure_linux.go" && dependency == modulePath+"/internal/node" {
-			return true
-		}
-		if source == "cmd/ardents-next/node_forwarding_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_process.go" && dependency == modulePath+"/internal/processresource" {
