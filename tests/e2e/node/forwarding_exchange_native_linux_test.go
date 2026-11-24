@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
@@ -257,28 +256,7 @@ func fundForwardingConsole(t *testing.T, send func(any) AdmissionReply, spec net
 	if request.Outcome != "completed" {
 		t.Fatal("holder request", request.Outcome)
 	}
-	prepared, err := allocation.Prepare(request.Request, facts.NetworkID, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	decision, err := prepared.Decide(nil, facts.IssuanceAuthorityKey, now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	journal := filepath.Join(t.TempDir(), "allocation")
-	if err := os.WriteFile(journal, decision.Journal(), 0600); err != nil {
-		t.Fatal(err)
-	}
-	committed, err := os.ReadFile(journal)
-	if err != nil || !bytes.Equal(committed, decision.Journal()) {
-		t.Fatal("durable allocation", err)
-	}
-	permission := decision.Permission()
-	copy(permission.Signature[:], ed25519.Sign(spec.Authority, admission.PermissionTranscript(permission)))
-	raw, err := admission.EncodePermission(permission)
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := FixturePermission(t, request.Request, facts, spec.Authority, now)
 	if reply := send(map[string]any{"operation": "import", "digest": request.Digest, "payload": raw}); reply.Outcome != "completed" {
 		t.Fatal("holder import", reply.Outcome)
 	}

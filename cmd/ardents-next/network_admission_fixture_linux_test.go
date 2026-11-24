@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
@@ -259,30 +258,7 @@ func (f *networkAdmissionFixture) tokensForClass(t *testing.T, class admission.C
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := allocation.Prepare(raw, f.profile.NetworkID, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	decision, err := request.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The test owns external authority custody: commit/read back public allocation
-	// before signing. It does not claim encrypted Custody integration.
-	journal := filepath.Join(t.TempDir(), "allocation")
-	if err := os.WriteFile(journal, decision.Journal(), 0600); err != nil {
-		t.Fatal(err)
-	}
-	committed, err := os.ReadFile(journal)
-	if err != nil || !bytes.Equal(committed, decision.Journal()) {
-		t.Fatal("allocation readback", err)
-	}
-	permission := decision.Permission()
-	copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
-	encoded, err := admission.EncodePermission(permission)
-	if err != nil {
-		t.Fatal(err)
-	}
+	encoded := nodefixture.FixturePermission(t, raw, f.profile, f.spec.Authority, time.Now())
 	if err := holder.Import(digest, encoded); err != nil {
 		t.Fatal(err)
 	}
