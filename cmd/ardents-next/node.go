@@ -6,6 +6,7 @@ import (
 
 	nodecommand "github.com/dianabuilds/ardents-network/internal/node/command"
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 )
 
 func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -25,7 +26,7 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 	switch operation {
 	case "forwarding", "descriptor", "introduction", "join":
 		if len(tail) > 0 && tail[0] == "repair-retained" {
-			return runRepair(ctx, operation, tail[1:], out, diagnostic)
+			return launch.RunRepair(ctx, operation, tail[1:], out, diagnostic)
 		}
 	case "issuer":
 	default:

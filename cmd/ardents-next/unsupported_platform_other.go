@@ -45,13 +45,6 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 	return unsupportedPlatformRefusal(diagnostic, "endpoint")
 }
 
-func runRepair(_ context.Context, role string, _ []string, out, diagnostic io.Writer) int {
-	if role == "source" {
-		return unsupportedPlatformRefusal(diagnostic, "source.repair-retained")
-	}
-	return unsupportedPlatformRefusal(out, "node."+role)
-}
-
 func admissionConsoleFile(*os.File) (*os.File, error) {
 	return nil, errors.New("interactive admission requires Linux")
 }
