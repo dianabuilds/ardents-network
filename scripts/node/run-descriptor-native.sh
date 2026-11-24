@@ -39,7 +39,6 @@ expected='TestNativeDescriptorOperationBoundariesTCP
 TestNativeDescriptorOriginalAuthorityAndJoinTCP
 TestNativeDescriptorOriginalCommandFailureTCP
 TestNativeDescriptorPublishLookupAndReopenTCP
-TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP
 TestNativeDescriptorUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeDescriptor' | grep '^TestNativeDescriptor' | sort)
 test "$discovered" = "$expected" || { echo 'Descriptor workload discovery differs' >&2; exit 2; }
@@ -54,7 +53,8 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptor(PublishLookupAndReopenTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOperationBoundariesTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorPartialStartupRefusalsTCP$' | grep -Fx TestNativeDescriptorPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUndercoverageBeforeSpendTCP$' -test.timeout=3m

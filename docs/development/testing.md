@@ -2437,8 +2437,9 @@ The driver independently pins the ordinary command and the `node_process_native`
 command, Node e2e and resource test binaries by SHA-256, rejects missing inputs and zero-test
 discovery, and retains physical manager/process completion. Test binaries may be
 built with race instrumentation; that evidence must name the actual build.
-The Node e2e binary owns the partial-startup refusal scenarios for all five roles,
-and the retained process lifecycle for Forwarding, Descriptor and JOIN.
+The Node e2e binary owns partial-startup refusal and unavailable-completion
+scenarios for all five roles, and the retained process lifecycle for Forwarding,
+Descriptor and JOIN.
 Forwarding's resource process requires the exact Forwarding discovery enumerated
 in `scripts/node/run-native.sh`. Receiving-role-specific resource controls belong
 to their separate original resource processes.
