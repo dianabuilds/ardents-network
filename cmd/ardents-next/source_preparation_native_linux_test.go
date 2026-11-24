@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	sourcecommand "github.com/dianabuilds/ardents-network/internal/network/source/command"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -84,7 +85,7 @@ func TestSourcePreparationNativePublicOnlyCommand(t *testing.T) {
 			t.Fatal("offline State/participation root effect", e)
 		}
 	}
-	if runSourcePreparation(t.Context(), []string{"prepare-trust", plan, output}, io.Discard) == 0 {
+	if sourcecommand.Run(t.Context(), []string{"prepare-trust", plan, output}, io.Discard, io.Discard) == 0 {
 		t.Fatal("adopted output")
 	}
 }
@@ -92,13 +93,13 @@ func TestSourcePreparationNativePublicOnlyCommand(t *testing.T) {
 func TestSourcePreparationNativeReceiptFailure(t *testing.T) {
 	_, plan, output := sourcePreparationArguments(t)
 	args := []string{"prepare-trust", plan, output}
-	if runSourcePreparation(t.Context(), args, sourcePreparationFailWriter{}) == 0 {
+	if sourcecommand.Run(t.Context(), args, sourcePreparationFailWriter{}, io.Discard) == 0 {
 		t.Fatal("receipt failure accepted")
 	}
 	if _, err := os.Stat(output); err != nil {
 		t.Fatal("receipt did not follow physical publication", err)
 	}
-	if runSourcePreparation(t.Context(), args, io.Discard) == 0 {
+	if sourcecommand.Run(t.Context(), args, io.Discard, io.Discard) == 0 {
 		t.Fatal("failed receipt output adopted")
 	}
 }

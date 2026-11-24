@@ -20,11 +20,11 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
-
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
+	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // Independent authorities remain test fixtures. State genuinely authenticates
@@ -286,7 +286,7 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 	close(release)
 	err = <-joined
 	if unavailable {
-		var terminal *sourceTerminal
+		var terminal *serving.Terminal
 		if !errors.As(err, &terminal) || terminal.FirstOwner != "completion" {
 			t.Fatal("failed unavailable notice became success after actual use joined", err)
 		}
@@ -452,7 +452,7 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 	}
 	close(release)
 	err = <-joined
-	var terminal *sourceTerminal
+	var terminal *serving.Terminal
 	if !errors.Is(err, os.ErrClosed) || !errors.As(err, &terminal) || terminal.FirstOwner != "completion" {
 		t.Fatal("late independent input Close erased failed unavailable notice", err)
 	}
