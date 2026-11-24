@@ -1119,9 +1119,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/network_preparation_chain_linux_test.go" && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/closedprofile") {
 			return true
 		}
-		if source == "cmd/ardents-next/network_profile_signing_test.go" && dependency == modulePath+"/internal/network/closedprofile" {
-			return true
-		}
 		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/network/epoch" {
 			return true
 		}
