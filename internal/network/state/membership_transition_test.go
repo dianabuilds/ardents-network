@@ -36,9 +36,10 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	clock := advancingVerificationClock(now)
 	owner, err := state2.Open(state2.Config{Root: t.TempDir(), NetworkID: spec.NetworkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(public): public}, Threshold: 1,
-		Now: now, ObserveClock: func() time.Time { return now }, AcceptedProfile: "ardents-route-v3", ClosedProfileAuthority: public})
+		Clock: clock, ObserveClock: clock, AcceptedProfile: "ardents-route-v3", ClosedProfileAuthority: public})
 	if err != nil {
 		t.Fatal(err)
 	}
