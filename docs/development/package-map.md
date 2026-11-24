@@ -437,7 +437,9 @@ Initial Network key preparation belongs to `internal/node/provisioning`
 State key and distinct Node keys and returns the exact published public receipt.
 The CLI projects it through `network_preparation.go`. Provisioning tests
 exercise expiry after native I/O and durable signing inventory publication on
-ext4. The CLI retains the genuine command-to-State chain and receipt probes.
+ext4. The same owner tests unsigned publication through original file faults,
+partial writes and child interruption. The CLI retains the genuine
+command-to-State chain and receipt probes.
 Both offline generation and the
 purpose-specific signers use Platform Artifacts' canonical Ed25519 PKCS#8 codec.
 Private generation uses protected native inventory publication, and signing
