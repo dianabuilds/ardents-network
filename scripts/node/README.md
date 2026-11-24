@@ -20,7 +20,7 @@ host protection, move durable state to tmpfs or change the original envelopes.
 
 Build canonical `ardents-next` with the root Makefile's canonical flags and both
 `node_process_native` command/resource test binaries with `-race`, using the
-selected toolchain/dependency owner. Also build the Forwarding lifecycle e2e
+selected toolchain/dependency owner. Also build the Node startup and retained lifecycle e2e
 binary with `go test -c -race -tags node_process_native -o /external/node-e2e.test ./tests/e2e/node`. Source snapshots, caches and artifacts stay
 outside Git. Generate a JSON manifest `{"files":{"relative/path":"sha256",...}}`
 covering **every** source input to those builds, including these scripts, the
