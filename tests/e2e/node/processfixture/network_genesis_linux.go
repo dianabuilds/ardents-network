@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -66,4 +67,19 @@ func PrepareNetworkGenesis(t testing.TB, dir string) (networkfixture.ClosedSpec,
 		spec.Keys = append(spec.Keys, networkfixture.ClosedTokenKey{WindowStart: time.Unix(int64(key.Window), 0).UTC(), Class: key.Class, SPKI: key.SPKI})
 	}
 	return spec, plan, inventory
+}
+
+// PrepareIssuer initializes the quota and result stores for the signed fixture.
+func PrepareIssuer(t testing.TB, plan *issuer.Plan, inventory issuance.Inventory, spec networkfixture.ClosedSpec, member networkfixture.ClosedNode, profile [32]byte) {
+	t.Helper()
+	plan.AdmissionBinding = quota.LedgerBinding{
+		Network: spec.NetworkID, Issuer: member.NodeID, Authority: spec.IssuanceAuthority,
+		Profile: profile, Duty: member.Generation, Start: spec.NotBefore, End: spec.NotAfter, Keys: inventory.Keys,
+	}
+	if err := quota.Initialize(plan.AdmissionRoot, plan.AdmissionBinding); err != nil {
+		t.Fatal(err)
+	}
+	if result := issuer.Initialize(t.Context(), *plan); result.Outcome != "initialized-results" {
+		t.Fatal(result)
+	}
 }

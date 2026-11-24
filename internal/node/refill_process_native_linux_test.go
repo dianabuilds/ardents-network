@@ -8,11 +8,8 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
-	"math/big"
 	"net"
 	"os"
 	"path/filepath"
@@ -67,16 +64,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					profile := sha256.Sum256(bundle.Profile)
-					issuerPlan.AdmissionBinding = quota.LedgerBinding{
-						Network: spec.NetworkID, Issuer: bundle.Nodes[0].NodeID, Authority: spec.IssuanceAuthority,
-						Profile: profile, Duty: bundle.Nodes[0].Generation, Start: spec.NotBefore, End: spec.NotAfter, Keys: inventory.Keys,
-					}
-					if err := quota.Initialize(issuerPlan.AdmissionRoot, issuerPlan.AdmissionBinding); err != nil {
-						t.Fatal(err)
-					}
-					if result := issuer.Initialize(t.Context(), issuerPlan); result.Outcome != "initialized-results" {
-						t.Fatal(result)
-					}
+					processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], profile)
 					clock, closeClock := processfixture.StartObservedClock(t)
 					defer closeClock()
 					seed := func() state.AuthorityDeclaration {
@@ -121,13 +109,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					guardPresentation := funding.PresentationGuard(authority.CurrentRuntime)
 					holder := refillStock(t, spec.Authority, issuerPlan, receiver, facts, now, observe)
 					key := bundle.Nodes[1].PrivateKey
-					cert := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour),
-						KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
-					leaf, err := x509.CreateCertificate(rand.Reader, cert, cert, key.Public(), key)
-					if err != nil {
-						t.Fatal(err)
-					}
-					certPath, keyPath := processfixture.WriteNativeCredential(t, tls.Certificate{Certificate: [][]byte{leaf}, PrivateKey: key})
+					certPath, keyPath := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, key))
 					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 					work, termination := hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
 					plan := map[string]any{"network": seed(), "node_id": id, "process_profile": processresource.Profile,

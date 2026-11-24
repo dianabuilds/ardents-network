@@ -137,6 +137,8 @@
           "tests/e2e/node.WriteInfrastructureOracleInvocationInventory",
           "tests/e2e/node.ExerciseNativeCPUPressure",
           "tests/e2e/node/processfixture.PrepareNetworkGenesis",
+          "tests/e2e/node/processfixture.PrepareIssuer",
+          "tests/e2e/node/processfixture.RoleCertificate",
           "tests/e2e/node/processfixture.StartObservedClock",
           "tests/e2e/node/processfixture.WriteNativeCredential",
           "tests/e2e/node/processfixture.NativeProcess.FailedJoin",

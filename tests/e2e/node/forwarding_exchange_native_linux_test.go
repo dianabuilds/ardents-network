@@ -42,44 +42,9 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			if remaining := time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)); remaining < time.Minute {
-				timer := time.NewTimer(remaining)
-				defer timer.Stop()
-				select {
-				case <-timer.C:
-				case <-t.Context().Done():
-					t.Fatal(t.Context().Err())
-				}
-			}
+			waitForAdmissionHour(t)
 			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
-			spec.Nodes = spec.Nodes[:1]
-			listeners := make(map[[32]byte]net.Listener)
-			certificates := make(map[[32]byte]tls.Certificate)
-			for i := byte(12); i < 16; i++ {
-				id := [32]byte{i}
-				listener, err := net.Listen("tcp", "127.0.0.1:0")
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() { _ = listener.Close() })
-				listeners[id] = listener
-				_, key, err := ed25519.GenerateKey(rand.Reader)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() { clear(key) })
-				subrole := byte(1)
-				if i >= 14 {
-					subrole = 2
-				}
-				spec.Nodes = append(spec.Nodes, networkfixture.ClosedNode{
-					RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: spec.NotBefore,
-						ValidUntil: spec.NotAfter, Endpoint: listener.Addr().String(), Carrier: carrier,
-						Capability: 2, Capacity: 1, PrivateKey: key},
-					RoleDomain: 3, Subrole: subrole,
-				})
-				certificates[id] = nativeRoleCertificate(t, key)
-			}
+			listeners, certificates := addForwardingNodes(t, &spec, carrier, 3)
 			var provisioned map[[32]byte][2]string
 			if retirement == "certificate" {
 				provisioned = ProvisionNodeCertificates(t, &spec, certificates, [32]byte{12}, [32]byte{13}, [32]byte{14}, [32]byte{15})
@@ -88,7 +53,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			prepareNativeIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
 			clock, closeClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
@@ -281,4 +246,50 @@ func fundForwardingConsole(t *testing.T, send func(any) AdmissionReply, spec net
 	if reply := send(map[string]any{"operation": "complete", "payload": issued.Response}); reply.Outcome != "completed" {
 		t.Fatal("holder completion", reply.Outcome)
 	}
+}
+
+func waitForAdmissionHour(t *testing.T) {
+	t.Helper()
+	if remaining := time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)); remaining < time.Minute {
+		timer := time.NewTimer(remaining)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-t.Context().Done():
+			t.Fatal(t.Context().Err())
+		}
+	}
+}
+
+func addForwardingNodes(t *testing.T, spec *networkfixture.ClosedSpec, carrier string, domain byte) (map[[32]byte]net.Listener, map[[32]byte]tls.Certificate) {
+	t.Helper()
+	spec.Nodes = spec.Nodes[:1]
+	listeners := make(map[[32]byte]net.Listener)
+	certificates := make(map[[32]byte]tls.Certificate)
+	for i := byte(12); i < 16; i++ {
+		id := [32]byte{i}
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = listener.Close() })
+		listeners[id] = listener
+		_, key, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { clear(key) })
+		subrole := byte(1)
+		if i >= 14 {
+			subrole = 2
+		}
+		spec.Nodes = append(spec.Nodes, networkfixture.ClosedNode{
+			RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: spec.NotBefore,
+				ValidUntil: spec.NotAfter, Endpoint: listener.Addr().String(), Carrier: carrier,
+				Capability: 2, Capacity: 1, PrivateKey: key},
+			RoleDomain: domain, Subrole: subrole,
+		})
+		certificates[id] = processfixture.RoleCertificate(t, key)
+	}
+	return listeners, certificates
 }

@@ -562,6 +562,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "tests/e2e/node/processfixture" {
 		switch source {
+		case "tests/e2e/node/issuer_exchange_native_linux_test.go":
+			return true
 		case "internal/network/source/command/state_lifetime_linux_test.go",
 			"cmd/ardents-next/connection_installed_linux_test.go",
 			"cmd/ardents-next/execution_installed_linux_test.go",
@@ -679,7 +681,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/source_preparation_native_linux_test.go":
 			return local == "internal/endpoint" || local == "tests/e2e/source"
 		case "tests/e2e/node/processfixture/network_genesis_linux.go":
-			return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/network/epoch" || local == "tests/epochfixture/network"
+			return local == "internal/admission/issuance" || local == "internal/admission/quota" || local == "internal/admission/issuer" || local == "internal/network/epoch" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/source_native_linux_test.go":
 			return local == "internal/network/epoch" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/processresource" || local == "tests/epochfixture/network" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		case "tests/e2e/node/source_preparation_process_linux_test.go":
@@ -713,6 +715,11 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && (source == "tests/e2e/node/forwarding_startup_native_linux_test.go" || source == "tests/e2e/node/completion_native_linux_test.go") {
 		return local == "internal/hosting" || local == "internal/network/duty" || local == "internal/network/epoch" ||
 			local == "internal/network/state" || local == "internal/processresource" || local == "tests/epochfixture/network"
+	}
+	if localImport && source == "tests/e2e/node/issuer_exchange_native_linux_test.go" {
+		return local == "internal/admission" || local == "internal/endpoint/funding" || local == "internal/hosting" ||
+			local == "internal/network/epoch" || local == "internal/network/state" || local == "internal/processresource" ||
+			local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_startup_native_linux_test.go" {
 		return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota" || local == "internal/hosting" ||

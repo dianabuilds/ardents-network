@@ -96,7 +96,7 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 			t.Fatal(err)
 		}
 
-		cert, key := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, spec.Nodes[index].PrivateKey))
+		cert, key := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, spec.Nodes[index].PrivateKey))
 		participation := filepath.Join(t.TempDir(), "participation")
 		plan := map[string]any{
 			"network": network, "node_id": id, "process_profile": role.profile,
@@ -113,7 +113,7 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 		}
 		if role.name == "issuer" {
 			plan["bootstrap_work"] = hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}
-			prepareNativeIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[index], sha256.Sum256(bundle.Profile))
+			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[index], sha256.Sum256(bundle.Profile))
 			plan["issuance"] = IssuerDeclaration(issuerPlan)
 		}
 		if err := listener.Close(); err != nil {

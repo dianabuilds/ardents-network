@@ -32,9 +32,9 @@ verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # Discovery is part of the selected Issuer profile; zero-test runs fail.
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP$' >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP$' | grep -Fx TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalAuthorityAndJoinTCP$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalFailureTCP$' >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerOriginalFailureTCP$' | grep -Fx TestNativeIssuerOriginalFailureTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerPartialStartupRefusalsTCP$' | grep -Fx TestNativeIssuerPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOperationJoinAndExactRetryTCP$' >/dev/null
@@ -54,14 +54,13 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 # registered process timeout. Both are mandatory and execute sequentially under
 # the identical native envelope; no failed case is omitted or given more time.
 # Exact discovery rejects any added, missing or duplicate undispatched test.
-expected='TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP
-TestNativeIssuerOperationJoinAndExactRetryTCP
+expected='TestNativeIssuerOperationJoinAndExactRetryTCP
 TestNativeIssuerOriginalAuthorityAndJoinTCP
-TestNativeIssuerOriginalFailureTCP
 TestNativeIssuerStorageUncertaintyTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuer' | sort)
 test "$discovered" = "$expected" || { echo 'Issuer workload discovery differs' >&2; exit 2; }
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendTCP|OriginalAuthorityAndJoinTCP|OriginalFailureTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuerOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(OperationJoinAndExactRetryTCP|StorageUncertaintyTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuerPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendTCP|OriginalFailureTCP)$' -test.timeout=3m

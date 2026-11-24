@@ -14,9 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
@@ -46,7 +43,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					}
 					member, foreign := bundle.Nodes[0], bundle.Nodes[1]
 					id := member.NodeID
-					prepareNativeIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
+					processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
 					clock, closeClock := processfixture.StartObservedClock(t)
 					defer closeClock()
 					network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
@@ -54,7 +51,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					if fault == "tls-key" {
 						key = foreign.PrivateKey
 					}
-					certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, key))
+					certPath, keyPath := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, key))
 					participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 					input := IssuerDeclaration(issuerPlan)
 					plan := map[string]any{"network": network, "node_id": id, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "issuance": input,
@@ -118,19 +115,5 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 				})
 			}
 		})
-	}
-}
-
-func prepareNativeIssuer(t testing.TB, plan *issuer.Plan, inventory issuance.Inventory, spec networkfixture.ClosedSpec, member networkfixture.ClosedNode, profile [32]byte) {
-	t.Helper()
-	plan.AdmissionBinding = quota.LedgerBinding{
-		Network: spec.NetworkID, Issuer: member.NodeID, Authority: spec.IssuanceAuthority,
-		Profile: profile, Duty: member.Generation, Start: spec.NotBefore, End: spec.NotAfter, Keys: inventory.Keys,
-	}
-	if err := quota.Initialize(plan.AdmissionRoot, plan.AdmissionBinding); err != nil {
-		t.Fatal(err)
-	}
-	if result := issuer.Initialize(t.Context(), *plan); result.Outcome != "initialized-results" {
-		t.Fatal(result)
 	}
 }

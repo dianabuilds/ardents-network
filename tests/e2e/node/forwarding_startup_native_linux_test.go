@@ -49,7 +49,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					if fault == "wrong-key" {
 						key = foreign.PrivateKey
 					}
-					certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, key))
+					certPath, keyPath := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, key))
 					initial := bundle
 					var expires time.Time
 					if fault == "expired-member" {
@@ -229,7 +229,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			if err := listener.Close(); err != nil {
 				t.Fatal(err)
 			}
-			certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, member.PrivateKey))
+			certPath, keyPath := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
 			plan := map[string]any{"network": processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), "node_id": member.NodeID, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			// Genuine restored-input control: this same signed member, Carrier and
 			// native envelope must start after removing the declared fault.
