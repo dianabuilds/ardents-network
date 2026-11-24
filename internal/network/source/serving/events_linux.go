@@ -1,5 +1,11 @@
 package serving
 
+import (
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/processresource"
+)
+
 // Outcome is the original attempt's process-independent terminal class.
 type Outcome uint8
 
@@ -32,4 +38,41 @@ func (result *Terminal) Unwrap() []error {
 		}
 	}
 	return causes
+}
+
+// FailureDescription contains only fixed owner categories and bounded resource
+// facts. It omits the original errors, paths, and private Source configuration.
+type FailureDescription struct {
+	FirstOwner    string
+	CleanupOwners string
+	Resource      *processresource.FailureFacts
+}
+
+// DescribeFailure derives the Source's failure order from the original joined
+// operation and the separate process-guard close result.
+func DescribeFailure(operation, processClose error) FailureDescription {
+	first, cleanup := "", ""
+	var terminal *Terminal
+	if errors.As(operation, &terminal) {
+		first = terminal.FirstOwner
+		if processresource.Failure(terminal.First) != nil {
+			first = "process"
+		}
+		if terminal.Wait != nil || terminal.StateClose != nil {
+			cleanup = "state"
+		}
+		if terminal.InputClose != nil {
+			if cleanup != "" {
+				cleanup += ","
+			}
+			cleanup += "input"
+		}
+	}
+	if processClose != nil {
+		if cleanup != "" {
+			cleanup += ","
+		}
+		cleanup += "process"
+	}
+	return FailureDescription{FirstOwner: first, CleanupOwners: cleanup, Resource: processresource.Failure(operation)}
 }
