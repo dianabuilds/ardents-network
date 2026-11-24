@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package worker
 
@@ -15,6 +15,14 @@ import (
 // the exact accepted AF_UNIX stream. This is one launch check, not a Grant.
 // Every later frame also goes through Read, so SCM_RIGHTS cannot be smuggled
 // after a successful readiness exchange.
+//
+// The AF_UNIX/SCM_RIGHTS transport is Unix-family (Linux and macOS). The
+// per-frame peer-credential authentication that binds the worker identity is a
+// capability port at this boundary: peercred_linux.go authenticates every frame
+// through SO_PASSCRED/SCM_CREDENTIALS, while peercred_darwin.go refuses because
+// macOS AF_UNIX exposes only connect-time LOCAL_PEERCRED, not per-frame
+// credentials. A missing required protection is an explicit unavailable outcome
+// on every platform, never a weaker accepting path (ADR-0129).
 type Attachment struct {
 	connection *net.UnixConn
 	pid        uint32
@@ -37,32 +45,6 @@ func (attachment *Attachment) SetDeadline(deadline time.Time) error {
 	return attachment.connection.SetDeadline(deadline)
 }
 
-func prepareSocket(connection *net.UnixConn) error {
-	if connection == nil {
-		return errors.New("document worker socket is unavailable")
-	}
-	raw, err := connection.SyscallConn()
-	if err != nil {
-		return errors.New("document worker socket is unavailable")
-	}
-	var socketErr error
-	err = raw.Control(func(fd uintptr) {
-		// SO_PEERCRED binds the root-owned listener/system manager, not the worker
-		// that later inherits the accepted descriptor. Its PID is therefore not
-		// used as the worker Principal.
-		peer, peerErr := syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-		if peerErr != nil || peer.Pid != 1 || peer.Uid != 0 || peer.Gid != 0 {
-			socketErr = errors.New("document worker listener is not the system manager")
-			return
-		}
-		socketErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_PASSCRED, 1)
-	})
-	if err != nil || socketErr != nil {
-		return errors.New("document worker socket provenance is unavailable")
-	}
-	return nil
-}
-
 func (attachment *Attachment) Read(body []byte) (int, error) {
 	if attachment == nil || attachment.connection == nil || attachment.pid == 0 {
 		return 0, errors.New("document worker attachment is unavailable")
@@ -70,10 +52,10 @@ func (attachment *Attachment) Read(body []byte) (int, error) {
 	if len(body) == 0 {
 		return 0, nil
 	}
-	// Linux permits at most 253 SCM_RIGHTS descriptors in one message. Account
-	// for all of them so a rejected message can release each received descriptor.
-	// Go's Linux ReadMsgUnix uses MSG_CMSG_CLOEXEC before publishing any fd.
-	control := make([]byte, syscall.CmsgSpace(253*4)+syscall.CmsgSpace(syscall.SizeofUcred))
+	// Linux permits at most 253 SCM_RIGHTS descriptors in one message; size the
+	// control buffer for all of them so a rejected message can release each
+	// received descriptor, plus the platform's per-frame credential message.
+	control := make([]byte, syscall.CmsgSpace(253*4)+peerCredentialControlSpace())
 	n, controlN, flags, _, err := attachment.connection.ReadMsgUnix(body, control)
 	controlErr := checkControl(control[:controlN], flags, attachment.pid, attachment.uid, n > 0)
 	if controlErr != nil {
@@ -105,11 +87,10 @@ func checkControl(control []byte, flags int, pid, uid uint32, hasBytes bool) err
 			invalid = true
 			continue
 		}
-		credential, parseErr := syscall.ParseUnixCredentials(&message)
-		if parseErr != nil || credential.Pid <= 0 || uint32(credential.Pid) != pid || credential.Uid != uid || credential.Gid != uid {
-			invalid = true
-		} else {
+		if authenticatePeerCredential(&message, pid, uid) {
 			credentials++
+		} else {
+			invalid = true
 		}
 	}
 	if invalid || hasBytes && credentials != 1 || !hasBytes && credentials > 1 {
