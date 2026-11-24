@@ -14,9 +14,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 )
 
-type textLinkPeer struct{ publicationPeer }
+type documentLinkPeer struct{ publicationPeer }
 
-func (*textLinkPeer) PublishedLink(context.Context) (string, error) {
+func (*documentLinkPeer) PublishedLink(context.Context) (string, error) {
 	return "ardents://test-public-link", nil
 }
 
@@ -32,7 +32,7 @@ func (output *signaledLinkOutput) Write(value []byte) (int, error) {
 
 func TestPublishedLinkPresentationAndCancellation(t *testing.T) {
 	socket := filepath.Join(t.TempDir(), "admin.sock")
-	peer := &textLinkPeer{}
+	peer := &documentLinkPeer{}
 	server, err := administration.Listen(socket, peer)
 	if err != nil {
 		t.Fatal(err)

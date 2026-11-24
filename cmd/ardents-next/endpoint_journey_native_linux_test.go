@@ -32,7 +32,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
-// This native qualification proves the two-Endpoint platform-led text journey
+// This native qualification proves the two-Endpoint platform-led document journey
 // between TWO separately admitted Ubuntu/systemd managers (#391 S2.2), building
 // on the S2.1 nspawn launch foundation. The controller keeps one shared fixture
 // route network (Forwarding/Descriptor Store/Introduction/JOIN/Responder/Issuer
@@ -41,7 +41,7 @@ import (
 // (no root ACK), authenticates the public signed Network through its own State,
 // and obtains separately approved permissions. The publisher guest publishes a
 // snapshot through real REGISTER/Store ACK and exposes an accepting Link; the
-// reader guest resolves the Descriptor, joins and reads the exact text through
+// reader guest resolves the Descriptor, joins and reads the exact document bytes through
 // its actual AAI3 listener. Withdrawal retires the Link; a platform-led restart
 // reaches Service readiness again under a new InvocationID with the same
 // immutable selection and retained durable floors.
@@ -589,7 +589,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 
 func journeyBuildWorkerBinary(t *testing.T) []byte {
 	t.Helper()
-	if prebuilt := os.Getenv("ARDENTS_PREBUILT_TEXT"); prebuilt != "" {
+	if prebuilt := os.Getenv("ARDENTS_PREBUILT_DOCUMENT_WORKER"); prebuilt != "" {
 		raw, err := os.ReadFile(prebuilt)
 		if err != nil {
 			t.Fatal(err)
@@ -600,7 +600,7 @@ func journeyBuildWorkerBinary(t *testing.T) []byte {
 	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/internal/application/document/worker")
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build text worker: %v: %s", err, out)
+		t.Fatalf("build document worker: %v: %s", err, out)
 	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -801,7 +801,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	// Prebuild the canonical consumer and static worker on the host so the guests
 	// do not repeat Go builds under shared-host load; the publication deadlines
 	// are finite and must not be weakened to absorb build contention.
-	nextBinary, textBinary := journeyPrebuildBinaries(t, repoRoot)
+	nextBinary, workerBinary := journeyPrebuildBinaries(t, repoRoot)
 	runID := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 	var guests [2]*pairGuest
 	for i, label := range []string{"pub", "read"} {
@@ -858,7 +858,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		guest := guests[i]
 		journeyCopyIntoGuest(t, guestBinary, filepath.Join(guest.rootfs, "root", "journey.test"))
 		journeyCopyIntoGuest(t, nextBinary, filepath.Join(guest.rootfs, "root", "ardents-next"))
-		journeyCopyIntoGuest(t, textBinary, filepath.Join(guest.rootfs, "root", "ardents-text"))
+		journeyCopyIntoGuest(t, workerBinary, filepath.Join(guest.rootfs, "root", "ardents-document-worker"))
 		// Keep the mutable root short: the application/administration Unix socket
 		// paths below it must fit the kernel sun_path bound (108 bytes).
 		guestRoot := filepath.Join("/var/lib/ardents", "journey-"+hex.EncodeToString(nonce[:6]))
@@ -870,7 +870,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			"--setenv=GOCACHE="+buildCache,
 			"--setenv=GOFLAGS=-buildvcs=false",
 			"--setenv=ARDENTS_PREBUILT_NEXT=/root/ardents-next",
-			"--setenv=ARDENTS_PREBUILT_TEXT=/root/ardents-text",
+			"--setenv=ARDENTS_PREBUILT_DOCUMENT_WORKER=/root/ardents-document-worker",
 			"--setenv="+journeyRootEnv+"="+guestRoot,
 			"--setenv="+journeyRoleEnv+"="+role,
 			"--setenv="+journeyNonceEnv+"="+hex.EncodeToString(nonce[:]),
@@ -985,7 +985,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			t.Fatal("journey participant did not join", waitErr)
 		}
 	}
-	t.Log("two independent platform-led admissions, one actual AAI3 text exchange, exact response, owning withdrawal and restart continuity completed")
+	t.Log("two independent platform-led admissions, one actual AAI3 document exchange, exact response, owning withdrawal and restart continuity completed")
 }
 
 // journeyGrantPermissions mirrors the installed dual-role permission bootstrap
@@ -1061,14 +1061,14 @@ func journeyPrebuildBinaries(t *testing.T, repoRoot string) (string, string) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("prebuild consumer: %v: %s", err, out)
 	}
-	text := filepath.Join(dir, "ardents-text")
-	worker := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", text, "./internal/application/document/worker")
+	workerPath := filepath.Join(dir, "ardents-document-worker")
+	worker := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", workerPath, "./internal/application/document/worker")
 	worker.Dir = repoRoot
 	worker.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := worker.CombinedOutput(); err != nil {
 		t.Fatalf("prebuild worker: %v: %s", err, out)
 	}
-	return next, text
+	return next, workerPath
 }
 
 func journeyCompileParticipant(t *testing.T, repoRoot string) string {
@@ -1090,7 +1090,7 @@ const (
 )
 
 // TestNativeEndpointCrossHostJourney is the cross-host controller for the
-// two-Endpoint platform-led text journey (#391 S2.2). It runs as root on the
+// two-Endpoint platform-led document journey (#391 S2.2). It runs as root on the
 // reader/controller host and keeps the shared fixture route network and signing
 // authority there: routeFixtureBindHost is lifted from loopback to the
 // controller's reachable address BEFORE the fixture network is created, so the
@@ -1157,7 +1157,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 	defer stopListener()
 
 	repoRoot := pairRepoRoot(t)
-	participantBinary, nextBinary, textBinary := journeyCrossHostBinaries(t, repoRoot)
+	participantBinary, nextBinary, workerBinary := journeyCrossHostBinaries(t, repoRoot)
 	const participantTimeout = 12 * time.Minute
 	// The existing refresh oracle needs the original token hour throughout the
 	// refresh and signed-predecessor overlap. Check after the cold build.
@@ -1172,8 +1172,8 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 	crossHostRun(t, t.Context(), publisherSSH, "mkdir -p "+remoteDir+"\n")
 	crossHostCopy(t, publisherSSH, participantBinary, remoteDir+"/journey.test")
 	crossHostCopy(t, publisherSSH, nextBinary, remoteDir+"/ardents-next")
-	crossHostCopy(t, publisherSSH, textBinary, remoteDir+"/ardents-text")
-	crossHostRun(t, t.Context(), publisherSSH, "chmod 0555 "+remoteDir+"/journey.test "+remoteDir+"/ardents-next "+remoteDir+"/ardents-text\n")
+	crossHostCopy(t, publisherSSH, workerBinary, remoteDir+"/ardents-document-worker")
+	crossHostRun(t, t.Context(), publisherSSH, "chmod 0555 "+remoteDir+"/journey.test "+remoteDir+"/ardents-next "+remoteDir+"/ardents-document-worker\n")
 
 	var peers [2]net.Conn
 	var commands [2]*exec.Cmd
@@ -1237,7 +1237,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		address := listener.Addr().String()
 		if remote {
 			script := fmt.Sprintf("exec env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"+
-				" ARDENTS_PREBUILT_NEXT=%s/ardents-next ARDENTS_PREBUILT_TEXT=%s/ardents-text"+
+				" ARDENTS_PREBUILT_NEXT=%s/ardents-next ARDENTS_PREBUILT_DOCUMENT_WORKER=%s/ardents-document-worker"+
 				" %s=%s %s=%s %s=%s %s=%s"+
 				" %s/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=%s\n",
 				remoteDir, remoteDir,
@@ -1256,7 +1256,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			"-test.run=^TestNativeEndpointPlatformLedJourneyParticipant$", "-test.v", "-test.timeout="+participantTimeout.String())
 		command.Env = append(os.Environ(),
 			"ARDENTS_PREBUILT_NEXT="+nextBinary,
-			"ARDENTS_PREBUILT_TEXT="+textBinary,
+			"ARDENTS_PREBUILT_DOCUMENT_WORKER="+workerBinary,
 			journeyRootEnv+"="+bases[i],
 			journeyRoleEnv+"="+role,
 			journeyNonceEnv+"="+nonces[i],
@@ -1540,7 +1540,7 @@ func crossHostRequireAbsentEndpoint(t *testing.T, publisherSSH string) {
 }
 
 // journeyCrossHostBinaries compiles the participant and prebuilds the canonical
-// consumer and text worker as STATIC executables, so the controller-host build
+// consumer and document worker as STATIC executables, so the controller-host build
 // runs unchanged on both admitted platform releases without a glibc
 // forward-compatibility assumption across hosts.
 func journeyCrossHostBinaries(t *testing.T, repoRoot string) (string, string, string) {
@@ -1560,8 +1560,8 @@ func journeyCrossHostBinaries(t *testing.T, repoRoot string) (string, string, st
 	}
 	participant := build("journey.test", "./cmd/ardents-next", "test", "-c", "-tags=endpoint_pair_native,document_worker_installed", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	next := build("ardents-next", "./cmd/ardents-next", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
-	text := build("ardents-text", "./internal/application/document/worker", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
-	return participant, next, text
+	workerPath := build("ardents-document-worker", "./internal/application/document/worker", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
+	return participant, next, workerPath
 }
 
 // crossHostCleanupScript mirrors the single-real-host publication cleanup: the

@@ -30,6 +30,12 @@ qualification worker has a separate installed verification lane.
 | Installed document worker | signed worker artifact `ardents-text` | automatic | Fixed confined Reader/Publisher worker entrypoints invoked by systemd. |
 | Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints, built from the qualification fixture. |
 
+The pair-qualification launcher passes a temporary document worker executable
+through `ARDENTS_PREBUILT_DOCUMENT_WORKER`. The signed artifact inventory and
+installed unit, socket and program names continue to use their protected
+release declarations. Changing those names requires a versioned signed
+inventory and an explicit predecessor-to-successor installation transition.
+
 The root cmd directory is Go's conventional collection of thin executable
 adapters; it is not a product ownership boundary. Source and artifact ownership
 are enforced separately by ownership.json, import tests, extraction checks,
