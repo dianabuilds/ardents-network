@@ -2434,7 +2434,7 @@ Node cgroup. Each canonical Node process uses its original sole-process leaf,
 the fixed process limits in the Node/resource owner and genuine signed-State,
 token, participation and Hosting owners. TCP/TLS and deferred-QUIC refusal are required.
 The driver independently pins the ordinary command and the `node_process_native`
-command, Node owner, Node e2e and resource test binaries by SHA-256, rejects missing inputs and zero-test
+Node owner, Node e2e and resource test binaries by SHA-256, rejects missing inputs and zero-test
 discovery, and retains physical manager/process completion. Test binaries may be
 built with race instrumentation; that evidence must name the actual build.
 The Node e2e binary owns partial-startup refusal and unavailable-completion
@@ -2452,9 +2452,8 @@ Missing Linux, systemd, cgroup/PSI, privilege, artifact, durable filesystem or
 loopback is an invalid environment. This lane establishes no supported Node host,
 installed operation, independent controller, capacity or privacy qualification.
 The Node owner binary runs the original authority controls of all five roles
-and the original Node processes for the Descriptor, Introduction, Issuer and
-JOIN operation tests. The workload driver uses the separately pinned owner
-binary for those processes.
+and the workload drivers for Descriptor, Introduction, Issuer and JOIN.
+Each driver launches its original Node process from the pinned owner binary.
 `TestNativeNodeOriginalAuthorityAndJoinTCP` also supplies a direct Forwarding control
 for the deferred Carrier. An actual signed historical QUIC member is retained
 by genuine State, then passed to `node.ListenForwarding` under the actual native

@@ -60,9 +60,11 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			spec.Nodes = spec.Nodes[:1]
 			listeners := make(map[[32]byte]net.Listener)
 			certificates := make(map[[32]byte]tls.Certificate)
-			for _, id := range []byte{12, 13, 14, 15, 21, 22, 23, 24, 25} {
+			for _, id := range []byte{12, 13, 14, 15, 21, 22, 23, 24, 25, 17} {
 				domain, subrole := byte(1), byte(1)
 				switch {
+				case id == 17:
+					domain, subrole = 2, 5
 				case id == 25:
 					domain, subrole = 4, 3
 				case id >= 23:

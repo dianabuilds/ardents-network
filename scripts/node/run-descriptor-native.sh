@@ -10,8 +10,6 @@ test -r /sys/fs/cgroup/cgroup.controllers
 
 : "${ARDENTS_NODE_NATIVE_COMMAND:?canonical Node command is required}"
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
-: "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
-: "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
 : "${ARDENTS_NODE_OWNER_TEST:?native Node owner test binary is required}"
 : "${ARDENTS_NODE_OWNER_TEST_SHA256:?independent Node owner test digest is required}"
 : "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
@@ -26,7 +24,6 @@ verify() {
     test "${actual%% *}" = "$2" || { echo 'native artifact digest differs' >&2; exit 2; }
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
-verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
 verify "$ARDENTS_NODE_OWNER_TEST" "$ARDENTS_NODE_OWNER_TEST_SHA256"
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeNodeDescriptorOperationProcess$' | grep -Fx TestNativeNodeDescriptorOperationProcess >/dev/null
 verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
@@ -39,8 +36,9 @@ TestOriginalNativeDescriptorManagedMemoryPressureRetires
 TestOriginalNativeDescriptorProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeDescriptor' | grep '^TestOriginalNativeDescriptor' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Descriptor resource discovery differs' >&2; exit 2; }
-expected='TestNativeDescriptorOperationBoundariesTCP'
-discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeDescriptor' | grep '^TestNativeDescriptor' | sort)
+expected='TestNativeDescriptorOperationBoundariesTCP
+TestNativeDescriptorOriginalAuthorityAndJoinTCP'
+discovered=$("$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeDescriptor' | grep '^TestNativeDescriptor' | sort)
 test "$discovered" = "$expected" || { echo 'Descriptor workload discovery differs' >&2; exit 2; }
 
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorOriginalCommandFailureTCP$' | grep -Fx TestNativeDescriptorOriginalCommandFailureTCP >/dev/null
@@ -57,7 +55,7 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptor(PublishLookupAndReopenTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeDescriptorOriginalAuthorityAndJoinTCP$' | grep -Fx TestNativeDescriptorOriginalAuthorityAndJoinTCP >/dev/null
 "$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeDescriptorOriginalAuthorityAndJoinTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOperationBoundariesTCP$' -test.timeout=3m
+"$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeDescriptorOperationBoundariesTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeDescriptorPartialStartupRefusalsTCP$' | grep -Fx TestNativeDescriptorPartialStartupRefusalsTCP >/dev/null

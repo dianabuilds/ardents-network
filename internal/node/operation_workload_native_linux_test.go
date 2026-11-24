@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -8,9 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/binary"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net"
@@ -26,11 +24,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -38,55 +39,45 @@ import (
 // Fault scheduling pauses an actual State return on the real operation stack.
 // Files only coordinate the independent test driver; they authorize no effect.
 func TestNativeDescriptorOperationBoundariesTCP(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
+	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		for _, phase := range []string{"pre-spend", "pre-spend-stop", "pre-spend-successor", "pre-spend-process-loss", "post-spend", "post-commit", "post-commit-late-store-loss", "post-commit-concurrent"} {
 			t.Run(string(carrier)+"/"+phase, func(t *testing.T) { nativeDescriptorOperationParent(t, carrier, phase) })
 		}
 	}
 }
 
-func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProfile, phase string) {
+func nativeDescriptorOperationParent(t *testing.T, carrier string, phase string) {
 	t.Helper()
-	f, sockets, certificates := descriptorRouteFixture(t, carrier)
-	bundle, err := networkfixture.BuildClosed(f.spec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	clock, closeClock := processfixture.StartObservedClock(t)
-	defer closeClock()
-	holder := descriptorRouteStock(t, f)
-	proof, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
-	binary := processfixture.PinnedCommand(t)
-	var peers []*processfixture.NativeProcess
-	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
-		cert, key := processfixture.WriteNativeCredential(t, certificates[id])
-		config := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-		sockets[id]()
-		peers = append(peers, processfixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, config), id[0]))
-	}
-	cert, key := processfixture.WriteNativeCredential(t, certificates[[32]byte{17}])
-	p := processfixture.DescriptorAuthorityPlan{Network: processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
+	fixture := openOperationNetwork(t, carrier, "descriptor")
+	holder := fixture.stock(t, admission.AllocationUser, [3]uint32{8, 4, 0}, 41,
+		operationBatch{class: admission.ForwardClass, ids: []byte{12, 13, 14, 15}},
+		operationBatch{class: admission.ControlClass, ids: []byte{17, 17, 17, 17, 17, 17, 17, 17}})
+	proof, target := processfixture.SignedDescriptor(t, fixture.profile, 3, [32]byte{18}, fixture.profile.Digest)
+	peers := fixture.startForwarding(t, 256, 12, 13, 14, 15)
+	cert, key := processfixture.WriteNativeCredential(t, fixture.certificates[[32]byte{17}])
+	p := processfixture.DescriptorAuthorityPlan{Network: fixture.seed(t), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
-		next := f.spec
+		next := fixture.spec
 		next.Number++
-		next.Previous = bundle.Epoch.Digest
+		next.Previous = fixture.bundle.Epoch.Digest
 		next.Seed[0]++
+		var err error
 		p.Successor, err = networkfixture.BuildClosed(next)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 	plan := processfixture.DescriptorOperationPlan{Original: p, Signals: t.TempDir()}
-	sockets[[32]byte{17}]()
+	fixture.releasePort(t, 17)
 	unit := fmt.Sprintf("ardents-descriptor-operation-%d.service", os.Getpid())
-	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeDescriptorOperationProcess", "ARDENTS_DESCRIPTOR_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 120)
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeDescriptorOperationProcess", "ARDENTS_DESCRIPTOR_OPERATION_FIXTURE", writeAuthorityProcessPlan(t, plan), plan.Signals, 120)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
-	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-	prefix, err := startRoutePrefix(t.Context(), prefixPlan, f.authority, holder)
+	prefixPlan := funding.Plan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	prefix, err := session.OpenPrefix(t.Context(), prefixPlan, fixture.routeAuthority, holder)
 	if err != nil {
 		t.Fatal("genuine operation Prefix", err)
 	}
-	defer prefix.close()
+	defer prefix.Close()
 	journalPath := filepath.Join(p.Spend, "closed-token-spends")
 	before, err := os.ReadFile(journalPath)
 	if err != nil {
@@ -96,7 +87,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	caller, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	completed := make(chan error, 1)
-	go func() { completed <- prefix.publishDescriptor(caller, proof) }()
+	go func() { completed <- prefix.PublishDescriptor(caller, proof) }()
 	processfixture.WaitOperationMarker(t, plan.Signals, "entered", 3*time.Second)
 	atHold, err := os.ReadFile(journalPath)
 	if err != nil {
@@ -127,7 +118,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 		// that writer borrow remains live, before concurrent original Close.
 		history := &reachability.History{}
 		defer history.Close()
-		got, err := prefix.lookupDescriptor(t.Context(), target, history)
+		got, err := prefix.LookupDescriptor(t.Context(), target, history)
 		if err != nil || !bytes.Equal(got, proof) {
 			t.Fatal("concurrent lookup lost actual committed floor", err)
 		}
@@ -190,11 +181,11 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	if err != nil || observed.ReservedBytes != 0 {
 		t.Fatal("joined operation failed to return Hosting", observed, err)
 	}
-	fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: p.Descriptor, Network: f.profile.NetworkID})
+	fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: p.Descriptor, Network: fixture.profile.NetworkID})
 	if err != nil {
 		t.Fatal("independent Store reopen", err)
 	}
-	got, outcome, lookupErr := fresh.Lookup(target, f.profile.Digest, time.Now())
+	got, outcome, lookupErr := fresh.Lookup(target, fixture.profile.Digest, time.Now())
 	if err := fresh.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +196,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	} else if lookupErr != nil || outcome != reachability.Stale || len(got) != 0 {
 		t.Fatal("pre-mutation denial wrote proof", outcome, lookupErr)
 	}
-	if err := prefix.close(); err != nil {
+	if err := prefix.Close(); err != nil {
 		t.Log("retained Source cleanup after original denial", err)
 	}
 	signals := []string{"kill", "--kill-whom=main", "--signal=SIGINT"}
@@ -224,38 +215,26 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 // Fault scheduling pauses an actual State return on the real operation stack.
 // Files only coordinate the independent test driver; they authorize no effect.
 func TestNativeIntroductionOperationBoundariesTCP(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
+	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		for _, phase := range []string{"pre-spend", "pre-spend-stop", "pre-spend-successor", "pre-spend-process-loss", "post-spend", "post-commit", "post-commit-concurrent", "post-commit-late-history-loss"} {
 			t.Run(string(carrier)+"/"+phase, func(t *testing.T) { nativeIntroductionOperationParent(t, carrier, phase) })
 		}
 	}
 }
 
-func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierProfile, phase string) {
+func nativeIntroductionOperationParent(t *testing.T, carrier string, phase string) {
 	t.Helper()
-	f, sockets, certificates := publicationRouteNetwork(t, carrier)
-	bundle, err := networkfixture.BuildClosed(f.spec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	clock, closeClock := processfixture.StartObservedClock(t)
-	defer closeClock()
-	holder := processfixture.IntroductionStock(t, f.spec, f.plan, f.current)
-	binary := processfixture.PinnedCommand(t)
-	var peers []*processfixture.NativeProcess
-	for _, id := range [][32]byte{{21}, {22}, {23}, {24}} {
-		cert, key := processfixture.WriteNativeCredential(t, certificates[id])
-		config := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-		sockets[id]()
-		peers = append(peers, processfixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, config), id[0]))
-	}
-	cert, key := processfixture.WriteNativeCredential(t, certificates[[32]byte{25}])
-	p := processfixture.IntroductionAuthorityPlan{Network: processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
+	fixture := openOperationNetwork(t, carrier, "introduction")
+	holder := processfixture.IntroductionStock(t, fixture.spec, fixture.plan, fixture.state.CurrentRuntime)
+	peers := fixture.startForwarding(t, 100, 21, 22, 23, 24)
+	cert, key := processfixture.WriteNativeCredential(t, fixture.certificates[[32]byte{25}])
+	p := processfixture.IntroductionAuthorityPlan{Network: fixture.seed(t), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
-		next := f.spec
+		next := fixture.spec
 		next.Number++
-		next.Previous = bundle.Epoch.Digest
+		next.Previous = fixture.bundle.Epoch.Digest
 		next.Seed[0]++
+		var err error
 		p.Successor, err = networkfixture.BuildClosed(next)
 		if err != nil {
 			t.Fatal(err)
@@ -265,35 +244,18 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 		t.Fatal(err)
 	}
 	plan := processfixture.IntroductionOperationPlan{Original: p, Signals: t.TempDir()}
-	sockets[[32]byte{25}]()
+	fixture.releasePort(t, 25)
 	unit := fmt.Sprintf("ardents-introduction-operation-%d.service", os.Getpid())
-	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeIntroductionOperationProcess", "ARDENTS_INTRODUCTION_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 120)
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeIntroductionOperationProcess", "ARDENTS_INTRODUCTION_OPERATION_FIXTURE", writeAuthorityProcessPlan(t, plan), plan.Signals, 120)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
-	prefixPlan := routePrefixPlan{Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-	selectionRoot := t.TempDir()
-	selected, err := selection.Open(selection.Config{EntryRoot: filepath.Join(selectionRoot, "entry"), InteriorRoot: filepath.Join(selectionRoot, "interior"), Domain: 4, Current: f.authority.current})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer selected.Close()
-	prefixBudget, err := hosting.Open(processfixture.ProcessBudget(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer prefixBudget.Close()
-	prefix, leg, err := openPublicationPrefix(t.Context(), prefixPlan, selected, prefixBudget, f.authority, holder)
+	root := t.TempDir()
+	prefixPlan := funding.Plan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 4,
+		Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	prefix, err := session.OpenPrefix(t.Context(), prefixPlan, fixture.routeAuthority, holder)
 	if err != nil {
 		t.Fatal("genuine Registration prefix", err)
 	}
 	defer prefix.Close()
-	view, err := f.current()
-	if err != nil {
-		t.Fatal(err)
-	}
-	duty, err := leg.IntroductionDuty(view, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	journalPath := filepath.Join(p.Spend, "closed-token-spends")
 	before, err := os.ReadFile(journalPath)
 	if err != nil {
@@ -304,9 +266,9 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	defer cancel()
 	completed := make(chan error, 1)
 	go func() {
-		registration, err := introduction.Register(caller, prefix, introduction.RegistrationConfig{Duty: duty, Revision: 1, Deadline: prefixPlan.Deadline})
-		if registration != nil {
-			err = errors.Join(err, registration.Close())
+		registration, err := prefix.Register(caller, 1)
+		if registration.Owner() != nil {
+			err = errors.Join(err, registration.Owner().Close())
 		}
 		completed <- err
 	}()
@@ -387,7 +349,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	if err != nil || observed.ReservedBytes != 0 {
 		t.Fatal("joined operation failed to return Hosting", observed, err)
 	}
-	retained, err := introduction.OpenHistory(p.Introduction, introduction.Binding{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, ReceiverNodeID: [32]byte{25}, ReceiverDutyGeneration: 9})
+	retained, err := introduction.OpenHistory(p.Introduction, introduction.Binding{NetworkID: fixture.profile.NetworkID, ProfileDigest: fixture.profile.Digest, ReceiverNodeID: [32]byte{25}, ReceiverDutyGeneration: 9})
 	if err != nil {
 		t.Fatal("independent History reopen", err)
 	}
@@ -418,7 +380,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 // child opens the genuine original Node; the parent owns independent genuine
 // Stock and physical Prefixes. No fixture signs a successful runtime response.
 func TestNativeIssuerOperationJoinAndExactRetryTCP(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
+	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		for _, mode := range []string{"retry", "pre-debit-caller", "post-debit-caller", "post-result-caller", "post-result-successor"} {
 			t.Run(string(carrier)+"/"+mode, func(t *testing.T) { nativeIssuerOperationParent(t, carrier, mode) })
 		}
@@ -426,7 +388,7 @@ func TestNativeIssuerOperationJoinAndExactRetryTCP(t *testing.T) {
 }
 
 func TestNativeIssuerStorageUncertaintyTCP(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
+	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		for _, mode := range []string{"quota-uncertain", "result-uncertain"} {
 			t.Run(string(carrier)+"/"+mode, func(t *testing.T) { nativeIssuerOperationParent(t, carrier, mode) })
 		}
@@ -435,134 +397,67 @@ func TestNativeIssuerStorageUncertaintyTCP(t *testing.T) {
 
 // These genuine offline tokens isolate the operation fault. Actual command
 // bootstrap is separately mandatory in the same native profile.
-func nativeIssuerOperationStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
+func nativeIssuerOperationParent(t *testing.T, carrier string, mode string) {
 	t.Helper()
-	holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{4, 8, 0})
-	for index, class := range []uint8{2, 1} {
-		var receivers [][32]byte
-		if class == 2 {
-			receivers = [][32]byte{{12}, {13}, {14}, {15}}
-		} else {
-			receivers = [][32]byte{f.profile.IssuerNodeID, f.profile.IssuerNodeID, f.profile.IssuerNodeID}
-		}
-		var challenges []token.ClosedTokenContext
-		for _, id := range receivers {
-			view, err := f.current()
-			if err != nil {
-				t.Fatal(err)
-			}
-			m, err := view.Member(id, view.ObservedAt())
-			if err != nil {
-				t.Fatal(err)
-			}
-			challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: id, ReceiverDutyGeneration: m.DutyGeneration, Class: class, WindowStart: time.Now().UTC().Truncate(time.Hour)})
-		}
-		attempt, err := holder.Begin(stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{byte(170 + index)}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter})
-		if err != nil {
-			t.Fatal(err)
-		}
-		batch, _, err := attempt.Request()
-		if err != nil {
-			t.Fatal(err)
-		}
-		issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
-		})
-		clear(batch)
-		if issued.Outcome != "issued-offline" {
-			t.Fatal("genuine preparation issuance failed", issued.Phase, issued.Outcome)
-		}
-		if err := attempt.Complete(issued.Response, nil); err != nil {
-			t.Fatal(err)
-		}
-		clear(issued.Response)
-	}
-	return holder
-}
-
-func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile, mode string) {
-	t.Helper()
-	f, sockets, certificates := newRoleRouteFixture(t, carrier, 1, false, true)
+	fixture := openOperationNetwork(t, carrier, "issuer")
 	var holders [2]*stock.Owner
 	for i := range holders {
-		holders[i] = nativeIssuerOperationStock(t, f)
+		holders[i] = fixture.stock(t, admission.AllocationUser, [3]uint32{4, 8, 0}, 170,
+			operationBatch{class: admission.ForwardClass, ids: []byte{12, 13, 14, 15}},
+			operationBatch{class: admission.ControlClass, ids: []byte{11, 11, 11}})
 	}
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	peers := fixture.startForwarding(t, 256, 12, 13, 14, 15)
+	certificate, key := processfixture.WriteNativeCredential(t, fixture.certificates[fixture.profile.IssuerNodeID])
+	resultInfo, err := os.Stat(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := processfixture.StartObservedClock(t)
-	defer closeClock()
-	var peers []*joinCommandProcess
-	binary := processfixture.PinnedCommand(t)
-	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
-		cert, key := nativeIssuerOperationCredential(t, certificates[id])
-		plan := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "spend_root": t.TempDir(), "hosting_root": nativeIssuerOperationBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-		sockets[id]()
-		p := startJoinCommandProcess(t, t.Context(), binary, "route", "receive", "--config", hostingConfig(t, plan))
-		t.Cleanup(func() {
-			if !p.waited {
-				_ = p.command.Process.Kill()
-				_ = p.wait()
-			}
-		})
-		var ready map[string]string
-		if err := p.decode.Decode(&ready); err != nil || ready["phase"] != "listening" {
-			t.Fatal("actual forwarding peer unavailable", err, p.diagnostic.String())
-		}
-		peers = append(peers, p)
-	}
-	certificate, key := nativeIssuerOperationCredential(t, certificates[f.profile.IssuerNodeID])
-	resultInfo, err := os.Stat(filepath.Join(f.plan.ResultRoot, "results.journal"))
+	plan := processfixture.IssuerOperationPlan{Original: processfixture.IssuerAuthorityPlan{Network: fixture.seed(t), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Certificate: certificate, PrivateKey: key, Issuance: fixture.plan}, Signals: t.TempDir(), ResultBytes: resultInfo.Size()}
+	initialQuota, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := processfixture.IssuerOperationPlan{Original: processfixture.IssuerAuthorityPlan{Network: processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Certificate: certificate, PrivateKey: key, Issuance: f.plan}, Signals: t.TempDir(), ResultBytes: resultInfo.Size()}
-	initialQuota, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	initialResult, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+	initialResult, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	plan.QuotaBytes = int64(len(initialQuota))
 	plan.Original.Fault = mode
 	if mode == "post-result-successor" {
-		next := f.spec
+		next := fixture.spec
 		next.Number++
-		next.Previous = bundle.Epoch.Digest
+		next.Previous = fixture.bundle.Epoch.Digest
 		next.Seed[0]++
 		plan.Original.Successor, err = networkfixture.BuildClosed(next)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
-	sockets[f.profile.IssuerNodeID]()
+	fixture.releasePort(t, 11)
 	unit := fmt.Sprintf("ardents-issuer-operation-%d.service", os.Getpid())
-	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeIssuerOperationProcess", "ARDENTS_ISSUER_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 60)
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeIssuerOperationProcess", "ARDENTS_ISSUER_OPERATION_FIXTURE", writeAuthorityProcessPlan(t, plan), plan.Signals, 60)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
-	var prefixes [2]routeHandle
+	var prefixes [2]session.Prefix
 	for i := range prefixes {
-		p := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-		prefixes[i], err = startRoutePrefix(t.Context(), p, f.authority, holders[i])
+		p := funding.Plan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+		prefixes[i], err = session.OpenPrefix(t.Context(), p, fixture.routeAuthority, holders[i])
 		if err != nil {
 			t.Fatal("genuine operation Prefix unavailable", i, err)
 		}
-		defer prefixes[i].close()
+		defer prefixes[i].Close()
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "arm")
 	caller, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	completed := make(chan error, 1)
-	go func() { completed <- prefixes[0].issue(caller, 2, nil) }()
+	go func() { completed <- prefixes[0].Issue(caller, 2, nil) }()
 	processfixture.WaitOperationMarker(t, plan.Signals, "entered", 3*time.Second)
-	processfixture.RequireIssuerRootsHeld(t, f.plan)
-	before, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+	processfixture.RequireIssuerRootsHeld(t, fixture.plan)
+	before, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	committedAtHold, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+	committedAtHold, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -579,10 +474,10 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := prefixes[1].issue(t.Context(), 2, nil); err == nil {
+	if err := prefixes[1].Issue(t.Context(), 2, nil); err == nil {
 		t.Fatal("concurrent private issuing operation accepted")
 	}
-	after, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+	after, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("busy operation changed shared quota", err)
 	}
@@ -602,7 +497,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	if mode != "retry" && !processfixture.IssuerStorageFault(mode) {
 		processfixture.WriteOperationMarker(t, plan.Signals, "stop")
 		processfixture.WaitOperationMarker(t, plan.Signals, "denied", time.Second)
-		processfixture.RequireIssuerRootsHeld(t, f.plan)
+		processfixture.RequireIssuerRootsHeld(t, fixture.plan)
 		observed, err = budget.Observe(t.Context())
 		if err != nil || observed.ReservedBytes == 0 {
 			t.Fatal("original denial returned unjoined work", err, observed.ReservedBytes)
@@ -620,7 +515,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		t.Fatal("denied delivery became successful or lost local cancellation", err)
 	}
 	if !processfixture.IssuerStorageFault(mode) {
-		processfixture.RequireIssuerRootsHeld(t, f.plan)
+		processfixture.RequireIssuerRootsHeld(t, fixture.plan)
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "release")
 	// Wait for actual work-owned reservation return, never refund or retry in
@@ -642,19 +537,19 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		}
 		time.Sleep(time.Millisecond)
 	}
-	committed, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+	committed, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if mode == "retry" {
-		if err := prefixes[0].issue(t.Context(), 2, nil); err != nil {
+		if err := prefixes[0].Issue(t.Context(), 2, nil); err != nil {
 			t.Fatal("explicit original exact retry", err)
 		}
-		quotaAfter, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+		quotaAfter, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 		if err != nil || !bytes.Equal(before, quotaAfter) {
 			t.Fatal("exact retry debited again", err)
 		}
-		resultAfter, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+		resultAfter, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 		if err != nil || !bytes.Equal(committed, resultAfter) {
 			t.Fatal("exact retry changed committed result", err)
 		}
@@ -665,11 +560,11 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		if s := holders[0].Status(); !s.Pending || s.Busy || s.Remaining[1] != 2 {
 			t.Fatal("uncertain output deposited/refunded stock", s)
 		}
-		q, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+		q, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		r, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+		r, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -683,17 +578,17 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		if s := holders[0].Status(); !s.Pending || s.Busy || s.Remaining[1] != 2 {
 			t.Fatal("original denied delivery deposited or refunded stock", s)
 		}
-		quotaAfter, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+		quotaAfter, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 		if err != nil || !bytes.Equal(before, quotaAfter) {
 			t.Fatal("original denial changed retained quota", err)
 		}
-		resultAfter, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+		resultAfter, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 		if err != nil || !bytes.Equal(committedAtHold, resultAfter) {
 			t.Fatal("original denial changed retained result", err)
 		}
 	}
 	for _, p := range prefixes {
-		_ = p.close()
+		_ = p.Close()
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "stop")
 	if err := process.Wait(); err != nil {
@@ -703,12 +598,12 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		request, response := nativeIssuerCommittedPair(t, initialResult, committed)
 		defer clear(request)
 		defer clear(response)
-		beforeQuota, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+		beforeQuota, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		reopened, opened := issuer.OpenCurrent(t.Context(), f.plan, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+		reopened, opened := issuer.OpenCurrent(t.Context(), fixture.plan, func() (admission.AuthorityFacts, time.Time, error) {
+			return fixture.issuerObservation()
 		})
 		if opened.Outcome != "opened" {
 			t.Fatal("independent original issuing reopen refused", opened.Phase, opened.Outcome)
@@ -719,56 +614,18 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 			t.Fatal("independent exact replay lost result", replayed.Phase, replayed.Outcome, closed.Outcome, reopened.Err())
 		}
 		clear(replayed.Response)
-		afterQuota, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
+		afterQuota, err := os.ReadFile(filepath.Join(fixture.plan.AdmissionRoot, "admission.journal"))
 		if err != nil || !bytes.Equal(beforeQuota, afterQuota) {
 			t.Fatal("independent reopen debited again", err)
 		}
-		afterResult, err := os.ReadFile(filepath.Join(f.plan.ResultRoot, "results.journal"))
+		afterResult, err := os.ReadFile(filepath.Join(fixture.plan.ResultRoot, "results.journal"))
 		if err != nil || !bytes.Equal(committed, afterResult) {
 			t.Fatal("independent reopen rewrote retained result", err)
 		}
 	}
-	for _, p := range peers {
-		p.interrupt(t)
+	for _, peer := range peers {
+		peer.Stop(t, true)
 	}
-	for _, p := range peers {
-		err := p.wait()
-		var exit *exec.ExitError
-		if !errors.As(err, &exit) || exit.ExitCode() != 130 {
-			t.Fatal("actual operation peer did not join", err, p.diagnostic.String())
-		}
-	}
-}
-
-func nativeIssuerOperationCredential(t *testing.T, c tls.Certificate) (string, string) {
-	t.Helper()
-	certificate, key := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
-	if err := os.WriteFile(certificate, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Certificate[0]}), 0600); err != nil {
-		t.Fatal(err)
-	}
-	raw, err := x509.MarshalPKCS8PrivateKey(c.PrivateKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: raw})
-	if err := os.WriteFile(key, encoded, 0600); err != nil {
-		t.Fatal(err)
-	}
-	clear(raw)
-	clear(encoded)
-	return certificate, key
-}
-
-func nativeIssuerOperationBudget(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "budget")
-	start := time.Now().UTC().Truncate(time.Hour)
-	// Two complete simultaneous Forward allowances and their independent
-	// termination reserves must fit the declared provider period before spend.
-	if err := hosting.Initialize(root, hosting.Policy{Provider: "native two-holder operation", Start: start, End: start.Add(2 * time.Hour), Unit: "MiB", Quantity: 256, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1000}); err != nil {
-		t.Fatal(err)
-	}
-	return root
 }
 
 // Independent persisted-byte oracle: one newly appended request/response pair,
@@ -819,61 +676,57 @@ func nativeIssuerCommittedPair(t *testing.T, before, after []byte) ([]byte, []by
 // Fault scheduling pauses an actual State return on the real operation stack.
 // Files only coordinate the independent test driver; they authorize no effect.
 func TestNativeJoinOperationBoundariesTCP(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
+	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		for _, phase := range []string{"pre-spend", "pre-spend-stop", "pre-spend-successor", "pre-spend-process-loss", "post-spend", "post-spend-concurrent"} {
 			t.Run(string(carrier)+"/"+phase, func(t *testing.T) { nativeJoinOperationParent(t, carrier, phase) })
 		}
 	}
 }
 
-func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, phase string) {
+func nativeJoinOperationParent(t *testing.T, carrier string, phase string) {
 	t.Helper()
-	f, sockets, certificates := newJoinRouteFixture(t, carrier)
-	bundle, err := networkfixture.BuildClosed(f.spec)
-	if err != nil {
-		t.Fatal(err)
-	}
-	clock, closeClock := processfixture.StartObservedClock(t)
-	defer closeClock()
-	holder := joinRouteStock(t, f, admission.AllocationUser)
-	startJoinRouteReceiverRange(t, f, sockets, certificates, 19)
-	cert, key := processfixture.WriteNativeCredential(t, certificates[[32]byte{20}])
-	p := processfixture.JoinAuthorityPlan{Network: processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: phase}
+	fixture := openOperationNetwork(t, carrier, "join")
+	holder := fixture.stock(t, admission.AllocationUser, [3]uint32{0, 10, 0}, 31,
+		operationBatch{class: admission.ForwardClass, ids: []byte{12, 13, 14, 15, 16, 17, 18, 19, 20, 21}})
+	peers := fixture.startForwarding(t, 256, 12, 13, 14, 15, 16, 17, 18, 19)
+	cert, key := processfixture.WriteNativeCredential(t, fixture.certificates[[32]byte{20}])
+	p := processfixture.JoinAuthorityPlan{Network: fixture.seed(t), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
-		next := f.spec
+		next := fixture.spec
 		next.Number++
-		next.Previous = bundle.Epoch.Digest
+		next.Previous = fixture.bundle.Epoch.Digest
 		next.Seed[0]++
+		var err error
 		p.Successor, err = networkfixture.BuildClosed(next)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 	plan := processfixture.JoinOperationPlan{Original: p, Signals: t.TempDir()}
-	sockets[[32]byte{20}]()
+	fixture.releasePort(t, 20)
 	unit := fmt.Sprintf("ardents-join-operation-%d.service", os.Getpid())
-	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeJoinOperationProcess", "ARDENTS_JOIN_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 120)
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeJoinOperationProcess", "ARDENTS_JOIN_OPERATION_FIXTURE", writeAuthorityProcessPlan(t, plan), plan.Signals, 120)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
 	root := t.TempDir()
-	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-	routeContext, err := newRouteJoinContext(t.Context(), prefixPlan, f.authority, holder)
+	prefixPlan := funding.Plan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	routeContext, err := session.OpenJoinContext(t.Context(), prefixPlan, fixture.routeAuthority, holder)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer routeContext.close()
-	user, err := routeContext.open(t.Context())
+	defer routeContext.Close()
+	user, err := routeContext.Open(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer user.close()
-	var intent routeJoinIntent
+	defer user.Close()
+	var intent session.JoinIntent
 	for choice := uint8(0); choice < 2; choice++ {
-		recipient, e := user.recipient(choice)
+		recipient, e := user.Recipient(choice)
 		if e != nil {
 			t.Fatal(e)
 		}
 		if recipient.Node == [32]byte{20} {
-			intent = routeJoinIntent{Choice: choice, Node: recipient.Node, Generation: recipient.Generation, Deadline: minRouteDeadline(prefixPlan.Deadline, recipient.NotAfter), SetupDeadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}
+			intent = session.JoinIntent{Choice: choice, Node: recipient.Node, Generation: recipient.Generation, Deadline: earlierOperationDeadline(prefixPlan.Deadline, recipient.NotAfter), SetupDeadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)}
 			break
 		}
 	}
@@ -897,7 +750,7 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	completed := make(chan error, 1)
 	go func() {
 		var stream net.Conn
-		stream, err := user.join(caller, intent)
+		stream, err := user.Join(caller, intent)
 		if stream != nil {
 			err = errors.Join(err, stream.Close())
 		}
@@ -958,7 +811,216 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	if err != nil || observed.ReservedBytes != 0 {
 		t.Fatal("joined original leaked Hosting", observed, err)
 	}
-	if e := user.close(); e != nil {
+	if e := user.Close(); e != nil {
 		t.Log("original holder refusal cleanup", e)
 	}
+	for _, peer := range peers {
+		peer.Stop(t, true)
+	}
+}
+
+type operationNetwork struct {
+	spec           networkfixture.ClosedSpec
+	bundle         networkfixture.Closed
+	plan           issuer.Plan
+	state          *state.State
+	profile        admission.AuthorityFacts
+	routeAuthority funding.Authority
+	listeners      map[[32]byte]net.Listener
+	certificates   map[[32]byte]tls.Certificate
+	clock          string
+}
+
+// openOperationNetwork constructs the independent signed input and live holder
+// State. The measured Node and every Forwarding process open their own State.
+func openOperationNetwork(t *testing.T, carrier, measuredRole string) *operationNetwork {
+	t.Helper()
+	processfixture.WaitAdmissionHour(t)
+	spec, plan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec.Nodes = spec.Nodes[:1]
+	fixture := &operationNetwork{plan: plan, listeners: make(map[[32]byte]net.Listener), certificates: make(map[[32]byte]tls.Certificate)}
+	type duty struct{ id, domain, subrole byte }
+	roster := []duty{{12, 1, 1}, {13, 1, 1}, {14, 1, 2}, {15, 1, 2}}
+	switch measuredRole {
+	case "descriptor":
+		roster = append(roster, duty{17, 2, 5}, duty{18, 4, 3})
+	case "introduction":
+		roster = append(roster, duty{21, 4, 1}, duty{22, 4, 1}, duty{23, 4, 2}, duty{24, 4, 2}, duty{25, 4, 3})
+	case "join":
+		roster = append(roster, duty{16, 3, 1}, duty{17, 3, 1}, duty{18, 3, 2}, duty{19, 3, 2}, duty{20, 2, 4}, duty{21, 2, 4})
+	case "issuer":
+	default:
+		t.Fatalf("unexpected measured role %q", measuredRole)
+	}
+	for _, duty := range roster {
+		processfixture.AddReceivingFixtureNode(t, &spec, fixture.listeners, fixture.certificates, carrier, duty.id, duty.domain, duty.subrole)
+	}
+	if measuredRole == "issuer" {
+		listener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				t.Error(err)
+			}
+		})
+		original := &spec.Nodes[0]
+		original.Endpoint = listener.Addr().String()
+		fixture.listeners[original.NodeID] = listener
+		fixture.certificates[original.NodeID] = processfixture.RoleCertificate(t, original.PrivateKey)
+	}
+	fixture.spec = spec
+	var err error
+	fixture.bundle, err = networkfixture.BuildClosed(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	processfixture.PrepareIssuer(t, &fixture.plan, inventory, spec, fixture.bundle.Nodes[0], sha256.Sum256(fixture.bundle.Profile))
+	clock, closeClock := processfixture.StartObservedClock(t)
+	fixture.clock = clock
+	t.Cleanup(closeClock)
+	declaration := fixture.seed(t)
+	config, err := declaration.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture.state, err = state.OpenRetained(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := fixture.state.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	read := fixture.state.CurrentRuntime
+	fixture.routeAuthority = funding.Observe(read, fixture.state.CurrentRuntimeWitness, funding.PresentationGuard(read))
+	fixture.profile, _, err = fixture.issuerObservation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fixture
+}
+
+func (f *operationNetwork) seed(t *testing.T) state.AuthorityDeclaration {
+	t.Helper()
+	return processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), f.bundle, f.clock)
+}
+
+func (f *operationNetwork) issuerObservation() (admission.AuthorityFacts, time.Time, error) {
+	view, err := f.state.CurrentRuntime()
+	if err != nil {
+		return admission.AuthorityFacts{}, time.Time{}, err
+	}
+	facts, now, err := funding.NetworkFacts(view)
+	if err != nil {
+		return admission.AuthorityFacts{}, time.Time{}, err
+	}
+	member, err := view.Member(facts.IssuerNodeID, now)
+	if err != nil || member.PublicKey != f.plan.KeyBinding.Signer || member.DutyGeneration != facts.IssuerDutyGeneration || member.RoleDomain != 2 || member.Subrole != 6 {
+		return admission.AuthorityFacts{}, time.Time{}, errors.Join(errors.New("original fixture Issuer unavailable"), err)
+	}
+	return facts, now, nil
+}
+
+func (f *operationNetwork) releasePort(t *testing.T, id byte) {
+	t.Helper()
+	if err := f.listeners[[32]byte{id}].Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (f *operationNetwork) startForwarding(t *testing.T, capacity uint64, ids ...byte) []*processfixture.NativeProcess {
+	t.Helper()
+	binary := processfixture.PinnedCommand(t)
+	var peers []*processfixture.NativeProcess
+	for _, id := range ids {
+		nodeID := [32]byte{id}
+		cert, key := processfixture.WriteNativeCredential(t, f.certificates[nodeID])
+		plan := map[string]any{
+			"network": f.seed(t), "node_id": nodeID, "process_profile": processresource.Profile, "retirement_wait_ms": 5000,
+			"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(),
+			"hosting_root": processfixture.ProcessBudgetWithCapacity(t, capacity), "certificate": cert, "private_key": key,
+			"work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10},
+		}
+		f.releasePort(t, id)
+		peers = append(peers, processfixture.StartFreshRole(t, "forwarding", binary, writeAuthorityProcessPlan(t, plan), id))
+	}
+	return peers
+}
+
+type operationBatch struct {
+	class admission.Class
+	ids   []byte
+}
+
+func (f *operationNetwork) stock(t *testing.T, role admission.AllocationRole, maxima [3]uint32, first byte, batches ...operationBatch) *stock.Owner {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.Chmod(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	holder, err := stock.Open(root, role, f.issuerObservation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := holder.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	request, digest, err := holder.Request(maxima)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, now, err := f.issuerObservation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := holder.Import(digest, processfixture.FixturePermission(t, request, profile, f.spec.Authority, now)); err != nil {
+		t.Fatal(err)
+	}
+	view, err := f.state.CurrentRuntime()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index, batch := range batches {
+		var challenges []token.ClosedTokenContext
+		for _, id := range batch.ids {
+			member, err := view.Member([32]byte{id}, view.ObservedAt())
+			if err != nil {
+				t.Fatal(err)
+			}
+			challenges = append(challenges, token.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest, IssuerNodeID: profile.IssuerNodeID,
+				ReceiverNodeID: member.NodeID, ReceiverDutyGeneration: member.DutyGeneration, Class: uint8(batch.class), WindowStart: now.UTC().Truncate(time.Hour)})
+		}
+		intent := stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{first + byte(index)}, ProfileDigest: profile.Digest}, Bootstrap: true, Deadline: profile.NotAfter}
+		attempt, err := holder.Begin(intent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _, err := attempt.Request()
+		if err != nil {
+			t.Fatal(err)
+		}
+		issued := issuer.IssueCurrent(t.Context(), f.plan, raw, quota.Bootstrap, f.issuerObservation)
+		clear(raw)
+		if issued.Outcome != "issued-offline" {
+			t.Fatal("genuine preparation issuance failed", issued.Phase, issued.Outcome)
+		}
+		err = attempt.Complete(issued.Response, nil)
+		clear(issued.Response)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	return holder
+}
+
+func earlierOperationDeadline(a, b time.Time) time.Time {
+	if b.Before(a) {
+		return b
+	}
+	return a
 }

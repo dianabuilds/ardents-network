@@ -9,8 +9,6 @@ test -r /sys/fs/cgroup/cgroup.controllers
 
 : "${ARDENTS_NODE_NATIVE_COMMAND:?canonical Node command is required}"
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
-: "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
-: "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
 : "${ARDENTS_NODE_OWNER_TEST:?native Node owner test binary is required}"
 : "${ARDENTS_NODE_OWNER_TEST_SHA256:?independent Node owner test digest is required}"
 : "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
@@ -25,7 +23,6 @@ verify() {
     test "${actual%% *}" = "$2" || { echo 'native artifact digest differs' >&2; exit 2; }
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
-verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
 verify "$ARDENTS_NODE_OWNER_TEST" "$ARDENTS_NODE_OWNER_TEST_SHA256"
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeNodeIntroductionOperationProcess$' | grep -Fx TestNativeNodeIntroductionOperationProcess >/dev/null
 verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
@@ -38,10 +35,8 @@ TestOriginalNativeIntroductionManagedMemoryPressureRetires
 TestOriginalNativeIntroductionProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIntroduction' | grep '^TestOriginalNativeIntroduction' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Introduction resource discovery differs' >&2; exit 2; }
-expected='TestNativeIntroductionOperationBoundariesTCP'
-discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIntroduction' | grep '^TestNativeIntroduction' | sort)
-test "$discovered" = "$expected" || { echo 'Introduction operation discovery differs' >&2; exit 2; }
-expected_owner='TestNativeIntroductionOriginalAuthorityAndJoinTCP
+expected_owner='TestNativeIntroductionOperationBoundariesTCP
+TestNativeIntroductionOriginalAuthorityAndJoinTCP
 TestNativeIntroductionOriginalCommandFailureTCP
 TestNativeIntroductionOriginalHistoryLossTCP
 TestNativeIntroductionRegisterSubmitWithdrawTCP
@@ -63,4 +58,4 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIntroductionPartialStartupRefusalsTCP$' | grep -Fx TestNativeIntroductionPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIntroductionPartialStartupRefusalsTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroductionOperationBoundariesTCP$' -test.timeout=3m
+"$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeIntroductionOperationBoundariesTCP$' -test.timeout=3m
