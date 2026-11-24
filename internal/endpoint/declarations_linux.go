@@ -6,13 +6,13 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/execution"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -20,12 +20,10 @@ import (
 )
 
 func installedIdentity(encoded string) ([32]byte, error) {
-	var value [32]byte
-	raw, err := hex.DecodeString(encoded)
-	if err != nil || len(raw) != len(value) || hex.EncodeToString(raw) != encoded {
+	value, ok := canonicaldigest.Decode(encoded)
+	if !ok {
 		return value, errors.New("installed identity is unavailable")
 	}
-	copy(value[:], raw)
 	return value, nil
 }
 

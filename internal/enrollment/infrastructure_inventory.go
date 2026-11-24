@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -161,7 +162,7 @@ func parseInfrastructureInventory(raw []byte) (infrastructureInventory, error) {
 		return d, ErrInventory
 	}
 	for _, name := range infrastructureNames(f.Invocation) {
-		if !canonicalDigest(d.Files[name]) {
+		if !canonicaldigest.Valid(d.Files[name]) {
 			return d, ErrInventory
 		}
 	}
@@ -187,7 +188,7 @@ func infrastructureLimit(name string) int64 {
 // seven original bounded files and the actual executable of this process.
 // Self-verification does not establish trust in its first execution.
 func VerifyInfrastructure(ctx context.Context, root, pin string) (InfrastructureBundle, error) {
-	if !canonicalDigest(pin) {
+	if !canonicaldigest.Valid(pin) {
 		return InfrastructureBundle{}, ErrInput
 	}
 	s, err := loadInfrastructure(ctx, root, pin)

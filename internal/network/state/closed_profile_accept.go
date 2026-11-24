@@ -3,11 +3,11 @@ package state
 import (
 	"bytes"
 	"crypto/ed25519"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/state/durable"
@@ -142,14 +142,9 @@ func copyVerifiedProfile(profile closedprofile.Profile) closedprofile.Profile {
 }
 
 func closedProfileGeneration(encoded string) ([32]byte, error) {
-	if len(encoded) != 64 {
+	generation, ok := canonicaldigest.Decode(encoded)
+	if !ok {
 		return [32]byte{}, errors.New("state generation is invalid")
 	}
-	decoded, err := hex.DecodeString(encoded)
-	if err != nil || hex.EncodeToString(decoded) != encoded {
-		return [32]byte{}, errors.New("state generation is invalid")
-	}
-	var generation [32]byte
-	copy(generation[:], decoded)
 	return generation, nil
 }

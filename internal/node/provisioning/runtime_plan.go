@@ -2,7 +2,6 @@ package provisioning
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
@@ -45,12 +45,10 @@ func PrepareRuntimePlan(ctx context.Context, role string, flags map[string]strin
 	if err != nil {
 		return errRuntimePlan
 	}
-	nodeID, err := hex.DecodeString(flags["node-id"])
-	if err != nil || len(nodeID) != 32 || hex.EncodeToString(nodeID) != flags["node-id"] {
+	id, ok := canonicaldigest.Decode(flags["node-id"])
+	if !ok {
 		return errRuntimePlan
 	}
-	var id [32]byte
-	copy(id[:], nodeID)
 	work, err := preparePlanTraffic(flags["work"])
 	if err != nil {
 		return errRuntimePlan

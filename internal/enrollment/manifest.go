@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 )
 
 const (
@@ -13,17 +15,9 @@ const (
 	maximumFileLen = 64 << 20
 )
 
-func canonicalDigest(value string) bool {
-	if len(value) != 64 || strings.ToLower(value) != value {
-		return false
-	}
-	_, err := hex.DecodeString(value)
-	return err == nil
-}
-
 func matchesDigest(raw []byte, value string) bool {
 	digest := sha256.Sum256(raw)
-	return canonicalDigest(value) && hex.EncodeToString(digest[:]) == value
+	return canonicaldigest.Valid(value) && hex.EncodeToString(digest[:]) == value
 }
 
 func validName(name string) bool {
@@ -39,7 +33,7 @@ func parseManifest(raw []byte) (map[string]string, error) {
 	previous := ""
 	for line := range strings.SplitSeq(string(raw[:len(raw)-1]), "\n") {
 		parts := strings.Split(line, "  ")
-		if len(parts) != 2 || !canonicalDigest(parts[0]) || !validName(parts[1]) ||
+		if len(parts) != 2 || !canonicaldigest.Valid(parts[0]) || !validName(parts[1]) ||
 			parts[1] == "SHA256SUMS" || previous >= parts[1] || len(entries) == maximumFiles {
 			return nil, ErrInventory
 		}

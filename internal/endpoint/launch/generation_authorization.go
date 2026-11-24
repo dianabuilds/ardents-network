@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
@@ -26,7 +27,7 @@ var ErrAuthorization = generationauthorization.ErrAuthorization
 // The caller must supply these facts from its still-leased native inspection.
 func successorContinuity(previous generationBinding, floors release.FloorSet, local release.LocalEnvironment) error {
 	g := previous.Generation
-	if !floors.Complete() || g.TargetsVersion < 1 || !canonicalDigest(g.TargetsDigest) ||
+	if !floors.Complete() || g.TargetsVersion < 1 || !canonicaldigest.Valid(g.TargetsDigest) ||
 		floors.TargetsVersion < g.TargetsVersion ||
 		(floors.TargetsVersion == g.TargetsVersion && hex.EncodeToString(floors.TargetsDigest) != g.TargetsDigest) {
 		return release.ErrTrustUnavailable

@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 )
 
 const (
@@ -60,11 +62,7 @@ func decodeDescriptor(raw []byte, invocation, templateName string) (Declaration,
 		return Declaration{}, ErrInput
 	}
 	for _, name := range []string{ProgramName, templateName} {
-		value := d.Files[name]
-		if len(value) != 64 || strings.ToLower(value) != value {
-			return Declaration{}, ErrInput
-		}
-		if _, err := hex.DecodeString(value); err != nil {
+		if !canonicaldigest.Valid(d.Files[name]) {
 			return Declaration{}, ErrInput
 		}
 	}

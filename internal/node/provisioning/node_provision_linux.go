@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
@@ -113,8 +114,7 @@ func prepareNodeSigned(ctx context.Context, role nodeProvisioningRole, args []st
 			}
 		}
 	}
-	pin, err := hex.DecodeString(args[3])
-	if err != nil || len(pin) != 32 || hex.EncodeToString(pin) != args[3] {
+	if _, ok := canonicaldigest.Decode(args[3]); !ok {
 		return nil, artifacts.ErrInput
 	}
 	inputs := artifacts.NewInputs(ctx)

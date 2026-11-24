@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/generation"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
@@ -184,7 +185,7 @@ func digestHex(body []byte) string { return hex.EncodeToString(digestBytes(body)
 // public binding facts grant no fresh Release or native ownership authority.
 func freezeGenerationInventory(request Request, root string, files map[string][]byte, selected generationSelection, gid uint32) (map[string][]byte, generationBinding, error) {
 	if request.declared == nil || gid == 0 || selected.Schema != "ardents-endpoint-installation-selection-v1" ||
-		!canonicalDigest(selected.GenerationDigest) || !canonicalDigest(selected.BindingDigest) ||
+		!canonicaldigest.Valid(selected.GenerationDigest) || !canonicaldigest.Valid(selected.BindingDigest) ||
 		selected.BindingDigest != digestHex(files["binding.json"]) {
 		return nil, generationBinding{}, ErrBinding
 	}
@@ -230,11 +231,6 @@ func decodeCanonical(raw []byte, maximum int, target any) error {
 	return nil
 }
 
-func canonicalDigest(value string) bool {
-	digest, err := hex.DecodeString(value)
-	return err == nil && len(digest) == 32 && hex.EncodeToString(digest) == value
-}
-
 func canonicalPath(value string) bool {
 	return path.IsAbs(value) && path.Clean(value) == value && !strings.ContainsAny(value, "\x00\r\n")
 }
@@ -252,7 +248,7 @@ func inspectGeneration(root string, selectedRaw, bindingRaw []byte, files map[st
 	var selected generationSelection
 	var binding generationBinding
 	if !canonicalPath(root) || decodeCanonical(selectedRaw, 4<<10, &selected) != nil ||
-		selected.Schema != "ardents-endpoint-installation-selection-v1" || !canonicalDigest(selected.GenerationDigest) || !canonicalDigest(selected.BindingDigest) ||
+		selected.Schema != "ardents-endpoint-installation-selection-v1" || !canonicaldigest.Valid(selected.GenerationDigest) || !canonicaldigest.Valid(selected.BindingDigest) ||
 		digestHex(bindingRaw) != selected.BindingDigest || decodeCanonical(bindingRaw, 32<<10, &binding) != nil ||
 		binding.Schema != "ardents-endpoint-installation-binding-v1" || binding.InstallationRoot != root || binding.GenerationDigest != selected.GenerationDigest ||
 		binding.Account != "ardents-endpoint" || binding.Unit != "ardents-endpoint.service" || binding.UID == 0 || binding.GID == 0 || binding.UID == ^uint32(0) || binding.GID == ^uint32(0) ||
@@ -260,7 +256,7 @@ func inspectGeneration(root string, selectedRaw, bindingRaw []byte, files map[st
 		return inspectedGeneration{}, ErrBinding
 	}
 	for name, body := range files {
-		if path.Base(name) != name || !canonicalDigest(binding.Files[name]) || digestHex(body) != binding.Files[name] {
+		if path.Base(name) != name || !canonicaldigest.Valid(binding.Files[name]) || digestHex(body) != binding.Files[name] {
 			return inspectedGeneration{}, ErrBinding
 		}
 	}
@@ -318,7 +314,9 @@ func inspectGeneration(root string, selectedRaw, bindingRaw []byte, files map[st
 }
 
 func (target targetObservation) observation() (release.Decision, error) {
-	if !canonicalDigest(target.Digest) || !canonicalDigest(target.TargetsDigest) || target.TargetsVersion < 1 || target.ReleaseVersion < 1 || target.Length < 1 ||
+	digest, digestOK := canonicaldigest.Decode(target.Digest)
+	floor, floorOK := canonicaldigest.Decode(target.TargetsDigest)
+	if !digestOK || !floorOK || target.TargetsVersion < 1 || target.ReleaseVersion < 1 || target.Length < 1 ||
 		target.ReleaseIdentity == "" || target.Environment == "" || target.Network == "" {
 		return release.Decision{}, ErrBinding
 	}
@@ -326,9 +324,7 @@ func (target targetObservation) observation() (release.Decision, error) {
 	if err != nil || at.IsZero() || at.UTC().Format(time.RFC3339Nano) != target.ReferenceTime {
 		return release.Decision{}, ErrBinding
 	}
-	digest, _ := hex.DecodeString(target.Digest)
-	floor, _ := hex.DecodeString(target.TargetsDigest)
-	return release.Decision{Path: target.Path, Digest: digest, Length: target.Length, ReleaseIdentity: target.ReleaseIdentity, ReleaseVersion: target.ReleaseVersion,
+	return release.Decision{Path: target.Path, Digest: digest[:], Length: target.Length, ReleaseIdentity: target.ReleaseIdentity, ReleaseVersion: target.ReleaseVersion,
 		Platform: target.Platform, Architecture: target.Architecture, Environment: target.Environment, Network: target.Network, ReferenceTime: at,
-		Floors: release.FloorSet{TargetsVersion: target.TargetsVersion, TargetsDigest: floor}}, nil
+		Floors: release.FloorSet{TargetsVersion: target.TargetsVersion, TargetsDigest: floor[:]}}, nil
 }

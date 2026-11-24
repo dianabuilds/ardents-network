@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"os"
 	"strings"
@@ -39,8 +40,7 @@ func signNodeEpoch(ctx context.Context, role nodeProvisioningRole, args []string
 			}
 		}
 	}
-	pin, err := hex.DecodeString(args[2])
-	if err != nil || len(pin) != 32 || hex.EncodeToString(pin) != args[2] {
+	if _, ok := canonicaldigest.Decode(args[2]); !ok {
 		return nil, artifacts.ErrInput
 	}
 	inputs := artifacts.NewInputs(ctx)

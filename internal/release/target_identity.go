@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -267,8 +268,12 @@ func validateBuilderAttestations(value targetIdentityDescriptor) error {
 			record.BuildInputCommitment != value.BuildInputCommitment {
 			return errors.New("builder attestation does not match the authenticated build inputs")
 		}
-		decoded, err := hex.DecodeString(record.TargetSHA256)
-		if err != nil || len(decoded) != 32 {
+		// The canonical shape is the effective acceptance bound (#835):
+		// verifyBuilderAttestations below already requires exact equality with
+		// hex.EncodeToString of the authenticated digest, so a non-canonical
+		// encoding could never be accepted; refusing it here changes no
+		// reachable acceptance.
+		if !canonicaldigest.Valid(record.TargetSHA256) {
 			return errors.New("builder attestation has an invalid target digest")
 		}
 	}

@@ -530,7 +530,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
-		"internal/admission", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
+		"internal/admission", "internal/canonicaldigest", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
 		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
@@ -588,7 +588,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "internal/network/source/command/prepare_linux.go":
 			return local == "internal/endpoint" || local == "internal/network/state" || local == "internal/pathgrammar" || local == "internal/platform/artifacts"
 		case "internal/network/source/command/inspect_linux.go":
-			return local == "internal/network/source/inspection" || local == "internal/platform/artifacts"
+			return local == "internal/network/source/inspection" || local == "internal/platform/artifacts" || local == "internal/canonicaldigest"
 		case "internal/network/source/command/serve_linux.go":
 			return local == "internal/network/source/serving" || local == "internal/platform/artifacts" || local == "internal/processresource"
 		case "internal/network/source/command/command_linux_test.go":
@@ -838,6 +838,7 @@ func successorImportAllowed(source, dependency string) bool {
 	owner := path.Dir(source)
 	permitted := map[string][]string{
 		"internal/processresource":                   {},
+		"internal/canonicaldigest":                   {},
 		"internal/durablefile":                       {},
 		"internal/pathgrammar":                       {},
 		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
@@ -849,7 +850,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/network/source":                    {"network/canonicalcursor", "network/epoch"},
 		"internal/network/source/serving":            {"network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "processresource"},
 		"internal/network/source/servingdeclaration": {},
-		"internal/network/state":                     {"network/canonicalcursor", "network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
+		"internal/network/state":                     {"network/canonicalcursor", "canonicaldigest", "network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
 		"internal/network/state/durable":             {"durablefile", "pathgrammar"},
 		"internal/admission":                         {"admission/issuerprofile"},
 		"internal/admission/issuerprofile":           {},
@@ -864,31 +865,31 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/admission/issuance":                {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
 		"internal/admission/issuer":                  {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing", "pathgrammar"},
 		"internal/admission/issuerprofile/signing":   {"admission/issuerprofile", "pathgrammar"},
-		"internal/hosting":                           {"pathgrammar"},
+		"internal/hosting":                           {"canonicaldigest", "pathgrammar"},
 		"internal/publication":                       {},
 		"internal/publication/durable":               {"publication"},
-		"internal/publication/instance":              {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
+		"internal/publication/instance":              {"canonicaldigest", "publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
 		"internal/publication/runtime":               {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
 		"internal/connection":                        {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
 		"internal/connection/wire":                   {},
 		"internal/reachability":                      {"publication", "pathgrammar"},
-		"internal/enrollment":                        {"pathgrammar"},
-		"internal/release":                           {"durablefile", "pathgrammar"},
+		"internal/enrollment":                        {"canonicaldigest", "pathgrammar"},
+		"internal/release":                           {"canonicaldigest", "durablefile", "pathgrammar"},
 		"internal/execution":                         {},
 		"internal/execution/runtime":                 {"execution", "execution/worker"},
-		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit", "pathgrammar"},
+		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit", "canonicaldigest", "pathgrammar"},
 		"internal/release/endpoint":                  {"enrollment", "release"},
-		"internal/release/infrastructure":            {"enrollment", "release", "pathgrammar"},
-		"internal/release/infrastructure/launch":     {"admission/issuance", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "node", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
-		"internal/endpoint/launch":                   {"release/endpoint", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
+		"internal/release/infrastructure":            {"canonicaldigest", "enrollment", "release", "pathgrammar"},
+		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "node", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
+		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
 		"internal/platform/cgroup":                   {"pathgrammar"},
 		"internal/platform/artifacts":                {"pathgrammar"},
-		"internal/endpoint/plan":                     {},
+		"internal/endpoint/plan":                     {"canonicaldigest"},
 
 		"internal/platform/systemd":    {},
-		"internal/platform/process":    {"pathgrammar"},
-		"internal/endpoint/generation": {"pathgrammar"},
-		"internal/endpoint/unit":       {"platform/systemd"},
+		"internal/platform/process":    {"canonicaldigest", "pathgrammar"},
+		"internal/endpoint/generation": {"canonicaldigest", "pathgrammar"},
+		"internal/endpoint/unit":       {"canonicaldigest", "platform/systemd"},
 		"internal/route":               {},
 		"internal/route/ardp":          {},
 		"internal/route/issuer":        {"route/ardp", "admission"},
@@ -906,7 +907,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
 		"internal/route/receiver":     {"route/issuer", "route/join/pairing", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
 		"internal/endpoint/session":   {"admission", "admission/stock", "endpoint/funding", "endpoint/publisher", "execution/runtime", "hosting", "reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection", "pathgrammar"},
-		"internal/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "endpoint/launch", "network", "network/source", "network/state", "pathgrammar"},
+		"internal/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "canonicaldigest", "execution", "execution/runtime", "hosting", "endpoint/launch", "network", "network/source", "network/state", "pathgrammar"},
 		"internal/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection", "pathgrammar"},
 		"internal/endpoint/reader":    {"endpoint/funding", "admission", "admission/stock", "connection", "execution/runtime", "hosting", "network", "reachability", "route/prefix", "route/selection"},
 		"internal/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection", "pathgrammar"},

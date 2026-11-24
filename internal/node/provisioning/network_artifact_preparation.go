@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
@@ -23,7 +24,7 @@ func (v *preparationID) UnmarshalJSON(raw []byte) error {
 	if json.Unmarshal(raw, &text) != nil {
 		return errNetworkPreparation
 	}
-	id, ok := decodeHex32(text)
+	id, ok := canonicaldigest.Decode(text)
 	if !ok {
 		return errNetworkPreparation
 	}

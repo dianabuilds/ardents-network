@@ -1,7 +1,6 @@
 package unit
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"path"
@@ -9,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
@@ -25,7 +25,7 @@ func VerifyPlatformConfiguration(version string, unit, service managerProperties
 
 func verifyEndpointConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest string, preExec []string) error {
 	major, _, _ := strings.Cut(version, ".")
-	if major != "249" && major != "255" || !canonicalDigest(generationDigest) {
+	if major != "249" && major != "255" || !canonicaldigest.Valid(generationDigest) {
 		return ErrNativeUnavailable
 	}
 	for name, wanted := range map[string]string{"Id": "ardents-endpoint.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-endpoint.service"} {
@@ -251,8 +251,3 @@ var (
 	ErrBinding           = errors.New("installation unit: observed contract differs")
 	ErrNativeUnavailable = errors.New("installation unit: manager profile unavailable")
 )
-
-func canonicalDigest(value string) bool {
-	decoded, err := hex.DecodeString(value)
-	return err == nil && len(decoded) == 32 && hex.EncodeToString(decoded) == value
-}

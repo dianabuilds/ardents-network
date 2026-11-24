@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"net"
@@ -30,11 +31,11 @@ func (id *sourceInitialID) UnmarshalJSON(raw []byte) error {
 	if json.Unmarshal(raw, &text) != nil {
 		return artifacts.ErrInput
 	}
-	value, err := hex.DecodeString(text)
-	if err != nil || len(value) != 32 || hex.EncodeToString(value) != text {
+	value, ok := canonicaldigest.Decode(text)
+	if !ok {
 		return artifacts.ErrInput
 	}
-	copy(id[:], value)
+	copy(id[:], value[:])
 	return nil
 }
 
@@ -123,8 +124,7 @@ func prepareSourceInitialNetwork(ctx context.Context, args []string, observe fun
 	var pin string
 	if signing {
 		pin = args[len(args)-3]
-		decoded, err := hex.DecodeString(pin)
-		if err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != pin {
+		if _, ok := canonicaldigest.Decode(pin); !ok {
 			return nil, artifacts.ErrInput
 		}
 	}

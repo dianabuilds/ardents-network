@@ -10,6 +10,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/generation"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
@@ -174,7 +175,7 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 		return nil, err
 	}
 	var selected generationSelection
-	if decodeCanonical(selectedRaw, 4<<10, &selected) != nil || !canonicalDigest(selected.GenerationDigest) {
+	if decodeCanonical(selectedRaw, 4<<10, &selected) != nil || !canonicaldigest.Valid(selected.GenerationDigest) {
 		return nil, ErrBinding
 	}
 	parent := filepath.Join(directory, "generations")

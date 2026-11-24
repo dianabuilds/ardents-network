@@ -61,7 +61,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "cmd/ardents-next/source_inspection_linux.go":
-		return dependency == modulePath+"/internal/network/source/inspection" || dependency == modulePath+"/internal/platform/artifacts"
+		return dependency == modulePath+"/internal/network/source/inspection" || dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/network/source/inspection/inspection_linux_test.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/network/source/inspection/inspection_linux.go":
@@ -79,7 +79,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/admission/issuance" || dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource"
 	case "internal/node/provisioning/runtime_plan.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuance", modulePath + "/internal/hosting", modulePath + "/internal/network/state",
+		case modulePath + "/internal/admission/issuance", modulePath + "/internal/canonicaldigest", modulePath + "/internal/hosting", modulePath + "/internal/network/state",
 			modulePath + "/internal/node", modulePath + "/internal/pathgrammar", modulePath + "/internal/platform/artifacts", modulePath + "/internal/processresource":
 			return true
 		}
@@ -88,7 +88,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/node/provisioning/node_provision_linux.go",
 		"internal/node/provisioning/node_record_linux.go":
 		switch dependency {
-		case modulePath + "/internal/network/epoch", modulePath + "/internal/platform/artifacts":
+		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/network/epoch", modulePath + "/internal/platform/artifacts":
 			return true
 		}
 	case "internal/node/provisioning/initial_network_keys_linux.go",
@@ -111,7 +111,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/release/infrastructure/signing/source_release_keys_linux.go",
 		"internal/release/infrastructure/signing/source_release_plan_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/platform/artifacts":
+		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts":
 			return true
 		}
 	case "internal/node/provisioning/epoch_provision_native_linux_test.go":
@@ -122,7 +122,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/node/provisioning/epoch_signing_linux.go",
 		"internal/node/provisioning/source_initial_network_linux.go":
 		switch dependency {
-		case modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/platform/artifacts":
+		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/network/epoch", modulePath + "/internal/network/source", modulePath + "/internal/platform/artifacts":
 			return true
 		}
 	case "internal/node/provisioning/forwarding_token_authority_native_linux_test.go":
@@ -206,7 +206,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		}
 	case "internal/node/provisioning/network_artifact_preparation.go":
 		switch dependency {
-		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
+		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
 			return true
 		}
 	case "internal/node/provisioning/network_signing_declaration_linux.go":
@@ -218,7 +218,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/node/provisioning/network_certificate_signing_linux_test.go":
 		return dependency == modulePath+"/internal/network/epoch"
 	case "internal/node/provisioning/network_profile_signing_linux.go":
-		return dependency == modulePath+"/internal/network/closedprofile"
+		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/network/closedprofile"
 	case "internal/node/provisioning/network_output_linux.go", "internal/node/provisioning/network_signing_linux.go",
 		"internal/node/provisioning/network_inventory_native_linux_test.go",
 		"internal/node/provisioning/network_profile_native_linux_test.go",

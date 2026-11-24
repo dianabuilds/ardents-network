@@ -12,6 +12,8 @@ import (
 	posixpath "path"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 )
 
 // Permission declares the local request/response paths and finite resource maxima.
@@ -309,7 +311,7 @@ func DecodeDeclaration(raw []byte) (Declaration, error) {
 	if request.Schema != "ardents-endpoint-installation-request-v1" {
 		return Declaration{}, errors.New("installation request schema is invalid")
 	}
-	if request.ManifestSHA256 != "" && !canonicalDigest(request.ManifestSHA256) {
+	if request.ManifestSHA256 != "" && !canonicaldigest.Valid(request.ManifestSHA256) {
 		return Declaration{}, errors.New("installation pin is invalid")
 	}
 	at, err := time.Parse(time.RFC3339Nano, request.ReferenceTime)
@@ -395,11 +397,6 @@ func decodeCanonical(raw []byte, maximum int, target any) error {
 		return errors.New("installation document is not canonical")
 	}
 	return nil
-}
-
-func canonicalDigest(value string) bool {
-	digest, err := hex.DecodeString(value)
-	return err == nil && len(digest) == 32 && hex.EncodeToString(digest) == value
 }
 
 func canonicalPath(path string) bool {
