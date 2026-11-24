@@ -18,25 +18,27 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/reachability"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-// Retained Forwarding lifecycle (#604 FJD stage A): the first installation runs
-// the fresh --config composition (creating participation and receiving
-// histories), then every subsequent invocation is an independently checked
-// --retained-config opening over those existing histories. Proves listening,
-// joined cancellation with producer removal,
-// retained relaunch, and crash refusal (a killed invocation leaves the live
-// node-duty fence; the next retained opening refuses before listening). The
-// repair-retained recovery leg against real manager facts is the separate
-// installed platform gate (stage C); here the crash leaves the producer retained
-// and the relaunch refuses, exactly as the transient Source lifecycle (1.2).
-//
-// Honest limits: transient systemd-run units, no installed ardents-forwarding.service,
-// no loaded-manager platform check pre-start and no repair-retained manager
-// qualification. One fixture operator, not independent participants.
-
 func TestNativeForwardingRetainedLifecycle(t *testing.T) {
+	testNativeRetainedLifecycle(t, "forwarding", processresource.Profile, 12, 3, 1, hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20})
+}
+
+func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
+	testNativeRetainedLifecycle(t, "descriptor", processresource.DescriptorProfile, 17, 2, 5, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10})
+}
+
+func TestNativeJoinRetainedLifecycle(t *testing.T) {
+	testNativeRetainedLifecycle(t, "join", processresource.JoinProfile, 20, 2, 4, hosting.Traffic{Tx: 32 << 20})
+}
+
+// The transient native process proves listening, joined cancellation and the
+// durable refusal after a killed original process. Installed manager repair
+// and live Route traffic each have their own native profiles.
+func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain, subrole byte, work hosting.Traffic) {
+	t.Helper()
 	binary := PinnedCommand(t)
 	spec, _, _ := PrepareNetworkGenesis(t, t.TempDir())
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -45,6 +47,9 @@ func TestNativeForwardingRetainedLifecycle(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = listener.Close() })
 	spec.Nodes[1].Endpoint = listener.Addr().String()
+	spec.Nodes[1].NodeID = [32]byte{id}
+	spec.Nodes[1].RoleDomain = domain
+	spec.Nodes[1].Subrole = subrole
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
@@ -64,10 +69,22 @@ func TestNativeForwardingRetainedLifecycle(t *testing.T) {
 	budget := ProcessBudget(t)
 	participation := filepath.Join(t.TempDir(), "participation")
 	spend := t.TempDir()
-	plan := map[string]any{"network": networkPlan, "node_id": member.NodeID, "process_profile": processresource.Profile,
+	plan := map[string]any{"network": networkPlan, "node_id": member.NodeID, "process_profile": profile,
 		"participation_root": participation, "spend_root": spend, "hosting_root": budget,
 		"certificate": certPath, "private_key": keyPath,
-		"work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+		"work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+	var storeConfig reachability.StoreConfig
+	if role == "descriptor" {
+		storeConfig = reachability.StoreConfig{Root: t.TempDir(), Network: networkPlan.NetworkID}
+		plan["descriptor_root"] = storeConfig.Root
+		store, err := reachability.OpenStore(storeConfig)
+		if err != nil {
+			t.Fatal("Store root provisioning refused", err)
+		}
+		if err := store.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -96,14 +113,14 @@ func TestNativeForwardingRetainedLifecycle(t *testing.T) {
 	// First installation: the fresh --config composition creates the participation
 	// and receiving histories and claims the producer before a requested stop
 	// joins and removes the producer.
-	first := StartForwarding(t, binary, planPath, 12)
+	first := StartFreshRole(t, role, binary, planPath, id)
 	producerPresent(true, "first launch")
 	first.Stop(t)
 	producerPresent(false, "first completion")
 
 	// Retained relaunch over the existing histories: a new independently checked
 	// invocation claims the producer again and joins cleanly.
-	relaunch := StartRetainedRole(t, "forwarding", binary, planPath, 12)
+	relaunch := StartRetainedRole(t, role, binary, planPath, id)
 	producerPresent(true, "retained relaunch")
 	relaunch.Stop(t)
 	producerPresent(false, "retained relaunch completion")
@@ -111,14 +128,25 @@ func TestNativeForwardingRetainedLifecycle(t *testing.T) {
 	// A killed retained invocation supplies no completion evidence: the live
 	// node-duty fence stays retained and the next retained opening refuses before
 	// listening. Repair against real manager facts is the installed gate (stage C).
-	crash := StartRetainedRole(t, "forwarding", binary, planPath, 12)
+	crash := StartRetainedRole(t, role, binary, planPath, id)
 	producerPresent(true, "crash launch")
 	code, _ := JoinRetainedRole(t, crash, "SIGKILL")
 	if code == 0 || code == 130 {
-		t.Fatal("killed Forwarding reported joined completion", code)
+		t.Fatal("killed role reported joined completion", role, code)
 	}
 	producerPresent(true, "after crash")
-	refused := LaunchRetainedRole(t, "forwarding", binary, planPath, 12)
+	if role == "descriptor" {
+		// The process died with no publication in flight. The original Store
+		// must reopen without an uncertain stage or a live lease.
+		store, err := reachability.OpenRetainedStore(storeConfig)
+		if err != nil {
+			t.Fatal("retained Store refused after crash without uncertain stage", err)
+		}
+		if err := store.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	refused := LaunchRetainedRole(t, role, binary, planPath, id)
 	code, event := JoinRetainedRole(t, refused, "")
 	if code != 1 || event["phase"] != "refused" {
 		t.Fatal("retained producer adopted after crash", code, event, refused.Diagnostic.String())
