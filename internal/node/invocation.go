@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"runtime"
 	"time"
 )
 
@@ -26,6 +27,15 @@ type InvocationRole interface {
 	JoinedOutcome() string
 	JoinedFailureOwners() (string, string)
 }
+
+// RuntimeInvocation is the original process handle with its first failure report.
+type RuntimeInvocation interface {
+	InvocationRole
+	FirstFailure() *FailureDiagnostic
+}
+
+// RuntimeAvailable reports whether the selected host can start a Node role.
+const RuntimeAvailable = runtime.GOOS == "linux"
 
 // InvocationCompletion describes the physically joined invocation. The original
 // authority is retained until the role has joined, including after a timeout.

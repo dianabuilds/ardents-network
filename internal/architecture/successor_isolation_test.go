@@ -574,7 +574,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "internal/node/command" {
 		switch source {
-		case "cmd/ardents-next/node.go", "cmd/ardents-next/node_roles_linux.go":
+		case "cmd/ardents-next/node.go", "cmd/ardents-next/node_roles.go":
 			return true
 		default:
 			return false
@@ -1069,7 +1069,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_join_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
-		if source == "cmd/ardents-next/node_roles_linux.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
+		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_authority_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
@@ -1115,6 +1115,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_issuer_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/transport") {
+			return true
+		}
+		if (source == "internal/node/runtime_linux.go" || source == "internal/node/runtime_other.go") && dependency == modulePath+"/internal/admission/issuer" {
 			return true
 		}
 		if source == "internal/node/issuer_linux.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {

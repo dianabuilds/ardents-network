@@ -232,22 +232,13 @@
     "windows-amd64": [
       {
         "symbols": [
-          "internal/node.SuperviseInvocation",
-          "internal/node.awaitNodeCompletion",
           "internal/node.credential.close",
           "internal/node.decodeCredential",
           "internal/node.originalRetirementResult",
-          "internal/node.removeOriginalRetirementNotice",
-          "internal/node/command.ReadCancelableRolePlan",
-          "internal/node/command.ReadRolePlan",
-          "internal/node/command.ReportCompletion",
-          "internal/node/command.ReportWaitExpired",
-          "internal/node/command.StartupRefusal",
-          "internal/node/command.WriteEvent",
-          "internal/node/command.failureDiagnostic"
+          "internal/node.removeOriginalRetirementNotice"
         ],
         "classification": "portable Node rules with Linux role startup",
-        "rationale": "Plan input and cancellation, credential decoding and clearing, joined retirement and outcome projection run in the portable test inventory. Linux role startup uses these rules in production. Windows refuses native startup before opening the plan.",
+        "rationale": "Credential decoding and clearing and the retirement error filter run in portable tests and serve the Linux runtime. The command composition is analyzed on Windows too, but actual Windows invocation refuses before opening the plan.",
         "owner": "Node command",
         "retirement": "Remove each symbol when a maintained Windows Node role consumes it."
       },
@@ -339,7 +330,6 @@
           "internal/network/source.ObservePublicTrust",
           "internal/network/source.observeChain",
           "internal/network/source.publicCertificates",
-          "internal/processresource.Failure",
           "internal/release.StaticMetadataFiles"
         ],
         "classification": "P1-B batch 1 de-tagged pure leaf production files with Linux-native genuine consumers (#781, #691)",
@@ -374,16 +364,11 @@
           "internal/endpoint/funding.minRouteDeadline",
           "internal/endpoint/session.minRouteDeadline",
           "internal/hosting.Reservation.ReleaseJoined",
-          "internal/node.StartupFailure",
           "internal/node.admissionFacts",
           "internal/node.expiredMeasurement",
-          "internal/node.expiredProcessObservation.Error",
           "internal/node.failureRecord.retain",
           "internal/node.failureRecord.retainCleanup",
-          "internal/node.failureRecord.snapshot",
-          "internal/node.resourceDiagnostic",
-          "internal/node.startupFailure.Error",
-          "internal/node.startupFailure.Unwrap"
+          "internal/node.failureRecord.snapshot"
         ],
         "classification": "P1-B batch 2 de-tagged newly-unlocked pure production files with Linux-native genuine consumers (#787, #691)",
         "rationale": "These exact functions were accidentally Linux-bound pure Go unlocked by batch 1: the Node first-failure and admission public-observation projections (node/failure_projection.go, node/admission_projection.go), the whole endpoint/funding composition (source/preparation/prefix/issuance/parents/observation/reservation) and the endpoint/session deadline helper. Hosting ReleaseJoined now owns the shared bounded release and is reached by the portable nil-reservation test. Batch 2 dropped their Linux build constraints after per-file purity verification at the integration candidate: each composes only portable symbols (batch-1 hosting reservation release, processresource failure projection, stock/token/prefix/selection helpers) and adds no native mechanism. Their genuine production consumers remain Linux-tagged (session OpenPrefix/OpenBootstrap/OpenJoinContext keep their !linux typed refusals in route_other.go; endpoint publisher/reader and cmd/ardents-next adapters; node role lifetimes compose the Linux forwarding lifetime and route/receiver.Channel), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Node projections (failure_projection_test.go, admission_projection_test.go), the session reservation helpers (reservation_test.go) and funding's Stock-preparation coordination (preparation_test.go), so those are production-dead but not test-dead; the remaining funding Source/Prefix/Parents/issuance compositions are fully dead on Windows and carry a separate reviewed test_dead allowance. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals, and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",
@@ -405,16 +390,6 @@
         "rationale": "These exact functions were accidentally Linux-bound pure Go whose composed symbols are already portable: the Publisher fixed document stream contract (contract.go, composes Operation.BindStreamContract/document.MaximumBytes), and the Reader local Text result projection (result.go, composes application/connection.Outcome and application/document.NewSnapshot over io.Pipe). Batch 3 dropped their Linux build constraints after per-file purity verification at origin/dev: each adds no native mechanism. Their genuine production consumers remain Linux-tagged (publisher/opening_linux.go for DocumentContract; reader/reader_linux.go for newResultStream/resultStream, itself behind the unchanged !linux LaunchReader refusal), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Reader projection (result_test.go) so it is production-dead but not test-dead; DocumentContract has no portable test (their consumers construct a live Operation/RuntimeView only beside the Linux composition) and carry a separate reviewed test_dead allowance. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals (publisher opening_other.go/snapshot_other.go, reader reader_worker_other.go, session route_other.go), and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; Endpoint, Publisher and Reader owners",
         "retirement": "Remove each exact Windows entry when a selected genuine portable production consumer reaches it (a later dependency-chain batch unlocks the publisher/reader Open compositions after the runtime native worker seam, route/introduction slot-history and route/selection #793 Windows owner-only fix), or when the owning contract is retired. Lost Linux production reachability requires repair, not another allowance."
-      },
-      {
-        "symbols": [
-          "internal/route/role.Authority.ObserveHello",
-          "internal/route/role.Authority.observeMember"
-        ],
-        "classification": "Linux receiving JOIN coherent fresh authority observation",
-        "rationale": "The genuine Linux receiving JOIN outer channel uses ObserveHello and its shared fresh member observation at framing boundaries. Windows has no native receiving Node composition; its existing Hello and Member contracts remain exercised by portable tests. No Linux production allowance or test-only reachability is admitted.",
-        "owner": "Product Owner and Codex; Route role authority and receiving composition",
-        "retirement": "Remove these exact Windows entries when a selected genuine Windows caller reaches them or the owning API is retired. Linux production reachability and both empty test deadcode results remain mandatory."
       },
       {
         "symbols": [
@@ -745,15 +720,8 @@
       },
       {
         "symbols": [
-          "internal/network.RuntimeView.IssuerNodeID",
-          "internal/network.RuntimeView.MatchDuty",
-          "internal/network.RuntimeView.MemberByKey",
-          "internal/network.RuntimeView.Members",
-          "internal/network.RuntimeView.RetainDuty",
-          "internal/route.CarrierPermitted",
           "internal/route.Conflict",
           "internal/route.InteriorSet.Check",
-          "internal/route.PurposePermitsDuty",
           "internal/route.SelectInterior",
           "internal/route/ardp.DecodeHello",
           "internal/route/ardp.EncodeHello",
@@ -972,9 +940,6 @@
           "internal/route/receiver.nodePool.interrupt",
           "internal/route/receiver.pooledCarrier.release",
           "internal/route/role.AdmissionClass",
-          "internal/route/role.Authority.FreshHello",
-          "internal/route/role.Authority.Hello",
-          "internal/route/role.Authority.Member",
           "internal/route/role.Binding",
           "internal/route/role.Conflicting",
           "internal/route/role.Present",

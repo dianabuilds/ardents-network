@@ -502,7 +502,7 @@ Node validates the role and independent roots for recovery.
 actual manager while Network State decides whether to repair. The Node domain
 remains independent of `network/state`. The five runtime commands share the
 command-owned State acquisition, joined retirement and JSON outcome projection
-in `node_roles_linux.go`. Each invocation retains its own genuine typed
+in `node_roles.go`. Each invocation retains its own genuine typed
 constructor and role roots. Introduction retained repair now consumes the
 same full Introduction declaration grammar as its runtime (the former six-field
 repair subset is normalized). `node prepare-plan` delegates exclusive production of the role plan JSON to
@@ -695,7 +695,7 @@ Node Forwarding role. Each consumer retains its own reservation map and lifetime
 
 `internal/node` composes original Forwarding, Issuer, Descriptor, Introduction and
 JOIN lifetimes through the typed CLI adapters in
-`cmd/ardents-next/node_roles_linux.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
+`cmd/ardents-next/node_roles.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
 producer and fixed TLS custody, full class-2 reserve-before-spend and retained
 joined completion. Matching, both RESULT writes, credit, EOF and CLOSE remain
 Route rules. It grants no refill, Service authority or automatic replacement.

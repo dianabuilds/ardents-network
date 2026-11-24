@@ -15,17 +15,16 @@ import (
 func TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput(t *testing.T) {
 	t.Setenv("ARDENTS_DEBUG_SOCKET", "")
 	binary := buildNodeCommand(t)
-	for _, route := range [][]string{
-		{"node", "forwarding", "--config"},
-		{"node", "issuer", "--config"},
-		{"node", "descriptor", "--config"},
-		{"node", "introduction", "--config"},
-		{"node", "join", "--config"},
-		{"node", "forwarding", "repair-retained"},
-		{"node", "descriptor", "repair-retained"},
-		{"node", "introduction", "repair-retained"},
-		{"node", "join", "repair-retained"},
-	} {
+	var routes [][]string
+	for _, role := range []string{"forwarding", "issuer", "descriptor", "introduction", "join"} {
+		for _, flag := range []string{"--config", "--retained-config"} {
+			routes = append(routes, []string{"node", role, flag})
+		}
+		if role != "issuer" {
+			routes = append(routes, []string{"node", role, "repair-retained"})
+		}
+	}
+	for _, route := range routes {
 		t.Run(strings.Join(route[1:], "/"), func(t *testing.T) {
 			input := filepath.Join(t.TempDir(), "unavailable-private-input")
 			args := append(route, input)

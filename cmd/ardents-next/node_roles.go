@@ -1,5 +1,3 @@
-//go:build linux
-
 package main
 
 import (
@@ -16,6 +14,12 @@ import (
 )
 
 func runNodeRole(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
+	if !node.RuntimeAvailable {
+		if err := nodecommand.WriteEvent(out, "node."+operation, "refused", "unsupported-platform", "", "", ""); err != nil {
+			return 2
+		}
+		return 1
+	}
 	switch operation {
 	case "forwarding":
 		return runNodeForwarding(ctx, args, out, diagnostic)
@@ -50,21 +54,8 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	if err != nil {
 		return 2
 	}
-	listen := node.ListenForwarding
-	if retained {
-		listen = node.ListenForwardingRetained
-	}
-	return runNodeWithState(ctx, out, diagnostic, nodecommand.ForwardingOperation, config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Forwarding, error) {
-		return listen(ctx, node.ForwardingConfig{
-			Authority:         authority,
-			ParticipationRoot: plan.ParticipationRoot,
-			SpendRoot:         plan.SpendRoot,
-			HostingRoot:       plan.HostingRoot,
-			Certificate:       plan.Certificate,
-			PrivateKey:        plan.PrivateKey,
-			Work:              plan.Work,
-			Termination:       plan.Termination,
-		})
+	return runNodeWithState(ctx, out, diagnostic, nodecommand.ForwardingOperation, config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
+		return plan.Start(ctx, authority, retained)
 	})
 }
 
@@ -89,28 +80,13 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if err != nil {
 		return 2
 	}
-	listen := node.ListenIssuer
-	if retained {
-		listen = node.ListenIssuerRetained
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.issuer", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Issuer, error) {
-		return listen(ctx, node.IssuerConfig{
-			Authority:         authority,
-			ParticipationRoot: plan.ParticipationRoot,
-			SpendRoot:         plan.SpendRoot,
-			HostingRoot:       plan.HostingRoot,
-			Certificate:       plan.Certificate,
-			PrivateKey:        plan.PrivateKey,
-			Issuance: issuer.Plan{
-				AdmissionRoot:    prepared.AdmissionRoot,
-				AdmissionBinding: prepared.AdmissionBinding,
-				KeyRoot:          prepared.KeyRoot,
-				KeyBinding:       prepared.KeyBinding,
-				ResultRoot:       prepared.ResultRoot,
-			},
-			Work:          plan.Work,
-			BootstrapWork: plan.BootstrapWork,
-			Termination:   plan.Termination,
+	return runNodeWithState(ctx, out, diagnostic, "node.issuer", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
+		return plan.Start(ctx, authority, retained, issuer.Plan{
+			AdmissionRoot:    prepared.AdmissionRoot,
+			AdmissionBinding: prepared.AdmissionBinding,
+			KeyRoot:          prepared.KeyRoot,
+			KeyBinding:       prepared.KeyBinding,
+			ResultRoot:       prepared.ResultRoot,
 		})
 	})
 }
@@ -135,22 +111,8 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 	if ctx.Err() != nil {
 		return 130
 	}
-	listen := node.ListenDescriptor
-	if retained {
-		listen = node.ListenDescriptorRetained
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.descriptor", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Descriptor, error) {
-		return listen(ctx, node.DescriptorConfig{
-			Authority:         authority,
-			ParticipationRoot: plan.ParticipationRoot,
-			SpendRoot:         plan.SpendRoot,
-			HostingRoot:       plan.HostingRoot,
-			DescriptorRoot:    plan.DescriptorRoot,
-			Certificate:       plan.Certificate,
-			PrivateKey:        plan.PrivateKey,
-			Work:              plan.Work,
-			Termination:       plan.Termination,
-		})
+	return runNodeWithState(ctx, out, diagnostic, "node.descriptor", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
+		return plan.Start(ctx, authority, retained)
 	})
 }
 
@@ -174,22 +136,8 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 	if ctx.Err() != nil {
 		return 130
 	}
-	listen := node.ListenIntroduction
-	if retained {
-		listen = node.ListenIntroductionRetained
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.introduction", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Introduction, error) {
-		return listen(ctx, node.IntroductionConfig{
-			Authority:         authority,
-			ParticipationRoot: plan.ParticipationRoot,
-			SpendRoot:         plan.SpendRoot,
-			HostingRoot:       plan.HostingRoot,
-			IntroductionRoot:  plan.IntroductionRoot,
-			Certificate:       plan.Certificate,
-			PrivateKey:        plan.PrivateKey,
-			Work:              plan.Work,
-			Termination:       plan.Termination,
-		})
+	return runNodeWithState(ctx, out, diagnostic, "node.introduction", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
+		return plan.Start(ctx, authority, retained)
 	})
 }
 
@@ -213,27 +161,9 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if ctx.Err() != nil {
 		return 130
 	}
-	listen := node.ListenJoin
-	if retained {
-		listen = node.ListenJoinRetained
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.join", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Join, error) {
-		return listen(ctx, node.JoinConfig{
-			Authority:         authority,
-			ParticipationRoot: plan.ParticipationRoot,
-			SpendRoot:         plan.SpendRoot,
-			HostingRoot:       plan.HostingRoot,
-			Certificate:       plan.Certificate,
-			PrivateKey:        plan.PrivateKey,
-			Work:              plan.Work,
-			Termination:       plan.Termination,
-		})
+	return runNodeWithState(ctx, out, diagnostic, "node.join", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
+		return plan.Start(ctx, authority, retained)
 	})
-}
-
-type nodeProcess interface {
-	node.InvocationRole
-	FirstFailure() *node.FailureDiagnostic
 }
 
 func nodeStateConfig(network *node.Network, participationRoot string) (state.Config, error) {
@@ -248,7 +178,7 @@ func nodeStateConfig(network *node.Network, participationRoot string) (state.Con
 // Each selected role supplies its real constructor and exact typed plan.
 // The command owns the original State and closes it after the Node's joined
 // completion, even when the bounded wait has already reported unavailability.
-func runNodeWithState[T nodeProcess](ctx context.Context, out, diagnostic io.Writer, operation string, config state.Config, nodeID [32]byte, waitMS uint32, listen func(role.Authority) (T, error)) int {
+func runNodeWithState(ctx context.Context, out, diagnostic io.Writer, operation string, config state.Config, nodeID [32]byte, waitMS uint32, listen func(role.Authority) (node.RuntimeInvocation, error)) int {
 	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodecommand.WriteEvent(out, operation, "refused", "state-unavailable", "", "", "")

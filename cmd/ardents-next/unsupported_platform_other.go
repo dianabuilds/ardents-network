@@ -45,11 +45,6 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 	return unsupportedPlatformRefusal(diagnostic, "endpoint")
 }
 
-// Node startup and retained repair refuse before opening the role's plan.
-func runNodeRole(_ context.Context, operation string, _ []string, out, _ io.Writer) int {
-	return unsupportedPlatformRefusal(out, "node."+operation)
-}
-
 func runRepair(_ context.Context, role string, _ []string, out, diagnostic io.Writer) int {
 	if role == "source" {
 		return unsupportedPlatformRefusal(diagnostic, "source.repair-retained")
