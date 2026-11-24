@@ -68,11 +68,6 @@ func signingProfileFixture(t *testing.T, now time.Time) (map[string]any, ed25519
 	return plan, state, bytes.Clone(f.Profile[:len(f.Profile)-64]), f.Profile
 }
 
-func certificateDeclaration(t *testing.T, record any, reference time.Time) []byte {
-	t.Helper()
-	return preparationJSON(t, map[string]any{"schema": "ardents-node-certificate-plan-v1", "reference_time": reference.Format(time.RFC3339Nano), "record": record})
-}
-
 func signNetworkFixture(ctx context.Context, args []string) (*provisioning.NetworkSigningResult, error) {
 	return provisioning.SignNetwork(ctx, args, nil)
 }

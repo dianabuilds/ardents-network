@@ -12,7 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 func writeSigningTestKey(t *testing.T, path string, key ed25519.PrivateKey) {
@@ -270,5 +271,22 @@ func testSigningStaticNativeRefusals(t *testing.T, arguments func(*testing.T) []
 				t.Fatal("healthy control", e)
 			}
 		})
+	}
+}
+
+func nativeCertificateArguments(t *testing.T) []string {
+	t.Helper()
+	return sourcefixture.CertificateArguments(t, compiledCommand(t), sourcefixture.SigningWorkspace(t))
+}
+
+func TestNetworkSigningNodeCertificateReceipt(t *testing.T) {
+	for _, writer := range []io.Writer{initialKeysFailedWriter{}, initialKeysShortWriter{}} {
+		args := nativeCertificateArguments(t)
+		if runNetworkSigning(t.Context(), args, writer) == 0 {
+			t.Fatal("failed receipt accepted")
+		}
+		if runNetworkSigning(t.Context(), args, &bytes.Buffer{}) == 0 {
+			t.Fatal("failed receipt output adopted")
+		}
 	}
 }

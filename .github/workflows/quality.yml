@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: d3ad7341f5e3973d237032ab70f220f046aef0ba
+          ref: 75b3226dc11aa68fd8fa6c0d8b9eb65f4d861512
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = d3ad7341f5e3973d237032ab70f220f046aef0ba
+          test "$(git rev-parse HEAD)" = 75b3226dc11aa68fd8fa6c0d8b9eb65f4d861512
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04
@@ -53,3 +53,29 @@ jobs:
             ARDENTS_NODE_RESOURCE_TEST="$native_dir/node-resource.test" \
             ARDENTS_NODE_RESOURCE_TEST_SHA256="$(digest "$build_dir/node-resource.test")" \
             sh "scripts/node/${{ matrix.script }}" -timeout=3m
+  node-certificate-provisioning:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 75b3226dc11aa68fd8fa6c0d8b9eb65f4d861512
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 75b3226dc11aa68fd8fa6c0d8b9eb65f4d861512
+          test "$(findmnt -T / -n -o FSTYPE)" = ext4
+          build_dir=$(mktemp -d "$RUNNER_TEMP/certificate-build.XXXXXX")
+          native_dir=$(sudo -n mktemp -d /ardents-certificate-e2e.XXXXXX)
+          trap 'sudo -n rm -rf "$native_dir"' EXIT
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
+          go test -c -race -tags network_signing_native -o "$build_dir/node-command.test" ./cmd/ardents-next
+          go test -c -race -tags network_signing_native -o "$build_dir/node-e2e.test" ./tests/e2e/node
+          sudo -n install -m 0755 "$build_dir/ardents" "$build_dir/"*.test "$native_dir"
+          sudo -n env TMPDIR="$native_dir" ARDENTS_PREBUILT_NEXT="$native_dir/ardents" "$native_dir/node-command.test" -test.v -test.run='^TestNetworkSigning(NodeCertificateReceipt|InitialKeysCommand)$' -test.timeout=3m
+          sudo -n env TMPDIR="$native_dir" ARDENTS_PREBUILT_NEXT="$native_dir/ardents" "$native_dir/node-e2e.test" -test.v -test.run='^TestNetworkSigningNodeCertificateCommand$' -test.timeout=3m
