@@ -7,6 +7,33 @@ It does not qualify installed Ubuntu workers, replace `make check`, or select
 additional Network behavior. Product, security and technical owners retain
 Route/currentness/authority, workload and confinement requirements.
 
+## Project-wide telemetry contract
+
+An operation owner defines the meaning and finite vocabulary of its diagnostic
+signals. Structured operation observations use stable operation, phase and
+outcome categories. Resource measurements declare the measured quantity,
+units, source scope, observation time and availability. Treat unknown categories
+or missing measurements as incomplete evidence. Keep export failure separate
+from the operation result and from the observed component's health.
+
+New in-process OTLP export uses `internal/diagnostics/telemetry` for collector
+admission, bounds and shutdown. The existing command profile exports only to
+an explicitly configured HTTP loopback collector and defaults to no export.
+Its attributes are operation, phase and outcome. A command owns the fixed
+categories it supplies. Telemetry consumers must not route free-form errors,
+identities, addresses, paths, keys, credentials, application data or cross-role
+correlation identifiers into labels, events or trace context. See the
+[product diagnostic rules](../product/operating-model.md#diagnostics).
+
+The common contract applies across the project. Today the finite Admission,
+Issuance and Hosting command adapters use the shared OTLP exporter. Node,
+Endpoint and Source have structured local events consumed by the timeline or
+collector, with the coverage listed below. The monitor's resource exposition
+reports observations from its selected local sources. Offline
+`ardents-custody` emits command results and diagnostics without a collector
+connection. A signed artifact, command result or explicit engineering capture
+retains its own contract and access boundary.
+
 ## Continuous monitoring and explicit debug mode
 
 The selected engineering direction is continuous local Node monitoring with

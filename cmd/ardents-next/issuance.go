@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 )
 
 type issuanceResult struct {
@@ -89,7 +90,7 @@ func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if len(args) == 4 {
 		endpoint = args[3]
 	}
-	if collectorEndpoint(endpoint) != nil {
+	if telemetry.ValidateCollector(endpoint) != nil {
 		return write()
 	}
 	raw, err := readBounded(args[2], 16<<10)
@@ -105,12 +106,12 @@ func runIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		r.Outcome = issuanceOutcome(err)
 		return write()
 	}
-	o, _ := newObservation(endpoint)
-	finish := o.begin("ardents.issuance", r.Operation)
+	o, _ := telemetry.Open(endpoint)
+	finish := o.Begin("ardents.issuance", r.Operation)
 	r.Phase, err = issuance.DeliverInventory(ctx, p.Root, p.Binding, p.InventoryFile, args[0] == "initialize")
 	r.Outcome = issuanceOutcome(err)
 	finish(r.Phase, r.Outcome)
-	_ = o.close()
+	_ = o.Close()
 	_ = json.NewEncoder(diagnostic).Encode(r)
 	return write()
 }

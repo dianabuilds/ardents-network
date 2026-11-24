@@ -636,7 +636,7 @@ not changing Installation's journal, Release, or manager-profile contract.
 
 Reviewed 2026-10-02 for issue 478. Select OpenTelemetry Go v1.47.0 API,
 trace/metric APIs, SDK and SDK metric plus official OTLP HTTP trace/metric
-exporters (Apache-2.0). Owner: cmd/ardents-next composition; Admission's ledger
+exporters (Apache-2.0). Owner: `internal/diagnostics/telemetry`, used by command composition; Admission's ledger
 imports only its public issuerprofile contract and the standard library.
 Need: actual vendor-neutral traces and metrics with
 one explicitly selected local Collector. No logs SDK, auto-instrumentation,
@@ -656,8 +656,8 @@ closure and vulnerability checks remain required before candidate acceptance.
 
 Alternative: a private telemetry encoding would create protocol maintenance;
 backend-specific instrumentation would couple the product to storage. Selected
-official SDK/exporters avoid both. Removal: command composition owns all OTel
-imports and can replace the exporter without changing permission verification.
+official SDK/exporters avoid both. Removal: the telemetry package owns the OTel SDK and exporter imports. It can
+replace the exporter without changing permission verification.
 Export must be bounded and explicitly loopback-local; failure must not change
 inspection outcome. No network/privacy qualification follows from selection.
 

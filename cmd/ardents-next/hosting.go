@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
@@ -77,7 +78,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	if len(args) == 4 {
 		endpoint = args[3]
 	}
-	if collectorEndpoint(endpoint) != nil {
+	if telemetry.ValidateCollector(endpoint) != nil {
 		return write()
 	}
 	raw, err := readBounded(args[2], 16<<10)
@@ -89,13 +90,13 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	if err != nil {
 		return write()
 	}
-	o, telemetryErr := newObservation(endpoint)
-	finish := o.begin("ardents.hosting", r.Operation)
+	o, telemetryErr := telemetry.Open(endpoint)
+	finish := o.Begin("ardents.hosting", r.Operation)
 	r.Phase = "execute"
 	err = executeHosting(ctx, args[0], p, &r)
 	r.Outcome = hostingOutcome(err)
 	finish(r.Phase, r.Outcome)
-	ok := o.close()
+	ok := o.Close()
 	telemetry := "completed"
 	if telemetryErr != nil || !ok {
 		telemetry = "unavailable"

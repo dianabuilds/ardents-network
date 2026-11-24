@@ -1,4 +1,4 @@
-package main
+package telemetry
 
 import (
 	"context"
@@ -22,8 +22,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
-// Telemetry is command composition, not part of admission authority.
-type observation struct {
+// Observation owns the exporters for one command invocation.
+type Observation struct {
 	traces    *sdktrace.TracerProvider
 	meters    *sdkmetric.MeterProvider
 	reader    *sdkmetric.ManualReader
@@ -32,7 +32,8 @@ type observation struct {
 	failure   atomic.Bool
 }
 
-func collectorEndpoint(value string) error {
+// ValidateCollector accepts an explicit HTTP loopback endpoint or an empty endpoint to disable export.
+func ValidateCollector(value string) error {
 	if value == "" {
 		return nil
 	}
@@ -48,11 +49,12 @@ func collectorEndpoint(value string) error {
 	return nil
 }
 
-func newObservation(endpoint string) (*observation, error) {
-	if endpoint == "" {
-		return nil, nil
+// Open creates bounded exporters for a validated collector. An empty endpoint disables export.
+func Open(endpoint string) (*Observation, error) {
+	if err := ValidateCollector(endpoint); err != nil || endpoint == "" {
+		return nil, err
 	}
-	o := &observation{}
+	o := &Observation{}
 	r := resource.NewSchemaless(attribute.String("service.name", "ardents-next"))
 	options := []sdktrace.TracerProviderOption{sdktrace.WithResource(r), sdktrace.WithSampler(sdktrace.AlwaysSample()), sdktrace.WithoutPanicRecording()}
 	endpoint = strings.TrimSuffix(endpoint, "/")
@@ -89,7 +91,8 @@ func (e *quietTraceExporter) ExportSpans(ctx context.Context, spans []sdktrace.R
 	return nil
 }
 
-func (o *observation) close() bool {
+// Close attempts bounded export and reports whether active export completed successfully.
+func (o *Observation) Close() bool {
 	if o == nil {
 		return false
 	}
@@ -116,7 +119,8 @@ func (o *observation) close() bool {
 	return !o.failure.Load()
 }
 
-func (o *observation) begin(scope, operation string) func(string, string) {
+// Begin starts an operation and returns the function that records its phase and outcome.
+func (o *Observation) Begin(scope, operation string) func(string, string) {
 	if o == nil {
 		return func(string, string) {}
 	}

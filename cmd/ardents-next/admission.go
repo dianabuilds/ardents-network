@@ -10,6 +10,7 @@ import (
 	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 )
 
 type admissionResult struct {
@@ -82,7 +83,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	if len(args) == 4 {
 		endpoint = args[3]
 	}
-	if collectorEndpoint(endpoint) != nil {
+	if telemetry.ValidateCollector(endpoint) != nil {
 		return write()
 	}
 	raw, err := readBounded(args[2], 16<<10)
@@ -94,8 +95,8 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	if err != nil {
 		return write()
 	}
-	o, telemetryErr := newObservation(endpoint)
-	finish := o.begin("ardents.admission", r.Operation)
+	o, telemetryErr := telemetry.Open(endpoint)
+	finish := o.Begin("ardents.admission", r.Operation)
 	r.Phase = "execute"
 	if ctx.Err() != nil {
 		r.Outcome = admission.Canceled
@@ -103,7 +104,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		r.Outcome = admissionInitializationOutcome(quota.Initialize(p.Root, p.Binding))
 	}
 	finish(r.Phase, string(r.Outcome))
-	ok := o.close()
+	ok := o.Close()
 	telemetry := "completed"
 	if telemetryErr != nil || !ok {
 		telemetry = "unavailable"
