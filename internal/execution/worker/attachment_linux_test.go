@@ -121,32 +121,3 @@ func TestDocumentWorkerControlClosesEveryUnwantedDescriptor(t *testing.T) {
 		}
 	}
 }
-
-func TestDocumentWorkerAttachmentCloseIsJoinedAndIdempotent(t *testing.T) {
-	attachment, _ := attachmentPair(t)
-	completed := make(chan error, 1)
-	joined := make(chan struct{})
-	go func() { defer close(joined); _, err := attachment.Read(make([]byte, 1)); completed <- err }()
-	t.Cleanup(func() {
-		_ = attachment.Close()
-		select {
-		case <-joined:
-		case <-time.After(time.Second):
-			t.Error("socket read did not join")
-		}
-	})
-	if err := attachment.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := attachment.Close(); err != nil {
-		t.Fatal("repeated Close invented a cleanup failure")
-	}
-	select {
-	case err := <-completed:
-		if err == nil {
-			t.Fatal("closed attachment admitted a read")
-		}
-	case <-time.After(time.Second):
-		t.Fatal("Close did not unblock credential-aware read")
-	}
-}

@@ -1691,6 +1691,12 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/durablefile/relative_open_unix.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
+	// The macOS peer-credential refusal evidence test admits the reviewed
+	// x/sys/unix connect-time LOCAL_PEERCRED observation only at that boundary
+	// (#852); the production macOS port refuses and imports no native mechanism.
+	if source == "internal/execution/worker/peercred_darwin_test.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	if source == "internal/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
@@ -1897,6 +1903,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Reachability cannot own physical Prefix", "internal/reachability/lookup_history.go", modulePath + "/internal/route/prefix", false},
 		{"Shared owner-only root DACL enforcement", "internal/durablefile/owner_root_windows.go", "golang.org/x/sys/windows", true},
 		{"Unix-family inspection port admits reviewed Openat", "internal/durablefile/relative_open_unix.go", "golang.org/x/sys/unix", true},
+		{"macOS peer-credential refusal evidence uses reviewed LOCAL_PEERCRED", "internal/execution/worker/peercred_darwin_test.go", "golang.org/x/sys/unix", true},
 		{"document snapshot import composes the shared inspection mechanism", "internal/application/document/snapshot_file_unix.go", modulePath + "/internal/durablefile", true},
 		{"document snapshot import has no Network authority", "internal/application/document/snapshot_file_unix.go", modulePath + "/internal/network/state", false},
 		{"Owner-only root mechanism test verifies the physical DACL", "internal/durablefile/owner_root_windows_test.go", "golang.org/x/sys/windows", true},

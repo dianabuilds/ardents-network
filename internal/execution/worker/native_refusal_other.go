@@ -5,7 +5,6 @@ package worker
 import (
 	"context"
 	"errors"
-	"time"
 )
 
 // There is no selected native worker on these platforms. The common real
@@ -14,7 +13,6 @@ import (
 var errNativeUnavailable = errors.New("ordinary Execution native platform is unavailable")
 
 type Artifact struct{}
-type Attachment struct{}
 type Cleanup struct{}
 
 // Instance is one detached original invocation observation. It grants no
@@ -48,8 +46,5 @@ func NewCleanup(Instance, func(error)) (*Cleanup, error) {
 	return nil, errNativeUnavailable
 }
 
-func (*Artifact) Verify() error                 { return errNativeUnavailable }
-func (*Attachment) SetDeadline(time.Time) error { return errNativeUnavailable }
-func (*Attachment) Read([]byte) (int, error)    { return 0, errNativeUnavailable }
-func (*Attachment) Close() error                { return errNativeUnavailable }
-func (*Cleanup) Close() error                   { return errNativeUnavailable }
+func (*Artifact) Verify() error { return errNativeUnavailable }
+func (*Cleanup) Close() error   { return errNativeUnavailable }
