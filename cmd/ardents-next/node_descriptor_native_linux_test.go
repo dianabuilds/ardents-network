@@ -232,7 +232,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				if id == [32]byte{17} {
 					p = startNativeDescriptor(t, binary, hostingConfig(t, config), id[0])
 				} else {
-					p = startNativeForwarding(t, binary, hostingConfig(t, config), id[0])
+					p = nodefixture.StartForwarding(t, binary, hostingConfig(t, config), id[0])
 				}
 				processes = append(processes, p)
 				budgets = append(budgets, budget)

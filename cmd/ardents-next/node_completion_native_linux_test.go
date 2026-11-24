@@ -58,7 +58,7 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			participation := filepath.Join(t.TempDir(), "participation")
 			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{12}]()
-			process := startNativeForwarding(t, binary, hostingConfig(t, plan), 91)
+			process := nodefixture.StartForwarding(t, binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
 			if err != nil {
 				t.Fatal(err)

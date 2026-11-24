@@ -2434,7 +2434,7 @@ Node cgroup. Each canonical Node process uses its original sole-process leaf,
 the fixed process limits in the Node/resource owner and genuine signed-State,
 token, participation and Hosting owners. TCP/TLS and deferred-QUIC refusal are required.
 The driver independently pins the ordinary command and the `node_process_native`
-command/resource test binaries by SHA-256, rejects missing inputs and zero-test
+command, Node e2e and resource test binaries by SHA-256, rejects missing inputs and zero-test
 discovery, and retains physical manager/process completion. Test binaries may be
 built with race instrumentation; that evidence must name the actual build.
 Forwarding's resource process requires the exact Forwarding discovery enumerated
@@ -2442,8 +2442,8 @@ in `scripts/node/run-native.sh`. Receiving-role-specific resource controls belon
 to their separate original resource processes.
 Each profile's resident-memory control runs in its own original process:
 the first can leave actual native or Go memory pressure for a following control.
-`ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST` and
-`ARDENTS_NODE_RESOURCE_TEST` name the three absolute external artifact paths;
+`ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST`,
+`ARDENTS_NODE_E2E_TEST` and `ARDENTS_NODE_RESOURCE_TEST` name the four absolute external artifact paths;
 their corresponding `_SHA256` variables are independent expected digests.
 Missing Linux, systemd, cgroup/PSI, privilege, artifact, durable filesystem or
 loopback is an invalid environment. This lane establishes no supported Node host,

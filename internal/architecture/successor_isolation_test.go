@@ -637,6 +637,10 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/endpoint" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/platform/artifacts" || local == "tests/epochfixture/network" || local == "internal/network/source/serving" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		}
 	}
+	if localImport && source == "tests/e2e/node/forwarding_lifecycle_native_linux_test.go" {
+		return local == "internal/hosting" || local == "internal/network/duty" ||
+			local == "internal/processresource" || local == "tests/epochfixture/network"
+	}
 	if localImport && source == "tests/e2e/node/hosting_fixture_linux.go" {
 		return local == "internal/hosting"
 	}
@@ -688,7 +692,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go", "cmd/ardents-next/descriptor_platform_native_linux_test.go",
 			"cmd/ardents-next/endpoint_journey_native_linux_test.go", "cmd/ardents-next/endpoint_launch_native_linux_test.go",
 			"cmd/ardents-next/execution_artifact_linux_test.go", "cmd/ardents-next/execution_installed_linux_test.go",
-			"cmd/ardents-next/forwarding_artifact_linux_test.go", "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go",
+			"cmd/ardents-next/forwarding_artifact_linux_test.go",
 			"cmd/ardents-next/forwarding_platform_native_linux_test.go", "cmd/ardents-next/infrastructure_caller_linux_test.go",
 			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 			"cmd/ardents-next/join_lifecycle_native_linux_test.go", "cmd/ardents-next/join_platform_native_linux_test.go",
@@ -1132,7 +1136,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/route_linux.go" && dependency == modulePath+"/internal/node" {
 			return true
 		}
-		if (source == "cmd/ardents-next/node_native_linux_test.go" || source == "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/join_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go") && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
+		if (source == "cmd/ardents-next/node_native_linux_test.go" || source == "cmd/ardents-next/join_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go") && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_refill_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/transport") {

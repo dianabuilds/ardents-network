@@ -270,7 +270,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 		cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		sockets[id]()
-		peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, config), id[0]))
+		peers = append(peers, nodefixture.StartForwarding(t, binary, hostingConfig(t, config), id[0]))
 	}
 	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
 	p := nativeDescriptorAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
@@ -667,7 +667,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 		cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		sockets[id]()
-		peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, config), id[0]))
+		peers = append(peers, nodefixture.StartForwarding(t, binary, hostingConfig(t, config), id[0]))
 	}
 	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 	p := nativeIntroductionAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}

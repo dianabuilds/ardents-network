@@ -56,8 +56,8 @@ def native_facts(storage):
 
 def artifacts():
     result = {}
-    for key in ["COMMAND", "TEST", "RESOURCE_TEST"]:
-        prefix = "ARDENTS_NODE_RESOURCE_TEST" if key == "RESOURCE_TEST" else "ARDENTS_NODE_NATIVE_" + key
+    for key in ["COMMAND", "TEST", "RESOURCE_TEST", "E2E_TEST"]:
+        prefix = "ARDENTS_NODE_" + key if key in {"RESOURCE_TEST", "E2E_TEST"} else "ARDENTS_NODE_NATIVE_" + key
         path = Path(os.environ[prefix])
         expected = os.environ[prefix + "_SHA256"]
         if not path.is_absolute() or path.is_symlink() or not os.access(path, os.X_OK) or len(expected) != 64 or digest(path) != expected:

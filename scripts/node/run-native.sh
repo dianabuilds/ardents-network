@@ -14,6 +14,8 @@ test -r /sys/fs/cgroup/cgroup.controllers
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
 : "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
 : "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
+: "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
+: "${ARDENTS_NODE_E2E_TEST_SHA256:?independent Node e2e digest is required}"
 : "${ARDENTS_NODE_RESOURCE_TEST:?native resource test binary is required}"
 : "${ARDENTS_NODE_RESOURCE_TEST_SHA256:?independent resource test digest is required}"
 
@@ -26,6 +28,7 @@ verify() {
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
 verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
+verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # Verify discovery before executing; a selected profile can never pass zero tests.
@@ -35,7 +38,7 @@ verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeParentRefillAndReopenTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeOriginalAuthorityAndJoinTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeForwardingRetainedLifecycle$' | grep '^TestNativeForwardingRetainedLifecycle$' >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeForwardingRetainedLifecycle$' | grep '^TestNativeForwardingRetainedLifecycle$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNative' | grep '^TestOriginalNativeProcessProfile$' >/dev/null
 expected_resources='TestMeasuredBriefDevelopmentStallsPreserveAdmission
 TestNativeMemoryEventsSinglePassEquivalence
@@ -60,4 +63,4 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^Test(MeasuredBriefDevelopmentStallsPreserveAdmission|NativeMemoryEventsSinglePassEquivalence|ProfileAndOriginalCallerRefuseBeforeNativeEffects|NativePressureAndUnavailableIntervalDenyAdmission|RequiredNativeCounterIsNotAnUnknownZero|RequiredPressureRejectsMissingNonfiniteAndAmbiguous|OriginalNative(ProcessProfile|EvidenceLossRetainsActualCloseFailure|ManagedMemoryPressureRetires|PlacementAndCallerRetire))$' -test.timeout=90s
 
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeNode' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeForwardingRetainedLifecycle$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeForwardingRetainedLifecycle$' -test.timeout=3m

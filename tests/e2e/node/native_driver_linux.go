@@ -170,29 +170,51 @@ func Launch(t testing.TB, unit, diagnosticLabel, stopErrorLabel string, args ...
 	return process
 }
 
+// LaunchForwarding starts the fresh original Forwarding process.
+func LaunchForwarding(t testing.TB, binary, plan string, index byte) *NativeProcess {
+	t.Helper()
+	unit := fmt.Sprintf("ardents-forwarding-%d-%d.service", os.Getpid(), index)
+	return launchRole(t, unit, "original Forwarding retained diagnostic after physical join", binary, "forwarding", "--config", plan)
+}
+
+// StartForwarding waits for the fresh Forwarding process to listen.
+func StartForwarding(t testing.TB, binary, plan string, index byte) *NativeProcess {
+	t.Helper()
+	return waitForRole(t, LaunchForwarding(t, binary, plan, index), "forwarding")
+}
+
 // LaunchRetainedRole starts an original Node process with the retained profile.
 func LaunchRetainedRole(t testing.TB, role, binary, plan string, index byte) *NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-%s-retained-%d-%d.service", role, os.Getpid(), index)
-	return Launch(t, unit, "retained "+role+" original diagnostic", "",
+	return launchRole(t, unit, "retained "+role+" original diagnostic", binary, role, "--retained-config", plan)
+}
+
+func launchRole(t testing.TB, unit, diagnosticLabel, binary, role, flag, plan string) *NativeProcess {
+	t.Helper()
+	return Launch(t, unit, diagnosticLabel, "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", role, "--retained-config", plan)
+		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", role, flag, plan)
 }
 
 // StartRetainedRole waits for the listening report and records the original PID.
 func StartRetainedRole(t testing.TB, role, binary, plan string, index byte) *NativeProcess {
 	t.Helper()
-	process := LaunchRetainedRole(t, role, binary, plan, index)
+	return waitForRole(t, LaunchRetainedRole(t, role, binary, plan, index), role)
+}
+
+func waitForRole(t testing.TB, process *NativeProcess, role string) *NativeProcess {
+	t.Helper()
 	var event map[string]string
 	if err := json.NewDecoder(process.Stdout).Decode(&event); err != nil || event["operation"] != "node."+role || event["phase"] != "listening" {
-		t.Fatal("retained "+role+" startup refused", event, err, process.Diagnostic.String())
+		t.Fatal(role+" startup refused", event, err, process.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.CommandContext(t.Context(), "systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fmt.Sscanf(string(raw), "%d", &process.PID); err != nil || process.PID < 2 {
-		t.Fatal("retained "+role+" MainPID unavailable", err)
+		t.Fatal(role+" MainPID unavailable", err)
 	}
 	return process
 }

@@ -182,7 +182,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			for _, prepared := range peerPlans {
 				prepared.plan["process_profile"], prepared.plan["participation_root"], prepared.plan["retirement_wait_ms"] = processresource.Profile, filepath.Join(t.TempDir(), "participation"), 5000
 				prepared.plan["work"] = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
-				peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, prepared.plan), prepared.index))
+				peers = append(peers, nodefixture.StartForwarding(t, binary, hostingConfig(t, prepared.plan), prepared.index))
 			}
 			ordinary, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
