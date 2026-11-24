@@ -79,8 +79,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					p := LaunchFreshRole(t, "issuer", binary, path, 0)
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
-					err = p.Command.Wait()
-					p.Joined = true
+					err = p.Wait()
 					var exit *exec.ExitError
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
 						t.Fatal("actual partial startup did not refuse", fault, err, p.Diagnostic.String())
