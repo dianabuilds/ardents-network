@@ -571,7 +571,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/execution_installed_linux_test.go",
 			"cmd/ardents-next/network_admission_fixture_linux_test.go",
 			"cmd/ardents-next/node_descriptor_native_linux_test.go",
-			"cmd/ardents-next/node_introduction_native_linux_test.go",
+			"internal/node/introduction_exchange_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
 			"tests/e2e/node/join_exchange_native_linux_test.go",
 			"cmd/ardents-next/node_operation_native_linux_test.go",
@@ -692,6 +692,16 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/processfixture/authority_observation_linux.go":
 			return local == "internal/admission/spending" || local == "internal/hosting" ||
 				local == "internal/network" || local == "internal/network/duty" || local == "internal/network/epoch"
+		case "tests/e2e/node/processfixture/receiving_fixture_linux.go":
+			return local == "tests/epochfixture/network"
+		case "tests/e2e/node/processfixture/introduction_stock_linux.go":
+			switch local {
+			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
+				"internal/admission/token", "internal/endpoint/funding", "internal/network", "tests/epochfixture/network":
+				return true
+			default:
+				return false
+			}
 		case "tests/e2e/node/processfixture/network_genesis_linux.go":
 			return local == "internal/admission/issuance" || local == "internal/admission/quota" || local == "internal/admission/issuer" || local == "internal/network/epoch" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/source_native_linux_test.go":
@@ -801,6 +811,14 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	// These command tests consume only the registered process and signed fixture owners.
+	if localImport && source == "internal/node/introduction_exchange_native_linux_test.go" {
+		switch local {
+		case "internal/endpoint/funding", "internal/endpoint/session", "internal/hosting",
+			"internal/network/epoch", "internal/network/state", "internal/processresource", "internal/route/capsule",
+			"internal/route/introduction", "tests/epochfixture/network":
+			return true
+		}
+	}
 	if localImport && source == "internal/node/operation_process_native_linux_test.go" {
 		switch local {
 		case "internal/admission", "internal/admission/issuance", "internal/admission/issuer",
@@ -854,7 +872,6 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 			"cmd/ardents-next/join_platform_native_linux_test.go",
 			"cmd/ardents-next/network_admission_fixture_linux_test.go",
-			"cmd/ardents-next/node_introduction_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
 			"cmd/ardents-next/node_operation_native_linux_test.go",
 			"cmd/ardents-next/platform_release_linux_test.go",
@@ -1231,9 +1248,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_operation_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/route/transport") {
-			return true
-		}
-		if source == "cmd/ardents-next/node_introduction_native_linux_test.go" && (dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/introduction" || dependency == modulePath+"/internal/route/capsule" || dependency == modulePath+"/internal/route/transport" || dependency == modulePath+"/internal/route/receiver" || dependency == modulePath+"/internal/route/role" || dependency == modulePath+"/internal/route/selection") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_operation_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/reachability" || dependency == modulePath+"/internal/route/transport") {

@@ -51,7 +51,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			waitForAdmissionHour(t)
+			processfixture.WaitAdmissionHour(t)
 			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 			listeners, certificates := addForwardingNodes(t, &spec, carrier, 1)
 			for _, id := range []byte{17, 18} {
