@@ -16,6 +16,25 @@ type nodeProcess interface {
 	FirstFailure() *node.FailureDiagnostic
 }
 
+// readCancelableNodeRolePlan preserves the early cancellation receipt shared
+// by Descriptor, Introduction, and JOIN, before touching the plan path.
+func readCancelableNodeRolePlan(ctx context.Context, operation string, args []string, out io.Writer) ([]byte, bool, int) {
+	if ctx == nil {
+		return nil, false, 2
+	}
+	if ctx.Err() != nil {
+		if err := nodecommand.WriteEvent(out, operation, "refused", "canceled", "", "", ""); err != nil {
+			return nil, false, 2
+		}
+		return nil, false, 130
+	}
+	raw, retained, err := nodecommand.ReadRolePlan(args)
+	if err != nil {
+		return nil, false, 2
+	}
+	return raw, retained, 0
+}
+
 func nodeStateConfig(network *node.Network, participationRoot string) (state.Config, error) {
 	config, err := (*state.AuthorityDeclaration)(network).Config()
 	if err != nil {

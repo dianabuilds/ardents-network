@@ -98,18 +98,9 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	if ctx == nil {
-		return 2
-	}
-	if ctx.Err() != nil {
-		if nodecommand.WriteEvent(out, "node.descriptor", "refused", "canceled", "", "", "") != nil {
-			return 2
-		}
-		return 130
-	}
-	raw, retained, err := nodecommand.ReadRolePlan(args)
-	if err != nil {
-		return 2
+	raw, retained, code := readCancelableNodeRolePlan(ctx, "node.descriptor", args, out)
+	if code != 0 {
+		return code
 	}
 	plan, err := node.DecodeDescriptorPlan(raw)
 	if err != nil {
@@ -146,18 +137,9 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	if ctx == nil {
-		return 2
-	}
-	if ctx.Err() != nil {
-		if nodecommand.WriteEvent(out, "node.introduction", "refused", "canceled", "", "", "") != nil {
-			return 2
-		}
-		return 130
-	}
-	raw, retained, err := nodecommand.ReadRolePlan(args)
-	if err != nil {
-		return 2
+	raw, retained, code := readCancelableNodeRolePlan(ctx, "node.introduction", args, out)
+	if code != 0 {
+		return code
 	}
 	plan, err := node.DecodeIntroductionPlan(raw)
 	if err != nil {
@@ -194,18 +176,9 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	if ctx == nil {
-		return 2
-	}
-	if ctx.Err() != nil {
-		if nodecommand.WriteEvent(out, "node.join", "refused", "canceled", "", "", "") != nil {
-			return 2
-		}
-		return 130
-	}
-	raw, retained, err := nodecommand.ReadRolePlan(args)
-	if err != nil {
-		return 2
+	raw, retained, code := readCancelableNodeRolePlan(ctx, "node.join", args, out)
+	if code != 0 {
+		return code
 	}
 	plan, err := node.DecodeJoinPlan(raw)
 	if err != nil {
