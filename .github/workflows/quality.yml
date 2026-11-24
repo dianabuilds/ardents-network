@@ -268,3 +268,5 @@ jobs:
         run: go test ./tests/e2e/endpoint -run '^TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest$' -count=1
       - name: Check portable Node dispatch and refusal against the compiled command
         run: go test ./tests/e2e/node -run '^TestCompiledNode(DispatchRequiresExactOperation|UnsupportedPlatformRefusesBeforePrivateInput)$' -count=1
+      - name: Check portable Source refusals against the compiled command
+        run: go test ./tests/e2e/source -run '^TestCompiledSourceUnsupportedPlatformRefusesBeforePlanEffects$' -count=1

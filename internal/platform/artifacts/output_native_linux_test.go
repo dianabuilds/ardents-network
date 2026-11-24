@@ -3,6 +3,7 @@
 package artifacts
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -78,5 +79,36 @@ func TestSourcePreparationNativeOutputSubstitutionRefuses(t *testing.T) {
 				t.Fatal("substitution published", seen, err)
 			}
 		})
+	}
+}
+
+func TestSourcePreparationNativePublicMountRefusal(t *testing.T) {
+	// Isolate the actual original-descriptor mount mechanism. The complete
+	// command's separate ancestor checks must not turn a writable /dev/shm
+	// ancestor into fabricated evidence that Fstatfs rejected this file.
+	directory, e := os.MkdirTemp("/dev/shm", "ardents-source-preparation-")
+	if e != nil {
+		t.Fatal("invalid environment: real tmpfs control unavailable", e)
+	}
+	t.Cleanup(func() {
+		if e := os.RemoveAll(directory); e != nil {
+			t.Error(e)
+		}
+	})
+	path := filepath.Join(directory, "public.pem")
+	if e = os.WriteFile(path, []byte("public fixture"), 0600); e != nil {
+		t.Fatal(e)
+	}
+	f, e := os.Open(path)
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer f.Close()
+	var fs syscall.Statfs_t
+	if e = syscall.Fstatfs(int(f.Fd()), &fs); e != nil || fs.Type != 0x01021994 {
+		t.Fatal("invalid environment: original control is not tmpfs", e)
+	}
+	if e := RequireExt4(f); !errors.Is(e, ErrNotExt4) {
+		t.Fatal("actual non-ext4 public descriptor accepted")
 	}
 }

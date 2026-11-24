@@ -25,6 +25,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 func writeSourceFixtureKeys(t *testing.T, p map[string]any, credentials []tls.Certificate) {
@@ -74,7 +76,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	}
 	authority := networks[0]
 	headless := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-roles"), TimeConfidenceFile: clock, NetworkID: hex.EncodeToString(authority.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authority.Authorities[0][:])}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authority.ProfileAuthority[:])}
-	p, credentials := sourcePreparationFixture(t, parent, headless)
+	p, credentials := sourcefixture.TrustPreparationFixture(t, parent, headless)
 	writeSourceFixtureKeys(t, p, credentials)
 	members := p["sources"].([]map[string]any)
 	var held [2]net.Listener
@@ -88,7 +90,11 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		members[i]["state_root"] = networks[i].Root
 	}
 	plan, output := filepath.Join(parent, "preparation.json"), filepath.Join(parent, "prepared")
-	if err = os.WriteFile(plan, sourcePreparationJSON(t, p), 0600); err != nil {
+	rawPlan, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(plan, rawPlan, 0600); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(t.Context(), binary, "source", "prepare-trust", plan, output)
@@ -211,7 +217,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 			bad := transport
 			switch fault {
 			case "ca":
-				_, _, _, bad.Sources[0].RootPEM, _, _ = sourceNativeTLS(t)
+				_, _, _, bad.Sources[0].RootPEM, _, _ = sourcefixture.NativeTLS(t)
 			case "name":
 				bad.Sources[0].ServerName = "wrong.test"
 			case "pin":
@@ -219,7 +225,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 			case "client-pin":
 				bad.ClientCertificate = credentials[3]
 			case "client-ca":
-				_, bad.ClientCertificate, _, _, _, _ = sourceNativeTLS(t)
+				_, bad.ClientCertificate, _, _, _, _ = sourcefixture.NativeTLS(t)
 			case "expired":
 				bad.VerificationClock = func() time.Time { return time.Now().Add(2 * time.Hour) }
 			}

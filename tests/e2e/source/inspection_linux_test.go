@@ -29,12 +29,7 @@ import (
 // physical serving. It supplies no State acceptance, installed invocation,
 // family independence or bootstrap evidence.
 func TestSourceInspectionUsesOriginalCredentialAndOneContact(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "ardents")
-	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", binary, "./cmd/ardents-next")
-	build.Dir = filepath.Join("..", "..", "..")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build CLI: %v: %s", err, output)
-	}
+	binary := buildSourceCommand(t)
 
 	now := time.Now()
 	caPublic, caPrivate, err := ed25519.GenerateKey(rand.Reader)

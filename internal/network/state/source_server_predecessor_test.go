@@ -21,6 +21,11 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 	third := sourceSingleFieldSuccessor(t, second, 3, 0xa1, true)
 	config := installedServingSourceConfig(t, genesis)
 	config, client, serverRoot := configureSourceServerWithClient(t, config)
+	// Keep the fixture's observations advancing through actual TLS and durable
+	// work. A fixed sample can expire under slow I/O before the next Epoch.
+	config.Now = time.Time{}
+	config.Clock = advancingVerificationClock(time.Unix(genesis.now, 0).UTC())
+	config.ObserveClock = config.Clock
 	serving, err := state2.Open(config)
 	if err != nil {
 		t.Fatal(err)
