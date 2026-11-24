@@ -101,19 +101,7 @@ func changeSigningTestTime(t *testing.T, args []string, from, until, reference t
 		if e != nil {
 			t.Fatal(e)
 		}
-		if args[0] == "prepare-node-certificate" {
-			raw, readErr := os.ReadFile(args[4])
-			if readErr != nil {
-				t.Fatal(readErr)
-			}
-			key, keyErr := artifactio.ParseEd25519Key(raw)
-			clear(raw)
-			if keyErr != nil {
-				t.Fatal(keyErr)
-			}
-			message = append(message, ed25519.Sign(key, message)...)
-			clear(key)
-		}
+
 		digest := sha256.Sum256(message)
 		args[3] = preparationHex(digest[:])
 		if e = os.WriteFile(args[2], message, 0600); e != nil {

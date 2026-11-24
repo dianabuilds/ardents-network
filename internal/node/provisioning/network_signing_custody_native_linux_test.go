@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -301,5 +302,130 @@ func testSigningActualPartialAndProcessCuts(t *testing.T, arguments func(*testin
 				t.Fatal("partial prefix adopted")
 			}
 		})
+	}
+}
+
+func changeCertificateTestTime(t *testing.T, args []string, from, until, reference time.Time) {
+	t.Helper()
+	raw, err := os.ReadFile(args[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan map[string]json.RawMessage
+	var record map[string]any
+	if json.Unmarshal(raw, &plan) != nil || json.Unmarshal(plan["record"], &record) != nil {
+		t.Fatal("test declaration")
+	}
+	record["valid_from"], record["valid_until"] = from.Format(time.RFC3339Nano), until.Format(time.RFC3339Nano)
+	plan["record"] = preparationJSON(t, record)
+	plan["reference_time"] = preparationJSON(t, reference.Format(time.RFC3339Nano))
+	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", plan["record"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err = os.ReadFile(args[4])
+	if err != nil {
+		t.Fatal(err)
+	}
+	key, err := artifactio.ParseEd25519Key(raw)
+	clear(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message = append(message, ed25519.Sign(key, message)...)
+	clear(key)
+	digest := sha256.Sum256(message)
+	args[3] = preparationHex(digest[:])
+	if err = os.WriteFile(args[2], message, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(args[1], preparationJSON(t, plan), 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNetworkSigningNodeCertificateLateTime(t *testing.T) {
+	for _, stage := range []string{"inputs-read", "before-directory-sync"} {
+		t.Run(stage, func(t *testing.T) {
+			args := nativeCertificateArguments(t)
+			now := time.Now().UTC().Truncate(time.Second)
+			until := now.Add(3 * time.Second)
+			changeCertificateTestTime(t, args, now.Add(-time.Minute), until, now)
+			acted := false
+			_, err := SignNetwork(t.Context(), args, func(step string, _ *os.File) {
+				if step == stage {
+					acted = true
+					if delay := time.Until(until); delay > 0 {
+						time.Sleep(delay + time.Millisecond)
+					}
+				}
+			})
+			if !acted || err == nil {
+				t.Fatal("late original certificate accepted", err)
+			}
+			if stage == "inputs-read" {
+				if _, err := os.Stat(args[5]); !os.IsNotExist(err) {
+					t.Fatal("expired before crypto created output", err)
+				}
+			}
+		})
+	}
+}
+
+func TestNetworkSigningNodeCertificateFinalOutputAndPhysicalFailure(t *testing.T) {
+	for _, fault := range []string{"bytes", "inventory", "canceled-close"} {
+		t.Run(fault, func(t *testing.T) {
+			args := nativeCertificateArguments(t)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			acted := false
+			_, err := SignNetwork(ctx, args, func(step string, f *os.File) {
+				if fault == "canceled-close" && step == "signed" {
+					acted = true
+					if e := f.Close(); e != nil {
+						t.Fatal(e)
+					}
+					cancel()
+				}
+				if step == "commit" && fault != "canceled-close" {
+					acted = true
+					name := "node-certificate.pem"
+					if fault == "inventory" {
+						name = "foreign"
+					}
+					if e := os.WriteFile(filepath.Join(args[5], name), []byte("changed after original input IO"), 0600); e != nil {
+						t.Fatal(e)
+					}
+				}
+			})
+			if !acted || err == nil {
+				t.Fatal("late original failure accepted", err)
+			}
+			if fault == "canceled-close" && (!errors.Is(err, context.Canceled) || !errors.Is(err, os.ErrClosed)) {
+				t.Fatal("independent physical/cancellation errors lost", err)
+			}
+		})
+	}
+}
+
+func TestNetworkSigningNodeCertificateContention(t *testing.T) {
+	args := nativeCertificateArguments(t)
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	var wg sync.WaitGroup
+	for range 2 {
+		wg.Go(func() { <-start; _, err := SignNetwork(t.Context(), args, nil); results <- err })
+	}
+	close(start)
+	wg.Wait()
+	close(results)
+	success := 0
+	for err := range results {
+		if err == nil {
+			success++
+		}
+	}
+	if success != 1 {
+		t.Fatal("fresh output winners", success)
 	}
 }
