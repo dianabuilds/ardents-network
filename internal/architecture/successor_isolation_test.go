@@ -564,7 +564,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "internal/node/command/process.go":
 			return local == "internal/processresource"
-		case "internal/node/command/input_linux.go":
+		case "internal/node/command/input.go":
 			return local == "internal/platform/artifacts"
 		case "internal/node/command/report_linux.go":
 			return local == "internal/node"

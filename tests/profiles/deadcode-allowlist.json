@@ -228,6 +228,15 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/node/command.ReadRolePlan"
+        ],
+        "classification": "portable Node plan input with Linux role startup",
+        "rationale": "The bounded plan reader and flag parser run in the portable test inventory. Native Node role startup uses them on Linux. The Windows command refuses native startup before opening the plan.",
+        "owner": "Node command",
+        "retirement": "Remove when a maintained Windows Node role startup consumes the reader."
+      },
+      {
+        "symbols": [
           "internal/application/administration.server.handleByteStream",
           "internal/application/document.BridgeByteStreamWorker",
           "internal/application/document.ByteStreamFailure",
