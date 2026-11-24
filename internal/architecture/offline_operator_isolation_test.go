@@ -215,6 +215,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/node/provisioning/network_profile_signing_linux.go":
 		return dependency == modulePath+"/internal/network/closedprofile"
 	case "internal/node/provisioning/network_output_linux.go", "internal/node/provisioning/network_signing_linux.go",
+		"internal/node/provisioning/network_inventory_native_linux_test.go",
 		"internal/node/provisioning/network_preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/node/provisioning/network_signing_test.go":
