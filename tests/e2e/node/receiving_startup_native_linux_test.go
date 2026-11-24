@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -52,7 +53,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 
 func testNativeReceivingStartup(t *testing.T, role receivingStartupRole) {
 	t.Helper()
-	binary := PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	t.Run(epoch.CarrierClosedTCP, func(t *testing.T) {
 		for _, fault := range []string{"profile", "unknown-field", "nested-roots", "role", "tls-key", "missing-hosting", role.lateFault, "foreign-spend"} {
 			t.Run(fault, func(t *testing.T) {
@@ -64,7 +65,7 @@ func testNativeReceivingStartup(t *testing.T, role receivingStartupRole) {
 
 func testReceivingStartupFault(t *testing.T, binary string, role receivingStartupRole, fault string) {
 	t.Helper()
-	spec, _, _ := PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -78,11 +79,11 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 		t.Fatal(err)
 	}
 	member, other := bundle.Nodes[1], bundle.Nodes[0]
-	clock, stopClock := StartObservedClock(t)
+	clock, stopClock := processfixture.StartObservedClock(t)
 	defer stopClock()
-	network := SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
-	cert, key := WriteNativeCredential(t, nativeRoleCertificate(t, member.PrivateKey))
-	participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), ProcessBudget(t)
+	network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+	cert, key := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, member.PrivateKey))
+	participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 	plan := map[string]any{
 		"network": network, "node_id": member.NodeID, "process_profile": role.profile,
 		"participation_root": participation, "spend_root": spend, "hosting_root": budget,
@@ -116,7 +117,7 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 	case "role":
 		plan["node_id"] = other.NodeID
 	case "tls-key":
-		plan["certificate"], plan["private_key"] = WriteNativeCredential(t, nativeRoleCertificate(t, other.PrivateKey))
+		plan["certificate"], plan["private_key"] = processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, other.PrivateKey))
 	case "missing-hosting":
 		plan["hosting_root"] = filepath.Join(t.TempDir(), "missing")
 	case "foreign-store", "foreign-history":
@@ -188,13 +189,13 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 			t.Fatal(err)
 		}
 	}
-	fresh := StartFreshRole(t, role.name, binary, writeNodePlan(t, plan), role.id)
+	fresh := processfixture.StartFreshRole(t, role.name, binary, writeNodePlan(t, plan), role.id)
 	fresh.Stop(t)
 }
 
 func requireReceivingStartupRefusal(t *testing.T, binary string, role receivingStartupRole, plan map[string]any, expected int) {
 	t.Helper()
-	p := LaunchFreshRole(t, role.name, binary, writeNodePlan(t, plan), role.id)
+	p := processfixture.LaunchFreshRole(t, role.name, binary, writeNodePlan(t, plan), role.id)
 	var event map[string]string
 	decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
 	err := p.Wait()
@@ -211,5 +212,5 @@ func requireReceivingStartupRefusal(t *testing.T, binary string, role receivingS
 	if decodeErr != nil || len(event) != 4 || event["operation"] != "node."+role.name || event["phase"] != "refused" || event["outcome"] != "startup-unavailable" {
 		t.Fatal("partial startup lost bounded refusal", event, decodeErr)
 	}
-	RequireStartupFailure(t, event["first_failure"])
+	processfixture.RequireStartupFailure(t, event["first_failure"])
 }

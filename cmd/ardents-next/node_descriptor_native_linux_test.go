@@ -21,6 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -39,7 +40,7 @@ func TestNativeDescriptorOriginalCommandFailureTCP(t *testing.T) {
 }
 
 func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
-	binary := nodefixture.PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := descriptorRouteFixture(t, carrier)
@@ -47,22 +48,22 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := nodefixture.StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			defer closeClock()
-			descriptorClock, closeDescriptorClock := nodefixture.StartObservedClock(t)
+			descriptorClock, closeDescriptorClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopDescriptorClock := func() { clockOnce.Do(closeDescriptorClock) }
 			defer stopDescriptorClock()
 			// Fixture signing/issuance is input preparation, outside measured role lifetimes.
 			holder := descriptorRouteStock(t, f)
 			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
-			var processes []*nodefixture.NativeProcess
+			var processes []*processfixture.NativeProcess
 			var budgets, participations, spends []string
 			var descriptorConfig map[string]any
 			descriptorRoot := t.TempDir()
 			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, {17}} {
-				certPath, keyPath := nodefixture.WriteNativeCredential(t, certificates[id])
-				budget := nodefixture.ProcessBudget(t)
+				certPath, keyPath := processfixture.WriteNativeCredential(t, certificates[id])
+				budget := processfixture.ProcessBudget(t)
 				participation := filepath.Join(t.TempDir(), "participation")
 				spend := t.TempDir()
 				profile := processresource.Profile
@@ -76,7 +77,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 						work = hosting.Traffic{Tx: 32 << 10, Rx: (32 << 10) - 1}
 					}
 				}
-				config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+				config := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				if id == [32]byte{17} {
 					config["descriptor_root"] = descriptorRoot
 					networkPlan := config["network"].(state.AuthorityDeclaration)
@@ -85,11 +86,11 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 					descriptorConfig = config
 				}
 				sockets[id]()
-				var p *nodefixture.NativeProcess
+				var p *processfixture.NativeProcess
 				if id == [32]byte{17} {
-					p = nodefixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, config), id[0])
+					p = processfixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, config), id[0])
 				} else {
-					p = nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, config), id[0])
+					p = processfixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, config), id[0])
 				}
 				processes = append(processes, p)
 				budgets = append(budgets, budget)
@@ -102,7 +103,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if err != nil || len(before) != 8+32+32+32+8 {
 				t.Fatal("Descriptor receiving root not genuine empty header", err, len(before))
 			}
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal("genuine adjacent Forwarding unavailable", err)
@@ -140,7 +141,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				// after joined Stop, retaining the same unspent durable roots.
 				resolution.Stop(t, true)
 				descriptorConfig["work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
-				resolution = nodefixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, descriptorConfig), 17)
+				resolution = processfixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, descriptorConfig), 17)
 				processes[len(processes)-1] = resolution
 			}
 			if err := prefix.publishDescriptor(t.Context(), raw); err != nil {

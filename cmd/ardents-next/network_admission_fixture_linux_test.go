@@ -22,7 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -103,7 +103,7 @@ func TestNetworkIssuanceDraftRetainsExactBindingsAndHorizons(t *testing.T) {
 func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionFixture)) *networkAdmissionFixture {
 	t.Helper()
 	dir := t.TempDir()
-	spec, plan, inventory := nodefixture.PrepareNetworkGenesis(t, dir)
+	spec, plan, inventory := processfixture.PrepareNetworkGenesis(t, dir)
 	f := &networkAdmissionFixture{spec: spec, plan: plan}
 	networkID, authorityKey, permissionAuthority := spec.NetworkID, spec.Authority, spec.IssuanceAuthority
 	issuerID, receiverID := spec.Nodes[0].NodeID, spec.Nodes[1].NodeID
@@ -258,7 +258,7 @@ func (f *networkAdmissionFixture) tokensForClass(t *testing.T, class admission.C
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded := nodefixture.FixturePermission(t, raw, f.profile, f.spec.Authority, time.Now())
+	encoded := processfixture.FixturePermission(t, raw, f.profile, f.spec.Authority, time.Now())
 	if err := holder.Import(digest, encoded); err != nil {
 		t.Fatal(err)
 	}

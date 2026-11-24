@@ -1,14 +1,18 @@
 //go:build linux && node_process_native
 
-package main
+package node_test
 
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
-	"encoding/pem"
+	"encoding/json"
 	"errors"
+	"math/big"
 	"net"
 	"os"
 	"path/filepath"
@@ -17,13 +21,19 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -31,49 +41,112 @@ import (
 // and parent refill execute inside the genuine original Node command, with its
 // native process guard, producer, receiving journal and Hosting reservations.
 func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
-	binary := nodefixture.PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, mode := range []string{"refill", "capacity-before-spend"} {
 				t.Run(mode, func(t *testing.T) {
-					f, sockets, certificates := newRouteFixture(t, carrier)
-					bundle, err := networkfixture.BuildClosed(f.spec)
+					if remaining := time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)); remaining < time.Minute {
+						timer := time.NewTimer(remaining)
+						defer timer.Stop()
+						select {
+						case <-timer.C:
+						case <-t.Context().Done():
+							t.Fatal(t.Context().Err())
+						}
+					}
+					spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+					listener, err := net.Listen("tcp", "127.0.0.1:0")
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := nodefixture.StartObservedClock(t)
+					t.Cleanup(func() { _ = listener.Close() })
+					spec.Nodes[1].Endpoint = listener.Addr().String()
+					bundle, err := networkfixture.BuildClosed(spec)
+					if err != nil {
+						t.Fatal(err)
+					}
+					profile := sha256.Sum256(bundle.Profile)
+					issuerPlan.AdmissionBinding = quota.LedgerBinding{
+						Network: spec.NetworkID, Issuer: bundle.Nodes[0].NodeID, Authority: spec.IssuanceAuthority,
+						Profile: profile, Duty: bundle.Nodes[0].Generation, Start: spec.NotBefore, End: spec.NotAfter, Keys: inventory.Keys,
+					}
+					if err := quota.Initialize(issuerPlan.AdmissionRoot, issuerPlan.AdmissionBinding); err != nil {
+						t.Fatal(err)
+					}
+					if result := issuer.Initialize(t.Context(), issuerPlan); result.Outcome != "initialized-results" {
+						t.Fatal(result)
+					}
+					clock, closeClock := processfixture.StartObservedClock(t)
 					defer closeClock()
-					certificate := certificates[[32]byte{12}]
-					certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
-					if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
-						t.Fatal(err)
+					seed := func() state.AuthorityDeclaration {
+						return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 					}
-					key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
+					authorityPlan := seed()
+					config, err := authorityPlan.Config()
 					if err != nil {
 						t.Fatal(err)
 					}
-					encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
-					if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
+					authority, err := state.OpenRetained(config)
+					if err != nil {
 						t.Fatal(err)
 					}
-					clear(key)
-					clear(encoded)
-					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), nodefixture.ProcessBudget(t)
+					t.Cleanup(func() {
+						if err := authority.Close(); err != nil {
+							t.Error(err)
+						}
+					})
+					observe := func() (admission.AuthorityFacts, time.Time, error) {
+						view, err := authority.CurrentRuntime()
+						if err != nil {
+							return admission.AuthorityFacts{}, time.Time{}, err
+						}
+						return funding.NetworkFacts(view)
+					}
+					facts, now, err := observe()
+					if err != nil {
+						t.Fatal(err)
+					}
+					id := bundle.Nodes[1].NodeID
+					view, err := authority.CurrentRuntime()
+					if err != nil {
+						t.Fatal(err)
+					}
+					member, err := view.Member(id, view.ObservedAt())
+					if err != nil {
+						t.Fatal(err)
+					}
+					receiver := receiving.Receiver{NetworkID: facts.NetworkID, StateGeneration: facts.StateGeneration,
+						StateDigest: facts.StateDigest, ProfileDigest: facts.Digest, NodeID: id, DutyGeneration: member.DutyGeneration}
+					guardPresentation := funding.PresentationGuard(authority.CurrentRuntime)
+					holder := refillStock(t, spec.Authority, issuerPlan, receiver, facts, now, observe)
+					key := bundle.Nodes[1].PrivateKey
+					cert := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour),
+						KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
+					leaf, err := x509.CreateCertificate(rand.Reader, cert, cert, key.Public(), key)
+					if err != nil {
+						t.Fatal(err)
+					}
+					certPath, keyPath := processfixture.WriteNativeCredential(t, tls.Certificate{Certificate: [][]byte{leaf}, PrivateKey: key})
+					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 					work, termination := hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
-					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": root, "spend_root": spend, "hosting_root": budgetRoot, "certificate": certPath, "private_key": keyPath, "work": work, "termination": termination, "retirement_wait_ms": 5000}
-					sockets[[32]byte{12}]()
-					process := nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, plan), 90)
-					holder := routeRoleStock(t, f, false, true)
-					view, err := f.current()
+					plan := map[string]any{"network": seed(), "node_id": id, "process_profile": processresource.Profile,
+						"participation_root": root, "spend_root": spend, "hosting_root": budgetRoot, "certificate": certPath,
+						"private_key": keyPath, "work": work, "termination": termination, "retirement_wait_ms": 5000}
+					planBytes, err := json.Marshal(plan)
 					if err != nil {
 						t.Fatal(err)
 					}
-					member, err := view.Member([32]byte{12}, view.ObservedAt())
-					if err != nil {
+					planPath := filepath.Join(t.TempDir(), "plan.json")
+					if err := os.WriteFile(planPath, planBytes, 0600); err != nil {
 						t.Fatal(err)
 					}
+					if err := listener.Close(); err != nil {
+						t.Fatal(err)
+					}
+					process := processfixture.StartFreshRole(t, "forwarding", binary, planPath, 90)
 					end := time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)
-					conn, err := routeTestOpenEndpoint(t.Context(), transport.ClosedRoleCarrierRequest{CarrierProfile: carrier, Endpoint: member.Endpoint, ExpectedServer: member.PublicKey, Deadline: end})
+					conn, err := roletls.OpenEndpoint(t.Context(), transport.ClosedRoleCarrierRequest{CarrierProfile: carrier, Endpoint: member.Endpoint, ExpectedServer: member.PublicKey, Deadline: end})
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -81,7 +154,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					if err := conn.SetDeadline(end); err != nil {
 						t.Fatal(err)
 					}
-					hello := ardp.Hello{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, RecipientNodeID: member.NodeID, RecipientDutyGeneration: member.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: end}
+					hello := ardp.Hello{NetworkID: facts.NetworkID, StateGeneration: facts.StateGeneration, StateDigest: facts.StateDigest, ProfileDigest: facts.Digest, RecipientNodeID: member.NodeID, RecipientDutyGeneration: member.DutyGeneration, Purpose: ardp.PurposeForwarding, Deadline: end}
 					if _, err := rand.Read(hello.ChannelNonce[:]); err != nil {
 						t.Fatal(err)
 					}
@@ -94,14 +167,14 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					}
 					presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
 					take := func() []byte {
-						if err := f.authority.presentation(presentation); err != nil {
+						if err := guardPresentation(presentation); err != nil {
 							t.Fatal(err)
 						}
 						raw, err := holder.Take(t.Context(), presentation, 2)
 						if err != nil {
 							t.Fatal(err)
 						}
-						if err := f.authority.presentation(presentation); err != nil {
+						if err := guardPresentation(presentation); err != nil {
 							t.Fatal(err)
 						}
 						return raw
@@ -199,7 +272,24 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					if err != nil || !bytes.Equal(retained, secondSpend) {
 						t.Fatal("joined command refunded or changed durable spend", err)
 					}
-					owner, err := receiving.Open(spend, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, member.NotAfter()) })
+					owner, err := receiving.Open(spend, receiver, func() (receiving.Observation, error) {
+						view, err := authority.CurrentRuntime()
+						if err != nil {
+							return receiving.Observation{}, err
+						}
+						current, now, err := funding.NetworkFacts(view)
+						if err != nil {
+							return receiving.Observation{}, err
+						}
+						active, err := view.Member(receiver.NodeID, now)
+						if err != nil || active.DutyGeneration != receiver.DutyGeneration ||
+							current.NetworkID != receiver.NetworkID || current.StateGeneration != receiver.StateGeneration ||
+							current.StateDigest != receiver.StateDigest || current.Digest != receiver.ProfileDigest {
+							return receiving.Observation{}, errors.Join(errors.New("original receiver duty unavailable"), err)
+						}
+						return receiving.Observation{Profile: current, Receiver: receiver, Now: now,
+							NotAfter: earlierTime(earlierTime(member.NotAfter(), active.NotAfter()), current.NotAfter)}, nil
+					})
 					if err != nil {
 						t.Fatal("original spend root remains held after manager join", err)
 					}
@@ -265,4 +355,55 @@ func chargeNativeLoopbackBudget(t *testing.T) {
 			t.Fatal("real provider-traffic receive", n, err)
 		}
 	}
+}
+
+func refillStock(t *testing.T, authority ed25519.PrivateKey, plan issuer.Plan, receiver receiving.Receiver, facts admission.AuthorityFacts, now time.Time, observe func() (admission.AuthorityFacts, time.Time, error)) *stock.Owner {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.Chmod(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	holder, err := stock.Open(root, admission.AllocationUser, observe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := holder.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	raw, digest, err := holder.Request([3]uint32{0, 2, 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	permission := processfixture.FixturePermission(t, raw, facts, authority, now)
+	if err := holder.Import(digest, permission); err != nil {
+		t.Fatal(err)
+	}
+	challenge := token.ClosedTokenContext{NetworkID: facts.NetworkID, ProfileDigest: facts.Digest, IssuerNodeID: facts.IssuerNodeID,
+		ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration, Class: uint8(admission.ForwardClass), WindowStart: now.UTC().Truncate(time.Hour)}
+	attempt, err := holder.Begin(stock.IssuanceIntent{Challenges: []token.ClosedTokenContext{challenge, challenge},
+		Selection: stock.ExchangeBinding{ID: [32]byte{31}, ProfileDigest: facts.Digest}, Bootstrap: true, Deadline: facts.NotAfter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch, _, err := attempt.Request()
+	if err != nil {
+		t.Fatal(err)
+	}
+	issued := issuer.IssueCurrent(t.Context(), plan, batch, quota.Bootstrap, observe)
+	if issued.Outcome != "issued-offline" {
+		t.Fatal("original fixture issuance", issued.Outcome)
+	}
+	if err := attempt.Complete(issued.Response, nil); err != nil {
+		t.Fatal(err)
+	}
+	return holder
+}
+
+func earlierTime(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }

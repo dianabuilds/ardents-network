@@ -1,4 +1,4 @@
-package node
+package processfixture
 
 import (
 	"path/filepath"

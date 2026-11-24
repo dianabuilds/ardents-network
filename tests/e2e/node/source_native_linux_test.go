@@ -29,13 +29,14 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
-func launchNativeSource(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
+func launchNativeSource(t *testing.T, binary, plan string) *processfixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-source-%d-%d.service", os.Getpid(), time.Now().UnixNano())
-	return nodefixture.Launch(t, unit, "Source original diagnostic", "original Source stop unavailable",
+	return processfixture.Launch(t, unit, "Source original diagnostic", "original Source stop unavailable",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "source", "serve", plan)
 }
@@ -55,17 +56,17 @@ func TestNativeSourceOriginalInputsRetire(t *testing.T) {
 }
 
 func nativeSourceWorkload(t *testing.T, mode string) {
-	binary := nodefixture.PinnedCommand(t)
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	binary := processfixture.PinnedCommand(t)
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := nodefixture.StartObservedClock(t)
+	clock, closeClock := processfixture.StartObservedClock(t)
 	defer closeClock()
-	networkPlan := nodefixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+	networkPlan := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	server, client, unauthorized, root, serverPin, clientPin := sourcefixture.NativeTLS(t)
-	cert, key := nodefixture.WriteNativeCredential(t, server)
+	cert, key := processfixture.WriteNativeCredential(t, server)
 	rootPath := filepath.Join(t.TempDir(), "root.pem")
 	if err := os.WriteFile(rootPath, root, 0600); err != nil {
 		t.Fatal(err)

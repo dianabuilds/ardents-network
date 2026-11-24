@@ -27,7 +27,7 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
 	sourceowner "github.com/dianabuilds/ardents-network/internal/network/source/serving"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -49,7 +49,7 @@ func writeSourceFixtureKeys(t *testing.T, p map[string]any, credentials []tls.Ce
 }
 
 func TestNativeSourcePreparedCohort(t *testing.T) {
-	binary := nodefixture.PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	parent := t.TempDir()
 	if err := os.Chmod(parent, 0700); err != nil {
 		t.Fatal(err)
@@ -65,16 +65,16 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
 		t.Fatal("invalid environment: original workspace is not native ext4", err)
 	}
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := nodefixture.StartObservedClock(t)
+	clock, closeClock := processfixture.StartObservedClock(t)
 	defer closeClock()
 	var networks [2]state.AuthorityDeclaration
 	for i := range networks {
-		networks[i] = nodefixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+		networks[i] = processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	}
 	authority := networks[0]
 	headless := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-roles"), TimeConfidenceFile: clock, NetworkID: hex.EncodeToString(authority.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authority.Authorities[0][:])}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authority.ProfileAuthority[:])}
@@ -103,7 +103,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if raw, err := command.CombinedOutput(); err != nil {
 		t.Fatal("actual preparation", err, string(raw))
 	}
-	var processes [2]*nodefixture.NativeProcess
+	var processes [2]*processfixture.NativeProcess
 	for i := range processes {
 		if err = held[i].Close(); err != nil {
 			t.Fatal(err)

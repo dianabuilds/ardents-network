@@ -11,7 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"io"
 	"net"
 	"os"
@@ -33,7 +33,7 @@ import (
 // the signed material and owns its real durable root, Source and exposure.
 func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.ServingDeclaration) {
 	t.Helper()
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +47,7 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 		}
 		inputs = append(inputs, filepath.Join(directory, "input"))
 	}
-	clock, stopClock := nodefixture.StartObservedClock(t)
+	clock, stopClock := processfixture.StartObservedClock(t)
 	t.Cleanup(stopClock)
 	var pin [32]byte
 	copy(pin[:], spec.Authority.Public().(ed25519.PublicKey))
@@ -467,12 +467,12 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 // This test proves actual State/serving/guard cleanup on failed readiness
 // output. It supplies no successful native process measurement or admission.
 func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, stopClock := nodefixture.StartObservedClock(t)
+	clock, stopClock := processfixture.StartObservedClock(t)
 	defer stopClock()
 	var key [32]byte
 	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))

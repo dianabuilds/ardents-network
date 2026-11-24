@@ -28,6 +28,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -38,7 +39,7 @@ func TestNativeNodeForwardingTCP(t *testing.T) {
 }
 
 func testNativeNodeForwarding(t *testing.T, retirement string) {
-	binary := PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			if remaining := time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)); remaining < time.Minute {
@@ -50,7 +51,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 					t.Fatal(t.Context().Err())
 				}
 			}
-			spec, issuerPlan, inventory := PrepareNetworkGenesis(t, t.TempDir())
+			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 			spec.Nodes = spec.Nodes[:1]
 			listeners := make(map[[32]byte]net.Listener)
 			certificates := make(map[[32]byte]tls.Certificate)
@@ -88,12 +89,12 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				t.Fatal(err)
 			}
 			prepareNativeIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
-			clock, closeClock := StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
 			seed := func() state.AuthorityDeclaration {
-				return SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+				return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 			}
 			authorityPlan := seed()
 			config, err := authorityPlan.Config()
@@ -109,7 +110,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 					t.Error(err)
 				}
 			})
-			var processes []*NativeProcess
+			var processes []*processfixture.NativeProcess
 			var budgets []string
 			var participation []string
 			var spendRoots []string
@@ -120,9 +121,9 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				if pair, ok := provisioned[id]; ok {
 					certPath, keyPath = pair[0], pair[1]
 				} else {
-					certPath, keyPath = WriteNativeCredential(t, certificates[id])
+					certPath, keyPath = processfixture.WriteNativeCredential(t, certificates[id])
 				}
-				budget := ProcessBudget(t)
+				budget := processfixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				root := filepath.Join(t.TempDir(), "participation")
 				participation = append(participation, root)
@@ -136,7 +137,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				if err := listeners[id].Close(); err != nil {
 					t.Fatal(err)
 				}
-				processes = append(processes, StartFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), index))
+				processes = append(processes, processfixture.StartFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), index))
 				before, err := os.ReadFile(filepath.Join(spend, "closed-token-spends"))
 				if err != nil || len(before) != 8+32+32+32+8 {
 					t.Fatal("fresh real receiving ledger is not an empty canonical header", err)
@@ -145,7 +146,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			}
 			route := map[string]any{
 				"entry_root": filepath.Join(t.TempDir(), "entry"), "interior_root": filepath.Join(t.TempDir(), "interior"),
-				"hosting_root": ProcessBudget(t), "domain": 3, "deadline": time.Now().Add(30 * time.Second).UTC().Truncate(time.Second),
+				"hosting_root": processfixture.ProcessBudget(t), "domain": 3, "deadline": time.Now().Add(30 * time.Second).UTC().Truncate(time.Second),
 				"work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10},
 			}
 			holder := map[string]any{"root": t.TempDir(), "network": seed(), "role": admission.AllocationUser, "route": route}
@@ -256,7 +257,7 @@ func fundForwardingConsole(t *testing.T, send func(any) AdmissionReply, spec net
 	if request.Outcome != "completed" {
 		t.Fatal("holder request", request.Outcome)
 	}
-	raw := FixturePermission(t, request.Request, facts, spec.Authority, now)
+	raw := processfixture.FixturePermission(t, request.Request, facts, spec.Authority, now)
 	if reply := send(map[string]any{"operation": "import", "digest": request.Digest, "payload": raw}); reply.Outcome != "completed" {
 		t.Fatal("holder import", reply.Outcome)
 	}

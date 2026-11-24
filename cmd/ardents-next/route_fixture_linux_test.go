@@ -22,7 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -254,7 +254,7 @@ func routePermissionStockAt(t *testing.T, f *networkAdmissionFixture, role admis
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded := nodefixture.FixturePermission(t, raw, f.profile, f.spec.Authority, time.Now())
+	encoded := processfixture.FixturePermission(t, raw, f.profile, f.spec.Authority, time.Now())
 	if err := holder.Import(digest, encoded); err != nil {
 		t.Fatal(err)
 	}
@@ -310,7 +310,7 @@ func routeConsolePermissionStock(t *testing.T, f *networkAdmissionFixture, send 
 	if request.Outcome != "completed" {
 		t.Fatal("holder request", request.Outcome)
 	}
-	raw := nodefixture.FixturePermission(t, request.Request, f.profile, f.spec.Authority, time.Now())
+	raw := processfixture.FixturePermission(t, request.Request, f.profile, f.spec.Authority, time.Now())
 	if reply := send(holderCommand{Operation: "import", Digest: request.Digest, Payload: raw}); reply.Outcome != "completed" {
 		t.Fatal("holder import", reply.Outcome)
 	}

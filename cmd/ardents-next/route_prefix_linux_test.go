@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"net"
 	"path/filepath"
 	"sync/atomic"
@@ -22,6 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 func TestRouteGenuineRetainedPrefixTCP(t *testing.T) {
@@ -166,7 +166,7 @@ func TestRouteGenuineRetainedPrefixTCP(t *testing.T) {
 						other := plan
 						other.EntryRoot = filepath.Join(t.TempDir(), "entry")
 						other.InteriorRoot = filepath.Join(t.TempDir(), "interior")
-						other.HostingRoot = nodefixture.ProcessBudget(t)
+						other.HostingRoot = processfixture.ProcessBudget(t)
 						selected, err := selection.Open(selection.Config{EntryRoot: other.EntryRoot, InteriorRoot: other.InteriorRoot, Domain: 3, Current: f.current})
 						if err != nil {
 							t.Fatal(err)

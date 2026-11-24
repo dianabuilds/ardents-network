@@ -5,6 +5,7 @@ package node
 import (
 	"bytes"
 	"errors"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestNativeNodeRepairRefusalKeepsBoundedReport(t *testing.T) {
-	binary := PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	root := t.TempDir()
 	plan := filepath.Join(root, "missing-repair-plan")
 	for _, role := range []string{"forwarding", "descriptor", "introduction", "join"} {

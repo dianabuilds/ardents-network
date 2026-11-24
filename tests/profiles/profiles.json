@@ -163,7 +163,7 @@
       "prerequisites": [
         "Linux cgroup v2 and actual systemd manager with root driver outside the measured Node services",
         "separate original sole-process leaf with approved CPU/memory/PID/FD/Go limits",
-        "independently SHA-256-pinned canonical Node command, node_process_native command, Node e2e and resource test binaries from checked source; race-capable Go1.27.4 build",
+        "independently SHA-256-pinned canonical Node command, node_process_native command, Node owner, Node e2e and resource test binaries from checked source; race-capable Go1.27.4 build",
         "private local durable roots, proc/cgroup/PSI counters and loopback TCP; deferred-QUIC refusal controls also observe UDP"
       ],
       "invalid_environment": "selected Forwarding native environment or artifact unavailable; no passing skips",

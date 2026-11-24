@@ -27,6 +27,7 @@ import (
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -447,13 +448,13 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 // stage seeds and accepts them through their actual owners).
 func endpointPlatformNativeDeclaration(t *testing.T, stand *endpointPlatformNativeStand) requestinput.Declaration {
 	t.Helper()
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	key := spec.Authority.Public().(ed25519.PublicKey)
 	keyHex := hex.EncodeToString(key)
 	networkID := hex.EncodeToString(spec.NetworkID[:])
 	roles := filepath.Join(stand.base, "roles", "endpoint")
 	run := filepath.Join("/run/ardents", fmt.Sprintf("ep-proof-%d", os.Getpid()))
-	clock, closeClock := nodefixture.StartObservedClock(t)
+	clock, closeClock := processfixture.StartObservedClock(t)
 	t.Cleanup(closeClock)
 	return requestinput.Declaration{
 		Schema:           "ardents-endpoint-installation-request-v1",

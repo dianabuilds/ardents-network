@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -40,8 +41,8 @@ func TestNativeJoinRetainedLifecycle(t *testing.T) {
 // and live Route traffic each have their own native profiles.
 func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain, subrole byte, work hosting.Traffic) {
 	t.Helper()
-	binary := PinnedCommand(t)
-	spec, _, _ := PrepareNetworkGenesis(t, t.TempDir())
+	binary := processfixture.PinnedCommand(t)
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -55,14 +56,14 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := StartObservedClock(t)
+	clock, closeClock := processfixture.StartObservedClock(t)
 	defer closeClock()
-	networkPlan := SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+	networkPlan := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 
 	member := bundle.Nodes[1]
 	key := member.PrivateKey
-	certPath, keyPath := WriteNativeCredential(t, nativeRoleCertificate(t, key))
-	budget := ProcessBudget(t)
+	certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, key))
+	budget := processfixture.ProcessBudget(t)
 	participation := filepath.Join(t.TempDir(), "participation")
 	spend := t.TempDir()
 	plan := map[string]any{"network": networkPlan, "node_id": member.NodeID, "process_profile": profile,
@@ -102,14 +103,14 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 	// First installation: the fresh --config composition creates the participation
 	// and receiving histories and claims the producer before a requested stop
 	// joins and removes the producer.
-	first := StartFreshRole(t, role, binary, planPath, id)
+	first := processfixture.StartFreshRole(t, role, binary, planPath, id)
 	producerPresent(true, "first launch")
 	first.Stop(t)
 	producerPresent(false, "first completion")
 
 	// Retained relaunch over the existing histories: a new independently checked
 	// invocation claims the producer again and joins cleanly.
-	relaunch := StartRetainedRole(t, role, binary, planPath, id)
+	relaunch := processfixture.StartRetainedRole(t, role, binary, planPath, id)
 	producerPresent(true, "retained relaunch")
 	relaunch.Stop(t)
 	producerPresent(false, "retained relaunch completion")
@@ -117,9 +118,9 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 	// A killed retained invocation supplies no completion evidence: the live
 	// node-duty fence stays retained and the next retained opening refuses before
 	// listening. Repair against real manager facts is the installed gate (stage C).
-	crash := StartRetainedRole(t, role, binary, planPath, id)
+	crash := processfixture.StartRetainedRole(t, role, binary, planPath, id)
 	producerPresent(true, "crash launch")
-	code, _ := JoinRetainedRole(t, crash, "SIGKILL")
+	code, _ := processfixture.JoinRetainedRole(t, crash, "SIGKILL")
 	if code == 0 || code == 130 {
 		t.Fatal("killed role reported joined completion", role, code)
 	}
@@ -135,8 +136,8 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 			t.Fatal(err)
 		}
 	}
-	refused := LaunchRetainedRole(t, role, binary, planPath, id)
-	code, event := JoinRetainedRole(t, refused, "")
+	refused := processfixture.LaunchRetainedRole(t, role, binary, planPath, id)
+	code, event := processfixture.JoinRetainedRole(t, refused, "")
 	if code != 1 || event["phase"] != "refused" {
 		t.Fatal("retained producer adopted after crash", code, event, refused.Diagnostic.String())
 	}

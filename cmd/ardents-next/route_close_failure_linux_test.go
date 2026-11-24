@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -17,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -33,7 +33,7 @@ func TestRouteCompiledHolderRetainsFailedPrefixClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clockFile, stopClock := nodefixture.StartObservedClock(t)
+	clockFile, stopClock := processfixture.StartObservedClock(t)
 	defer stopClock()
 	var authorityKey [32]byte
 	copy(authorityKey[:], f.spec.Authority.Public().(ed25519.PublicKey))
@@ -54,7 +54,7 @@ func TestRouteCompiledHolderRetainsFailedPrefixClose(t *testing.T) {
 		t.Fatal("independent signed State initialization", err)
 	}
 	root := t.TempDir()
-	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(45 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(45 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	process := startJoinCommandProcess(t, ctx, binary, "admission", "holder", "--config", hostingConfig(t, map[string]any{"root": t.TempDir(), "network": networkPlan, "role": admission.AllocationUser, "route": plan}))
 	defer func() {
 		if !process.waited {

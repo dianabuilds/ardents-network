@@ -21,13 +21,15 @@ host protection, move durable state to tmpfs or change the original envelopes.
 Build canonical `ardents-next` with the root Makefile's canonical flags and both
 `node_process_native` command/resource test binaries with `-race`, using the
 selected toolchain/dependency owner. Also build the Node startup and retained lifecycle e2e
-binary with `go test -c -race -tags node_process_native -o /external/node-e2e.test ./tests/e2e/node`. Source snapshots, caches and artifacts stay
+binary with `go test -c -race -tags node_process_native -o /external/node-e2e.test ./tests/e2e/node`. Build the Node owner test binary with
+`go test -c -race -tags node_process_native -o /external/node-owner.test ./internal/node`.
+Source snapshots, caches and artifacts stay
 outside Git. Generate a JSON manifest `{"files":{"relative/path":"sha256",...}}`
 covering **every** source input to those builds, including these scripts, the
 Makefile and profile registry. Preserve the manifest/artifact SHA-256 values
 independently before transferring them to the native stand. Set the existing
 `ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST`,
-`ARDENTS_NODE_RESOURCE_TEST`, `ARDENTS_NODE_E2E_TEST` and their `_SHA256` pins, plus
+`ARDENTS_NODE_RESOURCE_TEST`, `ARDENTS_NODE_E2E_TEST`, `ARDENTS_NODE_OWNER_TEST` and their `_SHA256` pins, plus
 `ARDENTS_NODE_NATIVE_SOURCE_MANIFEST` and `ARDENTS_NODE_NATIVE_SOURCE_SHA256`.
 The runner verifies those bytes before and after every complete profile.
 

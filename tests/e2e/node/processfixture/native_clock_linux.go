@@ -1,6 +1,6 @@
 //go:build linux
 
-package node
+package processfixture
 
 import (
 	"os"
