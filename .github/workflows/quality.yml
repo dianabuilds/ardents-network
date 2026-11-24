@@ -4,23 +4,27 @@ on:
 permissions:
   contents: read
 jobs:
-  node-retained-lifecycles:
+  node-native-profile:
+    strategy:
+      fail-fast: false
+      matrix:
+        script: [run-native.sh, run-issuer-native.sh, run-descriptor-native.sh, run-introduction-native.sh, run-join-native.sh]
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: d9b9c92f2b75d8667eb2d9d320cf6a0833f6ae3d
+          ref: 4110b80894cb73fe9dd04ba5b6441a93ae7d6e4f
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: 1.27.4
           cache: true
-      - name: Exercise the three original retained Node processes through e2e
+      - name: Exercise the exact Node process profile
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = d9b9c92f2b75d8667eb2d9d320cf6a0833f6ae3d
+          test "$(git rev-parse HEAD)" = 4110b80894cb73fe9dd04ba5b6441a93ae7d6e4f
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04
@@ -32,18 +36,17 @@ jobs:
           build_dir=$(mktemp -d "$RUNNER_TEMP/forwarding-build.XXXXXX")
           go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
           go test -c -race -tags node_process_native -o "$build_dir/node-e2e.test" ./tests/e2e/node
-          sudo -n install -m 0755 "$build_dir/ardents" "$build_dir/node-e2e.test" "$native_dir"
-          command_digest=$(sha256sum "$build_dir/ardents")
-          test_digest=$(sha256sum "$build_dir/node-e2e.test")
-          sudo -n env TMPDIR="$native_dir" ARDENTS_NODE_NATIVE_COMMAND="$native_dir/ardents" \
-            ARDENTS_NODE_NATIVE_COMMAND_SHA256="${command_digest%% *}" \
-            NATIVE_E2E_DIGEST="${test_digest%% *}" bash -c '
-              set -euo pipefail
-              actual=$(sha256sum "$TMPDIR/node-e2e.test")
-              test "${actual%% *}" = "$NATIVE_E2E_DIGEST"
-              for role in Forwarding Descriptor Join; do
-                name="TestNative${role}RetainedLifecycle"
-                "$TMPDIR/node-e2e.test" -test.list="^$name$" | grep -Fx "$name"
-                "$TMPDIR/node-e2e.test" -test.v -test.run="^$name$" -test.timeout=3m
-              done
-            '
+          go test -c -race -tags node_process_native -o "$build_dir/node-command.test" ./cmd/ardents-next
+          go test -c -race -tags node_process_native -o "$build_dir/node-resource.test" ./internal/processresource
+          sudo -n install -m 0755 "$build_dir/ardents" "$build_dir/"*.test "$native_dir"
+          digest() { result=$(sha256sum "$1"); printf '%s' "${result%% *}"; }
+          sudo -n env TMPDIR="$native_dir" \
+            ARDENTS_NODE_NATIVE_COMMAND="$native_dir/ardents" \
+            ARDENTS_NODE_NATIVE_COMMAND_SHA256="$(digest "$build_dir/ardents")" \
+            ARDENTS_NODE_NATIVE_TEST="$native_dir/node-command.test" \
+            ARDENTS_NODE_NATIVE_TEST_SHA256="$(digest "$build_dir/node-command.test")" \
+            ARDENTS_NODE_E2E_TEST="$native_dir/node-e2e.test" \
+            ARDENTS_NODE_E2E_TEST_SHA256="$(digest "$build_dir/node-e2e.test")" \
+            ARDENTS_NODE_RESOURCE_TEST="$native_dir/node-resource.test" \
+            ARDENTS_NODE_RESOURCE_TEST_SHA256="$(digest "$build_dir/node-resource.test")" \
+            sh "scripts/node/${{ matrix.script }}" -timeout=3m

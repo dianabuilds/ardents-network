@@ -76,7 +76,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				}
 				plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: work}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				sockets[id]()
-				processes[id] = startNativeJoin(t, binary, hostingConfig(t, plan), id[0])
+				processes[id] = nodefixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
 				plans[id] = plan
 				before[id], err = os.ReadFile(filepath.Join(plan["spend_root"].(string), "closed-token-spends"))
 				if err != nil {
@@ -288,7 +288,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 					t.Fatal("unjoined original reservations", e, closeErr, snapshot.ReservedBytes)
 				}
 				// A separate invocation reopens exact roots and the same ephemeral endpoint.
-				fresh := startNativeJoin(t, binary, hostingConfig(t, plan), id[0])
+				fresh := nodefixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
 				fresh.Stop(t)
 				retained, e := os.ReadFile(filepath.Join(plan["spend_root"].(string), "closed-token-spends"))
 				if e != nil || !bytes.Equal(retained, after) {
@@ -297,31 +297,6 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			}
 		})
 	}
-}
-
-func launchNativeJoin(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	unit := fmt.Sprintf("ardents-join-%d-%d.service", os.Getpid(), index)
-	return nodefixture.Launch(t, unit, "original Join retained diagnostic", "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "join", "--config", plan)
-}
-
-func startNativeJoin(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	p := launchNativeJoin(t, binary, plan, index)
-	var event map[string]string
-	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.join" || event["phase"] != "listening" {
-		t.Fatal("genuine original Join startup refused", event, err, p.Diagnostic.String())
-	}
-	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
-		t.Fatal("original Join MainPID unavailable", err)
-	}
-	return p
 }
 
 func TestNativeJoinOriginalCommandLossAfterIOTCP(t *testing.T) {
@@ -389,7 +364,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					if fault != "listener" {
 						sockets[id]()
 					}
-					p := launchNativeJoin(t, binary, hostingConfig(t, plan), id[0])
+					p := nodefixture.LaunchFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
 					err = p.Command.Wait()
@@ -451,7 +426,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					plan["certificate"], plan["private_key"] = cert, key
 					plan["hosting_root"], plan["spend_root"] = budget, spend
 					sockets[id]()
-					fresh := startNativeJoin(t, binary, hostingConfig(t, plan), id[0])
+					fresh := nodefixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
 					fresh.Stop(t)
 				})
 			}

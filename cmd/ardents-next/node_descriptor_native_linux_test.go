@@ -25,35 +25,6 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-func launchNativeDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	unit := fmt.Sprintf("ardents-descriptor-%d-%d.service", os.Getpid(), index)
-	return nodefixture.Launch(t, unit, "original Descriptor retained diagnostic", "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "descriptor", "--config", plan)
-}
-
-func startNativeDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	p := launchNativeDescriptor(t, binary, plan, index)
-	var event map[string]string
-	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.descriptor" || event["phase"] != "listening" {
-		t.Fatal("genuine original Descriptor startup refused", event, err, p.Diagnostic.String())
-	}
-	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
-		t.Fatal("original Descriptor MainPID unavailable", err)
-	}
-	return p
-}
-
-// Actual canonical commands run in separate sole-process native leaves. The
-// signed public Descriptor is a named independent input fixture, not evidence
-// of Publisher readiness. All State, Stock, receiving/Hosting, Store and Carrier
-// successes come from real new owners. This is bounded development evidence.
 func TestNativeDescriptorPublishLookupAndReopenTCP(t *testing.T) {
 	nativeDescriptorCommandWorkload(t, "cancel")
 }
@@ -112,7 +83,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 						}
 					}
 					sockets[id]()
-					p := launchNativeDescriptor(t, binary, hostingConfig(t, plan), id[0])
+					p := nodefixture.LaunchFreshRole(t, "descriptor", binary, hostingConfig(t, plan), id[0])
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
 					err = p.Command.Wait()
@@ -167,7 +138,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					plan["process_profile"], plan["node_id"] = processresource.DescriptorProfile, id
 					plan["certificate"], plan["private_key"] = cert, key
 					plan["hosting_root"], plan["descriptor_root"] = budget, storeRoot
-					fresh := startNativeDescriptor(t, binary, hostingConfig(t, plan), id[0])
+					fresh := nodefixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, plan), id[0])
 					fresh.Stop(t)
 				})
 			}
@@ -230,9 +201,9 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				sockets[id]()
 				var p *nodefixture.NativeProcess
 				if id == [32]byte{17} {
-					p = startNativeDescriptor(t, binary, hostingConfig(t, config), id[0])
+					p = nodefixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, config), id[0])
 				} else {
-					p = nodefixture.StartForwarding(t, binary, hostingConfig(t, config), id[0])
+					p = nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, config), id[0])
 				}
 				processes = append(processes, p)
 				budgets = append(budgets, budget)
@@ -283,7 +254,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				// after joined Stop, retaining the same unspent durable roots.
 				resolution.Stop(t, true)
 				descriptorConfig["work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
-				resolution = startNativeDescriptor(t, binary, hostingConfig(t, descriptorConfig), 17)
+				resolution = nodefixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, descriptorConfig), 17)
 				processes[len(processes)-1] = resolution
 			}
 			if err := prefix.publishDescriptor(t.Context(), raw); err != nil {
