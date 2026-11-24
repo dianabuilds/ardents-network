@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/exec"
 	"testing"
 	"time"
@@ -39,14 +40,26 @@ func OpenAdmissionConsole(t testing.TB, binary, operation, config string) (func(
 	var log bytes.Buffer
 	cmd.Stderr = &log
 	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
+		t.Fatal(errors.Join(err, in.Close(), out.Close()))
 	}
-	closed := false
+	joined := false
 	t.Cleanup(func() {
-		if !closed {
-			_ = in.Close()
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
+		if !joined {
+			closeErr := in.Close()
+			if errors.Is(closeErr, os.ErrClosed) {
+				closeErr = nil
+			}
+			killErr := cmd.Process.Kill()
+			if errors.Is(killErr, os.ErrProcessDone) {
+				killErr = nil
+			}
+			waitErr := cmd.Wait()
+			if err := errors.Join(closeErr, killErr); err != nil {
+				t.Error("retire admission console", err)
+			}
+			if waitErr != nil {
+				t.Log("admission console result during cleanup:", waitErr)
+			}
 		}
 		if t.Failed() && log.Len() != 0 {
 			t.Log("joined console diagnostics:", log.String())
@@ -66,9 +79,12 @@ func OpenAdmissionConsole(t testing.TB, binary, operation, config string) (func(
 	}
 	close := func() {
 		t.Helper()
+		if joined {
+			return
+		}
 		closeErr := in.Close()
 		waitErr := cmd.Wait()
-		closed = true
+		joined = true
 		if err := errors.Join(closeErr, waitErr); err != nil {
 			t.Fatal(err, &log)
 		}
