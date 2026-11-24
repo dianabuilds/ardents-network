@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 func issuerConfigObject(raw []byte, names ...string) (map[string]json.RawMessage, error) {
@@ -28,7 +29,7 @@ func issuerConfigObject(raw []byte, names ...string) (map[string]json.RawMessage
 }
 func issuerConfigPath(raw json.RawMessage) (string, error) {
 	var path string
-	if json.Unmarshal(raw, &path) != nil || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+	if json.Unmarshal(raw, &path) != nil || !pathgrammar.Strict(path) {
 		return "", issuance.ErrInvalid
 	}
 	return path, nil
@@ -47,11 +48,11 @@ func decodeIdentityBinding(raw []byte) (signing.Binding, error) {
 		if json.Unmarshal(fields[item.name], &s) != nil {
 			return b, issuance.ErrInvalid
 		}
-		decoded, e := admissionHex(s, 32)
-		if e != nil {
+		decoded, ok := canonicaldigest.Decode(s)
+		if !ok {
 			return b, issuance.ErrInvalid
 		}
-		copy(item.target[:], decoded)
+		*item.target = decoded
 		if *item.target == ([32]byte{}) {
 			return b, issuance.ErrInvalid
 		}

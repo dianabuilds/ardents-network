@@ -640,7 +640,7 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 					if err != nil {
 						return nil, err
 					}
-					return holdRouteIssuerReservation(channel, held, func() error { return releaseRouteReservation(held) }, nil)
+					return holdRouteIssuerReservation(channel, held, held.ReleaseJoined, nil)
 				}
 				release, err := networkTestReservation(t, budget, channel.Hello.Deadline)
 				if err != nil {

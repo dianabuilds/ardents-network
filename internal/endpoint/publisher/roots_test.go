@@ -3,6 +3,8 @@ package publisher
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // The root-isolation predicate is pure path grammar: it composes only the
@@ -29,8 +31,8 @@ func TestIndependentRoots(t *testing.T) {
 		{"non-clean root refused", []string{a + string(filepath.Separator)}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := independentRoots(test.roots...); got != test.want {
-				t.Fatalf("independentRoots(%q) = %v, want %v", test.roots, got, test.want)
+			if got := pathgrammar.DisjointRoots(test.roots...); got != test.want {
+				t.Fatalf("pathgrammar.DisjointRoots(%q) = %v, want %v", test.roots, got, test.want)
 			}
 		})
 	}

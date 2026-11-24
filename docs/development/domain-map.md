@@ -689,7 +689,9 @@ Platform Artifacts reads the effective user's bounded TLS files for this
 development command, while installed Node retains its separate credential
 policy. Issuer owns the canonical result after current-authority issuance;
 composition supplies the exact signer observation and Bootstrap or ordinary
-issuance selection. This command is an existing component consumer.
+issuance selection. This command is an existing component consumer. Its
+Forwarding refill uses the same reserve-before-spend operation as the original
+Node Forwarding role. Each consumer retains its own reservation map and lifetime.
 
 `internal/node` composes original Forwarding, Issuer, Descriptor, Introduction and
 JOIN lifetimes through the typed CLI adapters in

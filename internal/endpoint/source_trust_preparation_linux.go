@@ -125,8 +125,8 @@ func validSourcePublicFile(raw []byte) bool {
 }
 
 func sourcePreparationTime(text string) (time.Time, error) {
-	value, err := time.Parse(time.RFC3339, text)
-	if err != nil || value.Location() != time.UTC || value.Nanosecond() != 0 || value.Format(time.RFC3339) != text {
+	value, ok := artifactio.ParseUTCSecond(text)
+	if !ok {
 		return time.Time{}, errSourceTrustPreparation
 	}
 	return value, nil

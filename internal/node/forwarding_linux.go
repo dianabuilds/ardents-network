@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
@@ -109,7 +110,7 @@ const (
 )
 
 func listenForwarding(ctx context.Context, config ForwardingConfig, opening forwardingOpening) (_ *Forwarding, result error) {
-	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
 		return nil, errors.New("original Node configuration invalid")
 	}
 	f := &forwarding{nodeLifetime: newNodeLifetime(ctx, config.Authority, "Node", config.ParticipationRoot, config.SpendRoot, config.HostingRoot), config: config, reservations: make(map[receiver.Channel]*hosting.Reservation)}

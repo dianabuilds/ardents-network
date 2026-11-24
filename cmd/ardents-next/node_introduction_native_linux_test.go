@@ -101,7 +101,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 						if err == nil {
 							err = budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit})
 						}
-						release := func() error { return releaseRouteReservation(held) }
+						release := held.ReleaseJoined
 						if err != nil {
 							return nil, errors.Join(err, release())
 						}

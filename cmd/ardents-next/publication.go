@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/publication/instance"
 )
@@ -20,20 +22,20 @@ func runPublication(ctx context.Context, args []string, out io.Writer) int {
 		if len(args) != 5 {
 			return enrollmentReport(out, "instance-invalid", 2)
 		}
-		network, err := admissionHex(args[2], 32)
-		if err != nil {
+		network, ok := canonicaldigest.Decode(args[2])
+		if !ok {
 			return enrollmentReport(out, "instance-invalid", 2)
 		}
-		before, err := admissionTime(args[3])
-		if err != nil {
+		before, ok := artifacts.ParseUTCSecond(args[3])
+		if !ok {
 			return enrollmentReport(out, "instance-invalid", 2)
 		}
-		after, err := admissionTime(args[4])
-		if err != nil {
+		after, ok := artifacts.ParseUTCSecond(args[4])
+		if !ok {
 			return enrollmentReport(out, "instance-invalid", 2)
 		}
 		request, err := instance.InitializeRequest(ctx, instance.Config{
-			Root: args[1], NetworkID: [32]byte(network), NotBefore: before, NotAfter: after,
+			Root: args[1], NetworkID: network, NotBefore: before, NotAfter: after,
 		})
 		return instanceRequestResult(out, request, err)
 	case "instance-request":
@@ -70,16 +72,16 @@ func preparePublicationRoot(ctx context.Context, args []string, out io.Writer) i
 	if len(args) != 4 {
 		return enrollmentReport(out, "publication-invalid", 2)
 	}
-	target, err := admissionHex(args[2], 32)
-	if err != nil {
+	target, ok := canonicaldigest.Decode(args[2])
+	if !ok {
 		return enrollmentReport(out, "publication-invalid", 2)
 	}
-	network, err := admissionHex(args[3], 32)
-	if err != nil {
+	network, ok := canonicaldigest.Decode(args[3])
+	if !ok {
 		return enrollmentReport(out, "publication-invalid", 2)
 	}
 	floor, err := durable.PrepareRoot(ctx, durable.Config{
-		Root: args[1], Target: [32]byte(target), Network: [32]byte(network),
+		Root: args[1], Target: target, Network: network,
 	})
 	if err != nil {
 		return enrollmentReport(out, "publication-unavailable", 1)

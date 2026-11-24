@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
@@ -20,13 +21,13 @@ func runClosedProfileInspection(ctx context.Context, args []string, out io.Write
 	if ctx.Err() != nil {
 		return 130
 	}
-	authority, e1 := admissionHex(args[1], 32)
-	network, e2 := inspectionID(args[2])
-	generation, e3 := inspectionID(args[3])
-	digest, e4 := inspectionID(args[4])
+	authority, validAuthority := canonicaldigest.Decode(args[1])
+	network, validNetwork := canonicaldigest.Decode(args[2])
+	generation, validGeneration := canonicaldigest.Decode(args[3])
+	digest, validDigest := canonicaldigest.Decode(args[4])
 	number, e5 := strconv.ParseUint(args[5], 10, 64)
 	at, e6 := time.Parse(time.RFC3339, args[6])
-	if e1 != nil || e2 != nil || e3 != nil || e4 != nil || e5 != nil || e6 != nil || strconv.FormatUint(number, 10) != args[5] {
+	if !validAuthority || !validNetwork || !validGeneration || !validDigest || e5 != nil || e6 != nil || strconv.FormatUint(number, 10) != args[5] {
 		return 2
 	}
 	raw, err := readBounded(args[0], closedprofile.MaxSize)
@@ -35,7 +36,7 @@ func runClosedProfileInspection(ctx context.Context, args []string, out io.Write
 	}
 	view, err := closedprofile.Verify(raw, closedprofile.Context{
 		NetworkID: network, StateGeneration: generation, EpochDigest: digest,
-		Epoch: number, Authority: authority, Now: at.UTC(),
+		Epoch: number, Authority: authority[:], Now: at.UTC(),
 	})
 	if err != nil {
 		return 1
@@ -64,10 +65,10 @@ func runIssuerPublicInspection(ctx context.Context, args []string, out io.Writer
 	if ctx.Err() != nil {
 		return 130
 	}
-	key, e1 := inspectionID(args[1])
-	network, e2 := inspectionID(args[2])
-	issuer, e3 := inspectionID(args[3])
-	if e1 != nil || e2 != nil || e3 != nil {
+	key, validKey := canonicaldigest.Decode(args[1])
+	network, validNetwork := canonicaldigest.Decode(args[2])
+	issuer, validIssuer := canonicaldigest.Decode(args[3])
+	if !validKey || !validNetwork || !validIssuer {
 		return 2
 	}
 	raw, err := readBounded(args[0], issuerprofile.MaximumSize)
@@ -105,14 +106,4 @@ func runIssuerPublicInspection(ctx context.Context, args []string, out io.Writer
 		return 1
 	}
 	return 0
-}
-
-func inspectionID(value string) ([32]byte, error) {
-	var id [32]byte
-	raw, err := admissionHex(value, len(id))
-	if err != nil {
-		return id, err
-	}
-	copy(id[:], raw)
-	return id, nil
 }

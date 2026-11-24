@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -94,7 +95,7 @@ func ListenDescriptorRetained(ctx context.Context, config DescriptorConfig) (*De
 }
 
 func listenDescriptor(ctx context.Context, config DescriptorConfig, retained bool) (_ *Descriptor, result error) {
-	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.DescriptorRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.DescriptorRoot) {
 		return nil, errors.New("original Descriptor configuration invalid")
 	}
 	if err := ctx.Err(); err != nil {

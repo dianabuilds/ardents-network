@@ -16,6 +16,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -24,10 +26,6 @@ import (
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
-
-func releaseRouteReservation(reservation *hosting.Reservation) error {
-	return releaseRouteCapacity(reservation.Release)
-}
 
 func releaseRouteCapacity(release func(context.Context) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -75,7 +73,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 		Issuer           *issuer.Plan          `json:"issuer,omitempty"`
 	}
 	if ctx == nil || len(args) < 1 || args[0] != "receive" || admissionConfig(args[1:], &plan) != nil || plan.Network == nil ||
-		!validAdmissionAuthority("", plan.Network, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot) {
+		!validAdmissionAuthority("", plan.Network, plan.SpendRoot, plan.HostingRoot) || !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot) {
 		return 2
 	}
 	config, err := networkStateConfig(plan.Network)
@@ -100,7 +98,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	if err != nil {
 		return 1
 	}
-	if plan.IntroductionRoot != "" && !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
+	if plan.IntroductionRoot != "" && !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
 		return 2
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
@@ -111,7 +109,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 		return 2
 	}
 	resolutionDuty := m.RoleDomain == 2 && m.Subrole == 5
-	if resolutionDuty != (plan.DescriptorRoot != "") || plan.DescriptorRoot != "" && !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
+	if resolutionDuty != (plan.DescriptorRoot != "") || plan.DescriptorRoot != "" && !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
 		return 2
 	}
 	issuerDuty := m.RoleDomain == 2 && m.Subrole == 6
@@ -120,14 +118,14 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	}
 	var issue func(context.Context, []byte, bool) ([]byte, error)
 	if plan.Issuer != nil {
-		if plan.Issuer.KeyBinding.Issuer != m.NodeID || !independentRouteRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.Issuer.AdmissionRoot, plan.Issuer.KeyRoot, plan.Issuer.ResultRoot) {
+		if plan.Issuer.KeyBinding.Issuer != m.NodeID || !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.Issuer.AdmissionRoot, plan.Issuer.KeyRoot, plan.Issuer.ResultRoot) {
 			return 2
 		}
 		issue = func(ctx context.Context, batch []byte, bootstrap bool) ([]byte, error) {
 			return issueRouteBatch(ctx, authority, *plan.Issuer, batch, bootstrap)
 		}
 	}
-	if !absoluteAdmissionPath(plan.Certificate) || !absoluteAdmissionPath(plan.PrivateKey) {
+	if !pathgrammar.Strict(plan.Certificate) || !pathgrammar.Strict(plan.PrivateKey) {
 		return 2
 	}
 	certificate, err := artifacts.ReadOwnerKeyPair(plan.Certificate, plan.PrivateKey)
@@ -186,7 +184,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			if err != nil {
 				return nil, err
 			}
-			return func() error { return releaseRouteReservation(reservation) }, nil
+			return reservation.ReleaseJoined, nil
 		},
 		Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 			class, err := role.AdmissionClass(c.Hello.Purpose)
@@ -199,7 +197,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 					return nil, err
 				}
 				if c.Hello.Purpose == ardp.PurposeIssuer {
-					return holdRouteIssuerReservation(c, reservation, func() error { return releaseRouteReservation(reservation) }, nil)
+					return holdRouteIssuerReservation(c, reservation, reservation.ReleaseJoined, nil)
 				}
 				reservationMu.Lock()
 				reservations[c] = reservation
@@ -208,29 +206,15 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 					reservationMu.Lock()
 					delete(reservations, c)
 					reservationMu.Unlock()
-					return releaseRouteReservation(reservation)
+					return reservation.ReleaseJoined()
 				})
 			})
 		},
 		Refill: func(ctx context.Context, c routereceiver.Channel, original receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
-			limit := admission.ForwardClass.ByteLimit()
-			if c.Hello.Purpose != ardp.PurposeForwarding || remaining == 0 || remaining >= limit {
-				return receiving.Grant{}, errors.New("route refill allowance unavailable")
-			}
 			reservationMu.Lock()
 			held := reservations[c]
 			reservationMu.Unlock()
-			return admissionOwner.Refill(ctx, original, remaining, raw, func() (func() error, error) {
-				if err := budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
-					return nil, err
-				}
-				delta := limit - remaining
-				addition, err := budget.ReserveAdditionalJoint(ctx, held, hosting.JointTraffic{Tx: delta, Rx: delta, Total: delta})
-				if err != nil {
-					return nil, err
-				}
-				return c.HoldReservation(func() error { return releaseRouteReservation(addition) })
-			})
+			return node.RefillForwarding(ctx, c, original, remaining, raw, admissionOwner, budget, held)
 		}})
 	if err != nil {
 		return 1

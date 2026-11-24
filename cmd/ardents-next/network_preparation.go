@@ -9,11 +9,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 func runNetworkPreparation(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || len(args) != 3 || !provisioning.IsNetworkPreparation(args[0]) || !filepath.IsAbs(args[1]) || filepath.Clean(args[1]) != args[1] || !filepath.IsAbs(args[2]) || filepath.Clean(args[2]) != args[2] {
+	if ctx == nil || len(args) != 3 || !provisioning.IsNetworkPreparation(args[0]) || !pathgrammar.Strict(args[1]) || !pathgrammar.Strict(args[2]) {
 		return 2
 	}
 	if ctx.Err() != nil {
@@ -58,11 +60,11 @@ func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 		return 2
 	}
 	for _, i := range []int{1, 2, 4, 5} {
-		if !filepath.IsAbs(args[i]) || filepath.Clean(args[i]) != args[i] {
+		if !pathgrammar.Strict(args[i]) {
 			return 2
 		}
 	}
-	if _, err := admissionHex(args[3], 32); err != nil {
+	if !canonicaldigest.Valid(args[3]) {
 		return 2
 	}
 	if ctx.Err() != nil {
@@ -100,7 +102,7 @@ func runInitialKeys(ctx context.Context, args []string, out io.Writer) int {
 		return 2
 	}
 	for _, path := range args[1:] {
-		if !filepath.IsAbs(path) || filepath.Clean(path) != path || filepath.Dir(path) == path {
+		if !pathgrammar.Strict(path) || filepath.Dir(path) == path {
 			return 2
 		}
 	}

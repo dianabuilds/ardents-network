@@ -54,7 +54,7 @@ func PrepareSelectedPrefix(ctx context.Context, plan Plan, leg selection.Leg, bu
 	}
 	var once sync.Once
 	var terminal error
-	release := func() error { once.Do(func() { terminal = releaseRouteReservation(reservation) }); return terminal }
+	release := func() error { once.Do(func() { terminal = reservation.ReleaseJoined() }); return terminal }
 	if err := ctx.Err(); err != nil {
 		return prefix.Config{}, errors.Join(err, release())
 	}
@@ -68,7 +68,7 @@ func PrepareSelectedPrefix(ctx context.Context, plan Plan, leg selection.Leg, bu
 			if err != nil {
 				return nil, err
 			}
-			return func() error { return releaseRouteReservation(held) }, nil
+			return held.ReleaseJoined, nil
 		}, Present: func(caller context.Context, hello ardp.Hello) ([]byte, error) {
 			presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
 			if err := authority.presentation(presentation); err != nil {

@@ -142,7 +142,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 						if err != nil {
 							t.Fatal("actual competing reservation", err)
 						}
-						defer releaseRouteReservation(blocker)
+						defer blocker.ReleaseJoined()
 						chargeNativeLoopbackBudget(t)
 						depleted, err := budget.Observe(t.Context())
 						if err != nil || !depleted.Drain || depleted.UsedBytes <= before.UsedBytes {
@@ -190,7 +190,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					// physical failure in the positive cancellation control.
 					process.stop(t, mode != "refill")
 					if blocker != nil {
-						if err := releaseRouteReservation(blocker); err != nil {
+						if err := blocker.ReleaseJoined(); err != nil {
 							t.Fatal(err)
 						}
 					}
@@ -208,7 +208,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 						if err != nil {
 							return nil, err
 						}
-						return func() error { return releaseRouteReservation(held) }, nil
+						return held.ReleaseJoined, nil
 					}
 					if _, err := owner.Accept(t.Context(), admission.ForwardClass, first, end, reserve); err == nil || !strings.Contains(err.Error(), "closed token is already spent") {
 						t.Fatal("original spend refunded on reopened Node root", err)

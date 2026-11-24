@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/bootstrap"
@@ -99,7 +100,7 @@ func ListenIssuerRetained(ctx context.Context, config IssuerConfig) (*Issuer, er
 
 func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *Issuer, result error) {
 	p := config.Issuance
-	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, p.AdmissionRoot, p.KeyRoot, p.ResultRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, p.AdmissionRoot, p.KeyRoot, p.ResultRoot) {
 		return nil, errors.New("original Issuer configuration invalid")
 	}
 	if err := ctx.Err(); err != nil {
@@ -241,10 +242,10 @@ func (f *issuerInvocation) admit(ctx context.Context, c receiver.Channel, raw []
 		}
 		terminal, err := held.DetachTermination()
 		if err != nil {
-			release, holdErr := c.HoldReservation(func() error { return releaseReservation(held) })
+			release, holdErr := c.HoldReservation(held.ReleaseJoined)
 			return release, errors.Join(err, holdErr)
 		}
-		return c.HoldIssuerReservation(func() error { return releaseReservation(held) }, func() error {
+		return c.HoldIssuerReservation(held.ReleaseJoined, func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 			return terminal(ctx)
@@ -260,10 +261,10 @@ func (f *issuerInvocation) reserve(ctx context.Context, end time.Time, work host
 		return nil, err
 	}
 	if err := f.budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
-		return nil, errors.Join(err, releaseReservation(held))
+		return nil, errors.Join(err, held.ReleaseJoined())
 	}
 	if _, err := f.current(); err != nil {
-		return nil, errors.Join(err, releaseReservation(held))
+		return nil, errors.Join(err, held.ReleaseJoined())
 	}
 	return held, nil
 }
@@ -272,7 +273,7 @@ func (f *issuerInvocation) reserveBootstrap(ctx context.Context, end time.Time) 
 	if err != nil {
 		return nil, err
 	}
-	return func() error { return releaseReservation(held) }, nil
+	return held.ReleaseJoined, nil
 }
 func (f *issuerInvocation) issue(ctx context.Context, raw []byte, bootstrap bool) ([]byte, error) {
 	kind := quota.Admitted

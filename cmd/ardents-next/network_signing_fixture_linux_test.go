@@ -22,7 +22,7 @@ func signingRecordFixture(t *testing.T) (map[string]any, ed25519.PrivateKey, []b
 	if err != nil {
 		t.Fatal(err)
 	}
-	reference, _ := admissionTime("2033-05-22T05:30:00Z")
+	reference := time.Date(2033, time.May, 22, 5, 30, 0, 0, time.UTC)
 	return p, key, message, reference
 }
 

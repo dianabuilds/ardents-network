@@ -1,9 +1,12 @@
 package session
 
 import (
+	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // The route composition helpers are pure: root independence is a strict-path
@@ -14,22 +17,22 @@ func TestIndependentRouteRootsRequireStrictSeparatePaths(t *testing.T) {
 	base := t.TempDir()
 	entry := filepath.Join(base, "entry")
 	hosting := filepath.Join(base, "hosting")
-	if !independentRouteRoots(entry, hosting) {
+	if !pathgrammar.DisjointRoots(entry, hosting) {
 		t.Fatal("independent strict roots refused")
 	}
-	if !independentRouteRoots(entry) {
+	if !pathgrammar.DisjointRoots(entry) {
 		t.Fatal("single strict root refused")
 	}
-	if independentRouteRoots(entry, entry) {
+	if pathgrammar.DisjointRoots(entry, entry) {
 		t.Fatal("duplicate root accepted")
 	}
-	if independentRouteRoots(entry, filepath.Join(entry, "child")) {
+	if pathgrammar.DisjointRoots(entry, filepath.Join(entry, "child")) {
 		t.Fatal("nested root accepted")
 	}
-	if independentRouteRoots(filepath.Join(entry, "child"), entry) {
+	if pathgrammar.DisjointRoots(filepath.Join(entry, "child"), entry) {
 		t.Fatal("nested root accepted in reverse order")
 	}
-	if independentRouteRoots("relative", hosting) {
+	if pathgrammar.DisjointRoots("relative", hosting) {
 		t.Fatal("non-strict root accepted")
 	}
 }
@@ -50,7 +53,7 @@ func TestMinRouteDeadlineRetainsEarliestBound(t *testing.T) {
 }
 
 func TestReleaseRouteReservationAbsentHandleIsClean(t *testing.T) {
-	if err := releaseRouteReservation(nil); err != nil {
+	if err := (*hosting.Reservation)(nil).ReleaseJoined(); err != nil {
 		t.Fatal("absent reservation release refused", err)
 	}
 }

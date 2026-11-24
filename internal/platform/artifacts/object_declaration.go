@@ -10,6 +10,15 @@ import (
 	"time"
 )
 
+// ParseUTCSecond decodes the canonical RFC3339 UTC form with whole seconds.
+func ParseUTCSecond(value string) (time.Time, bool) {
+	t, err := time.Parse(time.RFC3339, value)
+	if err != nil || t.Format(time.RFC3339) != value || t.Location() != time.UTC || t.Nanosecond() != 0 {
+		return time.Time{}, false
+	}
+	return t, true
+}
+
 // DecodeObject preserves exact field spelling and fixed-array sizes in a typed
 // local declaration. The caller owns required fields and semantic validation.
 func DecodeObject(raw []byte, value any) error {

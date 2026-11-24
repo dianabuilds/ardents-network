@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
@@ -94,7 +95,7 @@ func ListenIntroductionRetained(ctx context.Context, config IntroductionConfig) 
 }
 
 func listenIntroduction(ctx context.Context, config IntroductionConfig, retained bool) (_ *Introduction, result error) {
-	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.IntroductionRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.IntroductionRoot) {
 		return nil, errors.New("original Introduction configuration invalid")
 	}
 	if err := ctx.Err(); err != nil {

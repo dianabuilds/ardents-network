@@ -2,8 +2,6 @@ package funding
 
 import (
 	"errors"
-	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/hosting"
@@ -23,7 +21,7 @@ type Parents struct {
 }
 
 func OpenParents(plan Plan, authority Authority) (*Parents, error) {
-	if authority.current == nil || !independentRoots(plan.EntryRoot, plan.HostingRoot) {
+	if authority.current == nil || !pathgrammar.DisjointRoots(plan.EntryRoot, plan.HostingRoot) {
 		return nil, errors.New("installed Route owners are unavailable")
 	}
 	entry, err := selection.OpenRetainedInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.current, Exclusions: plan.Exclusions})
@@ -56,17 +54,3 @@ func (owners *Parents) Entry() *selection.Installation { return owners.entry }
 // Budget borrows the one original provider budget. It is not independently
 // reopened by each Reader or Publisher; all borrowers join before Close.
 func (owners *Parents) Budget() *hosting.Budget { return owners.budget }
-
-func independentRoots(roots ...string) bool {
-	for i, root := range roots {
-		if !pathgrammar.Strict(root) {
-			return false
-		}
-		for _, other := range roots[:i] {
-			if root == other || strings.HasPrefix(root, other+string(filepath.Separator)) || strings.HasPrefix(other, root+string(filepath.Separator)) {
-				return false
-			}
-		}
-	}
-	return true
-}

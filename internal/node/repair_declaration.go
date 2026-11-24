@@ -3,6 +3,7 @@ package node
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
@@ -53,7 +54,7 @@ func RepairDeclaration(role string, raw []byte) (Network, []string, error) {
 	if role == "descriptor" || role == "introduction" {
 		roots = append(roots, extraRoot)
 	}
-	if !separateRoots(roots...) {
+	if !pathgrammar.DisjointRoots(roots...) {
 		return Network{}, nil, errRepairDeclaration
 	}
 	return *core.Network, roots, nil

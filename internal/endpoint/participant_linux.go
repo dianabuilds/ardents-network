@@ -127,7 +127,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	if _, err := network.Refresh(ctx); err != nil {
 		return phase, errors.Join(ErrUnavailable, err)
 	}
-	authority := funding.Observe(network.CurrentRuntime, network.CurrentRuntimeWitness, presentationGuard(network.CurrentRuntime))
+	authority := funding.Observe(network.CurrentRuntime, network.CurrentRuntimeWitness, funding.PresentationGuard(network.CurrentRuntime))
 	observe := func() (admission.AuthorityFacts, time.Time, error) {
 		view, err := authority.Current()
 		if err != nil {
@@ -252,7 +252,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			view, err := originalCurrent()
 			return view, errors.Join(err, current())
 		}
-		serviceAuthority := funding.Observe(serviceCurrent, network.CurrentRuntimeWitness, presentationGuard(serviceCurrent))
+		serviceAuthority := funding.Observe(serviceCurrent, network.CurrentRuntimeWitness, funding.PresentationGuard(serviceCurrent))
 		readerPlan := funding.Plan{EntryRoot: filepath.Join(plan.EntryStateRoot, "entry"), InteriorRoot: filepath.Join(plan.EntryStateRoot, "reader-interior"),
 			HostingRoot: filepath.Join(plan.EntryStateRoot, "hosting"), Domain: 1,
 			Work:        hosting.Traffic{Tx: admission.ForwardClass.ByteLimit(), Rx: admission.ForwardClass.ByteLimit()},

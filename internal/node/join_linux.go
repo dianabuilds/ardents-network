@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/receiver"
@@ -93,7 +94,7 @@ func ListenJoinRetained(ctx context.Context, config JoinConfig) (*Join, error) {
 }
 
 func listenJoin(ctx context.Context, config JoinConfig, retained bool) (_ *Join, result error) {
-	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
 		return nil, errors.New("original Join configuration invalid")
 	}
 	if err := ctx.Err(); err != nil {

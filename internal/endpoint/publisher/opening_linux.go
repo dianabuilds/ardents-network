@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/publication/instance"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
@@ -24,7 +25,7 @@ func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority fund
 }
 
 func openPublication(ctx context.Context, plan Plan, routePlan funding.Plan, authority funding.Authority, holder *stock.Owner, operation *executionruntime.Operation, port document.ByteStreamPort, shared ...*funding.Parents) (_ Publication, result error) {
-	if ctx == nil || operation == nil || ctx != operation.Context() || operation.CheckPublisher() != nil || !authority.Available() || holder == nil || routePlan.Domain != 4 || !independentRoots(plan.InstanceRoot, plan.Root, routePlan.EntryRoot, routePlan.InteriorRoot, routePlan.SourceInteriorRoot, routePlan.ResponderInteriorRoot, routePlan.HostingRoot) {
+	if ctx == nil || operation == nil || ctx != operation.Context() || operation.CheckPublisher() != nil || !authority.Available() || holder == nil || routePlan.Domain != 4 || !pathgrammar.DisjointRoots(plan.InstanceRoot, plan.Root, routePlan.EntryRoot, routePlan.InteriorRoot, routePlan.SourceInteriorRoot, routePlan.ResponderInteriorRoot, routePlan.HostingRoot) {
 		return Publication{}, errors.New("publisher composition unavailable")
 	}
 	if operation.UsesByteStream() != (port != nil) {
