@@ -177,7 +177,7 @@ func (inspection NodeInspection) Check() (facts NodeHistory, returned error) {
 	}
 	if returned != nil {
 		facts = NodeHistory{}
-		if !(s.closed && s.parent.Err() == nil && nodeInspectionLocalClosure(returned)) {
+		if !(s.closed && s.parent.Err() == nil && inspectionLocalClosure(returned, errNodeInspectionClosed)) {
 			s.terminal = errors.Join(s.terminal, returned)
 		}
 	}
@@ -202,28 +202,10 @@ func (s *nodeInspection) close() error {
 		if s.state != nil {
 			physical = errors.Join(physical, s.state.Close())
 		}
-		if s.parent.Err() == nil && nodeInspectionLocalClosure(physical) {
+		if s.parent.Err() == nil && inspectionLocalClosure(physical, errNodeInspectionClosed) {
 			physical = nil
 		}
 		s.closeErr = errors.Join(s.terminal, physical, s.parent.Err())
 	})
 	return s.closeErr
-}
-
-func nodeInspectionLocalClosure(err error) bool {
-	if err == nil {
-		return true
-	}
-	if many, ok := err.(interface{ Unwrap() []error }); ok {
-		for _, leaf := range many.Unwrap() {
-			if !nodeInspectionLocalClosure(leaf) {
-				return false
-			}
-		}
-		return true
-	}
-	if one, ok := err.(interface{ Unwrap() error }); ok {
-		return nodeInspectionLocalClosure(one.Unwrap())
-	}
-	return err == context.Canceled || err == errNodeInspectionClosed
 }
