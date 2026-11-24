@@ -25,14 +25,6 @@ func (unavailableOutput) Write([]byte) (int, error) {
 	return 0, errors.New("private-output-error")
 }
 
-func TestFactsRejectDuplicateUnknownAndTrailingInput(t *testing.T) {
-	for _, raw := range []string{`{"network":"a","network":"b"}`, `{"unknown":"value"}`, `{} {}`, `[]`, `null`} {
-		if _, err := decodeFacts([]byte(raw)); err == nil {
-			t.Fatalf("accepted %s", raw)
-		}
-	}
-}
-
 func TestBoundedInput(t *testing.T) {
 	filename := filepath.Join(t.TempDir(), "input")
 	if err := os.WriteFile(filename, []byte(strings.Repeat("x", 229)), 0600); err != nil {

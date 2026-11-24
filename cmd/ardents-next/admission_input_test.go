@@ -17,6 +17,22 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
+type admissionBindingInput struct {
+	Network   string              `json:"network"`
+	Issuer    string              `json:"issuer"`
+	Authority string              `json:"authority"`
+	Profile   string              `json:"profile"`
+	Duty      string              `json:"duty"`
+	Start     string              `json:"start"`
+	End       string              `json:"end"`
+	Keys      []admissionKeyInput `json:"keys"`
+}
+type admissionKeyInput struct {
+	Window string `json:"window"`
+	Class  string `json:"class"`
+	SPKI   string `json:"spki"`
+}
+
 func admissionBindingConfig(b quota.LedgerBinding) admissionBindingInput {
 	input := admissionBindingInput{Network: hex.EncodeToString(b.Network[:]), Issuer: hex.EncodeToString(b.Issuer[:]), Authority: hex.EncodeToString(b.Authority[:]), Profile: hex.EncodeToString(b.Profile[:]), Duty: strconv.FormatUint(b.Duty, 10), Start: b.Start.Format(time.RFC3339), End: b.End.Format(time.RFC3339)}
 	for _, key := range b.Keys {

@@ -13,21 +13,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 )
 
-type admissionBindingInput struct {
-	Network   string              `json:"network"`
-	Issuer    string              `json:"issuer"`
-	Authority string              `json:"authority"`
-	Profile   string              `json:"profile"`
-	Duty      string              `json:"duty"`
-	Start     string              `json:"start"`
-	End       string              `json:"end"`
-	Keys      []admissionKeyInput `json:"keys"`
-}
-type admissionKeyInput struct {
-	Window string `json:"window"`
-	Class  string `json:"class"`
-	SPKI   string `json:"spki"`
-}
 type admissionPlan struct {
 	Root      string
 	Binding   quota.LedgerBinding
@@ -88,23 +73,9 @@ func (p *admissionPlan) decodeBatch(fields map[string]json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	p.Facts, err = decodeFacts(fields["facts"])
+	p.Facts, err = issuance.DecodeBatchFacts(fields["facts"])
 	if err != nil {
 		return bad
-	}
-	// decodeFacts already enforces exact field names and duplicates; strengthen
-	// canonical hex/time for this persisted accounting operation.
-	var values map[string]string
-	_ = json.Unmarshal(fields["facts"], &values)
-	for _, name := range []string{"network", "issuer", "authority", "holder"} {
-		if _, e := admissionHex(values[name], 32); e != nil {
-			return bad
-		}
-	}
-	for _, name := range []string{"duty_not_before", "duty_not_after", "now"} {
-		if _, e := admissionTime(values[name]); e != nil {
-			return bad
-		}
 	}
 	var kind string
 	if json.Unmarshal(fields["kind"], &kind) != nil {
