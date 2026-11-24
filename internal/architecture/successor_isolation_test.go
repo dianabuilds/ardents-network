@@ -683,6 +683,8 @@ func successorImportAllowed(source, dependency string) bool {
 				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/source_preparation_native_linux_test.go":
 			return local == "internal/endpoint" || local == "tests/e2e/source"
+		case "tests/e2e/node/certificate_native_linux_test.go":
+			return local == "tests/e2e/source"
 		case "tests/e2e/node/processfixture/authority_inputs_linux.go":
 			return local == "internal/admission/issuer" || local == "internal/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/processfixture/issuer_roots_linux.go":
@@ -862,12 +864,14 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	// These test drivers use independent TLS or root-controlled fixture inputs.
+	if localImport && source == "tests/e2e/source/initial_keys_linux.go" {
+		return local == "internal/platform/artifacts"
+	}
 	if localImport && local == "tests/e2e/source" {
 		switch source {
 		case "internal/endpoint/source_trust_native_linux_test.go",
 			"cmd/ardents-next/network_signing_native_linux_test.go",
 			"cmd/ardents-next/network_profile_native_linux_test.go",
-			"cmd/ardents-next/node_certificate_native_linux_test.go",
 			"cmd/ardents-next/infrastructure_preparation_native_linux_test.go":
 			return true
 		default:
