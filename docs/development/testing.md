@@ -102,7 +102,7 @@ preserves the existing runtime byte grammar, including omitted zero-valued membe
 and opens no resource. It performs no State acceptance, root creation, Hosting
 initialization or processresource policy.
 
-`cmd/ardents-next/node_prepare_plan_test.go` exercises the `node prepare-plan`
+`internal/node/provisioning/runtime_plan_command_test.go` exercises the `node prepare-plan`
 operator command portably (host quick-check): positive plan production for all five
 roles, where each produced plan must decode through the runtime node codec AND be
 accepted by the same runtime admission gate (`validAdmissionAuthority` +

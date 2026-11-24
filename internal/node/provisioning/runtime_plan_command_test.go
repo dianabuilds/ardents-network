@@ -1,4 +1,4 @@
-package main
+package provisioning
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
@@ -100,11 +102,11 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		if err != nil {
 			t.Fatal("produced Issuer plan does not decode:", err)
 		}
-		prepared, err := decodeIssuanceResultPlan(p.Issuance, "initialize-results")
+		prepared, err := issuance.DecodeResultSetupDeclaration(p.Issuance)
 		if err != nil {
 			t.Fatal("produced Issuer issuance sub-plan does not decode:", err)
 		}
-		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root}, p.RetirementWaitMS
+		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, prepared.AdmissionRoot, prepared.KeyRoot, prepared.ResultRoot}, p.RetirementWaitMS
 	}
 	t.Fatal("unknown role")
 	return nil, "", nil, 0
@@ -133,10 +135,10 @@ func TestNodePreparePlanProducesRuntimeAdmissiblePlan(t *testing.T) {
 				extra["issuance"] = filepath.Join(base, "issuance.json")
 				extra["bootstrap-work"] = "131072:131072"
 			}
-			args := append([]string{"node", "prepare-plan"}, preparePlanTestArgs(role.name, base, extra)...)
-			var out, diagnostic bytes.Buffer
-			if code := run(t.Context(), args, &out, &diagnostic); code != 0 {
-				t.Fatalf("prepare-plan refused valid inputs: %d %s %s", code, &out, &diagnostic)
+			args := preparePlanTestArgs(role.name, base, extra)
+			var out bytes.Buffer
+			if code := RunPreparePlan(t.Context(), args, &out); code != 0 {
+				t.Fatalf("prepare-plan refused valid inputs: %d %s", code, &out)
 			}
 			if !bytes.Contains(out.Bytes(), []byte(`"outcome":"prepared"`)) {
 				t.Fatal("prepare-plan did not report prepared:", out.String())
@@ -149,8 +151,7 @@ func TestNodePreparePlanProducesRuntimeAdmissiblePlan(t *testing.T) {
 			if profile != role.profile || wait != 5000 || network == nil {
 				t.Fatalf("produced plan facts diverge: profile=%q wait=%d", profile, wait)
 			}
-			authority := (*networkAuthorityPlan)(network)
-			if !validAdmissionAuthority("", authority, roots...) || !independentRouteRoots(append([]string{authority.Root}, roots...)...) {
+			if !(*state.AuthorityDeclaration)(network).ValidShape() || !network.IndependentRoots(roots...) {
 				t.Fatal("produced plan is not accepted by the runtime admission gate")
 			}
 		})
@@ -201,12 +202,12 @@ func TestNodePreparePlanRefusesBeforeEffect(t *testing.T) {
 				flags["bootstrap-work"] = "131072:131072"
 			}
 			flags = tc.mutate(base, flags)
-			args := []string{"node", "prepare-plan", tc.role}
+			args := []string{tc.role}
 			for key, value := range flags {
 				args = append(args, "--"+key, value)
 			}
-			var out, diagnostic bytes.Buffer
-			if code := run(t.Context(), args, &out, &diagnostic); code != 2 {
+			var out bytes.Buffer
+			if code := RunPreparePlan(t.Context(), args, &out); code != 2 {
 				t.Fatalf("invalid prepare-plan input accepted: %d %s", code, &out)
 			}
 			if _, err := os.Stat(filepath.Join(base, "plan.json")); !os.IsNotExist(err) {
@@ -219,20 +220,20 @@ func TestNodePreparePlanRefusesBeforeEffect(t *testing.T) {
 func TestNodePreparePlanRefusesDuplicateFlagTokenAndClobber(t *testing.T) {
 	base := t.TempDir()
 	writePreparePlanNetwork(t, base)
-	args := append([]string{"node", "prepare-plan"}, preparePlanTestArgs("forwarding", base, nil)...)
+	args := preparePlanTestArgs("forwarding", base, nil)
 	// A repeated --work token (distinct from a repeated map key) must refuse.
 	args = append(args, "--work", "1:1")
 	var out bytes.Buffer
-	if code := run(t.Context(), args, &out, &bytes.Buffer{}); code != 2 {
+	if code := RunPreparePlan(t.Context(), args, &out); code != 2 {
 		t.Fatal("duplicate flag token accepted:", code)
 	}
 	// An existing output file is never clobbered.
-	fresh := append([]string{"node", "prepare-plan"}, preparePlanTestArgs("forwarding", base, nil)...)
+	fresh := preparePlanTestArgs("forwarding", base, nil)
 	if err := os.WriteFile(filepath.Join(base, "plan.json"), []byte("existing"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	out.Reset()
-	if code := run(t.Context(), fresh, &out, &bytes.Buffer{}); code != 2 {
+	if code := RunPreparePlan(t.Context(), fresh, &out); code != 2 {
 		t.Fatal("prepare-plan clobbered an existing output:", code)
 	}
 	if raw, _ := os.ReadFile(filepath.Join(base, "plan.json")); string(raw) != "existing" {
@@ -245,9 +246,9 @@ func TestNodePreparePlanCanceledRefusesBeforeEffect(t *testing.T) {
 	writePreparePlanNetwork(t, base)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	args := append([]string{"node", "prepare-plan"}, preparePlanTestArgs("forwarding", base, nil)...)
+	args := preparePlanTestArgs("forwarding", base, nil)
 	var out bytes.Buffer
-	if code := run(ctx, args, &out, &bytes.Buffer{}); code != 130 {
+	if code := RunPreparePlan(ctx, args, &out); code != 130 {
 		t.Fatal("canceled prepare-plan did not refuse before effect:", code)
 	}
 	if _, err := os.Stat(filepath.Join(base, "plan.json")); !os.IsNotExist(err) {
