@@ -435,10 +435,12 @@ hosting-check:
 .PHONY: admission-check
 admission-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/... ./cmd/ardents-next -count=1 -timeout=5m,$(error admission-check requires Linux))
+	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=5m
 
 .PHONY: issuance-check
 issuance-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
+	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
 
 .PHONY: token-issuance-check
 token-issuance-check:
