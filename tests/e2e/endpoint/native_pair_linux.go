@@ -1,6 +1,6 @@
 //go:build linux && endpoint_pair_native
 
-package main
+package endpoint
 
 import (
 	"bytes"
@@ -14,86 +14,36 @@ import (
 	"time"
 )
 
-// This native qualification proves the platform-led launch foundation on TWO
-// separately admitted Ubuntu/systemd managers (#391 S2.1). One Endpoint per
-// system manager is a fixed, multiply-enforced contract (dedicated account, unit
-// names, fixed resource paths, preflight absence and DynamicUser name-hash UIDs),
-// so the installed two-Endpoint oracle requires two independent managers. The
-// controller provisions two fresh systemd-nspawn guests, each its own PID-1
-// systemd with separate PID/mount/cgroup namespaces and a pivoted Ubuntu 24.04
-// root, sharing the host network namespace (fixture loopback). Each guest passes
-// the same manager-local platform admission the product enforces (Ubuntu
-// 24.04/systemd 255, cgroup v2, root-owned os-release, reachable system bus) and
-// independently runs the checked endpoint_launch_native full-launch qualification
-// to protected text Service readiness.
-//
-// It is component/acceptance evidence with fixture Release/Network authority for
-// two independently admitted managers reaching platform-led Service readiness.
-// It is NOT the cross-Endpoint publish/link/read journey (#391 S2.2) and NOT the
-// whole-host two-participant privacy qualification. The transitional
-// guarded-start/ACK/recovery orchestration is neither exercised nor retired
-// (ADR-0125 D6 gates retirement on proven replacement guarantees).
-
 const pairBaseRootfsEnv = "ARDENTS_PAIR_BASE_ROOTFS"
 
-func TestNativeEndpointPlatformLedPair(t *testing.T) {
-	if os.Geteuid() != 0 {
-		t.Fatal("endpoint platform-led pair qualification requires a root driver")
-	}
-	for _, tool := range []string{"systemd-nspawn", "machinectl", "debootstrap", "cp", "systemd-run"} {
-		if _, err := exec.LookPath(tool); err != nil {
-			t.Fatalf("invalid environment: %s unavailable: %v", tool, err)
-		}
-	}
-	if out, err := exec.Command("stat", "-fc", "%T", "/sys/fs/cgroup").Output(); err != nil || strings.TrimSpace(string(out)) != "cgroup2fs" {
-		t.Fatalf("invalid environment: host cgroup v2 required: %v: %s", err, out)
-	}
-	repoRoot := pairRepoRoot(t)
-	goRoot := pairGoEnv(t, "GOROOT")
-	modCache := pairGoEnv(t, "GOMODCACHE")
-	buildCache := pairGoEnv(t, "GOCACHE")
-	base := pairEnsureBaseRootfs(t)
-
-	runID := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
-	var guests [2]*pairGuest
-	for i, label := range []string{"a", "b"} {
-		guests[i] = pairBootGuest(t, base, runID, label, goRoot, repoRoot, modCache, buildCache)
-	}
-	pairVerifyDistinctManagers(t, guests[:])
-
-	// Run the checked full-launch qualification independently in each guest. The
-	// runs are serial so the two guests' ephemeral fixture Source ports on the
-	// shared loopback cannot race; both managers remain admitted throughout.
-	var invocations [2]string
-	for i, guest := range guests {
-		invocations[i] = pairRunLaunchQualification(t, guest, repoRoot)
-	}
-	if invocations[0] == "" || invocations[1] == "" || invocations[0] == invocations[1] {
-		t.Fatal("two managers did not produce distinct original invocations", invocations)
-	}
-	t.Logf("two independently admitted managers reached platform-led Service readiness; InvocationIDs %s / %s", invocations[0], invocations[1])
-}
-
-type pairGuest struct {
+// PairGuest denotes a booted manager under the native test cleanup.
+type PairGuest struct {
 	name   string
 	rootfs string
 	leader string
 }
 
-func pairRepoRoot(t *testing.T) string {
+// RepositoryRoot locates the module from an Endpoint qualification driver.
+func RepositoryRoot(t *testing.T) string {
 	t.Helper()
-	wd, err := os.Getwd()
+	dir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := filepath.Clean(filepath.Join(wd, "..", ".."))
-	if _, err := os.Stat(filepath.Join(root, "go.mod")); err != nil {
-		t.Fatalf("repository root not found from %s: %v", wd, err)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatal("Ardents module root not found")
+		}
+		dir = parent
 	}
-	return root
 }
 
-func pairGoEnv(t *testing.T, name string) string {
+// GoEnv returns an explicit Go runtime or cache path used by the guests.
+func GoEnv(t *testing.T, name string) string {
 	t.Helper()
 	out, err := exec.Command("go", "env", name).Output()
 	if err != nil || strings.TrimSpace(string(out)) == "" {
@@ -102,11 +52,11 @@ func pairGoEnv(t *testing.T, name string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// pairEnsureBaseRootfs caches one pristine debootstrapped Ubuntu 24.04 rootfs and
+// EnsurePairBaseRootfs caches one pristine debootstrapped Ubuntu 24.04 rootfs and
 // clones a fresh guest from it per run, so each manager starts with absent
 // accounts/units/state. The base is environment provisioning, not an Ardents
 // artifact; it stays outside Git.
-func pairEnsureBaseRootfs(t *testing.T) string {
+func EnsurePairBaseRootfs(t *testing.T) string {
 	t.Helper()
 	base := os.Getenv(pairBaseRootfsEnv)
 	if base == "" {
@@ -186,9 +136,10 @@ func pairSystemdPatchLevel(version string) int {
 	return level
 }
 
-func pairBootGuest(t *testing.T, base, runID, label, goRoot, repoRoot, modCache, buildCache string) *pairGuest {
+// BootPairGuest starts a fresh manager and registers its joined cleanup.
+func BootPairGuest(t *testing.T, base, runID, label, goRoot, repoRoot, modCache, buildCache string) *PairGuest {
 	t.Helper()
-	guest := &pairGuest{
+	guest := &PairGuest{
 		name:   "ardpair" + label + fmt.Sprintf("%d", time.Now().UnixNano()%100000000),
 		rootfs: filepath.Join("/var/lib/machines", "ardents-pair-"+runID+"-"+label),
 	}
@@ -227,7 +178,7 @@ func pairGuestBusReady(name string) bool {
 	return err == nil && bytes.Contains(out, []byte(`"255.`))
 }
 
-func pairTerminateGuest(t *testing.T, guest *pairGuest) {
+func pairTerminateGuest(t *testing.T, guest *PairGuest) {
 	t.Helper()
 	_ = exec.Command("machinectl", "terminate", guest.name).Run()
 	// Cleanup runs after the test context is cancelled; wait on an independent
@@ -240,12 +191,13 @@ func pairTerminateGuest(t *testing.T, guest *pairGuest) {
 	_ = os.RemoveAll(guest.rootfs)
 }
 
-// pairVerifyDistinctManagers asserts each guest is a separate admitted manager:
+// VerifyDistinctManagers asserts each guest is a separate admitted manager:
 // distinct PID/mount/cgroup namespaces from the host and from each other, shared
 // host network namespace, Ubuntu 24.04 + systemd 255 + cgroup v2 + original
 // manager at /init.scope. These are the same manager-local facts the product
 // platform admission enforces.
-func pairVerifyDistinctManagers(t *testing.T, guests []*pairGuest) {
+// VerifyDistinctManagers checks the guests use independent system managers.
+func VerifyDistinctManagers(t *testing.T, guests []*PairGuest) {
 	t.Helper()
 	hostNS := map[string]string{}
 	for _, ns := range []string{"pid", "mnt", "cgroup", "net"} {
@@ -297,47 +249,6 @@ func pairReadlink(t *testing.T, path string) string {
 	return target
 }
 
-// pairRunLaunchQualification runs the checked endpoint_launch_native full-launch
-// qualification inside the guest against its own original manager, using the
-// canonical repository and toolchain bound at their host paths. It returns the
-// observed original InvocationID and refuses any skip.
-func pairRunLaunchQualification(t *testing.T, guest *pairGuest, repoRoot string) string {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 6*time.Minute)
-	defer cancel()
-	script := fmt.Sprintf("cd %s && go test -tags=endpoint_launch_native -run '^TestNativeEndpointPlatformLedLaunch' -count=1 -v ./cmd/ardents-next", repoRoot)
-	cmd := exec.CommandContext(ctx, "systemd-run", "-M", guest.name, "--pipe", "--quiet",
-		"--setenv=PATH=/usr/local/go/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-		"--setenv=GOTOOLCHAIN=local",
-		"--setenv=GOMODCACHE="+pairGoEnv(t, "GOMODCACHE"),
-		"--setenv=GOCACHE="+pairGoEnv(t, "GOCACHE"),
-		"--setenv=GOFLAGS=-buildvcs=false",
-		"/bin/bash", "-c", script)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("guest %s launch qualification failed: %v\n%s", guest.name, err, out)
-	}
-	if bytes.Contains(out, []byte("--- SKIP:")) {
-		t.Fatalf("guest %s launch qualification passed by skip:\n%s", guest.name, out)
-	}
-	if !bytes.Contains(out, []byte("--- PASS: TestNativeEndpointPlatformLedLaunch ")) {
-		t.Fatalf("guest %s lacks executed positive launch evidence:\n%s", guest.name, out)
-	}
-	if !bytes.Contains(out, []byte("--- PASS: TestNativeEndpointPlatformLedLaunchRefusals ")) {
-		t.Fatalf("guest %s lacks executed causal refusal evidence:\n%s", guest.name, out)
-	}
-	for _, line := range bytes.Split(out, []byte{'\n'}) {
-		if marker := []byte("InvocationID="); bytes.Contains(line, marker) {
-			rest := line[bytes.Index(line, marker)+len(marker):]
-			if fields := strings.Fields(string(rest)); len(fields) > 0 && len(fields[0]) == 32 {
-				return fields[0]
-			}
-		}
-	}
-	t.Fatalf("guest %s launch qualification observed no original InvocationID:\n%s", guest.name, out)
-	return ""
-}
-
 func pairWait(ctx context.Context, t *testing.T, bound time.Duration, ready func() bool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(ctx, bound)
@@ -355,3 +266,9 @@ func pairWait(ctx context.Context, t *testing.T, bound time.Duration, ready func
 		}
 	}
 }
+
+// Name returns the machine name used for systemd-run.
+func (guest *PairGuest) Name() string { return guest.name }
+
+// Rootfs returns the original guest filesystem root.
+func (guest *PairGuest) Rootfs() string { return guest.rootfs }

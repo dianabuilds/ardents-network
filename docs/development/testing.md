@@ -3267,7 +3267,7 @@ through actual systemd and socket-activated Worker lifetimes.
 ## Protected Endpoint platform-led pre-start native qualification
 
 The `endpoint_platform_native` build tag selects
-`cmd/ardents-next/endpoint_platform_native_linux_test.go`
+`tests/e2e/endpoint/endpoint_platform_native_linux_test.go`
 (`TestNativeEndpointPlatformPrestartTrustTransfer` and
 `TestNativeEndpointPlatformStagesGeneration`). It is a real-host
 qualification run under a root driver on an admitted Ubuntu/systemd manager
@@ -3474,7 +3474,7 @@ measured; a result on one lane is not a result on the other.
 ## Protected Endpoint two-manager platform-led launch native qualification
 
 The `endpoint_pair_native` build tag selects
-`cmd/ardents-next/endpoint_pair_native_linux_test.go`
+`tests/e2e/endpoint/endpoint_pair_native_linux_test.go`
 (`TestNativeEndpointPlatformLedPair`), a real-host root-driver qualification that
 proves the platform-led launch foundation on TWO separately admitted Ubuntu/systemd
 managers (#391 S2.1). One Endpoint per system manager is a fixed, multiply-enforced
@@ -3482,8 +3482,8 @@ contract (dedicated `ardents-endpoint` account, unit names, fixed resource paths
 preflight absence and `DynamicUser` name-hash UIDs), so the installed two-Endpoint
 oracle requires two independent managers rather than two Endpoints on one manager.
 
-The controller is a standard-library-only environment orchestrator: it imports no
-successor or old runtime owner. It caches one pristine debootstrapped Ubuntu 24.04
+The controller uses the shared process-suite host fixtures for environment
+orchestration. It caches one pristine debootstrapped Ubuntu 24.04
 rootfs (environment provisioning outside Git, `ARDENTS_PAIR_BASE_ROOTFS` override),
 upgrades its systemd to the current patched noble release, and clones a fresh guest
 per manager. Each `systemd-nspawn` guest boots its own PID-1 systemd with separate

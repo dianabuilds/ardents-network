@@ -76,7 +76,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := joinProcessClock(t)
+					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
 					id := [32]byte{17}
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
@@ -190,9 +190,9 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
-			descriptorClock, closeDescriptorClock := joinProcessClock(t)
+			descriptorClock, closeDescriptorClock := nodefixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopDescriptorClock := func() { clockOnce.Do(closeDescriptorClock) }
 			defer stopDescriptorClock()

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
 	"os"
@@ -45,7 +46,7 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 		}
 		inputs = append(inputs, filepath.Join(directory, "input"))
 	}
-	clock, stopClock := joinProcessClock(t)
+	clock, stopClock := nodefixture.StartObservedClock(t)
 	t.Cleanup(stopClock)
 	var pin [32]byte
 	copy(pin[:], f.spec.Authority.Public().(ed25519.PublicKey))
@@ -470,7 +471,7 @@ func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, stopClock := joinProcessClock(t)
+	clock, stopClock := nodefixture.StartObservedClock(t)
 	defer stopClock()
 	var key [32]byte
 	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))

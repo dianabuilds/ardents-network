@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"os"
 	"os/exec"
@@ -45,7 +46,7 @@ func TestRouteCompiledCommandJoinTCP(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clockFile, stopClock := joinProcessClock(t)
+			clockFile, stopClock := nodefixture.StartObservedClock(t)
 			defer stopClock()
 			seed := func() networkAuthorityPlan {
 				t.Helper()
@@ -277,37 +278,6 @@ func (p *joinCommandProcess) wait() error {
 		_ = p.input.Close()
 	})
 	return p.result
-}
-
-func joinProcessClock(t *testing.T) (string, func()) {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "clock-observation")
-	if err := os.WriteFile(path, nil, 0600); err != nil {
-		t.Fatal(err)
-	}
-	stop, joined := make(chan struct{}), make(chan error, 1)
-	go func() {
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stop:
-				joined <- nil
-				return
-			case now := <-ticker.C:
-				if err := os.Chtimes(path, now, now); err != nil {
-					joined <- err
-					return
-				}
-			}
-		}
-	}()
-	return path, func() {
-		close(stop)
-		if err := <-joined; err != nil {
-			t.Error("clock observation updater", err)
-		}
-	}
 }
 
 func joinCommandStock(t *testing.T, f *networkAdmissionFixture, process *joinCommandProcess, role admission.AllocationRole) {

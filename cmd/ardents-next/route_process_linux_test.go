@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,7 +46,7 @@ func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerTCP(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			seed := func() networkAuthorityPlan {
 				var key [32]byte

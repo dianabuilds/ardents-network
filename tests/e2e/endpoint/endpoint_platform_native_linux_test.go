@@ -1,6 +1,6 @@
 //go:build linux && endpoint_platform_native
 
-package main
+package endpoint_test
 
 import (
 	"bytes"
@@ -23,12 +23,14 @@ import (
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
-// This native qualification exercises the protected text Endpoint platform-led
+// This native qualification exercises the protected Endpoint platform-led
 // pre-start trust transfer (F-25) against the REAL platform systemd manager on
 // an admitted Ubuntu/systemd host. It provisions genuine platform delivery —
 // dedicated account, enrolled protected candidate, genuine retained Release
@@ -55,7 +57,7 @@ type endpointPlatformNativeStand struct {
 	requestPath      string
 	certPath         string
 	keyPath          string
-	launch           platformLaunch
+	launch           launch.Declaration
 	decl             requestinput.Declaration
 	pin              string
 	unit             []byte
@@ -180,7 +182,7 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer.ManifestSHA256 = platformDigest(newerManifest)
+	newer.ManifestSHA256 = endpointfixture.FixtureDigest(newerManifest)
 	raw, err := json.Marshal(newer)
 	if err != nil {
 		t.Fatal(err)
@@ -231,7 +233,7 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest := platformDigest(descriptor)
+	digest := endpointfixture.FixtureDigest(descriptor)
 	if !bytes.Contains(selectedBytes, []byte(digest)) {
 		t.Fatal("selection does not identify the independently pinned descriptor")
 	}
@@ -260,18 +262,18 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeStand {
 	t.Helper()
 	ctx := t.Context()
-	binary := compiledCommand(t)
+	binary := buildArdentsNext(t)
 	binaryBytes, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	authority := nodefixture.NewReleaseAuthority(t, ref.Add(365*24*time.Hour))
-	resources := endpointPlatformNativeResources()
+	resources := endpointfixture.NativeResources()
 
 	// Version 1 establishes complete retained Release floors through genuine
 	// initial-pin provenance and the actual two-target authorization.
-	firstDir, firstPin, firstProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, authority, 1, 1)
+	firstDir, firstPin, firstProgram := endpointfixture.SignedRelease(t, binary, "linux-amd64", true, true, 1, resources, authority, 1, 1)
 
 	stand := &endpointPlatformNativeStand{binary: binary, binaryBytes: binaryBytes}
 	stand.base = filepath.Join("/var/lib/ardents", fmt.Sprintf("ep-proof-%d-%d", os.Getpid(), time.Now().UnixNano()))
@@ -287,34 +289,12 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	}
 
 	// First-pin distribution must have root-controlled ancestors.
-	initialDistribution := filepath.Join(stand.base, "initial-distribution")
-	if err := os.Mkdir(initialDistribution, 0700); err != nil {
-		t.Fatal(err)
-	}
-	entries, err := os.ReadDir(firstDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		info, err := entry.Info()
-		if err != nil {
-			t.Fatal(err)
-		}
-		data, err := os.ReadFile(filepath.Join(firstDir, entry.Name()))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(initialDistribution, entry.Name()), data, info.Mode().Perm()); err != nil {
-			t.Fatal(err)
-		}
-	}
-	firstDir = initialDistribution
-	firstProgram = filepath.Join(firstDir, filepath.Base(firstProgram))
+	firstDir, firstProgram = endpointfixture.CopyNativeDistribution(t, firstDir, filepath.Join(stand.base, "initial-distribution"))
 
 	// Version 2 is the enrolled protected candidate the platform delivers. Its
 	// program bytes are the actual compiled consumer; the generation executable
 	// is the same bytes at the selected generation path.
-	stand.distribution, _, _ = signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, authority, 2, 2)
+	stand.distribution, _, _ = endpointfixture.SignedRelease(t, binary, "linux-amd64", true, true, 2, resources, authority, 2, 2)
 	candidate, err := enrollment.ReadCandidate(ctx, stand.distribution)
 	if err != nil {
 		t.Fatal("enrolled candidate:", err)
@@ -375,7 +355,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	certDigest := sha256.Sum256(certBytes)
 	keyDigest := sha256.Sum256(keyBytes)
 	configDigest := sha256.Sum256(requestRaw)
-	stand.launch = platformLaunch{
+	stand.launch = launch.Declaration{
 		Role:          "endpoint",
 		Distribution:  stand.distribution,
 		ReleaseRoot:   stand.releaseFloorRoot,
@@ -453,7 +433,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	if err := os.WriteFile("/etc/systemd/system/ardents-endpoint.service", stand.unit, 0644); err != nil {
 		t.Fatal(err)
 	}
-	stand.accountUID = endpointPlatformNativeAccount(t)
+	stand.accountUID = endpointfixture.CreateNativeAccount(t)
 	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
 		t.Fatal("daemon-reload:", err)
 	}
@@ -467,13 +447,13 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 // stage seeds and accepts them through their actual owners).
 func endpointPlatformNativeDeclaration(t *testing.T, stand *endpointPlatformNativeStand) requestinput.Declaration {
 	t.Helper()
-	f := newNetworkAdmissionFixture(t)
-	key := f.spec.Authority.Public().(ed25519.PublicKey)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	key := spec.Authority.Public().(ed25519.PublicKey)
 	keyHex := hex.EncodeToString(key)
-	networkID := hex.EncodeToString(f.spec.NetworkID[:])
+	networkID := hex.EncodeToString(spec.NetworkID[:])
 	roles := filepath.Join(stand.base, "roles", "endpoint")
 	run := filepath.Join("/run/ardents", fmt.Sprintf("ep-proof-%d", os.Getpid()))
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	t.Cleanup(closeClock)
 	return requestinput.Declaration{
 		Schema:           "ardents-endpoint-installation-request-v1",
@@ -554,33 +534,6 @@ func endpointPlatformNativeCredentials(t *testing.T, stand *endpointPlatformNati
 	if err := os.WriteFile(filepath.Join(filepath.Dir(stand.certPath), "source-root.pem"), root, 0644); err != nil {
 		t.Fatal(err)
 	}
-}
-
-// endpointPlatformNativeAccount creates the fixed unprivileged dedicated account
-// with a unique 100-999 UID/GID, nologin shell and /nonexistent home. It selects
-// a free numeric identity rather than assuming one, and removes it on cleanup.
-func endpointPlatformNativeAccount(t *testing.T) int {
-	t.Helper()
-	uid := 0
-	for candidate := 990; candidate >= 100; candidate-- {
-		name := fmt.Sprintf("%d", candidate)
-		passwdUsed := exec.Command("getent", "passwd", name).Run() == nil
-		groupUsed := exec.Command("getent", "group", name).Run() == nil
-		if !passwdUsed && !groupUsed {
-			uid = candidate
-			break
-		}
-	}
-	if uid == 0 {
-		t.Fatal("no free unprivileged system UID/GID available")
-	}
-	if err := exec.Command("groupadd", "-g", fmt.Sprintf("%d", uid), "ardents-endpoint").Run(); err != nil {
-		t.Fatal("groupadd:", err)
-	}
-	if err := exec.Command("useradd", "-u", fmt.Sprintf("%d", uid), "-g", fmt.Sprintf("%d", uid), "-d", "/nonexistent", "-s", "/usr/sbin/nologin", "-M", "ardents-endpoint").Run(); err != nil {
-		t.Fatal("useradd:", err)
-	}
-	return uid
 }
 
 func cleanupEndpointPlatformNativeStand(t *testing.T, stand *endpointPlatformNativeStand, etcDir string) {

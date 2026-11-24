@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func runInstalledPublisher(t *testing.T, carrier transport.CarrierProfile) {
 		}
 	})
 	servers := installedPublisherReceivers(t, f, reservations, certificates, store)
-	clock, joinClock := joinProcessClock(t)
+	clock, joinClock := nodefixture.StartObservedClock(t)
 	defer joinClock()
 	var authority [32]byte
 	copy(authority[:], f.spec.Authority.Public().(ed25519.PublicKey))

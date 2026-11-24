@@ -260,7 +260,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
 	holder := descriptorRouteStock(t, f)
 	proof, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
@@ -658,7 +658,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
 	holder := nativeIntroductionStock(t, f)
 	binary := nodefixture.PinnedCommand(t)
@@ -1127,7 +1127,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
 	var peers []*joinCommandProcess
 	binary := nodefixture.PinnedCommand(t)
@@ -1702,7 +1702,7 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
 	holder := joinRouteStock(t, f, admission.AllocationUser)
 	startJoinRouteReceiverRange(t, f, sockets, certificates, 19)

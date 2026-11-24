@@ -80,9 +80,9 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
-			issuerClock, closeIssuerClock := joinProcessClock(t)
+			issuerClock, closeIssuerClock := nodefixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopIssuerClock := func() { clockOnce.Do(closeIssuerClock) }
 			defer stopIssuerClock()

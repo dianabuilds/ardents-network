@@ -219,9 +219,10 @@ platform-installed-compile-check: export GOARCH := amd64
 platform-installed-compile-check: export CGO_ENABLED := 0
 platform-installed-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags endpoint_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-platform-installed.test" ./cmd/ardents-next
+	go test -c -tags endpoint_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-platform-installed.test" ./tests/e2e/endpoint
 	go test -c -tags endpoint_launch_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-launch-installed.test" ./cmd/ardents-next
 	go test -c -tags endpoint_pair_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-pair-installed.test" ./cmd/ardents-next
+	go test -c -tags endpoint_pair_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-manager-pair.test" ./tests/e2e/endpoint
 	go test -c -tags source_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-installed.test" ./cmd/ardents-next
 	go test -c -tags join_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-platform-installed.test" ./cmd/ardents-next
 	go test -c -tags forwarding_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-platform-installed.test" ./cmd/ardents-next

@@ -13,6 +13,7 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
 	"os"
@@ -362,7 +363,7 @@ func TestRouteCompiledDescriptorTCP(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			seed := func() networkAuthorityPlan {
 				var key [32]byte

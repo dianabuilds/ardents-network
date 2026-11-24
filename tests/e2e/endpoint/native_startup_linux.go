@@ -1,6 +1,6 @@
 //go:build linux && document_worker_installed
 
-package main
+package endpoint
 
 import (
 	"bytes"
@@ -29,28 +29,30 @@ import (
 // All signing, Source and clock fixtures have one controller. This proves no
 // independent custody, trusted time, private Service or whole-host qualification.
 
-func installedSignedNetwork(t *testing.T, f *networkAdmissionFixture) installedStartupNetwork {
+// BuildSignedNetwork encodes the fixture’s public Network inputs and trust pins.
+func BuildSignedNetwork(t *testing.T, spec networkfixture.ClosedSpec) SignedNetwork {
 	t.Helper()
-	epoch, err := networkfixture.BuildClosed(f.spec)
+	epoch, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var authority [32]byte
-	copy(authority[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	return installedStartupNetwork{NetworkID: f.spec.NetworkID, Seed: f.spec.Seed, Authority: authority,
+	copy(authority[:], spec.Authority.Public().(ed25519.PublicKey))
+	return SignedNetwork{NetworkID: spec.NetworkID, Seed: spec.Seed, Authority: authority,
 		Epoch: epoch.Epoch.Raw, Inputs: epoch.Epoch.Inputs, Materials: epoch.Epoch.Materials, Profile: epoch.Profile}
 }
 
-// This fixture input contains only public signed material and trust pins.
+// SignedNetwork contains only public signed material and trust pins.
 // Every participant still authenticates it through its own actual State;
 // no live State, signing key, qualified operation or Instance crosses managers.
-type installedStartupNetwork struct {
+type SignedNetwork struct {
 	NetworkID, Seed, Authority [32]byte
 	Epoch, Profile             []byte
 	Inputs, Materials          [][]byte
 }
 
-func installedStartupWrite(t *testing.T, path string, raw []byte, mode os.FileMode) {
+// WriteStartupFile creates and syncs a fixture input under its declared name.
+func WriteStartupFile(t *testing.T, path string, raw []byte, mode os.FileMode) {
 	t.Helper()
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
@@ -63,10 +65,11 @@ func installedStartupWrite(t *testing.T, path string, raw []byte, mode os.FileMo
 	if n != len(raw) || writeErr != nil || modeErr != nil || syncErr != nil || closeErr != nil {
 		t.Fatal("durable fixture write", writeErr, modeErr, syncErr, closeErr)
 	}
-	installedStartupSync(t, filepath.Dir(path))
+	SyncStartupPath(t, filepath.Dir(path))
 }
 
-func installedStartupSync(t *testing.T, path string) {
+// SyncStartupPath flushes a fixture directory after startup input publication.
+func SyncStartupPath(t *testing.T, path string) {
 	t.Helper()
 	file, err := os.Open(path)
 	if err != nil {
@@ -78,7 +81,8 @@ func installedStartupSync(t *testing.T, path string) {
 	}
 }
 
-func installedStartupCommand(t *testing.T, program string, credential *syscall.Credential, outcome string, args ...string) []byte {
+// RunStartupCommand runs the exact CLI operation and checks its declared outcome.
+func RunStartupCommand(t *testing.T, program string, credential *syscall.Credential, outcome string, args ...string) []byte {
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), program, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: credential, Pdeathsig: syscall.SIGKILL}
@@ -94,7 +98,8 @@ func installedStartupCommand(t *testing.T, program string, credential *syscall.C
 	return out
 }
 
-func installedStartupIdentity(t *testing.T) [3]string {
+// StartupIdentity reads the original invocation and process identity from systemd.
+func StartupIdentity(t *testing.T) [3]string {
 	t.Helper()
 	var result [3]string
 	for i, property := range []string{"MainPID", "InvocationID", "ActiveState"} {

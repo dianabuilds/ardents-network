@@ -1,6 +1,6 @@
-//go:build linux && (endpoint_launch_native || endpoint_pair_native)
+//go:build linux && (endpoint_platform_native || endpoint_launch_native || endpoint_pair_native)
 
-package main
+package endpoint
 
 import (
 	"encoding/json"
@@ -8,13 +8,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"testing"
 
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 )
 
-func platformNativeDistribution(t *testing.T, src, dst string) (string, string) {
+// CopyNativeDistribution stages a fixture bundle under the native test root.
+func CopyNativeDistribution(t *testing.T, src, dst string) (string, string) {
 	t.Helper()
 	if err := os.Mkdir(dst, 0700); err != nil {
 		t.Fatal(err)
@@ -39,7 +40,8 @@ func platformNativeDistribution(t *testing.T, src, dst string) (string, string) 
 	return dst, filepath.Join(dst, "ardents-linux-amd64")
 }
 
-func platformNativeLaunch(t *testing.T, requestPath, distribution string) platformLaunch {
+// NativeLaunch declares the exact files and roots used by the native test.
+func NativeLaunch(t *testing.T, requestPath, distribution string) launch.Declaration {
 	t.Helper()
 	raw, err := os.ReadFile(requestPath)
 	if err != nil {
@@ -63,21 +65,21 @@ func platformNativeLaunch(t *testing.T, requestPath, distribution string) platfo
 		if err != nil {
 			t.Fatal(err)
 		}
-		inputs[path] = platformDigest(data)
+		inputs[path] = FixtureDigest(data)
 	}
 	descriptor, err := os.ReadFile(filepath.Join(distribution, "protected-endpoint.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return platformLaunch{
+	return launch.Declaration{
 		Role: "endpoint", Distribution: distribution, ReleaseRoot: decl.ReleaseFloorRoot,
 		Environment: "h3-test", Network: "new-release-test",
-		Program:       filepath.Join(decl.InstallationRoot, "generations", platformDigest(descriptor), "ardents-linux-amd64"),
-		Configuration: requestPath, ConfigSHA256: platformDigest(raw), WritableRoots: roots, Inputs: inputs,
+		Program:       filepath.Join(decl.InstallationRoot, "generations", FixtureDigest(descriptor), "ardents-linux-amd64"),
+		Configuration: requestPath, ConfigSHA256: FixtureDigest(raw), WritableRoots: roots, Inputs: inputs,
 	}
 }
 
-func writePlatformNativeLaunch(t *testing.T, path string, launch platformLaunch) string {
+func writePlatformNativeLaunch(t *testing.T, path string, launch launch.Declaration) string {
 	t.Helper()
 	raw, err := json.Marshal(launch)
 	if err != nil {
@@ -85,7 +87,7 @@ func writePlatformNativeLaunch(t *testing.T, path string, launch platformLaunch)
 	}
 	raw = append(raw, '\n')
 	writePlatformNativeFile(t, path, raw, 0644)
-	return platformDigest(raw)
+	return FixtureDigest(raw)
 }
 
 func writePlatformNativeFile(t *testing.T, path string, data []byte, mode os.FileMode) {
@@ -105,29 +107,10 @@ func writePlatformNativeFile(t *testing.T, path string, data []byte, mode os.Fil
 
 // The platform prepares the account, roots and fixed Worker files through the
 // host. Ardents authenticates the bundle and seals the compatible generation.
-func stagePlatformNativeEndpoint(t *testing.T, requestPath, initialProgram, pin, distribution, keyPath string) (uint32, uint32) {
+func StageNativeEndpoint(t *testing.T, requestPath, initialProgram, pin, distribution, keyPath string) (uint32, uint32) {
 	t.Helper()
-	launch := platformNativeLaunch(t, requestPath, filepath.Dir(initialProgram))
-	var id int
-	for n := 990; n >= 100; n-- {
-		candidate := strconv.Itoa(n)
-		if exec.Command("getent", "passwd", candidate).Run() != nil && exec.Command("getent", "group", candidate).Run() != nil {
-			id = n
-			break
-		}
-	}
-	if id == 0 {
-		t.Fatal("no vacant Endpoint UID/GID")
-	}
-	numeric := strconv.Itoa(id)
-	for _, args := range [][]string{
-		{"groupadd", "-g", numeric, "ardents-endpoint"},
-		{"useradd", "-u", numeric, "-g", numeric, "-d", "/nonexistent", "-s", "/usr/sbin/nologin", "-M", "ardents-endpoint"},
-	} {
-		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
-			t.Fatalf("%s: %v: %s", args[0], err, out)
-		}
-	}
+	launch := NativeLaunch(t, requestPath, filepath.Dir(initialProgram))
+	id := CreateNativeAccount(t)
 	for _, path := range launch.WritableRoots {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
@@ -191,7 +174,7 @@ func platformNativeWorkers(t *testing.T, distribution string, gid int) {
 		}
 		writePlatformNativeFile(t, path, data, mode)
 		if name != "ardents-text.conf" {
-			digests[path] = platformDigest(data)
+			digests[path] = FixtureDigest(data)
 		}
 	}
 	if err := os.Chmod(workerRoot, 0555); err != nil {
@@ -213,9 +196,10 @@ func platformNativeWorkers(t *testing.T, distribution string, gid int) {
 	}
 }
 
-func installPlatformNativeUnit(t *testing.T, requestPath, distribution, program string) (string, string) {
+// InstallNativeUnit renders and loads the platform unit for a staged Endpoint.
+func InstallNativeUnit(t *testing.T, requestPath, distribution, program string) (string, string) {
 	t.Helper()
-	launch := platformNativeLaunch(t, requestPath, distribution)
+	launch := NativeLaunch(t, requestPath, distribution)
 	if launch.Program != program {
 		t.Fatal("platform unit and staged generation differ")
 	}
@@ -230,4 +214,27 @@ func installPlatformNativeUnit(t *testing.T, requestPath, distribution, program 
 		t.Fatal(fmt.Errorf("daemon-reload: %w: %s", err, out))
 	}
 	return manifest, pin
+}
+
+// BuildNativeWorker obtains the static document worker for the chrooted unit.
+func BuildNativeWorker(t *testing.T, prebuilt string) []byte {
+	t.Helper()
+	if prebuilt != "" {
+		raw, err := os.ReadFile(prebuilt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	path := filepath.Join(t.TempDir(), "ardents-text-linux-amd64")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/internal/application/document/worker")
+	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build document worker: %v: %s", err, out)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

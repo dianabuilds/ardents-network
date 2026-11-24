@@ -1,4 +1,4 @@
-//go:build linux && node_process_native
+//go:build linux
 
 package node
 

@@ -1,6 +1,6 @@
 //go:build linux && document_worker_installed
 
-package main
+package endpoint
 
 import (
 	"bytes"
@@ -15,14 +15,14 @@ import (
 	"testing"
 )
 
-// This is a local test-controller exchange, not an Ardents protocol or authority.
+// PairMessage belongs to the local test controller.
 // It carries public signed inputs, actual permission requests/responses and
 // explicit fixture commands. No private key, live owner or accepting flag is sent.
-type installedPairMessage struct {
+type PairMessage struct {
 	Operation  string
 	Role       string
 	Nonce      string
-	Network    *installedStartupNetwork
+	Network    *SignedNetwork
 	Body       []byte
 	Link       string
 	Failure    string
@@ -30,7 +30,8 @@ type installedPairMessage struct {
 	Principals [3]string
 }
 
-func installedPairSend(t *testing.T, conn net.Conn, value installedPairMessage) {
+// SendPairMessage writes one bounded controller message.
+func SendPairMessage(t *testing.T, conn net.Conn, value PairMessage) {
 	t.Helper()
 	raw, err := json.Marshal(value)
 	if err != nil || len(raw) > 4<<20 {
@@ -43,7 +44,8 @@ func installedPairSend(t *testing.T, conn net.Conn, value installedPairMessage) 
 	}
 }
 
-func installedPairReceive(t *testing.T, conn net.Conn) installedPairMessage {
+// ReceivePairMessage decodes one bounded controller message.
+func ReceivePairMessage(t *testing.T, conn net.Conn) PairMessage {
 	t.Helper()
 	var header [4]byte
 	if _, err := io.ReadFull(conn, header[:]); err != nil {
@@ -57,7 +59,7 @@ func installedPairReceive(t *testing.T, conn net.Conn) installedPairMessage {
 	if _, err := io.ReadFull(conn, raw); err != nil {
 		t.Fatal(err)
 	}
-	var value installedPairMessage
+	var value PairMessage
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&value); err != nil {

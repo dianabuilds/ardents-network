@@ -1,6 +1,6 @@
 //go:build linux && (endpoint_platform_native || endpoint_launch_native || endpoint_pair_native)
 
-package main
+package endpoint
 
 // Shared enrolled protected-Endpoint resource fixtures for the real-host
 // platform-led native qualifications (F-25 pre-start check and full launch).
@@ -192,7 +192,8 @@ const endpointPlatformNativePolkit = `polkit.addRule(function(action, subject) {
 const endpointPlatformNativeTmpfiles = `d /run/ardents-text 0711 ardents-endpoint ardents-endpoint -
 `
 
-func endpointPlatformNativeResources() map[string][]byte {
+// NativeResources returns independent fixed Endpoint resource fixtures.
+func NativeResources() map[string][]byte {
 	return map[string][]byte{
 		"ardents-endpoint.service":        []byte(endpointPlatformNativeTemplate),
 		"ardents-text-reader.socket":      []byte(endpointPlatformNativeReaderSocket),

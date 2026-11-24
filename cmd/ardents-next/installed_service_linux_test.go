@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 
 	"crypto/ed25519"
 	"crypto/rand"
@@ -81,7 +82,7 @@ func installedServiceApproval(t *testing.T, base, role string, request []byte, f
 		t.Fatal(err)
 	}
 	journal := filepath.Join(base, "allocation-"+role)
-	installedStartupWrite(t, journal, decision.Journal(), 0600)
+	endpointfixture.WriteStartupFile(t, journal, decision.Journal(), 0600)
 	readback, err := os.ReadFile(journal)
 	if err != nil || !bytes.Equal(readback, decision.Journal()) {
 		t.Fatal("allocation durable readback", err)
@@ -109,7 +110,7 @@ func installedServiceEvent(raw []byte, phase, role string) bool {
 // the fixture signature is no private Instance or qualified worker substitute.
 func installedServiceInstance(t *testing.T, program string, credential *syscall.Credential, base string, network [32]byte) {
 	before := time.Now().UTC().Truncate(time.Second)
-	raw := installedStartupCommand(t, program, credential, "instance-request-prepared", "publication", "instance-initialize",
+	raw := endpointfixture.RunStartupCommand(t, program, credential, "instance-request-prepared", "publication", "instance-initialize",
 		filepath.Join(base, "instance"), hex.EncodeToString(network[:]), before.Format(time.RFC3339), before.Add(time.Hour).Format(time.RFC3339))
 	var result struct{ Request []byte }
 	if err := json.Unmarshal(raw, &result); err != nil {
@@ -138,8 +139,8 @@ func installedServiceInstance(t *testing.T, program string, credential *syscall.
 	response := append([]byte("ardents-service-instance-response-v3\x00"), request.Commitment[:]...)
 	response = append(response, value...)
 	path := filepath.Join(base, "bootstrap", "credential-response")
-	installedStartupWrite(t, path, response, 0644)
-	installedStartupCommand(t, program, credential, "instance-response-accepted", "publication", "instance-accept", filepath.Join(base, "instance"), path)
+	endpointfixture.WriteStartupFile(t, path, response, 0644)
+	endpointfixture.RunStartupCommand(t, program, credential, "instance-response-accepted", "publication", "instance-accept", filepath.Join(base, "instance"), path)
 }
 
 func installedPairStoredProof(t *testing.T, store *reachability.Store, f *networkAdmissionFixture, link string) reachability.Descriptor {

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 	"net"
 	"os"
 	"os/exec"
@@ -100,15 +101,15 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 	if err := conn.SetDeadline(deadline); err != nil {
 		t.Fatal("bound journey participant channel", err)
 	}
-	installedPairSend(t, conn, installedPairMessage{Operation: "hello", Role: role, Nonce: nonce})
-	input := installedPairReceive(t, conn)
+	endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "hello", Role: role, Nonce: nonce})
+	input := endpointfixture.ReceivePairMessage(t, conn)
 	if input.Operation != "network" || input.Network == nil {
 		t.Fatal("journey fixture lacks signed Network input")
 	}
 	etcDir := filepath.Join("/etc/ardents", "journey-"+nonce)
 	approve := func(_, permissionRole string, request []byte) []byte {
-		installedPairSend(t, conn, installedPairMessage{Operation: "permission", Role: permissionRole, Body: request})
-		response := installedPairReceive(t, conn)
+		endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "permission", Role: permissionRole, Body: request})
+		response := endpointfixture.ReceivePairMessage(t, conn)
 		if response.Operation != "permission" || response.Role != permissionRole {
 			t.Fatal("foreign fixture approval response")
 		}
@@ -125,13 +126,13 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				<-publisherDone
 			}
 		}()
-		installedPairSend(t, conn, installedPairMessage{Operation: "ready", Original: original, Principals: participant.principals})
+		endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "ready", Original: original, Principals: participant.principals})
 		for {
-			command := installedPairReceive(t, conn)
-			if command.Operation != "restart" && command.Operation != "stream-result" && installedStartupIdentity(t) != original {
+			command := endpointfixture.ReceivePairMessage(t, conn)
+			if command.Operation != "restart" && command.Operation != "stream-result" && endpointfixture.StartupIdentity(t) != original {
 				t.Fatal("journey command lost original installed participant")
 			}
-			response := installedPairMessage{Operation: command.Operation, Original: original}
+			response := endpointfixture.PairMessage{Operation: command.Operation, Original: original}
 			switch command.Operation {
 			case "publish":
 				if role != "publisher" {
@@ -221,7 +222,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 					response.Failure = fmt.Sprintf("stream publish: %v: %s", err, &publisherDiagnostic)
 					t.Log(response.Failure)
 				} else {
-					response.Original = installedStartupIdentity(t)
+					response.Original = endpointfixture.StartupIdentity(t)
 				}
 				response.Body = publisherOutput.Bytes()
 			case "withdraw":
@@ -243,15 +244,15 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 			case "restart":
 				original = journeyRestartContinuity(t, participant, original, approve)
 				response.Original = original
-				installedPairSend(t, conn, response)
+				endpointfixture.SendPairMessage(t, conn, response)
 				return
 			case "finish":
-				installedPairSend(t, conn, response)
+				endpointfixture.SendPairMessage(t, conn, response)
 				return
 			default:
 				t.Fatal("unknown journey fixture command")
 			}
-			installedPairSend(t, conn, response)
+			endpointfixture.SendPairMessage(t, conn, response)
 		}
 	}
 	runPlatformLedJourneyParticipant(t, base, etcDir, *input.Network, approve, exercise)
@@ -273,7 +274,7 @@ func TestNativeEndpointRealHostPublication(t *testing.T) {
 	}
 	carrier := string(transport.ClosedCarrierTCP)
 	f, _ := installedServiceNetwork(t, carrier)
-	network := installedSignedNetwork(t, f)
+	network := endpointfixture.BuildSignedNetwork(t, f.spec)
 	var nonce [32]byte
 	if _, err := rand.Read(nonce[:]); err != nil {
 		t.Fatal(err)
@@ -354,7 +355,7 @@ func TestNativeEndpointRealHostPublication(t *testing.T) {
 // fixture commands. It reuses the justified delivery staging (installed-stopped,
 // no start-guard.json) and the S1 platform launch (platform main unit + canonical
 // workers, systemd start without root ACK, F-25 pre-start transfer).
-func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network installedStartupNetwork,
+func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network endpointfixture.SignedNetwork,
 	approve func(base, role string, request []byte) []byte, exercise func(journeyParticipant)) {
 	t.Helper()
 	ctx := t.Context()
@@ -364,7 +365,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		}
 	}
 	clock := filepath.Join(base, "clock")
-	installedStartupWrite(t, clock, nil, 0644)
+	endpointfixture.WriteStartupFile(t, clock, nil, 0644)
 	stopClock, clockJoined := make(chan struct{}), make(chan error, 1)
 	go func() {
 		tick := time.NewTicker(100 * time.Millisecond)
@@ -397,8 +398,8 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	}
 	_, clientPEM, clientKey, clientPin := installedSourceCertificate(t, "client", false)
 	certPath, keyPath := filepath.Join(etcDir, "client.crt"), filepath.Join(etcDir, "client.key")
-	installedStartupWrite(t, certPath, clientPEM, 0644)
-	installedStartupWrite(t, keyPath, clientKey, 0600)
+	endpointfixture.WriteStartupFile(t, certPath, clientPEM, 0644)
+	endpointfixture.WriteStartupFile(t, keyPath, clientKey, 0600)
 	clear(clientKey)
 	credentials := filepath.Join(base, "credentials")
 	if err := os.MkdirAll(credentials, 0755); err != nil {
@@ -429,7 +430,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		certificate, rootPEM, keyPEM, pin := installedSourceCertificate(t, name, true)
 		clear(keyPEM)
 		sourcePins[i] = pin
-		installedStartupWrite(t, filepath.Join(credentials, []string{"a.pem", "b.pem"}[i]), rootPEM, 0644)
+		endpointfixture.WriteStartupFile(t, filepath.Join(credentials, []string{"a.pem", "b.pem"}[i]), rootPEM, 0644)
 		cfg := config
 		cfg.Root = filepath.Join(base, fmt.Sprintf("source-state-%d", i))
 		cfg.LocalRoleStateRoot = filepath.Join(base, fmt.Sprintf("source-roles-%d", i))
@@ -453,13 +454,13 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		sourceServers = append(sourceServers, server)
 	}
 	rootAuthority := nodefixture.NewReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
-	resources := endpointPlatformNativeResources()
-	resources["ardents-text-linux-amd64"] = journeyBuildWorkerBinary(t)
+	resources := endpointfixture.NativeResources()
+	resources["ardents-text-linux-amd64"] = endpointfixture.BuildNativeWorker(t, os.Getenv("ARDENTS_PREBUILT_DOCUMENT_WORKER"))
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
-	bundle, initialProgram = platformNativeDistribution(t, bundle, filepath.Join(base, "initial-distribution"))
+	bundle, initialProgram = endpointfixture.CopyNativeDistribution(t, bundle, filepath.Join(base, "initial-distribution"))
 	// Advance the signed metadata while retaining the exact staged release and descriptor.
 	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1)
-	candidateBundle, _ = platformNativeDistribution(t, candidateBundle, filepath.Join(base, "candidate-distribution"))
+	candidateBundle, _ = endpointfixture.CopyNativeDistribution(t, candidateBundle, filepath.Join(base, "candidate-distribution"))
 	request := string(installationRequestBytes(t, bundle, pin, filepath.Join(base, "floors")))
 	request = installedServiceDeclaration(t, request, base)
 	if strings.Count(request, `"refresh_interval_ms":1000`) != 1 {
@@ -513,8 +514,8 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	}
 	request = strings.Replace(request, "\"clock_observed_at\":\"2030-01-02T03:04:05Z\"", "\"clock_observed_at\":"+quoted(time.Now().UTC().Format(time.RFC3339)), 1)
 	requestPath := filepath.Join(etcDir, "request.json")
-	installedStartupWrite(t, requestPath, []byte(request), 0600)
-	uid, gid := stagePlatformNativeEndpoint(t, requestPath, initialProgram, pin, candidateBundle, keyPath)
+	endpointfixture.WriteStartupFile(t, requestPath, []byte(request), 0600)
+	uid, gid := endpointfixture.StageNativeEndpoint(t, requestPath, initialProgram, pin, candidateBundle, keyPath)
 	installationRoot := filepath.Join(base, "installation")
 	selection, err := os.ReadFile(filepath.Join(installationRoot, "selection.json"))
 	if err != nil {
@@ -537,14 +538,14 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		t.Fatal(err)
 	}
 	historyPlan := filepath.Join(bootstrap, "headless.json")
-	installedStartupWrite(t, historyPlan, declaration.Headless, 0644)
+	endpointfixture.WriteStartupFile(t, historyPlan, declaration.Headless, 0644)
 	bundleRaw, err := source.EncodeBundle(source.Bundle{Epoch: network.Epoch, Inputs: network.Inputs, Materials: network.Materials[:1]})
 	if err != nil {
 		t.Fatal(err)
 	}
 	bundlePath, profilePath := filepath.Join(bootstrap, "state.bundle"), filepath.Join(bootstrap, "profile.bin")
-	installedStartupWrite(t, bundlePath, bundleRaw, 0644)
-	installedStartupWrite(t, profilePath, network.Profile, 0644)
+	endpointfixture.WriteStartupFile(t, bundlePath, bundleRaw, 0644)
+	endpointfixture.WriteStartupFile(t, profilePath, network.Profile, 0644)
 	prepare := exec.CommandContext(ctx, program, "endpoint", "prepare-history", historyPlan, bundlePath, profilePath)
 	prepare.SysProcAttr = &syscall.SysProcAttr{Credential: credential, Pdeathsig: syscall.SIGKILL}
 	runtime.LockOSThread()
@@ -566,18 +567,18 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		t.Fatal(err)
 	}
 	budgetPath := filepath.Join(bootstrap, "hosting.json")
-	installedStartupWrite(t, budgetPath, budgetInput, 0644)
-	installedStartupCommand(t, program, credential, "completed", "hosting", "initialize", "--config", budgetPath)
-	installPlatformNativeUnit(t, requestPath, candidateBundle, program)
+	endpointfixture.WriteStartupFile(t, budgetPath, budgetInput, 0644)
+	endpointfixture.RunStartupCommand(t, program, credential, "completed", "hosting", "initialize", "--config", budgetPath)
+	endpointfixture.InstallNativeUnit(t, requestPath, candidateBundle, program)
 	original := journeyStartPlatformLed(t)
 	installedServiceInstance(t, program, credential, base, network.NetworkID)
 	journeyGrantPermissions(t, base, original, uint64(uid), uint64(gid), approve)
-	if current := installedStartupIdentity(t); current != original {
+	if current := endpointfixture.StartupIdentity(t); current != original {
 		t.Fatal("accepted permission lost original invocation", current)
 	}
 	journeyWaitServiceReady(t, base, original, uint32(uid), uint32(gid))
 	stop := func() {
-		if current := installedStartupIdentity(t); current[2] == "active" {
+		if current := endpointfixture.StartupIdentity(t); current[2] == "active" {
 			if out, err := exec.Command("systemctl", "stop", "ardents-endpoint.service").CombinedOutput(); err != nil {
 				t.Errorf("journey stop: %v: %s", err, out)
 			}
@@ -588,34 +589,12 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	exercise(journeyParticipant{base: base, original: original, principals: principals, stop: stop})
 }
 
-func journeyBuildWorkerBinary(t *testing.T) []byte {
-	t.Helper()
-	if prebuilt := os.Getenv("ARDENTS_PREBUILT_DOCUMENT_WORKER"); prebuilt != "" {
-		raw, err := os.ReadFile(prebuilt)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return raw
-	}
-	path := filepath.Join(t.TempDir(), "ardents-text-linux-amd64")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/internal/application/document/worker")
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build document worker: %v: %s", err, out)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
-
 func journeyStartPlatformLed(t *testing.T) [3]string {
 	t.Helper()
 	if out, err := exec.Command("systemctl", "start", "ardents-endpoint.service").CombinedOutput(); err != nil {
 		t.Fatalf("platform-led start: %v: %s", err, out)
 	}
-	original := installedStartupIdentity(t)
+	original := endpointfixture.StartupIdentity(t)
 	if original[0] == "0" || len(original[1]) != 32 || original[2] != "active" {
 		t.Fatal("platform-led participant is not active", original)
 	}
@@ -649,7 +628,7 @@ func journeyWaitServiceReady(t *testing.T, base string, original [3]string, uid,
 		}
 		return true
 	})
-	if current := installedStartupIdentity(t); current != original {
+	if current := endpointfixture.StartupIdentity(t); current != original {
 		t.Fatal("Service readiness lost original invocation", current)
 	}
 }
@@ -671,12 +650,12 @@ func journeyRestartContinuity(t *testing.T, participant journeyParticipant, prev
 	if out, err := exec.Command("systemctl", "stop", "ardents-endpoint.service").CombinedOutput(); err != nil {
 		t.Fatalf("restart stop: %v: %s", err, out)
 	}
-	journeyWait(t, 30*time.Second, func() bool { return installedStartupIdentity(t)[2] != "active" })
+	journeyWait(t, 30*time.Second, func() bool { return endpointfixture.StartupIdentity(t)[2] != "active" })
 	if out, err := exec.Command("systemctl", "start", "ardents-endpoint.service").CombinedOutput(); err != nil {
 		journeyDumpJournal(t)
 		t.Fatalf("restart start: %v: %s", err, out)
 	}
-	current := installedStartupIdentity(t)
+	current := endpointfixture.StartupIdentity(t)
 	if current[0] == "0" || len(current[1]) != 32 || current[2] != "active" {
 		t.Fatal("restarted participant is not active", current)
 	}
@@ -697,12 +676,12 @@ func journeyRestartContinuity(t *testing.T, participant journeyParticipant, prev
 // interleaved fresh permission requests the restarted participant sends over the
 // channel before it reports its new original invocation. The fixture authority
 // re-approves each role exactly once; the signing key never leaves the controller.
-func journeyRestartExchange(t *testing.T, conn net.Conn, approve func(role string, request []byte) []byte) installedPairMessage {
+func journeyRestartExchange(t *testing.T, conn net.Conn, approve func(role string, request []byte) []byte) endpointfixture.PairMessage {
 	t.Helper()
-	installedPairSend(t, conn, installedPairMessage{Operation: "restart"})
+	endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "restart"})
 	approved := make(map[string]bool)
 	for {
-		message := installedPairReceive(t, conn)
+		message := endpointfixture.ReceivePairMessage(t, conn)
 		switch message.Operation {
 		case "permission":
 			if (message.Role != "reader" && message.Role != "publisher") || approved[message.Role] {
@@ -710,7 +689,7 @@ func journeyRestartExchange(t *testing.T, conn net.Conn, approve func(role strin
 			}
 			response := approve(message.Role, message.Body)
 			approved[message.Role] = true
-			installedPairSend(t, conn, installedPairMessage{Operation: "permission", Role: message.Role, Body: response})
+			endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "permission", Role: message.Role, Body: response})
 		case "restart":
 			if !approved["reader"] || !approved["publisher"] {
 				t.Fatal("platform-led restart omitted independent permission re-admission")
@@ -790,25 +769,25 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	if out, err := exec.Command("stat", "-fc", "%T", "/sys/fs/cgroup").Output(); err != nil || strings.TrimSpace(string(out)) != "cgroup2fs" {
 		t.Fatalf("invalid environment: host cgroup v2 required: %v: %s", err, out)
 	}
-	repoRoot := pairRepoRoot(t)
-	goRoot := pairGoEnv(t, "GOROOT")
-	modCache := pairGoEnv(t, "GOMODCACHE")
-	buildCache := pairGoEnv(t, "GOCACHE")
-	base := pairEnsureBaseRootfs(t)
+	repoRoot := endpointfixture.RepositoryRoot(t)
+	goRoot := endpointfixture.GoEnv(t, "GOROOT")
+	modCache := endpointfixture.GoEnv(t, "GOMODCACHE")
+	buildCache := endpointfixture.GoEnv(t, "GOCACHE")
+	base := endpointfixture.EnsurePairBaseRootfs(t)
 	carrier := string(transport.ClosedCarrierTCP)
 	f, _ := installedServiceNetwork(t, carrier)
-	network := installedSignedNetwork(t, f)
+	network := endpointfixture.BuildSignedNetwork(t, f.spec)
 	guestBinary := journeyCompileParticipant(t, repoRoot)
 	// Prebuild the canonical consumer and static worker on the host so the guests
 	// do not repeat Go builds under shared-host load; the publication deadlines
 	// are finite and must not be weakened to absorb build contention.
 	nextBinary, workerBinary := journeyPrebuildBinaries(t, repoRoot)
 	runID := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
-	var guests [2]*pairGuest
+	var guests [2]*endpointfixture.PairGuest
 	for i, label := range []string{"pub", "read"} {
-		guests[i] = pairBootGuest(t, base, runID, label, goRoot, repoRoot, modCache, buildCache)
+		guests[i] = endpointfixture.BootPairGuest(t, base, runID, label, goRoot, repoRoot, modCache, buildCache)
 	}
-	pairVerifyDistinctManagers(t, guests[:])
+	endpointfixture.VerifyDistinctManagers(t, guests[:])
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -834,14 +813,14 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			}
 		}
 	})
-	exchange := func(index int, command installedPairMessage) installedPairMessage {
+	exchange := func(index int, command endpointfixture.PairMessage) endpointfixture.PairMessage {
 		started := time.Now()
 		t.Logf("journey participant %d: %s started", index, command.Operation)
 		defer func() {
 			t.Logf("journey participant %d: %s returned after %s", index, command.Operation, time.Since(started))
 		}()
-		installedPairSend(t, peers[index], command)
-		response := installedPairReceive(t, peers[index])
+		endpointfixture.SendPairMessage(t, peers[index], command)
+		response := endpointfixture.ReceivePairMessage(t, peers[index])
 		if response.Operation != command.Operation {
 			t.Fatal("journey handoff lost operation")
 		}
@@ -857,14 +836,14 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			t.Fatal(err)
 		}
 		guest := guests[i]
-		journeyCopyIntoGuest(t, guestBinary, filepath.Join(guest.rootfs, "root", "journey.test"))
-		journeyCopyIntoGuest(t, nextBinary, filepath.Join(guest.rootfs, "root", "ardents-next"))
-		journeyCopyIntoGuest(t, workerBinary, filepath.Join(guest.rootfs, "root", "ardents-document-worker"))
+		journeyCopyIntoGuest(t, guestBinary, filepath.Join(guest.Rootfs(), "root", "journey.test"))
+		journeyCopyIntoGuest(t, nextBinary, filepath.Join(guest.Rootfs(), "root", "ardents-next"))
+		journeyCopyIntoGuest(t, workerBinary, filepath.Join(guest.Rootfs(), "root", "ardents-document-worker"))
 		// Keep the mutable root short: the application/administration Unix socket
 		// paths below it must fit the kernel sun_path bound (108 bytes).
 		guestRoot := filepath.Join("/var/lib/ardents", "journey-"+hex.EncodeToString(nonce[:6]))
 		script := fmt.Sprintf("cd %s/cmd/ardents-next && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=6m", repoRoot)
-		command := exec.Command("systemd-run", "-M", guest.name, "--pipe", "--quiet",
+		command := exec.Command("systemd-run", "-M", guest.Name(), "--pipe", "--quiet",
 			"--setenv=PATH=/usr/local/go/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"--setenv=GOTOOLCHAIN=local",
 			"--setenv=GOMODCACHE="+modCache,
@@ -891,18 +870,18 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		}
 		peers[i] = conn
 		_ = conn.SetDeadline(time.Now().Add(6 * time.Minute))
-		hello := installedPairReceive(t, conn)
+		hello := endpointfixture.ReceivePairMessage(t, conn)
 		if hello.Operation != "hello" || hello.Role != role || hello.Nonce != hex.EncodeToString(nonce[:]) {
 			t.Fatal("foreign journey fixture client")
 		}
-		installedPairSend(t, conn, installedPairMessage{Operation: "network", Network: &network})
+		endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "network", Network: &network})
 		approvalRoot := filepath.Join(t.TempDir(), role)
 		if err := os.MkdirAll(approvalRoot, 0700); err != nil {
 			t.Fatal(err)
 		}
 		approved := make(map[string]bool)
 		for {
-			request := installedPairReceive(t, conn)
+			request := endpointfixture.ReceivePairMessage(t, conn)
 			if request.Operation == "ready" {
 				if !approved["reader"] || !approved["publisher"] || request.Original[1] == "" {
 					t.Fatal("participant omitted independent admission")
@@ -915,7 +894,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			}
 			response := installedServiceApproval(t, approvalRoot, request.Role, request.Body, f)
 			approved[request.Role] = true
-			installedPairSend(t, conn, installedPairMessage{Operation: "permission", Role: request.Role, Body: response})
+			endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "permission", Role: request.Role, Body: response})
 		}
 	}
 	body := bytes.Repeat([]byte("one platform-led document across independently admitted managers\n"), 600)
@@ -926,7 +905,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		publishOperation = "stream-publish"
 		body = bytes.Repeat([]byte{0, 255, 128, 7}, 8192)
 	}
-	publication := exchange(0, installedPairMessage{Operation: publishOperation, Body: body})
+	publication := exchange(0, endpointfixture.PairMessage{Operation: publishOperation, Body: body})
 	if publication.Link == "" {
 		t.Fatal("installed publisher supplied no Link")
 	}
@@ -941,8 +920,8 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	}
 	if byteStream {
 		sent := bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000)
-		read := exchange(1, installedPairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent})
-		received := exchange(0, installedPairMessage{Operation: "stream-result"})
+		read := exchange(1, endpointfixture.PairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent})
+		received := exchange(0, endpointfixture.PairMessage{Operation: "stream-result"})
 		if read.Failure != "" || received.Failure != "" {
 			t.Fatalf("installed byte stream stopped (received %d/%d bytes): reader %s; publisher %s", len(read.Body), len(received.Body), read.Failure, received.Failure)
 		}
@@ -951,7 +930,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			t.Fatal("installed byte-stream exchange changed bytes or original Endpoint identities")
 		}
 		for i := range peers {
-			exchange(i, installedPairMessage{Operation: "finish"})
+			exchange(i, endpointfixture.PairMessage{Operation: "finish"})
 			err := commands[i].Wait()
 			joined[i] = true
 			if err != nil {
@@ -961,11 +940,11 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		t.Log("two independently admitted installed Endpoints exchanged byte-equal data in both directions via the public CLI")
 		return
 	}
-	read := exchange(1, installedPairMessage{Operation: "read", Link: publication.Link})
+	read := exchange(1, endpointfixture.PairMessage{Operation: "read", Link: publication.Link})
 	if !bytes.Equal(read.Body, body) {
 		t.Fatal("installed reader returned different Application bytes")
 	}
-	exchange(0, installedPairMessage{Operation: "withdraw"})
+	exchange(0, endpointfixture.PairMessage{Operation: "withdraw"})
 	for i := range peers {
 		restartRoot := filepath.Join(t.TempDir(), "restart-"+[]string{"publisher", "reader"}[i])
 		if err := os.MkdirAll(restartRoot, 0700); err != nil {
@@ -1012,18 +991,18 @@ func journeyGrantPermissions(t *testing.T, base string, original [3]string, uid,
 		}
 		response := approve(base, role, request)
 		pending := filepath.Join(directory, "response.pending")
-		installedStartupWrite(t, pending, response, 0600)
+		endpointfixture.WriteStartupFile(t, pending, response, 0600)
 		if err := os.Chown(pending, int(uid), int(gid)); err != nil {
 			t.Fatal(err)
 		}
-		installedStartupSync(t, pending)
+		endpointfixture.SyncStartupPath(t, pending)
 		if _, err := os.Lstat(filepath.Join(directory, "response")); !os.IsNotExist(err) {
 			t.Fatal("refuse existing permission response", err)
 		}
 		if err := os.Rename(pending, filepath.Join(directory, "response")); err != nil {
 			t.Fatal(err)
 		}
-		installedStartupSync(t, directory)
+		endpointfixture.SyncStartupPath(t, directory)
 		journeyWait(t, 60*time.Second, func() bool {
 			raw, err := exec.CommandContext(t.Context(), "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+original[1]).CombinedOutput()
 			if err != nil {
@@ -1145,7 +1124,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 
 	carrier := string(transport.ClosedCarrierTCP)
 	f, store := installedServiceNetwork(t, carrier)
-	network := installedSignedNetwork(t, f)
+	network := endpointfixture.BuildSignedNetwork(t, f.spec)
 	for _, node := range f.spec.Nodes {
 		t.Logf("fixture route node %d endpoint %s", node.NodeID[0], node.Endpoint)
 	}
@@ -1157,7 +1136,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 	stopListener := context.AfterFunc(t.Context(), func() { _ = listener.Close() })
 	defer stopListener()
 
-	repoRoot := pairRepoRoot(t)
+	repoRoot := endpointfixture.RepositoryRoot(t)
 	participantBinary, nextBinary, workerBinary := journeyCrossHostBinaries(t, repoRoot)
 	const participantTimeout = 12 * time.Minute
 	// The existing refresh oracle needs the original token hour throughout the
@@ -1294,7 +1273,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 				_ = conn.Close()
 				t.Fatal("bound cross-host journey channel", err)
 			}
-			hello := installedPairReceive(t, conn)
+			hello := endpointfixture.ReceivePairMessage(t, conn)
 			matched := -1
 			for j := range nonces {
 				if hello.Operation == "hello" && hello.Role == roles[j] && hello.Nonce == nonces[j] {
@@ -1308,7 +1287,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			t.Logf("journey channel bound participant %d (%s) from %s", matched, roles[matched], conn.RemoteAddr())
 		}
 		for i := range peers {
-			installedPairSend(t, peers[i], installedPairMessage{Operation: "network", Network: &network})
+			endpointfixture.SendPairMessage(t, peers[i], endpointfixture.PairMessage{Operation: "network", Network: &network})
 		}
 	}
 	var declared [2][3]string
@@ -1320,7 +1299,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		}
 		approved := make(map[string]bool)
 		for {
-			request := installedPairReceive(t, conn)
+			request := endpointfixture.ReceivePairMessage(t, conn)
 			if request.Operation == "ready" {
 				if !approved["reader"] || !approved["publisher"] || request.Original[1] == "" {
 					t.Fatal("participant omitted independent admission")
@@ -1333,17 +1312,17 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			}
 			response := installedServiceApproval(t, approvalRoot, request.Role, request.Body, f)
 			approved[request.Role] = true
-			installedPairSend(t, conn, installedPairMessage{Operation: "permission", Role: request.Role, Body: response})
+			endpointfixture.SendPairMessage(t, conn, endpointfixture.PairMessage{Operation: "permission", Role: request.Role, Body: response})
 		}
 	}
-	exchange := func(index int, command installedPairMessage) installedPairMessage {
+	exchange := func(index int, command endpointfixture.PairMessage) endpointfixture.PairMessage {
 		started := time.Now()
 		t.Logf("journey participant %d: %s started", index, command.Operation)
 		defer func() {
 			t.Logf("journey participant %d: %s returned after %s", index, command.Operation, time.Since(started))
 		}()
-		installedPairSend(t, peers[index], command)
-		response := installedPairReceive(t, peers[index])
+		endpointfixture.SendPairMessage(t, peers[index], command)
+		response := endpointfixture.ReceivePairMessage(t, peers[index])
 		if response.Operation != command.Operation {
 			t.Fatal("journey handoff lost operation")
 		}
@@ -1371,13 +1350,13 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		}
 	}
 	publishStarted := time.Now()
-	published := exchange(0, installedPairMessage{Operation: "publish", Body: body})
+	published := exchange(0, endpointfixture.PairMessage{Operation: "publish", Body: body})
 	if published.Link == "" || published.Original != identities[0] {
 		t.Fatal("installed publisher supplied no Link for its original invocation")
 	}
 	first := installedPairStoredProof(t, store, f, published.Link)
 	read := func() {
-		result := exchange(1, installedPairMessage{Operation: "read", Link: published.Link})
+		result := exchange(1, endpointfixture.PairMessage{Operation: "read", Link: published.Link})
 		if !bytes.Equal(result.Body, body) || result.Original != identities[1] {
 			t.Fatal("installed reader changed Application bytes or invocation")
 		}
@@ -1402,7 +1381,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		t.Fatal("cross-host predecessor retirement changed the accepting replacement")
 	}
 	read()
-	if withdrawn := exchange(0, installedPairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
+	if withdrawn := exchange(0, endpointfixture.PairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
 		t.Fatal("refreshed publication was withdrawn by a different invocation")
 	}
 	t.Log("cross-host Descriptor refresh, signed predecessor refusal and unchanged document verified")

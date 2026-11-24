@@ -38,7 +38,7 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			certificate := certificates[[32]byte{12}]
 			certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
@@ -133,7 +133,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
 			participation := filepath.Join(t.TempDir(), "participation")
@@ -236,7 +236,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 			participation := filepath.Join(t.TempDir(), "participation")
@@ -343,7 +343,7 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			certificate := certificates[[32]byte{11}]
 			certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
@@ -455,7 +455,7 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{20}])
 			participation := filepath.Join(t.TempDir(), "participation")

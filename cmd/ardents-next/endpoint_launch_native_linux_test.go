@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 	"io"
 	"net"
 	"os"
@@ -267,8 +268,8 @@ func (s *platformLedLaunchStand) startReplacement(t *testing.T, original [3]stri
 	if err := os.Remove("/etc/systemd/system/ardents-endpoint.service"); err != nil {
 		t.Fatal(err)
 	}
-	launch := platformNativeLaunch(t, s.successorRequest, s.successorDistribution)
-	installPlatformNativeUnit(t, s.successorRequest, s.successorDistribution, launch.Program)
+	launch := endpointfixture.NativeLaunch(t, s.successorRequest, s.successorDistribution)
+	endpointfixture.InstallNativeUnit(t, s.successorRequest, s.successorDistribution, launch.Program)
 	next := s.startPlatformLed(t)
 	if next[1] == original[1] {
 		t.Fatal("replacement reused original invocation")
@@ -554,10 +555,10 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 	// Genuine Release authority + enrolled protected candidate (version 1). The
 	// provision command authenticates the initial pair and establishes floors.
 	rootAuthority := nodefixture.NewReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
-	resources := endpointPlatformNativeResources()
+	resources := endpointfixture.NativeResources()
 	// The worker executable must be a genuine compiled text worker, not fixture
 	// placeholder bytes: socket activation spawns it under confinement.
-	resources["ardents-text-linux-amd64"] = buildEndpointWorkerBinary(t)
+	resources["ardents-text-linux-amd64"] = endpointfixture.BuildNativeWorker(t, "")
 	var legacyCustody [][]byte
 	if len(predecessor) != 0 {
 		oldProgram, err := os.ReadFile(filepath.Join(predecessor[0], "ardents-linux-amd64"))
@@ -572,11 +573,11 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 		legacyCustody = append(legacyCustody, offlineCustody)
 	}
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1, legacyCustody...)
-	bundle, initialProgram = platformNativeDistribution(t, bundle, filepath.Join(stand.base, "initial-distribution"))
+	bundle, initialProgram = endpointfixture.CopyNativeDistribution(t, bundle, filepath.Join(stand.base, "initial-distribution"))
 	// Provision establishes Release floors at metadata version 1.
 	// Advance the signed metadata while retaining the exact staged release and descriptor.
 	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1, legacyCustody...)
-	stand.distribution, _ = platformNativeDistribution(t, candidateBundle, filepath.Join(stand.base, "candidate-distribution"))
+	stand.distribution, _ = endpointfixture.CopyNativeDistribution(t, candidateBundle, filepath.Join(stand.base, "candidate-distribution"))
 	request := string(installationRequestBytes(t, bundle, pin, stand.floors))
 	request = platformLedDualDeclaration(t, request, stand.base)
 	quoted := func(s string) string {
@@ -632,7 +633,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 		}
 		resources["ardents-linux-amd64"] = current
 		updated, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, rootAuthority, 3, 2)
-		stand.successorDistribution, _ = platformNativeDistribution(t, updated, filepath.Join(stand.base, "successor-distribution"))
+		stand.successorDistribution, _ = endpointfixture.CopyNativeDistribution(t, updated, filepath.Join(stand.base, "successor-distribution"))
 		stand.successorRoot = filepath.Join(stand.base, "successor")
 		candidate := strings.Replace(request, quoted(bundle), quoted(stand.successorDistribution), 1)
 		candidate = strings.Replace(candidate, quoted(stand.installationRoot), quoted(stand.successorRoot), 1)
@@ -645,7 +646,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 		launchWrite(t, stand.successorRequest, []byte(candidate), 0600)
 	}
 
-	stand.uid, stand.gid = stagePlatformNativeEndpoint(t, stand.requestPath, initialProgram, pin, stand.distribution, keyPath)
+	stand.uid, stand.gid = endpointfixture.StageNativeEndpoint(t, stand.requestPath, initialProgram, pin, stand.distribution, keyPath)
 	selection, err := os.ReadFile(filepath.Join(stand.installationRoot, "selection.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -704,7 +705,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 	launchWrite(t, budgetPath, budgetInput, 0644)
 	launchCommand(t, stand.program, credential, "completed", "hosting", "initialize", "--config", budgetPath)
 
-	stand.manifest, stand.pin = installPlatformNativeUnit(t, stand.requestPath, stand.distribution, stand.program)
+	stand.manifest, stand.pin = endpointfixture.InstallNativeUnit(t, stand.requestPath, stand.distribution, stand.program)
 	return stand
 }
 
@@ -932,22 +933,6 @@ func (s *platformLedLaunchStand) cleanup(t *testing.T) {
 	_ = exec.Command("groupdel", "ardents-endpoint").Run()
 	_ = os.RemoveAll(s.etcDir)
 	_ = os.RemoveAll(s.base)
-}
-
-func buildEndpointWorkerBinary(t *testing.T) []byte {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "ardents-text-linux-amd64")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "github.com/dianabuilds/ardents-network/internal/application/document/worker")
-	// The worker runs under RootDirectory chroot; it must be a static binary.
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build text worker: %v: %s", err, out)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
 }
 
 func launchEvent(raw []byte, phase, role string) bool {

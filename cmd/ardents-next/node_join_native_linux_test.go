@@ -56,7 +56,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()

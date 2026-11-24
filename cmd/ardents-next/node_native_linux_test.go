@@ -91,7 +91,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
@@ -242,7 +242,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			defer closeClock()
 			view, err := f.current()
 			if err != nil {

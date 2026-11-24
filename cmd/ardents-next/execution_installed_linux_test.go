@@ -9,6 +9,7 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"os"
 	"os/exec"
@@ -93,7 +94,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	var clockOnce sync.Once
 	joinClock := func() { clockOnce.Do(closeClock) }
 	defer joinClock()

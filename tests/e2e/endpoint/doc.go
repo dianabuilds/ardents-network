@@ -1,3 +1,3 @@
-// Package endpoint holds E2E-only external-command evidence for the closed
-// alpha enrollment boundary.
+// Package endpoint owns the compiled Endpoint's enrollment and native
+// deployment tests and their shared release and host fixtures.
 package endpoint

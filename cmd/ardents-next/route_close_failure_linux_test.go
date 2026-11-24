@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -32,7 +33,7 @@ func TestRouteCompiledHolderRetainsFailedPrefixClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clockFile, stopClock := joinProcessClock(t)
+	clockFile, stopClock := nodefixture.StartObservedClock(t)
 	defer stopClock()
 	var authorityKey [32]byte
 	copy(authorityKey[:], f.spec.Authority.Public().(ed25519.PublicKey))

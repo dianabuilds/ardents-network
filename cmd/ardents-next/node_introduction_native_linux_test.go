@@ -124,7 +124,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := joinProcessClock(t)
+			clock, closeClock := nodefixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
@@ -379,7 +379,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := joinProcessClock(t)
+					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
 					id := [32]byte{25}
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])

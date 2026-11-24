@@ -627,12 +627,38 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && source == "tests/e2e/node/network_state_fixture_linux.go" {
 		return local == "internal/network/state" || local == "tests/epochfixture/network"
 	}
+	if localImport {
+		switch source {
+		case "tests/e2e/endpoint/endpoint_platform_native_linux_test.go":
+			return local == "internal/enrollment" || local == "internal/release" ||
+				local == "internal/release/endpoint" || local == "internal/release/infrastructure/launch" ||
+				local == "internal/endpoint/plan" || local == "internal/endpoint/unit" ||
+				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/e2e/endpoint"
+		case "tests/e2e/endpoint/native_delivery_linux.go":
+			return local == "internal/endpoint/plan" || local == "internal/release/infrastructure/launch"
+		case "tests/e2e/endpoint/endpoint_pair_native_linux_test.go":
+			return local == "tests/e2e/endpoint"
+		case "tests/e2e/endpoint/native_startup_linux.go":
+			return local == "tests/epochfixture/network"
+		case "tests/e2e/endpoint/release_fixture.go":
+			return local == "tests/e2e/node"
+		}
+	}
+	if localImport && local == "tests/e2e/endpoint" {
+		switch source {
+		case "cmd/ardents-next/platform_linux_test.go", "cmd/ardents-next/release_process_test.go", "cmd/ardents-next/installed_service_linux_test.go",
+			"cmd/ardents-next/endpoint_launch_native_linux_test.go", "cmd/ardents-next/endpoint_journey_native_linux_test.go":
+			return true
+		default:
+			return false
+		}
+	}
 	// These command tests consume only the registered process and signed fixture owners.
 	if localImport && local == "tests/e2e/node" {
 		switch source {
 		case "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go", "cmd/ardents-next/descriptor_platform_native_linux_test.go",
 			"cmd/ardents-next/endpoint_journey_native_linux_test.go", "cmd/ardents-next/endpoint_launch_native_linux_test.go",
-			"cmd/ardents-next/endpoint_platform_native_linux_test.go", "cmd/ardents-next/execution_artifact_linux_test.go",
+			"cmd/ardents-next/execution_artifact_linux_test.go", "cmd/ardents-next/execution_installed_linux_test.go",
 			"cmd/ardents-next/forwarding_artifact_linux_test.go", "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go",
 			"cmd/ardents-next/forwarding_platform_native_linux_test.go", "cmd/ardents-next/infrastructure_caller_linux_test.go",
 			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
@@ -644,7 +670,10 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/node_join_native_linux_test.go", "cmd/ardents-next/node_join_startup_native_linux_test.go",
 			"cmd/ardents-next/node_native_linux_test.go", "cmd/ardents-next/node_operation_native_linux_test.go",
 			"cmd/ardents-next/node_refill_native_linux_test.go", "cmd/ardents-next/platform_release_linux_test.go",
-			"cmd/ardents-next/release_process_test.go", "cmd/ardents-next/source_installed_native_linux_test.go":
+			"cmd/ardents-next/release_process_test.go", "cmd/ardents-next/source_installed_native_linux_test.go",
+			"cmd/ardents-next/publication_installed_linux_test.go", "cmd/ardents-next/source_state_linux_test.go",
+			"cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_descriptor_linux_test.go",
+			"cmd/ardents-next/route_join_process_linux_test.go", "cmd/ardents-next/route_process_linux_test.go":
 			return true
 		default:
 			return false
@@ -653,8 +682,7 @@ func successorImportAllowed(source, dependency string) bool {
 	// These test drivers share only independently generated TLS fixture bytes.
 	if localImport && local == "tests/e2e/source" {
 		switch source {
-		case "cmd/ardents-next/endpoint_platform_native_linux_test.go",
-			"cmd/ardents-next/source_installed_native_linux_test.go",
+		case "cmd/ardents-next/source_installed_native_linux_test.go",
 			"cmd/ardents-next/source_lifecycle_native_linux_test.go",
 			"cmd/ardents-next/source_native_linux_test.go",
 			"cmd/ardents-next/source_preparation_native_linux_test.go",
@@ -767,9 +795,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if local == "internal/pathgrammar" {
 			return true
 		}
-	}
-	if source == "cmd/ardents-next/endpoint_platform_native_linux_test.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release/endpoint" || dependency == modulePath+"/internal/endpoint/plan" || dependency == modulePath+"/internal/endpoint/unit" || dependency == modulePath+"/internal/release") {
-		return true
 	}
 	if source == "cmd/ardents-next/endpoint_launch_native_linux_test.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
 		return true
@@ -1806,14 +1831,14 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Source startup native prefix excludes State authority", "internal/release/infrastructure/source_startup_physical_prefix_profile_native_linux_test.go", modulePath + "/internal/network/state", false},
 		{"Source startup observer excludes State authority", "internal/release/infrastructure/source_startup_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
 		{"Source retirement observer excludes State authority", "internal/release/infrastructure/source_retirement_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
-		{"Endpoint platform native qualification uses new Enrollment", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/enrollment", true},
-		{"Endpoint platform native qualification uses fresh Release", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/release", true},
-		{"Endpoint platform native qualification uses generation authorization", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/release/endpoint", true},
-		{"Endpoint platform native qualification uses request grammar", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/plan", true},
-		{"Endpoint platform native qualification uses unit contract", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/unit", true},
-		{"Endpoint platform native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint", false},
-		{"Endpoint platform native qualification excludes retired Release path", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
-		{"Endpoint platform native qualification has no Node runtime", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/node", false},
+		{"Endpoint platform native qualification uses new Enrollment", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/enrollment", true},
+		{"Endpoint platform native qualification uses fresh Release", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/release", true},
+		{"Endpoint platform native qualification uses generation authorization", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/release/endpoint", true},
+		{"Endpoint platform native qualification uses request grammar", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/plan", true},
+		{"Endpoint platform native qualification uses unit contract", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/unit", true},
+		{"Endpoint platform native qualification excludes old Endpoint", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint", false},
+		{"Endpoint platform native qualification excludes retired Release path", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
+		{"Endpoint platform native qualification has no Node runtime", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/node", false},
 		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/release", false},
 		{"Endpoint launch delegates Enrollment to platform CLI", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/enrollment", false},
 		{"Endpoint launch delegates unit rendering to platform CLI", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
@@ -1821,10 +1846,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint launch native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint launch native qualification has no Node runtime", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/node", false},
 		{"adjacent Endpoint launch test has no inherited Source edge", "cmd/ardents-next/other_endpoint_launch_native_linux_test.go", modulePath + "/internal/network/source", false},
-		{"Endpoint pair native controller is a stdlib-only environment orchestrator", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/enrollment", false},
-		{"Endpoint pair native controller excludes old Endpoint", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/endpoint", false},
-		{"Endpoint pair native controller has no Node runtime", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/node", false},
-		{"Endpoint pair native controller has no direct Source edge", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/network/source", false},
+		{"Endpoint pair native controller has no direct Enrollment edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/enrollment", false},
+		{"Endpoint pair native controller excludes old Endpoint", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/endpoint", false},
+		{"Endpoint pair native controller has no Node runtime", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/node", false},
+		{"Endpoint pair native controller has no direct Source edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/network/source", false},
 		{"Endpoint journey delegates Enrollment to platform CLI", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/enrollment", false},
 		{"Endpoint journey delegates unit rendering to platform CLI", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
 		{"Endpoint journey native qualification uses live Source", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/network/source", true},
@@ -1832,7 +1857,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint journey native qualification checks canonical Link codec", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/publication", true},
 		{"Endpoint journey native qualification uses public Administration client", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/administration", true},
 		{"Endpoint journey native qualification uses public Connection client", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/connection", true},
-		{"Endpoint journey native qualification uses actual text exchange", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/document", true},
+		{"Endpoint journey native qualification uses actual document exchange", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/document", true},
 		{"Endpoint journey native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint journey native qualification has no Node runtime", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/node", false},
 		{"unsafe", "internal/admission/check.go", "unsafe", false},

@@ -41,7 +41,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := joinProcessClock(t)
+					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
 					certificate := certificates[[32]byte{12}]
 					certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")

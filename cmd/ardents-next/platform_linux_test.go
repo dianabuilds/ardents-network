@@ -5,11 +5,10 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 
 func TestPlatformRetiresDetachedSourceStartBeforeEffects(t *testing.T) {
@@ -22,6 +21,5 @@ func TestPlatformRetiresDetachedSourceStartBeforeEffects(t *testing.T) {
 type platformLaunch = launch.Declaration
 
 func platformDigest(raw []byte) string {
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])
+	return endpointfixture.FixtureDigest(raw)
 }
