@@ -89,7 +89,9 @@ unit:
 .PHONY: platform-launch-unit
 platform-launch-unit:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
-	go test ./cmd/ardents-next -run '^Test(Platform.*|SourceCancellationJoinsWaitCloseAndInputsBeforeCompletion|SourcePreparationRefusesOtherPrincipal.*|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
+	go test ./cmd/ardents-next -run '^Test(Platform.*|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
+	go test ./internal/network/source/command -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$$' -count=1 -timeout=3m
+	go test ./internal/network/source/serving -run '^TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion$$' -count=1 -timeout=3m
 	go test ./internal/node/provisioning -run '^TestSourceInitialNetworkPlanKeepsDistinctPurposeAndPublicPins$$' -count=1 -timeout=3m
 	go test ./internal/platform/artifacts -run '^TestArtifactInputs' -count=1 -timeout=3m
 	go test ./internal/platform/process -run '^TestDedicatedAccountID$$' -count=1 -timeout=3m
