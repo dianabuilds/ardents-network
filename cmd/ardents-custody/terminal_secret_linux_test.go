@@ -1,3 +1,8 @@
+// The custody terminal reader is implemented for Linux and Windows only
+// (terminal_line_linux.go/terminal_line_windows.go); macOS refuses before the
+// prompt. This control also drives a Unix pseudo-terminal (pty.UnixPty.Slave),
+// which the Windows console pty does not satisfy, so the real prompt-failure
+// path is exercised on Linux only.
 package main
 
 import (
