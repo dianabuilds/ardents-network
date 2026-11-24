@@ -1,4 +1,4 @@
-package main
+package service_test
 
 import (
 	"bytes"
@@ -13,10 +13,10 @@ func TestPublicationCompiledRootPreparation(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "independent-publication")
 	target := hex.EncodeToString(bytes.Repeat([]byte{1}, 32))
 	network := hex.EncodeToString(bytes.Repeat([]byte{2}, 32))
-	command := compiledCommand(t)
+	command := buildProductCommand(t, "ardents-next")
 	run := func(expected string, success bool) {
 		t.Helper()
-		out, err := exec.Command(command, "publication", "prepare-root", root, target, network).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), command, "publication", "prepare-root", root, target, network).CombinedOutput()
 		if (err == nil) != success || string(out) != expected {
 			t.Fatalf("consumer: %s, %v", out, err)
 		}

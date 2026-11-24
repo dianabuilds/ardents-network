@@ -1,4 +1,4 @@
-package main
+package service_test
 
 import (
 	"bytes"
@@ -18,10 +18,10 @@ func TestPublicationCompiledInstancePublicExchange(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "host-instance")
 	network := hex.EncodeToString(bytes.Repeat([]byte{51}, 32))
 	before := time.Now().UTC().Truncate(time.Second)
-	command := compiledCommand(t)
+	command := buildProductCommand(t, "ardents-next")
 	run := func(success bool, args ...string) []byte {
 		t.Helper()
-		out, err := exec.Command(command, append([]string{"publication"}, args...)...).CombinedOutput()
+		out, err := exec.CommandContext(t.Context(), command, append([]string{"publication"}, args...)...).CombinedOutput()
 		if (err == nil) != success {
 			t.Fatalf("public exchange exit: %v", err)
 		}
