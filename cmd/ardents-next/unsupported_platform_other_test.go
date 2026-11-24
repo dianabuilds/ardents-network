@@ -25,9 +25,6 @@ func TestCompiledCommandsRefuseUnsupportedPlatformExplicitly(t *testing.T) {
 	}{
 		{"platform", []string{"platform", "check", "/etc/ardents/unit"}, "platform", false},
 		{"infrastructure", []string{"infrastructure", "prepare-runtime-inventory", "source", "/nonexistent-input", "/nonexistent-output"}, "infrastructure", false},
-		{"source", []string{"source", "serve-retained", "/nonexistent-source"}, "source", true},
-		{"source-repair", []string{"source", "repair-retained", "/nonexistent-source"}, "source.repair-retained", true},
-		{"source-prepare-trust", []string{"source", "prepare-trust", "/nonexistent-a", "/nonexistent-b"}, "source.prepare-trust", false},
 		{"route", []string{"route", "receive"}, "route", false},
 		{"endpoint-start-installed", []string{"endpoint", "start-installed", "/nonexistent-socket"}, "endpoint", true},
 		{"endpoint-prepare-history", []string{"endpoint", "prepare-history", "a", "b", "c"}, "endpoint", true},

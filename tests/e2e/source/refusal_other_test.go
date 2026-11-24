@@ -20,6 +20,9 @@ func TestCompiledSourceUnsupportedPlatformRefusesBeforePlanEffects(t *testing.T)
 		bundle, stdout     bool
 	}{
 		{"serve", "source", false, false},
+		{"serve-retained", "source", false, false},
+		{"repair-retained", "source.repair-retained", false, false},
+		{"inspect-latest", "source.inspect-latest", false, false},
 		{"prepare-state", "source.prepare-state", true, false},
 		{"prepare-trust", "source.prepare-trust", true, true},
 	} {

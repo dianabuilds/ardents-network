@@ -603,7 +603,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "internal/network/source/command" {
 		switch source {
-		case "cmd/ardents-next/source_command_linux.go", "cmd/ardents-next/repair_linux.go":
+		case "cmd/ardents-next/source_command.go", "cmd/ardents-next/repair_linux.go":
 			return true
 		default:
 			return false
