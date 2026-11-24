@@ -13,6 +13,8 @@ import (
 	"github.com/aymanbagabas/go-pty"
 )
 
+const interactiveProductCommandTimeout = 30 * time.Second
+
 type interactiveProductInput struct {
 	prompt string
 	value  string
@@ -38,7 +40,7 @@ func (capture *interactiveProductCapture) bytes() []byte {
 
 func runInteractiveProductCommandResult(t *testing.T, directory, binary string, inputs []interactiveProductInput, arguments ...string) ([]byte, error) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), interactiveProductCommandTimeout)
 	defer cancel()
 	terminal, err := pty.New()
 	if err != nil {
