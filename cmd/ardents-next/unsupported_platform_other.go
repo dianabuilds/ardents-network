@@ -57,10 +57,6 @@ func runPublishedLink(context.Context, string) error {
 	return errors.New("document Link presentation requires the selected Linux host")
 }
 
-func writeNetworkPreparationReceipt(context.Context, io.Writer, []byte) error {
-	return errors.New("network public preparation unavailable")
-}
-
 func openPrivateLinkFile(string) (*os.File, error) {
 	return nil, errors.New("private Target Link requires the selected Linux host")
 }

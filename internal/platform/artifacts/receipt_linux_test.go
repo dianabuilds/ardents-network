@@ -1,10 +1,14 @@
 package artifacts
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"os"
+	"syscall"
 	"testing"
+	"time"
 )
 
 type outputWriter func([]byte) (int, error)
@@ -49,5 +53,61 @@ func TestCommandAndArtifactOutputKeepDifferentWriterFailures(t *testing.T) {
 		if err := write(ctx, writer, payload); !errors.Is(err, context.Canceled) {
 			t.Fatalf("original cancellation lost: %v", err)
 		}
+	}
+}
+
+// TestWriteReportJoinsCanceledFullPipe covers both a small public receipt and
+// a large report using real native output and the original cancellation cause.
+func TestWriteReportJoinsCanceledFullPipe(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		data []byte
+	}{
+		{"receipt", []byte("public receipt\n")},
+		{"large", bytes.Repeat([]byte{1}, 4<<20)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r, w, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := errors.Join(r.Close(), w.Close()); err != nil {
+					t.Error(err)
+				}
+			})
+			fd := int(w.Fd())
+			if err := syscall.SetNonblock(fd, true); err != nil {
+				t.Fatal(err)
+			}
+			chunk := bytes.Repeat([]byte{1}, 4096)
+			for {
+				_, err := syscall.Write(fd, chunk)
+				if errors.Is(err, syscall.EAGAIN) {
+					break
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			done := make(chan error, 1)
+			go func() { done <- WriteReport(ctx, w, tc.data) }()
+			select {
+			case err := <-done:
+				t.Fatal("full pipe completed before cancellation", err)
+			case <-time.After(20 * time.Millisecond):
+			}
+			cancel()
+			select {
+			case err := <-done:
+				if !errors.Is(err, context.Canceled) {
+					t.Fatal(err)
+				}
+			case <-time.After(2 * time.Second):
+				t.Fatal("blocked report did not join")
+			}
+		})
 	}
 }

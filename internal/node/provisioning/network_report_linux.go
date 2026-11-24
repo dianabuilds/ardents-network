@@ -1,4 +1,4 @@
-package main
+package provisioning
 
 import (
 	"context"
@@ -6,6 +6,6 @@ import (
 	"io"
 )
 
-func writeNetworkPreparationReceipt(ctx context.Context, out io.Writer, raw []byte) error {
+func writeNetworkArtifactReport(ctx context.Context, out io.Writer, raw []byte) error {
 	return artifacts.WriteReport(ctx, out, raw)
 }

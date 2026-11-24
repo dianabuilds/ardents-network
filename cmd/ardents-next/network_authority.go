@@ -2,8 +2,6 @@ package main
 
 import (
 	"errors"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
@@ -39,8 +37,7 @@ func validAdmissionAuthority(profile string, plan *networkAuthorityPlan, roots .
 		return false
 	}
 	for _, root := range roots {
-		if !pathgrammar.Strict(root) || root == plan.Root || strings.HasPrefix(root, plan.Root+string(filepath.Separator)) ||
-			strings.HasPrefix(plan.Root, root+string(filepath.Separator)) {
+		if !pathgrammar.DisjointRoots(plan.Root, root) {
 			return false
 		}
 	}

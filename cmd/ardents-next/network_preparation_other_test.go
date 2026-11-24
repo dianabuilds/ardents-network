@@ -19,7 +19,7 @@ func TestNetworkPreparationUnsupportedNativeEffectsRefused(t *testing.T) {
 			t.Fatal(err)
 		}
 		var out bytes.Buffer
-		if runNetworkPreparation(t.Context(), []string{operation, input, root}, &out) == 0 || out.Len() != 0 {
+		if runNetwork(t.Context(), []string{operation, input, root}, &out) == 0 || out.Len() != 0 {
 			t.Fatal("unsupported native environment reported success")
 		}
 		if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {

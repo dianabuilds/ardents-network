@@ -71,7 +71,7 @@ func TestNetworkPreparationRecordIndependentBytesAndStrictInputs(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if code := runNetworkPreparation(ctx, []string{"prepare-initial-node-record", filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "fresh")}, io.Discard); code != 130 {
+	if code := runNetwork(ctx, []string{"prepare-initial-node-record", filepath.Join(t.TempDir(), "missing"), filepath.Join(t.TempDir(), "fresh")}, io.Discard); code != 130 {
 		t.Fatal(code)
 	}
 }

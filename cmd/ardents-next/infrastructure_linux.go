@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
 	"runtime"
@@ -37,7 +38,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 			Outcome string `json:"outcome"`
 			SHA256  string `json:"sha256"`
 		}{"infrastructure-public-prepared", hex.EncodeToString(d[:])})
-		if err != nil || writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
+		if err != nil || artifacts.WriteReport(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
 			return 1
 		}
 		return 0
@@ -88,7 +89,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		DescriptorSHA256:  hex.EncodeToString(result.DescriptorSHA256[:]),
 		TemplateSHA256:    hex.EncodeToString(result.TemplateSHA256[:]),
 	})
-	if e != nil || writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
+	if e != nil || artifacts.WriteReport(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
 		return 1
 	}
 	return 0

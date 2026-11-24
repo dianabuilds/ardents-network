@@ -10,13 +10,11 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -152,41 +150,6 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 	})
 }
 
-func TestNetworkSigningReceiptBlockedOutput(t *testing.T) {
-	sourcefixture.SigningWorkspace(t)
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Close()
-	defer w.Close()
-	fd := int(w.Fd())
-	if err = syscall.SetNonblock(fd, true); err != nil {
-		t.Fatal(err)
-	}
-	for {
-		_, err = syscall.Write(fd, bytes.Repeat([]byte{1}, 4096))
-		if errors.Is(err, syscall.EAGAIN) {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	joined := make(chan error, 1)
-	go func() { joined <- writeNetworkPreparationReceipt(ctx, w, bytes.Repeat([]byte{1}, 4<<20)) }()
-	select {
-	case err := <-joined:
-		t.Fatal("full pipe completed before cancellation", err)
-	case <-time.After(20 * time.Millisecond):
-	}
-	cancel()
-	if err := <-joined; !errors.Is(err, context.Canceled) {
-		t.Fatal("blocked output accepted")
-	}
-}
-
 func TestNetworkSigningStaticNativeRefusals(t *testing.T) {
 	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "certificate": nativeCertificateArguments} {
 		t.Run(name, func(t *testing.T) { testSigningStaticNativeRefusals(t, arguments) })
@@ -260,7 +223,7 @@ func testSigningStaticNativeRefusals(t *testing.T, arguments func(*testing.T) []
 			}
 			defer cancel()
 			var out bytes.Buffer
-			if code := runNetworkSigning(ctx, args, &out); code == 0 || out.Len() != 0 {
+			if code := runNetwork(ctx, args, &out); code == 0 || out.Len() != 0 {
 				t.Fatal("static refusal accepted or leaked diagnostic", code)
 			}
 			if _, e = os.Lstat(args[5]); !os.IsNotExist(e) {
@@ -282,10 +245,10 @@ func nativeCertificateArguments(t *testing.T) []string {
 func TestNetworkSigningNodeCertificateReceipt(t *testing.T) {
 	for _, writer := range []io.Writer{initialKeysFailedWriter{}, initialKeysShortWriter{}} {
 		args := nativeCertificateArguments(t)
-		if runNetworkSigning(t.Context(), args, writer) == 0 {
+		if runNetwork(t.Context(), args, writer) == 0 {
 			t.Fatal("failed receipt accepted")
 		}
-		if runNetworkSigning(t.Context(), args, &bytes.Buffer{}) == 0 {
+		if runNetwork(t.Context(), args, &bytes.Buffer{}) == 0 {
 			t.Fatal("failed receipt output adopted")
 		}
 	}

@@ -16,20 +16,18 @@ import (
 // separate durable transitions; neither an intake receipt nor an inspection
 // JSON file substitutes for a live opened Network observer in Admission.
 func runNetwork(ctx context.Context, args []string, out io.Writer) int {
-	if len(args) > 0 && args[0] == "inspect-closed-profile" {
-		return runClosedProfileInspection(ctx, args[1:], out)
-	}
-	if len(args) > 0 && args[0] == "prepare-initial-keys" {
-		return runInitialKeys(ctx, args, out)
-	}
-	if len(args) > 0 && provisioning.IsNetworkSigning(args[0]) {
-		return runNetworkSigning(ctx, args, out)
-	}
-	if len(args) > 0 && provisioning.IsNetworkPreparation(args[0]) {
-		return runNetworkPreparation(ctx, args, out)
-	}
-	if ctx == nil || len(args) != 3 || (args[0] != "accept-epoch" && args[0] != "accept-profile" && args[0] != "inspect") {
+	if len(args) == 0 {
 		return 2
+	}
+	switch args[0] {
+	case "inspect-closed-profile":
+		return runClosedProfileInspection(ctx, args[1:], out)
+	case "accept-epoch", "accept-profile", "inspect":
+		if ctx == nil || len(args) != 3 {
+			return 2
+		}
+	default:
+		return provisioning.RunNetworkArtifacts(ctx, args, out)
 	}
 	var input struct {
 		Network   *networkAuthorityPlan `json:"network"`
@@ -45,7 +43,7 @@ func runNetwork(ctx context.Context, args []string, out io.Writer) int {
 		(args[0] != "accept-profile" && len(input.Profile) != 0) {
 		return 2
 	}
-	config, err := networkStateConfig(input.Network)
+	config, err := input.Network.Config()
 	if err != nil {
 		return 2
 	}

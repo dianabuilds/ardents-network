@@ -90,6 +90,7 @@ unit:
 platform-launch-unit:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
 	go test ./cmd/ardents-next -run '^Test(Platform.*|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
+	go test ./tests/e2e/node -run '^TestPlatform(RuntimeRelease|SourceForwardProgram)' -count=1 -timeout=3m
 	go test ./internal/network/source/command -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$$' -count=1 -timeout=3m
 	go test ./internal/network/source/serving -run '^TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion$$' -count=1 -timeout=3m
 	go test ./internal/node/provisioning -run '^TestSourceInitialNetworkPlanKeepsDistinctPurposeAndPublicPins$$' -count=1 -timeout=3m
@@ -462,6 +463,7 @@ source-process-check:
 .PHONY: network-preparation-check network-preparation-compile-check
 network-preparation-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-preparation-check requires Linux and native ext4 TMPDIR"; exit 2)
+	go test -race ./internal/platform/artifacts -run '^TestWriteReportJoinsCanceledFullPipe$$' -count=1 -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./cmd/ardents-next -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./internal/node/provisioning -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
 
@@ -477,6 +479,7 @@ network-preparation-compile-check:
 
 network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
+	go test -race ./internal/platform/artifacts -run '^TestWriteReportJoinsCanceledFullPipe$$' -count=1 -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint -run '^TestSourcePreparationNative(CommitmentsAndCustody|OriginalProcessCuts|PartialWrite|ReferenceExpiry|Child)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./tests/e2e/node -run '^TestNetworkSigningNodeCertificateCommand$$' -count=1 -v -timeout=3m

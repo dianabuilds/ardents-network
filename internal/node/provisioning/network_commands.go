@@ -1,4 +1,4 @@
-package main
+package provisioning
 
 import (
 	"context"
@@ -10,20 +10,37 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
+// RunNetworkArtifacts dispatches public preparation, signing and key creation.
+// These operations never open a retained runtime State.
+func RunNetworkArtifacts(ctx context.Context, args []string, out io.Writer) int {
+	if ctx == nil || len(args) == 0 {
+		return 2
+	}
+	switch operation := args[0]; {
+	case operation == "prepare-initial-keys":
+		return runInitialKeys(ctx, args, out)
+	case IsNetworkSigning(operation):
+		return runNetworkSigning(ctx, args, out)
+	case IsNetworkPreparation(operation):
+		return runNetworkPreparation(ctx, args, out)
+	default:
+		return 2
+	}
+}
+
 func runNetworkPreparation(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || len(args) != 3 || !provisioning.IsNetworkPreparation(args[0]) || !pathgrammar.Strict(args[1]) || !pathgrammar.Strict(args[2]) {
+	if len(args) != 3 || !pathgrammar.Strict(args[1]) || !pathgrammar.Strict(args[2]) {
 		return 2
 	}
 	if ctx.Err() != nil {
 		return 130
 	}
-	prepared, err := provisioning.PrepareNetworkArtifact(ctx, args[0], args[1], args[2])
+	prepared, err := PrepareNetworkArtifact(ctx, args[0], args[1], args[2])
 	if err != nil {
-		if errors.Is(err, provisioning.ErrNetworkPreparationOutput) {
+		if errors.Is(err, ErrNetworkPreparationOutput) {
 			return 1
 		}
 		return 2
@@ -44,7 +61,7 @@ func runNetworkPreparation(ctx context.Context, args []string, out io.Writer) in
 	if err != nil {
 		return 1
 	}
-	if writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil {
+	if writeNetworkArtifactReport(ctx, out, append(receipt, '\n')) != nil {
 		return 1
 	}
 	if ctx.Err() != nil {
@@ -56,7 +73,7 @@ func runNetworkPreparation(ctx context.Context, args []string, out io.Writer) in
 func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 	// operation, public-plan, exact-prepared-artifact, reviewed-sha256,
 	// original-private-key, fresh-output-directory. No secret bytes in argv.
-	if ctx == nil || len(args) != 6 || !provisioning.IsNetworkSigning(args[0]) {
+	if len(args) != 6 {
 		return 2
 	}
 	for _, i := range []int{1, 2, 4, 5} {
@@ -70,7 +87,7 @@ func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	result, err := provisioning.SignNetwork(ctx, args, nil)
+	result, err := SignNetwork(ctx, args, nil)
 	if err != nil {
 		return 1
 	}
@@ -85,7 +102,7 @@ func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 		State     bool   `json:"state_accepted"`
 		Installed bool   `json:"installed_qualification"`
 	}{"ardents-network-signed-v1", args[0], hex.EncodeToString(result.Digest[:]), true, false, false})
-	if err != nil || writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil {
+	if err != nil || writeNetworkArtifactReport(ctx, out, append(receipt, '\n')) != nil {
 		return 1
 	}
 	if ctx.Err() != nil {
@@ -98,7 +115,7 @@ func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 }
 
 func runInitialKeys(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || len(args) != 3 || args[0] != "prepare-initial-keys" {
+	if len(args) != 3 {
 		return 2
 	}
 	for _, path := range args[1:] {
@@ -109,11 +126,11 @@ func runInitialKeys(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	receipt, err := provisioning.PrepareInitialNetworkKeys(ctx, args[1], args[2])
+	receipt, err := PrepareInitialNetworkKeys(ctx, args[1], args[2])
 	if err != nil {
 		return 1
 	}
-	if writeNetworkPreparationReceipt(ctx, out, receipt) != nil {
+	if writeNetworkArtifactReport(ctx, out, receipt) != nil {
 		return 1
 	}
 	if ctx.Err() != nil {

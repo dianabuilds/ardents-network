@@ -55,7 +55,7 @@ func writeNativeProfileArguments(t *testing.T, parent string, p map[string]any, 
 
 func TestNetworkSigningProfileReceiptClaims(t *testing.T) {
 	var receipt bytes.Buffer
-	if code := runNetworkSigning(t.Context(), nativeProfileSigningArguments(t), &receipt); code != 0 || !bytes.Contains(receipt.Bytes(), []byte(`"state_accepted":false`)) || !bytes.Contains(receipt.Bytes(), []byte(`"installed_qualification":false`)) {
+	if code := runNetwork(t.Context(), nativeProfileSigningArguments(t), &receipt); code != 0 || !bytes.Contains(receipt.Bytes(), []byte(`"state_accepted":false`)) || !bytes.Contains(receipt.Bytes(), []byte(`"installed_qualification":false`)) {
 		t.Fatal("profile receipt", code, receipt.String())
 	}
 }
@@ -89,7 +89,7 @@ func TestNetworkSigningProfileReceiptExpiry(t *testing.T) {
 	p["not_after"] = until.Format(time.RFC3339)
 	args := writeNativeProfileArguments(t, sourcefixture.SigningWorkspace(t), p, key, now)
 	w := delayedProfileReceipt{until: until}
-	if code := runNetworkSigning(t.Context(), args, &w); code != 1 || !w.entered {
+	if code := runNetwork(t.Context(), args, &w); code != 1 || !w.entered {
 		t.Fatal("late acknowledgement accepted or delay unexercised", code)
 	}
 	// Output and any partially delivered report remain retained, while the

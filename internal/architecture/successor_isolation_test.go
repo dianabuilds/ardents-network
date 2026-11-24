@@ -636,7 +636,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "tests/e2e/node/processfixture" {
 		switch source {
-		case "tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/source_refresh_linux_test.go":
+		case "tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/source_refresh_linux_test.go", "tests/e2e/node/network_commands_linux_test.go":
 			return true
 		case "tests/e2e/node/issuer_exchange_native_linux_test.go":
 			return true
@@ -741,6 +741,12 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
 			return dependency == "github.com/dianabuilds/ardents-network/internal/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/dianabuilds/ardents-network/internal/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
+		case "tests/e2e/node/network_commands_linux_test.go":
+			return dependency == modulePath+"/internal/admission" || dependency == modulePath+"/internal/admission/quota" ||
+				dependency == modulePath+"/internal/admission/receiving" || dependency == modulePath+"/internal/admission/stock" ||
+				dependency == modulePath+"/internal/admission/token" || dependency == modulePath+"/internal/network" ||
+				dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/tests/e2e/node" ||
+				dependency == modulePath+"/tests/epochfixture/network"
 		case "tests/e2e/node/platform_release_linux_test.go", "tests/e2e/node/source_release_linux_test.go":
 			switch dependency {
 			case modulePath + "/internal/enrollment", modulePath + "/internal/network/duty", modulePath + "/internal/network/state",
@@ -977,6 +983,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport {
 		switch source {
+		case "tests/e2e/node/network_inspect_test.go":
+			return local == "internal/network/state"
 		case "tests/e2e/node/source_refresh_linux_test.go":
 			return local == "internal/endpoint" || local == "internal/network/state" || local == "tests/epochfixture/network" || local == "tests/e2e/source"
 		case "tests/e2e/source/signing_workspace_linux.go":
@@ -1438,7 +1446,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/infrastructure_linux.go" {
-			return dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release"
+			return dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/platform/artifacts"
 		}
 		if (source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
 			return true

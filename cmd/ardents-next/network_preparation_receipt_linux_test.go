@@ -4,14 +4,11 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
@@ -67,7 +64,7 @@ func TestNetworkPreparationNativeInputAndReceiptRefusals(t *testing.T) {
 				out = preparationShortWriter{}
 			}
 			root := filepath.Join(parent, "output-"+fault)
-			if code := runNetworkPreparation(t.Context(), []string{"prepare-initial-node-record", path, root}, out); code == 0 {
+			if code := runNetwork(t.Context(), []string{"prepare-initial-node-record", path, root}, out); code == 0 {
 				t.Fatal("false successful receipt")
 			}
 			if fault != "output failure" && fault != "short receipt" {
@@ -86,48 +83,3 @@ func (preparationFailedWriter) Write([]byte) (int, error) { return 0, io.ErrClos
 type preparationShortWriter struct{}
 
 func (preparationShortWriter) Write([]byte) (int, error) { return 0, nil }
-
-func TestNetworkPreparationReceiptInterruptsActualBlockedPipe(t *testing.T) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := r.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := w.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	fd := int(w.Fd())
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		t.Fatal(err)
-	}
-	for {
-		_, err := syscall.Write(fd, bytes.Repeat([]byte{1}, 4096))
-		if errors.Is(err, syscall.EAGAIN) {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- writeNetworkPreparationReceipt(ctx, w, []byte("public receipt\n")) }()
-	select {
-	case err := <-done:
-		t.Fatal("full pipe completed before cancellation", err)
-	case <-time.After(20 * time.Millisecond):
-	}
-	cancel()
-	select {
-	case err := <-done:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatal(err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("blocked receipt did not join")
-	}
-}

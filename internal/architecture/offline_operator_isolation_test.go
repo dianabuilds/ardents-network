@@ -15,11 +15,10 @@ func offlineOperatorFile(source string) bool {
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
 		"internal/admission/issuance/artifact_export_linux.go",
-		"cmd/ardents-next/network_preparation.go", "cmd/ardents-next/network_keys_native_linux_test.go",
+		"cmd/ardents-next/network_keys_native_linux_test.go",
 		"internal/release/infrastructure/preparation_linux.go",
 		"internal/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
-		"cmd/ardents-next/network_preparation_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "tests/e2e/source/inspection_linux_test.go",
 		"cmd/ardents-next/offline_profile_inspection.go", "cmd/ardents-next/offline_profile_inspection_test.go":
 		return true
@@ -54,7 +53,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/pathgrammar"
 	case "internal/release/infrastructure/preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
-	case "cmd/ardents-next/network_preparation_linux.go":
+	case "internal/node/provisioning/network_report_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/offline_profile_inspection.go":
 		if dependency == modulePath+"/internal/canonicaldigest" {
@@ -237,8 +236,8 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/tests/epochfixture/network"
 	case "internal/node/provisioning/network_profile_signing_test.go", "internal/node/provisioning/network_public_preparation_test.go":
 		return dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network"
-	case "cmd/ardents-next/network_preparation.go":
-		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathgrammar"
+	case "internal/node/provisioning/network_commands.go":
+		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathgrammar"
 	case "cmd/ardents-next/network_keys_native_linux_test.go":
 		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/tests/e2e/source"
 	case "internal/admission/issuance/artifact_export_linux.go":
