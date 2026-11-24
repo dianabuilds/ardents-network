@@ -1,48 +1,14 @@
 package state
 
 import (
-	"encoding/binary"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
 )
 
-// distributionDecoder bounds reads from canonical distribution journal bytes.
-type distributionDecoder struct {
-	raw    []byte
-	offset int
-}
-
-func newDistributionDecoder(raw []byte) distributionDecoder { return distributionDecoder{raw: raw} }
-
-func (d *distributionDecoder) bytes(length int) ([]byte, error) {
-	if length < 0 || length > len(d.raw)-d.offset {
-		return nil, errors.New("truncated canonical bytes")
-	}
-	value := d.raw[d.offset : d.offset+length]
-	d.offset += length
-	return value, nil
-}
-
-func (d *distributionDecoder) byte() (byte, error) {
-	value, err := d.bytes(1)
-	if err != nil {
-		return 0, err
-	}
-	return value[0], nil
-}
-
-func (d *distributionDecoder) uint64() (uint64, error) {
-	value, err := d.bytes(8)
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint64(value), nil
-}
-
-func (d *distributionDecoder) done() bool { return d.offset == len(d.raw) }
-
 func decodeDistributionState(raw []byte) (distributionState, error) {
-	d := newDistributionDecoder(raw)
-	magic, err := d.bytes(8)
+	d := canonicalcursor.NewDecoder(raw)
+	magic, err := d.Bytes(8)
 	if err != nil || string(magic) != "ARDS1D4\x00" {
 		return distributionState{}, errors.New("distribution state magic is invalid")
 	}
@@ -56,52 +22,52 @@ func decodeDistributionState(raw []byte) (distributionState, error) {
 	if err := decodeDistributionEvidence(&d, &state); err != nil {
 		return state, err
 	}
-	if !d.done() {
+	if !d.Done() {
 		return state, errors.New("distribution state has trailing bytes")
 	}
 	return state, nil
 }
 
-func decodeDistributionHeader(d *distributionDecoder, state *distributionState) error {
+func decodeDistributionHeader(d *canonicalcursor.Decoder, state *distributionState) error {
 	var err error
-	if state.sequence, err = d.uint64(); err != nil {
+	if state.sequence, err = d.Uint64(); err != nil {
 		return err
 	}
-	if state.epochFloor, err = d.uint64(); err != nil {
+	if state.epochFloor, err = d.Uint64(); err != nil {
 		return err
 	}
-	digest, err := d.bytes(32)
+	digest, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(state.epochDigest[:], digest)
-	floor, err := d.uint64()
+	floor, err := d.Uint64()
 	if err != nil {
 		return err
 	}
 	state.trustedTimeFloor = int64(floor)
-	conflict, err := d.byte()
+	conflict, err := d.Byte()
 	if err != nil || conflict > 1 {
 		return errors.New("distribution conflict flag is invalid")
 	}
 	state.conflicting = conflict == 1
-	if state.consecutiveFailures, err = d.uint64(); err != nil {
+	if state.consecutiveFailures, err = d.Uint64(); err != nil {
 		return err
 	}
-	if state.backoffLevel, err = d.byte(); err != nil || state.backoffLevel > 5 {
+	if state.backoffLevel, err = d.Byte(); err != nil || state.backoffLevel > 5 {
 		return errors.New("distribution backoff level is invalid")
 	}
-	next, err := d.uint64()
+	next, err := d.Uint64()
 	if err != nil {
 		return err
 	}
 	state.nextAutomatic = int64(next)
-	count, err := d.byte()
+	count, err := d.Byte()
 	if err != nil || count > maximumSourceExposureHistory {
 		return errors.New("distribution history count is invalid")
 	}
 	for range int(count) {
-		value, readErr := d.bytes(32)
+		value, readErr := d.Bytes(32)
 		if readErr != nil {
 			return readErr
 		}
@@ -112,24 +78,24 @@ func decodeDistributionHeader(d *distributionDecoder, state *distributionState) 
 	return nil
 }
 
-func decodeDistributionCycle(d *distributionDecoder, state *distributionState) error {
+func decodeDistributionCycle(d *canonicalcursor.Decoder, state *distributionState) error {
 	var err error
-	if state.cycleID, err = d.uint64(); err != nil {
+	if state.cycleID, err = d.Uint64(); err != nil {
 		return err
 	}
-	active, err := d.byte()
+	active, err := d.Byte()
 	if err != nil || active > 1 {
 		return errors.New("distribution cycle flag is invalid")
 	}
 	state.cycleActive = active == 1
-	if state.cyclePurpose, err = d.byte(); err != nil || state.cyclePurpose > sourceCyclePurposeRefresh {
+	if state.cyclePurpose, err = d.Byte(); err != nil || state.cyclePurpose > sourceCyclePurposeRefresh {
 		return errors.New("distribution cycle purpose is invalid")
 	}
-	started, err := d.uint64()
+	started, err := d.Uint64()
 	if err != nil {
 		return err
 	}
-	deadline, err := d.uint64()
+	deadline, err := d.Uint64()
 	if err != nil {
 		return err
 	}
@@ -137,7 +103,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 	if state.cycleActive && (state.cyclePurpose != sourceCyclePurposeRefresh || state.cycleStarted <= 0 || state.cycleDeadline <= state.cycleStarted) {
 		return errors.New("active distribution cycle metadata is incomplete")
 	}
-	statuses, err := d.bytes(len(state.attempts))
+	statuses, err := d.Bytes(len(state.attempts))
 	if err != nil {
 		return err
 	}
@@ -147,7 +113,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 			return errors.New("distribution attempt status is invalid")
 		}
 	}
-	outcomes, err := d.bytes(len(state.outcomes))
+	outcomes, err := d.Bytes(len(state.outcomes))
 	if err != nil {
 		return err
 	}
@@ -158,7 +124,7 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 		}
 	}
 	for index := range state.requestedDigests {
-		digest, readErr := d.bytes(32)
+		digest, readErr := d.Bytes(32)
 		if readErr != nil {
 			return readErr
 		}
@@ -170,13 +136,13 @@ func decodeDistributionCycle(d *distributionDecoder, state *distributionState) e
 	return nil
 }
 
-func decodeDistributionEvidence(d *distributionDecoder, state *distributionState) error {
+func decodeDistributionEvidence(d *canonicalcursor.Decoder, state *distributionState) error {
 	var err error
 	for index := range state.observedEpochs {
-		if state.observedEpochs[index], err = d.uint64(); err != nil {
+		if state.observedEpochs[index], err = d.Uint64(); err != nil {
 			return err
 		}
-		digest, readErr := d.bytes(32)
+		digest, readErr := d.Bytes(32)
 		if readErr != nil {
 			return readErr
 		}
@@ -185,12 +151,12 @@ func decodeDistributionEvidence(d *distributionDecoder, state *distributionState
 			return errors.New("observed source candidate identity is incomplete")
 		}
 	}
-	pending, err := d.bytes(32)
+	pending, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(state.pendingDigest[:], pending)
-	pendingAt, err := d.uint64()
+	pendingAt, err := d.Uint64()
 	if err != nil {
 		return err
 	}
@@ -198,12 +164,12 @@ func decodeDistributionEvidence(d *distributionDecoder, state *distributionState
 	if (state.pendingDigest == [32]byte{}) != (state.pendingValidFrom == 0) {
 		return errors.New("distribution pending identity is incomplete")
 	}
-	seed, err := d.bytes(32)
+	seed, err := d.Bytes(32)
 	if err != nil {
 		return err
 	}
 	copy(state.cycleSeed[:], seed)
-	order, err := d.bytes(2)
+	order, err := d.Bytes(2)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,8 @@ import (
 	"crypto/sha256"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
 )
 
 const (
@@ -74,42 +76,42 @@ func Verify(raw []byte, context Context) (Profile, error) {
 }
 
 func parseBody(body []byte, stateGeneration, networkID, epochDigest [32]byte, epoch uint64, now time.Time) (Profile, error) {
-	d := newDecoder(body)
-	magic, err := d.bytes(len(profileMagic))
+	d := canonicalcursor.NewDecoder(body)
+	magic, err := d.Bytes(len(profileMagic))
 	if err != nil || string(magic) != profileMagic {
 		return Profile{}, errors.New("closed profile magic is invalid")
 	}
-	version, err := d.uint16()
+	version, err := d.Uint16()
 	if err != nil || version != profileVersion {
 		return Profile{}, errors.New("closed profile version is invalid")
 	}
 	profile := Profile{}
 	for _, field := range []*[32]byte{&profile.NetworkID, &profile.StateGeneration} {
-		value, readErr := d.bytes(32)
+		value, readErr := d.Bytes(32)
 		if readErr != nil {
 			return Profile{}, errors.New("closed profile identity is invalid")
 		}
 		copy(field[:], value)
 	}
-	if profile.Epoch, err = d.uint64(); err != nil || profile.Epoch == 0 {
+	if profile.Epoch, err = d.Uint64(); err != nil || profile.Epoch == 0 {
 		return Profile{}, errors.New("closed profile epoch is invalid")
 	}
-	value, err := d.bytes(32)
+	value, err := d.Bytes(32)
 	if err != nil {
 		return Profile{}, errors.New("closed profile epoch digest is invalid")
 	}
 	copy(profile.EpochDigest[:], value)
-	from, err := d.uint64()
+	from, err := d.Uint64()
 	if err != nil {
 		return Profile{}, errors.New("closed profile validity is invalid")
 	}
-	until, err := d.uint64()
+	until, err := d.Uint64()
 	if err != nil || until <= from || until-from > uint64((6*time.Hour).Seconds()) {
 		return Profile{}, errors.New("closed profile validity is invalid")
 	}
 	profile.NotBefore, profile.NotAfter = time.Unix(int64(from), 0).UTC(), time.Unix(int64(until), 0).UTC()
 	for _, field := range []*[32]byte{&profile.IssuerNodeID, &profile.AuthorityKey} {
-		value, readErr := d.bytes(32)
+		value, readErr := d.Bytes(32)
 		if readErr != nil {
 			return Profile{}, errors.New("closed profile authority is invalid")
 		}
@@ -122,14 +124,14 @@ func parseBody(body []byte, stateGeneration, networkID, epochDigest [32]byte, ep
 	if err := decodeNodes(&d, &profile); err != nil {
 		return Profile{}, err
 	}
-	if err := decodeKeys(&d, &profile); err != nil || !d.done() {
+	if err := decodeKeys(&d, &profile); err != nil || !d.Done() {
 		return Profile{}, errors.New("closed profile keys are invalid")
 	}
 	return profile, nil
 }
 
-func decodeNodes(d *decoder, profile *Profile) error {
-	count, err := d.uint16()
+func decodeNodes(d *canonicalcursor.Decoder, profile *Profile) error {
+	count, err := d.Uint16()
 	if err != nil || count == 0 || count > MaxNodes {
 		return errors.New("closed profile node count is invalid")
 	}
@@ -137,19 +139,19 @@ func decodeNodes(d *decoder, profile *Profile) error {
 	for range int(count) {
 		var node Node
 		for _, field := range []*[32]byte{&node.NodeID, &node.RecordDigest} {
-			value, readErr := d.bytes(32)
+			value, readErr := d.Bytes(32)
 			if readErr != nil {
 				return errors.New("closed profile node is invalid")
 			}
 			copy(field[:], value)
 		}
-		if node.RoleDomain, err = d.byte(); err != nil {
+		if node.RoleDomain, err = d.Byte(); err != nil {
 			return errors.New("closed profile node is invalid")
 		}
-		if node.Subrole, err = d.byte(); err != nil {
+		if node.Subrole, err = d.Byte(); err != nil {
 			return errors.New("closed profile node is invalid")
 		}
-		if node.DutyGeneration, err = d.uint64(); err != nil || node.DutyGeneration == 0 || !validDuty(node.RoleDomain, node.Subrole) || (len(profile.Nodes) > 0 && bytes.Compare(profile.Nodes[len(profile.Nodes)-1].NodeID[:], node.NodeID[:]) >= 0) {
+		if node.DutyGeneration, err = d.Uint64(); err != nil || node.DutyGeneration == 0 || !validDuty(node.RoleDomain, node.Subrole) || (len(profile.Nodes) > 0 && bytes.Compare(profile.Nodes[len(profile.Nodes)-1].NodeID[:], node.NodeID[:]) >= 0) {
 			return errors.New("closed profile nodes are not canonical")
 		}
 		if node.Subrole == 6 {
@@ -179,29 +181,29 @@ func validDuty(domain, subrole byte) bool {
 	}
 }
 
-func decodeKeys(d *decoder, profile *Profile) error {
-	count, err := d.uint16()
+func decodeKeys(d *canonicalcursor.Decoder, profile *Profile) error {
+	count, err := d.Uint16()
 	if err != nil || count == 0 || count > MaxKeys {
 		return errors.New("closed profile key count is invalid")
 	}
 	seen := make(map[[32]byte]bool, count)
 	for range int(count) {
 		key := TokenKey{}
-		if key.WindowStart, err = d.uint64(); err != nil || key.WindowStart%uint64(time.Hour.Seconds()) != 0 {
+		if key.WindowStart, err = d.Uint64(); err != nil || key.WindowStart%uint64(time.Hour.Seconds()) != 0 {
 			return errors.New("closed profile key window is invalid")
 		}
 		windowStart := time.Unix(int64(key.WindowStart), 0).UTC()
 		if windowStart.Before(profile.NotBefore) || windowStart.Add(time.Hour).After(profile.NotAfter) {
 			return errors.New("closed profile key window is outside its validity")
 		}
-		if key.Class, err = d.byte(); err != nil || key.Class < 1 || key.Class > 3 {
+		if key.Class, err = d.Byte(); err != nil || key.Class < 1 || key.Class > 3 {
 			return errors.New("closed profile key class is invalid")
 		}
-		length, readErr := d.uint16()
+		length, readErr := d.Uint16()
 		if readErr != nil || length != 346 {
 			return errors.New("closed profile key length is invalid")
 		}
-		key.SPKI, err = d.bytes(int(length))
+		key.SPKI, err = d.Bytes(int(length))
 		if err != nil || (len(profile.Keys) > 0 && (profile.Keys[len(profile.Keys)-1].WindowStart > key.WindowStart || profile.Keys[len(profile.Keys)-1].WindowStart == key.WindowStart && profile.Keys[len(profile.Keys)-1].Class >= key.Class)) {
 			return errors.New("closed profile keys are not canonical")
 		}

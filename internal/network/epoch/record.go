@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
 )
 
 const maximumRecordBytes = 32 << 10
@@ -39,68 +41,68 @@ func parseRecord(raw []byte) (nodeRecord, error) {
 	if len(raw) == 0 || len(raw) > maximumRecordBytes {
 		return nodeRecord{}, errors.New("record framing length is invalid")
 	}
-	d := newDecoder(raw)
-	magic, err := d.bytes(4)
+	d := canonicalcursor.NewDecoder(raw)
+	magic, err := d.Bytes(4)
 	if err != nil || string(magic) != "ARNR" {
 		return nodeRecord{}, errors.New("record magic is invalid")
 	}
-	version, err := d.byte()
+	version, err := d.Byte()
 	if err != nil || (version != 1 && version != 2) {
 		return nodeRecord{}, errors.New("record schema version is invalid")
 	}
 	var record nodeRecord
 	record.raw = append([]byte(nil), raw...)
-	network, err := d.bytes(32)
+	network, err := d.Bytes(32)
 	if err != nil {
 		return nodeRecord{}, err
 	}
 	copy(record.networkID[:], network)
-	node, err := d.bytes(32)
+	node, err := d.Bytes(32)
 	if err != nil {
 		return nodeRecord{}, err
 	}
 	copy(record.nodeID[:], node)
-	if record.generation, err = d.uint64(); err != nil || record.generation == 0 {
+	if record.generation, err = d.Uint64(); err != nil || record.generation == 0 {
 		return nodeRecord{}, errors.New("record generation is invalid")
 	}
-	from, err := d.int64()
+	from, err := d.Int64()
 	if err != nil {
 		return nodeRecord{}, err
 	}
-	until, err := d.int64()
+	until, err := d.Int64()
 	if err != nil || until <= from {
 		return nodeRecord{}, errors.New("record validity interval is invalid")
 	}
 	record.notBefore, record.notAfter = time.Unix(from, 0).UTC(), time.Unix(until, 0).UTC()
-	if record.family, err = d.text(32); err != nil {
+	if record.family, err = decodeText(&d, 32); err != nil {
 		return nodeRecord{}, err
 	}
-	if record.capability, err = d.byte(); err != nil {
+	if record.capability, err = d.Byte(); err != nil {
 		return nodeRecord{}, err
 	}
-	if record.endpoint, err = d.text(96); err != nil {
+	if record.endpoint, err = decodeText(&d, 96); err != nil {
 		return nodeRecord{}, err
 	}
 	record.carrier = legacyTCPCarrierProfile
 	if version == 2 {
-		if record.carrier, err = d.text(48); err != nil {
+		if record.carrier, err = decodeText(&d, 48); err != nil {
 			return nodeRecord{}, err
 		}
 	}
-	if record.capacity, err = d.uint16(); err != nil {
+	if record.capacity, err = d.Uint16(); err != nil {
 		return nodeRecord{}, err
 	}
-	public, err := d.bytes(ed25519.PublicKeySize)
+	public, err := d.Bytes(ed25519.PublicKeySize)
 	if err != nil {
 		return nodeRecord{}, err
 	}
 	record.publicKey = append(ed25519.PublicKey(nil), public...)
 	record.keyID = sha256.Sum256(public)
-	record.signature, err = d.bytes(ed25519.SignatureSize)
+	record.signature, err = d.Bytes(ed25519.SignatureSize)
 	if err != nil {
 		return nodeRecord{}, err
 	}
-	if !d.done() {
+	if !d.Done() {
 		return nodeRecord{}, errors.New("record contains trailing bytes")
 	}
 	return record, nil

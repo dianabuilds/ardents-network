@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
 	epoch2 "github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
@@ -69,8 +70,8 @@ func decodeBundle(raw []byte) (Bundle, error) {
 	if len(raw) == 0 || len(raw) > maximumPayloadBytes {
 		return Bundle{}, errors.New("source bundle length is invalid")
 	}
-	d := bundleDecoder{raw: raw}
-	magic, err := d.bytes(8)
+	d := canonicalcursor.NewDecoder(raw)
+	magic, err := d.Bytes(8)
 	if err != nil || string(magic) != "ARDH3B1\x00" {
 		return Bundle{}, errors.New("source bundle magic is invalid")
 	}
@@ -78,7 +79,7 @@ func decodeBundle(raw []byte) (Bundle, error) {
 	if err != nil {
 		return Bundle{}, err
 	}
-	count, err := d.uint16()
+	count, err := d.Uint16()
 	if err != nil || count > 64 {
 		return Bundle{}, errors.New("source bundle input count is invalid")
 	}
@@ -90,7 +91,7 @@ func decodeBundle(raw []byte) (Bundle, error) {
 		}
 		bundle.Inputs = append(bundle.Inputs, append([]byte(nil), input...))
 	}
-	materialCount, err := d.uint16()
+	materialCount, err := d.Uint16()
 	if err != nil || materialCount > 64 {
 		return Bundle{}, errors.New("source bundle materialization count is invalid")
 	}
@@ -102,18 +103,18 @@ func decodeBundle(raw []byte) (Bundle, error) {
 		}
 		bundle.Materials = append(bundle.Materials, append([]byte(nil), material...))
 	}
-	if !d.done() {
+	if !d.Done() {
 		return Bundle{}, errors.New("source bundle has trailing bytes")
 	}
 	return bundle, nil
 }
 
-func readBundleLengthBytes(d *bundleDecoder, maximum int) ([]byte, error) {
-	length, err := d.uint32()
+func readBundleLengthBytes(d *canonicalcursor.Decoder, maximum int) ([]byte, error) {
+	length, err := d.Uint32()
 	if err != nil || length == 0 || length > uint32(maximum) {
 		return nil, errors.New("source bundle member length is invalid")
 	}
-	return d.bytes(int(length))
+	return d.Bytes(int(length))
 }
 
 func writeBundleLengthBytes(buffer *bytes.Buffer, raw []byte) {
@@ -128,35 +129,3 @@ func writeBundleUint16(buffer *bytes.Buffer, value uint16) {
 	binary.BigEndian.PutUint16(encoded[:], value)
 	buffer.Write(encoded[:])
 }
-
-type bundleDecoder struct {
-	raw    []byte
-	offset int
-}
-
-func (d *bundleDecoder) bytes(length int) ([]byte, error) {
-	if length < 0 || length > len(d.raw)-d.offset {
-		return nil, errors.New("truncated canonical bytes")
-	}
-	value := d.raw[d.offset : d.offset+length]
-	d.offset += length
-	return value, nil
-}
-
-func (d *bundleDecoder) uint16() (uint16, error) {
-	value, err := d.bytes(2)
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint16(value), nil
-}
-
-func (d *bundleDecoder) uint32() (uint32, error) {
-	value, err := d.bytes(4)
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint32(value), nil
-}
-
-func (d *bundleDecoder) done() bool { return d.offset == len(d.raw) }
