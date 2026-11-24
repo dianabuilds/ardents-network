@@ -2,6 +2,16 @@
   "common": [
     {
       "symbols": [
+        "tests/e2e/node.AdmissionCommandFixture",
+        "tests/e2e/node.admissionCommandSPKI"
+      ],
+      "classification": "independent offline Admission fixture",
+      "rationale": "The CLI input tests and the compiled Admission and Issuance scenarios share independent request and key encodings through this test driver package.",
+      "owner": "Admission process tests",
+      "retirement": "Remove with the last caller of the independent request fixture."
+    },
+    {
+      "symbols": [
         "tests/e2e/endpoint.FixtureDigest",
         "tests/e2e/endpoint.SignedRelease",
         "tests/e2e/node.NewReleaseAuthority",
