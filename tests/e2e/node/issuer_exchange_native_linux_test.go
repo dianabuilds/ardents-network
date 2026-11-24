@@ -198,7 +198,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				if err := os.Rename(held, material); err != nil {
 					t.Fatal(err)
 				}
-				RequireIssuerRootsReleased(t, issuerPlan)
+				processfixture.RequireIssuerRootsReleased(t, issuerPlan)
 			default:
 				t.Fatal("unselected native Issuer failure", fault)
 			}

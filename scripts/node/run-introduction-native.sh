@@ -11,6 +11,8 @@ test -r /sys/fs/cgroup/cgroup.controllers
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
 : "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
 : "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
+: "${ARDENTS_NODE_OWNER_TEST:?native Node owner test binary is required}"
+: "${ARDENTS_NODE_OWNER_TEST_SHA256:?independent Node owner test digest is required}"
 : "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
 : "${ARDENTS_NODE_E2E_TEST_SHA256:?independent Node e2e digest is required}"
 : "${ARDENTS_NODE_RESOURCE_TEST:?native resource test binary is required}"
@@ -24,6 +26,8 @@ verify() {
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
 verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
+verify "$ARDENTS_NODE_OWNER_TEST" "$ARDENTS_NODE_OWNER_TEST_SHA256"
+"$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeNodeIntroductionOperationProcess$' | grep -Fx TestNativeNodeIntroductionOperationProcess >/dev/null
 verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
@@ -35,7 +39,6 @@ TestOriginalNativeIntroductionProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIntroduction' | grep '^TestOriginalNativeIntroduction' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Introduction resource discovery differs' >&2; exit 2; }
 expected='TestNativeIntroductionOperationBoundariesTCP
-TestNativeIntroductionOriginalAuthorityAndJoinTCP
 TestNativeIntroductionOriginalCommandFailureTCP
 TestNativeIntroductionOriginalHistoryLossTCP
 TestNativeIntroductionRegisterSubmitWithdrawTCP
@@ -51,7 +54,8 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeIntroduction' -test.timeout=90s
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroduction(RegisterSubmitWithdrawTCP|UndercoverageBeforeSpendTCP|OriginalHistoryLossTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroductionOriginalAuthorityAndJoinTCP$' -test.timeout=3m
+"$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIntroductionOriginalAuthorityAndJoinTCP$' | grep -Fx TestNativeIntroductionOriginalAuthorityAndJoinTCP >/dev/null
+"$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeIntroductionOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIntroductionPartialStartupRefusalsTCP$' | grep -Fx TestNativeIntroductionPartialStartupRefusalsTCP >/dev/null

@@ -32,6 +32,17 @@ func PinnedCommand(t testing.TB) string {
 	return path
 }
 
+// PinnedOwnerTest verifies the executable containing the original Node process tests.
+func PinnedOwnerTest(t testing.TB) string {
+	t.Helper()
+	path := os.Getenv("ARDENTS_NODE_OWNER_TEST")
+	want := os.Getenv("ARDENTS_NODE_OWNER_TEST_SHA256")
+	if err := verifyPinnedCommand(path, want); err != nil {
+		t.Fatalf("verify Node owner test binary: %v", err)
+	}
+	return path
+}
+
 func verifyPinnedCommand(path, want string) error {
 	if !filepath.IsAbs(path) || len(want) != 64 {
 		return errors.New("selected Node native pinned command unavailable")

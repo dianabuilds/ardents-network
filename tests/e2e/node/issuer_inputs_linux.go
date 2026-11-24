@@ -5,43 +5,10 @@ package node
 import (
 	"fmt"
 	"strconv"
-	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 )
-
-// RequireIssuerRootsReleased reopens the original quota, keys and result store.
-func RequireIssuerRootsReleased(t testing.TB, p issuer.Plan) {
-	t.Helper()
-	ledger, err := quota.Open(p.AdmissionRoot, p.AdmissionBinding)
-	if err != nil {
-		t.Fatal("joined quota lease unavailable", err)
-	}
-	defer func() {
-		if err := ledger.Close(); err != nil {
-			t.Error("close reopened quota lease", err)
-		}
-	}()
-	keys, err := issuance.Open(t.Context(), p.KeyRoot, p.KeyBinding)
-	if err != nil {
-		t.Fatal("joined original key custody unavailable", err)
-	}
-	defer func() {
-		if err := keys.Close(); err != nil {
-			t.Error("close reopened key custody", err)
-		}
-	}()
-	results, err := issuance.OpenResults(t.Context(), p.ResultRoot, keys, p.AdmissionBinding)
-	if err != nil {
-		t.Fatal("joined original result lease unavailable", err)
-	}
-	if err := results.Close(); err != nil {
-		t.Fatal(err)
-	}
-}
 
 // IssuerDeclaration encodes the public CLI plan for the independently prepared issuer.
 func IssuerDeclaration(p issuer.Plan) map[string]any {
