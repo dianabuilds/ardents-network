@@ -25,3 +25,7 @@ func runSourceStatePreparation(_ context.Context, _ []string, _, diagnostic io.W
 func runSourceInspection(_ context.Context, _ []string, _, diagnostic io.Writer) int {
 	return unsupportedPlatformRefusal(diagnostic, "source.inspect-latest")
 }
+
+func runSourcePreparation(_ context.Context, _ []string, out io.Writer) int {
+	return unsupportedPlatformRefusal(out, "source.prepare-trust")
+}
