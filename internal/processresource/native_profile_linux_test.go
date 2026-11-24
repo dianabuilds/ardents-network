@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -186,17 +187,24 @@ func testOriginalNativeManagedMemoryPressure(t *testing.T, profile string) {
 	if err != nil {
 		t.Fatal("selected native process environment unavailable:", err)
 	}
-	t.Cleanup(func() { _ = guard.Close(); runtime.GC() })
-	// Retain real resident Go memory above the selected soft limit, while below
-	// the kernel emergency limit. This is actual process pressure, not Measure.
+	t.Cleanup(func() {
+		if err := guard.Close(); err != nil {
+			t.Error(err)
+		}
+		runtime.GC()
+	})
+	// MADV_POPULATE_WRITE (Linux 5.14+) faults in writable pages in the same Go
+	// heap allocation without making the race detector touch shadow memory for
+	// every page. Both managed and resident memory stay above the test threshold.
+	const populateWrite = 23
 	payload := make([]byte, 513<<20)
-	for index := 0; index < len(payload); index += os.Getpagesize() {
-		payload[index] = 1
+	if err := syscall.Madvise(payload, populateWrite); err != nil {
+		t.Fatal("populate resident Go memory", err)
 	}
 	observation, first := guard.Check()
 	runtime.KeepAlive(payload)
-	if observation.GoMemoryBytes < 512<<20 || first == nil {
-		t.Fatal("actual managed-memory pressure admitted work", observation.GoMemoryBytes, first)
+	if observation.RSSBytes < 512<<20 || observation.GoMemoryBytes < 512<<20 || first == nil {
+		t.Fatal("actual managed-memory pressure admitted work", observation.RSSBytes, observation.GoMemoryBytes, first)
 	}
 	expectedCause := "resource-bound"
 	if observation.HighEvents != 0 || observation.EmergencyEvents != 0 || observation.PIDEvents != 0 {

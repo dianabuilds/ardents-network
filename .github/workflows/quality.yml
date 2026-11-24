@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 706115be2553e6cdba82a33ff926f2f5253135e5
+          ref: 6c5268d9b1a9886ad2a29d415870900fdc6ed35a
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 706115be2553e6cdba82a33ff926f2f5253135e5
+          test "$(git rev-parse HEAD)" = 6c5268d9b1a9886ad2a29d415870900fdc6ed35a
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04
@@ -56,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 706115be2553e6cdba82a33ff926f2f5253135e5
+          ref: 6c5268d9b1a9886ad2a29d415870900fdc6ed35a
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -65,7 +65,7 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 706115be2553e6cdba82a33ff926f2f5253135e5
+          test "$(git rev-parse HEAD)" = 6c5268d9b1a9886ad2a29d415870900fdc6ed35a
           test "$(findmnt -T / -n -o FSTYPE)" = ext4
           build_dir=$(mktemp -d "$RUNNER_TEMP/certificate-build.XXXXXX")
           native_dir=$(sudo -n mktemp -d /ardents-certificate-e2e.XXXXXX)
