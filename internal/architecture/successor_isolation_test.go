@@ -563,6 +563,26 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
+	if strings.HasPrefix(source, "internal/node/command/") && localImport {
+		switch source {
+		case "internal/node/command/process.go":
+			return local == "internal/processresource"
+		case "internal/node/command/input_linux.go":
+			return local == "internal/platform/artifacts"
+		case "internal/node/command/report_linux.go":
+			return local == "internal/node"
+		default:
+			return false
+		}
+	}
+	if localImport && local == "internal/node/command" {
+		switch source {
+		case "cmd/ardents-next/node.go", "cmd/ardents-next/node_roles_linux.go", "cmd/ardents-next/node_lifecycle_linux.go":
+			return true
+		default:
+			return false
+		}
+	}
 	if strings.HasPrefix(source, "internal/network/source/command/") && localImport {
 		switch source {
 		case "internal/network/source/command/prepare_linux.go":
@@ -1021,12 +1041,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_lifecycle_linux.go" && dependency == modulePath+"/internal/node" {
-			return true
-		}
-		if source == "cmd/ardents-next/node_report_linux.go" && dependency == modulePath+"/internal/node" {
-			return true
-		}
-		if source == "cmd/ardents-next/node_process.go" && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
 		if (source == "cmd/ardents-next/node_native_linux_test.go" || source == "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/join_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go") && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {

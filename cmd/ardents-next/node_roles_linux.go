@@ -4,37 +4,20 @@ package main
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	nodecommand "github.com/dianabuilds/ardents-network/internal/node/command"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
-
-// readNodeRolePlan owns the shared configuration flags and bounded file read.
-// Role adapters decode their own declarations and open their original owners.
-func readNodeRolePlan(args []string) (raw []byte, retained bool, err error) {
-	if len(args) != 2 {
-		return nil, false, errors.New("invalid Node role arguments")
-	}
-	switch args[0] {
-	case "--config":
-	case "--retained-config":
-		retained = true
-	default:
-		return nil, false, errors.New("invalid Node role configuration flag")
-	}
-	raw, err = readBounded(args[1], 16<<10)
-	return raw, retained, err
-}
 
 // Command composition retains State until the original Node has physically
 // joined. A bounded failed wait cannot close it or report completed retirement.
 func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, err := readNodeRolePlan(args)
+	raw, retained, err := nodecommand.ReadRolePlan(args)
 	if err != nil {
 		return 2
 	}
@@ -54,7 +37,7 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	if retained {
 		listen = node.ListenForwardingRetained
 	}
-	return runNodeWithState(ctx, out, diagnostic, nodeForwardingOperation, config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Forwarding, error) {
+	return runNodeWithState(ctx, out, diagnostic, nodecommand.ForwardingOperation, config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (*node.Forwarding, error) {
 		return listen(ctx, node.ForwardingConfig{
 			Authority:         authority,
 			ParticipationRoot: plan.ParticipationRoot,
@@ -73,7 +56,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if ctx == nil {
 		return 2
 	}
-	raw, retained, err := readNodeRolePlan(args)
+	raw, retained, err := nodecommand.ReadRolePlan(args)
 	if err != nil {
 		return 2
 	}
@@ -122,12 +105,12 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 2
 	}
 	if ctx.Err() != nil {
-		if writeNodeEvent(out, "node.descriptor", "refused", "canceled", "", "", "") != nil {
+		if nodecommand.WriteEvent(out, "node.descriptor", "refused", "canceled", "", "", "") != nil {
 			return 2
 		}
 		return 130
 	}
-	raw, retained, err := readNodeRolePlan(args)
+	raw, retained, err := nodecommand.ReadRolePlan(args)
 	if err != nil {
 		return 2
 	}
@@ -171,12 +154,12 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		return 2
 	}
 	if ctx.Err() != nil {
-		if writeNodeEvent(out, "node.introduction", "refused", "canceled", "", "", "") != nil {
+		if nodecommand.WriteEvent(out, "node.introduction", "refused", "canceled", "", "", "") != nil {
 			return 2
 		}
 		return 130
 	}
-	raw, retained, err := readNodeRolePlan(args)
+	raw, retained, err := nodecommand.ReadRolePlan(args)
 	if err != nil {
 		return 2
 	}
@@ -220,12 +203,12 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		return 2
 	}
 	if ctx.Err() != nil {
-		if writeNodeEvent(out, "node.join", "refused", "canceled", "", "", "") != nil {
+		if nodecommand.WriteEvent(out, "node.join", "refused", "canceled", "", "", "") != nil {
 			return 2
 		}
 		return 130
 	}
-	raw, retained, err := readNodeRolePlan(args)
+	raw, retained, err := nodecommand.ReadRolePlan(args)
 	if err != nil {
 		return 2
 	}

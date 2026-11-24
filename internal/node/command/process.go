@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"context"
@@ -8,10 +8,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
-// inspectNodeProcess drives the same genuine process owner as the original
+// InspectProcess drives the same genuine process owner as the original
 // Forwarding composition. It grants no duty or readiness and emits no native
 // path/error text. Queue and timer counts are explicitly unmeasured here.
-func inspectNodeProcess(ctx context.Context, out io.Writer) int {
+func InspectProcess(ctx context.Context, out io.Writer) int {
 	guard, err := processresource.Open(ctx, processresource.Profile)
 	if err != nil {
 		return writeNodeProcessResult(out, "unavailable", nil)
