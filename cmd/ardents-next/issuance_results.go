@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 )
 
 func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -49,7 +50,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 	if len(args) == 4 {
 		endpoint = args[3]
 	}
-	if collectorEndpoint(endpoint) != nil {
+	if telemetry.ValidateCollector(endpoint) != nil {
 		return write()
 	}
 	raw, err := readBounded(args[2], 16<<10)
@@ -73,8 +74,8 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 		}
 		defer clear(batch)
 	}
-	o, _ := newObservation(endpoint)
-	finish := o.begin("ardents.issuance", r.Operation)
+	o, _ := telemetry.Open(endpoint)
+	finish := o.Begin("ardents.issuance", r.Operation)
 	plan := issuer.Plan{AdmissionRoot: p.Admission.Root, AdmissionBinding: p.Admission.Binding, KeyRoot: p.Keys.Root, KeyBinding: p.Keys.Binding, ResultRoot: p.Root}
 	var result issuer.Result
 	if args[0] == "initialize-results" {
@@ -90,7 +91,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 		}
 	}
 	finish(r.Phase, r.Outcome)
-	_ = o.close()
+	_ = o.Close()
 	_ = json.NewEncoder(diagnostic).Encode(r)
 	return write()
 }

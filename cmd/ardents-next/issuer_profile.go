@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 )
 
 func runIssuerProfile(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
@@ -43,7 +44,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 	if len(args) == 3 {
 		collector = args[2]
 	}
-	if collectorEndpoint(collector) != nil {
+	if telemetry.ValidateCollector(collector) != nil {
 		return write()
 	}
 	raw, err := readBounded(args[1], 16<<10)
@@ -51,8 +52,8 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 		return write()
 	}
 	defer clear(raw)
-	observation, _ := newObservation(collector)
-	finish := observation.begin("ardents.issuance", operation)
+	observation, _ := telemetry.Open(collector)
+	finish := observation.Begin("ardents.issuance", operation)
 	var output string
 	var bytes []byte
 	switch operation {
@@ -111,7 +112,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 		}
 	}
 	finish(r.Phase, r.Outcome)
-	_ = observation.close()
+	_ = observation.Close()
 	_ = json.NewEncoder(diagnostic).Encode(r)
 	return write()
 }

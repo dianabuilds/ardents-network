@@ -1350,9 +1350,14 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	// OTel composition is confined to the exact command package.
-	// No arbitrary third-party bridge is permitted.
-	if owner == "cmd/ardents-next" {
+	if dependency == modulePath+"/internal/diagnostics/telemetry" {
+		switch source {
+		case "cmd/ardents-next/admission.go", "cmd/ardents-next/hosting.go", "cmd/ardents-next/issuance.go",
+			"cmd/ardents-next/issuer_profile.go", "cmd/ardents-next/issuance_results.go":
+			return true
+		}
+	}
+	if source == "internal/diagnostics/telemetry/observation.go" {
 		if slices.Contains([]string{
 			"go.opentelemetry.io/otel/attribute",
 			"go.opentelemetry.io/otel/metric",
@@ -1366,10 +1371,10 @@ func successorImportAllowed(source, dependency string) bool {
 		}, dependency) {
 			return true
 		}
-		if strings.HasSuffix(source, "_test.go") {
-			if slices.Contains([]string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"}, dependency) {
-				return true
-			}
+	}
+	if owner == "cmd/ardents-next" && strings.HasSuffix(source, "_test.go") {
+		if slices.Contains([]string{"github.com/cloudflare/circl/blindsign/blindrsa", "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto"}, dependency) {
+			return true
 		}
 	}
 	// Go reserves first import-path elements without a dot for standard-library
