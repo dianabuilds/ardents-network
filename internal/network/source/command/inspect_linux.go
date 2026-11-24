@@ -2,13 +2,13 @@ package command
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/network/source/inspection"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
@@ -48,11 +48,11 @@ func sourceInspectionRequest(args []string) (inspection.Request, error) {
 		ServerName: args[4], Family: args[7], Handle: args[8],
 	}
 	for i, destination := range []*[32]byte{&request.ServerKeyPin, &request.SourceID} {
-		raw, err := hex.DecodeString(args[5+i])
-		if err != nil || len(raw) != 32 || hex.EncodeToString(raw) != args[5+i] {
+		value, ok := canonicaldigest.Decode(args[5+i])
+		if !ok {
 			return inspection.Request{}, artifacts.ErrInput
 		}
-		copy(destination[:], raw)
+		copy(destination[:], value[:])
 	}
 	index, err := strconv.ParseUint(args[9], 10, 32)
 	if err != nil || index >= 64 || strconv.FormatUint(index, 10) != args[9] {

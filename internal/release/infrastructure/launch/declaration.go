@@ -2,7 +2,6 @@ package launch
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"path"
@@ -10,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
@@ -58,10 +58,10 @@ func valid(p Declaration) bool {
 }
 
 func validInfrastructure(p Declaration) bool {
-	if !below("/usr/lib/ardents", p.Program) || !below("/etc/ardents", p.Configuration) || !pathgrammar.LiteralPOSIXPath(p.Distribution) || !pathgrammar.LiteralPOSIXPath(p.ReleaseRoot) || !independentRoots(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" || len(p.ConfigSHA256) != 64 || strings.ToLower(p.ConfigSHA256) != p.ConfigSHA256 {
+	if !below("/usr/lib/ardents", p.Program) || !below("/etc/ardents", p.Configuration) || !pathgrammar.LiteralPOSIXPath(p.Distribution) || !pathgrammar.LiteralPOSIXPath(p.ReleaseRoot) || !independentRoots(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" {
 		return false
 	}
-	if _, err := hex.DecodeString(p.ConfigSHA256); err != nil || len(p.WritableRoots) < 2 || len(p.WritableRoots) > 8 {
+	if !canonicaldigest.Valid(p.ConfigSHA256) || len(p.WritableRoots) < 2 || len(p.WritableRoots) > 8 {
 		return false
 	}
 	wanted := 2
@@ -72,10 +72,7 @@ func validInfrastructure(p Declaration) bool {
 		return false
 	}
 	for path, digest := range p.Inputs {
-		if !below("/etc/ardents", path) || len(digest) != 64 || strings.ToLower(digest) != digest {
-			return false
-		}
-		if _, err := hex.DecodeString(digest); err != nil {
+		if !below("/etc/ardents", path) || !canonicaldigest.Valid(digest) {
 			return false
 		}
 	}

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
@@ -28,7 +29,7 @@ func admitClosedProfileSigning(raw, prepared []byte, pin string) (*networkSignin
 	if preparationObject(raw, &plan, "schema", "reference_time", "state_authority_key", "profile") != nil || plan.Schema != "ardents-closed-profile-signing-plan-v1" {
 		return nil, errNetworkSigning
 	}
-	authorityPin, ok := decodeHex32(plan.Authority)
+	authorityPin, ok := canonicaldigest.Decode(plan.Authority)
 	if !ok || authorityPin == [32]byte{} {
 		return nil, errNetworkSigning
 	}

@@ -3,7 +3,6 @@ package process
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -78,8 +78,7 @@ func retainFixed(ctx context.Context, expected Expected, policy invocationPolicy
 		expected.ProgramIdentity == nil {
 		return nil, errInput
 	}
-	digest, err := hex.DecodeString(expected.Generation)
-	if err != nil || len(digest) != 32 || hex.EncodeToString(digest) != expected.Generation {
+	if _, ok := canonicaldigest.Decode(expected.Generation); !ok {
 		return nil, errInput
 	}
 	native, ok := expected.ProgramIdentity.Sys().(*syscall.Stat_t)

@@ -74,6 +74,7 @@ github.com/dianabuilds/ardents-network/internal/connection
 github.com/dianabuilds/ardents-network/internal/custody
 github.com/dianabuilds/ardents-network/internal/processresource
 github.com/dianabuilds/ardents-network/internal/durablefile
+github.com/dianabuilds/ardents-network/internal/canonicaldigest
 github.com/dianabuilds/ardents-network/internal/pathgrammar
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/node/command

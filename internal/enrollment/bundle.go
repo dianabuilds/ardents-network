@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"sort"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 )
 
 var (
@@ -99,7 +101,7 @@ func (s *snapshot) metadataNames() []string {
 // Verify completes all stages and closes every file before publishing a
 // snapshot. It never writes state, interprets Release signatures or executes.
 func Verify(ctx context.Context, request Request) (Bundle, error) {
-	if ctx == nil || request.BundleRoot == "" || request.ExecutablePath == "" || !canonicalDigest(request.ManifestSHA256) {
+	if ctx == nil || request.BundleRoot == "" || request.ExecutablePath == "" || !canonicaldigest.Valid(request.ManifestSHA256) {
 		return Bundle{}, ErrInput
 	}
 	accepted, err := loadSnapshot(ctx, request.BundleRoot, &request)

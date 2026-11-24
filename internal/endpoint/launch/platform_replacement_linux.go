@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
@@ -129,7 +130,7 @@ func inspectPlatformPredecessor(ctx context.Context, reader *installedFiles) (in
 		return inspectedGeneration{}, err
 	}
 	var selected generationSelection
-	if decodeCanonical(selectedRaw, 4<<10, &selected) != nil || !canonicalDigest(selected.GenerationDigest) {
+	if decodeCanonical(selectedRaw, 4<<10, &selected) != nil || !canonicaldigest.Valid(selected.GenerationDigest) {
 		return inspectedGeneration{}, ErrBinding
 	}
 	parent := filepath.Join(reader.directory, "generations")

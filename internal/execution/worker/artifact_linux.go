@@ -5,7 +5,6 @@ package worker
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -53,13 +53,11 @@ func loadArtifact(inv inventory) (*Artifact, error) {
 		paths = append(paths, "/etc/systemd/system/"+inv.prefix+"-"+role+"@.service", "/etc/systemd/system/"+inv.prefix+"-"+role+".socket")
 	}
 	for _, path := range paths {
-		encoded, ok := manifest.Files[path]
-		decoded, err := hex.DecodeString(encoded)
-		if !ok || err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != encoded {
+		encoded, present := manifest.Files[path]
+		digest, ok := canonicaldigest.Decode(encoded)
+		if !present || !ok {
 			return nil, errors.New("document worker artifact digest is invalid")
 		}
-		var digest [32]byte
-		copy(digest[:], decoded)
 		if digest == [32]byte{} {
 			return nil, errors.New("document worker artifact digest is absent")
 		}

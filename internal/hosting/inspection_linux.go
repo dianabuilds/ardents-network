@@ -3,7 +3,6 @@ package hosting
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -53,8 +53,8 @@ func OpenInspection(ctx context.Context, path, policySHA256 string, uid, gid uin
 }
 
 func openInspection(ctx context.Context, path, policy string, uid, gid uint32, observe func(string, *os.File)) (result Inspection, returned error) {
-	pin, err := hex.DecodeString(policy)
-	if ctx == nil || os.Geteuid() != 0 || !pathgrammar.Strict(path) || path == "/" || err != nil || len(pin) != sha256.Size || hex.EncodeToString(pin) != policy {
+	_, pinOK := canonicaldigest.Decode(policy)
+	if ctx == nil || os.Geteuid() != 0 || !pathgrammar.Strict(path) || path == "/" || !pinOK {
 		return result, errors.New("invalid retained Hosting inspection")
 	}
 	if err := ctx.Err(); err != nil {
@@ -83,6 +83,7 @@ func openInspection(ctx context.Context, path, policy string, uid, gid uint32, o
 			break
 		}
 	}
+	var err error
 	s.root, err = s.openDirectory(path, false)
 	if err != nil {
 		return result, err

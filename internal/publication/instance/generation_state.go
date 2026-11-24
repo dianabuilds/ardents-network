@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 
@@ -145,11 +146,11 @@ func unmarshalState(raw []byte) (generationState, error) {
 		text string
 		dest []byte
 	}{{stored.Network, value.request.NetworkID[:]}, {stored.Instance, value.request.InstancePublic[:]}, {stored.Commitment, value.request.Commitment[:]}} {
-		decoded, err := hex.DecodeString(item.text)
-		if err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != item.text {
+		digest, ok := canonicaldigest.Decode(item.text)
+		if !ok {
 			return fail()
 		}
-		copy(item.dest, decoded)
+		copy(item.dest, digest[:])
 	}
 	var err error
 	if stored.Private != "" {
@@ -165,11 +166,11 @@ func unmarshalState(raw []byte) (generationState, error) {
 		}
 	}
 	if stored.Terminal != "" {
-		decoded, err := hex.DecodeString(stored.Terminal)
-		if err != nil || len(decoded) != 32 || hex.EncodeToString(decoded) != stored.Terminal {
+		digest, ok := canonicaldigest.Decode(stored.Terminal)
+		if !ok {
 			return fail()
 		}
-		copy(value.terminal[:], decoded)
+		copy(value.terminal[:], digest[:])
 	}
 	canonical, err := marshalState(value)
 	defer clear(canonical)

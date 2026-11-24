@@ -2,13 +2,13 @@ package generation
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -28,11 +28,11 @@ type Owner struct {
 // Parent identity comes from the caller's still-live Installation transaction;
 // it conveys no authorization and does not lend a root or lease.
 func Create(ctx context.Context, parentPath string, expectedParent os.FileInfo, name string, gid uint32) (result *Owner, returnedErr error) {
-	digest, err := hex.DecodeString(name)
+	_, digestOK := canonicaldigest.Decode(name)
 	if ctx == nil || os.Geteuid() != 0 || gid == 0 || gid == ^uint32(0) ||
 		!pathgrammar.Strict(parentPath) ||
 		filepath.Base(parentPath) != "generations" || expectedParent == nil ||
-		err != nil || len(digest) != 32 || hex.EncodeToString(digest) != name {
+		!digestOK {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

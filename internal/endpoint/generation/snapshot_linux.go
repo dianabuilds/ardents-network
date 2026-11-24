@@ -3,7 +3,6 @@ package generation
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -31,8 +31,8 @@ type Snapshot struct {
 }
 
 func OpenSnapshot(ctx context.Context, parentPath string, expectedParent, expectedDirectory os.FileInfo, name string, gid uint32) (result *Snapshot, returnedErr error) {
-	digest, err := hex.DecodeString(name)
-	if ctx == nil || gid == 0 || gid == ^uint32(0) || !pathgrammar.Strict(parentPath) || filepath.Base(parentPath) != "generations" || err != nil || len(digest) != 32 || hex.EncodeToString(digest) != name || !sealedDirectory(expectedParent, gid) || !sealedDirectory(expectedDirectory, gid) {
+	_, digestOK := canonicaldigest.Decode(name)
+	if ctx == nil || gid == 0 || gid == ^uint32(0) || !pathgrammar.Strict(parentPath) || filepath.Base(parentPath) != "generations" || !digestOK || !sealedDirectory(expectedParent, gid) || !sealedDirectory(expectedDirectory, gid) {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -46,6 +46,7 @@ func OpenSnapshot(ctx context.Context, parentPath string, expectedParent, expect
 			result = nil
 		}
 	}()
+	var err error
 	s.parent, err = os.OpenRoot(parentPath)
 	if err != nil {
 		return nil, err

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 )
 
 // EndpointTemplate retains one checked fixed Endpoint template and its bound
@@ -21,7 +23,7 @@ type EndpointTemplate struct {
 func PrepareEndpointTemplate(template []byte, installationRoot, directory string) (EndpointTemplate, error) {
 	if !unitPath(directory) || !unitPath(installationRoot) ||
 		path.Dir(directory) != path.Join(installationRoot, "generations") ||
-		!canonicalDigest(path.Base(directory)) {
+		!canonicaldigest.Valid(path.Base(directory)) {
 		return EndpointTemplate{}, errors.New("installation generation command path is invalid")
 	}
 	if len(template) == 0 || len(template) > 64<<10 {

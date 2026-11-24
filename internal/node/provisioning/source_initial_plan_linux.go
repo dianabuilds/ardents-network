@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"flag"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
@@ -79,11 +80,9 @@ func prepareSourceInitialPlan(ctx context.Context, p sourceInitialNetworkPlan, o
 
 // sourcePublicID decodes one canonical lowercase 32-byte hex identifier.
 func sourcePublicID(text string) ([32]byte, error) {
-	var id [32]byte
-	raw, err := hex.DecodeString(text)
-	if err != nil || len(raw) != 32 || hex.EncodeToString(raw) != text {
+	id, ok := canonicaldigest.Decode(text)
+	if !ok {
 		return id, artifacts.ErrInput
 	}
-	copy(id[:], raw)
 	return id, nil
 }

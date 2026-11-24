@@ -209,6 +209,27 @@ instead of silently absolutizing them (the one deliberate tightening; every
 production caller already supplies absolute clean paths). A shared grammar does
 not merge roots, custody or authority owners.
 
+The maintained owners share one pure canonical hex-32 validation atom,
+`internal/canonicaldigest` (Phase 4, #835): a decode predicate admitting exactly
+64 lowercase hexadecimal characters whose decoded 32 bytes re-encode to the
+identical string, plus its validation-only projection, with no hashing and no
+filesystem observation. It is a mechanism, not an owner: it holds no root,
+marker, schema, authority or lifecycle, and each consumer keeps its distinct
+refusal prose and any additional zero-value, presence or length bounds it
+genuinely needs. Endpoint (declaration, unit, launch, generation, installed
+identity), Enrollment, Execution worker, Hosting, Network State, Node
+provisioning, Platform process, Publication Instance and Release (target
+identity, infrastructure artifact/launch) consume it, as does the
+`ardents-next source inspect-latest` adapter. Deliberate boundaries stay
+separate: variable-length canonical hex (Issuance and command admission inputs,
+closed network preparation text), the weaker no-round-trip Release floor and
+fixed-hex decoders, the 16-byte systemd InvocationID shape, and Custody
+authority validation. Release builder-attestation validation joins the canonical
+atom because the same package's verification already requires exact equality
+with `hex.EncodeToString` of the authenticated digest (the one deliberate
+tightening; no reachable acceptance is lost). A shared validation atom does not
+merge roots, custody or authority owners.
+
 Source artifact authentication in `internal/release/infrastructure` joins the
 Release verifier before returning inspection facts. Enrollment owns original
 distribution provenance and the initial pin. Release owns retained trust and

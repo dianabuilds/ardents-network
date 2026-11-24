@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -32,7 +33,7 @@ func (p PlatformLaunch) Valid() bool {
 	}
 	if !PlatformBelow("/etc/ardents", p.Configuration) || !pathgrammar.LiteralPOSIXPath(p.Distribution) ||
 		!pathgrammar.LiteralPOSIXPath(p.ReleaseRoot) || !pathgrammar.LiteralPOSIXPath(p.Program) ||
-		pathsOverlap(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" || !canonicalDigest(p.ConfigSHA256) {
+		pathsOverlap(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" || !canonicaldigest.Valid(p.ConfigSHA256) {
 		return false
 	}
 	if len(p.WritableRoots) < 2 || len(p.WritableRoots) > 16 {
@@ -45,7 +46,7 @@ func (p PlatformLaunch) Valid() bool {
 		return false
 	}
 	for credential, digest := range p.Inputs {
-		if !PlatformBelow("/etc/ardents", credential) || !canonicalDigest(digest) {
+		if !PlatformBelow("/etc/ardents", credential) || !canonicaldigest.Valid(digest) {
 			return false
 		}
 	}
