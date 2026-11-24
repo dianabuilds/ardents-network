@@ -11,6 +11,8 @@ test -r /sys/fs/cgroup/cgroup.controllers
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
 : "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
 : "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
+: "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
+: "${ARDENTS_NODE_E2E_TEST_SHA256:?independent Node e2e digest is required}"
 : "${ARDENTS_NODE_RESOURCE_TEST:?native resource test binary is required}"
 : "${ARDENTS_NODE_RESOURCE_TEST_SHA256:?independent resource digest is required}"
 verify() {
@@ -22,6 +24,7 @@ verify() {
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
 verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
+verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # The root driver and its immutable artifacts stay outside every measured leaf.
@@ -38,7 +41,6 @@ TestNativeJoinOriginalAuthorityAndJoinTCP
 TestNativeJoinOriginalCommandLossAfterIOTCP
 TestNativeJoinPartialStartupRefusalsTCP
 TestNativeJoinProvisionedCertificateTCP
-TestNativeJoinRetainedLifecycle
 TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP
 TestNativeJoinUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeJoin' | grep '^TestNativeJoin' | sort)
@@ -58,4 +60,5 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalCommandLossAfterIOTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOperationBoundariesTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinRetainedLifecycle$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoinRetainedLifecycle$' | grep -Fx 'TestNativeJoinRetainedLifecycle' >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinRetainedLifecycle$' -test.timeout=3m

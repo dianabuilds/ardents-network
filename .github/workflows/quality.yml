@@ -4,23 +4,23 @@ on:
 permissions:
   contents: read
 jobs:
-  forwarding-lifecycle:
+  node-retained-lifecycles:
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 3430cbf5a55d39ca800ebb256859732e57dcc78a
+          ref: d9b9c92f2b75d8667eb2d9d320cf6a0833f6ae3d
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: 1.27.4
           cache: true
-      - name: Exercise the original Forwarding process through the e2e profile
+      - name: Exercise the three original retained Node processes through e2e
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 3430cbf5a55d39ca800ebb256859732e57dcc78a
+          test "$(git rev-parse HEAD)" = d9b9c92f2b75d8667eb2d9d320cf6a0833f6ae3d
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04
@@ -41,6 +41,9 @@ jobs:
               set -euo pipefail
               actual=$(sha256sum "$TMPDIR/node-e2e.test")
               test "${actual%% *}" = "$NATIVE_E2E_DIGEST"
-              "$TMPDIR/node-e2e.test" -test.list="^TestNativeForwardingRetainedLifecycle$" | grep -Fx TestNativeForwardingRetainedLifecycle
-              "$TMPDIR/node-e2e.test" -test.v -test.run="^TestNativeForwardingRetainedLifecycle$" -test.timeout=3m
+              for role in Forwarding Descriptor Join; do
+                name="TestNative${role}RetainedLifecycle"
+                "$TMPDIR/node-e2e.test" -test.list="^$name$" | grep -Fx "$name"
+                "$TMPDIR/node-e2e.test" -test.v -test.run="^$name$" -test.timeout=3m
+              done
             '

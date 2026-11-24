@@ -127,6 +127,7 @@
           "tests/e2e/node.LaunchForwarding",
           "tests/e2e/node.LaunchRetainedRole",
           "tests/e2e/node.StartForwarding",
+          "tests/e2e/node.StartFreshRole",
           "tests/e2e/node.launchRole",
           "tests/e2e/node.waitForRole",
           "tests/e2e/node.ProcessBudget",
