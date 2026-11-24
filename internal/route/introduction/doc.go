@@ -22,4 +22,44 @@
 // A private Linux file adapter opens, verifies, commits and releases the actual
 // independently leased root. Core callers cannot inject a persistence backend;
 // encoding a snapshot grants no persistence or registration authority.
+//
+// Responsibility clusters and their tests:
+//   - holder REGISTER/WITHDRAW lifetime and physical retirement:
+//     registration.go (Register, Withdraw, read, stop, interruptPhysical,
+//     Close, CleanupResult) (registration_test.go,
+//     registration_retirement_test.go)
+//   - holder idle supervision and observation scheduling: registration.go
+//     (watch, checkOriginal, checkSupervision, observeOriginal)
+//     (registration_supervision_test.go)
+//   - holder Receipt/CheckReceipt public binding: registration_receipt.go
+//     (registration_receipt_test.go)
+//   - holder purpose-5 delivery children: registration_delivery.go
+//     (registration_delivery_test.go)
+//   - receiving REGISTER/RESULT/WITHDRAW exchange: receiving.go
+//     (receiving_test.go)
+//   - receiving delivery dispatch and physical join: receiving_delivery.go
+//     (receiving_delivery_test.go)
+//   - purpose-5 submission, source and receiving: submission.go,
+//     receiving_submission.go (submission_test.go)
+//   - canonical exchange wire codecs: registration_wire.go, delivery_wire.go
+//     (registration_wire_test.go, delivery_wire_test.go)
+//   - canonical slot snapshot codec: slot_snapshot.go (slot_snapshot_test.go)
+//   - Registry transitions and portable History non-reclaim rules:
+//     registry.go, slot_history.go (slot_history_test.go,
+//     registry_linux_test.go; linux)
+//   - native durable root lifecycle and crash/partial-write retention:
+//     slot_history_linux.go (OpenHistory, InitializeHistory, commit,
+//     replaceHistory, syncHistory) (slot_history_linux_test.go,
+//     history_write_linux_test.go; linux,
+//     history_crash_linux_amd64_test.go; linux/amd64)
+//   - native custody verification: slot_history_linux.go (verify,
+//     sameHistoryFile, retainReplacement) (history_custody_linux_test.go;
+//     linux)
+//   - receiving registry composition: receiving_history_linux.go
+//     (receiving_history_linux_test.go; linux)
+//
+// delivery_wire_test.go, receiving_test.go, registration_delivery_test.go and
+// slot_history_linux_test.go also carry shared input fixtures
+// (deliveryEnvelope, unadmittedRegistrationConn, deliveryTransportFixture,
+// newHistoryFixture) used by other clusters; no file is fixture-only.
 package introduction
