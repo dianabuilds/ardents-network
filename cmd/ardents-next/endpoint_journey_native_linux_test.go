@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	"net"
 	"os"
 	"os/exec"
@@ -396,7 +397,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, clientPEM, clientKey, clientPin := installedSourceCertificate(t, "client", false)
+	_, clientPEM, clientKey, clientPin := sourcefixture.SourceCertificate(t, "client", false)
 	certPath, keyPath := filepath.Join(etcDir, "client.crt"), filepath.Join(etcDir, "client.key")
 	endpointfixture.WriteStartupFile(t, certPath, clientPEM, 0644)
 	endpointfixture.WriteStartupFile(t, keyPath, clientKey, 0600)
@@ -427,7 +428,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	})
 	for i, address := range addresses {
 		name := []string{"source-a.example", "source-b.example"}[i]
-		certificate, rootPEM, keyPEM, pin := installedSourceCertificate(t, name, true)
+		certificate, rootPEM, keyPEM, pin := sourcefixture.SourceCertificate(t, name, true)
 		clear(keyPEM)
 		sourcePins[i] = pin
 		endpointfixture.WriteStartupFile(t, filepath.Join(credentials, []string{"a.pem", "b.pem"}[i]), rootPEM, 0644)

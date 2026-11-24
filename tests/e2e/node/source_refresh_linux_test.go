@@ -1,19 +1,14 @@
 //go:build linux
 
-package main
+package node_test
 
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"math/big"
+	"errors"
 	"net"
 	"os"
 	"os/exec"
@@ -21,52 +16,35 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // These are genuine State servers and a real compiled profile intake consumer.
 // All fixture infrastructure has one controller. No installed startup, root
 // completion exchange, independent Source families or Service readiness is proved.
-func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+func TestSourceRefreshRetainsGenuineNetworkAuthority(t *testing.T) {
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	clockPath := filepath.Join(dir, "clock")
-	if err := os.WriteFile(clockPath, nil, 0600); err != nil {
-		t.Fatal(err)
-	}
-	stop, joined := make(chan struct{}), make(chan struct{})
-	go func() {
-		defer close(joined)
-		ticker := time.NewTicker(100 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-stop:
-				return
-			case now := <-ticker.C:
-				if err := os.Chtimes(clockPath, now, now); err != nil {
-					t.Error(err)
-					return
-				}
-			}
-		}
-	}()
-	t.Cleanup(func() { close(stop); <-joined })
-	public := f.spec.Authority.Public().(ed25519.PublicKey)
+	clockPath, closeClock := processfixture.StartObservedClock(t)
+	t.Cleanup(closeClock)
+	public := spec.Authority.Public().(ed25519.PublicKey)
 	var authorityKey [32]byte
 	copy(authorityKey[:], public)
-	plan := &networkAuthorityPlan{Root: filepath.Join(dir, "participant-state"), NetworkID: f.spec.NetworkID,
+	plan := &state.AuthorityDeclaration{Root: filepath.Join(dir, "participant-state"), NetworkID: spec.NetworkID,
 		Authorities: [][32]byte{authorityKey}, Threshold: 1, ProfileAuthority: authorityKey, ClockObservationFile: clockPath}
-	base, err := networkStateConfig(plan)
+	base, err := plan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, clientPEM, clientKey, clientPin := installedSourceCertificate(t, "client", false)
+	_, clientPEM, clientKey, clientPin := sourcefixture.SourceCertificate(t, "client", false)
 	clientPath, keyPath := filepath.Join(dir, "client.pem"), filepath.Join(dir, "client.key")
 	for path, raw := range map[string][]byte{clientPath: clientPEM, keyPath: clientKey} {
 		if err := os.WriteFile(path, raw, 0600); err != nil {
@@ -77,7 +55,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 	headless := endpoint.HeadlessPlan{NetworkStateRoot: plan.Root, LocalRoleStateRoot: filepath.Join(dir, "participant-roles"),
 		TimeConfidenceFile: clockPath, NetworkID: hex.EncodeToString(plan.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authorityKey[:])},
 		NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authorityKey[:])}
-	declared := endpoint.SourcePlan{ClockObservedAt: time.Now().UTC().Format(time.RFC3339), OrderSeed: hex.EncodeToString(f.spec.Seed[:]),
+	declared := endpoint.SourcePlan{ClockObservedAt: time.Now().UTC().Format(time.RFC3339), OrderSeed: hex.EncodeToString(spec.Seed[:]),
 		RefreshIntervalMS: 1000, ClientCertificate: clientPath, ClientKey: keyPath}
 	// Reserve both addresses together before opening either owner.
 	var held [2]net.Listener
@@ -87,7 +65,12 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = held[index].Close() })
+		listener := held[index]
+		t.Cleanup(func() {
+			if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+				t.Error(err)
+			}
+		})
 		addresses[index] = held[index].Addr().String()
 	}
 	for _, listener := range held {
@@ -98,7 +81,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 	var advance []func(networkfixture.Closed) error
 	for index, address := range addresses {
 		name := []string{"source-a.test", "source-b.test"}[index]
-		certificate, rootPEM, keyPEM, pin := installedSourceCertificate(t, name, true)
+		certificate, rootPEM, keyPEM, pin := sourcefixture.SourceCertificate(t, name, true)
 		clear(keyPEM)
 		config := base
 		config.Root = filepath.Join(dir, name+"-state")
@@ -167,8 +150,8 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	input, err := json.Marshal(struct {
-		Network *networkAuthorityPlan `json:"network"`
-		Profile []byte                `json:"profile"`
+		Network *state.AuthorityDeclaration `json:"network"`
+		Profile []byte                      `json:"profile"`
 	}{plan, bundle.Profile})
 	if err != nil {
 		t.Fatal(err)
@@ -177,7 +160,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 	if err := os.WriteFile(inputPath, input, 0600); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.CommandContext(t.Context(), compiledCommand(t), "network", "accept-profile", "--config", inputPath)
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "network", "accept-profile", "--config", inputPath)
 	if out, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("genuine compiled profile intake: %v: %s", err, out)
 	}
@@ -192,7 +175,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 	}
 	// Require a subsequent background wave through both real TLS servers. The
 	// accepted old profile cannot authorize the signed successor Epoch.
-	nextSpec := f.spec
+	nextSpec := spec
 	nextSpec.Number++
 	nextSpec.Previous = bundle.Epoch.Digest
 	nextSpec.Seed[0]++
@@ -226,36 +209,4 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 	if _, err := owner.CurrentRuntime(); err == nil || err.Error() != "closed profile is unavailable" {
 		t.Fatal("old profile did not give its specific successor authority refusal", err)
 	}
-}
-
-func installedSourceCertificate(t *testing.T, name string, server bool) (tls.Certificate, []byte, []byte, [32]byte) {
-	t.Helper()
-	public, key, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	usage := x509.ExtKeyUsageClientAuth
-	if server {
-		usage = x509.ExtKeyUsageServerAuth
-	}
-	template := &x509.Certificate{SerialNumber: big.NewInt(1), DNSNames: []string{name}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
-		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{usage}}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, public, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	encoded, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certificatePEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: encoded})
-	clear(encoded)
-	certificate, err := tls.X509KeyPair(certificatePEM, keyPEM)
-	clear(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pin := sha256.Sum256(append([]byte("ardents-h3-source-transport-key-v1\x00"), public...))
-	return certificate, certificatePEM, keyPEM, pin
 }

@@ -27,7 +27,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, _, files := infrastructureDistribution(t, binary, nil, 1, nil)
+	dir, _, files := nodefixture.InfrastructureDistribution(t, t.TempDir(), binary, nil, 1, nil, "source")
 	template := filepath.Join(parent, "template")
 	if err := os.WriteFile(template, files["ardents-source.service"], 0600); err != nil {
 		t.Fatal(err)
@@ -86,7 +86,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 			t.Fatalf("retired %s touched output: %v", retired.operation, err)
 		}
 	}
-	oraclePin := writeInfrastructureOracleInventory(t, dir, files, 1)
+	oraclePin := nodefixture.WriteInfrastructureOracleInvocationInventory(t, dir, files, 1, "source")
 	if fmt.Sprintf("%x", sha256.Sum256(prepared)) != oraclePin {
 		t.Fatal("independent inventory oracle")
 	}

@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 )
 
 func TestInfrastructureCompiledRejectsOverlappingHistory(t *testing.T) {
-	binary, err := os.ReadFile(compiledCommand(t))
+	binary, err := os.ReadFile(buildNodeCommand(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestInfrastructureCompiledRejectsOverlappingHistory(t *testing.T) {
 }
 
 func TestInfrastructureCompiledRejectsRetiredSourceOperations(t *testing.T) {
-	program := compiledCommand(t)
+	program := buildNodeCommand(t)
 	for _, operation := range []string{"preflight-initial", "preflight-candidate", "install-initial-stopped"} {
 		t.Run(operation, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "absent")
@@ -57,23 +57,9 @@ func TestInfrastructureCompiledRejectsRetiredSourceOperations(t *testing.T) {
 
 // Independent oracle: literal ordered schemas, independently spelled names and
 // ordinary 3-of-5 signatures, without product preparation/descriptor codecs.
-func infrastructureDistribution(t *testing.T, binary []byte, authority *nodefixture.ReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
-	t.Helper()
-	return infrastructureDistributionRoot(t, t.TempDir(), binary, authority, version, mutate, unitOverride...)
-}
-
-func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, authority *nodefixture.ReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
-	return nodefixture.InfrastructureDistribution(t, parent, binary, authority, version, mutate, "source", unitOverride...)
-}
-
-// Only public signed test artifacts share this oracle; no runtime, native
-// installation policy, private root or accepting role dispatcher is shared.
-func writeInfrastructureOracleInventory(t *testing.T, dir string, files map[string][]byte, version int64) string {
-	return nodefixture.WriteInfrastructureOracleInvocationInventory(t, dir, files, version, "source")
-}
-
 func TestInfrastructureCompiledCommandInitialCandidateAndForeignArtifact(t *testing.T) {
-	binary, err := os.ReadFile(compiledCommand(t))
+	command := buildNodeCommand(t)
+	binary, err := os.ReadFile(command)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +77,7 @@ func TestInfrastructureCompiledCommandInitialCandidateAndForeignArtifact(t *test
 	}
 
 	args := []string{"authenticate-initial", dir, pin, history, "h3-test", "new-release-test", nodefixture.InfrastructureReference().Format(time.RFC3339)}
-	if out, err := run(compiledCommand(t), args...); err == nil || !bytes.Contains(out, []byte("inventory-refused")) {
+	if out, err := run(command, args...); err == nil || !bytes.Contains(out, []byte("inventory-refused")) {
 		t.Fatalf("foreign actual executable accepted %s %v", out, err)
 	}
 	if _, err := os.Stat(history); !os.IsNotExist(err) {
@@ -104,7 +90,7 @@ func TestInfrastructureCompiledCommandInitialCandidateAndForeignArtifact(t *test
 		t.Fatalf("initial pin reused for retained history %s", out)
 	}
 	candidate := []string{"authenticate-candidate", dir, history, "h3-test", "new-release-test", nodefixture.InfrastructureReference().Format(time.RFC3339)}
-	if out, err := run(compiledCommand(t), candidate...); err != nil || !bytes.Equal(out, wantReceipt("no-update")) {
+	if out, err := run(command, candidate...); err != nil || !bytes.Equal(out, wantReceipt("no-update")) {
 		t.Fatalf("retained candidate %s %v", out, err)
 	}
 	cold := append([]string(nil), candidate...)
@@ -134,7 +120,7 @@ func TestInfrastructureCompiledCommandInitialCandidateAndForeignArtifact(t *test
 }
 
 func TestInfrastructureCandidateRequiresFloorsAndFreshCoherentPair(t *testing.T) {
-	binary, err := os.ReadFile(compiledCommand(t))
+	binary, err := os.ReadFile(buildNodeCommand(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +288,7 @@ func TestInfrastructureInventoryPhysicalAndCanonicalRefusals(t *testing.T) {
 }
 
 func TestInfrastructureRetainedReopenRollbackAndConflict(t *testing.T) {
-	binary, err := os.ReadFile(compiledCommand(t))
+	binary, err := os.ReadFile(buildNodeCommand(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,4 +354,19 @@ func TestInfrastructureRetainedReopenRollbackAndConflict(t *testing.T) {
 	if _, err := infrastructure.AuthenticateCandidate(ctx, v, c2, in2); err == nil {
 		t.Fatal("canceled original handoff")
 	}
+}
+
+func infrastructureDistribution(t *testing.T, binary []byte, authority *nodefixture.ReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
+	t.Helper()
+	return infrastructureDistributionRoot(t, t.TempDir(), binary, authority, version, mutate, unitOverride...)
+}
+
+func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, authority *nodefixture.ReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
+	return nodefixture.InfrastructureDistribution(t, parent, binary, authority, version, mutate, "source", unitOverride...)
+}
+
+// Only public signed test artifacts share this oracle; no runtime, native
+// installation policy, private root or accepting role dispatcher is shared.
+func writeInfrastructureOracleInventory(t *testing.T, dir string, files map[string][]byte, version int64) string {
+	return nodefixture.WriteInfrastructureOracleInvocationInventory(t, dir, files, version, "source")
 }

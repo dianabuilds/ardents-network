@@ -15,7 +15,7 @@ import (
 )
 
 func TestInfrastructureOriginalLoaderAndVerifierSurviveToHandoff(t *testing.T) {
-	dir, _, _ := infrastructureDistribution(t, []byte("signed candidate program"), nil, 1, nil)
+	dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), []byte("signed candidate program"), nil, 1, nil, "source")
 	loader, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	c, err := enrollment.ReadInfrastructureCandidate(loader, dir)

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	"io"
 	"net"
 	"os"
@@ -491,7 +492,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 	// Source credential pair below /etc/ardents: cert root-owned public, key
 	// service-owned private (chowned after provision creates the account). Both
 	// the F-25 pre-start check and the confined participant read them.
-	clientCert, clientPEM, clientKey, clientPin := installedSourceCertificate(t, "client", false)
+	clientCert, clientPEM, clientKey, clientPin := sourcefixture.SourceCertificate(t, "client", false)
 	_ = clientCert
 	certPath := filepath.Join(stand.etcDir, "client.crt")
 	keyPath := filepath.Join(stand.etcDir, "client.key")
@@ -518,7 +519,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 	}
 	for i, address := range addresses {
 		name := []string{"source-a.example", "source-b.example"}[i]
-		certificate, rootPEM, keyPEM, pin := installedSourceCertificate(t, name, true)
+		certificate, rootPEM, keyPEM, pin := sourcefixture.SourceCertificate(t, name, true)
 		clear(keyPEM)
 		sourcePins[i] = pin
 		launchWrite(t, filepath.Join(credentials, []string{"a.pem", "b.pem"}[i]), rootPEM, 0644)

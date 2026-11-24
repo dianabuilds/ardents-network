@@ -20,6 +20,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -148,7 +149,7 @@ func constructionCommandFixture(t *testing.T) (ownerPath, sourcePath, declaratio
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, clientPEM, clientKey, _ := installedSourceCertificate(t, "client.construction.test", false)
+	_, clientPEM, clientKey, _ := sourcefixture.SourceCertificate(t, "client.construction.test", false)
 	declared := endpointConstructionSourceFile{Schema: "ardents-source-plan-v1",
 		ClockObservedAt: time.Now().UTC().Truncate(time.Second).Format(time.RFC3339),
 		OrderSeed:       hex.EncodeToString(bytes.Repeat([]byte{5}, 32)), MaterializationIndex: 3, RefreshIntervalMS: 30000,
@@ -163,7 +164,7 @@ func constructionCommandFixture(t *testing.T) (ownerPath, sourcePath, declaratio
 		{"source-one.construction.test", "127.0.0.1:9401", 71, "one"},
 		{"source-two.construction.test", "127.0.0.1:9402", 72, "two"},
 	} {
-		_, certificate, _, pin := installedSourceCertificate(t, member.name, true)
+		_, certificate, _, pin := sourcefixture.SourceCertificate(t, member.name, true)
 		rootPath := write("root-"+member.serial+".pem", certificate)
 		declared.Sources = append(declared.Sources, endpointConstructionSourceMemberFile{Address: member.address,
 			ServerName: member.name, Identity: identity(member.node), Family: "source-" + member.serial,

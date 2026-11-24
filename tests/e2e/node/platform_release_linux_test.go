@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
@@ -29,7 +30,7 @@ func TestPlatformRuntimeReleaseUsesRetainedFloorsAndOriginalProof(t *testing.T) 
 	for _, role := range []string{"source", "forwarding", "issuer", "descriptor", "introduction", "join"} {
 		t.Run(role, func(t *testing.T) {
 			program := []byte("signed program fixture")
-			dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, nil, 1, nil, role, []byte(platformUnitTemplate))
+			dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, nil, 1, nil, role, []byte(systemd.PlatformUnitTemplate))
 			candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 			if err != nil {
 				t.Fatal(err)
@@ -156,7 +157,7 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 	}
 	authority := nodefixture.NewReleaseAuthority(t, now.Add(365*24*time.Hour))
 	load := func(version int64, program []byte, mutate func(map[string]*metadata.TargetFiles)) enrollment.InfrastructureCandidate {
-		dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, authority, version, mutate, "source", []byte(platformUnitTemplate))
+		dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, authority, version, mutate, "source", []byte(systemd.PlatformUnitTemplate))
 		candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 		if err != nil {
 			t.Fatal(err)
@@ -269,7 +270,7 @@ func TestPlatformRuntimeReleaseRefusesRollbackAfterReopen(t *testing.T) {
 	authority := nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
 	program := []byte("same signed runtime")
 	load := func(version int64) enrollment.InfrastructureCandidate {
-		dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, authority, version, nil, "introduction", []byte(platformUnitTemplate))
+		dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, authority, version, nil, "introduction", []byte(systemd.PlatformUnitTemplate))
 		c, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 		if err != nil {
 			t.Fatal(err)

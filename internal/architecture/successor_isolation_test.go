@@ -636,7 +636,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "tests/e2e/node/processfixture" {
 		switch source {
-		case "tests/e2e/node/descriptor_exchange_native_linux_test.go":
+		case "tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/source_refresh_linux_test.go":
 			return true
 		case "tests/e2e/node/issuer_exchange_native_linux_test.go":
 			return true
@@ -741,6 +741,15 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
 			return dependency == "github.com/dianabuilds/ardents-network/internal/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/dianabuilds/ardents-network/internal/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
+		case "tests/e2e/node/platform_release_linux_test.go", "tests/e2e/node/source_release_linux_test.go":
+			switch dependency {
+			case modulePath + "/internal/enrollment", modulePath + "/internal/network/duty", modulePath + "/internal/network/state",
+				modulePath + "/internal/platform/systemd", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure",
+				modulePath + "/tests/e2e/node", modulePath + "/tests/epochfixture/network", "github.com/theupdateframework/go-tuf/v2/metadata":
+				return true
+			default:
+				return false
+			}
 		case "tests/e2e/node/infrastructure_fixture_linux.go":
 			return dependency == "github.com/dianabuilds/ardents-network/internal/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata"
 		case "tests/e2e/node/release_fixture.go":
@@ -953,11 +962,10 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/execution_artifact_linux_test.go", "cmd/ardents-next/execution_installed_linux_test.go",
 			"cmd/ardents-next/forwarding_artifact_linux_test.go",
 			"cmd/ardents-next/forwarding_platform_native_linux_test.go", "cmd/ardents-next/infrastructure_caller_linux_test.go",
-			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
+			"cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 			"cmd/ardents-next/join_platform_native_linux_test.go",
 			"cmd/ardents-next/network_admission_fixture_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
-			"cmd/ardents-next/platform_release_linux_test.go",
 			"cmd/ardents-next/release_process_test.go",
 			"cmd/ardents-next/publication_installed_linux_test.go",
 			"cmd/ardents-next/route_close_failure_linux_test.go", "cmd/ardents-next/route_descriptor_linux_test.go",
@@ -969,6 +977,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport {
 		switch source {
+		case "tests/e2e/node/source_refresh_linux_test.go":
+			return local == "internal/endpoint" || local == "internal/network/state" || local == "tests/epochfixture/network" || local == "tests/e2e/source"
 		case "tests/e2e/source/signing_workspace_linux.go":
 			return local == "internal/platform/artifacts"
 		}
@@ -979,7 +989,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "tests/e2e/source" {
 		switch source {
-		case "internal/endpoint/source_trust_native_linux_test.go",
+		case "internal/endpoint/source_trust_native_linux_test.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
+			"cmd/ardents-next/endpoint_journey_native_linux_test.go", "cmd/ardents-next/endpoint_launch_native_linux_test.go",
 			"cmd/ardents-next/network_signing_native_linux_test.go",
 			"cmd/ardents-next/network_profile_native_linux_test.go",
 			"cmd/ardents-next/infrastructure_preparation_native_linux_test.go":
@@ -994,7 +1005,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "cmd/ardents-next/endpoint_preparation_linux.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
 			"cmd/ardents-next/endpoint_history_linux_test.go",
 			"cmd/ardents-next/installed_endpoint_linux.go", "internal/network/source/command/prepare_linux.go",
-			"cmd/ardents-next/installed_source_linux_test.go", "cmd/ardents-next/source_preparation_process_linux_test.go":
+			"cmd/ardents-next/source_preparation_process_linux_test.go":
 			return true
 		default:
 			return false
@@ -1025,9 +1036,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/enrollment.go" && localImport {
 		return local == "internal/enrollment"
 	}
-	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
-		return true
-	}
 	if source == "cmd/ardents-next/source_lifecycle_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 		return true
 	}
@@ -1044,9 +1052,6 @@ func successorImportAllowed(source, dependency string) bool {
 	inZone := isMigratedDomain(source) || strings.HasPrefix(source, "cmd/ardents-next/")
 	zoneDependency := localImport && isMigratedDomain(local)
 	if source == "internal/route/prefix/prefix.go" && dependency == modulePath+"/internal/network/state" {
-		return true
-	}
-	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/release/infrastructure") {
 		return true
 	}
 	switch source {
@@ -1435,7 +1440,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/infrastructure_linux.go" {
 			return dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release"
 		}
-		if (source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
+		if (source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/forwarding_artifact_linux_test.go" && (dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release") {
@@ -1679,7 +1684,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/release/rotation_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if (source == "cmd/ardents-next/release_process_test.go" || source == "cmd/ardents-next/infrastructure_linux_test.go") && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if (source == "cmd/ardents-next/release_process_test.go") && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
 		if source == "cmd/ardents-next/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {

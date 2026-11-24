@@ -195,6 +195,7 @@
       {
         "symbols": [
           "tests/e2e/source.NativeTLS",
+          "tests/e2e/source.SourceCertificate",
           "tests/e2e/source.TrustPreparationFixture"
         ],
         "classification": "independent Source TLS test fixture",
