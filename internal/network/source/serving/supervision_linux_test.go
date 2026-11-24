@@ -1,19 +1,14 @@
-//go:build linux
-
-package main
+package serving
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
-	"os"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"testing/synctest"
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // These barriers model only the supervisor's physical join contract. They do
@@ -46,7 +41,7 @@ func TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion(t *testing.T)
 				inputStarted, inputRelease := make(chan struct{}), make(chan struct{})
 				joined := make(chan error, 1)
 				go func() {
-					joined <- superviseSource(ctx, owner, ctx.Err, func() {}, io.Discard, io.Discard, func() error {
+					joined <- Supervise(ctx, owner, ctx.Err, func() {}, ignoreSourceEvent, func() error {
 						close(inputStarted)
 						<-inputRelease
 						if failure == "inputs" {
@@ -90,7 +85,7 @@ func TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion(t *testing.T)
 	}
 }
 
-// Failure fixtures isolate command ordering, never successful State authority.
+// Failure fixtures isolate supervisor ordering, never successful State authority.
 type failedSourceLifetime struct {
 	waitErr, closeErr error
 	closed            bool
@@ -107,24 +102,20 @@ func (owner *blockedSourceClose) Close() error {
 	return owner.failedSourceLifetime.Close()
 }
 
-type sourceNotice struct{ observed chan struct{} }
-
-func (notice sourceNotice) Write(raw []byte) (int, error) {
-	if bytes.Contains(raw, []byte("completion-unavailable")) {
-		close(notice.observed)
-	}
-	return len(raw), nil
-}
-
 func TestSourceUnavailableJoinReportsWithoutReturningOriginalCustody(t *testing.T) {
 	operation, cleanup := errors.New("original refusal"), errors.New("late physical close")
 	owner := &blockedSourceClose{failedSourceLifetime: failedSourceLifetime{closeErr: cleanup}, entered: make(chan struct{}), release: make(chan struct{})}
-	notice := sourceNotice{make(chan struct{})}
+	notice := make(chan struct{})
 	admissionCtx, deny := context.WithCancel(t.Context())
 	defer deny()
 	joined := make(chan error, 1)
 	go func() {
-		joined <- superviseSource(t.Context(), owner, func() error { return operation }, deny, io.Discard, notice, nil)
+		joined <- Supervise(t.Context(), owner, func() error { return operation }, deny, func(_ context.Context, event Event) error {
+			if event.Phase == "retiring" && event.Outcome == "completion-unavailable" {
+				close(notice)
+			}
+			return nil
+		}, nil)
 	}()
 	<-owner.entered
 	if admissionCtx.Err() != context.Canceled {
@@ -132,7 +123,7 @@ func TestSourceUnavailableJoinReportsWithoutReturningOriginalCustody(t *testing.
 		<-joined
 		t.Fatal("physical join began before synchronous admission denial")
 	}
-	<-notice.observed
+	<-notice
 	select {
 	case <-joined:
 		t.Fatal("notice or timeout substituted for original join")
@@ -154,80 +145,28 @@ func (f *failedSourceLifetime) Wait(ctx context.Context) error {
 }
 func (f *failedSourceLifetime) Close() error { f.closed = true; return f.closeErr }
 
-type failedSourceOutput struct{ err error }
-
-func (f failedSourceOutput) Write([]byte) (int, error) { return 0, f.err }
-
 func TestSourceSupervisionRetainsOperationAndCleanupFailures(t *testing.T) {
 	operation, cleanup := errors.New("operation"), errors.New("independent cleanup")
 	for _, mode := range []string{"output", "wait", "protection"} {
 		t.Run(mode, func(t *testing.T) {
 			owner := &failedSourceLifetime{closeErr: cleanup}
-			var out io.Writer = io.Discard
+			report := ignoreSourceEvent
 			check := func() error { return nil }
 			switch mode {
 			case "output":
-				out = failedSourceOutput{operation}
+				report = func(context.Context, Event) error { return operation }
 			case "wait":
 				owner.waitErr = operation
 			case "protection":
 				check = func() error { return operation }
 			}
-			err := superviseSource(t.Context(), owner, check, func() {}, out, io.Discard, nil)
+			err := Supervise(t.Context(), owner, check, func() {}, report, nil)
 			if !owner.closed || !errors.Is(err, operation) || !errors.Is(err, cleanup) {
 				t.Fatal("original users or independent cause lost", owner.closed, err)
 			}
 		})
 	}
 }
-
-func TestSourceCallerCancellationDuringBlockedReadyOutputRetainsCaller(t *testing.T) {
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer reader.Close()
-	defer writer.Close()
-	fd := int(writer.Fd())
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		t.Fatal(err)
-	}
-	for {
-		_, err := syscall.Write(fd, make([]byte, 4096))
-		if errors.Is(err, syscall.EAGAIN) {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	_, deny := context.WithCancel(ctx)
-	defer deny()
-	checked := make(chan struct{})
-	owner := &failedSourceLifetime{}
-	joined := make(chan error, 1)
-	go func() {
-		joined <- superviseSource(ctx, owner, func() error {
-			select {
-			case <-checked:
-			default:
-				close(checked)
-			}
-			return nil
-		}, deny, writer, io.Discard, nil)
-	}()
-	<-checked
-	cancel()
-	if err := <-joined; err != nil || !owner.closed {
-		t.Fatal("original caller cancellation became an output/background failure", err)
-	}
-}
-
-type sourceFailureWriter func([]byte) (int, error)
-
-func (writer sourceFailureWriter) Write(raw []byte) (int, error) { return writer(raw) }
 
 func TestSourceOutputFailureRetainsOriginalLatchedProcessFailure(t *testing.T) {
 	output, process := errors.New("original output failure"), errors.New("original process failure already retained")
@@ -239,7 +178,10 @@ func TestSourceOutputFailureRetainsOriginalLatchedProcessFailure(t *testing.T) {
 		return nil
 	}
 	owner := &failedSourceLifetime{}
-	err := superviseSource(t.Context(), owner, check, func() {}, sourceFailureWriter(func([]byte) (int, error) { latched = true; return 0, output }), io.Discard, nil)
+	err := Supervise(t.Context(), owner, check, func() {}, func(context.Context, Event) error {
+		latched = true
+		return output
+	}, nil)
 	if !errors.Is(err, output) || !errors.Is(err, process) || !owner.closed {
 		t.Fatal("an original owner failure was dropped", err)
 	}
@@ -261,20 +203,22 @@ func TestSourceInputLossAfterHealthyObservationRetainsInputCategory(t *testing.T
 			return nil
 		}
 		if lost.Load() {
-			return errSourceInput
+			return artifacts.ErrObservedInput
 		}
 		return nil
 	}
 	owner := &failedSourceLifetime{}
 	joined := make(chan error, 1)
-	go func() { joined <- superviseSource(ctx, owner, check, func() {}, io.Discard, io.Discard, nil) }()
+	go func() { joined <- Supervise(ctx, owner, check, func() {}, ignoreSourceEvent, nil) }()
 	<-entered
 	lost.Store(true)
 	cancel()
 	close(release)
 	err := <-joined
-	var terminal *sourceTerminal
-	if !errors.Is(err, errSourceInput) || !errors.As(err, &terminal) || terminal.FirstOwner != "input" || !owner.closed {
+	var terminal *Terminal
+	if !errors.Is(err, artifacts.ErrObservedInput) || !errors.As(err, &terminal) || terminal.FirstOwner != "input" || !owner.closed {
 		t.Fatal("last healthy process observation replaced original input refusal", err)
 	}
 }
+
+func ignoreSourceEvent(context.Context, Event) error { return nil }
