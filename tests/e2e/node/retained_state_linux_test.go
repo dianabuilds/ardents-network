@@ -10,12 +10,7 @@ import (
 )
 
 func TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing(t *testing.T) {
-	binary := filepath.Join(t.TempDir(), "ardents")
-	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", binary, "./cmd/ardents-next")
-	build.Dir = filepath.Join("..", "..", "..")
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build CLI: %v: %s", err, output)
-	}
+	binary := buildNodeCommand(t)
 	roles := []struct {
 		name, profile, extra string
 	}{
