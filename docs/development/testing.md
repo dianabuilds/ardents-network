@@ -3026,6 +3026,65 @@ compositions remain Linux-bound on the remaining introduction slot-history,
 receiver and declarations seams. Tests-only; no production behavior changed and
 no weaker accepting path.
 
+P1-C audit de-tag continuation (#847, #691) runtime-verified the 25
+zero-native-marker Linux-tagged test files that the #845 waste audit had only
+cross-compiled clean to Windows and macOS. Cross-compilation alone was
+insufficient: executing the candidates on macOS and tracing their production
+seams showed most compose Linux-only mechanisms or serve Linux-only consumers.
+Three files are genuinely portable and were de-tagged to execute in the portable
+deterministic inventory on Windows and macOS: the Network initial-key
+argument/cancellation refusals (`cmd/ardents-next/network_keys_test.go`, refused
+before `provisioning.PrepareInitialNetworkKeys`), the issuance owned-destination
+inventory refusal (`internal/admission/issuance/inventory_delivery_test.go`,
+refused before the platform seam), and the custody symlinked-record-directory
+authority-birth refusal (merged into
+`internal/custody/independent_root_refusal_test.go`, portable `os.ReadDir`
+symlink typing and the shared Windows/non-Windows durability). The compiled
+publication root-preparation control
+(`tests/e2e/service/publication_root_process_test.go`) is Linux+Windows only,
+matching the durable publication lease (`lease_linux.go`/`lease_windows.go`; the
+darwin `lease_other.go` stub refuses), so it carries `linux || windows` like the
+durable behavior tests. The other 21 files keep their Linux constraint:
+
+- Fixtures whose only consumers are Linux-tagged tests, so de-tagging would add
+  windows-test-dead helpers without a portable consumer:
+  `network_socket_fixture_linux_test.go`, `hosting_transfer_fixture_linux_test.go`,
+  `route_composition_linux_test.go` (session `Open*` keep `!linux` refusals),
+  `publication_registration_linux_test.go` (also composes Linux-only Instance
+  custody), `issuance_telemetry_linux_test.go`, and
+  `application/document/reader_connection_fixture_test.go` (serves only the Linux
+  AAI3 listener control).
+- Tests that open Linux-only production seams and refuse at runtime on other
+  platforms: `cmd/ardents-next/hosting_linux_test.go` and
+  `internal/hosting/counter_linux_test.go` (hosting platform lease and `/sys`
+  counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
+  (the `admission/attempts` presentation journal requires Linux),
+  `admission/issuer/lifecycle_linux_test.go` (issuance `storage_linux.go`/
+  `results_linux.go`), `cmd/ardents-next/document_publisher_linux_test.go`
+  (`document.ReadSnapshotFile` no-follow Linux importer), and
+  `cmd/ardents-next/execution_artifact_linux_test.go` (linux-amd64 systemd
+  installed-resource Enrollment).
+- Tests whose exact refusal projection is produced only by the Linux command
+  composition; the `!linux` stubs project `unsupported-platform` instead:
+  `cmd/ardents-next/platform_linux_test.go`, `installed_cancellation_linux_test.go`,
+  `node_role_cancellation_linux_test.go`, `tests/e2e/node/retained_state_linux_test.go`,
+  and `tests/e2e/service/publication_instance_process_linux_test.go` (Instance
+  private host-root custody is Linux-only, `custody_other.go`).
+- `cmd/ardents-custody/terminal_secret_linux_test.go`: the custody terminal reader
+  is Linux+Windows (`terminal_line_linux.go`/`terminal_line_windows.go`, macOS
+  refuses) while the control drives a Unix pseudo-terminal (`pty.UnixPty`) that
+  the Windows console pty does not satisfy; the intersection is Linux only.
+- Linux CI structure and POSIX collector controls:
+  `internal/architecture/race_shards_linux_test.go` (asserts the Linux race-shard
+  inventory, which adds the Linux-only supplement, through `make`/`awk`) and
+  `internal/architecture/local_diagnostics_linux_test.go` (the diagnostics
+  collector uses `Setpgid`, `O_NOFOLLOW` and `Stat_t`).
+
+Tests-only; no production behavior changed and no weaker accepting path. The
+deadcode allowlist is unchanged EXACT both ways: the de-tagged refusals reach no
+new Windows-dead production symbol, and the Linux native-tag test analysis
+remains empty.
+
 AAI3 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require

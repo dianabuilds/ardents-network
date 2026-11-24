@@ -1,5 +1,8 @@
 //go:build linux
 
+// The Issuer lifecycle opens genuine issuance key/result roots whose storage
+// seam is Linux-only (issuance storage_linux.go/results_linux.go); macOS and
+// Windows refuse with storage-unavailable before effects.
 package issuer
 
 import "github.com/dianabuilds/ardents-network/internal/admission/quota"
