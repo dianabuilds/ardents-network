@@ -437,7 +437,7 @@ Initial Network key preparation belongs to `internal/node/provisioning`
 State key and distinct Node keys and returns the exact published public receipt.
 The CLI projects it through `network_preparation.go`. Provisioning tests
 exercise expiry after native I/O and durable signing inventory publication on
-ext4. The same owner tests unsigned publication through original file faults,
+ext4, including original Closed Profile commit and output contention. The same owner tests unsigned publication through original file faults,
 partial writes and child interruption. The CLI retains the genuine
 command-to-State chain and receipt probes.
 Both offline generation and the
