@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package introduction
 
@@ -7,9 +7,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 func TestHistoryNativeOriginalLossAndRestorationNeverRevives(t *testing.T) {
@@ -87,7 +88,9 @@ func TestHistoryNativeIdenticalSubstitutionAndRestoredBytesRefuse(t *testing.T) 
 					t.Fatal(err)
 				}
 				after, err := os.Lstat(path)
-				if err != nil || !os.SameFile(before, after) || before.Sys().(*syscall.Stat_t).Ctim == after.Sys().(*syscall.Stat_t).Ctim {
+				beforeCtime, beforeOK := durablefile.InodeChangeTime(before)
+				afterCtime, afterOK := durablefile.InodeChangeTime(after)
+				if err != nil || !os.SameFile(before, after) || !beforeOK || !afterOK || beforeCtime == afterCtime {
 					t.Fatal("restored-byte control did not change original inode ctime", err)
 				}
 			} else {
@@ -120,10 +123,10 @@ func TestRegistryStopDoesNotWaitForOriginalHistoryCommit(t *testing.T) {
 	defer capacity.Release()
 	entered, release := make(chan struct{}), make(chan struct{})
 	files := history.store.(*historyFiles)
-	files.replace = func(path string, raw []byte) (*os.File, error) {
+	files.replace = func(rootfd int, raw []byte) (*os.File, error) {
 		close(entered)
 		<-release
-		return replaceHistory(path, raw) // actual write/sync/rename/directory-sync
+		return replaceHistory(rootfd, raw) // actual write/sync/rename/directory-sync
 	}
 	claimed := make(chan error, 1)
 	go func() {
@@ -214,8 +217,8 @@ func TestHistoryOriginalReplacementCannotAdoptForeignInodeOrRestoredRoot(t *test
 				t.Fatal(err)
 			}
 			files := history.store.(*historyFiles)
-			files.replace = func(path string, raw []byte) (*os.File, error) {
-				snapshot, err := replaceHistory(path, raw)
+			files.replace = func(rootfd int, raw []byte) (*os.File, error) {
+				snapshot, err := replaceHistory(rootfd, raw)
 				if err != nil {
 					return nil, err
 				}

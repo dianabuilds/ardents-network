@@ -27,8 +27,10 @@
 //     (owner_root_windows_test.go)
 //   - Unix-family (Linux and macOS) inspection port: relative_open_unix.go
 //     (relative_open_unix_test.go) owns the directory-relative open;
-//     inspection_identity_unix.go (inspection_identity_unix_test.go) owns the
-//     normalized inode change/modification times and the shared full-identity
-//     comparison; inode_times_linux.go and inode_times_darwin.go hold the two
-//     Stat_t time field spellings at that boundary.
+//     relative_rename_unix.go (relative_rename_unix_test.go) owns the
+//     directory-relative atomic rename; inspection_identity_unix.go
+//     (inspection_identity_unix_test.go) owns the normalized inode
+//     change/modification times and the shared full-identity comparison;
+//     inode_times_linux.go and inode_times_darwin.go hold the two Stat_t time
+//     field spellings at that boundary.
 package durablefile

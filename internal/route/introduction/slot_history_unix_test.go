@@ -1,11 +1,12 @@
-//go:build linux
+//go:build linux || darwin
 
 package introduction
 
 // These durable controls exercise History with actual exclusive flock leases,
 // POSIX root permissions and synced directory replacement, including reopen
-// and uncertain writes. They require the selected Linux persistence mechanism;
-// an in-memory or portable codec fixture cannot prove retained non-reclaim floors.
+// and uncertain writes. They require the selected Unix-family persistence
+// mechanism; an in-memory or portable codec fixture cannot prove retained
+// non-reclaim floors.
 
 import (
 	"bytes"
@@ -186,8 +187,8 @@ func TestHistoryUncertainReplaceTerminalizesWithoutErasingClaim(t *testing.T) {
 	history, _, root, binding := newHistoryFixture(t)
 	now := time.Unix(1_800_000_000, 0).UTC()
 	failure := errors.New("directory sync unavailable after rename")
-	history.store.(*historyFiles).replace = func(path string, raw []byte) (*os.File, error) {
-		snapshot, err := replaceHistory(path, raw)
+	history.store.(*historyFiles).replace = func(rootfd int, raw []byte) (*os.File, error) {
+		snapshot, err := replaceHistory(rootfd, raw)
 		if err != nil {
 			return nil, err
 		}
@@ -229,8 +230,8 @@ func TestHistoryInitializationChecksFreshOwnerAfterDurability(t *testing.T) {
 			root := historyTestRoot(t)
 			failure := errors.New("initial sync unavailable")
 			synchronized := false
-			history, err := openHistory(root, binding, fact, func(path string) error {
-				if err := syncHistory(path); err != nil {
+			history, err := openHistory(root, binding, fact, func(rootfd int) error {
+				if err := syncHistory(rootfd); err != nil {
 					return err
 				}
 				synchronized = true
