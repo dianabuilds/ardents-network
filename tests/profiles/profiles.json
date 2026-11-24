@@ -702,6 +702,12 @@
       "owner": "endpoint command process behavior"
     },
     {
+      "id": "e2e-node",
+      "path": "tests/e2e/node",
+      "profile": "process",
+      "owner": "Node command process behavior"
+    },
+    {
       "id": "e2e-service",
       "path": "tests/e2e/service",
       "profile": "process",
