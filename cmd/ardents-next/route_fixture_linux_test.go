@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -15,16 +14,15 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -256,28 +254,7 @@ func routePermissionStockAt(t *testing.T, f *networkAdmissionFixture, role admis
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := allocation.Prepare(raw, f.profile.NetworkID, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	decision, err := request.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	journal := filepath.Join(t.TempDir(), "allocation")
-	if err := os.WriteFile(journal, decision.Journal(), 0600); err != nil {
-		t.Fatal(err)
-	}
-	committed, err := os.ReadFile(journal)
-	if err != nil || !bytes.Equal(committed, decision.Journal()) {
-		t.Fatal("allocation durable readback", err)
-	}
-	permission := decision.Permission()
-	copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
-	encoded, err := admission.EncodePermission(permission)
-	if err != nil {
-		t.Fatal(err)
-	}
+	encoded := nodefixture.FixturePermission(t, raw, f.profile, f.spec.Authority, time.Now())
 	if err := holder.Import(digest, encoded); err != nil {
 		t.Fatal(err)
 	}
@@ -333,28 +310,7 @@ func routeConsolePermissionStock(t *testing.T, f *networkAdmissionFixture, send 
 	if request.Outcome != "completed" {
 		t.Fatal("holder request", request.Outcome)
 	}
-	prepared, err := allocation.Prepare(request.Request, f.profile.NetworkID, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	decision, err := prepared.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	journal := filepath.Join(t.TempDir(), "allocation")
-	if err := os.WriteFile(journal, decision.Journal(), 0600); err != nil {
-		t.Fatal(err)
-	}
-	committed, err := os.ReadFile(journal)
-	if err != nil || !bytes.Equal(committed, decision.Journal()) {
-		t.Fatal("durable allocation", err)
-	}
-	permission := decision.Permission()
-	copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
-	raw, err := admission.EncodePermission(permission)
-	if err != nil {
-		t.Fatal(err)
-	}
+	raw := nodefixture.FixturePermission(t, request.Request, f.profile, f.spec.Authority, time.Now())
 	if reply := send(holderCommand{Operation: "import", Digest: request.Digest, Payload: raw}); reply.Outcome != "completed" {
 		t.Fatal("holder import", reply.Outcome)
 	}
