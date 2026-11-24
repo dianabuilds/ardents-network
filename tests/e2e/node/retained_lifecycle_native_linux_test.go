@@ -81,14 +81,7 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 			t.Fatal(err)
 		}
 	}
-	raw, err := json.Marshal(plan)
-	if err != nil {
-		t.Fatal(err)
-	}
-	planPath := filepath.Join(t.TempDir(), "config.json")
-	if err := os.WriteFile(planPath, raw, 0600); err != nil {
-		t.Fatal(err)
-	}
+	planPath := writeNodePlan(t, plan)
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -158,4 +151,17 @@ func nativeRoleCertificate(t testing.TB, key ed25519.PrivateKey) tls.Certificate
 		t.Fatal(err)
 	}
 	return tls.Certificate{Certificate: [][]byte{leaf}, PrivateKey: key}
+}
+
+func writeNodePlan(t testing.TB, plan map[string]any) string {
+	t.Helper()
+	raw, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(t.TempDir(), "config.json")
+	if err := os.WriteFile(planPath, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return planPath
 }
