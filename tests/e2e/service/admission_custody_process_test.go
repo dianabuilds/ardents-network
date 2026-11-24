@@ -39,6 +39,18 @@ func TestAdmissionCustodyBuiltTerminalIssuesCanonicalPermissionAndRetainsRetry(t
 		t.Fatalf("invalid authority receipt: %+v / %v", created, err)
 	}
 	now := time.Now().UTC().Truncate(time.Hour)
+	// Both the issue and its exact retry must finish in the request's hour.
+	// Custody uses the real clock and correctly refuses at the next boundary.
+	if remaining := time.Until(now.Add(time.Hour)); remaining <= 2*interactiveProductCommandTimeout+time.Second {
+		timer := time.NewTimer(remaining)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+			now = time.Now().UTC().Truncate(time.Hour)
+		case <-t.Context().Done():
+			t.Fatal(t.Context().Err())
+		}
+	}
 	request, holder, err := admission.PreparePermissionRequest([32]byte(public), network, [32]byte{64}, 65, admission.AllocationUser, now, [3]uint32{3, 0, 0})
 	if err != nil {
 		t.Fatal(err)
