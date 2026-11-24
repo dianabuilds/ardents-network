@@ -37,6 +37,7 @@ github.com/dianabuilds/ardents-network/internal/network/closedprofile
 github.com/dianabuilds/ardents-network/internal/network/duty
 github.com/dianabuilds/ardents-network/internal/network/epoch
 github.com/dianabuilds/ardents-network/internal/network/source
+github.com/dianabuilds/ardents-network/internal/network/source/command
 github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration
 github.com/dianabuilds/ardents-network/internal/network/state
 github.com/dianabuilds/ardents-network/internal/network/state/durable

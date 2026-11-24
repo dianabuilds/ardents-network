@@ -1,3 +1,2 @@
-github.com/dianabuilds/ardents-network/internal/network/source/command
 github.com/dianabuilds/ardents-network/internal/network/source/inspection
 github.com/dianabuilds/ardents-network/internal/network/source/serving
