@@ -594,6 +594,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/route_submission_linux_test.go",
 			"cmd/ardents-next/route_token_linux_test.go",
 			"internal/node/refill_process_native_linux_test.go",
+			"internal/node/authority_process_native_linux_test.go",
 			"tests/e2e/endpoint/endpoint_platform_native_linux_test.go",
 			"tests/e2e/node/completion_native_linux_test.go",
 			"tests/e2e/node/forwarding_exchange_native_linux_test.go",
@@ -780,6 +781,13 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	// These command tests consume only the registered process and signed fixture owners.
+	if localImport && source == "internal/node/authority_process_native_linux_test.go" {
+		switch local {
+		case "internal/admission/spending", "internal/hosting", "internal/network", "internal/network/duty",
+			"internal/network/state", "internal/node", "internal/route/role", "internal/route/transport", "tests/epochfixture/network":
+			return true
+		}
+	}
 	if localImport && source == "internal/node/refill_process_native_linux_test.go" {
 		switch local {
 		case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",

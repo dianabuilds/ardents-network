@@ -2445,13 +2445,13 @@ in `scripts/node/run-native.sh`. Receiving-role-specific resource controls belon
 to their separate original resource processes.
 Each profile's resident-memory control runs in its own original process:
 the first can leave actual native or Go memory pressure for a following control.
-`ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST`, `ARDENTS_NODE_OWNER_TEST`,
-`ARDENTS_NODE_E2E_TEST` and `ARDENTS_NODE_RESOURCE_TEST` name the five absolute external artifact paths for Forwarding;
+`ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_OWNER_TEST`,
+`ARDENTS_NODE_E2E_TEST` and `ARDENTS_NODE_RESOURCE_TEST` name the four absolute external artifact paths for Forwarding;
 their corresponding `_SHA256` variables are independent expected digests.
 Missing Linux, systemd, cgroup/PSI, privilege, artifact, durable filesystem or
 loopback is an invalid environment. This lane establishes no supported Node host,
 installed operation, independent controller, capacity or privacy qualification.
-`TestNativeNodeOriginalAuthorityAndJoinTCP` also supplies a direct Node control
+The Node owner binary runs `TestNativeNodeOriginalAuthorityAndJoinTCP`, which also supplies a direct Node control
 for the deferred Carrier. An actual signed historical QUIC member is retained
 by genuine State, then passed to `node.ListenForwarding` under the actual native
 process Guard. Refusal must contain the exact Carrier cause and only its fixed
