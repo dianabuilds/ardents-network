@@ -46,24 +46,8 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 }
 
 // Node startup and retained repair refuse before opening the role's plan.
-func runNodeForwarding(_ context.Context, _ []string, out, _ io.Writer) int {
-	return unsupportedPlatformRefusal(out, "node.forwarding")
-}
-
-func runNodeIssuer(_ context.Context, _ []string, out, _ io.Writer) int {
-	return unsupportedPlatformRefusal(out, "node.issuer")
-}
-
-func runNodeDescriptor(_ context.Context, _ []string, out, _ io.Writer) int {
-	return unsupportedPlatformRefusal(out, "node.descriptor")
-}
-
-func runNodeIntroduction(_ context.Context, _ []string, out, _ io.Writer) int {
-	return unsupportedPlatformRefusal(out, "node.introduction")
-}
-
-func runNodeJoin(_ context.Context, _ []string, out, _ io.Writer) int {
-	return unsupportedPlatformRefusal(out, "node.join")
+func runNodeRole(_ context.Context, operation string, _ []string, out, _ io.Writer) int {
+	return unsupportedPlatformRefusal(out, "node."+operation)
 }
 
 func runSourceCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {

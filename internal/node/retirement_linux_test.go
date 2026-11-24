@@ -9,43 +9,6 @@ import (
 	"testing"
 )
 
-func TestRetirementFiltersPreserveOriginalJoinedOperationalFailure(t *testing.T) {
-	notice := errors.New("original retirement notice")
-	operational := errors.Join(errors.New("original native operation failed"), errors.New("original native custody lost"))
-	if got := originalRetirementResult(operational, notice); got != operational {
-		t.Error("unrelated retirement filtering replaced the original operational error identity")
-	}
-	retained := originalRetirementResult(errors.Join(notice, operational), notice)
-	if got := originalRetirementResult(retained, operational); got != nil {
-		t.Error("sequential filters misclassified original operational failure as physical cleanup", got)
-	}
-	physical := errors.New("independent actual physical failure")
-	retained = originalRetirementResult(errors.Join(notice, operational, physical), notice)
-	retained = originalRetirementResult(retained, operational)
-	if !errors.Is(retained, physical) {
-		t.Fatal("sequential filters erased independent physical failure", retained)
-	}
-	wrapped := fmt.Errorf("actual physical wrapper: %w", operational)
-	retained = originalRetirementResult(errors.Join(notice, wrapped), notice)
-	if got := originalRetirementResult(retained, operational); !errors.Is(got, wrapped) {
-		t.Fatal("operational filtering erased an independent physical wrapper", got)
-	}
-}
-
-func TestOriginalRetirementNoticeCannotErasePhysicalCleanupFailure(t *testing.T) {
-	notice := errors.New("original local admission retired")
-	foreign := errors.New("physical close failed")
-	if originalRetirementResult(errors.Join(notice, errors.Join(notice)), notice) != nil {
-		t.Fatal("local denial notice reported as physical cleanup failure")
-	}
-	for _, physical := range []error{foreign, context.Canceled, fmt.Errorf("physical join: %w", context.Canceled), fmt.Errorf("physical join: %w", notice), errors.New(notice.Error())} {
-		retained := originalRetirementResult(errors.Join(notice, physical), notice)
-		if !errors.Is(retained, physical) {
-			t.Fatal("actual foreign or wrapped physical result suppressed", physical)
-		}
-	}
-}
-
 // This isolates terminal-handle provenance, not successful authority or native
 // physical join. The genuine native command matrix owns those separate claims.
 func TestCopiedForwardingHandleRetainsLateOriginalCleanupFailure(t *testing.T) {

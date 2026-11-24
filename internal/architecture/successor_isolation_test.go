@@ -566,7 +566,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/processresource"
 		case "internal/node/command/input.go":
 			return local == "internal/platform/artifacts"
-		case "internal/node/command/report_linux.go":
+		case "internal/node/command/report.go":
 			return local == "internal/node"
 		default:
 			return false
@@ -574,7 +574,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "internal/node/command" {
 		switch source {
-		case "cmd/ardents-next/node.go", "cmd/ardents-next/node_roles_linux.go", "cmd/ardents-next/node_lifecycle_linux.go":
+		case "cmd/ardents-next/node.go", "cmd/ardents-next/node_roles_linux.go":
 			return true
 		default:
 			return false
@@ -1113,7 +1113,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/node/descriptor_linux.go" && dependency == modulePath+"/internal/reachability" {
 			return true
 		}
-		if (source == "cmd/ardents-next/node_lifecycle_linux.go" || source == "cmd/ardents-next/route_linux.go") && dependency == modulePath+"/internal/node" {
+		if source == "cmd/ardents-next/route_linux.go" && dependency == modulePath+"/internal/node" {
 			return true
 		}
 		if (source == "cmd/ardents-next/node_native_linux_test.go" || source == "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/join_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go") && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
