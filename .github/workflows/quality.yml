@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: f5c1cc2af85d096bfe289b18f99b0b57b553aad9
+          ref: 706115be2553e6cdba82a33ff926f2f5253135e5
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = f5c1cc2af85d096bfe289b18f99b0b57b553aad9
+          test "$(git rev-parse HEAD)" = 706115be2553e6cdba82a33ff926f2f5253135e5
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04
@@ -36,7 +36,6 @@ jobs:
           build_dir=$(mktemp -d "$RUNNER_TEMP/forwarding-build.XXXXXX")
           go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
           go test -c -race -tags node_process_native -o "$build_dir/node-e2e.test" ./tests/e2e/node
-          go test -c -race -tags node_process_native -o "$build_dir/node-command.test" ./cmd/ardents-next
           go test -c -race -tags node_process_native -o "$build_dir/node-owner.test" ./internal/node
           go test -c -race -tags node_process_native -o "$build_dir/node-resource.test" ./internal/processresource
           sudo -n install -m 0755 "$build_dir/ardents" "$build_dir/"*.test "$native_dir"
@@ -44,8 +43,6 @@ jobs:
           sudo -n env TMPDIR="$native_dir" \
             ARDENTS_NODE_NATIVE_COMMAND="$native_dir/ardents" \
             ARDENTS_NODE_NATIVE_COMMAND_SHA256="$(digest "$build_dir/ardents")" \
-            ARDENTS_NODE_NATIVE_TEST="$native_dir/node-command.test" \
-            ARDENTS_NODE_NATIVE_TEST_SHA256="$(digest "$build_dir/node-command.test")" \
             ARDENTS_NODE_E2E_TEST="$native_dir/node-e2e.test" \
             ARDENTS_NODE_E2E_TEST_SHA256="$(digest "$build_dir/node-e2e.test")" \
             ARDENTS_NODE_OWNER_TEST="$native_dir/node-owner.test" \
@@ -59,7 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: f5c1cc2af85d096bfe289b18f99b0b57b553aad9
+          ref: 706115be2553e6cdba82a33ff926f2f5253135e5
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -68,7 +65,7 @@ jobs:
       - shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = f5c1cc2af85d096bfe289b18f99b0b57b553aad9
+          test "$(git rev-parse HEAD)" = 706115be2553e6cdba82a33ff926f2f5253135e5
           test "$(findmnt -T / -n -o FSTYPE)" = ext4
           build_dir=$(mktemp -d "$RUNNER_TEMP/certificate-build.XXXXXX")
           native_dir=$(sudo -n mktemp -d /ardents-certificate-e2e.XXXXXX)

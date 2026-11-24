@@ -1,3 +1,5 @@
+//go:build linux && node_process_native
+
 package processfixture
 
 import (

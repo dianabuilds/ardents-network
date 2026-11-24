@@ -12,8 +12,6 @@ test -r /sys/fs/cgroup/cgroup.controllers
 
 : "${ARDENTS_NODE_NATIVE_COMMAND:?canonical Node command is required}"
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
-: "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
-: "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
 : "${ARDENTS_NODE_OWNER_TEST:?native Node owner test binary is required}"
 : "${ARDENTS_NODE_OWNER_TEST_SHA256:?independent Node owner test digest is required}"
 : "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
@@ -29,7 +27,6 @@ verify() {
     test "${actual%% *}" = "$2" || { echo 'native artifact digest differs' >&2; exit 2; }
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
-verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
 verify "$ARDENTS_NODE_OWNER_TEST" "$ARDENTS_NODE_OWNER_TEST_SHA256"
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeNodeIssuerOperationProcess$' | grep -Fx TestNativeNodeIssuerOperationProcess >/dev/null
 verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
@@ -40,8 +37,8 @@ verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerOriginalFailureTCP$' | grep -Fx TestNativeIssuerOriginalFailureTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerPartialStartupRefusalsTCP$' | grep -Fx TestNativeIssuerPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOperationJoinAndExactRetryTCP$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerStorageUncertaintyTCP$' >/dev/null
+"$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOperationJoinAndExactRetryTCP$' >/dev/null
+"$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerStorageUncertaintyTCP$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerProcessProfile$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerEvidenceLossRetainsActualCloseFailure$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerManagedMemoryPressureRetires$' >/dev/null
@@ -58,12 +55,13 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 # the identical native envelope; no failed case is omitted or given more time.
 # Exact discovery rejects any added, missing or duplicate undispatched test.
 expected='TestNativeIssuerOperationJoinAndExactRetryTCP
+TestNativeIssuerOriginalAuthorityAndJoinTCP
 TestNativeIssuerStorageUncertaintyTCP'
-discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuer' | sort)
+discovered=$("$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuer' | sort)
 test "$discovered" = "$expected" || { echo 'Issuer workload discovery differs' >&2; exit 2; }
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeIssuerOriginalAuthorityAndJoinTCP$' | grep -Fx TestNativeIssuerOriginalAuthorityAndJoinTCP >/dev/null
 "$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeIssuerOriginalAuthorityAndJoinTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(OperationJoinAndExactRetryTCP|StorageUncertaintyTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeIssuer(OperationJoinAndExactRetryTCP|StorageUncertaintyTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuerPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendTCP|OriginalFailureTCP)$' -test.timeout=3m

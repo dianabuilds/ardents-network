@@ -130,6 +130,7 @@
           "tests/e2e/node/processfixture.launchRole",
           "tests/e2e/node/processfixture.waitForRole",
           "tests/e2e/node/processfixture.ProcessBudget",
+          "tests/e2e/node/processfixture.ProcessBudgetWithCapacity",
           "tests/e2e/node/processfixture.StartRetainedRole",
           "tests/e2e/node.InfrastructureCandidateInputs",
           "tests/e2e/node.InfrastructureDistribution",
