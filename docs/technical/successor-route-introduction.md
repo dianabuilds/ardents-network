@@ -150,14 +150,20 @@ Slot history persists hashes and original expiries plus its monotonic time floor
 and exact Network/profile/Node/duty binding. The `ARDISL01` identity and canonical
 bytes remain unchanged. Strict retained open checks both private members, its
 exclusive lease and exact snapshot. Original directory, lease and snapshot
-descriptors retain inode/access/ctime and exact bytes. Foreign identical-byte
+descriptors retain inode/access/ctime/mtime and exact bytes. Foreign identical-byte
 replacement or same-inode edit/restoration refuses permanently; path restoration
-cannot revive that original. Native writes address the retained original directory.
+cannot revive that original. The durable root is the Unix-family (Linux and macOS)
+slot-history port (Cohort 1 N2, #853): native writes address the retained original
+directory through the shared `durablefile` directory-relative `Openat`/`Renameat`
+anchor and full-identity inode comparison, never a pathname that a concurrent move
+could replace (the macOS `/dev/fd` spelling does not support directory traversal).
+Every other platform receives the same explicit typed refusal, never a weaker
+accepting path.
 Its actual staged inode is pinned before Rename and held through directory
 synchronization and exact readback; re-opening a same-byte final pathname cannot
-substitute for that original. An original root inotify descriptor retains move,
-loss and restoration events across lawful directory updates; queue overflow or
-witness loss refuses. Only its own successful write/sync/rename/directory-sync
+substitute for that original. An original root kernel watch (Linux inotify, macOS
+kqueue `EVFILT_VNODE`) retains move, loss and restoration events across lawful
+directory updates; queue overflow or witness loss refuses. Only its own successful write/sync/rename/directory-sync
 and exact original-inode readback update the snapshot and directory pins. A separate reopen performs full verification
 without resetting floors. Missing, corrupt, foreign or uncertain
 history refuses rather than resetting its floor.

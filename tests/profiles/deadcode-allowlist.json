@@ -821,6 +821,18 @@
       },
       {
         "symbols": [
+          "internal/route/introduction.InitializeHistory",
+          "internal/route/introduction.OpenHistory",
+          "internal/route/introduction.OpenReceivingRegistry",
+          "internal/route/introduction.OpenRetainedReceivingRegistry"
+        ],
+        "classification": "Introduction slot-history Unix-family platform refusal (ADR-0129)",
+        "rationale": "The Cohort 1 N2 port (#853) realizes the durable Introduction slot-history root on the Unix family (Linux and macOS) through the shared durablefile directory-relative Openat/Renameat anchor and a kernel root-move watch (Linux inotify, macOS kqueue EVFILT_VNODE). Linux production reaches OpenHistory/InitializeHistory/OpenReceivingRegistry/OpenRetainedReceivingRegistry through the actual Node and ardents-next receiving composition. On Windows the selected durable mechanism is absent, so these exact functions are the explicit typed unavailable refusal (errHistoryPlatformUnavailable); they create nothing, consume no fresh-root fact and grant no weaker accepting path. No Windows accepting Route runtime exists, so the refusal adapters are production-dead on windows-amd64 only.",
+        "owner": "Product Owner and Codex; Route Introduction",
+        "retirement": "Remove each exact Windows entry when a selected genuine Windows durable Introduction composition reaches it, or when the slot-history operation is retired. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
           "internal/route/ardp.DecodeJoinRequest",
           "internal/route/ardp.DecodeJoinResult",
           "internal/route/ardp.EncodeJoinRequest",

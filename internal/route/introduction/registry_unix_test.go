@@ -1,10 +1,11 @@
-//go:build linux
+//go:build linux || darwin
 
 package introduction
 
 // These controls use the actual independently leased History, its fresh-root
-// handoff and retained bytes across claim/withdraw/reopen. Their Linux profile
-// follows that native durable mechanism, not Registry's portable state rules.
+// handoff and retained bytes across claim/withdraw/reopen. Their Unix-family
+// profile follows that native durable mechanism, not Registry's portable state
+// rules.
 
 import (
 	"bytes"

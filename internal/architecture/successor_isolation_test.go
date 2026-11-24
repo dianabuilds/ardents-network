@@ -283,6 +283,74 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 	}
 }
 
+// Cohort 1 N2 (#853, portability design audit #848) ported the Introduction
+// slot-history root to the Unix family (Linux and macOS): the shared
+// internal/durablefile directory-relative Openat/Renameat anchor every mutation
+// to the held inode and the shared full-identity comparison retains the
+// anti-substitution semantics on both platforms. The kernel root-move watch is
+// a point capability at the Introduction boundary (Linux inotify, macOS kqueue
+// EVFILT_VNODE); every other platform receives the same explicit typed refusal.
+// The macOS /dev/fd spelling does not support directory traversal, so the
+// fd-anchoring is realized by the directory-relative syscalls, never a weaker
+// pathname anchor. The Linux amd64 ptrace crash control stays Linux-only.
+func TestCohort1N2IntroductionUnixPortSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/durablefile/relative_rename_unix.go",
+			"internal/durablefile/relative_rename_unix_test.go",
+			"internal/route/introduction/slot_history_unix.go",
+			"internal/route/introduction/slot_history_unix_test.go",
+			"internal/route/introduction/receiving_history_unix.go",
+			"internal/route/introduction/receiving_history_unix_test.go",
+			"internal/route/introduction/history_custody_unix_test.go",
+			"internal/route/introduction/history_write_unix_test.go",
+			"internal/route/introduction/registry_unix_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "windows"; selected != want {
+				t.Errorf("Unix-family Introduction port %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/route/introduction/slot_history_other.go",
+			"internal/route/introduction/receiving_history_other.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "windows"; selected != want {
+				t.Errorf("Introduction platform refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/route/introduction/slot_history_watch_linux.go",
+			"internal/route/introduction/history_crash_linux_amd64_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("Linux root-move watch boundary %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		selected, err := profile.MatchFile(path.Join(root, "internal/route/introduction"), "slot_history_watch_darwin.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := target == "darwin"; selected != want {
+			t.Errorf("macOS root-move watch on %s: %v, want %v", target, selected, want)
+		}
+	}
+}
+
 // P1-B batch 2 (#787, #691) de-tagged verified pure production files whose
 // composed symbols became portable in batch 1: the Node failure/admission
 // projections, the endpoint/funding composition and the shared reservation
@@ -1213,7 +1281,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return !zoneDependency
 	}
-	if source == "internal/route/introduction/receiving_history_linux.go" && dependency == modulePath+"/internal/admission/receiving" {
+	if (source == "internal/route/introduction/receiving_history_unix.go" || source == "internal/route/introduction/receiving_history_other.go") && dependency == modulePath+"/internal/admission/receiving" {
 		return true
 	}
 	if source == "internal/admission/issuance/result_declaration.go" && dependency == modulePath+"/internal/platform/artifacts" {
@@ -1301,7 +1369,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/route/bootstrap":     {"route/ardp", "route/channel"},
 		"internal/route/transport/tls": {"route/transport"},
 
-		"internal/route/introduction": {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission", "pathgrammar"},
+		"internal/route/introduction": {"admission/spending", "durablefile", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission", "pathgrammar"},
 		"internal/route/capsule":      {},
 		"internal/route/selection":    {"route", "network", "durablefile"},
 		"internal/route/role":         {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
@@ -1687,8 +1755,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	// The Unix-family inspection port admits the reviewed x/sys/unix
-	// directory-relative open only at its mechanism boundary (#850).
-	if source == "internal/durablefile/relative_open_unix.go" && dependency == "golang.org/x/sys/unix" {
+	// directory-relative open and atomic rename only at its mechanism boundary
+	// (#850; rename #853).
+	if (source == "internal/durablefile/relative_open_unix.go" || source == "internal/durablefile/relative_rename_unix.go") && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
 	// The macOS peer-credential refusal evidence test admits the reviewed
@@ -1904,6 +1973,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Shared owner-only root DACL enforcement", "internal/durablefile/owner_root_windows.go", "golang.org/x/sys/windows", true},
 		{"Unix-family inspection port admits reviewed Openat", "internal/durablefile/relative_open_unix.go", "golang.org/x/sys/unix", true},
 		{"macOS peer-credential refusal evidence uses reviewed LOCAL_PEERCRED", "internal/execution/worker/peercred_darwin_test.go", "golang.org/x/sys/unix", true},
+		{"Unix-family inspection port admits reviewed Renameat", "internal/durablefile/relative_rename_unix.go", "golang.org/x/sys/unix", true},
+		{"Introduction slot-history port composes the shared durable mechanism", "internal/route/introduction/slot_history_unix.go", modulePath + "/internal/durablefile", true},
 		{"document snapshot import composes the shared inspection mechanism", "internal/application/document/snapshot_file_unix.go", modulePath + "/internal/durablefile", true},
 		{"document snapshot import has no Network authority", "internal/application/document/snapshot_file_unix.go", modulePath + "/internal/network/state", false},
 		{"Owner-only root mechanism test verifies the physical DACL", "internal/durablefile/owner_root_windows_test.go", "golang.org/x/sys/windows", true},
@@ -1960,7 +2031,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"submission fixture parses sealed capsule", "cmd/ardents-next/route_submission_linux_test.go", modulePath + "/internal/route/capsule", true},
 		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/route/capsule", false},
 		{"submission consumes retained exclusions", "internal/route/introduction/submission.go", modulePath + "/internal/route", true},
-		{"Introduction history birth consumes only its genuine receiving owner", "internal/route/introduction/receiving_history_linux.go", modulePath + "/internal/admission/receiving", true},
+		{"Introduction history birth consumes only its genuine receiving owner", "internal/route/introduction/receiving_history_unix.go", modulePath + "/internal/admission/receiving", true},
 		{"Introduction cannot own receiving Grant", "internal/route/introduction/receiving.go", modulePath + "/internal/admission/receiving", false},
 		{"Introduction cannot call listener composition", "internal/route/introduction/receiving.go", modulePath + "/internal/route/receiver", false},
 		{"channel cannot import Admission", "internal/route/channel/session.go", modulePath + "/internal/admission", false},
