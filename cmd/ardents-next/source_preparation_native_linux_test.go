@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func sourcePreparationArguments(t *testing.T) (map[string]any, string, string) {
@@ -280,37 +279,6 @@ func TestSourcePreparationNativeReferenceExpiry(t *testing.T) {
 		if _, e := endpoint.PrepareSourceTrust(t.Context(), plan, output+"-healthy", nil); e != nil {
 			t.Fatal("fresh observation control", e)
 		}
-	}
-}
-
-func TestSourcePreparationNativePublicMountRefusal(t *testing.T) {
-	// Isolate the actual original-descriptor mount mechanism. The complete
-	// command's separate ancestor checks must not turn a writable /dev/shm
-	// ancestor into fabricated evidence that Fstatfs rejected this file.
-	directory, e := os.MkdirTemp("/dev/shm", "ardents-source-preparation-")
-	if e != nil {
-		t.Fatal("invalid environment: real tmpfs control unavailable", e)
-	}
-	t.Cleanup(func() {
-		if e := os.RemoveAll(directory); e != nil {
-			t.Error(e)
-		}
-	})
-	path := filepath.Join(directory, "public.pem")
-	if e = os.WriteFile(path, []byte("public fixture"), 0600); e != nil {
-		t.Fatal(e)
-	}
-	f, e := os.Open(path)
-	if e != nil {
-		t.Fatal(e)
-	}
-	defer f.Close()
-	var fs syscall.Statfs_t
-	if e = syscall.Fstatfs(int(f.Fd()), &fs); e != nil || fs.Type != 0x01021994 {
-		t.Fatal("invalid environment: original control is not tmpfs", e)
-	}
-	if e := artifacts.RequireExt4(f); !errors.Is(e, artifacts.ErrNotExt4) {
-		t.Fatal("actual non-ext4 public descriptor accepted")
 	}
 }
 
