@@ -679,7 +679,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/source_preparation_native_linux_test.go":
 			return local == "internal/endpoint" || local == "tests/e2e/source"
 		case "tests/e2e/node/processfixture/network_genesis_linux.go":
-			return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/network/epoch" || local == "tests/epochfixture/network"
+			return local == "internal/admission/issuance" || local == "internal/admission/quota" || local == "internal/admission/issuer" || local == "internal/network/epoch" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/source_native_linux_test.go":
 			return local == "internal/network/epoch" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/processresource" || local == "tests/epochfixture/network" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		case "tests/e2e/node/source_preparation_process_linux_test.go":

@@ -78,7 +78,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 						Capability: 2, Capacity: 1, PrivateKey: key},
 					RoleDomain: 3, Subrole: subrole,
 				})
-				certificates[id] = nativeRoleCertificate(t, key)
+				certificates[id] = processfixture.RoleCertificate(t, key)
 			}
 			var provisioned map[[32]byte][2]string
 			if retirement == "certificate" {
@@ -88,7 +88,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			prepareNativeIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
 			clock, closeClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }

@@ -82,7 +82,7 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 	clock, stopClock := processfixture.StartObservedClock(t)
 	defer stopClock()
 	network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
-	cert, key := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, member.PrivateKey))
+	cert, key := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
 	participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 	plan := map[string]any{
 		"network": network, "node_id": member.NodeID, "process_profile": role.profile,
@@ -117,7 +117,7 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 	case "role":
 		plan["node_id"] = other.NodeID
 	case "tls-key":
-		plan["certificate"], plan["private_key"] = processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, other.PrivateKey))
+		plan["certificate"], plan["private_key"] = processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, other.PrivateKey))
 	case "missing-hosting":
 		plan["hosting_root"] = filepath.Join(t.TempDir(), "missing")
 	case "foreign-store", "foreign-history":
