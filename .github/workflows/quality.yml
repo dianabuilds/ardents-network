@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 1f93e37c81199f64f980596db206f9f58812624d
+          ref: 039c35b154cfd009a0503b287c67ccbd549d0a66
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 1f93e37c81199f64f980596db206f9f58812624d
+          test "$(git rev-parse HEAD)" = 039c35b154cfd009a0503b287c67ccbd549d0a66
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04
@@ -37,6 +37,7 @@ jobs:
           go build -trimpath -buildvcs=false -ldflags=-w -o "$build_dir/ardents" ./cmd/ardents-next
           go test -c -race -tags node_process_native -o "$build_dir/node-e2e.test" ./tests/e2e/node
           go test -c -race -tags node_process_native -o "$build_dir/node-command.test" ./cmd/ardents-next
+          go test -c -race -tags node_process_native -o "$build_dir/node-owner.test" ./internal/node
           go test -c -race -tags node_process_native -o "$build_dir/node-resource.test" ./internal/processresource
           sudo -n install -m 0755 "$build_dir/ardents" "$build_dir/"*.test "$native_dir"
           digest() { result=$(sha256sum "$1"); printf '%s' "${result%% *}"; }
@@ -47,6 +48,8 @@ jobs:
             ARDENTS_NODE_NATIVE_TEST_SHA256="$(digest "$build_dir/node-command.test")" \
             ARDENTS_NODE_E2E_TEST="$native_dir/node-e2e.test" \
             ARDENTS_NODE_E2E_TEST_SHA256="$(digest "$build_dir/node-e2e.test")" \
+            ARDENTS_NODE_OWNER_TEST="$native_dir/node-owner.test" \
+            ARDENTS_NODE_OWNER_TEST_SHA256="$(digest "$build_dir/node-owner.test")" \
             ARDENTS_NODE_RESOURCE_TEST="$native_dir/node-resource.test" \
             ARDENTS_NODE_RESOURCE_TEST_SHA256="$(digest "$build_dir/node-resource.test")" \
             sh "scripts/node/${{ matrix.script }}" -timeout=3m

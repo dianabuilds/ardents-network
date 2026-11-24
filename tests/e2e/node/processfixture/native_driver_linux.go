@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package node
+package processfixture
 
 import (
 	"bytes"

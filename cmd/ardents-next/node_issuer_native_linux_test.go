@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	"os"
 	"os/exec"
@@ -37,7 +38,7 @@ func TestNativeIssuerOriginalFailureTCP(t *testing.T) {
 
 func testNativeIssuerWorkload(t *testing.T, fault string) {
 	t.Helper()
-	binary := nodefixture.PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, carrier, 1, false, true)
@@ -45,23 +46,23 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := nodefixture.StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			defer closeClock()
-			issuerClock, closeIssuerClock := nodefixture.StartObservedClock(t)
+			issuerClock, closeIssuerClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopIssuerClock := func() { clockOnce.Do(closeIssuerClock) }
 			defer stopIssuerClock()
 			seed := func() state.AuthorityDeclaration {
-				return nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
+				return processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			}
-			var peers []*nodefixture.NativeProcess
+			var peers []*processfixture.NativeProcess
 			var bootstrapPeers []*joinCommandProcess
 			var peerPlans []struct {
 				plan  map[string]any
 				index byte
 			}
 			var budgets []string
-			var original *nodefixture.NativeProcess
+			var original *processfixture.NativeProcess
 			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, f.profile.IssuerNodeID} {
 				certificate := certificates[id]
 				certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
@@ -78,7 +79,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				}
 				clear(key)
 				clear(encoded)
-				budget := nodefixture.ProcessBudget(t)
+				budget := processfixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				plan := map[string]any{"network": seed(), "node_id": id, "spend_root": t.TempDir(), "hosting_root": budget, "certificate": certPath, "private_key": keyPath,
 					"work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
@@ -90,7 +91,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 					plan["issuance"] = nodefixture.IssuerDeclaration(f.plan)
 					plan["process_profile"], plan["participation_root"], plan["retirement_wait_ms"] = processresource.IssuerProfile, filepath.Join(t.TempDir(), "participation"), 5000
 					plan["work"], plan["bootstrap_work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}
-					original = nodefixture.StartFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
+					original = processfixture.StartFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
 					continue
 				}
 				p := startJoinCommandProcess(t, t.Context(), binary, "route", "receive", "--config", hostingConfig(t, plan))
@@ -111,7 +112,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				}{plan, id[0]})
 			}
 			holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{2, 4, 1})
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1,
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1,
 				Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			budgets = append(budgets, plan.HostingRoot)
 			boot, err := startRouteBootstrap(context.Background(), plan, f.authority, holder)
@@ -146,7 +147,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			for _, prepared := range peerPlans {
 				prepared.plan["process_profile"], prepared.plan["participation_root"], prepared.plan["retirement_wait_ms"] = processresource.Profile, filepath.Join(t.TempDir(), "participation"), 5000
 				prepared.plan["work"] = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
-				peers = append(peers, nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, prepared.plan), prepared.index))
+				peers = append(peers, processfixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, prepared.plan), prepared.index))
 			}
 			ordinary, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
@@ -200,7 +201,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			default:
 				t.Fatal("unselected native Issuer failure", fault)
 			}
-			all := append([]*nodefixture.NativeProcess{original}, peers...)
+			all := append([]*processfixture.NativeProcess{original}, peers...)
 			signals := []string{"kill", "--kill-whom=main", "--signal=SIGINT"}
 			for _, p := range all {
 				if !p.Joined {

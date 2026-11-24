@@ -9,7 +9,6 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"os"
 	"os/exec"
@@ -25,6 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -94,7 +94,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := nodefixture.StartObservedClock(t)
+	clock, closeClock := processfixture.StartObservedClock(t)
 	var clockOnce sync.Once
 	joinClock := func() { clockOnce.Do(closeClock) }
 	defer joinClock()
@@ -118,7 +118,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 		t.Fatal("independent signed holder State", err)
 	}
 	local := t.TempDir()
-	budgetRoot := nodefixture.ProcessBudget(t)
+	budgetRoot := processfixture.ProcessBudget(t)
 	plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"),
 		HostingRoot: budgetRoot, Domain: 1, Deadline: time.Now().Add(35 * time.Second).UTC().Truncate(time.Second),
 		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}

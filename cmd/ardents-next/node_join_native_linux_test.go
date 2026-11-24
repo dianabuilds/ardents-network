@@ -15,6 +15,7 @@ import (
 	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	"io"
 	"net"
@@ -35,7 +36,7 @@ func TestNativeJoinUndercoverageBeforeSpendTCP(t *testing.T) {
 }
 
 func nativeJoinWorkload(t *testing.T, mode string) {
-	binary := nodefixture.PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			var provisioned map[[32]byte][2]string
@@ -55,11 +56,11 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := nodefixture.StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			processes := map[[32]byte]*nodefixture.NativeProcess{}
+			processes := map[[32]byte]*processfixture.NativeProcess{}
 			plans := map[[32]byte]map[string]any{}
 			before := map[[32]byte][]byte{}
 			for _, id := range [][32]byte{{20}, {21}} {
@@ -67,15 +68,15 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				if pair, ok := provisioned[id]; ok {
 					cert, key = pair[0], pair[1]
 				} else {
-					cert, key = nodefixture.WriteNativeCredential(t, certificates[id])
+					cert, key = processfixture.WriteNativeCredential(t, certificates[id])
 				}
 				work := uint64(32 << 20)
 				if mode == "undercoverage" {
 					work--
 				}
-				plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: work}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+				plan := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: work}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				sockets[id]()
-				processes[id] = nodefixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
+				processes[id] = processfixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
 				plans[id] = plan
 				before[id], err = os.ReadFile(filepath.Join(plan["spend_root"].(string), "closed-token-spends"))
 				if err != nil {
@@ -84,7 +85,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			}
 			makePlan := func(domain uint8) routePrefixPlan {
 				root := t.TempDir()
-				return routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), SourceInteriorRoot: filepath.Join(root, "source-interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: domain, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				return routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), SourceInteriorRoot: filepath.Join(root, "source-interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: domain, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			}
 			userPlan, publisherPlan := makePlan(1), makePlan(3)
 			userContext, err := newRouteJoinContext(t.Context(), userPlan, f.authority, userStock)
@@ -285,7 +286,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 					t.Fatal("unjoined original reservations", e, closeErr, snapshot.ReservedBytes)
 				}
 				// A separate invocation reopens exact roots and the same ephemeral endpoint.
-				fresh := nodefixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
+				fresh := processfixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), id[0])
 				fresh.Stop(t)
 				retained, e := os.ReadFile(filepath.Join(plan["spend_root"].(string), "closed-token-spends"))
 				if e != nil || !bytes.Equal(retained, after) {

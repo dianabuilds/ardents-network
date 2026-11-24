@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -28,6 +27,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 // The callback only delays observation after the actual committed file changes.
@@ -372,7 +372,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 		}
 	})
 	root := t.TempDir()
-	routePlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "introduction"), SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 4, Deadline: time.Now().Add(routeLimit).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	routePlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "introduction"), SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: processfixture.ProcessBudget(t), Domain: 4, Deadline: time.Now().Add(routeLimit).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	// An equal-lived outer caller is not the original operation identity. It
 	// must refuse before acquiring roots or spending this genuine Stock.
 	before := holder.Status()

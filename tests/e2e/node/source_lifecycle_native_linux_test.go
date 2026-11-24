@@ -32,6 +32,7 @@ import (
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -54,10 +55,10 @@ import (
 // executing a replaced program binary belongs to that installed sequence. One
 // fixture operator, not independent participants.
 
-func launchRetainedSource(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
+func launchRetainedSource(t *testing.T, binary, plan string) *processfixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-source-retained-%d-%d.service", os.Getpid(), time.Now().UnixNano())
-	return nodefixture.Launch(t, unit, "retained Source original diagnostic", "original retained Source stop unavailable",
+	return processfixture.Launch(t, unit, "retained Source original diagnostic", "original retained Source stop unavailable",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "source", "serve-retained", plan)
 }
@@ -70,7 +71,7 @@ type retainedSourceTerminal struct {
 // joinRetainedSource optionally signals the original main process, then joins
 // the actual command and decodes its terminal report. An empty signal waits for
 // a self-refusing invocation. Killed processes may leave no report at all.
-func joinRetainedSource(t *testing.T, p *nodefixture.NativeProcess, signal string) (int, retainedSourceTerminal, []byte) {
+func joinRetainedSource(t *testing.T, p *processfixture.NativeProcess, signal string) (int, retainedSourceTerminal, []byte) {
 	t.Helper()
 	if signal != "" {
 		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.Unit).Run(); err != nil {
@@ -103,17 +104,17 @@ func joinRetainedSource(t *testing.T, p *nodefixture.NativeProcess, signal strin
 }
 
 func TestNativeSourceRetainedLifecycle(t *testing.T) {
-	binary := nodefixture.PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	binaryBytes, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := nodefixture.StartObservedClock(t)
+	clock, closeClock := processfixture.StartObservedClock(t)
 	defer closeClock()
 
 	parent := t.TempDir()
@@ -133,7 +134,7 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	}
 
 	server, client, _, rootPEM, serverPin, clientPin := sourcefixture.NativeTLS(t)
-	certPath, keyPath := nodefixture.WriteNativeCredential(t, server)
+	certPath, keyPath := processfixture.WriteNativeCredential(t, server)
 	rootPath := filepath.Join(parent, "client-ca.pem")
 	if err := os.WriteFile(rootPath, rootPEM, 0600); err != nil {
 		t.Fatal(err)
@@ -192,14 +193,14 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 			}
 		}
 	}
-	waitListening := func(p *nodefixture.NativeProcess, phase string) {
+	waitListening := func(p *processfixture.NativeProcess, phase string) {
 		t.Helper()
 		var ready map[string]string
 		if err := json.NewDecoder(p.Stdout).Decode(&ready); err != nil || ready["operation"] != "source.serve" || ready["phase"] != "listening" {
 			t.Fatal(phase, "retained Source startup", ready, err)
 		}
 	}
-	cleanStop := func(p *nodefixture.NativeProcess, phase string) {
+	cleanStop := func(p *processfixture.NativeProcess, phase string) {
 		t.Helper()
 		code, terminal, _ := joinRetainedSource(t, p, "SIGTERM")
 		if code != 130 || terminal.Phase != "joined" || terminal.Outcome != "canceled" {

@@ -8,7 +8,6 @@ import (
 	"errors"
 	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os"
 	"path/filepath"
 	"sync"
@@ -27,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 // This uses signed current State, genuine Publisher allocation/blind issuance,
@@ -139,7 +139,7 @@ func TestRouteGenuineRegistrationTCP(t *testing.T) {
 					}
 				}()
 				root := t.TempDir()
-				plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 4, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 4, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 				var prefix routeHandle
 				var err error
 				if mode == "caller-deferred-presentation" {

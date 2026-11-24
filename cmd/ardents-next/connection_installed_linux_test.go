@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
 	"path/filepath"
@@ -37,6 +36,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 // nonceResultInterruptionOnly checks every retained error leaf. A deliberate
@@ -232,7 +232,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 	end := time.Now().Add(55 * time.Second).UTC().Truncate(time.Second)
 	routePlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "introduction"),
 		SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"),
-		HostingRoot: nodefixture.ProcessBudget(t), Domain: 4, Deadline: end,
+		HostingRoot: processfixture.ProcessBudget(t), Domain: 4, Deadline: end,
 		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	published, err := endpointpublisher.Open(publisherOperation.Context(), publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(f.authority), holder, publisherOperation)
 	if err != nil {
@@ -690,7 +690,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	root := t.TempDir()
 	end := time.Now().Add(65 * time.Second).UTC().Truncate(time.Second)
 	routePlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "introduction"),
-		SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: nodefixture.ProcessBudget(t),
+		SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: processfixture.ProcessBudget(t),
 		Domain: 4, Deadline: end, Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	publisherAuthority := publisherNetwork.authority
 	if controlGate != nil && controlGate.role == "publisher" {
@@ -1508,7 +1508,7 @@ func installedConnectionInitiatorObserved(t *testing.T, f *networkAdmissionFixtu
 			t.Error(err)
 		}
 	})
-	budget, err := hosting.Open(nodefixture.ProcessBudget(t))
+	budget, err := hosting.Open(processfixture.ProcessBudget(t))
 	if err != nil {
 		t.Fatal(err)
 	}

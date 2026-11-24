@@ -21,18 +21,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 // Actual command refusals at distinct startup acquisitions. Prepared durable
 // bytes remain unchanged and acquired roots/producer return only after join.
 func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
-	binary := PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "role", "tls-key", "missing-results"} {
 				t.Run(fault, func(t *testing.T) {
-					spec, issuerPlan, inventory := PrepareNetworkGenesis(t, t.TempDir())
+					spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 					listener, err := net.Listen("tcp", "127.0.0.1:0")
 					if err != nil {
 						t.Fatal(err)
@@ -46,15 +47,15 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					member, foreign := bundle.Nodes[0], bundle.Nodes[1]
 					id := member.NodeID
 					prepareNativeIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
-					clock, closeClock := StartObservedClock(t)
+					clock, closeClock := processfixture.StartObservedClock(t)
 					defer closeClock()
-					network := SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+					network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 					key := member.PrivateKey
 					if fault == "tls-key" {
 						key = foreign.PrivateKey
 					}
-					certPath, keyPath := WriteNativeCredential(t, nativeRoleCertificate(t, key))
-					participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), ProcessBudget(t)
+					certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, key))
+					participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 					input := IssuerDeclaration(issuerPlan)
 					plan := map[string]any{"network": network, "node_id": id, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "issuance": input,
 						"work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
@@ -76,7 +77,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					path := writeNodePlan(t, plan)
-					p := LaunchFreshRole(t, "issuer", binary, path, 0)
+					p := processfixture.LaunchFreshRole(t, "issuer", binary, path, 0)
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
 					err = p.Wait()
@@ -88,7 +89,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 						t.Fatal("startup refusal lost finite projection", event, decodeErr)
 					}
 					if expected == 1 {
-						RequireStartupFailure(t, event["first_failure"])
+						processfixture.RequireStartupFailure(t, event["first_failure"])
 					}
 					if expected == 2 && (decodeErr == nil || len(event) != 0) {
 						t.Fatal("wrong profile reached accepting composition", event)

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -27,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 // Each observation returns genuine signed Network facts. Only scheduling of
@@ -102,7 +102,7 @@ func TestRoutePrefixOriginalCallerHandoffTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				budget, err := hosting.Open(nodefixture.ProcessBudget(t))
+				budget, err := hosting.Open(processfixture.ProcessBudget(t))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -324,7 +324,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				budget, err := hosting.Open(nodefixture.ProcessBudget(t))
+				budget, err := hosting.Open(processfixture.ProcessBudget(t))
 				if err != nil {
 					t.Fatal(err)
 				}

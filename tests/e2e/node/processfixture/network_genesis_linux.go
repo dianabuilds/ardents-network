@@ -1,4 +1,4 @@
-package node
+package processfixture
 
 import (
 	"crypto/ed25519"

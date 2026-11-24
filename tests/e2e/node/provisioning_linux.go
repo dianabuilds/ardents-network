@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -39,7 +40,7 @@ func ProvisionNodeCertificates(t testing.TB, spec *networkfixture.ClosedSpec, ce
 	if closeErr := p.Close(); accessErr != nil || closeErr != nil {
 		t.Fatal("invalid root-controlled ancestors", accessErr, closeErr)
 	}
-	command := PinnedCommand(t)
+	command := processfixture.PinnedCommand(t)
 	run := func(args ...string) {
 		t.Helper()
 		if raw, err := exec.CommandContext(t.Context(), command, append([]string{"network"}, args...)...).CombinedOutput(); err != nil {

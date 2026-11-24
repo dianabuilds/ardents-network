@@ -5,6 +5,7 @@ package node
 import (
 	"bytes"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 
 // Create genuine scheduling pressure after successful work, without changing
 // the selected cgroup/Go/FD envelope or placing another process in the role leaf.
-func ExerciseNativeCPUPressure(t testing.TB, original *NativeProcess) {
+func ExerciseNativeCPUPressure(t testing.TB, original *processfixture.NativeProcess) {
 	t.Helper()
 	if _, err := exec.LookPath("taskset"); err != nil {
 		t.Fatal("selected native CPU-affinity prerequisite unavailable", err)

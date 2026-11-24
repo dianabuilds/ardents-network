@@ -31,7 +31,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -56,7 +56,7 @@ func TestNativeIntroductionOriginalCommandFailureTCP(t *testing.T) {
 }
 
 func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
-	commandBinary := nodefixture.PinnedCommand(t)
+	commandBinary := processfixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := publicationRouteNetwork(t, carrier)
@@ -121,23 +121,23 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := nodefixture.StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
+			cert, key := processfixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 			historyRoot, spendRoot := t.TempDir(), t.TempDir()
 			if err := os.Chmod(historyRoot, 0700); err != nil {
 				t.Fatal(err)
 			}
-			nodePlan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{25}, "process_profile": processresource.IntroductionProfile,
-				"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spendRoot, "hosting_root": nodefixture.ProcessBudget(t), "introduction_root": historyRoot,
+			nodePlan := map[string]any{"network": processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{25}, "process_profile": processresource.IntroductionProfile,
+				"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spendRoot, "hosting_root": processfixture.ProcessBudget(t), "introduction_root": historyRoot,
 				"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			if mode == "undercoverage" {
 				nodePlan["work"] = hosting.Traffic{Tx: (1 << 20) - 1}
 			}
 			sockets[[32]byte{25}]()
-			process := nodefixture.StartFreshRole(t, "introduction", commandBinary, hostingConfig(t, nodePlan), 25)
+			process := processfixture.StartFreshRole(t, "introduction", commandBinary, hostingConfig(t, nodePlan), 25)
 			plan := routePrefixPlan{Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			root := t.TempDir()
 			selected, err := selection.Open(selection.Config{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), Domain: 4, Current: f.authority.current})
@@ -149,7 +149,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 					t.Error(err)
 				}
 			}()
-			budget, err := hosting.Open(nodefixture.ProcessBudget(t))
+			budget, err := hosting.Open(processfixture.ProcessBudget(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -208,7 +208,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			}()
 			sourceRoot := t.TempDir()
 			sourcePlan := plan
-			sourcePlan.EntryRoot, sourcePlan.InteriorRoot, sourcePlan.HostingRoot, sourcePlan.Domain = filepath.Join(sourceRoot, "entry"), filepath.Join(sourceRoot, "interior"), nodefixture.ProcessBudget(t), 1
+			sourcePlan.EntryRoot, sourcePlan.InteriorRoot, sourcePlan.HostingRoot, sourcePlan.Domain = filepath.Join(sourceRoot, "entry"), filepath.Join(sourceRoot, "interior"), processfixture.ProcessBudget(t), 1
 			source, err := startRoutePrefix(t.Context(), sourcePlan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)

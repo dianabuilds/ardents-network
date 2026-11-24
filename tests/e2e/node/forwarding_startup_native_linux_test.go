@@ -20,14 +20,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
 func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
-	binary := PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			spec, _, _ := PrepareNetworkGenesis(t, t.TempDir())
+			spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 			listener, err := net.Listen("tcp", "127.0.0.1:0")
 			if err != nil {
 				t.Fatal(err)
@@ -40,7 +41,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			}
 			member, foreign := bundle.Nodes[1], bundle.Nodes[0]
 			family := sha256.Sum256([]byte(member.Family))
-			clock, closeClock := StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			defer closeClock()
 			for index, fault := range []string{"wrong-key", "wrong-role", "shared-root", "wrong-profile", "hosting-open", "spend-open", "listener-open", "identity-conflict", "family-conflict", "state-conflict", "expired-member"} {
 				t.Run(fault, func(t *testing.T) {
@@ -48,7 +49,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					if fault == "wrong-key" {
 						key = foreign.PrivateKey
 					}
-					certPath, keyPath := WriteNativeCredential(t, nativeRoleCertificate(t, key))
+					certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, key))
 					initial := bundle
 					var expires time.Time
 					if fault == "expired-member" {
@@ -65,7 +66,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 							t.Fatal(err)
 						}
 					}
-					networkPlan := SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), initial, clock)
+					networkPlan := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), initial, clock)
 					if fault == "state-conflict" {
 						changed := spec
 						changed.IssuanceAuthority[0] ^= 1
@@ -97,7 +98,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					}
 					participation := filepath.Join(t.TempDir(), "participation")
 					spend := t.TempDir()
-					budget := ProcessBudget(t)
+					budget := processfixture.ProcessBudget(t)
 					configuredBudget := budget
 					id := member.NodeID
 					if fault == "wrong-role" {
@@ -147,7 +148,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					// The original reserved socket deliberately remains occupied. Only
 					// listener-open reaches that late acquisition; earlier faults must
 					// refuse without creating this invocation's accepting role.
-					process := LaunchFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), byte(50+index))
+					process := processfixture.LaunchFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), byte(50+index))
 					var event map[string]string
 					decodeErr := json.NewDecoder(process.Stdout).Decode(&event)
 					waitErr := process.Wait()
@@ -228,11 +229,11 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			if err := listener.Close(); err != nil {
 				t.Fatal(err)
 			}
-			certPath, keyPath := WriteNativeCredential(t, nativeRoleCertificate(t, member.PrivateKey))
-			plan := map[string]any{"network": SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), "node_id": member.NodeID, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+			certPath, keyPath := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, member.PrivateKey))
+			plan := map[string]any{"network": processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), "node_id": member.NodeID, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			// Genuine restored-input control: this same signed member, Carrier and
 			// native envelope must start after removing the declared fault.
-			control := StartFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), 80)
+			control := processfixture.StartFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), 80)
 			control.Stop(t)
 		})
 	}

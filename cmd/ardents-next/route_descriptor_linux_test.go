@@ -13,7 +13,6 @@ import (
 	"encoding/binary"
 	"encoding/pem"
 	"errors"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
 	"os"
@@ -39,6 +38,7 @@ import (
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -122,7 +122,7 @@ func testRouteGenuineDescriptor(t *testing.T, foreignProfileControl bool) {
 				})
 			}
 			root := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)
@@ -363,7 +363,7 @@ func TestRouteCompiledDescriptorTCP(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			clock, closeClock := nodefixture.StartObservedClock(t)
+			clock, closeClock := processfixture.StartObservedClock(t)
 			defer closeClock()
 			seed := func() networkAuthorityPlan {
 				var key [32]byte
@@ -408,7 +408,7 @@ func TestRouteCompiledDescriptorTCP(t *testing.T) {
 				}
 				clear(key)
 				clear(encoded)
-				budget := nodefixture.ProcessBudget(t)
+				budget := processfixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				root := t.TempDir()
 				if err := os.Chmod(root, 0700); err != nil {
@@ -437,7 +437,7 @@ func TestRouteCompiledDescriptorTCP(t *testing.T) {
 			if err := os.Chmod(holderRoot, 0700); err != nil {
 				t.Fatal(err)
 			}
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			budgets = append(budgets, plan.HostingRoot)
 			send, closeHolder := admissionLocalConsole(t, "holder", map[string]any{"root": holderRoot, "network": seed(), "role": admission.AllocationUser, "route": plan})
 			routeConsoleDescriptorStock(t, f, send)
@@ -697,7 +697,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 				})
 			}
 			root := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)

@@ -9,7 +9,6 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
 	"os"
@@ -36,6 +35,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 type routeIssuerOutputConn struct {
@@ -454,7 +454,7 @@ func TestRouteIssuerSequentialWaitsForReservationReturnTCP(t *testing.T) {
 	holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{4, 8, 0})
 	root := t.TempDir()
 	end, _ := ctx.Deadline()
-	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: end.UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: end.UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	boot, err := startRouteBootstrap(ctx, plan, f.authority, holder)
 	if err != nil {
 		t.Fatal(err)
@@ -535,7 +535,7 @@ func testRouteHolderIssuerRetirement(t *testing.T, profile transport.CarrierProf
 	bootstrapHolds, bootstrapReturns := &x.bootstrapHolds, &x.bootstrapReturns
 	admissions, ordinaryIssues, bootstrapIssues := &x.admissions, &x.ordinaryIssues, &x.bootstrapIssues
 	local := t.TempDir()
-	plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	boot, err := startRouteBootstrap(t.Context(), plan, f.authority, holder)
 	if err != nil {
 		t.Fatal("actual holder bootstrap opening", err)
@@ -654,7 +654,7 @@ func TestRouteIssuerExclusiveWorkJoinsBeforeReturnTCP(t *testing.T) {
 				for i := range holders {
 					holders[i] = routePermissionStock(t, f, admission.AllocationUser, [3]uint32{4, 8, 0})
 					local := t.TempDir()
-					plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+					plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 					boot, err := startRouteBootstrap(t.Context(), plan, f.authority, holders[i])
 					if err != nil {
 						t.Fatal("genuine bootstrap", err)
@@ -824,7 +824,7 @@ func routeIssuerRetirementCases(t *testing.T, cancelReceiver bool) {
 				f := x.network
 				holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{2, 8, 0})
 				local := t.TempDir()
-				plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 				boot, err := startRouteBootstrap(t.Context(), plan, f.authority, holder)
 				if err != nil {
 					t.Fatal("bootstrap", err)
@@ -951,7 +951,7 @@ func TestRouteIssuerOriginalCallerAtVerifiedDepositTCP(t *testing.T) {
 			f := x.network
 			holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{2, 8, 0})
 			local := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			boot, err := startRouteBootstrap(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)
@@ -1096,7 +1096,7 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionTCP(t *testing.T)
 				t.Fatal(err)
 			}
 			local := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			boot, err := startRouteBootstrap(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)

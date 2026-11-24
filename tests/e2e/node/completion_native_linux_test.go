@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -51,9 +52,9 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 
 func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 	t.Helper()
-	binary := PinnedCommand(t)
+	binary := processfixture.PinnedCommand(t)
 	t.Run(epoch.CarrierClosedTCP, func(t *testing.T) {
-		spec, issuerPlan, inventory := PrepareNetworkGenesis(t, t.TempDir())
+		spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)
@@ -71,9 +72,9 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		clock, stopClock := StartObservedClock(t)
+		clock, stopClock := processfixture.StartObservedClock(t)
 		defer stopClock()
-		network := SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+		network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 		config, err := network.Config()
 		if err != nil {
 			t.Fatal(err)
@@ -95,11 +96,11 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 			t.Fatal(err)
 		}
 
-		cert, key := WriteNativeCredential(t, nativeRoleCertificate(t, spec.Nodes[index].PrivateKey))
+		cert, key := processfixture.WriteNativeCredential(t, nativeRoleCertificate(t, spec.Nodes[index].PrivateKey))
 		participation := filepath.Join(t.TempDir(), "participation")
 		plan := map[string]any{
 			"network": network, "node_id": id, "process_profile": role.profile,
-			"participation_root": participation, "spend_root": t.TempDir(), "hosting_root": ProcessBudget(t),
+			"participation_root": participation, "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t),
 			"certificate": cert, "private_key": key, "work": role.work,
 			"termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1,
 		}
@@ -118,7 +119,7 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 		if err := listener.Close(); err != nil {
 			t.Fatal(err)
 		}
-		process := StartFreshRole(t, role.name, binary, writeNodePlan(t, plan), 91)
+		process := processfixture.StartFreshRole(t, role.name, binary, writeNodePlan(t, plan), 91)
 
 		journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: participation, Clock: time.Now})
 		if err != nil {
@@ -167,7 +168,7 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 	})
 }
 
-func waitForUnavailableCompletion(t *testing.T, process *NativeProcess) {
+func waitForUnavailableCompletion(t *testing.T, process *processfixture.NativeProcess) {
 	t.Helper()
 	timeout := time.NewTimer(500 * time.Millisecond)
 	defer timeout.Stop()
@@ -187,7 +188,7 @@ func waitForUnavailableCompletion(t *testing.T, process *NativeProcess) {
 	}
 }
 
-func requireUnavailableCompletion(t *testing.T, process *NativeProcess, role string) {
+func requireUnavailableCompletion(t *testing.T, process *processfixture.NativeProcess, role string) {
 	t.Helper()
 	waitErr := process.Wait()
 	var exit *exec.ExitError

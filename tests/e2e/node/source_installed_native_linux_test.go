@@ -30,6 +30,7 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -272,7 +273,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	}()
 	t.Cleanup(func() { close(clockStop); <-clockJoined })
 
-	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
