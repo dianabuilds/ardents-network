@@ -103,7 +103,7 @@ func nativeDescriptorOperationChild(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	p := plan.Original
-	config, err := networkStateConfig(&p.Network)
+	config, err := p.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +501,7 @@ func nativeIntroductionOperationChild(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	p := plan.Original
-	config, err := networkStateConfig(&p.Network)
+	config, err := p.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -898,7 +898,7 @@ func nativeIssuerOperationChild(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	p := plan.Original
-	config, err := networkStateConfig(&p.Network)
+	config, err := p.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1553,7 +1553,7 @@ func nativeJoinOperationChild(t *testing.T, path string) {
 		t.Fatal(err)
 	}
 	p := plan.Original
-	config, err := networkStateConfig(&p.Network)
+	config, err := p.Network.Config()
 	if err != nil {
 		t.Fatal(err)
 	}

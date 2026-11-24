@@ -66,7 +66,7 @@ type sourceInstalledStand struct {
 	unit              []byte
 	uid               int
 	authority         *consumerReleaseAuthority
-	networkPlan       networkAuthorityPlan
+	networkPlan       state.AuthorityDeclaration
 	clientConfig      source.Config
 	bundle            networkfixture.Closed
 	authorities       map[[32]byte]ed25519.PublicKey
@@ -310,7 +310,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	if err := os.Chown(stand.keyPath, stand.uid, stand.uid); err != nil {
 		t.Fatal(err)
 	}
-	stand.networkPlan = networkAuthorityPlan{Root: stand.stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
+	stand.networkPlan = state.AuthorityDeclaration{Root: stand.stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
 	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&stand.networkPlan), ProcessProfile: "ardents-source-process-v1",
 		ParticipationRoot: stand.participationRoot, Address: stand.address, Certificate: stand.certPath, PrivateKey: stand.keyPath, ClientRoot: stand.caPath, ClientPins: [][32]byte{clientPin}}
 	planRaw, err := json.Marshal(plan)
@@ -342,7 +342,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	if out, err := runAsSource(t, stand.program, "source", "prepare-state", stand.planPath, stand.bundlePath); err == nil {
 		t.Fatal("repeated prepare-state adopted non-vacant roots", string(out))
 	}
-	config, err := networkStateConfig(&stand.networkPlan)
+	config, err := stand.networkPlan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -584,7 +584,7 @@ func installedProducerPresent(t *testing.T, stand *sourceInstalledStand, want bo
 
 func reopenInstalledState(t *testing.T, stand *sourceInstalledStand) {
 	t.Helper()
-	config, err := networkStateConfig(&stand.networkPlan)
+	config, err := stand.networkPlan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}

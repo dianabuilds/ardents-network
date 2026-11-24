@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,7 +107,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			var clockOnce sync.Once
 			stopIssuerClock := func() { clockOnce.Do(closeIssuerClock) }
 			defer stopIssuerClock()
-			seed := func() networkAuthorityPlan { return seedNativeNodeState(t, f, bundle, clock) }
+			seed := func() state.AuthorityDeclaration { return seedNativeNodeState(t, f, bundle, clock) }
 			var peers []*nativeForwardingProcess
 			var bootstrapPeers []*joinCommandProcess
 			var peerPlans []struct {
