@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	"io"
 	"os"
 	"os/exec"
@@ -26,7 +27,7 @@ import (
 
 func initialKeyArguments(t *testing.T, count int) (string, string) {
 	t.Helper()
-	parent := signingNativeParent(t)
+	parent := sourcefixture.SigningWorkspace(t)
 	plan, root := filepath.Join(parent, "plan.json"), filepath.Join(parent, "keys")
 	raw := fmt.Sprintf(`{"schema":"ardents-initial-keys-plan-v1","operation":"prepare-initial-keys","node_count":%d}`, count)
 	if e := os.WriteFile(plan, []byte(raw), 0600); e != nil {
@@ -159,7 +160,7 @@ func TestNetworkSigningInitialKeysStateChain(t *testing.T) {
 		paths[hex.EncodeToString(key.Public().(ed25519.PublicKey))] = filepath.Join(root, name)
 	}
 	runNetworkPreparedStateChain(t, func(t *testing.T, purpose string, public any, key ed25519.PrivateKey, message []byte) ([]byte, [][]byte) {
-		parent := signingNativeParent(t)
+		parent := sourcefixture.SigningWorkspace(t)
 		planPath, prepared, destination := filepath.Join(parent, "plan"), filepath.Join(parent, "prepared"), filepath.Join(parent, "signed")
 		operation := "sign-initial-" + purpose
 		declaration := signingDeclaration(t, purpose, public, time.Now().UTC().Truncate(time.Second))

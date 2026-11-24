@@ -14,21 +14,19 @@ import (
 )
 
 func runSourceInspection(parent context.Context, args []string, out, diagnostic io.Writer) int {
-	if len(args) != 10 {
-		fmt.Fprintln(diagnostic, "usage: ardents-next source inspect-latest SERVE_PLAN CLIENT_CERT CLIENT_KEY SERVER_CA SERVER_NAME SERVER_KEY_PIN SOURCE_ID FAMILY HANDLE MATERIAL_INDEX")
-		return 2
+	if parent == nil || len(args) != 10 {
+		return writeInspectionDiagnostic(diagnostic, 2, "usage: ardents-next source inspect-latest SERVE_PLAN CLIENT_CERT CLIENT_KEY SERVER_CA SERVER_NAME SERVER_KEY_PIN SOURCE_ID FAMILY HANDLE MATERIAL_INDEX")
 	}
+
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 	request, err := sourceInspectionRequest(args)
 	if err != nil {
-		fmt.Fprintln(diagnostic, "source inspection refused")
-		return 1
+		return writeInspectionDiagnostic(diagnostic, 1, "source inspection refused")
 	}
 	response, err := inspection.InspectLatest(ctx, request)
 	if err != nil {
-		fmt.Fprintln(diagnostic, "source inspection refused")
-		return 1
+		return writeInspectionDiagnostic(diagnostic, 1, "source inspection refused")
 	}
 	raw, err := json.Marshal(struct {
 		Operation    string   `json:"operation"`
@@ -40,6 +38,13 @@ func runSourceInspection(parent context.Context, args []string, out, diagnostic 
 		return 1
 	}
 	return 0
+}
+
+func writeInspectionDiagnostic(diagnostic io.Writer, code int, message string) int {
+	if _, err := fmt.Fprintln(diagnostic, message); err != nil {
+		return 2
+	}
+	return code
 }
 
 func sourceInspectionRequest(args []string) (inspection.Request, error) {

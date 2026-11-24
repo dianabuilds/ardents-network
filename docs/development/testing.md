@@ -3372,7 +3372,7 @@ accepts signed initial State and empty participation once, and a repeat
 leaves both histories intact.
 
 The `source_installed_native` build tag selects
-`cmd/ardents-next/source_installed_native_linux_test.go`
+`tests/e2e/node/source_installed_native_linux_test.go`
 (`TestNativeSourceInstalledLifecycle`). It is a real-host qualification run
 under a root driver on an admitted Ubuntu/systemd manager (systemd 249/255,
 `/usr/bin/busctl --system`, cgroup v2, kernel supplying the processresource
@@ -3971,24 +3971,19 @@ root, installed worker or Service — and is compile-checked cross-platform via
 `installed-tag-compile-check`. The pure path/name policy remains separately
 covered by `TestManagerCgroupControlTargetPolicy`.
 
-### Compile-checked-only installed replacement/latency gates (#773 honest surface)
+### Installed Endpoint latency qualification
 
-`TestSourceReplacementReloadCancellationNative` (`cmd/ardents-next`,
-`network_signing_native`) and the cold/warm latency pair
-`TestNativeEndpointColdWarmLatency` (`cmd/ardents-next`) +
-`TestNativeEndpointColdWarmLatencyParticipant` (`internal/endpoint`,
-`endpoint_launch_native`) are installed real-host gates, not offline signing
-controls. The replacement cut ptrace-observes the genuine
-`installation replace-source` command's systemd Reload socket and requires a live
-installed Source and system manager; the latency driver requires
-`/usr/bin/busctl --system`, a loaded `ardents-endpoint.service` qualification unit
-and a platform-led installed root. They cannot run in the disposable diagnostic
-container, so they have no automated executed make lane: they are
-compile-checked-only (the replacement cut via `network-signing-compile-check`, the
-latency pair via `platform-installed-compile-check`) and are executed solely by an
-explicit manual root-driver run on an admitted Ubuntu/systemd host. Their
-native-test coverage counts in the deadcode analysis, which is compile evidence,
-not executed proof.
+The cold/warm latency pair uses `TestNativeEndpointColdWarmLatency` in
+`cmd/ardents-next` and `TestNativeEndpointColdWarmLatencyParticipant` in
+`internal/endpoint`, selected by `endpoint_launch_native`. The driver requires
+a real Ubuntu/systemd host, `/usr/bin/busctl --system`, a loaded
+`ardents-endpoint.service` qualification unit and a platform-led installed root.
+`make platform-installed-compile-check` compiles the pair. An explicit native
+root-driver run provides executed evidence.
+
+The Source replacement-cut test for the retired `installation replace-source`
+command was removed. The maintained installed Source process profile covers
+stop, forward program change, startup and failed-unit recovery through systemd.
 
 ### Descriptor read-only Store inspection mechanism (retained)
 

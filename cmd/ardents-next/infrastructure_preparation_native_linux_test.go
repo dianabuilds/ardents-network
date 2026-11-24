@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +22,7 @@ import (
 )
 
 func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
-	parent := signingNativeParent(t)
+	parent := sourcefixture.SigningWorkspace(t)
 	binary, err := os.ReadFile(compiledCommand(t))
 	if err != nil {
 		t.Fatal(err)
@@ -102,7 +103,7 @@ func TestNetworkSigningInfrastructureRoleInventories(t *testing.T) {
 	digest := func(raw []byte) string { return fmt.Sprintf("%x", sha256.Sum256(raw)) }
 	for _, role := range []string{"source", "forwarding", "issuer", "descriptor", "introduction", "join"} {
 		t.Run(role, func(t *testing.T) {
-			parent := signingNativeParent(t)
+			parent := sourcefixture.SigningWorkspace(t)
 			write := func(path string, contents []byte) {
 				t.Helper()
 				if err := os.WriteFile(path, contents, 0600); err != nil {
@@ -189,7 +190,7 @@ func TestNetworkSigningInfrastructureRoleInventories(t *testing.T) {
 }
 
 func TestNetworkSigningInfrastructureRefusesNonExt4Input(t *testing.T) {
-	destination := filepath.Join(signingNativeParent(t), "output")
+	destination := filepath.Join(sourcefixture.SigningWorkspace(t), "output")
 	parent, err := os.MkdirTemp("/run", "ardents-public-input-")
 	if err != nil {
 		t.Fatalf("invalid environment: protected /run fixture: %v", err)
@@ -215,7 +216,7 @@ func TestNetworkSigningInfrastructureRefusesNonExt4Input(t *testing.T) {
 func TestNetworkSigningInfrastructureReobservesOutputMetadata(t *testing.T) {
 	for _, fault := range []string{"group", "modification-time"} {
 		t.Run(fault, func(t *testing.T) {
-			parent := signingNativeParent(t)
+			parent := sourcefixture.SigningWorkspace(t)
 			input := filepath.Join(parent, "public")
 			if err := os.WriteFile(input, []byte("public bytes"), 0600); err != nil {
 				t.Fatal(err)
@@ -249,7 +250,7 @@ func TestNetworkSigningInfrastructureReobservesOutputMetadata(t *testing.T) {
 func TestNetworkSigningInfrastructureOriginalCustodyRefusesMutationAndLateClose(t *testing.T) {
 	for _, stage := range []string{"before-file", "written", "commit"} {
 		t.Run(stage, func(t *testing.T) {
-			parent := signingNativeParent(t)
+			parent := sourcefixture.SigningWorkspace(t)
 			program, template := filepath.Join(parent, "program"), filepath.Join(parent, "template")
 			if err := os.WriteFile(program, []byte("public program"), 0600); err != nil {
 				t.Fatal(err)

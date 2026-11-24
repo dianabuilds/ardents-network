@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package command
 
 import (
 	"bytes"
@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	sourcecommand "github.com/dianabuilds/ardents-network/internal/network/source/command"
 	"github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
@@ -46,7 +45,7 @@ func TestSourceNativeOutputLossAndBackpressureAreFinite(t *testing.T) {
 				}
 			}
 			started := time.Now()
-			err = sourcecommand.Events(writer, io.Discard)(t.Context(), serving.Event{Phase: "listening", Outcome: "original-source"})
+			err = Events(writer, io.Discard)(t.Context(), serving.Event{Phase: "listening", Outcome: "original-source"})
 			if fault == "peer-close" && !errors.Is(err, syscall.EPIPE) {
 				t.Fatal("original output cause lost", err)
 			}
@@ -129,3 +128,13 @@ func TestSourceCallerCancellationDuringBlockedReadyOutputRetainsCaller(t *testin
 type sourceFailureWriter func([]byte) (int, error)
 
 func (writer sourceFailureWriter) Write(raw []byte) (int, error) { return writer(raw) }
+
+type sourceLifetime interface {
+	Current() (state.Snapshot, error)
+	Wait(context.Context) error
+	Close() error
+}
+
+func superviseSource(ctx context.Context, owner sourceLifetime, check func() error, deny context.CancelFunc, out, diagnostic io.Writer, joinInputs func() error) error {
+	return serving.Supervise(ctx, owner, check, deny, Events(out, diagnostic), joinInputs)
+}

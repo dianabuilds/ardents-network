@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	"io"
 	"net"
 	"os"
@@ -33,7 +34,7 @@ func nativeCertificateArguments(t *testing.T) []string {
 	}
 	run("network", "prepare-initial-keys", keyPlan, keyRoot)
 	keys := verifyInitialKeys(t, keyRoot, 1, nil)
-	parent := signingNativeParent(t)
+	parent := sourcefixture.SigningWorkspace(t)
 	p := preparationRecordPlan(ed25519.PublicKey(keys[1][32:]))
 	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)

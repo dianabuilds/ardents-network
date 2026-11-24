@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package command
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
@@ -32,8 +33,8 @@ import (
 // the signed material and owns its real durable root, Source and exposure.
 func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.ServingDeclaration) {
 	t.Helper()
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,10 +50,10 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 	clock, stopClock := nodefixture.StartObservedClock(t)
 	t.Cleanup(stopClock)
 	var pin [32]byte
-	copy(pin[:], f.spec.Authority.Public().(ed25519.PublicKey))
+	copy(pin[:], spec.Authority.Public().(ed25519.PublicKey))
 	plan := servingdeclaration.ServingDeclaration{
 		Network: &servingdeclaration.ServingNetwork{
-			Root: filepath.Join(parent, "state"), NetworkID: f.spec.NetworkID,
+			Root: filepath.Join(parent, "state"), NetworkID: spec.NetworkID,
 			Authorities: [][32]byte{pin}, Threshold: 1, ProfileAuthority: pin, ClockObservationFile: clock,
 		},
 		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(parent, "participation"),
@@ -108,7 +109,7 @@ func TestSourceOriginalInputLossAfterStateRecoveryPrecedesExposureAndListener(t 
 				t.Run(name+"/"+fault+"/"+stage, func(t *testing.T) {
 					path, plan := sourceStateCustodyFixture(t)
 					selected := map[string]string{"plan": path, "certificate": plan.Certificate, "key": plan.PrivateKey, "ca": plan.ClientRoot}[name]
-					inputs, _, err := acquireSourceInputs(t.Context(), path)
+					inputs, _, err := serving.AcquireInputs(t.Context(), path, nil)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -118,7 +119,7 @@ func TestSourceOriginalInputLossAfterStateRecoveryPrecedesExposureAndListener(t 
 						t.Fatal(err)
 					}
 					config.LocalRoleStateRoot = plan.ParticipationRoot
-					if err := sourceServingInputs(&config, plan, inputs, inputs.Check); err != nil {
+					if err := serving.ConfigureInputs(&config, plan, inputs, inputs.Check); err != nil {
 						t.Fatal(err)
 					}
 					calls := 0
@@ -148,7 +149,7 @@ func TestSourceOriginalInputLossAfterStateRecoveryPrecedesExposureAndListener(t 
 						return inputs.Check()
 					}
 					owner, err := state.Open(config)
-					if owner != nil || !errors.Is(err, errSourceInput) {
+					if owner != nil || !errors.Is(err, artifacts.ErrObservedInput) {
 						if owner != nil {
 							_ = owner.Close()
 						}
@@ -220,7 +221,7 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 	var target atomic.Pointer[os.File]
 	var armed, held atomic.Bool
 	entered, release := make(chan struct{}), make(chan struct{})
-	inputs, _, err := acquireObservedSourceInputs(ctx, path, func(phase string, f *os.File) {
+	inputs, _, err := serving.AcquireInputs(ctx, path, func(phase string, f *os.File) {
 		if phase == "check" && f == target.Load() && armed.Load() && held.CompareAndSwap(false, true) {
 			close(entered)
 			<-release
@@ -235,7 +236,7 @@ func sourceHeldOriginalObservation(t *testing.T, unavailable bool) {
 		t.Fatal(err)
 	}
 	config.LocalRoleStateRoot, config.PermitWork = plan.ParticipationRoot, inputs.Check
-	if err := sourceServingInputs(&config, plan, inputs, inputs.Check); err != nil {
+	if err := serving.ConfigureInputs(&config, plan, inputs, inputs.Check); err != nil {
 		t.Fatal(err)
 	}
 	owner, err := state.Open(config)
@@ -304,7 +305,7 @@ func (s heldOriginalSourceState) Close() error {
 
 func TestSourceOriginalCustodySurvivesHeldStateCloseAndLateInputFailure(t *testing.T) {
 	path, plan := sourceStateCustodyFixture(t)
-	inputs, _, err := acquireSourceInputs(t.Context(), path)
+	inputs, _, err := serving.AcquireInputs(t.Context(), path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +323,7 @@ func TestSourceOriginalCustodySurvivesHeldStateCloseAndLateInputFailure(t *testi
 		return admission.Err()
 	}
 	config.LocalRoleStateRoot, config.PermitWork = plan.ParticipationRoot, check
-	if err := sourceServingInputs(&config, plan, inputs, check); err != nil {
+	if err := serving.ConfigureInputs(&config, plan, inputs, check); err != nil {
 		t.Fatal(err)
 	}
 	owner, err := state.Open(config)
@@ -396,7 +397,7 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 	var selected atomic.Pointer[os.File]
 	var held atomic.Bool
 	entered, release := make(chan struct{}), make(chan struct{})
-	inputs, _, err := acquireObservedSourceInputs(ctx, path, func(phase string, f *os.File) {
+	inputs, _, err := serving.AcquireInputs(ctx, path, func(phase string, f *os.File) {
 		if phase == "close" && f == selected.Load() && held.CompareAndSwap(false, true) {
 			close(entered)
 			<-release
@@ -411,7 +412,7 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 		t.Fatal(err)
 	}
 	config.LocalRoleStateRoot, config.PermitWork = plan.ParticipationRoot, inputs.Check
-	if err := sourceServingInputs(&config, plan, inputs, inputs.Check); err != nil {
+	if err := serving.ConfigureInputs(&config, plan, inputs, inputs.Check); err != nil {
 		t.Fatal(err)
 	}
 	owner, err := state.Open(config)
@@ -466,16 +467,16 @@ func TestSourceUnavailableInputCloseRetainsOriginalFailureThroughActualJoin(t *t
 // This test proves actual State/serving/guard cleanup on failed readiness
 // output. It supplies no successful native process measurement or admission.
 func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	clock, stopClock := nodefixture.StartObservedClock(t)
 	defer stopClock()
 	var key [32]byte
-	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan := state.AuthorityDeclaration{Root: filepath.Join(t.TempDir(), "state"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
+	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))
+	plan := state.AuthorityDeclaration{Root: filepath.Join(t.TempDir(), "state"), NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
 	config, err := plan.Config()
 	if err != nil {
 		t.Fatal(err)
@@ -543,7 +544,7 @@ func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
 func TestSourceCanceledCallerRefusesBeforePlanAccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if code := run(ctx, []string{"source", "serve", filepath.Join(t.TempDir(), "absent-plan")}, io.Discard, io.Discard); code != 2 {
+	if code := Run(ctx, []string{"serve", filepath.Join(t.TempDir(), "absent-plan")}, io.Discard, io.Discard); code != 2 {
 		t.Fatal(code)
 	}
 }

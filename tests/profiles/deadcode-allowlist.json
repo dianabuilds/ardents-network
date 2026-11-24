@@ -72,6 +72,15 @@
     "linux-amd64": [
       {
         "symbols": [
+          "tests/e2e/source.SigningWorkspace"
+        ],
+        "classification": "native signing workspace fixture",
+        "rationale": "The Source public preparation and infrastructure signing process checks use one root-controlled ext4 fixture. It has no production caller.",
+        "owner": "Source process tests",
+        "retirement": "Remove when the native signing tests stop creating a root-controlled workspace."
+      },
+      {
+        "symbols": [
           "tests/e2e/endpoint.BootPairGuest",
           "tests/e2e/endpoint.BuildNativeWorker",
           "tests/e2e/endpoint.BuildSignedNetwork",

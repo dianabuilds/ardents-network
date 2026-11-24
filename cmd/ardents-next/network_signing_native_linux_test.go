@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,31 +21,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
-	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
-
-func signingNativeParent(t *testing.T) string {
-	t.Helper()
-	if os.Geteuid() != 0 {
-		t.Fatal("invalid environment: Linux root required")
-	}
-	p := t.TempDir()
-	if err := os.Chmod(p, 0700); err != nil {
-		t.Fatal(err)
-	}
-	ancestors, err := artifactio.OpenDirectoryChain(t.Context(), p, nil)
-	if err != nil {
-		t.Fatal("invalid environment", err)
-	}
-	if err = errors.Join(ancestors.CheckRootAccess(), ancestors.Close()); err != nil {
-		t.Fatal("invalid environment: root-controlled direct ancestors required", err)
-	}
-	var fs syscall.Statfs_t
-	if err = syscall.Statfs(p, &fs); err != nil || fs.Type != 0xef53 {
-		t.Fatal("invalid environment: native ext4 required", err)
-	}
-	return p
-}
 
 func writeSigningTestKey(t *testing.T, path string, key ed25519.PrivateKey) {
 	t.Helper()
@@ -62,7 +39,7 @@ func writeSigningTestKey(t *testing.T, path string, key ed25519.PrivateKey) {
 
 func nativeSigningArguments(t *testing.T) []string {
 	t.Helper()
-	parent := signingNativeParent(t)
+	parent := sourcefixture.SigningWorkspace(t)
 	p, key, _, _ := signingRecordFixture(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
@@ -114,9 +91,9 @@ func changeSigningTestTime(t *testing.T, args []string, from, until, reference t
 }
 
 func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
-	signingNativeParent(t)
+	sourcefixture.SigningWorkspace(t)
 	runNetworkPreparedStateChain(t, func(t *testing.T, purpose string, plan any, key ed25519.PrivateKey, message []byte) ([]byte, [][]byte) {
-		parent := signingNativeParent(t)
+		parent := sourcefixture.SigningWorkspace(t)
 		planPath, prepared, keyPath, root := filepath.Join(parent, "plan"), filepath.Join(parent, "prepared"), filepath.Join(parent, "key"), filepath.Join(parent, "signed")
 		declaration := signingDeclaration(t, purpose, plan, time.Now().UTC().Truncate(time.Second))
 		operation := "sign-initial-" + purpose
@@ -175,7 +152,7 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 }
 
 func TestNetworkSigningReceiptBlockedOutput(t *testing.T) {
-	signingNativeParent(t)
+	sourcefixture.SigningWorkspace(t)
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)

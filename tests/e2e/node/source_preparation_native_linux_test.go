@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -8,15 +8,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	sourcecommand "github.com/dianabuilds/ardents-network/internal/network/source/command"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -33,7 +30,7 @@ func writeSourcePreparationPlan(t *testing.T, path string, value any) {
 
 func sourcePreparationArguments(t *testing.T) (map[string]any, string, string) {
 	t.Helper()
-	parent := signingNativeParent(t)
+	parent := sourcefixture.SigningWorkspace(t)
 	pub := ed25519.NewKeyFromSeed(make([]byte, 32)).Public().(ed25519.PublicKey)
 	client := endpoint.HeadlessPlan{
 		Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"),
@@ -51,7 +48,7 @@ func TestSourcePreparationNativePublicOnlyCommand(t *testing.T) {
 	p, plan, output := sourcePreparationArguments(t)
 	// None of the three private declarations exists. Successful preparation
 	// cannot rely on even opening them, let alone generating or copying keys.
-	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "source", "prepare-trust", plan, output)
+	cmd := exec.CommandContext(t.Context(), buildNodeCommand(t), "source", "prepare-trust", plan, output)
 	raw, err := cmd.Output()
 	if err != nil {
 		t.Fatal("genuine preparation command", err)
@@ -85,25 +82,35 @@ func TestSourcePreparationNativePublicOnlyCommand(t *testing.T) {
 			t.Fatal("offline State/participation root effect", e)
 		}
 	}
-	if sourcecommand.Run(t.Context(), []string{"prepare-trust", plan, output}, io.Discard, io.Discard) == 0 {
+	if err := exec.CommandContext(t.Context(), cmd.Path, "source", "prepare-trust", plan, output).Run(); err == nil {
 		t.Fatal("adopted output")
 	}
 }
 
 func TestSourcePreparationNativeReceiptFailure(t *testing.T) {
 	_, plan, output := sourcePreparationArguments(t)
-	args := []string{"prepare-trust", plan, output}
-	if sourcecommand.Run(t.Context(), args, sourcePreparationFailWriter{}, io.Discard) == 0 {
-		t.Fatal("receipt failure accepted")
+	binary := buildNodeCommand(t)
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(errors.Join(err, writer.Close()))
+	}
+	command := exec.CommandContext(t.Context(), binary, "source", "prepare-trust", plan, output)
+	command.Stdout = writer
+	runErr := command.Run()
+	if err := writer.Close(); err != nil {
+		t.Fatal(errors.Join(runErr, err))
+	}
+	var exit *exec.ExitError
+	if !errors.As(runErr, &exit) {
+		t.Fatal("unwritable stdout did not cause command failure", runErr)
 	}
 	if _, err := os.Stat(output); err != nil {
-		t.Fatal("receipt did not follow physical publication", err)
+		t.Fatal("receipt failure did not follow physical publication", err)
 	}
-	if sourcecommand.Run(t.Context(), args, io.Discard, io.Discard) == 0 {
+	if err := exec.CommandContext(t.Context(), binary, "source", "prepare-trust", plan, output).Run(); err == nil {
 		t.Fatal("failed receipt output adopted")
 	}
 }
-
-type sourcePreparationFailWriter struct{}
-
-func (sourcePreparationFailWriter) Write([]byte) (int, error) { return 0, syscall.EPIPE }

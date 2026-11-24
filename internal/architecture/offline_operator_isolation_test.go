@@ -237,7 +237,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "cmd/ardents-next/network_preparation.go":
 		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathgrammar"
 	case "cmd/ardents-next/network_keys_native_linux_test.go":
-		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts"
+		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/tests/e2e/source"
 	case "internal/admission/issuance/artifact_export_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/infrastructure_operator.go":

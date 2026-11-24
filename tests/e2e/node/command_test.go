@@ -1,6 +1,7 @@
 package node_test
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -9,6 +10,9 @@ import (
 
 func buildNodeCommand(t *testing.T) string {
 	t.Helper()
+	if prebuilt := os.Getenv("ARDENTS_PREBUILT_NEXT"); prebuilt != "" {
+		return prebuilt
+	}
 	filename := "ardents"
 	if runtime.GOOS == "windows" {
 		filename += ".exe"

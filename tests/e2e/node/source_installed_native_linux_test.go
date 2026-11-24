@@ -1,6 +1,6 @@
 //go:build linux && source_installed_native
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 	"net"
 	"os"
 	"os/exec"
@@ -24,6 +25,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
@@ -64,7 +66,7 @@ type sourceInstalledStand struct {
 	stateRoot         string
 	participationRoot string
 	clockPath         string
-	launch            platformLaunch
+	launch            launch.Declaration
 	pin               string
 	unit              []byte
 	uid               int
@@ -119,7 +121,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(systemd.PlatformUnitTemplate))
 	if err := os.WriteFile(stand.program, forwardBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +133,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	nodefixture.InfrastructureDistribution(t, stand.base, stand.binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, stand.binaryBytes, stand.authority, 1, nil, "source", []byte(systemd.PlatformUnitTemplate))
 	if err := os.WriteFile(stand.program, stand.binaryBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +143,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(systemd.PlatformUnitTemplate))
 	if err := os.WriteFile(stand.program, forwardBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +208,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	t.Helper()
 	ctx := t.Context()
-	binary := compiledCommand(t)
+	binary := buildNodeCommand(t)
 	binaryBytes, err := os.ReadFile(binary)
 	if err != nil {
 		t.Fatal(err)
@@ -270,15 +272,15 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	}()
 	t.Cleanup(func() { close(clockStop); <-clockJoined })
 
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	stand.bundle = bundle
 	var key [32]byte
-	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	stand.authorities = map[[32]byte]ed25519.PublicKey{sha256.Sum256(key[:]): f.spec.Authority.Public().(ed25519.PublicKey)}
+	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))
+	stand.authorities = map[[32]byte]ed25519.PublicKey{sha256.Sum256(key[:]): spec.Authority.Public().(ed25519.PublicKey)}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -304,16 +306,16 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 			t.Fatal(err)
 		}
 	}
-	certDigest := platformDigest(certBytes)
-	keyDigest := platformDigest(keyBytes)
-	caDigest := platformDigest(rootPEM)
+	certDigest := sourceFixtureDigest(certBytes)
+	keyDigest := sourceFixtureDigest(keyBytes)
+	caDigest := sourceFixtureDigest(rootPEM)
 	clear(keyBytes)
 	// The runtime private-key custody binds the invoking principal: the fixed
 	// account owns its key (the privileged pre-start admits uid 0 or 100-999).
 	if err := os.Chown(stand.keyPath, stand.uid, stand.uid); err != nil {
 		t.Fatal(err)
 	}
-	stand.networkPlan = state.AuthorityDeclaration{Root: stand.stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
+	stand.networkPlan = state.AuthorityDeclaration{Root: stand.stateRoot, NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
 	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&stand.networkPlan), ProcessProfile: "ardents-source-process-v1",
 		ParticipationRoot: stand.participationRoot, Address: stand.address, Certificate: stand.certPath, PrivateKey: stand.keyPath, ClientRoot: stand.caPath, ClientPins: [][32]byte{clientPin}}
 	planRaw, err := json.Marshal(plan)
@@ -366,8 +368,8 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	// Signed distribution of the actual command bytes; the first pin runs the
 	// enrolled executable itself (platformOwnExecutable /proc/self/exe).
 	stand.authority = nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
-	_, inventoryPin, _ := nodefixture.InfrastructureDistribution(t, stand.base, binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
-	stand.launch = platformLaunch{
+	_, inventoryPin, _ := nodefixture.InfrastructureDistribution(t, stand.base, binaryBytes, stand.authority, 1, nil, "source", []byte(systemd.PlatformUnitTemplate))
+	stand.launch = launch.Declaration{
 		Role:          "source",
 		Distribution:  stand.distribution,
 		ReleaseRoot:   stand.releaseRoot,
@@ -375,7 +377,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 		Network:       "new-release-test",
 		Program:       stand.program,
 		Configuration: stand.planPath,
-		ConfigSHA256:  platformDigest(planRaw),
+		ConfigSHA256:  sourceFixtureDigest(planRaw),
 		WritableRoots: []string{stand.stateRoot, stand.participationRoot},
 		Inputs: map[string]string{
 			stand.certPath: certDigest,
@@ -388,7 +390,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 		t.Fatal(err)
 	}
 	launchRaw = append(launchRaw, '\n')
-	stand.pin = platformDigest(launchRaw)
+	stand.pin = sourceFixtureDigest(launchRaw)
 	if err := os.WriteFile(stand.launchPath, launchRaw, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -450,7 +452,8 @@ func compiledForwardCommand(t *testing.T) []byte {
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(dir) })
 	path := filepath.Join(dir, "ardents-next")
-	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", path, ".")
+	cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", path, "./cmd/ardents-next")
+	cmd.Dir = filepath.Join("..", "..", "..")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatal("forward command build", string(out), err)
 	}
@@ -612,3 +615,5 @@ func cleanupSourceInstalledStand(t *testing.T, stand *sourceInstalledStand) {
 	_ = os.RemoveAll(stand.base)
 	_ = os.RemoveAll(stand.rolesBase)
 }
+
+func sourceFixtureDigest(raw []byte) string { return fmt.Sprintf("%x", sha256.Sum256(raw)) }
