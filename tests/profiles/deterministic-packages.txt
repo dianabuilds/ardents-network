@@ -32,6 +32,7 @@ github.com/dianabuilds/ardents-network/internal/admission/quota
 github.com/dianabuilds/ardents-network/internal/admission/attempts
 github.com/dianabuilds/ardents-network/internal/admission/stock
 github.com/dianabuilds/ardents-network/internal/network
+github.com/dianabuilds/ardents-network/internal/network/canonicalcursor
 github.com/dianabuilds/ardents-network/internal/network/closedprofile
 github.com/dianabuilds/ardents-network/internal/network/duty
 github.com/dianabuilds/ardents-network/internal/network/epoch
@@ -73,7 +74,6 @@ github.com/dianabuilds/ardents-network/internal/connection
 github.com/dianabuilds/ardents-network/internal/custody
 github.com/dianabuilds/ardents-network/internal/processresource
 github.com/dianabuilds/ardents-network/internal/durablefile
-github.com/dianabuilds/ardents-network/internal/canonicalcursor
 github.com/dianabuilds/ardents-network/internal/pathgrammar
 github.com/dianabuilds/ardents-network/internal/node
 github.com/dianabuilds/ardents-network/internal/connection/wire

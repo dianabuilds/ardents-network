@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
+	"github.com/dianabuilds/ardents-network/internal/network/canonicalcursor"
 )
 
 const (

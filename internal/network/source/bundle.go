@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
+	"github.com/dianabuilds/ardents-network/internal/network/canonicalcursor"
 	epoch2 "github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"unicode/utf8"
 
-	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
+	"github.com/dianabuilds/ardents-network/internal/network/canonicalcursor"
 )
 
 // decodeText reads one bounded canonical text field from the shared cursor:
