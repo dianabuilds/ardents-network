@@ -7,6 +7,7 @@ import (
 
 func offlineOperatorFile(source string) bool {
 	if strings.HasPrefix(source, "internal/platform/artifacts/") ||
+		strings.HasPrefix(source, "internal/network/source/inspection/") ||
 		strings.HasPrefix(source, "internal/node/provisioning/") ||
 		strings.HasPrefix(source, "internal/release/infrastructure/signing/") {
 		return true
@@ -60,6 +61,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "cmd/ardents-next/source_inspection_linux.go":
+		return dependency == modulePath+"/internal/network/source/inspection" || dependency == modulePath+"/internal/platform/artifacts"
+	case "internal/network/source/inspection/inspection_linux_test.go":
+		return dependency == modulePath+"/internal/platform/artifacts"
+	case "internal/network/source/inspection/inspection_linux.go":
 		switch dependency {
 		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/processresource":
 			return true
