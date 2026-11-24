@@ -1,0 +1,27 @@
+name: Verify Source preparation and installed lifecycle
+on:
+  push:
+    branches:
+      - codex/verify-source-boundary-006a359c
+permissions:
+  contents: read
+jobs:
+  native-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+      - name: Execute moved Source command profiles on real systemd
+        run: |
+          set -euo pipefail
+          test "$(ps -p 1 -o comm=)" = systemd
+          test "$(systemctl --version | awk 'NR == 1 { print $2 }')" = 255
+          test -r /sys/fs/cgroup/cgroup.controllers
+          native_dir="$(sudo mktemp -d /ardents-native-source.XXXXXX)"
+          trap 'sudo rm -rf -- "$native_dir"' EXIT
+          test "$(findmnt -T "$native_dir" -n -o FSTYPE)" = ext4
+          test "$(findmnt -T /var/lib -n -o FSTYPE)" = ext4
+          sudo env PATH="$PATH" TMPDIR="$native_dir" GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)" sh -ec 'umask 022; exec go test -race -tags source_installed_native,network_signing_native ./tests/e2e/node -run "^(TestNativeSourceInstalledLifecycle|TestSourcePreparationNative(PublicOnlyCommand|ReceiptFailure))$" -count=1 -v -timeout=15m'
