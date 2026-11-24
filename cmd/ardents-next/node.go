@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
 func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -13,7 +15,7 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 		return inspectNodeProcess(ctx, out)
 	}
 	if args[0] == "prepare-plan" {
-		return runNodePreparePlan(ctx, args[1:], out)
+		return provisioning.RunPreparePlan(ctx, args[1:], out)
 	}
 	if args[0] == "forwarding" {
 		if len(args) > 1 && args[1] == "repair-retained" {
