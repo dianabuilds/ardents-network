@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
@@ -255,6 +256,42 @@ func DecodeKeyBinding(raw []byte) (Binding, error) {
 	return binding, nil
 }
 
+// DecodeBatchFacts admits the exact local batch declaration. The returned
+// facts still require the accounting owner's authenticated validation.
+func DecodeBatchFacts(raw []byte) (admission.Facts, error) {
+	var values map[string]string
+	if err := artifacts.DecodeObject(raw, &values); err != nil || len(values) != 10 {
+		return admission.Facts{}, ErrInvalid
+	}
+	var facts admission.Facts
+	for name, target := range map[string]*[32]byte{
+		"network": &facts.Network, "issuer": &facts.Issuer, "authority": &facts.Authority, "holder": &facts.Holder,
+	} {
+		decoded, err := admissionHex(values[name], 32)
+		if err != nil {
+			return admission.Facts{}, ErrInvalid
+		}
+		copy(target[:], decoded)
+	}
+	for name, target := range map[string]*time.Time{
+		"duty_not_before": &facts.DutyNotBefore, "duty_not_after": &facts.DutyNotAfter, "now": &facts.Now,
+	} {
+		parsed, err := admissionTime(values[name])
+		if err != nil {
+			return admission.Facts{}, ErrInvalid
+		}
+		*target = parsed
+	}
+	duty, dutyErr := admissionNumber(values["duty"], 64)
+	class, classErr := admissionNumber(values["class"], 8)
+	count, countErr := admissionNumber(values["count"], 32)
+	if dutyErr != nil || classErr != nil || countErr != nil {
+		return admission.Facts{}, ErrInvalid
+	}
+	facts.Duty, facts.Class, facts.Count = duty, uint8(class), uint32(count)
+	return facts, nil
+}
+
 func admissionHex(value string, n int) ([]byte, error) {
 	raw, err := hex.DecodeString(value)
 	if err != nil || len(raw) != n || hex.EncodeToString(raw) != value {
@@ -286,4 +323,54 @@ func OutputOutsideRoots(output string, roots ...string) bool {
 		}
 	}
 	return true
+}
+
+// PrepareProfileBinding binds an independently verified profile to a detached
+// Admission ledger declaration. The caller owns publication of the returned bytes.
+func PrepareProfileBinding(rawDeclaration []byte) (string, []byte, error) {
+	fields, e := resultFields(rawDeclaration, "profile_file", "expected_profile", "binding", "binding_file")
+	if e != nil {
+		return "", nil, e
+	}
+	var source, output string
+	if json.Unmarshal(fields["profile_file"], &source) != nil || !filepath.IsAbs(source) || filepath.Clean(source) != source {
+		return "", nil, ErrInvalid
+	}
+	if json.Unmarshal(fields["binding_file"], &output) != nil || !filepath.IsAbs(output) || filepath.Clean(output) != output {
+		return "", nil, ErrInvalid
+	}
+	expected, e := DecodeKeyBinding(fields["expected_profile"])
+	if e != nil {
+		return "", nil, e
+	}
+	raw, e := artifacts.ReadBoundedFile(source, issuerprofile.MaximumSize)
+	if e != nil {
+		return "", nil, ErrUnavailable
+	}
+	verified, e := issuerprofile.Verify(raw, issuerprofile.Binding{Network: expected.Network, Issuer: expected.Issuer, Signer: expected.Signer, Start: expected.Start, End: expected.End})
+	if e != nil {
+		return "", nil, ErrInvalid
+	}
+	baseFields, e := resultFields(fields["binding"], "network", "issuer", "authority", "profile", "duty", "start", "end")
+	if e != nil {
+		return "", nil, e
+	}
+	base, err := DecodeLedgerBinding(fields["binding"], baseFields)
+	if err != nil {
+		return "", nil, ErrInvalid
+	}
+	bound, err := quota.PrepareLedgerBinding(base, verified)
+	if err != nil {
+		return "", nil, ErrInvalid
+	}
+	entries := make([]admissionKeyInput, 0, len(bound.Keys))
+	for _, key := range bound.Keys {
+		entries = append(entries, admissionKeyInput{Window: time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), Class: strconv.FormatUint(uint64(key.Class), 10), SPKI: hex.EncodeToString(key.SPKI)})
+	}
+	baseFields["keys"], err = json.Marshal(entries)
+	if err != nil {
+		return "", nil, err
+	}
+	encoded, err := json.Marshal(baseFields)
+	return output, encoded, err
 }

@@ -1,19 +1,13 @@
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/admission/quota"
-
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"path/filepath"
-	"strconv"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 )
 
@@ -92,52 +86,4 @@ func decodeProfilePlan(raw []byte) (issuer.ProfilePlan, string, error) {
 		return p, "", issuance.ErrInvalid
 	}
 	return p, output, e
-}
-func prepareProfileBinding(ctxRaw []byte) (string, []byte, error) {
-	fields, e := issuerConfigObject(ctxRaw, "profile_file", "expected_profile", "binding", "binding_file")
-	if e != nil {
-		return "", nil, e
-	}
-	source, e := issuerConfigPath(fields["profile_file"])
-	if e != nil {
-		return "", nil, e
-	}
-	output, e := issuerConfigPath(fields["binding_file"])
-	if e != nil {
-		return "", nil, e
-	}
-	expected, e := issuance.DecodeKeyBinding(fields["expected_profile"])
-	if e != nil {
-		return "", nil, e
-	}
-	raw, e := readBounded(source, issuerprofile.MaximumSize)
-	if e != nil {
-		return "", nil, issuance.ErrUnavailable
-	}
-	verified, e := issuerprofile.Verify(raw, issuerprofile.Binding{Network: expected.Network, Issuer: expected.Issuer, Signer: expected.Signer, Start: expected.Start, End: expected.End})
-	if e != nil {
-		return "", nil, issuance.ErrInvalid
-	}
-	baseFields, e := issuerConfigObject(fields["binding"], "network", "issuer", "authority", "profile", "duty", "start", "end")
-	if e != nil {
-		return "", nil, e
-	}
-	base, err := issuance.DecodeLedgerBinding(fields["binding"], baseFields)
-	if err != nil {
-		return "", nil, issuance.ErrInvalid
-	}
-	bound, err := quota.PrepareLedgerBinding(base, verified)
-	if err != nil {
-		return "", nil, issuance.ErrInvalid
-	}
-	entries := make([]admissionKeyInput, 0, len(bound.Keys))
-	for _, key := range bound.Keys {
-		entries = append(entries, admissionKeyInput{Window: time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), Class: strconv.FormatUint(uint64(key.Class), 10), SPKI: hex.EncodeToString(key.SPKI)})
-	}
-	baseFields["keys"], err = json.Marshal(entries)
-	if err != nil {
-		return "", nil, err
-	}
-	encoded, err := json.Marshal(baseFields)
-	return output, encoded, err
 }

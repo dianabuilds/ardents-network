@@ -93,7 +93,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 			bytes = result.Response
 		}
 	case "admission.prepare-binding":
-		output, bytes, err = prepareProfileBinding(raw)
+		output, bytes, err = issuance.PrepareProfileBinding(raw)
 		if err == nil {
 			r.Phase = "prepare-binding"
 			r.Outcome = "binding-prepared"

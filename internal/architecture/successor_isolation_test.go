@@ -566,8 +566,8 @@ func successorImportAllowed(source, dependency string) bool {
 	// Only the actual composition and its tests consume the Endpoint root.
 	if strings.HasPrefix(source, "cmd/ardents-next/") && localImport && local == "internal/endpoint" {
 		switch source {
-		case "cmd/ardents-next/endpoint_construction_linux.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
-			"cmd/ardents-next/endpoint_history_linux.go", "cmd/ardents-next/endpoint_history_linux_test.go",
+		case "cmd/ardents-next/endpoint_preparation_linux.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
+			"cmd/ardents-next/endpoint_history_linux_test.go",
 			"cmd/ardents-next/installed_endpoint_linux.go", "cmd/ardents-next/source_preparation_linux.go",
 			"cmd/ardents-next/source_preparation_fixture_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go",
 			"cmd/ardents-next/installed_source_linux_test.go", "cmd/ardents-next/source_preparation_process_linux_test.go":
@@ -859,10 +859,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/endpoint/history_preparation_linux.go" || source == "internal/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/network/duty" {
 			return true
 		}
+		if source == "internal/endpoint/preparation_files_linux.go" && dependency == modulePath+"/internal/platform/artifacts" {
+			return true
+		}
 		if source == "internal/endpoint/history_preparation_linux_test.go" && dependency == modulePath+"/internal/admission/attempts" {
 			return true
 		}
-		if (source == "cmd/ardents-next/endpoint_history_linux.go" || source == "cmd/ardents-next/endpoint_history_linux_test.go" || source == "cmd/ardents-next/installed_startup_linux_test.go") && dependency == modulePath+"/internal/network/source" {
+		if (source == "cmd/ardents-next/endpoint_history_linux_test.go" || source == "cmd/ardents-next/installed_startup_linux_test.go") && dependency == modulePath+"/internal/network/source" {
 			return true
 		}
 		if source == "cmd/ardents-next/route_composition_linux_test.go" && dependency == modulePath+"/internal/reachability" {
@@ -1117,9 +1120,6 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 		if source == "cmd/ardents-next/network_preparation_chain_linux_test.go" && (dependency == modulePath+"/internal/network/epoch" || dependency == modulePath+"/internal/network/closedprofile") {
-			return true
-		}
-		if source == "cmd/ardents-next/network_profile_signing_test.go" && dependency == modulePath+"/internal/network/closedprofile" {
 			return true
 		}
 		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/network/epoch" {
@@ -1459,8 +1459,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"plan constructor cannot initialize participation", "internal/endpoint/plan_construction_linux.go", modulePath + "/internal/network/duty", false},
 		{"plan constructor cannot initialize selection history", "internal/endpoint/plan_construction_linux.go", modulePath + "/internal/route/selection", false},
 		{"plan constructor has no old backend", "internal/endpoint/plan_construction_linux.go", modulePath + "/internal/endpoint", false},
-		{"plan constructor command uses endpoint owner", "cmd/ardents-next/endpoint_construction_linux.go", modulePath + "/internal/endpoint", true},
-		{"plan constructor command has no direct Source codec", "cmd/ardents-next/endpoint_construction_linux.go", modulePath + "/internal/network/source", false},
+		{"plan constructor command uses endpoint owner", "cmd/ardents-next/endpoint_preparation_linux.go", modulePath + "/internal/endpoint", true},
+		{"plan constructor command has no direct Source codec", "cmd/ardents-next/endpoint_preparation_linux.go", modulePath + "/internal/network/source", false},
 		{"installed participant owns Administration listener", "internal/endpoint/participant_linux.go", modulePath + "/internal/application/administration", true},
 		{"installed Publisher retains original worker", "internal/endpoint/publisher/publisher_linux.go", modulePath + "/internal/execution/runtime", true},
 		{"other installed adapter has no Publisher authority", "cmd/ardents-next/installed_other_linux.go", modulePath + "/internal/execution/runtime", false},

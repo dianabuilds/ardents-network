@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 // This file owns the original node-role runtime invocation declaration grammar:
@@ -14,8 +15,8 @@ import (
 // configuration validation kept with the runtime owner (ADR-0125 decision 6).
 // It performs no State acceptance, no root creation, no hosting initialization
 // and no processresource policy; those stay with their separate owners. The
-// command composition converts these declarations into state.Config and applies
-// the per-role process profile and root-separation policy. The codec returns
+// command composition converts these declarations into state.Config. Runtime invocation
+// validation checks the fixed role profile and separated roots. The codec returns
 // facts only and opens no resource.
 
 // Network is the embedded public Network-input declaration shared by every
@@ -100,6 +101,33 @@ func DecodeNodeNetwork(raw []byte) (Network, error) {
 		return Network{}, bad
 	}
 	return network, nil
+}
+
+// ValidInvocation checks the fixed role profile, retirement bound and distinct roots.
+func (plan ForwardingPlan) ValidInvocation() bool {
+	return plan.nodePlanCore.validInvocation(processresource.Profile)
+}
+
+func (plan JoinPlan) ValidInvocation() bool {
+	return plan.nodePlanCore.validInvocation(processresource.JoinProfile)
+}
+
+func (plan DescriptorPlan) ValidInvocation() bool {
+	return plan.nodePlanCore.validInvocation(processresource.DescriptorProfile, plan.DescriptorRoot)
+}
+
+func (plan IntroductionPlan) ValidInvocation() bool {
+	return plan.nodePlanCore.validInvocation(processresource.IntroductionProfile, plan.IntroductionRoot)
+}
+
+func (plan IssuerPlan) ValidInvocation(admissionRoot, keyRoot, resultRoot string) bool {
+	return plan.nodePlanCore.validInvocation(processresource.IssuerProfile, admissionRoot, keyRoot, resultRoot)
+}
+
+func (plan nodePlanCore) validInvocation(profile string, roleRoots ...string) bool {
+	return plan.Network != nil && plan.ProcessProfile == profile &&
+		plan.RetirementWaitMS > 0 && plan.RetirementWaitMS <= 5000 &&
+		plan.Network.IndependentRoots(append([]string{plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot}, roleRoots...)...)
 }
 
 // DecodeForwardingPlan decodes the exact Forwarding declaration field set.
