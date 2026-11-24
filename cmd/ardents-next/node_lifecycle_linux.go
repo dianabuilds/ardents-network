@@ -16,6 +16,15 @@ type nodeProcess interface {
 	FirstFailure() *node.FailureDiagnostic
 }
 
+func nodeStateConfig(network *node.Network, participationRoot string) (state.Config, error) {
+	config, err := (*state.AuthorityDeclaration)(network).Config()
+	if err != nil {
+		return state.Config{}, err
+	}
+	config.LocalRoleStateRoot = participationRoot
+	return config, nil
+}
+
 // Each selected role supplies its real constructor and exact typed plan.
 // The command owns the original State and closes it after the Node's joined
 // completion, even when the bounded wait has already reported unavailability.

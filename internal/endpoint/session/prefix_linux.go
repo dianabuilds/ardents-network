@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/route/capsule"
@@ -25,7 +26,7 @@ func OpenPrefix(ctx context.Context, plan funding.Plan, authority funding.Author
 	if !authority.Available() {
 		return Prefix{}, errors.New("route requires opened Network")
 	}
-	if !independentRouteRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
+	if !pathgrammar.DisjointRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
 		return Prefix{}, errors.New("route roots invalid")
 	}
 	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: plan.Domain, Current: authority.Current, Exclusions: plan.Exclusions})
@@ -53,7 +54,7 @@ func OpenPrefix(ctx context.Context, plan funding.Plan, authority funding.Author
 	var releaseErr error
 	release := func() error {
 		releaseOnce.Do(func() {
-			releaseErr = errors.Join(releaseRouteReservation(reservation), selected.Close(), budget.Close())
+			releaseErr = errors.Join(reservation.ReleaseJoined(), selected.Close(), budget.Close())
 		})
 		return releaseErr
 	}
@@ -67,7 +68,7 @@ func OpenPrefix(ctx context.Context, plan funding.Plan, authority funding.Author
 			if err != nil {
 				return nil, err
 			}
-			return func() error { return releaseRouteReservation(held) }, nil
+			return held.ReleaseJoined, nil
 		},
 		Present: func(ctx context.Context, h ardp.Hello) ([]byte, error) {
 			presentation := stock.Presentation{NetworkID: h.NetworkID, StateGeneration: h.StateGeneration, StateDigest: h.StateDigest, ProfileDigest: h.ProfileDigest, RecipientNodeID: h.RecipientNodeID, RecipientDutyGeneration: h.RecipientDutyGeneration, ChannelNonce: h.ChannelNonce, Deadline: h.Deadline}

@@ -68,6 +68,14 @@ func (owner *Budget) Reserve(ctx context.Context, request ReservationRequest) (*
 	return held, nil
 }
 
+// ReleaseJoined releases a reservation after its consumer has joined. It uses
+// a separate bounded context so cancellation of the work cannot skip release.
+func (reservation *Reservation) ReleaseJoined() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return reservation.Release(ctx)
+}
+
 // Release is called only after the consumer has joined its admitted work and
 // termination. Actual observed traffic stays spent; an ambiguous release is not
 // retried as a second refund against another owner's reservation.

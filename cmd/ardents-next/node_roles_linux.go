@@ -8,7 +8,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	nodecommand "github.com/dianabuilds/ardents-network/internal/node/command"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
@@ -28,11 +27,10 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	if !plan.ValidInvocation() {
 		return 2
 	}
-	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
+	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
 	if err != nil {
 		return 2
 	}
-	config.LocalRoleStateRoot = plan.ParticipationRoot
 	listen := node.ListenForwarding
 	if retained {
 		listen = node.ListenForwardingRetained
@@ -68,11 +66,10 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if err != nil || !plan.ValidInvocation(prepared.AdmissionRoot, prepared.KeyRoot, prepared.ResultRoot) {
 		return 2
 	}
-	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
+	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
 	if err != nil {
 		return 2
 	}
-	config.LocalRoleStateRoot = plan.ParticipationRoot
 	listen := node.ListenIssuer
 	if retained {
 		listen = node.ListenIssuerRetained
@@ -121,14 +118,13 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 	if !plan.ValidInvocation() {
 		return 2
 	}
-	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
+	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
 	if err != nil {
 		return 2
 	}
 	if ctx.Err() != nil {
 		return 130
 	}
-	config.LocalRoleStateRoot = plan.ParticipationRoot
 	listen := node.ListenDescriptor
 	if retained {
 		listen = node.ListenDescriptorRetained
@@ -170,14 +166,13 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 	if !plan.ValidInvocation() {
 		return 2
 	}
-	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
+	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
 	if err != nil {
 		return 2
 	}
 	if ctx.Err() != nil {
 		return 130
 	}
-	config.LocalRoleStateRoot = plan.ParticipationRoot
 	listen := node.ListenIntroduction
 	if retained {
 		listen = node.ListenIntroductionRetained
@@ -219,14 +214,13 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if !plan.ValidInvocation() {
 		return 2
 	}
-	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
+	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
 	if err != nil {
 		return 2
 	}
 	if ctx.Err() != nil {
 		return 130
 	}
-	config.LocalRoleStateRoot = plan.ParticipationRoot
 	listen := node.ListenJoin
 	if retained {
 		listen = node.ListenJoinRetained

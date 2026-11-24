@@ -352,7 +352,7 @@ func TestParticipantFundingRefusesErasedEntryWithoutReinitializing(t *testing.T)
 			t.Fatal(err)
 		}
 	}
-	authority := funding.Observe(network.CurrentRuntime, network.CurrentRuntimeWitness, presentationGuard(network.CurrentRuntime))
+	authority := funding.Observe(network.CurrentRuntime, network.CurrentRuntimeWitness, funding.PresentationGuard(network.CurrentRuntime))
 	parents, err := funding.OpenParents(funding.Plan{EntryRoot: entryRoot, HostingRoot: filepath.Join(plan.EntryStateRoot, "hosting")}, authority)
 	if err == nil {
 		_ = parents.Close()

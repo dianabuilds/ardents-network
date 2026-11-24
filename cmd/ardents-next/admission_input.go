@@ -4,10 +4,8 @@ import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
@@ -32,20 +30,6 @@ func requiredAdmissionFields(fields map[string]json.RawMessage, keys ...string) 
 		}
 	}
 	return true
-}
-func admissionHex(value string, n int) ([]byte, error) {
-	raw, err := hex.DecodeString(value)
-	if err != nil || len(raw) != n || hex.EncodeToString(raw) != value {
-		return nil, errors.New("invalid-input")
-	}
-	return raw, nil
-}
-func admissionTime(value string) (time.Time, error) {
-	t, err := time.Parse(time.RFC3339, value)
-	if err != nil || t.Format(time.RFC3339) != value || t.Location() != time.UTC || t.Nanosecond() != 0 {
-		return time.Time{}, errors.New("invalid-input")
-	}
-	return t, nil
 }
 func decodeAdmissionPlan(raw []byte) (admissionPlan, error) {
 	fields, err := issuerConfigObject(raw, "root", "binding")

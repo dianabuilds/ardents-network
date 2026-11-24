@@ -79,6 +79,54 @@
 // mutating a unit. The platform-led retained-producer repair consumes it; it
 // grants no Start/Stop, installed admission or original domain/process completion.
 // Its literal unit and reply vocabulary grant no sibling role capability.
+//
+// Responsibility clusters and their tests:
+//   - bounded typed JSON property vocabulary: properties.go
+//     (properties_test.go)
+//   - fixed busctl manager observations and thread-pinned subprocess
+//     mechanism: bus_linux.go, control_linux.go
+//     (bus_native_linux_test.go; native linux)
+//   - fresh Startup observation and cancellation-cause normalization:
+//     ObserveStartup, startupBus, startupDialFailure and startupCallFailure
+//     in startup_observation_linux.go (startup_cancellation_linux_test.go;
+//     linux, startup_observation_native_linux_test.go,
+//     source_reference_native_linux_test.go; native linux); the latter
+//     compares the shared close-cause normalizer against the pinned library
+//     sentinel despite its Source name
+//   - native typed JSON projection: startupProperties, managerJSONValue and
+//     managerJSONQuotedSize in startup_observation_linux.go
+//     (startup_property_encoding_linux_test.go; linux)
+//   - bounded native value validation: manager_values_linux.go
+//     (manager_values_linux_test.go; linux)
+//   - original private bus transport physical I/O: referenceTransport
+//     Read/Write/Close in reference_transport_linux.go
+//     (reference_transport_native_linux_test.go; native linux)
+//   - closed per-purpose unit reply vocabularies: verifyManagerFrame,
+//     verifyForwardingManagerFrame, verifyClosedManagerFrame and
+//     verifyNodeManagerFrame in reference_transport_linux.go,
+//     managerUnitReply in manager_reference_linux.go
+//     (source_object_linux_test.go, descriptor_manager_linux_test.go,
+//     join_manager_linux_test.go; linux)
+//   - shared Node-slot absence observation and absence-only reply grammar:
+//     node_slots_linux.go, nodeSlotsReply grammar in
+//     reference_transport_linux.go (forwarding_object_linux_test.go,
+//     node_slots_linux_test.go; linux)
+//   - shared request-observation deadline and cancellation marker:
+//     request_observation_linux.go (request_observation_linux_test.go; linux)
+//   - platform infrastructure observation and sibling absence:
+//     platform_linux.go (platform_linux_test.go; linux)
+//   - prestart loaded-policy verification: infrastructure_prestart_linux.go
+//     (infrastructure_prestart_linux_test.go; linux)
+//
+// manager_reference_linux.go (original manager-reference connection),
+// endpoint_reference_linux.go (Endpoint unit reference retention), the
+// per-role read-only runtime observers (forwarding_manager_linux.go,
+// descriptor_manager_linux.go, join_manager_linux.go,
+// introduction_manager_linux.go, source_manager_linux.go) and the
+// infrastructure unit template (infrastructure_unit.go,
+// infrastructure_unit_template.go, rendered for release infrastructure launch)
+// carry no dedicated package behavior test; their reply vocabularies are
+// covered by the clusters above.
 package systemd
 
 import "errors"

@@ -137,7 +137,7 @@ func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation 
 	var once sync.Once
 	var terminal error
 	release := func() error {
-		once.Do(func() { terminal = errors.Join(releaseRouteReservation(reservation), selected.Close()) })
+		once.Do(func() { terminal = errors.Join(reservation.ReleaseJoined(), selected.Close()) })
 		return terminal
 	}
 	config := routeprefix.Config{Leg: leg, Current: f.current, Deadline: end, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {

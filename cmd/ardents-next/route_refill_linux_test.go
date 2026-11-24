@@ -101,7 +101,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 								if err != nil {
 									return nil, err
 								}
-								return channel.HoldReservation(func() error { return releaseRouteReservation(original) })
+								return channel.HoldReservation(original.ReleaseJoined)
 							})
 						},
 						Refill: func(ctx context.Context, channel routereceiver.Channel, prior receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
@@ -115,7 +115,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 								if err != nil {
 									return nil, err
 								}
-								release, err := channel.HoldReservation(func() error { return releaseRouteReservation(addition) })
+								release, err := channel.HoldReservation(addition.ReleaseJoined)
 								if err == nil && mode == "authority-before-spend" {
 									f.clockUnavailable.Store(true)
 								}
@@ -144,7 +144,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 						}
 						f.clockUnavailable.Store(false)
 						if blocker != nil {
-							if err := releaseRouteReservation(blocker); err != nil {
+							if err := blocker.ReleaseJoined(); err != nil {
 								t.Error(err)
 							}
 						}
@@ -274,7 +274,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 					}
 					f.clockUnavailable.Store(false)
 					if blocker != nil {
-						if err := releaseRouteReservation(blocker); err != nil {
+						if err := blocker.ReleaseJoined(); err != nil {
 							t.Fatal(err)
 						}
 						blocker = nil
@@ -298,7 +298,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 						if err != nil {
 							return nil, err
 						}
-						return func() error { return releaseRouteReservation(reservation) }, nil
+						return reservation.ReleaseJoined, nil
 					})
 					if mode == "capacity-before-spend" || mode == "authority-before-spend" {
 						if err != nil {

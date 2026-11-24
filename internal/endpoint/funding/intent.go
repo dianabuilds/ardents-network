@@ -46,3 +46,22 @@ func ValidateIntent(view network.RuntimeView, intent stock.IssuanceIntent) error
 	}
 	return nil
 }
+
+// PresentationGuard validates a presentation against one fresh Network view.
+func PresentationGuard(current func() (network.RuntimeView, error)) func(stock.Presentation) error {
+	return func(p stock.Presentation) error {
+		view, err := current()
+		if err != nil {
+			return err
+		}
+		facts, now, err := NetworkFacts(view)
+		if err != nil {
+			return err
+		}
+		member, err := view.Member(p.RecipientNodeID, now)
+		if err != nil || member.DutyGeneration != p.RecipientDutyGeneration || facts.NetworkID != p.NetworkID || facts.StateGeneration != p.StateGeneration || facts.StateDigest != p.StateDigest || facts.Digest != p.ProfileDigest || !now.Before(p.Deadline) || p.Deadline.After(member.NotAfter()) || p.Deadline.After(facts.NotAfter) {
+			return errors.Join(errors.New("network presentation binding is unavailable"), err)
+		}
+		return nil
+	}
+}

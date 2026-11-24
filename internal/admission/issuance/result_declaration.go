@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
@@ -176,11 +177,11 @@ func DecodeLedgerBinding(raw []byte, fields map[string]json.RawMessage) (quota.L
 		value  string
 		target *[32]byte
 	}{{input.Network, &binding.Network}, {input.Issuer, &binding.Issuer}, {input.Authority, &binding.Authority}, {input.Profile, &binding.Profile}} {
-		b, err := admissionHex(item.value, 32)
-		if err != nil {
+		b, ok := canonicaldigest.Decode(item.value)
+		if !ok {
 			return binding, bad
 		}
-		copy(item.target[:], b)
+		*item.target = b
 	}
 	var err error
 	binding.Duty, err = admissionNumber(input.Duty, 64)
@@ -238,11 +239,11 @@ func DecodeKeyBinding(raw []byte) (Binding, error) {
 		value  string
 		target *[32]byte
 	}{{b.Network, &binding.Network}, {b.Issuer, &binding.Issuer}, {b.Signer, &binding.Signer}} {
-		value, err := admissionHex(item.value, 32)
-		if err != nil {
+		value, ok := canonicaldigest.Decode(item.value)
+		if !ok {
 			return binding, ErrInvalid
 		}
-		copy(item.target[:], value)
+		*item.target = value
 	}
 	var err error
 	binding.Start, err = admissionTime(b.Start)
@@ -267,11 +268,11 @@ func DecodeBatchFacts(raw []byte) (admission.Facts, error) {
 	for name, target := range map[string]*[32]byte{
 		"network": &facts.Network, "issuer": &facts.Issuer, "authority": &facts.Authority, "holder": &facts.Holder,
 	} {
-		decoded, err := admissionHex(values[name], 32)
-		if err != nil {
+		decoded, ok := canonicaldigest.Decode(values[name])
+		if !ok {
 			return admission.Facts{}, ErrInvalid
 		}
-		copy(target[:], decoded)
+		*target = decoded
 	}
 	for name, target := range map[string]*time.Time{
 		"duty_not_before": &facts.DutyNotBefore, "duty_not_after": &facts.DutyNotAfter, "now": &facts.Now,
@@ -300,8 +301,8 @@ func admissionHex(value string, n int) ([]byte, error) {
 	return raw, nil
 }
 func admissionTime(value string) (time.Time, error) {
-	t, err := time.Parse(time.RFC3339, value)
-	if err != nil || t.Format(time.RFC3339) != value || t.Location() != time.UTC || t.Nanosecond() != 0 {
+	t, ok := artifacts.ParseUTCSecond(value)
+	if !ok {
 		return time.Time{}, errors.New("invalid-input")
 	}
 	return t, nil

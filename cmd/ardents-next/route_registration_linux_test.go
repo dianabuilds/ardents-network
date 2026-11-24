@@ -498,7 +498,7 @@ func registrationPresentationPrefix(ctx context.Context, plan routePrefixPlan, f
 	var once sync.Once
 	var releaseErr error
 	release := func() error {
-		once.Do(func() { releaseErr = errors.Join(releaseRouteReservation(held), selected.Close(), budget.Close()) })
+		once.Do(func() { releaseErr = errors.Join(held.ReleaseJoined(), selected.Close(), budget.Close()) })
 		return releaseErr
 	}
 	prefix, err := routeprefix.Open(ctx, routeprefix.Config{Leg: leg, Current: f.current, Deadline: plan.Deadline, Release: release,

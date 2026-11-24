@@ -54,8 +54,12 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
 	case "cmd/ardents-next/network_preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
-	case "cmd/ardents-next/offline_profile_inspection.go",
-		"cmd/ardents-next/offline_profile_inspection_test.go":
+	case "cmd/ardents-next/offline_profile_inspection.go":
+		if dependency == modulePath+"/internal/canonicaldigest" {
+			return true
+		}
+		fallthrough
+	case "cmd/ardents-next/offline_profile_inspection_test.go":
 		switch dependency {
 		case modulePath + "/internal/admission/issuerprofile", modulePath + "/internal/network/closedprofile":
 			return true
@@ -231,7 +235,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/node/provisioning/network_profile_signing_test.go", "internal/node/provisioning/network_public_preparation_test.go":
 		return dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network"
 	case "cmd/ardents-next/network_preparation.go":
-		return dependency == modulePath+"/internal/node/provisioning"
+		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathgrammar"
 	case "cmd/ardents-next/network_keys_native_linux_test.go":
 		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/admission/issuance/artifact_export_linux.go":

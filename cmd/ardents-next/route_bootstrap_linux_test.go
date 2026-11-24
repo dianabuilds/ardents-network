@@ -327,13 +327,13 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 						admissionPoint("after-reservation")
 					}
 					if !isIssuer {
-						return c.HoldReservation(func() error { return releaseRouteReservation(held) })
+						return c.HoldReservation(held.ReleaseJoined)
 					}
 					return holdRouteIssuerReservation(c, held, func() error {
 						if admissionPoint != nil {
 							admissionPoint("before-return")
 						}
-						err := releaseRouteReservation(held)
+						err := held.ReleaseJoined()
 						x.issuerReturns.Add(1)
 						return err
 					}, afterIssuerReturn)
@@ -984,7 +984,7 @@ func TestRouteIssuerOriginalCallerAtVerifiedDepositTCP(t *testing.T) {
 			}
 			var once sync.Once
 			var returnErr error
-			release := func() error { once.Do(func() { returnErr = releaseRouteReservation(held) }); return returnErr }
+			release := func() error { once.Do(func() { returnErr = held.ReleaseJoined() }); return returnErr }
 			defer release()
 			var forwardingPresentation stock.Presentation
 			opened, err := routeprefix.Open(t.Context(), routeprefix.Config{Leg: leg, Current: f.current, Deadline: plan.Deadline, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
@@ -1281,7 +1281,7 @@ func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *tes
 					return nil, err
 				}
 				bootstrapHolds.Add(1)
-				return func() error { bootstrapReturns.Add(1); return releaseRouteReservation(held) }, nil
+				return func() error { bootstrapReturns.Add(1); return held.ReleaseJoined() }, nil
 			}, Admit: func(ctx context.Context, c routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 				admits.Add(1)
 				return owner.Accept(ctx, admission.ForwardClass, raw, c.Hello.Deadline, func() (func() error, error) {
@@ -1546,7 +1546,7 @@ func TestRouteBootstrapObtainsStockFromActualIssuer(t *testing.T) {
 							return nil, err
 						}
 						holds.Add(1)
-						return func() error { returns.Add(1); return releaseRouteReservation(held) }, nil
+						return func() error { returns.Add(1); return held.ReleaseJoined() }, nil
 					},
 					Admit: func(context.Context, routereceiver.Channel, []byte) (receiving.Grant, error) {
 						admits.Add(1)
@@ -1769,7 +1769,7 @@ func TestRouteHostedEntryPropagatesBootstrapToInterior(t *testing.T) {
 							return nil, err
 						}
 						holds.Add(1)
-						return func() error { returns.Add(1); return releaseRouteReservation(held) }, nil
+						return func() error { returns.Add(1); return held.ReleaseJoined() }, nil
 					},
 					Admit: func(context.Context, routereceiver.Channel, []byte) (receiving.Grant, error) {
 						admits.Add(1)

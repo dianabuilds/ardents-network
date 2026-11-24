@@ -7,10 +7,12 @@ import (
 	"errors"
 )
 
+var errApplicationStreamHost = errors.New("application stream requires the selected Linux host")
+
 func connectApplicationStream(context.Context, string, string) error {
-	return errors.New("Application stream requires the selected Linux host")
+	return errApplicationStreamHost
 }
 
 func publishApplicationStream(context.Context, string) error {
-	return errors.New("Application stream requires the selected Linux host")
+	return errApplicationStreamHost
 }

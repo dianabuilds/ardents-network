@@ -114,7 +114,7 @@ func TestRoutePrefixOriginalCallerHandoffTCP(t *testing.T) {
 				var releases atomic.Int32
 				var releaseErr error
 				release := func() error {
-					releaseOnce.Do(func() { releases.Add(1); releaseErr = errors.Join(releaseRouteReservation(held), selected.Close()) })
+					releaseOnce.Do(func() { releases.Add(1); releaseErr = errors.Join(held.ReleaseJoined(), selected.Close()) })
 					return releaseErr
 				}
 				defer release()
@@ -277,7 +277,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 							if err != nil {
 								return nil, err
 							}
-							return channel.HoldReservation(func() error { return releaseRouteReservation(originalReservation) })
+							return channel.HoldReservation(originalReservation.ReleaseJoined)
 						})
 						if err == nil {
 							accepted.Add(1)
@@ -292,7 +292,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 								if err != nil {
 									return nil, err
 								}
-								return channel.HoldReservation(func() error { return releaseRouteReservation(addition) })
+								return channel.HoldReservation(addition.ReleaseJoined)
 							})
 							if err == nil {
 								spent <- spentToken{owner: owner, budget: budget, raw: append([]byte(nil), raw...)}
@@ -336,7 +336,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 				var releases atomic.Int32
 				var releaseErr error
 				release := func() error {
-					releaseOnce.Do(func() { releases.Add(1); releaseErr = errors.Join(releaseRouteReservation(held), selected.Close()) })
+					releaseOnce.Do(func() { releases.Add(1); releaseErr = errors.Join(held.ReleaseJoined(), selected.Close()) })
 					return releaseErr
 				}
 				defer release()
@@ -365,7 +365,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 						if checkpoint == 7 {
 							cancelRefill()
 						}
-						return func() error { return releaseRouteReservation(addition) }, nil
+						return addition.ReleaseJoined, nil
 					}
 					return nil, errors.New("test stops at forbidden capacity effect; no successful reserve substituted")
 				}, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {

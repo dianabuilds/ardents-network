@@ -1,6 +1,9 @@
 package pathgrammar
 
-import "path/filepath"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // Strict reports whether path is an absolute, already-clean host filesystem
 // path: the one strict path-validation grammar shared by the maintained
@@ -10,4 +13,21 @@ import "path/filepath"
 // over-length paths compose those bounds around this predicate.
 func Strict(path string) bool {
 	return filepath.IsAbs(path) && filepath.Clean(path) == path
+}
+
+// DisjointRoots checks clean absolute paths for duplicate or nested
+// declarations. It compares path spellings without consulting the filesystem.
+func DisjointRoots(roots ...string) bool {
+	separator := string(filepath.Separator)
+	for i, root := range roots {
+		if !Strict(root) {
+			return false
+		}
+		for _, other := range roots[:i] {
+			if root == other || strings.HasPrefix(root, other+separator) || strings.HasPrefix(other, root+separator) {
+				return false
+			}
+		}
+	}
+	return true
 }

@@ -211,8 +211,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 
 // P1-B batch 2 (#787, #691) de-tagged verified pure production files whose
 // composed symbols became portable in batch 1: the Node failure/admission
-// projections, the whole endpoint/funding composition and the session route
-// reservation helpers. They add no native mechanism, so every mandatory target
+// projections, the endpoint/funding composition and the shared reservation
+// and session deadline helpers. They add no native mechanism, so every mandatory target
 // must select them and their portable behavior tests. The Node first-failure
 // physical-join test still composes the Linux forwarding lifetime and stays
 // Linux-only.
@@ -226,7 +226,7 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 			"internal/node/failure_projection_test.go",
 			"internal/node/admission_projection.go",
 			"internal/node/admission_projection_test.go",
-			"internal/endpoint/funding/reservation.go",
+			"internal/hosting/reservation.go",
 			"internal/endpoint/funding/issuance.go",
 			"internal/endpoint/funding/parents.go",
 			"internal/endpoint/funding/prefix.go",
@@ -260,13 +260,10 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 }
 
 // P1-B batch 3 (#794, #691) de-tagged the next verified pure leaves whose
-// composed symbols are already portable: the Reader local Text result
-// projection, the Publisher root-isolation predicate and fixed document stream
-// contract, and the Endpoint network presentation guard. They add no native
-// mechanism, so every mandatory target must select them and their portable
-// behavior tests. Their genuine production consumers (reader/publisher Open and
-// the installed participant) remain Linux-tagged behind unchanged !linux typed
-// refusals, so the de-tagged helpers stay Windows-production-dead only.
+// composed symbols are already portable: the Reader result projection, the
+// shared root-isolation predicate, the Publisher document stream contract, and
+// the shared Network presentation guard. Every mandatory target must select
+// these files and their portable behavior tests.
 func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, target := range []string{"linux", "windows", "darwin"} {
@@ -275,10 +272,10 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 		for _, name := range []string{
 			"internal/endpoint/reader/result.go",
 			"internal/endpoint/reader/result_test.go",
-			"internal/endpoint/publisher/roots.go",
+			"internal/pathgrammar/strict_path.go",
 			"internal/endpoint/publisher/roots_test.go",
 			"internal/endpoint/publisher/contract.go",
-			"internal/endpoint/authority.go",
+			"internal/endpoint/funding/intent.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -908,7 +905,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/admission/receiving":               {"admission", "admission/token", "admission/spending"},
 		"internal/admission/stock":                   {"admission", "admission/allocation", "admission/attempts", "admission/token"},
 		"internal/admission/quota":                   {"admission", "admission/issuerprofile", "pathgrammar"},
-		"internal/admission/issuance":                {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
+		"internal/admission/issuance":                {"canonicaldigest", "admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
 		"internal/admission/issuer":                  {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing", "pathgrammar"},
 		"internal/admission/issuerprofile/signing":   {"admission/issuerprofile", "pathgrammar"},
 		"internal/hosting":                           {"canonicaldigest", "pathgrammar"},
@@ -957,7 +954,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection", "pathgrammar"},
 		"internal/endpoint/reader":    {"endpoint/funding", "admission", "admission/stock", "connection", "execution/runtime", "hosting", "network", "reachability", "route/prefix", "route/selection"},
 		"internal/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection", "pathgrammar"},
-		"cmd/ardents-next":            {"endpoint/session", "endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
+		"cmd/ardents-next":            {"canonicaldigest", "pathgrammar", "endpoint/session", "endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
 		if (source == "internal/endpoint/history_preparation_linux.go" || source == "internal/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/route/selection" {
@@ -992,7 +989,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
-			case "cmd/ardents-next/inputs.go", "cmd/ardents-next/source_serving_fixture_linux_test.go", "cmd/ardents-next/route_linux.go",
+			case "cmd/ardents-next/inputs.go", "cmd/ardents-next/publication.go", "cmd/ardents-next/source_serving_fixture_linux_test.go", "cmd/ardents-next/route_linux.go",
 				"internal/network/source/command/serve_linux.go", "internal/network/source/command/prepare_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_native_linux_test.go",
@@ -1087,7 +1084,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/node/descriptor_linux.go" && dependency == modulePath+"/internal/reachability" {
 			return true
 		}
-		if source == "cmd/ardents-next/node_lifecycle_linux.go" && dependency == modulePath+"/internal/node" {
+		if (source == "cmd/ardents-next/node_lifecycle_linux.go" || source == "cmd/ardents-next/route_linux.go") && dependency == modulePath+"/internal/node" {
 			return true
 		}
 		if (source == "cmd/ardents-next/node_native_linux_test.go" || source == "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/join_lifecycle_native_linux_test.go" || source == "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go") && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {

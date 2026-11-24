@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // This local consumer spends tokens and retains finite allowance receipts. It
@@ -21,7 +22,7 @@ func runAdmissionReceiver(ctx context.Context, args []string, input io.ReadClose
 		Receiver receiving.Receiver    `json:"receiver"`
 		NotAfter time.Time             `json:"not_after"`
 	}
-	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
+	if ctx == nil || admissionConfig(args, &config) != nil || !pathgrammar.Strict(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
 		return 2
 	}
 	if ctx.Err() != nil {

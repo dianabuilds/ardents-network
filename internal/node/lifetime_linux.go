@@ -356,12 +356,12 @@ func (l *nodeLifetime) acceptWithReservation(ctx context.Context, class admissio
 		}
 		limit := class.ByteLimit()
 		if err := l.budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
-			return nil, errors.Join(err, releaseReservation(held))
+			return nil, errors.Join(err, held.ReleaseJoined())
 		}
 		if _, err := l.hooks.current(); err != nil {
-			return nil, errors.Join(err, releaseReservation(held))
+			return nil, errors.Join(err, held.ReleaseJoined())
 		}
-		return c.HoldReservation(func() error { return releaseReservation(held) })
+		return c.HoldReservation(held.ReleaseJoined)
 	})
 }
 

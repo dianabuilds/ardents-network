@@ -49,7 +49,7 @@ func (f *forwarding) admit(ctx context.Context, c receiver.Channel, raw []byte) 
 		if err := f.budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
 			// No physical borrower or receiving spend exists yet. An operator's
 			// smaller envelope cannot back the token's complete allowance.
-			return nil, errors.Join(err, releaseReservation(held))
+			return nil, errors.Join(err, held.ReleaseJoined())
 		}
 		f.reservationsMu.Lock()
 		f.reservations[c] = held
@@ -58,32 +58,33 @@ func (f *forwarding) admit(ctx context.Context, c receiver.Channel, raw []byte) 
 			f.reservationsMu.Lock()
 			delete(f.reservations, c)
 			f.reservationsMu.Unlock()
-			return releaseReservation(held)
+			return held.ReleaseJoined()
 		})
 	})
 }
-func releaseReservation(held *hosting.Reservation) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	return held.Release(ctx)
-}
 func (f *forwarding) refill(ctx context.Context, c receiver.Channel, original receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
+	f.reservationsMu.Lock()
+	held := f.reservations[c]
+	f.reservationsMu.Unlock()
+	return RefillForwarding(ctx, c, original, remaining, raw, f.receiving, f.budget, held)
+}
+
+// RefillForwarding retains the additional Hosting reservation on the original
+// Route channel before Admission can spend the refill.
+func RefillForwarding(ctx context.Context, c receiver.Channel, original receiving.Grant, remaining uint64, raw []byte, owner *receiving.Owner, budget *hosting.Budget, held *hosting.Reservation) (receiving.Grant, error) {
 	limit := admission.ForwardClass.ByteLimit()
 	if c.Hello.Purpose != ardp.PurposeForwarding || remaining == 0 || remaining >= limit {
 		return receiving.Grant{}, errors.New("original Forwarding refill unavailable")
 	}
-	f.reservationsMu.Lock()
-	held := f.reservations[c]
-	f.reservationsMu.Unlock()
-	return f.receiving.Refill(ctx, original, remaining, raw, func() (func() error, error) {
-		if err := f.budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
+	return owner.Refill(ctx, original, remaining, raw, func() (func() error, error) {
+		if err := budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
 			return nil, err
 		}
 		delta := limit - remaining
-		additional, err := f.budget.ReserveAdditionalJoint(ctx, held, hosting.JointTraffic{Tx: delta, Rx: delta, Total: delta})
+		additional, err := budget.ReserveAdditionalJoint(ctx, held, hosting.JointTraffic{Tx: delta, Rx: delta, Total: delta})
 		if err != nil {
 			return nil, err
 		}
-		return c.HoldReservation(func() error { return releaseReservation(additional) })
+		return c.HoldReservation(additional.ReleaseJoined)
 	})
 }

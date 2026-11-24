@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
 // networkAuthorityPlan pins the local Network owner, never a claimed current
@@ -32,13 +33,13 @@ type admissionAuthority struct {
 
 func validAdmissionAuthority(profile string, plan *networkAuthorityPlan, roots ...string) bool {
 	if plan == nil {
-		return absoluteAdmissionPath(profile)
+		return pathgrammar.Strict(profile)
 	}
 	if profile != "" || !plan.ValidShape() {
 		return false
 	}
 	for _, root := range roots {
-		if !absoluteAdmissionPath(root) || root == plan.Root || strings.HasPrefix(root, plan.Root+string(filepath.Separator)) ||
+		if !pathgrammar.Strict(root) || root == plan.Root || strings.HasPrefix(root, plan.Root+string(filepath.Separator)) ||
 			strings.HasPrefix(plan.Root, root+string(filepath.Separator)) {
 			return false
 		}
@@ -123,14 +124,7 @@ func networkAdmissionAuthority(current func() (network.RuntimeView, error), clos
 			return receiving.Observation{Profile: facts, Receiver: receiver, Now: now, NotAfter: end}, nil
 		},
 	}
-	authority.presentation = func(p stock.Presentation) error {
-		v, err := authority.receiver(receiving.Receiver{NetworkID: p.NetworkID, StateGeneration: p.StateGeneration, StateDigest: p.StateDigest,
-			ProfileDigest: p.ProfileDigest, NodeID: p.RecipientNodeID, DutyGeneration: p.RecipientDutyGeneration}, p.Deadline)
-		if err != nil || !v.Now.Before(p.Deadline) || p.Deadline.After(v.NotAfter) {
-			return errors.Join(errors.New("network presentation binding is unavailable"), err)
-		}
-		return nil
-	}
+	authority.presentation = funding.PresentationGuard(current)
 	authority.intent = func(intent stock.IssuanceIntent) error {
 		view, err := current()
 		if err != nil {

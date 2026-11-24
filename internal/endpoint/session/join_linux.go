@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
@@ -25,7 +26,7 @@ func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.A
 	if plan.Domain == 3 {
 		roots = append(roots, plan.SourceInteriorRoot)
 	}
-	if ctx == nil || !authority.Available() || !authority.HasPresentation() || holder == nil || plan.Domain != 1 && plan.Domain != 3 || !independentRouteRoots(roots...) {
+	if ctx == nil || !authority.Available() || !authority.HasPresentation() || holder == nil || plan.Domain != 1 && plan.Domain != 3 || !pathgrammar.DisjointRoots(roots...) {
 		return JoinContext{}, errors.New("route JOIN context setup unavailable")
 	}
 	installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.Current, Exclusions: plan.Exclusions})
@@ -81,7 +82,7 @@ func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.A
 			if err != nil {
 				return nil, err
 			}
-			return func() error { return releaseRouteReservation(reservation) }, nil
+			return reservation.ReleaseJoined, nil
 		},
 		Present: func(caller context.Context, hello ardp.Hello) ([]byte, error) {
 			presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}

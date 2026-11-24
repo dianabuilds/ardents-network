@@ -80,9 +80,9 @@ func (flow *Flow) bootstrap(ctx context.Context, budget *hosting.Budget, prepara
 		return err
 	}
 	physical, err := prefix.OpenBootstrap(ctx, prefix.BootstrapConfig{Leg: flow.leg, Current: flow.authority.current,
-		Deadline: end, Release: func() error { return releaseRouteReservation(reservation) }})
+		Deadline: end, Release: reservation.ReleaseJoined})
 	if err != nil {
-		return errors.Join(err, releaseRouteReservation(reservation))
+		return errors.Join(err, reservation.ReleaseJoined())
 	}
 	defer func() {
 		result = errors.Join(result, physical.Close())

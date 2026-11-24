@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
@@ -57,13 +58,13 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 		}
 		return err
 	}
-	if ctx == nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
+	if ctx == nil || !pathgrammar.Strict(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
 		return 2
 	}
-	if config.Route != nil && (config.Network == nil || !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
+	if config.Route != nil && (config.Network == nil || !pathgrammar.DisjointRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
 		return 2
 	}
-	if config.Route != nil && config.Route.SourceInteriorRoot != "" && !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot, config.Route.SourceInteriorRoot) {
+	if config.Route != nil && config.Route.SourceInteriorRoot != "" && !pathgrammar.DisjointRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot, config.Route.SourceInteriorRoot) {
 		return 2
 	}
 	if ctx.Err() != nil {
@@ -71,7 +72,7 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 	}
 	if config.Publication != nil {
 		operation, ok := preparation.(*executionruntime.Operation)
-		if !ok || operation.CheckPublisher() != nil || config.Role != admission.AllocationPublisher || config.Route == nil || config.Route.Domain != 4 || !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.SourceInteriorRoot, config.Route.ResponderInteriorRoot, config.Route.HostingRoot, config.Publication.InstanceRoot, config.Publication.Root) {
+		if !ok || operation.CheckPublisher() != nil || config.Role != admission.AllocationPublisher || config.Route == nil || config.Route.Domain != 4 || !pathgrammar.DisjointRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.SourceInteriorRoot, config.Route.ResponderInteriorRoot, config.Route.HostingRoot, config.Publication.InstanceRoot, config.Publication.Root) {
 			return 2
 		}
 	}

@@ -110,8 +110,8 @@ func (p *profilePreparationKey) UnmarshalJSON(raw []byte) error {
 }
 
 func preparationTime(value string) (time.Time, error) {
-	t, err := time.Parse(time.RFC3339, value)
-	if err != nil || t.Format(time.RFC3339) != value || t.Location() != time.UTC || t.Nanosecond() != 0 {
+	t, ok := artifacts.ParseUTCSecond(value)
+	if !ok {
 		return time.Time{}, errNetworkPreparation
 	}
 	return t, nil

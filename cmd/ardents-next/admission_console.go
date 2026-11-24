@@ -7,7 +7,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
@@ -45,10 +44,6 @@ func admissionConfigBounded(args []string, value any, maximum int64) error {
 		return err
 	}
 	return decodeAdmissionObject(raw, value)
-}
-
-func absoluteAdmissionPath(path string) bool {
-	return filepath.IsAbs(path) && filepath.Clean(path) == path
 }
 
 // The command owns its input/output descriptors. Closing them on cancellation

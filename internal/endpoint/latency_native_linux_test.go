@@ -263,7 +263,7 @@ func openLatencyParticipant(ctx context.Context, root string) (*latencyParticipa
 	if _, err := networkOwner.Refresh(ctx); err != nil {
 		return fail(err)
 	}
-	authority := funding.Observe(networkOwner.CurrentRuntime, networkOwner.CurrentRuntimeWitness, presentationGuard(networkOwner.CurrentRuntime))
+	authority := funding.Observe(networkOwner.CurrentRuntime, networkOwner.CurrentRuntimeWitness, funding.PresentationGuard(networkOwner.CurrentRuntime))
 	observe := func() (admission.AuthorityFacts, time.Time, error) {
 		view, err := authority.Current()
 		if err != nil {
@@ -318,7 +318,7 @@ func openLatencyParticipant(ctx context.Context, root string) (*latencyParticipa
 		view, err := originalCurrent()
 		return view, errors.Join(err, current())
 	}
-	serviceAuthority := funding.Observe(serviceCurrent, networkOwner.CurrentRuntimeWitness, presentationGuard(serviceCurrent))
+	serviceAuthority := funding.Observe(serviceCurrent, networkOwner.CurrentRuntimeWitness, funding.PresentationGuard(serviceCurrent))
 	p.authority = serviceAuthority
 	readerPlan := funding.Plan{EntryRoot: filepath.Join(plan.EntryStateRoot, "entry"), InteriorRoot: filepath.Join(plan.EntryStateRoot, "reader-interior"),
 		HostingRoot: filepath.Join(plan.EntryStateRoot, "hosting"), Domain: 1,
