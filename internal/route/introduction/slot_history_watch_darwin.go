@@ -33,8 +33,15 @@ func watchRoot(dirfd int) (rootWatch, error) {
 		Flags:  syscall.EV_ADD | syscall.EV_ENABLE | syscall.EV_CLEAR,
 		Fflags: syscall.NOTE_DELETE | syscall.NOTE_RENAME | syscall.NOTE_REVOKE,
 	}
-	if _, err := syscall.Kevent(kq, []syscall.Kevent_t{change}, nil, nil); err != nil {
-		return rootWatch{}, errors.Join(err, syscall.Close(kq))
+	for {
+		_, err := syscall.Kevent(kq, []syscall.Kevent_t{change}, nil, nil)
+		if err == syscall.EINTR {
+			continue
+		}
+		if err != nil {
+			return rootWatch{}, errors.Join(err, syscall.Close(kq))
+		}
+		break
 	}
 	return rootWatch{fd: kq}, nil
 }
@@ -44,14 +51,21 @@ func watchRoot(dirfd int) (rootWatch, error) {
 func (w rootWatch) drain() error {
 	events := make([]syscall.Kevent_t, 8)
 	var zero syscall.Timespec
-	n, err := syscall.Kevent(w.fd, nil, events, &zero)
-	if err != nil {
-		return errors.Join(errors.New("introduction original root movement or watch loss"), err)
+	for {
+		n, err := syscall.Kevent(w.fd, nil, events, &zero)
+		if err == syscall.EINTR {
+			// A signal interrupted the non-blocking poll; it is not a root
+			// movement or watch loss. Retry the observation.
+			continue
+		}
+		if err != nil {
+			return errors.Join(errors.New("introduction original root movement or watch loss"), err)
+		}
+		if n > 0 {
+			return errors.New("introduction original root movement or watch loss")
+		}
+		return nil
 	}
-	if n > 0 {
-		return errors.New("introduction original root movement or watch loss")
-	}
-	return nil
 }
 
 func (w rootWatch) close() error { return syscall.Close(w.fd) }
