@@ -545,8 +545,9 @@ before waiting, retains the original leases through actual reader/physical joins
 and preserves late failures and original caller cancellation. No recovery,
 pointer repair, pending activation, runtime or installed role is opened here.
 
-`ardents-next source inspect-latest` directly consumes Source's finite
-`InspectLatest` contact. It retains original local public inputs and its own
+`ardents-next source inspect-latest` calls `internal/network/source/inspection`
+for Source's finite `InspectLatest` contact. The inspection owner retains
+original local public inputs and its own
 protected client key, uses the shared complete declaration/key-separation/mTLS
 checks, and returns only one bounded response after original socket/callback
 join. That response is private local unaccepted evidence, not a Plan, State
