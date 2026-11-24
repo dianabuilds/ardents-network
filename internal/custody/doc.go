@@ -17,36 +17,39 @@
 // Navigation: one Vault owns every cluster below under a single serialized
 // original operation. README.md carries the extended owner contract. Test
 // naming follows docs/development/repository-layout.md; all tests are
-// package-level behavior tests named by behavior, not by source mirror, and a
-// test listed under several clusters verifies each of them.
+// package-level behavior tests named by behavior, not by source mirror, and
+// each test is listed under its primary responsibility cluster.
 //
-//   - C1 vault-lifecycle: vault.go, vault_contract.go, vault_operation.go
-//     (Execute dispatch), vault_lock.go, vault_lock_nonwindows.go,
-//     vault_lock_windows.go, vault_purge.go. Tests: original_operation_test.go,
-//     record_refusal_test.go, terminal_input_test.go, recovery_lifecycle_test.go.
-//   - C2 record-durability mechanisms: writeRecordIn, verifyPersistedEnvelope,
+// Responsibility clusters and their tests:
+//   - vault lifecycle and serialized original operation: vault.go,
+//     vault_contract.go, vault_operation.go (Execute dispatch), vault_lock.go,
+//     vault_lock_nonwindows.go, vault_lock_windows.go, vault_purge.go
+//     (original_operation_test.go, record_refusal_test.go,
+//     vault_lock_windows_test.go)
+//   - record durability mechanisms: writeRecordIn, verifyPersistedEnvelope,
 //     reserveRecordSpace and readRegularFile inside vault_operation.go;
 //     writeAtomicPrivate inside authority_floor.go; durability_nonwindows.go,
-//     durability_windows.go. Tests: interrupted_publication_test.go,
-//     filesystem_failure_linux_test.go, service_failure_linux_test.go,
-//     bundle_publication_test.go.
-//   - C3 envelope: canonical_envelope.go.
-//     Tests: envelope_vector_test.go, admission_kdf_test.go.
-//   - C4 authority-state: authority_state.go, authority_floor.go (floor
-//     rules), record_comparison.go. Tests: admission_recovery_test.go,
-//     admission_refusal_test.go, service_refusal_test.go,
-//     recovery_lifecycle_test.go.
-//   - C5 admission-purpose: admission_authority.go. Tests:
-//     admission_authority_test.go, admission_allocation_test.go,
-//     admission_kdf_test.go, admission_recovery_test.go,
-//     admission_refusal_test.go, issuance_time_test.go,
-//     interrupted_publication_test.go, filesystem_failure_linux_test.go.
-//   - C6 service-purpose: service_authority.go, service_credential.go. Tests:
-//     service_issuance_test.go, service_refusal_test.go,
-//     service_failure_linux_test.go, record_refusal_test.go.
-//   - C7 recovery-bundle: bundle_export.go, bundle_restore.go. Tests:
-//     bundle_publication_test.go, recovery_lifecycle_test.go,
-//     service_refusal_test.go.
-//   - C8 root-provenance: independent_root.go. Tests:
-//     independent_root_refusal_test.go, independent_root_refusal_linux_test.go.
+//     durability_windows.go (interrupted_publication_test.go,
+//     filesystem_failure_linux_test.go, service_failure_linux_test.go; linux)
+//   - canonical envelope and KDF: canonical_envelope.go
+//     (envelope_vector_test.go, admission_kdf_test.go)
+//   - authority state and recovery floors: authority_state.go,
+//     authority_floor.go (floor rules), record_comparison.go
+//     (admission_recovery_test.go)
+//   - admission purpose: admission_authority.go (admission_authority_test.go,
+//     admission_allocation_test.go, admission_refusal_test.go,
+//     issuance_time_test.go)
+//   - service purpose: service_authority.go, service_credential.go
+//     (service_issuance_test.go, service_refusal_test.go)
+//   - recovery bundle export, restore and publication: bundle_export.go,
+//     bundle_restore.go (bundle_publication_test.go,
+//     recovery_lifecycle_test.go)
+//   - independent root provenance: independent_root.go
+//     (independent_root_refusal_test.go,
+//     independent_root_refusal_linux_test.go)
+//   - post-commit credential delivery: credential_delivery.go
+//     (credential_delivery_linux_test.go; linux)
+//
+// terminal_input_test.go carries the shared sequenceSecrets input fixture and
+// no behavior of its own.
 package custody
