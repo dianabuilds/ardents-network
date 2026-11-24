@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicalcursor"
 )
 
 const MaxMaterializationBytes = 35 << 10
@@ -15,11 +17,11 @@ func InspectMaterializationIndex(raw []byte) (uint32, error) {
 	if len(raw) < 36 || len(raw) > MaxMaterializationBytes {
 		return 0, errors.New("materialization framing length is invalid")
 	}
-	d := newDecoder(raw)
-	if _, err := d.bytes(32); err != nil {
+	d := canonicalcursor.NewDecoder(raw)
+	if _, err := d.Bytes(32); err != nil {
 		return 0, err
 	}
-	return d.uint32()
+	return d.Uint32()
 }
 
 type materialization struct {
@@ -48,14 +50,14 @@ func decodeMaterializations(encoded [][]byte) ([]materialization, error) {
 }
 
 func decodeMaterialization(raw []byte) (materialization, error) {
-	d := newDecoder(raw)
-	digest, err := d.bytes(32)
+	d := canonicalcursor.NewDecoder(raw)
+	digest, err := d.Bytes(32)
 	if err != nil {
 		return materialization{}, err
 	}
 	var value materialization
 	copy(value.epochDigest[:], digest)
-	if value.index, err = d.uint32(); err != nil {
+	if value.index, err = d.Uint32(); err != nil {
 		return materialization{}, err
 	}
 	record, err := lengthBytes(&d, maximumRecordBytes)
@@ -63,7 +65,7 @@ func decodeMaterialization(raw []byte) (materialization, error) {
 		return materialization{}, err
 	}
 	value.record = append([]byte(nil), record...)
-	count, err := d.uint16()
+	count, err := d.Uint16()
 	if err != nil {
 		return materialization{}, err
 	}
@@ -71,7 +73,7 @@ func decodeMaterialization(raw []byte) (materialization, error) {
 		return materialization{}, errors.New("materialization proof count is invalid")
 	}
 	for range int(count) {
-		sibling, readErr := d.bytes(32)
+		sibling, readErr := d.Bytes(32)
 		if readErr != nil {
 			return materialization{}, readErr
 		}
@@ -79,7 +81,7 @@ func decodeMaterialization(raw []byte) (materialization, error) {
 		copy(siblingDigest[:], sibling)
 		value.siblings = append(value.siblings, siblingDigest)
 	}
-	if !d.done() {
+	if !d.Done() {
 		return materialization{}, errors.New("materialization has trailing bytes")
 	}
 	return value, nil
@@ -97,15 +99,15 @@ func encodeMaterialization(value materialization) []byte {
 	return buffer.Bytes()
 }
 
-func lengthBytes(d *decoder, maximum int) ([]byte, error) {
-	length, err := d.uint32()
+func lengthBytes(d *canonicalcursor.Decoder, maximum int) ([]byte, error) {
+	length, err := d.Uint32()
 	if err != nil {
 		return nil, err
 	}
 	if length == 0 || length > uint32(maximum) {
 		return nil, errors.New("materialization member length is invalid")
 	}
-	return d.bytes(int(length))
+	return d.Bytes(int(length))
 }
 
 func writeEpochLengthBytes(buffer *bytes.Buffer, raw []byte) {
