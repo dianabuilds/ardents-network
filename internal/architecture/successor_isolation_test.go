@@ -100,7 +100,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/hosting/inspection_linux.go",
 			"internal/node/provisioning/command_linux.go",
 			"internal/platform/artifacts/input_linux_test.go",
-			"cmd/ardents-next/source_preparation_linux.go",
+			"internal/network/source/command/prepare_linux.go",
 			"cmd/ardents-next/source_state_preparation_linux_test.go",
 			"internal/network/state/source_state_files_linux.go",
 			"internal/network/state/source_state_files_linux_test.go",
@@ -108,7 +108,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/input_linux.go",
 			"internal/platform/artifacts/receipt_linux.go",
-			"cmd/ardents-next/source_inspection_linux.go",
+			"internal/network/source/command/inspect_linux.go",
 			"internal/network/source/inspection/inspection_linux.go",
 			"internal/network/source/inspection/inspection_linux_test.go",
 			"tests/e2e/source/inspection_linux_test.go",
@@ -563,6 +563,30 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
+	if strings.HasPrefix(source, "internal/network/source/command/") && localImport {
+		switch source {
+		case "internal/network/source/command/prepare_linux.go":
+			return local == "internal/endpoint" || local == "internal/network/state" || local == "internal/pathgrammar" || local == "internal/platform/artifacts"
+		case "internal/network/source/command/inspect_linux.go":
+			return local == "internal/network/source/inspection" || local == "internal/platform/artifacts"
+		case "internal/network/source/command/serve_linux.go":
+			return local == "internal/network/source/serving" || local == "internal/platform/artifacts" || local == "internal/processresource"
+		case "internal/network/source/command/command_linux_test.go":
+			return local == "internal/network/source/serving"
+		default:
+			return false
+		}
+	}
+	if localImport && local == "internal/network/source/command" {
+		switch source {
+		case "cmd/ardents-next/source_command_linux.go", "cmd/ardents-next/repair_linux.go",
+			"cmd/ardents-next/source_serving_fixture_linux_test.go", "cmd/ardents-next/source_output_linux_test.go",
+			"cmd/ardents-next/source_preparation_native_linux_test.go":
+			return true
+		default:
+			return false
+		}
+	}
 	// These test drivers share only independently generated TLS fixture bytes.
 	if localImport && local == "tests/e2e/source" {
 		switch source {
@@ -584,7 +608,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "cmd/ardents-next/endpoint_preparation_linux.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
 			"cmd/ardents-next/endpoint_history_linux_test.go",
-			"cmd/ardents-next/installed_endpoint_linux.go", "cmd/ardents-next/source_preparation_linux.go",
+			"cmd/ardents-next/installed_endpoint_linux.go", "internal/network/source/command/prepare_linux.go",
 			"cmd/ardents-next/source_preparation_native_linux_test.go",
 			"cmd/ardents-next/installed_source_linux_test.go", "cmd/ardents-next/source_preparation_process_linux_test.go":
 			return true
@@ -890,19 +914,19 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_state_linux_test.go" && (dependency == modulePath+"/internal/network/source" || dependency == modulePath+"/internal/network/duty") {
 			return true
 		}
-		if (source == "cmd/ardents-next/source_linux.go" || source == "cmd/ardents-next/source_serving_fixture_linux_test.go") && dependency == modulePath+"/internal/network/source/serving" {
+		if (source == "cmd/ardents-next/source_serving_fixture_linux_test.go" || source == "cmd/ardents-next/source_output_linux_test.go" || source == "cmd/ardents-next/source_state_linux_test.go") && dependency == modulePath+"/internal/network/source/serving" {
 			return true
 		}
 		if source == "cmd/ardents-next/source_serving_fixture_linux_test.go" && dependency == modulePath+"/internal/network/state" {
 			return true
 		}
-		if source == "cmd/ardents-next/source_linux.go" && dependency == modulePath+"/internal/processresource" {
+		if source == "internal/network/source/command/serve_linux.go" && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
 			case "cmd/ardents-next/inputs.go", "cmd/ardents-next/source_serving_fixture_linux_test.go", "cmd/ardents-next/route_linux.go",
-				"cmd/ardents-next/source_linux.go", "cmd/ardents-next/source_preparation_linux.go",
+				"internal/network/source/command/serve_linux.go", "internal/network/source/command/prepare_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_native_linux_test.go",
 				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go":

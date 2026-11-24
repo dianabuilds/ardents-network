@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	sourcecommand "github.com/dianabuilds/ardents-network/internal/network/source/command"
 	"github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -36,5 +37,5 @@ type sourceLifetime interface {
 }
 
 func superviseSource(ctx context.Context, owner sourceLifetime, check func() error, deny context.CancelFunc, out, diagnostic io.Writer, joinInputs func() error) error {
-	return serving.Supervise(ctx, owner, check, deny, sourceEvents(out, diagnostic), joinInputs)
+	return serving.Supervise(ctx, owner, check, deny, sourcecommand.Events(out, diagnostic), joinInputs)
 }

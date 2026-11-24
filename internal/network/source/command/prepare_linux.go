@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package command
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -19,7 +20,7 @@ func runSourcePreparation(ctx context.Context, args []string, out io.Writer) int
 		return 2
 	}
 	for _, path := range args[1:] {
-		if !absoluteAdmissionPath(path) {
+		if !pathgrammar.Strict(path) {
 			return 2
 		}
 	}
@@ -39,7 +40,7 @@ func runSourcePreparation(ctx context.Context, args []string, out io.Writer) int
 		Files      map[string]string `json:"files"`
 		Validation string            `json:"validation"`
 	}{"ardents-source-trust-prepared-v1", files, "offline-public-observation"})
-	if err != nil || writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
+	if err != nil || artifacts.WriteReport(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
 		return 1
 	}
 	return 0

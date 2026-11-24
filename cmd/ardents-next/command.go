@@ -77,19 +77,3 @@ func runEndpointCommand(ctx context.Context, args []string, out, diagnostic io.W
 	}
 	return 0
 }
-
-func runSourceCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	if len(args) > 0 {
-		switch args[0] {
-		case "inspect-latest":
-			return runSourceInspection(ctx, args[1:], out, diagnostic)
-		case "prepare-trust":
-			return runSourcePreparation(ctx, args, out)
-		case "prepare-state":
-			return runSourceStatePreparation(ctx, args[1:], out, diagnostic)
-		case "repair-retained":
-			return runRepair(ctx, "source", args[1:], out, diagnostic)
-		}
-	}
-	return runSource(ctx, args, out, diagnostic)
-}

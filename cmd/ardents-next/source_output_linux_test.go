@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	sourcecommand "github.com/dianabuilds/ardents-network/internal/network/source/command"
+	"github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
@@ -44,7 +46,7 @@ func TestSourceNativeOutputLossAndBackpressureAreFinite(t *testing.T) {
 				}
 			}
 			started := time.Now()
-			err = sourceReport(writer, "listening", "original-source")
+			err = sourcecommand.Events(writer, io.Discard)(t.Context(), serving.Event{Phase: "listening", Outcome: "original-source"})
 			if fault == "peer-close" && !errors.Is(err, syscall.EPIPE) {
 				t.Fatal("original output cause lost", err)
 			}

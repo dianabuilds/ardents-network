@@ -7,8 +7,20 @@ import (
 	"io"
 )
 
-func runSource(_ context.Context, _ []string, _, diagnostic io.Writer) int {
-	return unsupportedPlatformRefusal(diagnostic, "source")
+func runSourceCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) == 0 {
+		return unsupportedPlatformRefusal(diagnostic, "source")
+	}
+	switch args[0] {
+	case "prepare-trust":
+		return unsupportedPlatformRefusal(out, "source.prepare-trust")
+	case "prepare-state", "inspect-latest":
+		return unsupportedPlatformRefusal(diagnostic, "source."+args[0])
+	case "repair-retained":
+		return runRepair(ctx, "source", args[1:], out, diagnostic)
+	default:
+		return unsupportedPlatformRefusal(diagnostic, "source")
+	}
 }
 
 func runRepair(_ context.Context, role string, _ []string, out, diagnostic io.Writer) int {
@@ -16,16 +28,4 @@ func runRepair(_ context.Context, role string, _ []string, out, diagnostic io.Wr
 		return unsupportedPlatformRefusal(diagnostic, "source.repair-retained")
 	}
 	return unsupportedPlatformRefusal(out, "node."+role)
-}
-
-func runSourceStatePreparation(_ context.Context, _ []string, _, diagnostic io.Writer) int {
-	return unsupportedPlatformRefusal(diagnostic, "source.prepare-state")
-}
-
-func runSourceInspection(_ context.Context, _ []string, _, diagnostic io.Writer) int {
-	return unsupportedPlatformRefusal(diagnostic, "source.inspect-latest")
-}
-
-func runSourcePreparation(_ context.Context, _ []string, out io.Writer) int {
-	return unsupportedPlatformRefusal(out, "source.prepare-trust")
 }
