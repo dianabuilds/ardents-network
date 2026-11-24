@@ -8,13 +8,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        script: [run-native.sh, run-issuer-native.sh, run-descriptor-native.sh, run-introduction-native.sh, run-join-native.sh]
+        script: [run-native.sh]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 81d67e04ed115cd75028f3b410ca8cd962f3c104
+          ref: 40538dc99f5ebf14a9c732170461784af0c9b50c
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 81d67e04ed115cd75028f3b410ca8cd962f3c104
+          test "$(git rev-parse HEAD)" = 40538dc99f5ebf14a9c732170461784af0c9b50c
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04

@@ -637,6 +637,20 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/endpoint" || local == "internal/network/source" || local == "internal/network/source/servingdeclaration" || local == "internal/network/state" || local == "internal/platform/artifacts" || local == "tests/epochfixture/network" || local == "internal/network/source/serving" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		}
 	}
+	if localImport && source == "tests/e2e/node/forwarding_exchange_native_linux_test.go" {
+		switch local {
+		case "internal/admission", "internal/admission/allocation", "internal/admission/issuer", "internal/admission/quota",
+			"internal/admission/stock", "internal/admission/token", "internal/endpoint/funding", "internal/hosting",
+			"internal/network", "internal/network/duty", "internal/network/epoch", "internal/network/state",
+			"internal/processresource", "tests/epochfixture/network":
+			return true
+		default:
+			return false
+		}
+	}
+	if localImport && source == "tests/e2e/node/admission_console_linux.go" {
+		return local == "internal/admission"
+	}
 	if localImport && source == "tests/e2e/node/provisioning_linux.go" {
 		return local == "internal/platform/artifacts" || local == "tests/epochfixture/network"
 	}
@@ -694,6 +708,8 @@ func successorImportAllowed(source, dependency string) bool {
 	// These command tests consume only the registered process and signed fixture owners.
 	if localImport && local == "tests/e2e/node" {
 		switch source {
+		case "cmd/ardents-next/admission_cycle_linux_test.go":
+			return true
 		case "cmd/ardents-next/connection_installed_linux_test.go",
 			"cmd/ardents-next/publication_ack_installed_linux_test.go",
 			"cmd/ardents-next/route_bootstrap_linux_test.go",
@@ -718,7 +734,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/node_descriptor_native_linux_test.go", "cmd/ardents-next/node_introduction_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
 			"cmd/ardents-next/node_join_native_linux_test.go",
-			"cmd/ardents-next/node_native_linux_test.go", "cmd/ardents-next/node_operation_native_linux_test.go",
+			"cmd/ardents-next/node_operation_native_linux_test.go",
 			"cmd/ardents-next/node_refill_native_linux_test.go", "cmd/ardents-next/platform_release_linux_test.go",
 			"cmd/ardents-next/release_process_test.go",
 			"cmd/ardents-next/publication_installed_linux_test.go",
