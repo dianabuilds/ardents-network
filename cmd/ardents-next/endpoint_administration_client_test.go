@@ -33,8 +33,8 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 			return
 		}
 		peerReady <- connection
-		raw := make([]byte, 9)
-		_, readErr := io.ReadFull(connection, raw)
+		// The real server waits for the client to finish writing before replying.
+		raw, readErr := io.ReadAll(io.LimitReader(connection, int64(len("withdraw\n")+1)))
 		var writeErr error
 		if readErr == nil {
 			_, writeErr = connection.Write([]byte("withdrawn\n"))
@@ -66,9 +66,9 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	var output bytes.Buffer
-	if code := run(ctx, []string{"endpoint", "withdraw", socket}, &output, io.Discard); code != 0 {
-		t.Fatalf("withdraw exit = %d", code)
+	var output, diagnostic bytes.Buffer
+	if code := run(ctx, []string{"endpoint", "withdraw", socket}, &output, &diagnostic); code != 0 {
+		t.Fatalf("withdraw exit = %d: %s", code, diagnostic.String())
 	}
 	observed := <-result
 	<-peerDone
