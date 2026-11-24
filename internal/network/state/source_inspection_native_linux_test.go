@@ -26,6 +26,12 @@ func sourceInspectionNativeFixture(t *testing.T) (state.Config, []byte) {
 	}
 	genesis := newFixture(t)
 	cfg := installedServingSourceConfig(t, genesis)
+	// t.TempDir creates 0755 on the current toolchain; the production State
+	// root is owner-only (0700), so bind the fixture to that invariant rather
+	// than the temp-directory default, as the Node inspection fixture does.
+	if err := os.Chmod(cfg.Root, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	serving, err := state.Open(cfg)
 	if err != nil {
 		t.Fatal(err)
