@@ -708,6 +708,12 @@
       "owner": "Node command process behavior"
     },
     {
+      "id": "e2e-source",
+      "path": "tests/e2e/source",
+      "profile": "process",
+      "owner": "Source command process behavior"
+    },
+    {
       "id": "e2e-service",
       "path": "tests/e2e/service",
       "profile": "process",

@@ -1,4 +1,4 @@
-package main
+package source_test
 
 import (
 	"bytes"
@@ -12,10 +12,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"io"
 	"math/big"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -29,6 +29,13 @@ import (
 // physical serving. It supplies no State acceptance, installed invocation,
 // family independence or bootstrap evidence.
 func TestSourceInspectionUsesOriginalCredentialAndOneContact(t *testing.T) {
+	binary := filepath.Join(t.TempDir(), "ardents")
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", binary, "./cmd/ardents-next")
+	build.Dir = filepath.Join("..", "..", "..")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build CLI: %v: %s", err, output)
+	}
+
 	now := time.Now()
 	caPublic, caPrivate, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -126,22 +133,28 @@ func TestSourceInspectionUsesOriginalCredentialAndOneContact(t *testing.T) {
 	id := [32]byte{8}
 	args := append([]string{"source", "inspect-latest"}, paths...)
 	args = append(args, "source.test", hex.EncodeToString(serverPin[:]), hex.EncodeToString(id[:]), "one-effective-controller", "one-source", "0")
-	var output bytes.Buffer
-	if code := run(t.Context(), args, &output, io.Discard); code != 0 {
-		t.Fatal(code)
+	command := exec.CommandContext(t.Context(), binary, args...)
+	var diagnostic bytes.Buffer
+	command.Stderr = &diagnostic
+	output, err := command.Output()
+	if err != nil {
+		t.Fatalf("inspect Source: %v: %s", err, &diagnostic)
 	}
 	var report struct {
 		Operation string `json:"operation"`
 		Status    string `json:"status"`
 	}
-	if json.Unmarshal(output.Bytes(), &report) != nil || report.Operation != "source.inspect-latest" || report.Status != "not-found" || contacts.Load() != 1 {
-		t.Fatal("actual command result", output.String(), contacts.Load())
+	if json.Unmarshal(output, &report) != nil || report.Operation != "source.inspect-latest" || report.Status != "not-found" || contacts.Load() != 1 {
+		t.Fatal("actual command result", string(output), contacts.Load())
 	}
 	if err := os.Chmod(paths[2], 0644); err != nil {
 		t.Fatal(err)
 	}
-	output.Reset()
-	if code := run(t.Context(), args, &output, io.Discard); code == 0 || output.Len() != 0 || contacts.Load() != 1 {
-		t.Fatal("unsafe private input reached contact/output", code, contacts.Load())
+	command = exec.CommandContext(t.Context(), binary, args...)
+	diagnostic.Reset()
+	command.Stderr = &diagnostic
+	output, err = command.Output()
+	if command.ProcessState == nil || command.ProcessState.ExitCode() != 1 || len(output) != 0 || contacts.Load() != 1 {
+		t.Fatalf("expected credential refusal without stdout or another contact: %v, stdout %q, stderr %q, contacts %d", err, output, &diagnostic, contacts.Load())
 	}
 }
