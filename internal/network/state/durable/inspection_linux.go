@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -81,7 +82,7 @@ func OpenInspection(ctx context.Context, path string, limits Limits) (result *In
 	}
 	native := rootEntry.info.Sys().(*syscall.Stat_t)
 	s.uid, s.gid = native.Uid, native.Gid
-	fd, err := syscall.Openat(int(f.Fd()), rootLockName, syscall.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	fd, err := durablefile.Openat(int(f.Fd()), rootLockName, syscall.O_RDONLY|syscall.O_CLOEXEC|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +152,7 @@ func (s *Inspection) capture(entry *inspectionEntry) error {
 			if named.IsDir() {
 				flags |= syscall.O_DIRECTORY
 			}
-			fd, err := syscall.Openat(int(entry.file.Fd()), name, flags, 0)
+			fd, err := durablefile.Openat(int(entry.file.Fd()), name, flags, 0)
 			if err != nil {
 				return err
 			}
@@ -239,7 +240,7 @@ func (s *Inspection) Check() (err error) {
 	for _, entry := range s.order {
 		opened, e := entry.file.Stat()
 		named, ne := os.Lstat(entry.path)
-		if e != nil || ne != nil || !sameInspectionFile(entry.info, opened) || !sameInspectionFile(entry.info, named) {
+		if e != nil || ne != nil || !durablefile.SameFileIdentity(entry.info, opened) || !durablefile.SameFileIdentity(entry.info, named) {
 			return errors.Join(errors.New("retained State original entry lost"), e, ne)
 		}
 		if _, err := entry.file.Seek(0, io.SeekStart); err != nil {
@@ -263,14 +264,14 @@ func (s *Inspection) Check() (err error) {
 		}
 		opened, e = entry.file.Stat()
 		named, ne = os.Lstat(entry.path)
-		if e != nil || ne != nil || !sameInspectionFile(entry.info, opened) || !sameInspectionFile(entry.info, named) {
+		if e != nil || ne != nil || !durablefile.SameFileIdentity(entry.info, opened) || !durablefile.SameFileIdentity(entry.info, named) {
 			return errors.Join(errors.New("retained State late entry changed"), e, ne)
 		}
 	}
 	for _, entry := range s.order {
 		opened, e := entry.file.Stat()
 		named, ne := os.Lstat(entry.path)
-		if e != nil || ne != nil || !sameInspectionFile(entry.info, opened) || !sameInspectionFile(entry.info, named) {
+		if e != nil || ne != nil || !durablefile.SameFileIdentity(entry.info, opened) || !durablefile.SameFileIdentity(entry.info, named) {
 			return errors.Join(errors.New("retained State final namespace changed"), e, ne)
 		}
 	}
@@ -296,19 +297,10 @@ func (s *Inspection) nativeRoot() (returned error) {
 	}()
 	info, err := named.Stat()
 	fsErr := syscall.Fstatfs(int(named.Fd()), &fs)
-	if err != nil || fsErr != nil || !sameInspectionFile(original.info, info) || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+	if err != nil || fsErr != nil || !durablefile.SameFileIdentity(original.info, info) || fs.Type != 0xef53 || fs.Flags&1 != 0 {
 		return errors.Join(errors.New("retained State named filesystem differs"), err, fsErr)
 	}
 	return s.ctx.Err()
-}
-
-func sameInspectionFile(a, b os.FileInfo) bool {
-	if a == nil || b == nil || !os.SameFile(a, b) || a.Mode() != b.Mode() || a.Size() != b.Size() {
-		return false
-	}
-	x, xok := a.Sys().(*syscall.Stat_t)
-	y, yok := b.Sys().(*syscall.Stat_t)
-	return xok && yok && x.Uid == y.Uid && x.Gid == y.Gid && x.Nlink == y.Nlink && x.Ctim == y.Ctim && x.Mtim == y.Mtim
 }
 
 func (s *Inspection) Close() error {

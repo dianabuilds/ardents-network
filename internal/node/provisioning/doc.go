@@ -59,7 +59,10 @@
 //   - unsigned artifact preparation and publication durability:
 //     network_preparation_linux.go, network_preparation_other.go,
 //     PublishPreparedNetworkArtifact in network_output_linux.go
-//     (network_preparation_native_linux_test.go; native linux)
+//     (network_preparation_native_linux_test.go; native linux). The input
+//     reader uses the Unix-family durablefile inspection port (#850), but the
+//     operation keeps its Linux boundary because publication composes the
+//     Linux ext4 output floor.
 //   - runtime plan preparation: runtime_plan.go, runtime_plan_command.go
 //     (runtime_plan_command_test.go)
 //

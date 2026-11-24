@@ -1001,6 +1001,15 @@ acquisition, polling and close. This test-only mechanism grants no production
 Forwarding import, native Start, bootstrap acceptance or installed qualification.
 No dependency version, first-party unsafe or cgo is introduced.
 
+**Unix-family inspection port (#850):** only the shared `internal/durablefile`
+mechanism leaf (`relative_open_unix.go`, Linux and macOS) uses the already
+selected `golang.org/x/sys v0.50.0/unix` for the directory-relative `Openat`
+the durable-store inspection idiom requires. The port normalizes the two
+Stat_t change/modification time field spellings at that boundary and keeps the
+exact inode-identity, root-custody, mode-bit and single-link semantics of its
+consumers. No dependency version, first-party unsafe or cgo is introduced; this
+is a capability port under ADR-0125/ADR-0129, not a new platform commitment.
+
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
 current process owner full control and nobody else. The owner-only store-root

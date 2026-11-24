@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package artifacts
 
 import (
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -53,7 +56,7 @@ func OpenChild(parent *File, name string, directory bool) (*os.File, error) {
 	if directory {
 		flags |= syscall.O_DIRECTORY
 	}
-	fd, err := syscall.Openat(int(parent.file.Fd()), name, flags, 0)
+	fd, err := durablefile.Openat(int(parent.file.Fd()), name, flags, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +161,9 @@ func (in *Inputs) observeRead(read func(*os.File, []byte) (int, error)) error {
 		if current.IsDir() {
 			continue
 		}
-		if after.Ctim != before.Ctim || after.Nlink != 1 || current.Size() != original.info.Size() {
+		beforeCtime, beforeOK := durablefile.InodeChangeTime(original.info)
+		afterCtime, afterOK := durablefile.InodeChangeTime(current)
+		if !beforeOK || !afterOK || afterCtime != beforeCtime || after.Nlink != 1 || current.Size() != original.info.Size() {
 			return ErrInput
 		}
 		raw := make([]byte, len(original.raw)+1)
@@ -172,8 +177,7 @@ func (in *Inputs) observeRead(read func(*os.File, []byte) (int, error)) error {
 		if err != nil {
 			return err
 		}
-		last := final.Sys().(*syscall.Stat_t)
-		if !os.SameFile(current, final) || final.Mode() != current.Mode() || final.Size() != current.Size() || last.Ctim != after.Ctim || last.Mtim != after.Mtim || last.Nlink != 1 || last.Uid != after.Uid || last.Gid != after.Gid {
+		if !durablefile.SameFileIdentity(current, final) || final.Sys().(*syscall.Stat_t).Nlink != 1 {
 			return ErrInput
 		}
 	}
@@ -185,8 +189,18 @@ func (in *Inputs) observeRead(read func(*os.File, []byte) (int, error)) error {
 			return errors.Join(ErrInput, err)
 		}
 		before, after := original.info.Sys().(*syscall.Stat_t), current.Sys().(*syscall.Stat_t)
-		if before.Uid != after.Uid || before.Gid != after.Gid || !current.IsDir() && (after.Ctim != before.Ctim || after.Mtim != before.Mtim || after.Nlink != 1 || current.Size() != original.info.Size()) {
+		if before.Uid != after.Uid || before.Gid != after.Gid {
 			return ErrInput
+		}
+		if !current.IsDir() {
+			beforeCtime, beforeCtimeOK := durablefile.InodeChangeTime(original.info)
+			afterCtime, afterCtimeOK := durablefile.InodeChangeTime(current)
+			beforeMtime, beforeMtimeOK := durablefile.InodeModificationTime(original.info)
+			afterMtime, afterMtimeOK := durablefile.InodeModificationTime(current)
+			if !beforeCtimeOK || !afterCtimeOK || !beforeMtimeOK || !afterMtimeOK ||
+				afterCtime != beforeCtime || afterMtime != beforeMtime || after.Nlink != 1 || current.Size() != original.info.Size() {
+				return ErrInput
+			}
 		}
 		if original.parent != nil {
 			linked, err := OpenChild(original.parent, original.name, current.IsDir())
@@ -210,27 +224,4 @@ func (in *Inputs) Close() (result error) {
 		clear(in.files[i].raw)
 	}
 	return result
-}
-
-// Offline root preparation/signing adds protected ancestors and native public
-// file storage to the shared original-descriptor checks. Runtime/client input
-// custody keeps its separately admitted caller policy.
-func (in *Inputs) CheckProtected() error {
-	if os.Geteuid() != 0 {
-		return ErrInput
-	}
-	for _, input := range in.files {
-		info, err := input.file.Stat()
-		if err != nil || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Mode().Perm()&0022 != 0 {
-			return errors.Join(ErrInput, err)
-		}
-		if info.IsDir() {
-			continue
-		}
-		var fs syscall.Statfs_t
-		if err := syscall.Fstatfs(int(input.file.Fd()), &fs); err != nil || fs.Type != 0xef53 {
-			return errors.Join(ErrInput, err)
-		}
-	}
-	return in.Check()
 }

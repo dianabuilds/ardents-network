@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package document
 
@@ -11,11 +11,26 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
+
+// unixTempDir resolves the platform temp root to its real path: on macOS the
+// system temp directory lives behind the /var symlink, and the no-follow import
+// must refuse symlinked ancestors rather than traverse them.
+func unixTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
 
 func TestSnapshotFileImportsStableBoundedUTF8WithoutSharingFile(t *testing.T) {
 	for _, body := range [][]byte{nil, []byte("text\nПривет\u202e"), bytes.Repeat([]byte("x"), MaximumBytes)} {
-		path := filepath.Join(t.TempDir(), "document")
+		path := filepath.Join(unixTempDir(t), "document")
 		if err := os.WriteFile(path, body, 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +47,7 @@ func TestSnapshotFileImportsStableBoundedUTF8WithoutSharingFile(t *testing.T) {
 	}
 }
 func TestSnapshotFileRefusesSymlinksSpecialFilesAndInvalidContent(t *testing.T) {
-	root := t.TempDir()
+	root := unixTempDir(t)
 	regular := filepath.Join(root, "regular")
 	if err := os.WriteFile(regular, []byte("valid"), 0600); err != nil {
 		t.Fatal(err)
@@ -73,7 +88,7 @@ func TestSnapshotFileRefusesSymlinksSpecialFilesAndInvalidContent(t *testing.T) 
 	}
 }
 func TestSnapshotFileRejectsChangingInputEvenWithRestoredSizeAndMtime(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "document")
+	path := filepath.Join(unixTempDir(t), "document")
 	if err := os.WriteFile(path, []byte("before"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -90,15 +105,33 @@ func TestSnapshotFileRejectsChangingInputEvenWithRestoredSizeAndMtime(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte("after!"), 0600); err != nil {
-		t.Fatal(err)
+	// An immediate rewrite can share the kernel's coarse ctime tick (Linux
+	// ext4); repeat the mutation until the change time observably advances so
+	// the refusal rests on real mutation evidence (generation native idiom).
+	born, ok := durablefile.InodeChangeTime(before)
+	if !ok {
+		t.Fatal("original change time unavailable")
 	}
-	if err := os.Chtimes(path, before.ModTime(), before.ModTime()); err != nil {
-		t.Fatal(err)
-	}
-	after, err := file.Stat()
-	if err != nil {
-		t.Fatal(err)
+	deadline := time.Now().Add(time.Second)
+	var after os.FileInfo
+	for {
+		if err := os.WriteFile(path, []byte("after!"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chtimes(path, before.ModTime(), before.ModTime()); err != nil {
+			t.Fatal(err)
+		}
+		after, err = file.Stat()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if current, ok := durablefile.InodeChangeTime(after); ok && current != born {
+			break
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatal("invalid environment: no observable native ctime transition")
+		}
+		time.Sleep(time.Millisecond)
 	}
 	if before.Size() != after.Size() || before.ModTime() != after.ModTime() {
 		t.Fatal("mutation positive control failed")

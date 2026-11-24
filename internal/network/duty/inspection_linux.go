@@ -13,6 +13,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -76,7 +77,7 @@ func openParticipationInspection(ctx context.Context, path string, uid, gid uint
 	if err != nil || s.info.Mode() != os.ModeDir|0700 || s.info.Sys().(*syscall.Stat_t).Uid != uid || s.info.Sys().(*syscall.Stat_t).Gid != gid {
 		return nil, errors.Join(errors.New("retained participation root differs"), err)
 	}
-	fd, err := syscall.Openat(int(s.directory.Fd()), rootLockName, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, 0)
+	fd, err := durablefile.Openat(int(s.directory.Fd()), rootLockName, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func openParticipationInspection(ctx context.Context, path string, uid, gid uint
 		if strings.HasPrefix(name, ".stage-") || strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".watermark-") {
 			return nil, errors.New("retained participation has an uncertain prefix")
 		}
-		fd, err := syscall.Openat(int(s.directory.Fd()), name, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, 0)
+		fd, err := durablefile.Openat(int(s.directory.Fd()), name, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +191,7 @@ func (s *participationInspection) read(policy func([]dutyRecord) error) error {
 	}
 	opened, e := s.directory.Stat()
 	named, ne := os.Lstat(s.path)
-	if e != nil || ne != nil || !sameInspectionFile(s.info, opened) || !sameInspectionFile(s.info, named) {
+	if e != nil || ne != nil || !durablefile.SameFileIdentity(s.info, opened) || !durablefile.SameFileIdentity(s.info, named) {
 		return errors.Join(errors.New("retained participation original root lost"), e, ne)
 	}
 	if _, err := s.directory.Seek(0, io.SeekStart); err != nil {
@@ -207,7 +208,7 @@ func (s *participationInspection) read(policy func([]dutyRecord) error) error {
 	for name, leaf := range s.files {
 		opened, e := leaf.file.Stat()
 		named, ne := os.Lstat(filepath.Join(s.path, name))
-		if e != nil || ne != nil || !sameInspectionFile(leaf.info, opened) || !sameInspectionFile(leaf.info, named) {
+		if e != nil || ne != nil || !durablefile.SameFileIdentity(leaf.info, opened) || !durablefile.SameFileIdentity(leaf.info, named) {
 			return errors.Join(errors.New("retained participation original leaf lost"), e, ne)
 		}
 		if _, err := leaf.file.Seek(0, io.SeekStart); err != nil {
@@ -233,13 +234,13 @@ func (s *participationInspection) read(policy func([]dutyRecord) error) error {
 	for name, leaf := range s.files {
 		named, e := os.Lstat(filepath.Join(s.path, name))
 		opened, oe := leaf.file.Stat()
-		if e != nil || oe != nil || !sameInspectionFile(leaf.info, named) || !sameInspectionFile(leaf.info, opened) {
+		if e != nil || oe != nil || !durablefile.SameFileIdentity(leaf.info, named) || !durablefile.SameFileIdentity(leaf.info, opened) {
 			return errors.Join(errors.New("retained participation late substitution"), e, oe)
 		}
 	}
 	opened, e = s.directory.Stat()
 	named, ne = os.Lstat(s.path)
-	if e != nil || ne != nil || !sameInspectionFile(s.info, opened) || !sameInspectionFile(s.info, named) {
+	if e != nil || ne != nil || !durablefile.SameFileIdentity(s.info, opened) || !durablefile.SameFileIdentity(s.info, named) {
 		return errors.Join(errors.New("retained participation late root changed"), e, ne)
 	}
 	return s.nativeRoot()
@@ -281,15 +282,6 @@ func (s *participationInspection) nativeRoot() (returned error) {
 		return errors.Join(errors.New("retained participation named filesystem differs"), err, fsErr)
 	}
 	return s.local()
-}
-
-func sameInspectionFile(a, b os.FileInfo) bool {
-	if a == nil || b == nil || !os.SameFile(a, b) || a.Mode() != b.Mode() || a.Size() != b.Size() {
-		return false
-	}
-	x, xok := a.Sys().(*syscall.Stat_t)
-	y, yok := b.Sys().(*syscall.Stat_t)
-	return xok && yok && x.Uid == y.Uid && x.Gid == y.Gid && x.Nlink == y.Nlink && x.Ctim == y.Ctim && x.Mtim == y.Mtim
 }
 
 func (s *participationInspection) Close() error {

@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package artifacts
 
@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // ReadRetainedFile reads one original descriptor after the caller admits its
@@ -45,7 +47,7 @@ func (d *DirectoryChain) CheckRetainedFile(file *os.File, original os.FileInfo, 
 		return ErrInput
 	}
 	before, err := file.Stat()
-	if err != nil || !sameRetainedFileMetadata(original, before) {
+	if err != nil || !durablefile.SameFileIdentity(original, before) {
 		return ErrInput
 	}
 	if err := d.CheckRetainedFileLink(file.Name(), original); err != nil {
@@ -63,7 +65,7 @@ func (d *DirectoryChain) CheckRetainedFile(file *os.File, original os.FileInfo, 
 	}
 
 	after, err := file.Stat()
-	if err != nil || !sameRetainedFileMetadata(original, after) {
+	if err != nil || !durablefile.SameFileIdentity(original, after) {
 		return ErrInput
 	}
 	// The descriptor may survive a path or ancestor substitution during the
@@ -88,17 +90,8 @@ func (d *DirectoryChain) CheckRetainedFileLink(name string, original os.FileInfo
 	if err := errors.Join(statErr, linked.Close()); err != nil {
 		return err
 	}
-	if !sameRetainedFileMetadata(original, observed) {
+	if !durablefile.SameFileIdentity(original, observed) {
 		return ErrInput
 	}
 	return nil
-}
-
-func sameRetainedFileMetadata(original, current os.FileInfo) bool {
-	a, aok := original.Sys().(*syscall.Stat_t)
-	b, bok := current.Sys().(*syscall.Stat_t)
-	if !aok || !bok || !os.SameFile(original, current) || original.Mode() != current.Mode() || a.Uid != b.Uid || a.Gid != b.Gid {
-		return false
-	}
-	return a.Nlink == b.Nlink && a.Ctim == b.Ctim && a.Mtim == b.Mtim && original.Size() == current.Size()
 }
