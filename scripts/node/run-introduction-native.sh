@@ -39,7 +39,6 @@ TestNativeIntroductionOriginalAuthorityAndJoinTCP
 TestNativeIntroductionOriginalCommandFailureTCP
 TestNativeIntroductionOriginalHistoryLossTCP
 TestNativeIntroductionRegisterSubmitWithdrawTCP
-TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP
 TestNativeIntroductionUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIntroduction' | grep '^TestNativeIntroduction' | sort)
 test "$discovered" = "$expected" || { echo 'Introduction workload discovery differs' >&2; exit 2; }
@@ -53,7 +52,8 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeIntroduction' -test.timeout=90s
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroduction(RegisterSubmitWithdrawTCP|UndercoverageBeforeSpendTCP|OriginalHistoryLossTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroductionOriginalAuthorityAndJoinTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIntroductionPartialStartupRefusalsTCP$' | grep -Fx TestNativeIntroductionPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIntroductionPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIntroductionOperationBoundariesTCP$' -test.timeout=3m

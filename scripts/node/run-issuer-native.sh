@@ -36,7 +36,7 @@ verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalAuthorityAndJoinTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalFailureTCP$' >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerPartialStartupRefusalsTCP$' | grep -Fx TestNativeIssuerPartialStartupRefusalsTCP >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOperationJoinAndExactRetryTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerStorageUncertaintyTCP$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerProcessProfile$' >/dev/null
@@ -58,10 +58,10 @@ expected='TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP
 TestNativeIssuerOperationJoinAndExactRetryTCP
 TestNativeIssuerOriginalAuthorityAndJoinTCP
 TestNativeIssuerOriginalFailureTCP
-TestNativeIssuerStorageUncertaintyTCP
-TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP'
+TestNativeIssuerStorageUncertaintyTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuer' | sort)
 test "$discovered" = "$expected" || { echo 'Issuer workload discovery differs' >&2; exit 2; }
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendTCP|OriginalAuthorityAndJoinTCP|OriginalFailureTCP|UnavailableCompletionRetainsOriginalProducerTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendTCP|OriginalAuthorityAndJoinTCP|OriginalFailureTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(OperationJoinAndExactRetryTCP|StorageUncertaintyTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuerPartialStartupRefusalsTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
