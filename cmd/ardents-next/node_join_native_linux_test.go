@@ -42,7 +42,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			certificates := make(map[[32]byte]tls.Certificate)
 			f, sockets, originalCertificates := newJoinRouteFixtureConfigured(t, carrier, func(f *networkAdmissionFixture) {
 				if mode == "certificate" {
-					provisioned = provisionNativeNodeCertificates(t, f, certificates, [32]byte{20}, [32]byte{21})
+					provisioned = nodefixture.ProvisionNodeCertificates(t, &f.spec, certificates, [32]byte{20}, [32]byte{21})
 				}
 			})
 			for id, certificate := range certificates {
@@ -315,3 +315,5 @@ func wrapNativeJoinClose(owner string, err error) error {
 	}
 	return fmt.Errorf("original %s close: %w", owner, err)
 }
+
+func TestNativeJoinProvisionedCertificateTCP(t *testing.T) { nativeJoinWorkload(t, "certificate") }
