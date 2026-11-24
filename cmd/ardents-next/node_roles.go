@@ -13,53 +13,69 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 
+type receivingRolePlan interface {
+	ValidInvocation() bool
+	InvocationTarget() (*node.Network, string, [32]byte, uint32)
+	Start(context.Context, role.Authority, bool) (node.RuntimeInvocation, error)
+}
+
 func runNodeRole(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
+	name := "node." + operation
 	if !node.RuntimeAvailable {
-		if err := nodecommand.WriteEvent(out, "node."+operation, "refused", "unsupported-platform", "", "", ""); err != nil {
+		if err := nodecommand.WriteEvent(out, name, "refused", "unsupported-platform", "", "", ""); err != nil {
 			return 2
 		}
 		return 1
 	}
 	switch operation {
 	case "forwarding":
-		return runNodeForwarding(ctx, args, out, diagnostic)
+		return runNodeReceiving(ctx, nodecommand.ForwardingOperation, args, out, diagnostic, false, node.DecodeForwardingPlan)
 	case "issuer":
 		return runNodeIssuer(ctx, args, out, diagnostic)
 	case "descriptor":
-		return runNodeDescriptor(ctx, args, out, diagnostic)
+		return runNodeReceiving(ctx, name, args, out, diagnostic, true, node.DecodeDescriptorPlan)
 	case "introduction":
-		return runNodeIntroduction(ctx, args, out, diagnostic)
+		return runNodeReceiving(ctx, name, args, out, diagnostic, true, node.DecodeIntroductionPlan)
 	case "join":
-		return runNodeJoin(ctx, args, out, diagnostic)
+		return runNodeReceiving(ctx, name, args, out, diagnostic, true, node.DecodeJoinPlan)
 	default:
 		return 2
 	}
 }
 
-// Command composition retains State until the original Node has physically
-// joined. A bounded failed wait cannot close it or report completed retirement.
-func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, err := nodecommand.ReadRolePlan(args)
+func runNodeReceiving[P receivingRolePlan](ctx context.Context, operation string, args []string, out, diagnostic io.Writer, cancelableRead bool, decode func([]byte) (P, error)) int {
+	var raw []byte
+	var retained bool
+	if cancelableRead {
+		var code int
+		raw, retained, code = nodecommand.ReadCancelableRolePlan(ctx, operation, args, out)
+		if code != 0 {
+			return code
+		}
+	} else {
+		var err error
+		raw, retained, err = nodecommand.ReadRolePlan(args)
+		if err != nil {
+			return 2
+		}
+	}
+	plan, err := decode(raw)
+	if err != nil || !plan.ValidInvocation() {
+		return 2
+	}
+	network, participationRoot, id, waitMS := plan.InvocationTarget()
+	config, err := nodeStateConfig(network, participationRoot)
 	if err != nil {
 		return 2
 	}
-	plan, err := node.DecodeForwardingPlan(raw)
-	if err != nil {
-		return 2
+	if cancelableRead && ctx.Err() != nil {
+		return 130
 	}
-	if !plan.ValidInvocation() {
-		return 2
-	}
-	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
-	if err != nil {
-		return 2
-	}
-	return runNodeWithState(ctx, out, diagnostic, nodecommand.ForwardingOperation, config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
+	return runNodeWithState(ctx, out, diagnostic, operation, config, id, waitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
 		return plan.Start(ctx, authority, retained)
 	})
 }
 
-// State is owned here; Node joins its original dependents before State closes.
 func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if ctx == nil {
 		return 2
@@ -91,81 +107,6 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	})
 }
 
-// The command owns genuine State; it closes that owner after original Node join.
-func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, code := nodecommand.ReadCancelableRolePlan(ctx, "node.descriptor", args, out)
-	if code != 0 {
-		return code
-	}
-	plan, err := node.DecodeDescriptorPlan(raw)
-	if err != nil {
-		return 2
-	}
-	if !plan.ValidInvocation() {
-		return 2
-	}
-	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
-	if err != nil {
-		return 2
-	}
-	if ctx.Err() != nil {
-		return 130
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.descriptor", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
-		return plan.Start(ctx, authority, retained)
-	})
-}
-
-// The command owns genuine State; it closes that owner after original Node join.
-func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, code := nodecommand.ReadCancelableRolePlan(ctx, "node.introduction", args, out)
-	if code != 0 {
-		return code
-	}
-	plan, err := node.DecodeIntroductionPlan(raw)
-	if err != nil {
-		return 2
-	}
-	if !plan.ValidInvocation() {
-		return 2
-	}
-	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
-	if err != nil {
-		return 2
-	}
-	if ctx.Err() != nil {
-		return 130
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.introduction", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
-		return plan.Start(ctx, authority, retained)
-	})
-}
-
-// The command owns genuine State; it closes that owner after original Node join.
-func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, code := nodecommand.ReadCancelableRolePlan(ctx, "node.join", args, out)
-	if code != 0 {
-		return code
-	}
-	plan, err := node.DecodeJoinPlan(raw)
-	if err != nil {
-		return 2
-	}
-	if !plan.ValidInvocation() {
-		return 2
-	}
-	config, err := nodeStateConfig(plan.Network, plan.ParticipationRoot)
-	if err != nil {
-		return 2
-	}
-	if ctx.Err() != nil {
-		return 130
-	}
-	return runNodeWithState(ctx, out, diagnostic, "node.join", config, plan.NodeID, plan.RetirementWaitMS, func(authority role.Authority) (node.RuntimeInvocation, error) {
-		return plan.Start(ctx, authority, retained)
-	})
-}
-
 func nodeStateConfig(network *node.Network, participationRoot string) (state.Config, error) {
 	config, err := (*state.AuthorityDeclaration)(network).Config()
 	if err != nil {
@@ -181,7 +122,9 @@ func nodeStateConfig(network *node.Network, participationRoot string) (state.Con
 func runNodeWithState(ctx context.Context, out, diagnostic io.Writer, operation string, config state.Config, nodeID [32]byte, waitMS uint32, listen func(role.Authority) (node.RuntimeInvocation, error)) int {
 	owner, err := state.OpenRetained(config)
 	if err != nil {
-		_ = nodecommand.WriteEvent(out, operation, "refused", "state-unavailable", "", "", "")
+		if err := nodecommand.WriteEvent(out, operation, "refused", "state-unavailable", "", "", ""); err != nil {
+			return 2
+		}
 		return 1
 	}
 	view, err := owner.CurrentRuntime()
