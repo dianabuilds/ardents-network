@@ -15,27 +15,6 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-func signingRecordFixture(t *testing.T) (map[string]any, ed25519.PrivateKey, []byte, time.Time) {
-	t.Helper()
-	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{71}, 32))
-	p := preparationRecordPlan(key.Public().(ed25519.PublicKey))
-	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	reference, _ := preparationTime("2033-05-22T05:30:00Z")
-	return p, key, message, reference
-}
-
-func signingDeclaration(t *testing.T, purpose string, plan any, reference time.Time) []byte {
-	t.Helper()
-	field := purpose
-	if purpose == "node-record" {
-		field = "record"
-	}
-	return preparationJSON(t, map[string]any{"schema": "ardents-initial-" + purpose + "-signing-plan-v1", "reference_time": reference.Format(time.RFC3339), field: plan})
-}
-
 func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 	p, key, message, reference := signingRecordFixture(t)
 	digest := sha256.Sum256(message)
