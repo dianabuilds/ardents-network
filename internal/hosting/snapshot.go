@@ -40,3 +40,34 @@ func (owner *Budget) Sample(ctx context.Context, maximumAge time.Duration) (Snap
 	observation := state.observation(now)
 	return Snapshot{at: state.Observed, until: until, observation: observation}, nil
 }
+
+// SampleResult retains the observation and reports whether closing its budget
+// failed. A successful sample remains available when later cleanup is uncertain.
+type SampleResult struct {
+	Snapshot    Snapshot
+	Sampled     bool
+	CloseFailed bool
+}
+
+// SampleRoot opens, samples and closes the original budget handle.
+func SampleRoot(ctx context.Context, root string, maximumAge time.Duration) (result SampleResult, err error) {
+	if ctx == nil {
+		return result, ErrInvalid
+	}
+	if err := ctx.Err(); err != nil {
+		return result, err
+	}
+	owner, err := Open(root)
+	if err != nil {
+		return result, err
+	}
+	defer func() {
+		if closeErr := owner.Close(); closeErr != nil {
+			result.CloseFailed = true
+			err = errors.Join(ErrUncertain, err, closeErr)
+		}
+	}()
+	result.Snapshot, err = owner.Sample(ctx, maximumAge)
+	result.Sampled = err == nil
+	return result, err
+}

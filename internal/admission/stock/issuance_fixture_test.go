@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package stock
 
@@ -84,17 +84,20 @@ func issuedStockFixtureAt(t *testing.T, now time.Time, hours int) (*Owner, *spen
 	profile := admission.AuthorityFacts{NetworkID: fixtureID(1), StateGeneration: fixtureID(2), StateDigest: fixtureID(3),
 		Digest: fixtureID(4), IssuerNodeID: fixtureID(5), IssuerDutyGeneration: 7, NotBefore: window, NotAfter: window.Add(time.Duration(hours) * time.Hour)}
 	copy(profile.IssuanceAuthorityKey[:], authority.Public().(ed25519.PublicKey))
-	root := t.TempDir()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	plan := admissionissuer.Plan{
 		AdmissionRoot: filepath.Join(root, "quota"), KeyRoot: filepath.Join(root, "keys"), ResultRoot: filepath.Join(root, "results"),
 		KeyBinding: issuance.Binding{Network: profile.NetworkID, Issuer: profile.IssuerNodeID, Signer: [32]byte(public), Start: window, End: profile.NotAfter},
 	}
 	if err := issuance.Initialize(context.Background(), plan.KeyRoot, plan.KeyBinding); err != nil {
-		t.Fatal(err)
+		t.Fatal("initialize keys:", err)
 	}
 	keys, err := issuance.Open(context.Background(), plan.KeyRoot, plan.KeyBinding)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatal("open keys:", err)
 	}
 	inventory, err := keys.Inventory()
 	if err != nil {
@@ -105,7 +108,7 @@ func issuedStockFixtureAt(t *testing.T, now time.Time, hours int) (*Owner, *spen
 	}
 	plan.AdmissionBinding = quota.LedgerBinding{Network: profile.NetworkID, Issuer: profile.IssuerNodeID, Authority: profile.IssuanceAuthorityKey, Profile: profile.Digest, Duty: profile.IssuerDutyGeneration, Start: window, End: profile.NotAfter, Keys: inventory.Keys}
 	if err := quota.Initialize(plan.AdmissionRoot, plan.AdmissionBinding); err != nil {
-		t.Fatal(err)
+		t.Fatal("initialize quota:", err)
 	}
 	if r := admissionissuer.Initialize(context.Background(), plan); r.Outcome != "initialized-results" {
 		t.Fatalf("initialize: %+v", r)

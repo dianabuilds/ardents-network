@@ -77,7 +77,7 @@ func testRouteGenuineDescriptor(t *testing.T, foreignProfileControl bool) {
 					t.Fatal(err)
 				}
 				binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-				owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+				owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -249,7 +249,7 @@ func descriptorRouteStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner
 			t.Fatal(err)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal(issued)
@@ -284,7 +284,7 @@ func routeConsoleDescriptorStock(t *testing.T, f *networkAdmissionFixture, send 
 			t.Fatal("compiled holder begin", batch.Outcome)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal("actual offline issuer", issued.Outcome)
@@ -574,7 +574,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 				}
 				binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
 				spendRoot := t.TempDir()
-				owner, err := receiving.Open(spendRoot, binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+				owner, err := receiving.Open(spendRoot, binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -717,7 +717,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 					t.Fatal(err)
 				}
 				reopened, err := receiving.Open(resolutionRoot, resolutionBinding, func() (receiving.Observation, error) {
-					return f.authority.receiver(resolutionBinding, resolutionExpiry)
+					return f.authority.Receiver(resolutionBinding, resolutionExpiry)
 				})
 				if err != nil {
 					t.Fatal("spent Admission root did not reopen", err)

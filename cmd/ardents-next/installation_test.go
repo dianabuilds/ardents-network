@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"os"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -297,24 +296,5 @@ func TestInstallationOriginalCancellationAtPairHandoffRetainsFloors(t *testing.T
 	floors, err := v.CurrentFloors(t.Context())
 	if err != nil || floors.RootVersion != 1 || floors.TargetsVersion != 1 {
 		t.Fatal("late cancellation refunded actual floors")
-	}
-}
-
-// Retired detached authentication must refuse before reading inputs or creating
-// Release history. The live delivery operation obtains its own private pair.
-
-// These verbs used to accept a path and could write Installation state.
-func TestTransitionalInstallationCommandsRefuseBeforeEffects(t *testing.T) {
-	for _, verb := range []string{"provision", "upgrade-installed", "recover-initial", "recover-installed", "check"} {
-		t.Run(verb, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "absent")
-			var out, diagnostic bytes.Buffer
-			if code := run(t.Context(), []string{"installation", verb, path}, &out, &diagnostic); code != 2 || out.Len() != 0 {
-				t.Fatalf("retired command returned %d: %s", code, out.String())
-			}
-			if _, err := os.Lstat(path); !os.IsNotExist(err) {
-				t.Fatalf("retired command touched input path: %v", err)
-			}
-		})
 	}
 }

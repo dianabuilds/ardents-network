@@ -181,7 +181,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 			}
 			return deliveryGate.observe(originalCurrent)
 		}
-		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)
+		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.Witness)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 65*time.Second)
 	defer cancel()
@@ -694,16 +694,16 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		Domain: 4, Deadline: end, Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	publisherAuthority := publisherNetwork.authority
 	if controlGate != nil && controlGate.role == "publisher" {
-		original := publisherAuthority.current
-		publisherAuthority.current = func() (network.RuntimeView, error) { controlGate.observe(); return original() }
+		original := publisherAuthority.Current
+		publisherAuthority.Current = func() (network.RuntimeView, error) { controlGate.observe(); return original() }
 	}
 	if controlGate != nil && controlGate.role == "initiator" && controlGate.received != nil {
-		original := publisherAuthority.current
-		publisherAuthority.current = func() (network.RuntimeView, error) { controlGate.observeReceived(); return original() }
+		original := publisherAuthority.Current
+		publisherAuthority.Current = func() (network.RuntimeView, error) { controlGate.observeReceived(); return original() }
 	}
 	if timing == "terminal-body" {
-		original := publisherAuthority.current
-		publisherAuthority.current = func() (network.RuntimeView, error) { observeBody(); return original() }
+		original := publisherAuthority.Current
+		publisherAuthority.Current = func() (network.RuntimeView, error) { observeBody(); return original() }
 	}
 	if sourceLoss || publisherSourceLoss {
 		// Original independently selected Source legs are disjoint so this
@@ -711,8 +711,8 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		routePlan.Exclusions = []route.Member{{NodeID: [32]byte{18}}, {NodeID: [32]byte{19}}}
 	}
 	if publisherObservation {
-		current := publisherAuthority.current
-		publisherAuthority.current = func() (network.RuntimeView, error) {
+		current := publisherAuthority.Current
+		publisherAuthority.Current = func() (network.RuntimeView, error) {
 			view, err := current()
 			if err == nil {
 				observationDelay()
@@ -1480,7 +1480,7 @@ func installedConnectionInitiatorObserved(t *testing.T, f *networkAdmissionFixtu
 			t.Fatal(err)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, raw, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal("finite Reader fixture issuance refused", issued.Outcome)
@@ -1520,8 +1520,8 @@ func installedConnectionInitiatorObserved(t *testing.T, f *networkAdmissionFixtu
 	routePlan := routePrefixPlan{Deadline: end, Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, Exclusions: exclusions}
 	authority := f.authority
 	if afterObservation != nil {
-		current := authority.current
-		authority.current = func() (network.RuntimeView, error) {
+		current := authority.Current
+		authority.Current = func() (network.RuntimeView, error) {
 			view, err := current()
 			if err == nil {
 				afterObservation()

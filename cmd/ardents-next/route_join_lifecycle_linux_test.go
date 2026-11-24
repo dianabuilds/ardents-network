@@ -41,7 +41,7 @@ func joinLifecycleStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	holder, err := stock.Open(root, admission.AllocationPublisher, f.authority.observe)
+	holder, err := stock.Open(root, admission.AllocationPublisher, f.authority.ObserveFacts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func joinLifecycleStock(t *testing.T, f *networkAdmissionFixture) *stock.Owner {
 			t.Fatal(err)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal(issued)
@@ -143,7 +143,7 @@ func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation 
 	}
 	config := routeprefix.Config{Leg: leg, Current: f.current, Deadline: end, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 		presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-		if err := f.authority.presentation(presentation); err != nil {
+		if err := f.authority.Presentation(presentation); err != nil {
 			return nil, err
 		}
 		raw, err := holder.Take(ctx, presentation, 2)

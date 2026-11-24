@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 )
@@ -24,14 +23,7 @@ func runAdmissionAllocation(ctx context.Context, args []string, out io.Writer) i
 	if ctx.Err() != nil {
 		return 130
 	}
-	if allocation.ValidateJournal(c.Journal) != nil {
-		return 1
-	}
-	r, err := allocation.Prepare(c.Request, c.Network, time.Now().UTC())
-	if err != nil {
-		return 1
-	}
-	d, err := r.Decide(c.Journal, c.Authority, time.Now().UTC())
+	d, err := allocation.Propose(c.Request, c.Journal, c.Network, c.Authority)
 	if err != nil {
 		return 1
 	}

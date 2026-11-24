@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"time"
 
@@ -29,72 +28,26 @@ func runNetwork(ctx context.Context, args []string, out io.Writer) int {
 	default:
 		return provisioning.RunNetworkArtifacts(ctx, args, out)
 	}
-	var input struct {
-		Network   *networkAuthorityPlan `json:"network"`
-		Epoch     []byte                `json:"epoch,omitempty"`
-		Inputs    [][]byte              `json:"inputs,omitempty"`
-		Materials [][]byte              `json:"materials,omitempty"`
-		Profile   []byte                `json:"profile,omitempty"`
-	}
-	if admissionConfigBounded(args[1:], &input, 8<<20) != nil {
+	if args[1] != "--config" {
 		return 2
 	}
-	if (args[0] != "accept-epoch" && (len(input.Epoch) != 0 || len(input.Inputs) != 0 || len(input.Materials) != 0)) ||
-		(args[0] != "accept-profile" && len(input.Profile) != 0) {
-		return 2
-	}
-	config, err := input.Network.Config()
+	raw, err := readBounded(args[2], 8<<20)
 	if err != nil {
 		return 2
 	}
-	openState := state.Open
-	if args[0] == "inspect" {
-		openState = state.OpenRetained
-	}
-	owner, err := openState(config)
+	input, err := state.DecodeOfflineDeclaration(raw, args[0])
 	if err != nil {
-		return reportNetwork(out, "owner-unavailable", nil, time.Time{}, 1)
+		return 2
 	}
-	outcome, code := "unavailable", 1
-	var facts *network.ProfileFacts
-	var observed time.Time
-	switch args[0] {
-	case "accept-epoch":
-		var accepted state.OfflineAcceptance
-		accepted, err = owner.AcceptEpoch(ctx, input.Epoch, input.Inputs, input.Materials)
-		if err == nil {
-			outcome, code = "accepted-epoch", 0
-			if accepted.Pending {
-				outcome = "pending-epoch"
-			}
-		}
-	case "accept-profile":
-		if ctx.Err() == nil {
-			_, err = owner.AcceptClosedProfile(input.Profile)
-		} else {
-			err = ctx.Err()
-		}
-		if err == nil {
-			outcome, code = "accepted-profile", 0
-		}
-	case "inspect":
-		var view network.RuntimeView
-		view, err = owner.CurrentRuntime()
-		if err == nil {
-			value := view.Profile()
-			facts = &value
-			observed = view.ObservedAt()
-			outcome, code = "observed", 0
-		}
+	result := state.RunOffline(ctx, args[0], input.Config, input.Epoch, input.Inputs, input.Materials, input.Profile)
+	code := 1
+	switch result.Outcome {
+	case "accepted-epoch", "pending-epoch", "accepted-profile", "observed":
+		code = 0
+	case "canceled":
+		code = 130
 	}
-	// Cancellation or failed closure suppresses a successful command receipt.
-	if errors.Join(err, ctx.Err(), owner.Close()) != nil {
-		facts, observed, outcome, code = nil, time.Time{}, "unavailable", 1
-		if ctx.Err() != nil {
-			outcome, code = "canceled", 130
-		}
-	}
-	return reportNetwork(out, outcome, facts, observed, code)
+	return reportNetwork(out, result.Outcome, result.Profile, result.ObservedAt, code)
 }
 
 func reportNetwork(out io.Writer, outcome string, profile *network.ProfileFacts, observed time.Time, code int) int {

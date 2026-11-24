@@ -108,7 +108,7 @@ func joinRouteStock(t *testing.T, f *networkAdmissionFixture, role admission.All
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	holder, err := stock.Open(root, role, f.authority.observe)
+	holder, err := stock.Open(root, role, f.authority.ObserveFacts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func joinRouteStock(t *testing.T, f *networkAdmissionFixture, role admission.All
 		t.Fatal("JOIN blinded batch class/count", err)
 	}
 	issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
+		return f.authority.Issuer(f.plan.KeyBinding.Signer)
 	})
 	if issued.Outcome != "issued-offline" {
 		t.Fatal(issued)
@@ -217,7 +217,7 @@ func startJoinRouteReceiverRange(t *testing.T, f *networkAdmissionFixture, reser
 			t.Fatal(err)
 		}
 		binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: member.DutyGeneration}
-		owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+		owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 		if err != nil {
 			t.Fatal(err)
 		}

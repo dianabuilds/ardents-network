@@ -3,6 +3,7 @@
 package provisioning
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
@@ -190,5 +191,50 @@ func TestNetworkSigningProfileContention(t *testing.T) {
 	files, e := os.ReadDir(args[5])
 	if e != nil || len(files) != 1 || files[0].Name() != "profile.bin" {
 		t.Fatal("finite profile inventory", e)
+	}
+}
+
+type delayedProfileReceipt struct {
+	bytes.Buffer
+	until   time.Time
+	entered bool
+}
+
+func (w *delayedProfileReceipt) Write(raw []byte) (int, error) {
+	w.entered = true
+	if d := time.Until(w.until); d > 0 {
+		time.Sleep(d + time.Millisecond)
+	}
+	return w.Buffer.Write(raw)
+}
+
+func TestNetworkSigningProfileReceiptExpiry(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	p, key, _, _ := signingProfileFixture(t, now.Add(-time.Hour))
+	defer clear(key)
+	var retained []map[string]any
+	for _, k := range p["token_keys"].([]map[string]any) {
+		if k["window_start"] == now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339) {
+			retained = append(retained, k)
+		}
+	}
+	p["token_keys"] = retained
+	until := time.Now().UTC().Truncate(time.Second).Add(3 * time.Second)
+	p["not_after"] = until.Format(time.RFC3339)
+	args := writeNativeProfileArguments(t, sourceArtifactNativeParent(t), p, key, now)
+	w := delayedProfileReceipt{until: until}
+	if code := RunNetworkArtifacts(t.Context(), args, &w); code != 1 || !w.entered {
+		t.Fatal("late acknowledgement accepted or delay unexercised", code)
+	}
+	// Output and any partially delivered report remain retained, while the
+	// original invocation has failed. Neither can be adopted or automatically signed again.
+	if _, err := os.Stat(filepath.Join(args[5], "profile.bin")); err != nil {
+		t.Fatal("original output lost", err)
+	}
+	if _, err := SignNetwork(t.Context(), args, nil); err == nil {
+		t.Fatal("failed acknowledgement revived")
+	}
+	if _, err := SignNetwork(t.Context(), nativeProfileSigningArguments(t), nil); err != nil {
+		t.Fatal("healthy receipt control", err)
 	}
 }

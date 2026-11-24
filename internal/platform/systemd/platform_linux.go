@@ -67,3 +67,8 @@ func platformSiblingNames(role string) ([]string, error) {
 	}
 	return names, nil
 }
+
+// PrivilegedCommandAvailable checks the original caller and host privilege.
+func PrivilegedCommandAvailable(ctx context.Context) bool {
+	return ctx != nil && ctx.Err() == nil && os.Geteuid() == 0
+}

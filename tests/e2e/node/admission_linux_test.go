@@ -7,6 +7,7 @@ import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -25,6 +27,54 @@ import (
 
 func admissionInitializationConfig(root string, binding quota.LedgerBinding) map[string]any {
 	return map[string]any{"root": root, "binding": admissionBindingConfig(binding)}
+}
+
+func TestAdmissionInitializationExactInput(t *testing.T) {
+	_, _, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
+	root := filepath.Join(t.TempDir(), "ledger")
+	valid, err := json.Marshal(admissionInitializationConfig(root, binding))
+	if err != nil {
+		t.Fatal(err)
+	}
+	binary := buildNodeCommand(t)
+	for _, change := range []func(string) string{
+		func(s string) string { return strings.Replace(s, `"network":`, `"Network":`, 1) },
+		func(s string) string { return strings.Replace(s, `"class":`, `"Class":`, 1) },
+		func(s string) string { return strings.Replace(s, `"duty":"7"`, `"duty":"07"`, 1) },
+		func(s string) string { return strings.Replace(s, `"duty":"7"`, `"duty":"7","duty":"7"`, 1) },
+		func(s string) string { return strings.Replace(s, `"keys":[`, `"keys":null,"extra":[`, 1) },
+		func(s string) string { return strings.Replace(s, `"binding":{`, `"binding":null,"discarded":{`, 1) },
+		func(s string) string { return s + `{}` },
+	} {
+		raw := change(string(valid))
+		if raw == string(valid) {
+			t.Fatal("mutation did not alter fixture")
+		}
+		config := filepath.Join(t.TempDir(), "invalid.json")
+		if err := os.WriteFile(config, []byte(raw), 0600); err != nil {
+			t.Fatal(err)
+		}
+		command := exec.CommandContext(t.Context(), binary, "admission", "initialize", "--config", config)
+		output, err := command.Output()
+		var exit *exec.ExitError
+		var result issuanceResult
+		if !errors.As(err, &exit) || exit.ExitCode() != 2 ||
+			json.Unmarshal(output, &result) != nil || result.Outcome != "invalid-input" {
+			t.Fatalf("input %s: output %s, error %v", raw, output, err)
+		}
+		if _, err := os.Stat(root); !os.IsNotExist(err) {
+			t.Fatal("invalid input created ledger", err)
+		}
+	}
+	input := admissionBindingConfig(binding)
+	input.Issuer = input.Network
+	config := writeIssuanceConfig(t, map[string]any{"root": root, "binding": input})
+	command := exec.CommandContext(t.Context(), binary, "admission", "initialize", "--config", config)
+	output, err := command.Output()
+	var result issuanceResult
+	if err != nil || json.Unmarshal(output, &result) != nil || result.Outcome != string(quota.Initialized) {
+		t.Fatalf("equal identifiers: output %s, error %v", output, err)
+	}
 }
 
 func TestAdmissionInitializationCompiledCLI(t *testing.T) {

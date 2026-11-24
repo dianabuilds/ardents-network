@@ -432,6 +432,7 @@ route-check:
 
 hosting-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	go test -race ./tests/e2e/node -run '^Test(AdmissionHostingReservationAndWork|HostingPlanExactFields|HostingCompiledCLIInitializationAndObservation|HostingOTLPContainsOnlyFiniteAttributes|HostingCollectorFailurePreservesCommittedResult|LocalTransfer|WorkCannotExtendAcceptedAuthority|WorkRefusesObservationRollback|ObservationFloorSpansAdmissionAndWork|CanceledSocketChildRetainsReservationUntilJoined)' -count=1 -timeout=3m
 
 .PHONY: admission-check
 admission-check:
@@ -442,7 +443,7 @@ admission-check:
 # out of the command's unit-test package.
 .PHONY: offline-admission-e2e-race
 offline-admission-e2e-race:
-	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
+	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP|StandaloneCommands|Consoles|ConsoleInput|HolderInterrupt|HostingReservationAndWork)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
 
 .PHONY: issuance-check
 issuance-check:
@@ -473,7 +474,7 @@ source-process-check:
 network-preparation-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-preparation-check requires Linux and native ext4 TMPDIR"; exit 2)
 	go test -race ./internal/platform/artifacts -run '^TestWriteReportJoinsCanceledFullPipe$$' -count=1 -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./cmd/ardents-next -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./tests/e2e/node -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./internal/node/provisioning -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
 
 network-preparation-compile-check: export GOOS := linux
@@ -490,8 +491,8 @@ network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race ./internal/platform/artifacts -run '^TestWriteReportJoinsCanceledFullPipe$$' -count=1 -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint -run '^TestSourcePreparationNative(CommitmentsAndCustody|OriginalProcessCuts|PartialWrite|ReferenceExpiry|Child)$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./tests/e2e/node -run '^TestNetworkSigningNodeCertificateCommand$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next ./internal/release/infrastructure -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./tests/e2e/node -run '^TestNetworkSigning(NodeCertificate(Command|Receipt)|StaticNativeRefusals|CommandsGenuineStateChain|Infrastructure(Preparation|RoleInventories)|InitialKeys(Command|StateChain|ReceiptFailure|BlockedReceipt|StaticRefusals))$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestSource(InspectionNative|PreparationNativeStateCommand)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/duty ./internal/network/state -run '^TestNodeInspectionNative' -count=1 -v -timeout=3m
@@ -499,7 +500,7 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNative(OutputSubstitutionRefuses|PublicMountRefusal)$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(NetworkSigning(InitialKeys|OriginalTimeAfterIO|DurableInventory|ConcurrentOutput|UnsupportedMount|OriginalInputCustody|OriginalRefusalCannotRevive|InterruptedChild|ActualPartialAndProcessCuts|Profile(NativeCommit|ActualExpiry|Contention)|NodeCertificate(LateTime|FinalOutputAndPhysicalFailure|Contention))|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(NetworkSigning(InitialKeys|OriginalCancellationBeforeEffects|OriginalTimeAfterIO|DurableInventory|ConcurrentOutput|UnsupportedMount|OriginalInputCustody|OriginalRefusalCannotRevive|InterruptedChild|ActualPartialAndProcessCuts|Profile(NativeCommit|ActualExpiry|ReceiptExpiry|Contention)|NodeCertificate(LateTime|FinalOutputAndPhysicalFailure|Contention))|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^Test(Forwarding|Join)PreparationNative(InitialReleasePurposeAndKeyCustody|ForwardReleasePreservesRootAndRaisesFloors)$$|^TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m

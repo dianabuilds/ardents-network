@@ -274,12 +274,12 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 		if err := os.Chmod(root, 0700); err != nil {
 			t.Fatal(err)
 		}
-		owner, err := receiving.Open(root, binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+		owner, err := receiving.Open(root, binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 		if err != nil {
 			t.Fatal(err)
 		}
 		spent := &routeFixtureSpends{owner: owner, root: root, binding: binding,
-			observe: func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) }}
+			observe: func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) }}
 		x.spends = append(x.spends, spent)
 		t.Cleanup(func() {
 			spent.mu.Lock()
@@ -373,8 +373,8 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 						return nil, err
 					}
 					var beforeDebit, afterDebit bool
-					original := authority.issuer
-					authority.issuer = func(signer [32]byte) (admission.AuthorityFacts, time.Time, error) {
+					original := authority.Issuer
+					authority.Issuer = func(signer [32]byte) (admission.AuthorityFacts, time.Time, error) {
 						observation++
 						// Additional retained startup/custody checks are not debit
 						// effects. Keep the existing boundary controls tied to the
@@ -990,7 +990,7 @@ func TestRouteIssuerOriginalCallerAtVerifiedDepositTCP(t *testing.T) {
 			var forwardingPresentation stock.Presentation
 			opened, err := routeprefix.Open(t.Context(), routeprefix.Config{Leg: leg, Current: f.current, Deadline: plan.Deadline, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 				presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-				if err := f.authority.presentation(presentation); err != nil {
+				if err := f.authority.Presentation(presentation); err != nil {
 					return nil, err
 				}
 				class, err := role.AdmissionClass(hello.Purpose)
@@ -1032,7 +1032,7 @@ func TestRouteIssuerOriginalCallerAtVerifiedDepositTCP(t *testing.T) {
 				t.Fatal("retired verified completion retained blinders or refunded allocation", s)
 			}
 			forwardingPresentation.ChannelNonce = [32]byte{97}
-			if err := f.authority.presentation(forwardingPresentation); err != nil {
+			if err := f.authority.Presentation(forwardingPresentation); err != nil {
 				t.Fatal("actual Stock probe authority unavailable", err)
 			}
 			probe, takeErr := holder.Take(t.Context(), forwardingPresentation, 2)
@@ -1166,7 +1166,7 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionTCP(t *testing.T)
 			defer clear(debits)
 			defer clear(results)
 			observe := func() (admission.AuthorityFacts, time.Time, error) {
-				return f.authority.issuer(f.plan.KeyBinding.Signer)
+				return f.authority.Issuer(f.plan.KeyBinding.Signer)
 			}
 			retry := issuer.IssueCurrent(t.Context(), f.plan, request, quota.Admitted, observe)
 			defer clear(retry.Response)
@@ -1204,7 +1204,7 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionTCP(t *testing.T)
 			if err := holder.Close(); err != nil {
 				t.Fatal(err)
 			}
-			reopened, err := stock.Open(root, admission.AllocationUser, f.authority.observe)
+			reopened, err := stock.Open(root, admission.AllocationUser, f.authority.ObserveFacts)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1268,7 +1268,7 @@ func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *tes
 			}
 			a := role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}
 			binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: member.NodeID, DutyGeneration: member.DutyGeneration}
-			owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+			owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1409,7 +1409,7 @@ func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *tes
 			presented := false
 			err = role.Present(t.Context(), t.Context(), restrictedTLS, a, restrictedHello, func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 				p := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-				if err := f.authority.presentation(p); err != nil {
+				if err := f.authority.Presentation(p); err != nil {
 					return nil, err
 				}
 				raw, err := holder.Take(ctx, p, 2)
@@ -1451,7 +1451,7 @@ func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *tes
 			}
 			if err := role.Present(t.Context(), t.Context(), secured, a, h, func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 				p := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-				if err := f.authority.presentation(p); err != nil {
+				if err := f.authority.Presentation(p); err != nil {
 					return nil, err
 				}
 				return holder.Take(ctx, p, 2)
@@ -1876,4 +1876,35 @@ func TestRouteHostedEntryPropagatesBootstrapToInterior(t *testing.T) {
 			}
 		})
 	}
+}
+
+func releaseRouteCapacity(release func(context.Context) error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return release(ctx)
+}
+
+func holdRouteIssuerReservation(c routereceiver.Channel, held *hosting.Reservation, work, afterTerminal func() error) (func() error, error) {
+	terminal, err := held.DetachTermination()
+	if err != nil {
+		release, holdErr := c.HoldReservation(work)
+		return release, errors.Join(err, holdErr)
+	}
+	return c.HoldIssuerReservation(work, func() error {
+		err := releaseRouteCapacity(terminal)
+		if afterTerminal != nil {
+			err = errors.Join(err, afterTerminal())
+		}
+		return err
+	})
+}
+
+func issueRouteBatch(ctx context.Context, authority admissionAuthority, plan issuer.Plan, batch []byte, bootstrap bool) ([]byte, error) {
+	kind := quota.Admitted
+	if bootstrap {
+		kind = quota.Bootstrap
+	}
+	return issuer.IssueCurrentBatch(ctx, plan, batch, kind, func() (admission.AuthorityFacts, time.Time, error) {
+		return authority.Issuer(plan.KeyBinding.Signer)
+	})
 }

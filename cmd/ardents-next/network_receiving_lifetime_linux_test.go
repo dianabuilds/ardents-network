@@ -38,7 +38,7 @@ func TestNetworkReceivingHeldForeignWorkRetainsOriginalCustody(t *testing.T) {
 					defer releaseOnce.Do(func() { close(releaseJoin) })
 					var hold atomic.Bool
 					owner, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) {
-						v, err := f.authority.receiver(f.receiver, f.profile.NotAfter)
+						v, err := f.authority.Receiver(f.receiver, f.profile.NotAfter)
 						if boundary == "observation" && hold.Load() {
 							close(entered)
 							<-resume

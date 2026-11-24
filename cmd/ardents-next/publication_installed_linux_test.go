@@ -260,7 +260,7 @@ func installedPublisherDeliverySource(t *testing.T, f *networkAdmissionFixture, 
 		// Offline fixture issuance grants finite tokens, not network or Service
 		// acceptance. The original two bounded bootstrap batches are unchanged.
 		issued := issuer.IssueCurrent(t.Context(), f.plan, raw, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal("Source fixture issuance", issued.Outcome)
@@ -594,7 +594,7 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 		}
 		binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: member.DutyGeneration}
 		spendRoot := t.TempDir()
-		receiverObservation := func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) }
+		receiverObservation := func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) }
 		owner, err := receiving.Open(spendRoot, binding, receiverObservation)
 		if err != nil {
 			t.Fatal(err)
@@ -719,7 +719,7 @@ func installedPublisherBatches(t *testing.T, f *networkAdmissionFixture, send fu
 			t.Fatal("genuine Publisher blind request", i, batch.Outcome)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, kind, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal(issued)

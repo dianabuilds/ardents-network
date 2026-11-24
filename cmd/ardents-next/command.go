@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"
 )
 
 func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int {
@@ -27,7 +31,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 	case "endpoint":
 		return runEndpointCommand(ctx, args, out, diagnostic)
 	case "platform":
-		return runPlatform(ctx, args, out)
+		return platformlaunch.Run(ctx, args, out)
 	case "infrastructure":
 		return runInfrastructureCommand(ctx, args, out, diagnostic)
 	case "source":
@@ -45,7 +49,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 	case "enrollment":
 		return runEnrollmentCommand(ctx, args, out, diagnostic)
 	case "route":
-		return runRoute(ctx, args, out, diagnostic)
+		return node.RunRouteReceive(ctx, args, out, diagnostic)
 	case "network":
 		return runNetwork(ctx, args, out)
 	case "node-identity":
@@ -65,7 +69,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 
 func runEndpointCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) == 0 || args[0] != "withdraw" {
-		return runInstalledEndpoint(ctx, args, diagnostic)
+		return endpoint.RunInstalledCommand(ctx, args, diagnostic)
 	}
 	if len(args) != 2 {
 		fmt.Fprintln(diagnostic, "usage: ardents endpoint withdraw <administration-socket>")

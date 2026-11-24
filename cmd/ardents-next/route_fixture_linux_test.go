@@ -215,7 +215,7 @@ func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool,
 			t.Fatal(err)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal(issued)
@@ -241,7 +241,7 @@ func routePermissionStockAt(t *testing.T, f *networkAdmissionFixture, role admis
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	holder, err := stock.Open(root, role, f.authority.observe)
+	holder, err := stock.Open(root, role, f.authority.ObserveFacts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +291,7 @@ func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(a
 			t.Fatal("holder begin", batch.Outcome)
 		}
 		issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.issuer(f.plan.KeyBinding.Signer)
+			return f.authority.Issuer(f.plan.KeyBinding.Signer)
 		})
 		if issued.Outcome != "issued-offline" {
 			t.Fatal(issued.Outcome)

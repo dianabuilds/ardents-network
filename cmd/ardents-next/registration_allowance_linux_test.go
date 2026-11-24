@@ -20,7 +20,7 @@ func TestRegistrationSelectedAllowanceWithSignedNetworkAndDurableSpend(t *testin
 	_, tokens := f.tokensForClass(t, admission.RegistrationClass, 1)
 	budget := networkTestBudget(t)
 	root := t.TempDir()
-	observe := func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) }
+	observe := func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) }
 	owner, err := receiving.Open(root, f.receiver, observe)
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +97,7 @@ func TestRegistrationExpiryAfterSpendRetainsBurnAndReturnsHosting(t *testing.T) 
 				t.Fatal(t.Context().Err())
 			}
 		}
-		return f.authority.receiver(f.receiver, f.profile.NotAfter)
+		return f.authority.Receiver(f.receiver, f.profile.NotAfter)
 	}
 	owner, err := receiving.Open(root, f.receiver, observe)
 	if err != nil {

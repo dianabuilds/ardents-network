@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"sort"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
@@ -42,11 +43,55 @@ type snapshot struct {
 // File and Names return copies; no live filesystem owner escapes Verify.
 type Bundle struct{ accepted *snapshot }
 
+// RunningVerification contains the bounded report of a verified local Bundle.
+type RunningVerification struct {
+	Protected    bool
+	Files        int
+	ProgramBytes int
+}
+
+// VerifyRunning verifies the current executable against the independently
+// pinned Bundle and returns its inventory only for the current platform.
+func VerifyRunning(ctx context.Context, bundleRoot, pin string) (RunningVerification, error) {
+	program, err := os.Executable()
+	if err != nil {
+		return RunningVerification{}, err
+	}
+	bundle, err := Verify(ctx, Request{BundleRoot: bundleRoot, ExecutablePath: program, ManifestSHA256: pin})
+	if err != nil {
+		return RunningVerification{}, err
+	}
+	facts, ok := bundle.CurrentPlatformFacts()
+	if !ok {
+		return RunningVerification{}, ErrBinding
+	}
+	programBytes, ok := bundle.File(facts.Artifact)
+	if !ok {
+		return RunningVerification{}, errors.New("enrollment program unavailable")
+	}
+	defer clear(programBytes)
+	result := RunningVerification{Protected: facts.Protected, Files: len(bundle.Names()), ProgramBytes: len(programBytes)}
+	if err := ctx.Err(); err != nil {
+		return RunningVerification{}, err
+	}
+	return result, nil
+}
+
 func (b Bundle) Facts() (Facts, bool) {
 	if b.accepted == nil {
 		return Facts{}, false
 	}
 	return b.accepted.facts, true
+}
+
+// CurrentPlatformFacts returns authenticated facts only when the enrolled
+// artifact targets the operating system and architecture running this process.
+func (b Bundle) CurrentPlatformFacts() (Facts, bool) {
+	facts, ok := b.Facts()
+	if !ok || facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return Facts{}, false
+	}
+	return facts, true
 }
 
 func (b Bundle) File(name string) ([]byte, bool) {

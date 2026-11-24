@@ -36,6 +36,10 @@ opens no private root and retains the same public State-preparation report.
 | Holder stock | Private holder key, one permission per context/hour, pending blind state, reserved balance, available tokens and presentation marks | Taking a token removes stock and durably records presentation before returning bytes |
 | Receiving | Token binding to receiver/class/hour, irreversible spend, finite allowance and refusal cleanup | Spend journal precedes acceptance; post-I/O expiry cannot refund a spend |
 
+Allocation also owns the offline unsigned proposal operation. It validates the
+public journal, verifies the request and checks the current hour again when
+deciding. Its result still requires the separate Custody commit and signature.
+
 These are separate consistency boundaries inside one Admission context, not
 five new domains and not a single shared transaction. Issuer is an application
 coordinator over quota, key and result owners. Token and issuerprofile are
@@ -292,10 +296,10 @@ outside this evidence.
 | Bound shortens during reservation or spend | stock/receiving_cycle_test.go: TestReceivingShrinkingBoundRefusesBeforeAndAfterSpend | Reservation released; spend occurs only in post-spend case |
 | Authority disappears after spend | stock/receiving_cycle_test.go: TestReceivingAuthorityFailureAfterSpendRetainsBurnAndReleasesCapacity | No spend refund across reopen, no leaked reservation |
 | Refill and ownership transfer | stock/receiving_cycle_test.go: TestReceivingRefillPreservesDeadlineAndTransferredReservations | No deadline extension or premature release at receiver Close |
-| Real standalone consumers and durable reopen | cmd/ardents-next/admission_cycle_linux_test.go: TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen (repository-relative path) | No token revival after holder restart, no repeated receiver spend, no lease left after SIGINT while inherited stdin stays open |
+| Real standalone consumers and durable reopen | `tests/e2e/node/admission_cycle_test.go`: `TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen`; `tests/e2e/node/admission_interrupt_unix_test.go`: `TestAdmissionHolderInterruptJoinsInputAndReleasesLease` | No token revival after holder restart, no repeated receiver spend, no lease left after SIGINT while inherited stdin stays open |
 | Selected Registration allowance with genuine signed Network and Hosting | cmd/ardents-next/registration_allowance_linux_test.go: TestRegistrationSelectedAllowanceWithSignedNetworkAndDurableSpend (repository-relative path) | Receiving returns the independent 1 MiB oracle, retains earlier caller bound and work-owned reservation, returns capacity once and refuses spent tokens after reopen |
-| Selected class allowance through the compiled command consumer | cmd/ardents-next/network_commands_linux_test.go: TestNetworkCommandsAndAdmissionUseAuthenticatedRoots (repository-relative path) | Real class-2 and class-3 issuance/presentation/spend return selected bytes without extending the caller deadline; command restart cannot revive spend |
-| Real Hosting budget with genuine tokens | Same compiled-process scenario, Hosting phase | Authority/budget refusal cannot burn token or leak a reserve; receiver Close cannot free accepted work |
+| Selected class allowance through the compiled command consumer | `tests/e2e/node/network_commands_linux_test.go`: `TestNetworkCommandsAndAdmissionUseAuthenticatedRoots` | Real class-2 and class-3 issuance/presentation/spend return selected bytes without extending the caller deadline; command restart cannot revive spend |
+| Hosting budget with genuine tokens | `tests/e2e/node/admission_hosting_linux_test.go`: `TestAdmissionHostingReservationAndWork` | Native Hosting and Receiving owners are exercised with genuine issued tokens and a synthetic local transfer; authority/budget refusal cannot burn token or leak a reserve, and receiver Close cannot free accepted work |
 
 The only batch request parser and result codec live in the Admission root.
 `UnpadClosedTokenBatch` locates the canonical batch within a fixed transport

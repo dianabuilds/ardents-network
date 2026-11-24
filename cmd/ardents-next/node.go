@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/node"
 	nodecommand "github.com/dianabuilds/ardents-network/internal/node/command"
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
@@ -32,5 +33,5 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 	default:
 		return 2
 	}
-	return runNodeRole(ctx, operation, tail, out, diagnostic)
+	return node.RunRole(ctx, operation, tail, out, diagnostic)
 }

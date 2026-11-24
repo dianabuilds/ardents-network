@@ -89,3 +89,4 @@ github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/node/provisioning
 github.com/dianabuilds/ardents-network/internal/platform/artifacts
 github.com/dianabuilds/ardents-network/internal/release/infrastructure/signing
+github.com/dianabuilds/ardents-network/internal/platform/launch

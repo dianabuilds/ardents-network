@@ -62,7 +62,7 @@ func TestRouteSourceSubmissionRefusalTCP(t *testing.T) {
 				}
 				// Offline fixture issuance remains explicit, not a network issuer ACK.
 				issued := issuer.IssueCurrent(t.Context(), f.plan, request, kind, func() (admission.AuthorityFacts, time.Time, error) {
-					return f.authority.issuer(f.plan.KeyBinding.Signer)
+					return f.authority.Issuer(f.plan.KeyBinding.Signer)
 				})
 				if issued.Outcome != "issued-offline" {
 					t.Fatal(issued.Outcome)
@@ -85,7 +85,7 @@ func TestRouteSourceSubmissionRefusalTCP(t *testing.T) {
 					t.Fatal(err)
 				}
 				binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-				owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+				owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -129,7 +129,7 @@ func TestRouteSourceSubmissionRefusalTCP(t *testing.T) {
 			}
 			plan := routePrefixPlan{Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			root := t.TempDir()
-			selected, err := selection.Open(selection.Config{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), Domain: 4, Current: f.authority.current})
+			selected, err := selection.Open(selection.Config{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), Domain: 4, Current: f.authority.Current})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -59,7 +59,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 							t.Error(err)
 						}
 					})
-					owner, err := receiving.Open(spendRoot, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, member.NotAfter()) })
+					owner, err := receiving.Open(spendRoot, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, member.NotAfter()) })
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -170,14 +170,14 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 					}
 					presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
 					take := func() []byte {
-						if err := f.authority.presentation(presentation); err != nil {
+						if err := f.authority.Presentation(presentation); err != nil {
 							t.Fatal(err)
 						}
 						raw, err := holder.Take(t.Context(), presentation, 2)
 						if err != nil {
 							t.Fatal(err)
 						}
-						if err := f.authority.presentation(presentation); err != nil {
+						if err := f.authority.Presentation(presentation); err != nil {
 							t.Fatal(err)
 						}
 						return raw
@@ -290,7 +290,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					owner, err = receiving.Open(spendRoot, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, member.NotAfter()) })
+					owner, err = receiving.Open(spendRoot, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, member.NotAfter()) })
 					if err != nil {
 						t.Fatal(err)
 					}

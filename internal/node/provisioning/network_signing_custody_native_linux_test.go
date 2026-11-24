@@ -429,3 +429,22 @@ func TestNetworkSigningNodeCertificateContention(t *testing.T) {
 		t.Fatal("fresh output winners", success)
 	}
 }
+
+func TestNetworkSigningOriginalCancellationBeforeEffects(t *testing.T) {
+	for name, arguments := range map[string]func(*testing.T) []string{
+		"record":      nativeSigningArguments,
+		"certificate": nativeCertificateArguments,
+	} {
+		t.Run(name, func(t *testing.T) {
+			args := arguments(t)
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+			if _, err := SignNetwork(ctx, args, nil); !errors.Is(err, context.Canceled) {
+				t.Fatalf("canceled signer: %v", err)
+			}
+			if _, err := os.Lstat(args[5]); !os.IsNotExist(err) {
+				t.Fatalf("canceled signer created output: %v", err)
+			}
+		})
+	}
+}

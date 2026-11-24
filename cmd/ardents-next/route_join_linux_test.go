@@ -52,7 +52,7 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceTCP(t *testing.T) {
 			startJoinRouteReceivers(t, f, sockets, certificates)
 			root := t.TempDir()
 			plan := routePrefixPlan{Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-			installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: f.authority.current})
+			installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: f.authority.Current})
 			if err != nil {
 				t.Fatal(err)
 			}

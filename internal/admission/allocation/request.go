@@ -29,6 +29,20 @@ func Prepare(raw []byte, network [32]byte, now time.Time) (Request, error) {
 	return Request{request: request, digest: sha256.Sum256(raw), valid: true}, nil
 }
 
+// Propose validates the retained public journal and prepares an unsigned
+// allocation for its caller to commit and sign through the Custody boundary.
+// The hour is checked again at the decision after request verification.
+func Propose(raw, journal []byte, network, authority [32]byte) (Decision, error) {
+	if err := ValidateJournal(journal); err != nil {
+		return Decision{}, err
+	}
+	request, err := Prepare(raw, network, time.Now().UTC())
+	if err != nil {
+		return Decision{}, err
+	}
+	return request.Decide(journal, authority, time.Now().UTC())
+}
+
 // Decide validates the unlocked authority's key and current journal and hour.
 // The result is a policy decision only: Custody must commit its exact journal
 // through encrypted publication, readback and floor before returning a signature.

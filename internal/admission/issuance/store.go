@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -142,4 +143,12 @@ func (s *storeState) checkRetained() error {
 		s.failure = errors.Join(ErrUnavailable, err)
 	}
 	return s.failure
+}
+
+// OperatorAvailability reports the local operation refusal before input access.
+func OperatorAvailability() string {
+	if !admission.SupportsOfflineOperatorCommands() || !Supported() {
+		return "unsupported-platform"
+	}
+	return ""
 }

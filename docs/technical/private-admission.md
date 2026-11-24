@@ -537,6 +537,8 @@ a retained root without its lease refuses, including while a previous owner is
 still live. Initial creation and validated reopen flush the root's retained
 files and directory before returning ownership. A failed initial flush cannot
 be bypassed by retrying Open against complete but unacknowledged files.
+The journal implementation supports Linux and macOS using native exclusive
+leases and directory synchronization.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local

@@ -8,10 +8,11 @@ at every authority boundary with the current UTC wall clock. Removing/changing
 the file withdraws subsequent admission; reading signed bytes alone is never
 promoted into trusted Network authority.
 
-Native quota and issuer key/profile/result command adapters retain the selected
-Linux-only surface and refuse before reading private configuration elsewhere.
-Availability of a shared Unix storage mechanism does not select these commands
-on another platform or qualify their private-input/export lifecycle there.
+Local quota and issuer key/profile/result command adapters support Linux and
+macOS through their native Unix storage and owner-only export mechanisms.
+The standalone process cycle has been exercised on macOS; this is not
+installed-platform qualification. Windows currently refuses these operations
+before reading private configuration.
 
 ## Invocation and input
 
@@ -43,7 +44,7 @@ AdmissionBinding, KeyRoot, KeyBinding and ResultRoot. Roots are initialized usin
 the existing quota/key/result commands. `receiver` is `receiving.Receiver`, pinned
 to the exact profile, State generation/digest, Node ID and duty generation.
 Holder and receiver require existing private empty roots on first use. Holder
-journal durability is Linux-only; other platforms refuse opening it.
+journal durability supports Linux and macOS; Windows refuses opening it.
 
 ## Holder operations
 
@@ -86,7 +87,7 @@ or rebuilds an expired request with a new deadline.
 
 The compiled-process scenario is
 `TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen` in
-`cmd/ardents-next/admission_cycle_linux_test.go`. It checks unsigned allocation,
+`tests/e2e/node/admission_cycle_test.go`. It checks unsigned allocation,
 external commit-before-sign sequencing, exact issuance replay, holder restart,
 foreign receiver duty refusal, positive redemption, refill and spend replay after
 restart. Its external signing fixture is not encrypted Custody qualification.

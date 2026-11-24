@@ -6,13 +6,8 @@ import (
 	"io"
 	"slices"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 )
-
-func admissionOperatorSupported(storageSupported bool) bool {
-	return admission.SupportsOfflineOperatorCommands() && storageSupported
-}
 
 func readAdmissionOperatorConfig(ctx context.Context, args []string) (raw []byte, collector, outcome string) {
 	if ctx == nil {

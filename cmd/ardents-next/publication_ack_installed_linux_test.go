@@ -250,7 +250,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	if retirement == "delivery-close" {
 		original := f.current
 		f.current = func() (network.RuntimeView, error) { return deliveryGate.observe(original) }
-		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)
+		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.Witness)
 		defer deliveryGate.release()
 	}
 	receivingNetwork := f
@@ -265,7 +265,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			current = func() (network.RuntimeView, error) { return sourceACKGate.observeResult(original) }
 		}
 		f.current = func() (network.RuntimeView, error) { return observedNetwork.current(current) }
-		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)
+		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.Witness)
 	}
 	operationLimit, routeLimit := 45*time.Second, 40*time.Second
 	if retirement == "elapsed" {
@@ -376,11 +376,11 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	// An equal-lived outer caller is not the original operation identity. It
 	// must refuse before acquiring roots or spending this genuine Stock.
 	before := holder.Status()
-	wrong, wrongErr := endpointpublisher.Open(publisherCaller, publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)), holder, operation)
+	wrong, wrongErr := endpointpublisher.Open(publisherCaller, publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.Witness)), holder, operation)
 	if wrongErr == nil || wrong.Owner() != nil || holder.Status() != before {
 		t.Fatal("foreign Publication caller acquired resources or changed Stock", wrongErr)
 	}
-	owner, err := endpointpublisher.Open(operation.Context(), publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)), holder, operation)
+	owner, err := endpointpublisher.Open(operation.Context(), publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.Witness)), holder, operation)
 	if err != nil {
 		t.Fatal(err)
 	}

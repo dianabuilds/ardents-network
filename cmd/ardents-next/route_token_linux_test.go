@@ -422,8 +422,8 @@ func TestFundedPresentationDoesNotPrepareAfterAuthorityFailure(t *testing.T) {
 	defer budget.Close()
 	authority := f.authority
 	var loseClock atomic.Bool
-	authority.presentation = func(presentation stock.Presentation) error {
-		if err := f.authority.presentation(presentation); err != nil {
+	authority.Presentation = func(presentation stock.Presentation) error {
+		if err := f.authority.Presentation(presentation); err != nil {
 			return err
 		}
 		if loseClock.Load() {

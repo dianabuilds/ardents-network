@@ -28,7 +28,7 @@ import (
 // this is not malformed-input coverage or a Carrier/Stock consumer substitute.
 func TestNetworkIssuerValidChangedDigestRefusesBeforeSigning(t *testing.T) {
 	f := newNetworkAdmissionFixture(t)
-	p, now, err := f.authority.observe()
+	p, now, err := f.authority.ObserveFacts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestNetworkIssuerValidChangedDigestRefusesBeforeSigning(t *testing.T) {
 		t.Fatal("digest conflict oracle has identical inputs")
 	}
 	observe := func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
+		return f.authority.Issuer(f.plan.KeyBinding.Signer)
 	}
 	issued := issuer.IssueCurrent(t.Context(), f.plan, raw[0], quota.Bootstrap, observe)
 	defer clear(issued.Response)
@@ -188,7 +188,7 @@ func TestNetworkAdmissionRefillRetainsDeadlineAndHostingUntilReplacement(t *test
 	}
 	_, tokens := f.tokens(t, 3)
 	budget := networkTestBudget(t)
-	owner, err := receiving.Open(t.TempDir(), f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+	owner, err := receiving.Open(t.TempDir(), f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestNetworkClockAndProfileConflictRefuseBeforeReceivingEffects(t *testing.T
 			f := newNetworkAdmissionFixture(t)
 			_, tokens := f.tokens(t, 1)
 			root := t.TempDir()
-			owner, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+			owner, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -270,14 +270,14 @@ func TestNetworkClockAndProfileConflictRefuseBeforeReceivingEffects(t *testing.T
 			f.clockUnavailable.Store(false)
 			f.reopen()
 			if fault == "profile-conflict" {
-				if _, _, err := f.authority.observe(); err == nil {
+				if _, _, err := f.authority.ObserveFacts(); err == nil {
 					t.Fatal("profile conflict disappeared on recovery")
 				}
 				return
 			}
 			// Lost clock confidence refused before the burn. Recovery of genuine
 			// time evidence permits this same previously unspent token.
-			owner, err = receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+			owner, err = receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -299,17 +299,17 @@ func TestNetworkAdmissionHostingSignedStateAndJoinedWork(t *testing.T) {
 	f := newNetworkAdmissionFixture(t)
 	// Recovery re-authenticates persisted bytes; no injected accepted values.
 	f.reopen()
-	if facts, _, err := f.authority.observe(); err != nil || facts != f.profile {
+	if facts, _, err := f.authority.ObserveFacts(); err != nil || facts != f.profile {
 		t.Fatal("Network recovery changed authority", err)
 	}
-	if _, _, err := f.authority.issuer([32]byte{99}); err == nil {
+	if _, _, err := f.authority.Issuer([32]byte{99}); err == nil {
 		t.Fatal("foreign issuer signing key accepted")
 	}
 	_, tokens := f.tokens(t, 1)
 	budget := networkTestBudget(t)
 	deadline := time.Now().Add(4 * time.Second)
 	root := t.TempDir()
-	receiver, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+	receiver, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestNetworkAdmissionHostingSignedStateAndJoinedWork(t *testing.T) {
 	started, stopped, join := make(chan struct{}), make(chan struct{}), make(chan struct{})
 	done := make(chan error, 1)
 	go func() {
-		done <- networkTransferLocal(ctx, 64<<10, grant.Allowance().Deadline(), networkWorkAuthority(f.profile, time.Now(), deadline, f.authority.observe), func(reader io.Reader, n int64) error {
+		done <- networkTransferLocal(ctx, 64<<10, grant.Allowance().Deadline(), networkWorkAuthority(f.profile, time.Now(), deadline, f.authority.ObserveFacts), func(reader io.Reader, n int64) error {
 			close(started)
 			<-ctx.Done()
 			err := networkDiscardPayload(reader, n)
@@ -367,7 +367,7 @@ func TestNetworkAdmissionHostingSignedStateAndJoinedWork(t *testing.T) {
 		t.Fatal("capacity retained after joined release", view, err)
 	}
 	f.reopen()
-	reopened, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+	reopened, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +395,7 @@ func TestNetworkSuccessorDuringSpendRetainsBurnAndReleasesHosting(t *testing.T) 
 			changed = true
 			f.successor(t)
 		}
-		return f.authority.receiver(f.receiver, f.profile.NotAfter)
+		return f.authority.Receiver(f.receiver, f.profile.NotAfter)
 	}
 	receiver, err := receiving.Open(root, f.receiver, observer)
 	if err != nil {
@@ -426,7 +426,7 @@ func TestNetworkSuccessorDuringSpendRetainsBurnAndReleasesHosting(t *testing.T) 
 		t.Fatal("post-spend refusal refunded token on reopen")
 	}
 	f.reopen()
-	if _, err := f.authority.receiver(f.receiver, f.profile.NotAfter); err == nil {
+	if _, err := f.authority.Receiver(f.receiver, f.profile.NotAfter); err == nil {
 		t.Fatal("recovery revived superseded receiver binding")
 	}
 }
@@ -436,7 +436,7 @@ func TestNetworkLossBeforeSpendHasNoTokenDebit(t *testing.T) {
 	_, tokens := f.tokens(t, 1)
 	budget := networkTestBudget(t)
 	root := t.TempDir()
-	receiver, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+	receiver, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +458,7 @@ func TestNetworkLossBeforeSpendHasNoTokenDebit(t *testing.T) {
 		t.Fatal("pre-spend refusal leaked capacity", view, err)
 	}
 	f.reopen()
-	reopened, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) })
+	reopened, err := receiving.Open(root, f.receiver, func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) })
 	if err != nil {
 		t.Fatal(err)
 	}

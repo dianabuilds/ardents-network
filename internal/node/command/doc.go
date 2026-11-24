@@ -1,3 +1,2 @@
-// Package command adapts Node invocation inputs and finite reports to the CLI.
-// The executable remains responsible for composing Network State and Route.
+// Package command inspects the local process for the Node command.
 package command

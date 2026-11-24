@@ -3090,7 +3090,7 @@ durable behavior tests. The other 21 files keep their Linux constraint:
 
 - Fixtures whose only consumers are Linux-tagged tests, so de-tagging would add
   windows-test-dead helpers without a portable consumer:
-  `network_socket_fixture_linux_test.go`, `hosting_transfer_fixture_linux_test.go`,
+  `network_socket_fixture_linux_test.go`, `tests/e2e/node/hosting_transfer_fixture_linux_test.go`,
   `route_composition_linux_test.go` (session `Open*` keep `!linux` refusals),
   `publication_registration_linux_test.go` (also composes Linux-only Instance
   custody), `issuance_telemetry_linux_test.go`, and
@@ -3100,7 +3100,7 @@ durable behavior tests. The other 21 files keep their Linux constraint:
   platforms: `cmd/ardents-next/hosting_linux_test.go` and
   `internal/hosting/counter_linux_test.go` (hosting platform lease and `/sys`
   counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
-  (the `admission/attempts` presentation journal requires Linux),
+  (the retained-opening test is Linux-selected),
   `admission/issuer/lifecycle_linux_test.go` (issuance `storage_linux.go`/
   `results_linux.go`), `cmd/ardents-next/document_publisher_linux_test.go`
   (`document.ReadSnapshotFile` no-follow Linux importer), and

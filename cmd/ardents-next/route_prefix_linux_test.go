@@ -116,7 +116,7 @@ func TestRouteGenuineRetainedPrefixTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-					receivingOwner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, m.NotAfter()) })
+					receivingOwner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, m.NotAfter()) })
 					if err != nil {
 						t.Fatal(err)
 					}

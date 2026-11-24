@@ -5,11 +5,43 @@ import (
 	"context"
 	"errors"
 	"io"
+	"path/filepath"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
+
+// ReadLocal owns the input and output until the single document read and any
+// cancellation-driven closure have joined.
+func ReadLocal(ctx context.Context, socket string, input io.ReadCloser, output io.WriteCloser) (outcome error) {
+	if ctx == nil || !filepath.IsAbs(socket) || input == nil || output == nil {
+		return connection.ErrInvalidTargetLink
+	}
+	var closeErr error
+	closed := make(chan struct{})
+	closeIO := func() error { return errors.Join(input.Close(), output.Close()) }
+	stop := context.AfterFunc(ctx, func() {
+		defer close(closed)
+		closeErr = closeIO()
+	})
+	defer func() {
+		if stop() {
+			closeErr = closeIO()
+		} else {
+			<-closed
+		}
+		outcome = errors.Join(outcome, closeErr, ctx.Err())
+	}()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	link, err := connection.ReadTargetLink(input)
+	if err != nil {
+		return err
+	}
+	return PresentLocal(ctx, socket, link, output)
+}
 
 // WritePlainText presents only a complete bounded UTF-8 result. Its caller must
 // first establish successful Service completion and joined worker cleanup.

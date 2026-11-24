@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 // Package attempts owns the Linux Endpoint's bounded durable record of
 // potentially spent closed-Route tokens. Mark burns one token attempt before

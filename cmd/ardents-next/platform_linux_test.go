@@ -3,23 +3,15 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"testing"
-
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
-
-func TestPlatformRetiresDetachedSourceStartBeforeEffects(t *testing.T) {
-	var out bytes.Buffer
-	if code := runInfrastructure(context.Background(), []string{"start-source", "/absent/distribution", "/absent/trust", "closed", "private", "/absent/binding"}, &out); code != 2 || out.Len() != 0 {
-		t.Fatal("retired Source startup entered Installation", code, out.String())
-	}
-}
 
 type platformLaunch = launch.Declaration
 
 func platformDigest(raw []byte) string {
 	return endpointfixture.FixtureDigest(raw)
 }
+
+const platformUnitTemplate = systemd.PlatformUnitTemplate

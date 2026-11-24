@@ -5,10 +5,10 @@ import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 )
 
@@ -18,22 +18,6 @@ type admissionResult struct {
 	Outcome   admission.Outcome `json:"outcome"`
 }
 
-func admissionInitializationOutcome(err error) admission.Outcome {
-	switch {
-	case err == nil:
-		return quota.Initialized
-	case errors.Is(err, quota.ErrUncertain):
-		return quota.Uncertain
-	case errors.Is(err, quota.ErrUnsupported):
-		return quota.Unsupported
-	case errors.Is(err, quota.ErrBusy):
-		return quota.Busy
-	case errors.Is(err, quota.ErrInvalid):
-		return admission.InvalidInput
-	default:
-		return quota.Unavailable
-	}
-}
 func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) > 0 {
 		switch args[0] {
@@ -55,8 +39,8 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	r.Operation = "admission." + args[0]
-	if !admissionOperatorSupported(quota.Supported()) {
-		r.Outcome = quota.Unsupported
+	if outcome := quota.OperatorAvailability(); outcome != "" {
+		r.Outcome = outcome
 		return write()
 	}
 	raw, endpoint, outcome := readAdmissionOperatorConfig(ctx, args[2:])
@@ -65,18 +49,14 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	defer clear(raw)
-	p, err := decodeAdmissionPlan(raw)
+	p, err := issuance.DecodeLedgerDeclaration(raw)
 	if err != nil {
 		return write()
 	}
 	o, telemetryErr := telemetry.Open(endpoint)
 	finish := o.Begin("ardents.admission", r.Operation)
 	r.Phase = "execute"
-	if ctx.Err() != nil {
-		r.Outcome = admission.Canceled
-	} else {
-		r.Outcome = admissionInitializationOutcome(quota.Initialize(p.Root, p.Binding))
-	}
+	r.Outcome = quota.InitializeResult(ctx, p.Root, p.Binding)
 	finish(r.Phase, string(r.Outcome))
 	ok := o.Close()
 	telemetry := "completed"

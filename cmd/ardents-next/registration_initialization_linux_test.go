@@ -15,7 +15,7 @@ import (
 func TestRegistrationInitializationFactUsesGenuineNetworkReceivingOwner(t *testing.T) {
 	f := newNetworkAdmissionFixture(t, func(f *networkAdmissionFixture) { f.spec.Nodes[1].RoleDomain, f.spec.Nodes[1].Subrole = 4, 3 })
 	binding := spending.Binding{NetworkID: f.receiver.NetworkID, ProfileDigest: f.receiver.ProfileDigest, ReceiverNodeID: f.receiver.NodeID, ReceiverDutyGeneration: f.receiver.DutyGeneration}
-	observe := func() (receiving.Observation, error) { return f.authority.receiver(f.receiver, f.profile.NotAfter) }
+	observe := func() (receiving.Observation, error) { return f.authority.Receiver(f.receiver, f.profile.NotAfter) }
 	for _, attempt := range []string{"canceled", "absent reservation", "invalid token", "foreign refill", "closed owner"} {
 		t.Run(attempt, func(t *testing.T) {
 			root := t.TempDir()

@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
@@ -53,11 +51,7 @@ func verifyEnrollmentCommand(ctx context.Context, args []string, out io.Writer) 
 	if len(args) != 3 || args[0] != "verify" {
 		return enrollmentReport(out, "invalid-input", 2)
 	}
-	program, err := os.Executable()
-	if err != nil {
-		return enrollmentReport(out, "unavailable", 1)
-	}
-	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2]})
+	verified, err := enrollment.VerifyRunning(ctx, args[1], args[2])
 	if err != nil {
 		outcome, code := "unavailable", 1
 		switch {
@@ -74,25 +68,12 @@ func verifyEnrollmentCommand(ctx context.Context, args []string, out io.Writer) 
 		}
 		return enrollmentReport(out, outcome, code)
 	}
-	facts, ok := bundle.Facts()
-	if !ok || facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		return enrollmentReport(out, "binding-mismatch", 1)
-	}
-	programBytes, ok := bundle.File(facts.Artifact)
-	if !ok {
-		return enrollmentReport(out, "unavailable", 1)
-	}
-	defer clear(programBytes)
-	// Report the verified inventory and whether it includes protected resources.
 	report := struct {
 		Outcome      string `json:"outcome"`
 		Protected    bool   `json:"protected,omitempty"`
 		Files        int    `json:"files"`
 		ProgramBytes int    `json:"program_bytes"`
-	}{"verified-initial-bundle", facts.Protected, len(bundle.Names()), len(programBytes)}
-	if ctx.Err() != nil {
-		return enrollmentReport(out, "canceled", 130)
-	}
+	}{"verified-initial-bundle", verified.Protected, verified.Files, verified.ProgramBytes}
 	if json.NewEncoder(out).Encode(report) != nil {
 		return 2
 	}

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"time"
 
@@ -18,25 +17,6 @@ type hostingResult struct {
 	ObservedAt  *time.Time           `json:"observed_at,omitempty"`
 	ValidUntil  *time.Time           `json:"valid_until,omitempty"`
 	Observation *hosting.Observation `json:"observation,omitempty"`
-}
-
-func hostingOutcome(err error) string {
-	switch {
-	case errors.Is(err, hosting.ErrUncertain):
-		return "storage-uncertain"
-	case errors.Is(err, hosting.ErrUnsupportedPlatform):
-		return "unsupported-platform"
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return "canceled"
-	case errors.Is(err, hosting.ErrInvalid):
-		return "invalid-input"
-	case errors.Is(err, hosting.ErrCapacity):
-		return "budget-exhausted"
-	case err != nil:
-		return "budget-unavailable"
-	default:
-		return "completed"
-	}
 }
 
 func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -63,8 +43,8 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		return write()
 	}
 	r.Operation = "hosting." + args[0]
-	if !hosting.Supported() {
-		r.Outcome = "unsupported-platform"
+	if outcome := hosting.LocalAvailability(); outcome != "" {
+		r.Outcome = outcome
 		return write()
 	}
 	if ctx == nil {
@@ -86,15 +66,22 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		return write()
 	}
 	defer clear(raw)
-	p, err := decodeHostingPlan(raw, args[0])
+	p, err := hosting.DecodeCommandPlan(raw, args[0])
 	if err != nil {
 		return write()
 	}
 	o, telemetryErr := telemetry.Open(endpoint)
 	finish := o.Begin("ardents.hosting", r.Operation)
 	r.Phase = "execute"
-	err = executeHosting(ctx, args[0], p, &r)
-	r.Outcome = hostingOutcome(err)
+	result, err := hosting.ExecuteLocal(ctx, args[0], p)
+	if result.Sampled {
+		observation, at, until := result.Snapshot.Observation(), result.Snapshot.ObservedAt(), result.Snapshot.ValidUntil()
+		r.Observation, r.ObservedAt, r.ValidUntil = &observation, &at, &until
+	}
+	if result.CloseFailed {
+		r.Phase = "close"
+	}
+	r.Outcome = hosting.Outcome(err)
 	finish(r.Phase, r.Outcome)
 	ok := o.Close()
 	telemetry := "completed"
@@ -106,29 +93,4 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	}
 	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome, Telemetry string }{r.Operation, r.Phase, r.Outcome, telemetry})
 	return write()
-}
-
-func executeHosting(ctx context.Context, operation string, p hostingPlan, r *hostingResult) (err error) {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	if operation == "initialize" {
-		return hosting.Initialize(p.Root, p.Policy)
-	}
-	b, err := hosting.Open(p.Root)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := b.Close(); closeErr != nil {
-			r.Phase = "close"
-			err = errors.Join(hosting.ErrUncertain, err, closeErr)
-		}
-	}()
-	view, err := b.Sample(ctx, time.Second)
-	if err == nil {
-		observation, at, until := view.Observation(), view.ObservedAt(), view.ValidUntil()
-		r.Observation, r.ObservedAt, r.ValidUntil = &observation, &at, &until
-	}
-	return err
 }

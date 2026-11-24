@@ -332,7 +332,7 @@ func joinCommandStock(t *testing.T, f *networkAdmissionFixture, process *joinCom
 		t.Fatal("compiled holder did not request exactly ten class-2 tokens", err)
 	}
 	issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
+		return f.authority.Issuer(f.plan.KeyBinding.Signer)
 	})
 	if issued.Outcome != "issued-offline" {
 		t.Fatal("genuine JOIN issuance", issued.Outcome)

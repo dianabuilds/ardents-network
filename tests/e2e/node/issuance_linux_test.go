@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"strconv"
+	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
@@ -263,4 +264,56 @@ func admissionBindingConfig(b quota.LedgerBinding) admissionBindingInput {
 }
 func admissionFactsConfig(f admission.Facts) map[string]string {
 	return map[string]string{"network": hex.EncodeToString(f.Network[:]), "issuer": hex.EncodeToString(f.Issuer[:]), "authority": hex.EncodeToString(f.Authority[:]), "holder": hex.EncodeToString(f.Holder[:]), "duty": strconv.FormatUint(f.Duty, 10), "duty_not_before": f.DutyNotBefore.Format(time.RFC3339), "duty_not_after": f.DutyNotAfter.Format(time.RFC3339), "now": f.Now.Format(time.RFC3339), "class": strconv.Itoa(int(f.Class)), "count": strconv.Itoa(int(f.Count))}
+}
+
+// TestIssuanceInventoryInputRefusal exercises the actual command and ensures
+// malformed declarations are refused before an inventory root is created.
+func TestIssuanceInventoryInputRefusal(t *testing.T) {
+	binary := buildNodeCommand(t)
+	dir := t.TempDir()
+	root := filepath.Join(dir, "keys")
+	input := map[string]any{"root": root, "inventory_file": filepath.Join(dir, "public"), "binding": issuanceBindingInput{strings.Repeat("ab", 32), strings.Repeat("cd", 32), strings.Repeat("ef", 32), "2030-01-01T00:00:00Z", "2030-01-01T01:00:00Z"}}
+	raw, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]string{
+		"duplicate":  strings.Replace(string(raw), `"network":`, `"network":"`+strings.Repeat("ab", 32)+`","network":`, 1),
+		"case":       strings.Replace(string(raw), `"network":`, `"Network":`, 1),
+		"missing":    strings.Replace(string(raw), `"signer":"`+strings.Repeat("ef", 32)+`",`, "", 1),
+		"unknown":    strings.Replace(string(raw), `"binding":{`, `"binding":{"extra":0,`, 1),
+		"uppercase":  strings.Replace(string(raw), strings.Repeat("ab", 32), strings.Repeat("AB", 32), 1),
+		"null":       strings.Replace(string(raw), `"binding":{`, `"extra":null,"binding":{`, 1),
+		"fractional": strings.Replace(string(raw), "00:00:00Z", "00:00:00.001Z", 1),
+		"timezone":   strings.Replace(string(raw), "00:00:00Z", "00:00:00+00:00", 1),
+		"trailing":   string(raw) + " {}",
+	}
+	cases["valid"] = string(raw)
+	for name, value := range cases {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(path, []byte(value), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.CommandContext(t.Context(), binary, "issuance", "inspect", "--config", path)
+			output, err := cmd.Output()
+			if err == nil {
+				t.Fatal("missing root accepted")
+			}
+			var report issuanceResult
+			if err := json.Unmarshal(output, &report); err != nil {
+				t.Fatalf("invalid report %q: %v", output, err)
+			}
+			want := "invalid-input"
+			if name == "valid" {
+				want = "storage-unavailable"
+			}
+			if report.Outcome != want {
+				t.Fatalf("got outcome %q, want %q", report.Outcome, want)
+			}
+			if _, err := os.Stat(root); !os.IsNotExist(err) {
+				t.Fatalf("inventory root changed: %v", err)
+			}
+		})
+	}
 }

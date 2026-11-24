@@ -499,10 +499,10 @@ returns declaration facts only; it performs no State acceptance, root creation,
 hosting initialization or signing, and supplies no universal role policy. The runtime commands convert their declaration into `state.Config`.
 Node validates the role and independent roots for recovery.
 `internal/release/infrastructure/launch` retains the original public plan and
-actual manager while Network State decides whether to repair. The Node domain
-remains independent of `network/state`. The five runtime commands share the
-command-owned State acquisition, joined retirement and JSON outcome projection
-in `node_roles.go`. Each invocation retains its own genuine typed
+actual manager while Network State decides whether to repair. The Node role composition borrows `network/state` for the original State
+acquisition; State retains its own authority and joined lifetime. The five
+runtime commands share that composition and bounded outcome projection in
+`internal/node/role_command.go`. Each invocation retains its own genuine typed
 constructor and role roots. Introduction retained repair now consumes the
 same full Introduction declaration grammar as its runtime (the former six-field
 repair subset is normalized). `node prepare-plan` delegates exclusive production of the role plan JSON to
@@ -515,9 +515,9 @@ procedure is recorded in `docs/operations/node-role-platform-lifecycle.md`.
 canonical installed exceptions. The former `forwarding_installed_linux.go`,
 `join_installed_linux.go` and `descriptor_installed_linux.go` exceptions retired
 with the transitional Forwarding/JOIN/Descriptor orchestration (#604 FJD stage D,
-ADR-0125); Descriptor was the last canonical installed role. New Route belongs
-only in `internal/route`, composed only by `cmd/ardents-next`, which
-directly constructs genuine new owners.
+ADR-0125); Descriptor was the last canonical installed role. New Route belongs only in `internal/route`; the `cmd/ardents-next`
+development consumer dispatches to the existing new Node and Endpoint owners,
+which compose genuine new-domain operations.
 No old-runtime wrapper, shared live root, role selector or additional canonical
 consumer is admitted by the platform path in `cmd/ardents-next`.
 
@@ -681,7 +681,7 @@ consumer cannot establish a supported Node installation or qualified host.
 
 ### Realized prerequisites and design limits
 
-`cmd/ardents-next/route_linux.go` already composes genuine State, retained duty,
+`internal/node/route_receive_linux.go` composes genuine State, retained duty,
 receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
 Descriptor owners only when that exact duty requires them. Receiver supports
 TCP/TLS, refuses deferred QUIC before listening, reobserves authority and joins its work.
@@ -695,7 +695,7 @@ Node Forwarding role. Each consumer retains its own reservation map and lifetime
 
 `internal/node` composes original Forwarding, Issuer, Descriptor, Introduction and
 JOIN lifetimes through the typed CLI adapters in
-`cmd/ardents-next/node_roles.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
+`internal/node/role_command.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
 producer and fixed TLS custody, full class-2 reserve-before-spend and retained
 joined completion. Matching, both RESULT writes, credit, EOF and CLOSE remain
 Route rules. It grants no refill, Service authority or automatic replacement.
@@ -750,7 +750,7 @@ remove a successor's guard. Program authorization remains separate in Release; n
 software proof nor lease availability certifies predecessor completion.
 
 Platform infrastructure launch is supporting command composition in
-`cmd/ardents-next/platform_linux.go`, not a restored Installation domain.
+`internal/platform/launch/native_linux.go`, not a restored Installation domain.
 Enrollment/Release bind the exact signed program/template; root-controlled
 operator configuration binds the immutable runtime copy and configuration
 digest. A mandatory privileged systemd pre-start checks the actual loaded
@@ -812,7 +812,7 @@ all requests/publications before closing shared parents, Stock and authority.
 `endpoint` now owns the original participant Startup, State, local Execution,
 permission file exchange and shared parents. Its bound Installation declarations
 are also consumed by offline Source preparation, without runtime authority.
-CLI selectors, diagnostic rendering and exit projection stay in the command. Splitting these lifetimes
+Endpoint owns installed startup and preparation command result projection; the command dispatches the selected operation. Splitting these lifetimes
 changes neither accepted persisted/wire bytes nor installed qualification.
 
 Endpoint's explicit offline first preparation consumes declared trust/roots and
@@ -840,8 +840,9 @@ preparation still admits only permission/bootstrap operations. Explicit Finish
 joins children and Stock before its final permission check, while deferred Close
 retains the same terminal result. Network and Execution remain outer owners.
 Native Prefix/Bootstrap/JOIN construction lives with this application scenario;
-Route retains selection, role and physical transport policy. The command keeps
-input DTOs and result/error-stage rendering. Test adapters lend real new handles
+Route retains selection, role and physical transport policy. The session owns
+the bounded local operation grammar and result/error-stage projection; the
+command adapts configuration and process streams. Test adapters lend real new handles
 only and do not reintroduce production command callbacks.
 
 ## Responsibilities outside the selected transition

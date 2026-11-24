@@ -42,7 +42,7 @@ func TestHolderSessionRetainsOriginalIssuanceRecipients(t *testing.T) {
 	intent.Challenges[0].ReceiverNodeID = [32]byte{255}
 	intent.Challenges[0].ReceiverDutyGeneration++
 	issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
+		return f.authority.Issuer(f.plan.KeyBinding.Signer)
 	})
 	if issued.Outcome != "issued-offline" {
 		t.Fatal(issued.Outcome)

@@ -3,14 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
-	"os"
-	"runtime"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
@@ -24,55 +19,20 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return enrollmentReport(out, "invalid-input", 2)
 	}
-	program, err := os.Executable()
-	if err != nil {
-		return enrollmentReport(out, "release-unavailable", 1)
-	}
-	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2]})
-	if err != nil {
-		return enrollmentReport(out, "enrollment-refused", 1)
-	}
-	facts, ok := bundle.Facts()
-	if !ok || facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		return enrollmentReport(out, "release-incompatible", 1)
-	}
-	in, ok := generationauthorization.InitialInputs(bundle, ref)
-	if !ok {
-		return enrollmentReport(out, "release-invalid", 1)
-	}
-	verifier, err := release.Open(args[3])
-	if err != nil {
-		return enrollmentReport(out, "release-unavailable", 1)
-	}
-	decision := verifier.Evaluate(ctx, in)
-	var handoffErr error
-	if proof, ok := decision.Authorization(); ok {
-		handoffErr = verifier.CheckAuthorizations(ctx, proof)
-	}
-	floors, floorErr := verifier.CurrentFloors(ctx)
-	floorErr = errors.Join(floorErr, handoffErr)
-	closeErr := verifier.Close()
-	if closeErr == nil && (errors.Is(decision.Err(), context.Canceled) || errors.Is(decision.Err(), context.DeadlineExceeded)) {
-		return enrollmentReport(out, "release-unavailable", 130)
-	}
-	if closeErr != nil || floorErr != nil || ctx.Err() != nil {
-		return enrollmentReport(out, "release-unavailable", 1)
-	}
+	result := generationauthorization.VerifyInitial(ctx, args[1], args[2], args[3], ref)
 	code := 1
-	if authorization, ok := decision.Authorization(); ok {
-		accepted, valid := authorization.AcceptedDecision()
-		if !valid {
-			return enrollmentReport(out, "release-invalid", 1)
-		}
-		// The successful report is projected from the private verified fact,
-		// rather than treating mutable public Decision fields as authority.
-		decision = accepted
+	if result.Authorized {
 		code = 0
+	} else if result.Canceled {
+		code = 130
+	}
+	if !result.Detailed {
+		return enrollmentReport(out, result.Outcome, code)
 	}
 	if json.NewEncoder(out).Encode(struct {
-		Outcome     release.Outcome `json:"outcome"`
-		RootVersion int64           `json:"root_version"`
-	}{decision.Outcome, floors.RootVersion}) != nil {
+		Outcome     string `json:"outcome"`
+		RootVersion int64  `json:"root_version"`
+	}{result.Outcome, result.RootVersion}) != nil {
 		return 2
 	}
 	return code

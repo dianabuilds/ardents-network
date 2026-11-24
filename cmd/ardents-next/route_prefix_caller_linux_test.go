@@ -57,7 +57,7 @@ func TestRoutePrefixOriginalCallerHandoffTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-					owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+					owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -139,7 +139,7 @@ func TestRoutePrefixOriginalCallerHandoffTCP(t *testing.T) {
 				}
 				prefix, openErr := routeprefix.Open(caller, routeprefix.Config{Leg: leg, Current: current, Deadline: end, Release: release, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 					presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-					if err := f.authority.presentation(presentation); err != nil {
+					if err := f.authority.Presentation(presentation); err != nil {
 						return nil, err
 					}
 					raw, err := holder.Take(ctx, presentation, 2)
@@ -258,7 +258,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-					owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+					owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -371,7 +371,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 					return nil, errors.New("test stops at forbidden capacity effect; no successful reserve substituted")
 				}, Present: func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 					presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-					if err := f.authority.presentation(presentation); err != nil {
+					if err := f.authority.Presentation(presentation); err != nil {
 						return nil, err
 					}
 					raw, err := holder.Take(ctx, presentation, 2)

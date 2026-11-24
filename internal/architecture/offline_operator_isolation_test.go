@@ -14,13 +14,13 @@ func offlineOperatorFile(source string) bool {
 	}
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
-		"internal/admission/issuance/artifact_export_linux.go",
-		"cmd/ardents-next/network_keys_native_linux_test.go",
+		"internal/admission/issuance/artifact_export_unix.go",
 		"internal/release/infrastructure/preparation_linux.go",
+		"internal/release/infrastructure/preparation_native_linux_test.go",
 		"internal/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "tests/e2e/source/inspection_linux_test.go",
-		"cmd/ardents-next/offline_profile_inspection.go", "cmd/ardents-next/offline_profile_inspection_test.go":
+		"cmd/ardents-next/offline_profile_inspection.go", "tests/e2e/node/offline_profile_inspection_test.go":
 		return true
 	}
 	return false
@@ -49,10 +49,12 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/platform/artifacts/directory_unix.go", "internal/platform/artifacts/input_unix.go",
 		"internal/platform/artifacts/retained_file_unix.go", "internal/platform/artifacts/protected_input_linux.go":
 		return dependency == modulePath+"/internal/pathgrammar" || dependency == modulePath+"/internal/durablefile"
-	case "internal/platform/artifacts/private_file_publication_linux.go", "internal/platform/artifacts/platform_inputs_linux.go":
+	case "internal/platform/artifacts/private_file_publication_unix.go", "internal/platform/artifacts/platform_inputs_linux.go":
 		return dependency == modulePath+"/internal/pathgrammar"
 	case "internal/release/infrastructure/preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
+	case "internal/release/infrastructure/preparation_native_linux_test.go":
+		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/node/provisioning/network_report_unix.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/offline_profile_inspection.go":
@@ -60,7 +62,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		fallthrough
-	case "cmd/ardents-next/offline_profile_inspection_test.go":
+	case "tests/e2e/node/offline_profile_inspection_test.go":
 		switch dependency {
 		case modulePath + "/internal/admission/issuerprofile", modulePath + "/internal/network/closedprofile":
 			return true
@@ -236,18 +238,16 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/node/provisioning/network_preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/durablefile"
-	case "internal/node/provisioning/network_signing_test.go":
+	case "internal/node/provisioning/network_signing_test.go", "internal/node/provisioning/network_record_preparation_test.go":
 		return dependency == modulePath+"/tests/epochfixture/network"
 	case "internal/node/provisioning/network_profile_signing_test.go", "internal/node/provisioning/network_public_preparation_test.go":
 		return dependency == modulePath+"/internal/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network"
 	case "internal/node/provisioning/network_commands.go":
 		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathgrammar"
-	case "cmd/ardents-next/network_keys_native_linux_test.go":
-		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/tests/e2e/source"
-	case "internal/admission/issuance/artifact_export_linux.go":
+	case "internal/admission/issuance/artifact_export_unix.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/infrastructure_operator.go":
-		return dependency == modulePath+"/internal/node/provisioning" ||
+		return dependency == modulePath+"/internal/node/provisioning" || dependency == modulePath+"/internal/release/infrastructure" ||
 			dependency == modulePath+"/internal/release/infrastructure/signing"
 	}
 	return false

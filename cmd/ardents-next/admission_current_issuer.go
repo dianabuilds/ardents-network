@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 )
 
 func runAdmissionCurrentIssuer(ctx context.Context, args []string, out io.Writer) int {
@@ -19,19 +19,15 @@ func runAdmissionCurrentIssuer(ctx context.Context, args []string, out io.Writer
 		Batch   []byte                `json:"batch"`
 		Kind    quota.Kind            `json:"kind"`
 	}
-	if ctx == nil || admissionConfig(args, &c) != nil || !validAdmissionAuthority(c.Profile, c.Network, c.Plan.KeyRoot, c.Plan.AdmissionRoot, c.Plan.ResultRoot) {
+	if ctx == nil || admissionConfig(args, &c) != nil {
 		return 2
 	}
-	authority, err := openAdmissionAuthority(c.Profile, c.Network)
+	r, err := funding.IssueCurrent(ctx, c.Plan, c.Profile, c.Network, c.Batch, c.Kind)
+	if errors.Is(err, funding.ErrInvalidCurrentIssuer) {
+		return 2
+	}
 	if err != nil {
 		return 1
-	}
-	r := issuer.IssueCurrent(ctx, c.Plan, c.Batch, c.Kind, func() (admission.AuthorityFacts, time.Time, error) {
-		return authority.issuer(c.Plan.KeyBinding.Signer)
-	})
-	if authority.close() != nil {
-		r.Response = nil
-		r.Phase, r.Outcome = "close-network", "storage-uncertain"
 	}
 	phase, outcome := r.Status()
 	if json.NewEncoder(out).Encode(map[string]any{"phase": phase, "outcome": outcome, "response": r.Response}) != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -48,7 +49,7 @@ type networkAdmissionFixtureState struct {
 func (f *networkAdmissionFixture) authorityLosingClockAfterDraft(t *testing.T) admissionAuthority {
 	t.Helper()
 	authority := f.authority
-	authority.current = func() (network.RuntimeView, error) {
+	authority.Current = func() (network.RuntimeView, error) {
 		view, err := f.current()
 		if err == nil {
 			f.clockUnavailable.Store(true)
@@ -183,7 +184,7 @@ func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionF
 		}
 		f.authority = networkAdmissionAuthority(owner.CurrentRuntime, f.close, owner.CurrentRuntimeWitness)
 	}
-	f.profile, _, err = f.authority.observe()
+	f.profile, _, err = f.authority.ObserveFacts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +244,7 @@ func (f *networkAdmissionFixture) tokensForClass(t *testing.T, class admission.C
 	if class == admission.RegistrationClass {
 		role = admission.AllocationPublisher
 	}
-	holder, err := stock.Open(root, role, f.authority.observe)
+	holder, err := stock.Open(root, role, f.authority.ObserveFacts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +278,7 @@ func (f *networkAdmissionFixture) tokensForClass(t *testing.T, class admission.C
 		t.Fatal(err)
 	}
 	observe := func() (admission.AuthorityFacts, time.Time, error) {
-		return f.authority.issuer(f.plan.KeyBinding.Signer)
+		return f.authority.Issuer(f.plan.KeyBinding.Signer)
 	}
 	issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, observe)
 	if issued.Outcome != "issued-offline" {
@@ -301,4 +302,23 @@ func (f *networkAdmissionFixture) tokensForClass(t *testing.T, class admission.C
 		tokens = append(tokens, raw)
 	}
 	return holder, tokens
+}
+
+type admissionAuthority = funding.AdmissionAuthority
+
+var validAdmissionAuthority = funding.ValidAdmissionAuthority
+var openAdmissionAuthority = funding.OpenAdmissionAuthority
+var networkAdmissionAuthority = funding.NetworkAdmissionAuthority
+
+func fundingAuthority(authority admissionAuthority) funding.Authority {
+	return funding.Observe(authority.Current, authority.Witness, authority.Presentation)
+}
+func networkStateConfig(plan *networkAuthorityPlan) (state.Config, error) { return plan.Config() }
+
+type localAdmissionReply = nodefixture.AdmissionReply
+
+// admissionLocalConsole starts the same process console used by E2E fixtures.
+func admissionLocalConsole(t *testing.T, operation string, config any) (func(any) localAdmissionReply, func()) {
+	t.Helper()
+	return nodefixture.OpenAdmissionConsole(t, compiledCommand(t), operation, hostingConfig(t, config))
 }

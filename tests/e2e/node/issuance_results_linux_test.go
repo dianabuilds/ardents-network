@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -270,6 +271,55 @@ func TestConfirmedIssuanceCLIOTLPAndCrash(t *testing.T) {
 				mu.Lock()
 				assertIssuanceOTLP(t, seen, p, "issuance.issue", "export", "issued-offline")
 				mu.Unlock()
+			}
+		})
+	}
+}
+
+// TestConfirmedIssuanceRefusesMalformedDeclarations uses the real issuer
+// command and verifies that malformed input cannot initialize result history.
+func TestConfirmedIssuanceRefusesMalformedDeclarations(t *testing.T) {
+	_, _, issue, _ := issuanceResultCommandPlan(t)
+	binary := buildNodeCommand(t)
+	raw, err := json.Marshal(issue)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string]string{
+		"fact alias":         strings.Replace(string(raw), `"holder":`, `"Holder":`, 1),
+		"invalid kind":       strings.Replace(string(raw), `"kind":"bootstrap"`, `"kind":"unknown"`, 1),
+		"noncanonical count": strings.Replace(string(raw), `"count":"2"`, `"count":"02"`, 1),
+		"nested key alias":   strings.Replace(string(raw), `"signer":`, `"Signer":`, 1),
+		"duplicate root":     strings.Replace(string(raw), `"key_root":`, `"key_root":null,"key_root":`, 1),
+	}
+	cases["valid"] = string(raw)
+	for name, value := range cases {
+		t.Run(name, func(t *testing.T) {
+			if name != "valid" && value == string(raw) {
+				t.Fatal("mutation did not change declaration")
+			}
+			path := filepath.Join(t.TempDir(), "config.json")
+			if err := os.WriteFile(path, []byte(value), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.CommandContext(t.Context(), binary, "issuance", "issue", "--config", path)
+			output, err := cmd.Output()
+			if err == nil {
+				t.Fatal("issue unexpectedly succeeded without result history")
+			}
+			var report issuanceResult
+			if err := json.Unmarshal(output, &report); err != nil {
+				t.Fatalf("invalid report %q: %v", output, err)
+			}
+			want := "invalid-input"
+			if name == "valid" {
+				want = "storage-unavailable"
+			}
+			if report.Outcome != want {
+				t.Fatalf("got outcome %q, want %q", report.Outcome, want)
+			}
+			if _, err := os.Stat(issue["result_root"].(string)); !os.IsNotExist(err) {
+				t.Fatalf("result root changed: %v", err)
 			}
 		})
 	}

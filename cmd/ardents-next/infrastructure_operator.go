@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/signing"
 )
 
@@ -21,7 +22,7 @@ func runInfrastructureCommand(ctx context.Context, args []string, out, diagnosti
 		err = signing.Run(args[1:], out)
 	case "prepare-runtime-descriptor", "prepare-runtime-inventory",
 		"authenticate-initial", "authenticate-candidate":
-		return runInfrastructure(ctx, args, out)
+		return infrastructure.RunCommand(ctx, args, out)
 	default:
 		return 2
 	}
