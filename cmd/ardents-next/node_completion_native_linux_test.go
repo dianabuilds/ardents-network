@@ -56,7 +56,7 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			clear(key)
 			clear(encoded)
 			participation := filepath.Join(t.TempDir(), "participation")
-			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
+			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{12}]()
 			process := startNativeForwarding(t, binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
@@ -138,7 +138,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
 			participation := filepath.Join(t.TempDir(), "participation")
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
-			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{17}, "process_profile": "ardents-descriptor-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "descriptor_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
+			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{17}, "process_profile": "ardents-descriptor-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "descriptor_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{17}]()
 			process := startNativeDescriptor(t, binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
@@ -241,7 +241,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 			participation := filepath.Join(t.TempDir(), "participation")
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
-			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{25}, "process_profile": "ardents-introduction-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "introduction_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
+			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{25}, "process_profile": "ardents-introduction-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "introduction_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			if err := os.Chmod(plan["introduction_root"].(string), 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -361,7 +361,7 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 			clear(key)
 			clear(encoded)
 			participation := filepath.Join(t.TempDir(), "participation")
-			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{11}, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "issuance": nativeIssuerIssuanceInput(f.plan), "retirement_wait_ms": 1}
+			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{11}, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "issuance": nativeIssuerIssuanceInput(f.plan), "retirement_wait_ms": 1}
 			sockets[[32]byte{11}]()
 			process := startNativeIssuer(t, binary, hostingConfig(t, plan))
 			view, err := f.current()
@@ -460,7 +460,7 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{20}])
 			participation := filepath.Join(t.TempDir(), "participation")
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
-			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{20}, "process_profile": "ardents-join-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
+			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{20}, "process_profile": "ardents-join-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{20}]()
 			process := startNativeJoin(t, binary, hostingConfig(t, plan), 91)
 			view, err := f.current()

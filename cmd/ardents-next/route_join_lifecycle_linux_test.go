@@ -12,6 +12,7 @@ import (
 	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
 	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os"
 	"path/filepath"
 	"sync"
@@ -373,7 +374,7 @@ func TestRouteContextReopenRetainsChoiceAndOriginalHandles(t *testing.T) {
 			holder := joinLifecycleStock(t, f)
 			startJoinRouteReceivers(t, f, sockets, certificates)
 			root := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			owner, err := newRouteJoinContext(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)

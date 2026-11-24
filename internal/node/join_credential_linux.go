@@ -4,8 +4,6 @@ package node
 
 import (
 	"bytes"
-	"crypto/ed25519"
-	"crypto/tls"
 	"errors"
 	"io"
 	"os"
@@ -60,15 +58,14 @@ func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result err
 		}
 	}
 	c.protectedKey = protectedCredentialAccess(c.identity[1], uint32(os.Geteuid()), uint32(os.Getegid()))
-	pair, err := tls.X509KeyPair(c.contents[0], c.contents[1])
+	material, err := decodeCredential(c.contents[0], c.contents[1])
+	if err == errInvalidRuntimeKey {
+		return nil, errors.New("original JOIN TLS key unavailable")
+	}
 	if err != nil {
 		return nil, err
 	}
-	key, ok := pair.PrivateKey.(ed25519.PrivateKey)
-	if !ok || len(key) != ed25519.PrivateKeySize {
-		return nil, errors.New("original JOIN TLS key unavailable")
-	}
-	c.material = &credential{certificate: pair, key: key}
+	c.material = material
 	if err := c.check(); err != nil {
 		return nil, err
 	}

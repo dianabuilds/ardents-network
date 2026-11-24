@@ -118,7 +118,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 		t.Fatal("independent signed holder State", err)
 	}
 	local := t.TempDir()
-	budgetRoot := routeProcessBudget(t)
+	budgetRoot := nodefixture.ProcessBudget(t)
 	plan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "interior"),
 		HostingRoot: budgetRoot, Domain: 1, Deadline: time.Now().Add(35 * time.Second).UTC().Truncate(time.Second),
 		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}

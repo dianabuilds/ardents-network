@@ -58,7 +58,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					}
 					clear(key)
 					clear(encoded)
-					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t)
+					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), nodefixture.ProcessBudget(t)
 					work, termination := hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
 					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": root, "spend_root": spend, "hosting_root": budgetRoot, "certificate": certPath, "private_key": keyPath, "work": work, "termination": termination, "retirement_wait_ms": 5000}
 					sockets[[32]byte{12}]()

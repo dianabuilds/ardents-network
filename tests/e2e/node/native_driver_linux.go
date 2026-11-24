@@ -169,3 +169,62 @@ func Launch(t testing.TB, unit, diagnosticLabel, stopErrorLabel string, args ...
 	})
 	return process
 }
+
+// LaunchRetainedRole starts an original Node process with the retained profile.
+func LaunchRetainedRole(t testing.TB, role, binary, plan string, index byte) *NativeProcess {
+	t.Helper()
+	unit := fmt.Sprintf("ardents-%s-retained-%d-%d.service", role, os.Getpid(), index)
+	return Launch(t, unit, "retained "+role+" original diagnostic", "",
+		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
+		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", role, "--retained-config", plan)
+}
+
+// StartRetainedRole waits for the listening report and records the original PID.
+func StartRetainedRole(t testing.TB, role, binary, plan string, index byte) *NativeProcess {
+	t.Helper()
+	process := LaunchRetainedRole(t, role, binary, plan, index)
+	var event map[string]string
+	if err := json.NewDecoder(process.Stdout).Decode(&event); err != nil || event["operation"] != "node."+role || event["phase"] != "listening" {
+		t.Fatal("retained "+role+" startup refused", event, err, process.Diagnostic.String())
+	}
+	raw, err := exec.Command("systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fmt.Sscanf(string(raw), "%d", &process.PID); err != nil || process.PID < 2 {
+		t.Fatal("retained "+role+" MainPID unavailable", err)
+	}
+	return process
+}
+
+// JoinRetainedRole signals (or waits for a self-refusing invocation) and
+// joins the actual command, returning the exit code and the stdout report.
+func JoinRetainedRole(t testing.TB, p *NativeProcess, signal string) (int, map[string]string) {
+	t.Helper()
+	if signal != "" {
+		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.Unit).Run(); err != nil {
+			t.Fatal("retained signal", signal, err)
+		}
+	}
+	stdout, readErr := io.ReadAll(p.Stdout)
+	err := p.Command.Wait()
+	p.Joined = true
+	if readErr != nil {
+		t.Fatal("retained stdout", readErr)
+	}
+	code := 0
+	var exited *exec.ExitError
+	if err != nil {
+		if !errors.As(err, &exited) {
+			t.Fatal("retained wait", err)
+		}
+		code = exited.ExitCode()
+	}
+	var event map[string]string
+	if raw := bytes.TrimSpace(stdout); len(raw) > 0 {
+		if json.Unmarshal(raw, &event) != nil {
+			t.Fatal("retained stdout report", string(raw))
+		}
+	}
+	return code, event
+}

@@ -268,12 +268,12 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	var peers []*nodefixture.NativeProcess
 	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
 		cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
-		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		sockets[id]()
 		peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, config), id[0]))
 	}
 	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
-	p := nativeDescriptorAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
+	p := nativeDescriptorAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
 		next := f.spec
 		next.Number++
@@ -309,7 +309,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 		}
 	})
 	nativeIssuerWaitMarker(t, plan.Signals, "listening", 5*time.Second)
-	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	prefix, err := startRoutePrefix(t.Context(), prefixPlan, f.authority, holder)
 	if err != nil {
 		t.Fatal("genuine operation Prefix", err)
@@ -665,12 +665,12 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	var peers []*nodefixture.NativeProcess
 	for _, id := range [][32]byte{{21}, {22}, {23}, {24}} {
 		cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
-		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		sockets[id]()
 		peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, config), id[0]))
 	}
 	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
-	p := nativeIntroductionAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
+	p := nativeIntroductionAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
 		next := f.spec
 		next.Number++
@@ -716,7 +716,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 		t.Fatal(err)
 	}
 	defer selected.Close()
-	prefixBudget, err := hosting.Open(routeProcessBudget(t))
+	prefixBudget, err := hosting.Open(nodefixture.ProcessBudget(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1153,7 +1153,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan := nativeIssuerOperationPlan{Original: nativeIssuerAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Certificate: certificate, PrivateKey: key, Issuance: f.plan}, Signals: t.TempDir(), ResultBytes: resultInfo.Size()}
+	plan := nativeIssuerOperationPlan{Original: nativeIssuerAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Certificate: certificate, PrivateKey: key, Issuance: f.plan}, Signals: t.TempDir(), ResultBytes: resultInfo.Size()}
 	initialQuota, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
 	if err != nil {
 		t.Fatal(err)
@@ -1202,7 +1202,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	nativeIssuerWaitMarker(t, plan.Signals, "listening", 5*time.Second)
 	var prefixes [2]routeHandle
 	for i := range prefixes {
-		p := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+		p := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		prefixes[i], err = startRoutePrefix(t.Context(), p, f.authority, holders[i])
 		if err != nil {
 			t.Fatal("genuine operation Prefix unavailable", i, err)
@@ -1707,7 +1707,7 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	holder := joinRouteStock(t, f, admission.AllocationUser)
 	startJoinRouteReceiverRange(t, f, sockets, certificates, 19)
 	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{20}])
-	p := nativeJoinAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: phase}
+	p := nativeJoinAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
 		next := f.spec
 		next.Number++
@@ -1744,7 +1744,7 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	})
 	nativeIssuerWaitMarker(t, plan.Signals, "listening", 5*time.Second)
 	root := t.TempDir()
-	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	routeContext, err := newRouteJoinContext(t.Context(), prefixPlan, f.authority, holder)
 	if err != nil {
 		t.Fatal(err)

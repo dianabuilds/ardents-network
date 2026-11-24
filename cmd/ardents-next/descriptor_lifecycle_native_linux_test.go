@@ -3,13 +3,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -45,63 +38,6 @@ import (
 // ardents-descriptor.service, no loaded-manager platform check pre-start and no
 // repair-retained manager qualification. One fixture operator, not independent
 // participants.
-func launchRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	unit := fmt.Sprintf("ardents-descriptor-retained-%d-%d.service", os.Getpid(), index)
-	return nodefixture.Launch(t, unit, "retained Descriptor original diagnostic", "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "descriptor", "--retained-config", plan)
-}
-
-func startRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	process := launchRetainedDescriptor(t, binary, plan, index)
-	var event map[string]string
-	if err := json.NewDecoder(process.Stdout).Decode(&event); err != nil || event["operation"] != "node.descriptor" || event["phase"] != "listening" {
-		t.Fatal("genuine retained Descriptor startup refused", event, err, process.Diagnostic.String())
-	}
-	raw, err := exec.Command("systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &process.PID); err != nil || process.PID < 2 {
-		t.Fatal("actual retained Descriptor MainPID unavailable", err)
-	}
-	return process
-}
-
-// joinRetainedDescriptor signals (or waits for a self-refusing invocation) and
-// joins the actual command, returning the exit code and the stdout report.
-func joinRetainedDescriptor(t *testing.T, p *nodefixture.NativeProcess, signal string) (int, map[string]string) {
-	t.Helper()
-	if signal != "" {
-		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.Unit).Run(); err != nil {
-			t.Fatal("retained Descriptor signal", signal, err)
-		}
-	}
-	stdout, readErr := io.ReadAll(p.Stdout)
-	err := p.Command.Wait()
-	p.Joined = true
-	if readErr != nil {
-		t.Fatal("retained Descriptor stdout", readErr)
-	}
-	code := 0
-	var exited *exec.ExitError
-	if err != nil {
-		if !errors.As(err, &exited) {
-			t.Fatal("retained Descriptor wait", err)
-		}
-		code = exited.ExitCode()
-	}
-	var event map[string]string
-	if raw := bytes.TrimSpace(stdout); len(raw) > 0 {
-		if json.Unmarshal(raw, &event) != nil {
-			t.Fatal("retained Descriptor stdout report", string(raw))
-		}
-	}
-	return code, event
-}
-
 func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	binary := nodefixture.PinnedCommand(t)
 	f, sockets, certificates := descriptorRouteFixtureConfigured(t, transport.ClosedCarrierTCP, nil)
@@ -115,7 +51,7 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 
 	id := [32]byte{17}
 	certPath, keyPath := nodefixture.WriteNativeCredential(t, certificates[id])
-	budget := routeProcessBudget(t)
+	budget := nodefixture.ProcessBudget(t)
 	participation := filepath.Join(t.TempDir(), "participation")
 	spend := t.TempDir()
 	storeRoot := t.TempDir()
@@ -167,7 +103,7 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 
 	// Retained relaunch over the existing histories: a new independently checked
 	// invocation claims the producer again and joins cleanly.
-	relaunch := startRetainedDescriptor(t, binary, planPath, id[0])
+	relaunch := nodefixture.StartRetainedRole(t, "descriptor", binary, planPath, id[0])
 	producerPresent(true, "retained relaunch")
 	relaunch.Stop(t)
 	producerPresent(false, "retained relaunch completion")
@@ -175,9 +111,9 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	// A killed retained invocation supplies no completion evidence: the live
 	// node-duty fence stays retained and the next retained opening refuses before
 	// listening. Repair against real manager facts is the installed gate (stage C).
-	crash := startRetainedDescriptor(t, binary, planPath, id[0])
+	crash := nodefixture.StartRetainedRole(t, "descriptor", binary, planPath, id[0])
 	producerPresent(true, "crash launch")
-	code, _ := joinRetainedDescriptor(t, crash, "SIGKILL")
+	code, _ := nodefixture.JoinRetainedRole(t, crash, "SIGKILL")
 	if code == 0 || code == 130 {
 		t.Fatal("killed Descriptor reported joined completion", code)
 	}
@@ -193,8 +129,8 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	if err := reopened.Close(); err != nil {
 		t.Fatal(err)
 	}
-	refused := launchRetainedDescriptor(t, binary, planPath, id[0])
-	code, event := joinRetainedDescriptor(t, refused, "")
+	refused := nodefixture.LaunchRetainedRole(t, "descriptor", binary, planPath, id[0])
+	code, event := nodefixture.JoinRetainedRole(t, refused, "")
 	if code != 1 || event["phase"] != "refused" {
 		t.Fatal("retained producer adopted after crash", code, event, refused.Diagnostic.String())
 	}

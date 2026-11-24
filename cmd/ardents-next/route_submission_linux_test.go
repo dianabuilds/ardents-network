@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os"
 	"path/filepath"
 	"testing"
@@ -137,7 +138,7 @@ func TestRouteSourceSubmissionRefusalTCP(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			budget, err := hosting.Open(routeProcessBudget(t))
+			budget, err := hosting.Open(nodefixture.ProcessBudget(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -174,7 +175,7 @@ func TestRouteSourceSubmissionRefusalTCP(t *testing.T) {
 			}()
 			sourceRoot := t.TempDir()
 			sourcePlan := plan
-			sourcePlan.EntryRoot, sourcePlan.InteriorRoot, sourcePlan.HostingRoot, sourcePlan.Domain = filepath.Join(sourceRoot, "entry"), filepath.Join(sourceRoot, "interior"), routeProcessBudget(t), 1
+			sourcePlan.EntryRoot, sourcePlan.InteriorRoot, sourcePlan.HostingRoot, sourcePlan.Domain = filepath.Join(sourceRoot, "entry"), filepath.Join(sourceRoot, "interior"), nodefixture.ProcessBudget(t), 1
 			source, err := startRoutePrefix(t.Context(), sourcePlan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)

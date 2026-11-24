@@ -85,7 +85,7 @@ func TestNativeNodeOriginalAuthorityAndJoinTCP(t *testing.T) {
 					}
 					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
-					plan := nativeOriginalAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Certificate: filepath.Join(t.TempDir(), "certificate"), PrivateKey: filepath.Join(t.TempDir(), "key"), Fault: fault}
+					plan := nativeOriginalAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Certificate: filepath.Join(t.TempDir(), "certificate"), PrivateKey: filepath.Join(t.TempDir(), "key"), Fault: fault}
 					certificate := certificates[[32]byte{12}]
 					if err := os.WriteFile(plan.Certificate, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
 						t.Fatal(err)
@@ -597,7 +597,7 @@ func TestNativeDescriptorOriginalAuthorityAndJoinTCP(t *testing.T) {
 					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
-					plan := nativeDescriptorAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
+					plan := nativeDescriptorAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
 					next := f.spec
 					next.Number++
 					next.Previous = bundle.Epoch.Digest
@@ -995,7 +995,7 @@ func TestNativeIntroductionOriginalAuthorityAndJoinTCP(t *testing.T) {
 					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
-					plan := nativeIntroductionAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
+					plan := nativeIntroductionAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
 					if err := os.Chmod(plan.Introduction, 0700); err != nil {
 						t.Fatal(err)
 					}
@@ -1419,7 +1419,7 @@ func TestNativeIssuerOriginalAuthorityAndJoinTCP(t *testing.T) {
 					}
 					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
-					plan := nativeIssuerAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Certificate: filepath.Join(t.TempDir(), "certificate"), PrivateKey: filepath.Join(t.TempDir(), "key"), Fault: fault}
+					plan := nativeIssuerAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Certificate: filepath.Join(t.TempDir(), "certificate"), PrivateKey: filepath.Join(t.TempDir(), "key"), Fault: fault}
 					plan.Issuance = f.plan
 					certificate := certificates[[32]byte{11}]
 					if err := os.WriteFile(plan.Certificate, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
@@ -1801,7 +1801,7 @@ func TestNativeJoinOriginalAuthorityAndJoinTCP(t *testing.T) {
 					clock, closeClock := nodefixture.StartObservedClock(t)
 					defer closeClock()
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{20}])
-					plan := nativeJoinAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: fault}
+					plan := nativeJoinAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: nodefixture.ProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: fault}
 					next := f.spec
 					next.Number++
 					next.Previous = bundle.Epoch.Digest

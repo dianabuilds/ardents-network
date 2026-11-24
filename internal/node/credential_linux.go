@@ -3,8 +3,6 @@
 package node
 
 import (
-	"crypto/ed25519"
-	"crypto/tls"
 	"errors"
 	"io"
 	"os"
@@ -13,13 +11,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
-
-// credential retains the exact runtime TLS material through Route join. It
-// grants no provisioning, offline signing or membership and never hot-reloads.
-type credential struct {
-	certificate tls.Certificate
-	key         ed25519.PrivateKey
-}
 
 func loadCredential(certPath, keyPath string) (_ *credential, result error) {
 	if !pathgrammar.Strict(certPath) || !pathgrammar.Strict(keyPath) {
@@ -34,15 +25,7 @@ func loadCredential(certPath, keyPath string) (_ *credential, result error) {
 		return nil, err
 	}
 	defer clear(key)
-	pair, err := tls.X509KeyPair(cert, key)
-	if err != nil {
-		return nil, err
-	}
-	private, ok := pair.PrivateKey.(ed25519.PrivateKey)
-	if !ok || len(private) != ed25519.PrivateKeySize {
-		return nil, errors.New("invalid Node runtime TLS key")
-	}
-	return &credential{certificate: pair, key: private}, nil
+	return decodeCredential(cert, key)
 }
 
 func readCredentialFile(path string, private bool) (raw []byte, result error) {
@@ -130,12 +113,4 @@ func sameProtectedCredential(before, after os.FileInfo) bool {
 	a, okA := before.Sys().(*syscall.Stat_t)
 	b, okB := after.Sys().(*syscall.Stat_t)
 	return okA && okB && a.Uid == b.Uid && a.Gid == b.Gid && a.Nlink == b.Nlink && a.Ctim == b.Ctim
-}
-
-func (key *credential) close() error {
-	if key != nil {
-		clear(key.key)
-		key.certificate.PrivateKey = nil
-	}
-	return nil
 }

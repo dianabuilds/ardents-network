@@ -124,7 +124,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 					clear(key)
 					clear(encoded)
 				}
-				budget := routeProcessBudget(t)
+				budget := nodefixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				root := filepath.Join(t.TempDir(), "participation")
 				participation = append(participation, root)
@@ -144,7 +144,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				initialSpends = append(initialSpends, before)
 			}
 			holder := routeStock(t, f)
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 3, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 3, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			prefix, err := startRoutePrefix(context.Background(), plan, f.authority, holder)
 			if retirement == "undercoverage" {
 				if err == nil {
@@ -320,7 +320,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					}
 					participation := filepath.Join(t.TempDir(), "participation")
 					spend := t.TempDir()
-					budget := routeProcessBudget(t)
+					budget := nodefixture.ProcessBudget(t)
 					configuredBudget := budget
 					id := [32]byte{12}
 					if fault == "wrong-role" {
@@ -466,7 +466,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			}
 			clear(key)
 			clear(encoded)
-			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			// Genuine restored-input control: this same signed member, Carrier and
 			// native envelope must start after removing the declared fault.
 			control := startNativeForwarding(t, binary, hostingConfig(t, plan), 80)

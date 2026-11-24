@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"net"
 	"os"
 	"path/filepath"
@@ -33,7 +34,7 @@ func TestRoutePostSpendRefusalRetainsBurnAcrossReopen(t *testing.T) {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newRouteFixture(t, profile)
 			holder := routeStock(t, f)
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 3, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 3, Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 3, Current: f.current})
 			if err != nil {
 				t.Fatal(err)
@@ -259,7 +260,7 @@ func TestRouteSignedQUICRefusesBeforeTransportAndPresentation(t *testing.T) {
 	holder := routeStock(t, f)
 	before := holder.Status()
 	root := t.TempDir()
-	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: routeProcessBudget(t), Domain: 3,
+	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 3,
 		Deadline: time.Now().Add(20 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	handle, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 	if err == nil {

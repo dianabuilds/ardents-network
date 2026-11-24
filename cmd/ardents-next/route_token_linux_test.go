@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"path/filepath"
 	"sync/atomic"
 	"testing"
@@ -34,7 +35,7 @@ func TestRegistrationStockRetainsIssuerControlForNextForwardTCP(t *testing.T) {
 			defer cancel()
 			root := t.TempDir()
 			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
-				HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+				HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
 				Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
 			selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: f.current})
 			if err != nil {
@@ -137,7 +138,7 @@ func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T
 			defer cancel()
 			root := t.TempDir()
 			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
-				HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+				HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
 				Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
 			installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: f.current})
 			if err != nil {
@@ -210,7 +211,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 			defer cancel()
 			root := t.TempDir()
 			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
-				HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+				HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
 				Work:        hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20},
 				Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
 			installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: f.current})
@@ -407,7 +408,7 @@ func TestFundedPresentationDoesNotPrepareAfterAuthorityFailure(t *testing.T) {
 	defer cancel()
 	root := t.TempDir()
 	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
-		HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+		HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
 		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
 	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: f.current})
 	if err != nil {

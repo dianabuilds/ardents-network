@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net"
 	"path/filepath"
@@ -78,7 +79,7 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceTCP(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			budget, err := hosting.Open(routeProcessBudget(t))
+			budget, err := hosting.Open(nodefixture.ProcessBudget(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -162,7 +163,7 @@ func TestRouteGenuinePairedJoinTCP(t *testing.T) {
 			receivers, budgets := startJoinRouteReceivers(t, f, sockets, certificates)
 			plan := func(domain uint8) routePrefixPlan {
 				root := t.TempDir()
-				return routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), SourceInteriorRoot: filepath.Join(root, "source-interior"), HostingRoot: routeProcessBudget(t), Domain: domain, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				return routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), SourceInteriorRoot: filepath.Join(root, "source-interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: domain, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			}
 			userPlan, publisherPlan := plan(1), plan(3)
 			userContext, err := newRouteJoinContext(t.Context(), userPlan, f.authority, userStock)

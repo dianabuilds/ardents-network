@@ -8,6 +8,7 @@ import (
 	"fmt"
 	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -101,7 +102,7 @@ func TestRoutePrefixOriginalCallerHandoffTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				budget, err := hosting.Open(routeProcessBudget(t))
+				budget, err := hosting.Open(nodefixture.ProcessBudget(t))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -323,7 +324,7 @@ func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				budget, err := hosting.Open(routeProcessBudget(t))
+				budget, err := hosting.Open(nodefixture.ProcessBudget(t))
 				if err != nil {
 					t.Fatal(err)
 				}

@@ -134,7 +134,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 				t.Fatal(err)
 			}
 			nodePlan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{25}, "process_profile": processresource.IntroductionProfile,
-				"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spendRoot, "hosting_root": routeProcessBudget(t), "introduction_root": historyRoot,
+				"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spendRoot, "hosting_root": nodefixture.ProcessBudget(t), "introduction_root": historyRoot,
 				"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			if mode == "undercoverage" {
 				nodePlan["work"] = hosting.Traffic{Tx: (1 << 20) - 1}
@@ -152,7 +152,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 					t.Error(err)
 				}
 			}()
-			budget, err := hosting.Open(routeProcessBudget(t))
+			budget, err := hosting.Open(nodefixture.ProcessBudget(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -211,7 +211,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			}()
 			sourceRoot := t.TempDir()
 			sourcePlan := plan
-			sourcePlan.EntryRoot, sourcePlan.InteriorRoot, sourcePlan.HostingRoot, sourcePlan.Domain = filepath.Join(sourceRoot, "entry"), filepath.Join(sourceRoot, "interior"), routeProcessBudget(t), 1
+			sourcePlan.EntryRoot, sourcePlan.InteriorRoot, sourcePlan.HostingRoot, sourcePlan.Domain = filepath.Join(sourceRoot, "entry"), filepath.Join(sourceRoot, "interior"), nodefixture.ProcessBudget(t), 1
 			source, err := startRoutePrefix(t.Context(), sourcePlan, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)
@@ -383,7 +383,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					defer closeClock()
 					id := [32]byte{25}
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
-					participation, spend, budget, historyRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t), t.TempDir()
+					participation, spend, budget, historyRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), nodefixture.ProcessBudget(t), t.TempDir()
 					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.IntroductionProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget, "introduction_root": historyRoot,
 						"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}

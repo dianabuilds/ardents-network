@@ -23,16 +23,6 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-func routeProcessBudget(t *testing.T) string {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "budget")
-	start := time.Now().UTC().Truncate(time.Hour)
-	if err := hosting.Initialize(root, hosting.Policy{Provider: "Route process test", Start: start, End: start.Add(2 * time.Hour), Unit: "MiB", Quantity: 100, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1000}); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
 func TestRouteCompiledCommandPrefixTCP(t *testing.T) {
 	testRouteCompiledCommand(t, false)
 }
@@ -89,7 +79,7 @@ func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerTCP(t *testing.T) {
 				}
 				clear(key)
 				clear(encoded)
-				budget := routeProcessBudget(t)
+				budget := nodefixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				root := t.TempDir()
 				if err := os.Chmod(root, 0700); err != nil {
@@ -117,7 +107,7 @@ func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerTCP(t *testing.T) {
 			if err := os.Chmod(holderRoot, 0700); err != nil {
 				t.Fatal(err)
 			}
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			budgets = append(budgets, plan.HostingRoot)
 			send, closeHolder := admissionLocalConsole(t, "holder", map[string]any{"root": holderRoot, "network": seed(), "role": admission.AllocationUser, "route": plan})
 			routeConsolePermissionStock(t, f, send, [3]uint32{2, 4, 0})
@@ -259,7 +249,7 @@ func testRouteCompiledCommand(t *testing.T, introduction bool, refill ...bool) {
 				}
 				clear(key)
 				clear(keyPEM)
-				budget := routeProcessBudget(t)
+				budget := nodefixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				plan := map[string]any{"network": seed(), "node_id": id, "spend_root": t.TempDir(), "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 				if len(refill) != 0 && refill[0] && i != 16 {
@@ -326,7 +316,7 @@ func testRouteCompiledCommand(t *testing.T, introduction bool, refill ...bool) {
 				})
 			}
 			holderRoot := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: domain, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: domain, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			if len(refill) != 0 && refill[0] {
 				plan.Work = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
 			}

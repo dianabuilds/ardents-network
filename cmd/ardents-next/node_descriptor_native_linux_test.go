@@ -80,7 +80,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					defer closeClock()
 					id := [32]byte{17}
 					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
-					participation, spend, budget, storeRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t), t.TempDir()
+					participation, spend, budget, storeRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), nodefixture.ProcessBudget(t), t.TempDir()
 					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.DescriptorProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget, "descriptor_root": storeRoot,
 						"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
@@ -205,7 +205,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			descriptorRoot := t.TempDir()
 			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, {17}} {
 				certPath, keyPath := nodefixture.WriteNativeCredential(t, certificates[id])
-				budget := routeProcessBudget(t)
+				budget := nodefixture.ProcessBudget(t)
 				participation := filepath.Join(t.TempDir(), "participation")
 				spend := t.TempDir()
 				profile := processresource.Profile
@@ -245,7 +245,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if err != nil || len(before) != 8+32+32+32+8 {
 				t.Fatal("Descriptor receiving root not genuine empty header", err, len(before))
 			}
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
 				t.Fatal("genuine adjacent Forwarding unavailable", err)

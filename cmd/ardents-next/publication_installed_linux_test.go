@@ -86,7 +86,7 @@ func runInstalledPublisher(t *testing.T, carrier transport.CarrierProfile) {
 		t.Fatal(err)
 	}
 	local := t.TempDir()
-	routePlan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "introduction"), SourceInteriorRoot: filepath.Join(local, "source"), ResponderInteriorRoot: filepath.Join(local, "responder"), HostingRoot: routeProcessBudget(t), Domain: 4, Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	routePlan := routePrefixPlan{EntryRoot: filepath.Join(local, "entry"), InteriorRoot: filepath.Join(local, "introduction"), SourceInteriorRoot: filepath.Join(local, "source"), ResponderInteriorRoot: filepath.Join(local, "responder"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 4, Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	snapshot := filepath.Join(local, "snapshot.txt")
 	if err := os.WriteFile(snapshot, []byte("genuine Publisher selected snapshot\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -271,7 +271,7 @@ func installedPublisherDeliverySource(t *testing.T, f *networkAdmissionFixture, 
 	}
 	root := t.TempDir()
 	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "source"),
-		HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second),
+		HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second),
 		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	source, err := startRoutePrefix(t.Context(), plan, authority, holder)
 	if err != nil {

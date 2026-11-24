@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"errors"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"net"
 	"strings"
 	"sync"
@@ -48,7 +49,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 			for _, mode := range []string{"capacity-before-spend", "authority-before-spend", "lost-ack-after-spend", "authority-after-spend"} {
 				t.Run(mode, func(t *testing.T) {
 					holder := routeRoleStock(t, f, false, true)
-					budgetRoot, spendRoot := routeProcessBudget(t), t.TempDir()
+					budgetRoot, spendRoot := nodefixture.ProcessBudget(t), t.TempDir()
 					budget, err := hosting.Open(budgetRoot)
 					if err != nil {
 						t.Fatal(err)

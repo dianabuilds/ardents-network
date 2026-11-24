@@ -104,7 +104,7 @@ func TestRouteCompiledCommandJoinTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				budget := routeProcessBudget(t)
+				budget := nodefixture.ProcessBudget(t)
 				budgets = append(budgets, budget)
 				plan := map[string]any{"network": seed(), "node_id": id, "spend_root": t.TempDir(), "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 				reservations[id]()
@@ -124,7 +124,7 @@ func TestRouteCompiledCommandJoinTCP(t *testing.T) {
 				if side == 1 {
 					domain = 3
 				}
-				plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: routeProcessBudget(t), Domain: domain, Deadline: time.Now().Add(time.Minute).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+				plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: domain, Deadline: time.Now().Add(time.Minute).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 				if side == 1 {
 					plan.SourceInteriorRoot = filepath.Join(root, "source-interior")
 				}

@@ -54,7 +54,7 @@ func TestRouteCompiledHolderRetainsFailedPrefixClose(t *testing.T) {
 		t.Fatal("independent signed State initialization", err)
 	}
 	root := t.TempDir()
-	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(45 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: nodefixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(45 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	process := startJoinCommandProcess(t, ctx, binary, "admission", "holder", "--config", hostingConfig(t, map[string]any{"root": t.TempDir(), "network": networkPlan, "role": admission.AllocationUser, "route": plan}))
 	defer func() {
 		if !process.waited {

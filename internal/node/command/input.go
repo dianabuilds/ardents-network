@@ -1,7 +1,9 @@
 package command
 
 import (
+	"context"
 	"errors"
+	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
@@ -21,4 +23,23 @@ func ReadRolePlan(args []string) (raw []byte, retained bool, err error) {
 	}
 	raw, err = artifacts.ReadBoundedFile(args[1], 16<<10)
 	return raw, retained, err
+}
+
+// ReadCancelableRolePlan preserves the early cancellation receipt shared
+// by Descriptor, Introduction, and JOIN, before touching the plan path.
+func ReadCancelableRolePlan(ctx context.Context, operation string, args []string, out io.Writer) ([]byte, bool, int) {
+	if ctx == nil {
+		return nil, false, 2
+	}
+	if ctx.Err() != nil {
+		if err := WriteEvent(out, operation, "refused", "canceled", "", "", ""); err != nil {
+			return nil, false, 2
+		}
+		return nil, false, 130
+	}
+	raw, retained, err := ReadRolePlan(args)
+	if err != nil {
+		return nil, false, 2
+	}
+	return raw, retained, 0
 }

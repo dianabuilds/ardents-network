@@ -117,7 +117,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, code := readCancelableNodeRolePlan(ctx, "node.descriptor", args, out)
+	raw, retained, code := nodecommand.ReadCancelableRolePlan(ctx, "node.descriptor", args, out)
 	if code != 0 {
 		return code
 	}
@@ -156,7 +156,7 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, code := readCancelableNodeRolePlan(ctx, "node.introduction", args, out)
+	raw, retained, code := nodecommand.ReadCancelableRolePlan(ctx, "node.introduction", args, out)
 	if code != 0 {
 		return code
 	}
@@ -195,7 +195,7 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) int {
-	raw, retained, code := readCancelableNodeRolePlan(ctx, "node.join", args, out)
+	raw, retained, code := nodecommand.ReadCancelableRolePlan(ctx, "node.join", args, out)
 	if code != 0 {
 		return code
 	}
@@ -234,25 +234,6 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 type nodeProcess interface {
 	node.InvocationRole
 	FirstFailure() *node.FailureDiagnostic
-}
-
-// readCancelableNodeRolePlan preserves the early cancellation receipt shared
-// by Descriptor, Introduction, and JOIN, before touching the plan path.
-func readCancelableNodeRolePlan(ctx context.Context, operation string, args []string, out io.Writer) ([]byte, bool, int) {
-	if ctx == nil {
-		return nil, false, 2
-	}
-	if ctx.Err() != nil {
-		if err := nodecommand.WriteEvent(out, operation, "refused", "canceled", "", "", ""); err != nil {
-			return nil, false, 2
-		}
-		return nil, false, 130
-	}
-	raw, retained, err := nodecommand.ReadRolePlan(args)
-	if err != nil {
-		return nil, false, 2
-	}
-	return raw, retained, 0
 }
 
 func nodeStateConfig(network *node.Network, participationRoot string) (state.Config, error) {

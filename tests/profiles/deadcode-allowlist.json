@@ -123,6 +123,10 @@
           "tests/e2e/node.DiagnosticBuffer.String",
           "tests/e2e/node.DiagnosticBuffer.Write",
           "tests/e2e/node.Launch",
+          "tests/e2e/node.JoinRetainedRole",
+          "tests/e2e/node.LaunchRetainedRole",
+          "tests/e2e/node.ProcessBudget",
+          "tests/e2e/node.StartRetainedRole",
           "tests/e2e/node.InfrastructureCandidateInputs",
           "tests/e2e/node.InfrastructureDistribution",
           "tests/e2e/node.InfrastructureReference",
@@ -228,12 +232,24 @@
     "windows-amd64": [
       {
         "symbols": [
-          "internal/node/command.ReadRolePlan"
+          "internal/node.SuperviseInvocation",
+          "internal/node.awaitNodeCompletion",
+          "internal/node.credential.close",
+          "internal/node.decodeCredential",
+          "internal/node.originalRetirementResult",
+          "internal/node.removeOriginalRetirementNotice",
+          "internal/node/command.ReadCancelableRolePlan",
+          "internal/node/command.ReadRolePlan",
+          "internal/node/command.ReportCompletion",
+          "internal/node/command.ReportWaitExpired",
+          "internal/node/command.StartupRefusal",
+          "internal/node/command.WriteEvent",
+          "internal/node/command.failureDiagnostic"
         ],
-        "classification": "portable Node plan input with Linux role startup",
-        "rationale": "The bounded plan reader and flag parser run in the portable test inventory. Native Node role startup uses them on Linux. The Windows command refuses native startup before opening the plan.",
+        "classification": "portable Node rules with Linux role startup",
+        "rationale": "Plan input and cancellation, credential decoding and clearing, joined retirement and outcome projection run in the portable test inventory. Linux role startup uses these rules in production. Windows refuses native startup before opening the plan.",
         "owner": "Node command",
-        "retirement": "Remove when a maintained Windows Node role startup consumes the reader."
+        "retirement": "Remove each symbol when a maintained Windows Node role consumes it."
       },
       {
         "symbols": [

@@ -3,15 +3,9 @@
 package main
 
 import (
-	"bytes"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
-	"errors"
-	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -45,63 +39,6 @@ import (
 // no loaded-manager platform check pre-start and no repair-retained manager
 // qualification. One fixture operator, not independent participants.
 
-func launchRetainedJoin(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	unit := fmt.Sprintf("ardents-join-retained-%d-%d.service", os.Getpid(), index)
-	return nodefixture.Launch(t, unit, "retained JOIN original diagnostic", "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "join", "--retained-config", plan)
-}
-
-func startRetainedJoin(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	process := launchRetainedJoin(t, binary, plan, index)
-	var event map[string]string
-	if err := json.NewDecoder(process.Stdout).Decode(&event); err != nil || event["operation"] != "node.join" || event["phase"] != "listening" {
-		t.Fatal("genuine retained JOIN startup refused", event, err, process.Diagnostic.String())
-	}
-	raw, err := exec.Command("systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &process.PID); err != nil || process.PID < 2 {
-		t.Fatal("actual retained JOIN MainPID unavailable", err)
-	}
-	return process
-}
-
-// joinRetainedJoin signals (or waits for a self-refusing invocation) and joins
-// the actual command, returning the exit code and the stdout report.
-func joinRetainedJoin(t *testing.T, p *nodefixture.NativeProcess, signal string) (int, map[string]string) {
-	t.Helper()
-	if signal != "" {
-		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.Unit).Run(); err != nil {
-			t.Fatal("retained JOIN signal", signal, err)
-		}
-	}
-	stdout, readErr := io.ReadAll(p.Stdout)
-	err := p.Command.Wait()
-	p.Joined = true
-	if readErr != nil {
-		t.Fatal("retained JOIN stdout", readErr)
-	}
-	code := 0
-	var exited *exec.ExitError
-	if err != nil {
-		if !errors.As(err, &exited) {
-			t.Fatal("retained JOIN wait", err)
-		}
-		code = exited.ExitCode()
-	}
-	var event map[string]string
-	if raw := bytes.TrimSpace(stdout); len(raw) > 0 {
-		if json.Unmarshal(raw, &event) != nil {
-			t.Fatal("retained JOIN stdout report", string(raw))
-		}
-	}
-	return code, event
-}
-
 func TestNativeJoinRetainedLifecycle(t *testing.T) {
 	binary := nodefixture.PinnedCommand(t)
 	f, sockets, certificates := newJoinRouteFixtureConfigured(t, transport.ClosedCarrierTCP, nil)
@@ -127,7 +64,7 @@ func TestNativeJoinRetainedLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	clear(key)
-	budget := routeProcessBudget(t)
+	budget := nodefixture.ProcessBudget(t)
 	participation := filepath.Join(t.TempDir(), "participation")
 	spend := t.TempDir()
 	plan := map[string]any{"network": networkPlan, "node_id": id, "process_profile": processresource.JoinProfile,
@@ -168,7 +105,7 @@ func TestNativeJoinRetainedLifecycle(t *testing.T) {
 
 	// Retained relaunch over the existing histories: a new independently checked
 	// invocation claims the producer again and joins cleanly.
-	relaunch := startRetainedJoin(t, binary, planPath, id[0])
+	relaunch := nodefixture.StartRetainedRole(t, "join", binary, planPath, id[0])
 	producerPresent(true, "retained relaunch")
 	relaunch.Stop(t)
 	producerPresent(false, "retained relaunch completion")
@@ -176,15 +113,15 @@ func TestNativeJoinRetainedLifecycle(t *testing.T) {
 	// A killed retained invocation supplies no completion evidence: the live
 	// node-duty fence stays retained and the next retained opening refuses before
 	// listening. Repair against real manager facts is the installed gate (stage C).
-	crash := startRetainedJoin(t, binary, planPath, id[0])
+	crash := nodefixture.StartRetainedRole(t, "join", binary, planPath, id[0])
 	producerPresent(true, "crash launch")
-	code, _ := joinRetainedJoin(t, crash, "SIGKILL")
+	code, _ := nodefixture.JoinRetainedRole(t, crash, "SIGKILL")
 	if code == 0 || code == 130 {
 		t.Fatal("killed JOIN reported joined completion", code)
 	}
 	producerPresent(true, "after crash")
-	refused := launchRetainedJoin(t, binary, planPath, id[0])
-	code, event := joinRetainedJoin(t, refused, "")
+	refused := nodefixture.LaunchRetainedRole(t, "join", binary, planPath, id[0])
+	code, event := nodefixture.JoinRetainedRole(t, refused, "")
 	if code != 1 || event["phase"] != "refused" {
 		t.Fatal("retained producer adopted after crash", code, event, refused.Diagnostic.String())
 	}
