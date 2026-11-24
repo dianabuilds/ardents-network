@@ -1185,7 +1185,6 @@ func successorImportAllowed(source, dependency string) bool {
 		if dependency == modulePath+"/internal/network/source/servingdeclaration" {
 			switch source {
 			case "cmd/ardents-next/source_serving_fixture_linux_test.go",
-				"cmd/ardents-next/source_custody_linux_test.go",
 				"cmd/ardents-next/source_installed_native_linux_test.go",
 				"cmd/ardents-next/source_lifecycle_native_linux_test.go",
 				"cmd/ardents-next/source_native_linux_test.go",

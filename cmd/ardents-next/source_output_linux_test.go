@@ -3,12 +3,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 func TestSourceNativeOutputLossAndBackpressureAreFinite(t *testing.T) {
@@ -53,3 +57,73 @@ func TestSourceNativeOutputLossAndBackpressureAreFinite(t *testing.T) {
 		})
 	}
 }
+
+type sourcePipeLifetime struct{ closed bool }
+
+func (*sourcePipeLifetime) Current() (state.Snapshot, error) { return state.Snapshot{}, nil }
+func (*sourcePipeLifetime) Wait(ctx context.Context) error {
+	<-ctx.Done()
+	return nil
+}
+func (owner *sourcePipeLifetime) Close() error { owner.closed = true; return nil }
+
+type sourceNotice struct{ observed chan struct{} }
+
+func (notice sourceNotice) Write(raw []byte) (int, error) {
+	if bytes.Contains(raw, []byte("completion-unavailable")) {
+		close(notice.observed)
+	}
+	return len(raw), nil
+}
+
+type failedSourceOutput struct{ err error }
+
+func (f failedSourceOutput) Write([]byte) (int, error) { return 0, f.err }
+
+func TestSourceCallerCancellationDuringBlockedReadyOutputRetainsCaller(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	defer writer.Close()
+	fd := int(writer.Fd())
+	if err := syscall.SetNonblock(fd, true); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		_, err := syscall.Write(fd, make([]byte, 4096))
+		if errors.Is(err, syscall.EAGAIN) {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	_, deny := context.WithCancel(ctx)
+	defer deny()
+	checked := make(chan struct{})
+	owner := &sourcePipeLifetime{}
+	joined := make(chan error, 1)
+	go func() {
+		joined <- superviseSource(ctx, owner, func() error {
+			select {
+			case <-checked:
+			default:
+				close(checked)
+			}
+			return nil
+		}, deny, writer, io.Discard, nil)
+	}()
+	<-checked
+	cancel()
+	if err := <-joined; err != nil || !owner.closed {
+		t.Fatal("original caller cancellation became an output/background failure", err)
+	}
+}
+
+type sourceFailureWriter func([]byte) (int, error)
+
+func (writer sourceFailureWriter) Write(raw []byte) (int, error) { return writer(raw) }

@@ -805,7 +805,10 @@ The Direct-Origin Source adapter in `cmd/ardents-next/source_linux.go` calls
 the original result and diagnostic into the existing JSON and exit status.
 Its native behavior fixture `source_serving_fixture_linux_test.go` exercises
 the original State and custody composition, including held observations.
-The JSON adapters use native bounded writes from `internal/platform/artifacts`.
+The Source serving owner tests native input custody directly and supervision
+at its event boundary. The CLI
+output tests exercise native pipes and bounded writes from
+`internal/platform/artifacts`.
 Serving retains State's opaque SourceCompletion through input, process, and
 output cleanup and finishes it with the original causal result. The same
 Linux artifact mechanism observes exact original file descriptors for Source,

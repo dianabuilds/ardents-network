@@ -34,12 +34,27 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 	if err != nil {
 		t.Fatal(err)
 	}
-	path, plan := sourceCustodyFixture(t)
+	parent := t.TempDir()
+	inputs := make([]string, 0, 4)
+	for _, name := range []string{"plan", "certificate", "key", "ca"} {
+		directory := filepath.Join(parent, name)
+		if err := os.Mkdir(directory, 0700); err != nil {
+			t.Fatal(err)
+		}
+		inputs = append(inputs, filepath.Join(directory, "input"))
+	}
 	clock, stopClock := joinProcessClock(t)
 	t.Cleanup(stopClock)
 	var pin [32]byte
 	copy(pin[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan.Network = &servingdeclaration.ServingNetwork{Root: plan.Network.Root, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{pin}, Threshold: 1, ProfileAuthority: pin, ClockObservationFile: clock}
+	plan := servingdeclaration.ServingDeclaration{
+		Network: &servingdeclaration.ServingNetwork{
+			Root: filepath.Join(parent, "state"), NetworkID: f.spec.NetworkID,
+			Authorities: [][32]byte{pin}, Threshold: 1, ProfileAuthority: pin, ClockObservationFile: clock,
+		},
+		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(parent, "participation"),
+		Certificate: inputs[1], PrivateKey: inputs[2], ClientRoot: inputs[3],
+	}
 	config, err := networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		t.Fatal(err)
@@ -77,10 +92,10 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, raw, 0600); err != nil {
+	if err := os.WriteFile(inputs[0], raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	return path, plan
+	return inputs[0], plan
 }
 
 func TestSourceOriginalInputLossAfterStateRecoveryPrecedesExposureAndListener(t *testing.T) {
