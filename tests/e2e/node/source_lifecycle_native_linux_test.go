@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -24,6 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
@@ -107,12 +108,12 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
 
 	parent := t.TempDir()
@@ -124,15 +125,15 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 		}
 	}
 	var key [32]byte
-	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	networkPlan := state.AuthorityDeclaration{Root: stateRoot, NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
+	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))
+	networkPlan := state.AuthorityDeclaration{Root: stateRoot, NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
 	config, err := networkPlan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	server, client, _, rootPEM, serverPin, clientPin := sourcefixture.NativeTLS(t)
-	certPath, keyPath := nativeDescriptorCredential(t, server)
+	certPath, keyPath := nodefixture.WriteNativeCredential(t, server)
 	rootPath := filepath.Join(parent, "client-ca.pem")
 	if err := os.WriteFile(rootPath, rootPEM, 0600); err != nil {
 		t.Fatal(err)
@@ -155,7 +156,7 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	if err := os.WriteFile(planPath, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	authorities := map[[32]byte]ed25519.PublicKey{sha256.Sum256(key[:]): f.spec.Authority.Public().(ed25519.PublicKey)}
+	authorities := map[[32]byte]ed25519.PublicKey{sha256.Sum256(key[:]): spec.Authority.Public().(ed25519.PublicKey)}
 	clientConfig := source.Config{Sources: [2]source.Source{
 		{Address: address, ServerName: "source-native.test", Identity: [32]byte{71}, Family: "source-one", EndpointHandle: "source-one", RootPEM: rootPEM, LeafKeyDigest: serverPin},
 		{Address: "127.0.0.1:9", ServerName: "unused.test", Identity: [32]byte{72}, Family: "source-two", EndpointHandle: "source-two", RootPEM: rootPEM, LeafKeyDigest: [32]byte{73}},
@@ -259,11 +260,11 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	// independent paths. The platform initialize-trust fixed-path composition
 	// is installed evidence (stage 1.5); the runtime role pair binds below
 	// through the retained candidate handoff.
-	authority := newConsumerReleaseAuthority(t, infrastructureReference.Add(365*24*time.Hour))
-	dirV1, pinV1, _ := infrastructureDistributionInvocation(t, t.TempDir(), binaryBytes, authority, 1, nil, "source", []byte(platformUnitTemplate))
+	authority := nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
+	dirV1, pinV1, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), binaryBytes, authority, 1, nil, "source", []byte(systemd.PlatformUnitTemplate))
 	releaseRoot := filepath.Join(parent, "release-trust")
 	pinCommand := exec.CommandContext(t.Context(), filepath.Join(dirV1, infrastructure.ProgramName),
-		"infrastructure", "authenticate-initial", dirV1, pinV1, releaseRoot, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339))
+		"infrastructure", "authenticate-initial", dirV1, pinV1, releaseRoot, "h3-test", "new-release-test", nodefixture.InfrastructureReference().Format(time.RFC3339))
 	if out, err := pinCommand.CombinedOutput(); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) || !bytes.Contains(out, []byte(`"program_outcome":"release-accepted"`)) {
 		t.Fatal("explicit first pin", string(out), err)
 	}
@@ -293,8 +294,8 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	// against retained floors; rollback and mixed metadata refuse without
 	// touching State or participation bytes.
 	forwardBytes := append(bytes.Clone(binaryBytes), '\n')
-	dirV2, _, _ := infrastructureDistributionInvocation(t, t.TempDir(), forwardBytes, authority, 2, nil, "source", []byte(platformUnitTemplate))
-	dirMixed, _, _ := infrastructureDistributionInvocation(t, t.TempDir(), forwardBytes, authority, 3, func(targets map[string]*metadata.TargetFiles) {
+	dirV2, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), forwardBytes, authority, 2, nil, "source", []byte(systemd.PlatformUnitTemplate))
+	dirMixed, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), forwardBytes, authority, 3, func(targets map[string]*metadata.TargetFiles) {
 		generation := targets["ardents/linux-amd64/infrastructure/source"]
 		var fields map[string]any
 		if err := json.Unmarshal(*generation.Custom, &fields); err != nil {
@@ -307,14 +308,14 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 		}
 		custom := json.RawMessage(raw)
 		generation.Custom = &custom
-	}, "source", []byte(platformUnitTemplate))
+	}, "source", []byte(systemd.PlatformUnitTemplate))
 	loadCandidate := func(dir string) (enrollment.InfrastructureCandidate, release.Inputs) {
 		t.Helper()
 		c, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return c, infrastructureCandidateInput(t, c)
+		return c, nodefixture.InfrastructureCandidateInputs(t, c)
 	}
 	candidateV1, inputV1 := loadCandidate(dirV1)
 	candidateV2, inputV2 := loadCandidate(dirV2)

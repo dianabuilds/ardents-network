@@ -80,8 +80,13 @@ physical cleanup owners remain in the original outcome. No raw error, Target,
 private path, key, capsule or cross-role correlation identity is emitted.
 
 `make source-process-check` is a separate Direct-Origin Source workload. It uses
-the same canonical command and command/resource race artifact pin variables,
+the same canonical command and resource race artifact pin variables,
 `node_process_native` compilation tag, external lock and native prerequisites.
+Build the Source workload separately with
+`go test -c -race -tags node_process_native -o /external/source-native.test ./tests/e2e/node` and set
+`ARDENTS_SOURCE_NATIVE_TEST` and `ARDENTS_SOURCE_NATIVE_TEST_SHA256` to its
+absolute executable path and independent digest. All four Source scenarios are
+discovered from that binary, including retained lifecycle.
 It is not included in the five-Node baseline series. Declare its finite schedule
 and verify complete source/config/artifact and actual stand facts before/after;
 retain every attempt, restore all owned changes and prove physical joins.

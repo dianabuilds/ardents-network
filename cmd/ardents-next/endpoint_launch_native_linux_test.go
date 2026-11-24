@@ -29,6 +29,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -552,7 +553,7 @@ func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int,
 
 	// Genuine Release authority + enrolled protected candidate (version 1). The
 	// provision command authenticates the initial pair and establishes floors.
-	rootAuthority := newConsumerReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
+	rootAuthority := nodefixture.NewReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
 	resources := endpointPlatformNativeResources()
 	// The worker executable must be a genuine compiled text worker, not fixture
 	// placeholder bytes: socket activation spawns it under confinement.

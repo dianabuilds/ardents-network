@@ -24,6 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -265,7 +266,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 		t.Fatal(err)
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
-	authority := newConsumerReleaseAuthority(t, ref.Add(365*24*time.Hour))
+	authority := nodefixture.NewReleaseAuthority(t, ref.Add(365*24*time.Hour))
 	resources := endpointPlatformNativeResources()
 
 	// Version 1 establishes complete retained Release floors through genuine

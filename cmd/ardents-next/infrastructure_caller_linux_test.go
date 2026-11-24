@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 func TestInfrastructureOriginalLoaderAndVerifierSurviveToHandoff(t *testing.T) {
@@ -21,7 +22,7 @@ func TestInfrastructureOriginalLoaderAndVerifierSurviveToHandoff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := infrastructureCandidateInput(t, c)
+	in := nodefixture.InfrastructureCandidateInputs(t, c)
 	v, err := release.Open(filepath.Join(t.TempDir(), "history"))
 	if err != nil {
 		t.Fatal(err)

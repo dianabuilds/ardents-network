@@ -33,7 +33,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					clock, closeClock := joinProcessClock(t)
 					defer closeClock()
 					id := [32]byte{20}
-					cert, key := nativeDescriptorCredential(t, certificates[id])
+					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 					participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t)
 					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget,
@@ -51,7 +51,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					case "role":
 						plan["node_id"] = [32]byte{12}
 					case "tls-key":
-						plan["certificate"], plan["private_key"] = nativeDescriptorCredential(t, certificates[[32]byte{12}])
+						plan["certificate"], plan["private_key"] = nodefixture.WriteNativeCredential(t, certificates[[32]byte{12}])
 					case "missing-hosting":
 						plan["hosting_root"] = filepath.Join(t.TempDir(), "missing")
 					case "foreign-spend":

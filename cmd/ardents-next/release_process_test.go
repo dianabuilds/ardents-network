@@ -2,9 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -21,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -47,57 +45,7 @@ func signedConsumerResources(t *testing.T, platform string, protected, generatio
 	return signedConsumerRelease(t, platform, protected, generation, generationVersion, resources, nil, 1, 1)
 }
 
-// One fixture authority signs consecutive snapshots without manufacturing a
-// second first-pin or replacing the retained Root's five distinct public keys.
-type consumerReleaseAuthority struct {
-	rootBytes []byte
-	signers   []signature.Signer
-}
-
-func newConsumerReleaseAuthority(t *testing.T, expires time.Time) *consumerReleaseAuthority {
-	t.Helper()
-	root := metadata.Root(expires)
-	root.Signed.UnrecognizedFields = map[string]any{"ardents_schema_version": 1, "ardents_profile": "ardents-h3-release-v1", "ardents_environment": "h3-test", "ardents_network": "new-release-test"}
-	owned := &consumerReleaseAuthority{}
-	var ids []string
-	for range 5 {
-		public, private, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			t.Fatal(err)
-		}
-		signer, err := signature.LoadSigner(private, crypto.Hash(0))
-		if err != nil {
-			t.Fatal(err)
-		}
-		key, err := metadata.KeyFromPublicKey(public)
-		if err != nil {
-			t.Fatal(err)
-		}
-		id, err := key.ID()
-		if err != nil {
-			t.Fatal(err)
-		}
-		root.Signed.Keys[id] = key
-		ids = append(ids, id)
-		owned.signers = append(owned.signers, signer)
-	}
-	for _, role := range []string{"root", "timestamp", "snapshot", "targets"} {
-		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), ids...), Threshold: 3}
-	}
-	for _, signer := range owned.signers[:3] {
-		if _, err := root.Sign(signer); err != nil {
-			t.Fatal(err)
-		}
-	}
-	var err error
-	owned.rootBytes, err = root.ToBytes(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return owned
-}
-
-func signedConsumerRelease(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *consumerReleaseAuthority, metadataVersion, releaseVersion int64, legacyCustody ...[]byte) (string, string, string) {
+func signedConsumerRelease(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *nodefixture.ReleaseAuthority, metadataVersion, releaseVersion int64, legacyCustody ...[]byte) (string, string, string) {
 	t.Helper()
 	_, architecture, validPlatform := strings.Cut(platform, "-")
 	if !validPlatform || architecture == "" {
@@ -117,18 +65,14 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	expires := ref.Add(365 * 24 * time.Hour)
 	if authority == nil {
-		authority = newConsumerReleaseAuthority(t, expires)
+		authority = nodefixture.NewReleaseAuthority(t, expires)
 	}
 	sign := func(value interface {
 		Sign(signature.Signer) (*metadata.Signature, error)
 	}) {
-		for _, signer := range authority.signers[:3] {
-			if _, err := value.Sign(signer); err != nil {
-				t.Fatal(err)
-			}
-		}
+		authority.Sign(t, value)
 	}
-	rootBytes := authority.rootBytes
+	rootBytes := authority.RootBytes()
 	protectedFiles := map[string][]byte{program: binary}
 	if protected {
 		// Exact ADR-0119 names, independently spelled rather than projected

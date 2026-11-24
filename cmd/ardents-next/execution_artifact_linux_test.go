@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	endpointrelease "github.com/dianabuilds/ardents-network/internal/release/endpoint"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 // Actual program/worker/unit bytes are necessary for installed startup. This
@@ -36,7 +37,7 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	authority := newConsumerReleaseAuthority(t, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC).Add(365*24*time.Hour))
+	authority := nodefixture.NewReleaseAuthority(t, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC).Add(365*24*time.Hour))
 
 	bundle, pin, program := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, authority, 1, 1)
 	reference := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)

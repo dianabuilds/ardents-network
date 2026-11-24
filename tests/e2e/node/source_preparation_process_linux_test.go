@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -26,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
+	sourceowner "github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
@@ -64,16 +65,16 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
 		t.Fatal("invalid environment: original workspace is not native ext4", err)
 	}
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
 	var networks [2]state.AuthorityDeclaration
 	for i := range networks {
-		networks[i] = nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
+		networks[i] = nodefixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	}
 	authority := networks[0]
 	headless := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-roles"), TimeConfidenceFile: clock, NetworkID: hex.EncodeToString(authority.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authority.Authorities[0][:])}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authority.ProfileAuthority[:])}
@@ -264,11 +265,11 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inputs, _, err := acquireSourceInputs(t.Context(), filepath.Join(output, "source-1-serve.json"))
+	inputs, _, err := sourceowner.AcquireInputs(t.Context(), filepath.Join(output, "source-1-serve.json"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sourceServingInputs(&fresh, serving, inputs, inputs.Check) == nil {
+	if sourceowner.ConfigureInputs(&fresh, serving, inputs, inputs.Check) == nil {
 		t.Fatal("new configuration accepted altered credential")
 	}
 	if err := inputs.Close(); err != nil {

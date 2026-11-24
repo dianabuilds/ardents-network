@@ -27,6 +27,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -67,7 +68,7 @@ type sourceInstalledStand struct {
 	pin               string
 	unit              []byte
 	uid               int
-	authority         *consumerReleaseAuthority
+	authority         *nodefixture.ReleaseAuthority
 	networkPlan       state.AuthorityDeclaration
 	clientConfig      source.Config
 	bundle            networkfixture.Closed
@@ -118,7 +119,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	infrastructureDistributionInvocation(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, forwardBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +131,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	infrastructureDistributionInvocation(t, stand.base, stand.binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, stand.binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, stand.binaryBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +141,7 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	infrastructureDistributionInvocation(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "source", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, forwardBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -364,8 +365,8 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 
 	// Signed distribution of the actual command bytes; the first pin runs the
 	// enrolled executable itself (platformOwnExecutable /proc/self/exe).
-	stand.authority = newConsumerReleaseAuthority(t, infrastructureReference.Add(365*24*time.Hour))
-	_, inventoryPin, _ := infrastructureDistributionInvocation(t, stand.base, binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
+	stand.authority = nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
+	_, inventoryPin, _ := nodefixture.InfrastructureDistribution(t, stand.base, binaryBytes, stand.authority, 1, nil, "source", []byte(platformUnitTemplate))
 	stand.launch = platformLaunch{
 		Role:          "source",
 		Distribution:  stand.distribution,

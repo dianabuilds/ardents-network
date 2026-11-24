@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -44,7 +45,7 @@ func TestForwardingArtifactCandidateFreshPairAndRoleSeparation(t *testing.T) {
 					targets[target].Custom = &custom
 				}
 			}
-			directory, _, files := infrastructureDistributionInvocation(t, t.TempDir(), []byte("public program fixture"), nil, 1, mutate, "forwarding")
+			directory, _, files := nodefixture.InfrastructureDistribution(t, t.TempDir(), []byte("public program fixture"), nil, 1, mutate, "forwarding")
 			if scenario == "substituted-template" || scenario == "forged-metadata" {
 				name := "ardents-forwarding.service"
 				if scenario == "forged-metadata" {
@@ -56,13 +57,13 @@ func TestForwardingArtifactCandidateFreshPairAndRoleSeparation(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(directory, name), files[name], 0600); err != nil {
 					t.Fatal(err)
 				}
-				writeInfrastructureOracleInvocationInventory(t, directory, files, 1, "forwarding")
+				nodefixture.WriteInfrastructureOracleInvocationInventory(t, directory, files, 1, "forwarding")
 			}
 			candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), directory)
 			if err != nil {
 				t.Fatal(err)
 			}
-			input := infrastructureCandidateInput(t, candidate)
+			input := nodefixture.InfrastructureCandidateInputs(t, candidate)
 			verifier, err := release.Open(filepath.Join(t.TempDir(), "history"))
 			if err != nil {
 				t.Fatal(err)

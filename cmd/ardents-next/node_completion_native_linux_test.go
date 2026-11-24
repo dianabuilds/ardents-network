@@ -135,7 +135,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 			}
 			clock, closeClock := joinProcessClock(t)
 			defer closeClock()
-			certificate, key := nativeDescriptorCredential(t, certificates[[32]byte{17}])
+			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
 			participation := filepath.Join(t.TempDir(), "participation")
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{17}, "process_profile": "ardents-descriptor-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "descriptor_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
@@ -238,7 +238,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 			}
 			clock, closeClock := joinProcessClock(t)
 			defer closeClock()
-			certificate, key := nativeDescriptorCredential(t, certificates[[32]byte{25}])
+			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 			participation := filepath.Join(t.TempDir(), "participation")
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{25}, "process_profile": "ardents-introduction-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "introduction_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
@@ -457,7 +457,7 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			}
 			clock, closeClock := joinProcessClock(t)
 			defer closeClock()
-			certificate, key := nativeDescriptorCredential(t, certificates[[32]byte{20}])
+			certificate, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{20}])
 			participation := filepath.Join(t.TempDir(), "participation")
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{20}, "process_profile": "ardents-join-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}

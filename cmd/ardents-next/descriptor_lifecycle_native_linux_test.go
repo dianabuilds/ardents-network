@@ -114,7 +114,7 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 
 	id := [32]byte{17}
-	certPath, keyPath := nativeDescriptorCredential(t, certificates[id])
+	certPath, keyPath := nodefixture.WriteNativeCredential(t, certificates[id])
 	budget := routeProcessBudget(t)
 	participation := filepath.Join(t.TempDir(), "participation")
 	spend := t.TempDir()

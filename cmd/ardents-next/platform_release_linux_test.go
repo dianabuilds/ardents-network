@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -28,12 +29,12 @@ func TestPlatformRuntimeReleaseUsesRetainedFloorsAndOriginalProof(t *testing.T) 
 	for _, role := range []string{"source", "forwarding", "issuer", "descriptor", "introduction", "join"} {
 		t.Run(role, func(t *testing.T) {
 			program := []byte("signed program fixture")
-			dir, _, _ := infrastructureDistributionInvocation(t, t.TempDir(), program, nil, 1, nil, role, []byte(platformUnitTemplate))
+			dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, nil, 1, nil, role, []byte(platformUnitTemplate))
 			candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 			if err != nil {
 				t.Fatal(err)
 			}
-			in := infrastructureCandidateInput(t, candidate)
+			in := nodefixture.InfrastructureCandidateInputs(t, candidate)
 			history := filepath.Join(t.TempDir(), "release")
 			v, err := release.Open(history)
 			if err != nil {
@@ -91,7 +92,7 @@ func TestPlatformRuntimeReleaseUsesRetainedFloorsAndOriginalProof(t *testing.T) 
 // and State files are used, but program bytes are never executed. It grants no
 // systemd, serving, predecessor completion or platform qualification evidence.
 func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *testing.T) {
-	now := infrastructureReference
+	now := nodefixture.InfrastructureReference()
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{81}, 32))
 	nodeKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{82}, 32))
 	public := key.Public().(ed25519.PublicKey)
@@ -153,9 +154,9 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	authority := newConsumerReleaseAuthority(t, now.Add(365*24*time.Hour))
+	authority := nodefixture.NewReleaseAuthority(t, now.Add(365*24*time.Hour))
 	load := func(version int64, program []byte, mutate func(map[string]*metadata.TargetFiles)) enrollment.InfrastructureCandidate {
-		dir, _, _ := infrastructureDistributionInvocation(t, t.TempDir(), program, authority, version, mutate, "source", []byte(platformUnitTemplate))
+		dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, authority, version, mutate, "source", []byte(platformUnitTemplate))
 		candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 		if err != nil {
 			t.Fatal(err)
@@ -183,7 +184,7 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d := verifier.Evaluate(t.Context(), infrastructureCandidateInput(t, old)); d.Err() != nil {
+	if d := verifier.Evaluate(t.Context(), nodefixture.InfrastructureCandidateInputs(t, old)); d.Err() != nil {
 		_ = verifier.Close()
 		t.Fatal(d.Outcome, d.Err())
 	}
@@ -196,7 +197,7 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 		if err != nil {
 			t.Fatal(err)
 		}
-		proof, err := infrastructure.AuthenticateRuntimeCandidate(t.Context(), verifier, candidate, infrastructureCandidateInput(t, candidate))
+		proof, err := infrastructure.AuthenticateRuntimeCandidate(t.Context(), verifier, candidate, nodefixture.InfrastructureCandidateInputs(t, candidate))
 		if err != nil {
 			_ = verifier.Close()
 			t.Fatal(err)
@@ -254,7 +255,7 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 		}
 	}()
 	for name, candidate := range map[string]enrollment.InfrastructureCandidate{"rollback": old, "mixed": mixed} {
-		if _, err := infrastructure.AuthenticateRuntimeCandidate(t.Context(), verifier, candidate, infrastructureCandidateInput(t, candidate)); err == nil {
+		if _, err := infrastructure.AuthenticateRuntimeCandidate(t.Context(), verifier, candidate, nodefixture.InfrastructureCandidateInputs(t, candidate)); err == nil {
 			t.Fatal("unsafe Source program accepted", name)
 		}
 	}
@@ -265,10 +266,10 @@ func TestPlatformSourceForwardProgramKeepsSignedStateAndRefusesMixedRelease(t *t
 }
 
 func TestPlatformRuntimeReleaseRefusesRollbackAfterReopen(t *testing.T) {
-	authority := newConsumerReleaseAuthority(t, infrastructureReference.Add(365*24*time.Hour))
+	authority := nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
 	program := []byte("same signed runtime")
 	load := func(version int64) enrollment.InfrastructureCandidate {
-		dir, _, _ := infrastructureDistributionInvocation(t, t.TempDir(), program, authority, version, nil, "introduction", []byte(platformUnitTemplate))
+		dir, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), program, authority, version, nil, "introduction", []byte(platformUnitTemplate))
 		c, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 		if err != nil {
 			t.Fatal(err)
@@ -281,7 +282,7 @@ func TestPlatformRuntimeReleaseRefusesRollbackAfterReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	in := infrastructureCandidateInput(t, current)
+	in := nodefixture.InfrastructureCandidateInputs(t, current)
 	if d := v.Evaluate(t.Context(), in); d.Err() != nil {
 		t.Fatal(d.Outcome, d.Err())
 	}
@@ -300,7 +301,7 @@ func TestPlatformRuntimeReleaseRefusesRollbackAfterReopen(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	if _, err := infrastructure.AuthenticateRuntimeCandidate(t.Context(), v, old, infrastructureCandidateInput(t, old)); err == nil {
+	if _, err := infrastructure.AuthenticateRuntimeCandidate(t.Context(), v, old, nodefixture.InfrastructureCandidateInputs(t, old)); err == nil {
 		t.Fatal("older signed generation authorized after reopen")
 	}
 	floors, err := v.CurrentFloors(t.Context())

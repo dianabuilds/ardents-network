@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
@@ -90,7 +91,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 	}
 	// The independently prepared pin here is a controlled test input, not an
 	// operational independent distribution or permission for first execution.
-	cmd = exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, oraclePin, filepath.Join(parent, "history"), "h3-test", "new-release-test", infrastructureReference.Format("2006-01-02T15:04:05Z07:00"))
+	cmd = exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, oraclePin, filepath.Join(parent, "history"), "h3-test", "new-release-test", nodefixture.InfrastructureReference().Format("2006-01-02T15:04:05Z07:00"))
 	if out, err := cmd.CombinedOutput(); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) {
 		t.Fatalf("prepared actual self and Release pair %s %v", out, err)
 	}

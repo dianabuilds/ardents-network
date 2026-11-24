@@ -267,12 +267,12 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	binary := nodefixture.PinnedCommand(t)
 	var peers []*nodefixture.NativeProcess
 	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
-		cert, key := nativeDescriptorCredential(t, certificates[id])
+		cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		sockets[id]()
 		peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, config), id[0]))
 	}
-	cert, key := nativeDescriptorCredential(t, certificates[[32]byte{17}])
+	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{17}])
 	p := nativeDescriptorAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
 		next := f.spec
@@ -664,12 +664,12 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	binary := nodefixture.PinnedCommand(t)
 	var peers []*nodefixture.NativeProcess
 	for _, id := range [][32]byte{{21}, {22}, {23}, {24}} {
-		cert, key := nativeDescriptorCredential(t, certificates[id])
+		cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 		config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": "ardents-forwarding-process-v1", "retirement_wait_ms": 5000, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 		sockets[id]()
 		peers = append(peers, startNativeForwarding(t, binary, hostingConfig(t, config), id[0]))
 	}
-	cert, key := nativeDescriptorCredential(t, certificates[[32]byte{25}])
+	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 	p := nativeIntroductionAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
 		next := f.spec
@@ -1706,7 +1706,7 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	defer closeClock()
 	holder := joinRouteStock(t, f, admission.AllocationUser)
 	startJoinRouteReceiverRange(t, f, sockets, certificates, 19)
-	cert, key := nativeDescriptorCredential(t, certificates[[32]byte{20}])
+	cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{20}])
 	p := nativeJoinAuthorityPlan{Network: nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: routeProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: phase}
 	if phase == "pre-spend-successor" {
 		next := f.spec

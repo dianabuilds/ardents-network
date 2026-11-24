@@ -128,7 +128,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			cert, key := nativeDescriptorCredential(t, certificates[[32]byte{25}])
+			cert, key := nodefixture.WriteNativeCredential(t, certificates[[32]byte{25}])
 			historyRoot, spendRoot := t.TempDir(), t.TempDir()
 			if err := os.Chmod(historyRoot, 0700); err != nil {
 				t.Fatal(err)
@@ -382,7 +382,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					clock, closeClock := joinProcessClock(t)
 					defer closeClock()
 					id := [32]byte{25}
-					cert, key := nativeDescriptorCredential(t, certificates[id])
+					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 					participation, spend, budget, historyRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t), t.TempDir()
 					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.IntroductionProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget, "introduction_root": historyRoot,
@@ -403,7 +403,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					case "role":
 						plan["node_id"] = [32]byte{12}
 					case "tls-key":
-						plan["certificate"], plan["private_key"] = nativeDescriptorCredential(t, certificates[[32]byte{12}])
+						plan["certificate"], plan["private_key"] = nodefixture.WriteNativeCredential(t, certificates[[32]byte{12}])
 					case "missing-hosting":
 						plan["hosting_root"] = filepath.Join(t.TempDir(), "missing")
 					case "foreign-history":

@@ -5,7 +5,6 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
 	"os"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
@@ -25,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -105,54 +104,11 @@ func TestNetworkIssuanceDraftRetainsExactBindingsAndHorizons(t *testing.T) {
 func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionFixture)) *networkAdmissionFixture {
 	t.Helper()
 	dir := t.TempDir()
-	start := time.Now().UTC().Truncate(time.Hour)
-	end := start.Add(time.Hour)
-	if time.Until(end) < 2*time.Minute {
-		end = end.Add(time.Hour)
-	}
-	_, authorityKey, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, issuerKey, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, receiverKey, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { clear(authorityKey); clear(issuerKey); clear(receiverKey) })
-	f := &networkAdmissionFixture{}
-	networkID := sha256.Sum256([]byte("new Network integration"))
-	issuerID, receiverID := [32]byte{11}, [32]byte{12}
-	var signer, permissionAuthority [32]byte
-	copy(signer[:], issuerKey.Public().(ed25519.PublicKey))
-	copy(permissionAuthority[:], authorityKey.Public().(ed25519.PublicKey))
-	f.plan = issuer.Plan{AdmissionRoot: filepath.Join(dir, "quota"), KeyRoot: filepath.Join(dir, "keys"), ResultRoot: filepath.Join(dir, "results"),
-		KeyBinding: issuance.Binding{Network: networkID, Issuer: issuerID, Signer: signer, Start: start, End: end}}
-	if err := issuance.Initialize(t.Context(), f.plan.KeyRoot, f.plan.KeyBinding); err != nil {
-		t.Fatal(err)
-	}
-	keys, err := issuance.Open(t.Context(), f.plan.KeyRoot, f.plan.KeyBinding)
-	if err != nil {
-		t.Fatal(err)
-	}
-	inventory, err := keys.Inventory()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := keys.Close(); err != nil {
-		t.Fatal(err)
-	}
-	f.spec = networkfixture.ClosedSpec{NetworkID: networkID, Seed: [32]byte{13}, IssuanceAuthority: permissionAuthority, Number: 1,
-		NotBefore: start, NotAfter: end, Authority: authorityKey, Nodes: []networkfixture.ClosedNode{
-			{RecordSpec: networkfixture.RecordSpec{NodeID: issuerID, Generation: 7, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4401", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 1, PrivateKey: issuerKey}, RoleDomain: 2, Subrole: 6},
-			{RecordSpec: networkfixture.RecordSpec{NodeID: receiverID, Generation: 9, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4402", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 1, PrivateKey: receiverKey}, RoleDomain: 3, Subrole: 1},
-		}}
-	for _, key := range inventory.Keys {
-		f.spec.Keys = append(f.spec.Keys, networkfixture.ClosedTokenKey{WindowStart: time.Unix(int64(key.Window), 0).UTC(), Class: key.Class, SPKI: key.SPKI})
-	}
+	spec, plan, inventory := nodefixture.PrepareNetworkGenesis(t, dir)
+	f := &networkAdmissionFixture{spec: spec, plan: plan}
+	networkID, authorityKey, permissionAuthority := spec.NetworkID, spec.Authority, spec.IssuanceAuthority
+	issuerID, receiverID := spec.Nodes[0].NodeID, spec.Nodes[1].NodeID
+	start, end := spec.NotBefore, spec.NotAfter
 	for _, option := range prepare {
 		option(f)
 	}

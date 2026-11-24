@@ -5,18 +5,13 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -29,26 +24,6 @@ import (
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
-
-func nativeDescriptorCredential(t *testing.T, certificate tls.Certificate) (string, string) {
-	t.Helper()
-	root := t.TempDir()
-	certPath, keyPath := filepath.Join(root, "certificate"), filepath.Join(root, "key")
-	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
-		t.Fatal(err)
-	}
-	key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clear(key)
-	encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
-	defer clear(encoded)
-	if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
-		t.Fatal(err)
-	}
-	return certPath, keyPath
-}
 
 func launchNativeDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
@@ -104,7 +79,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					clock, closeClock := joinProcessClock(t)
 					defer closeClock()
 					id := [32]byte{17}
-					cert, key := nativeDescriptorCredential(t, certificates[id])
+					cert, key := nodefixture.WriteNativeCredential(t, certificates[id])
 					participation, spend, budget, storeRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t), t.TempDir()
 					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.DescriptorProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget, "descriptor_root": storeRoot,
@@ -122,7 +97,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					case "role":
 						plan["node_id"] = [32]byte{12}
 					case "tls-key":
-						plan["certificate"], plan["private_key"] = nativeDescriptorCredential(t, certificates[[32]byte{12}])
+						plan["certificate"], plan["private_key"] = nodefixture.WriteNativeCredential(t, certificates[[32]byte{12}])
 					case "missing-hosting":
 						plan["hosting_root"] = filepath.Join(t.TempDir(), "missing")
 					case "foreign-store":
@@ -229,7 +204,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			var descriptorConfig map[string]any
 			descriptorRoot := t.TempDir()
 			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, {17}} {
-				certPath, keyPath := nativeDescriptorCredential(t, certificates[id])
+				certPath, keyPath := nodefixture.WriteNativeCredential(t, certificates[id])
 				budget := routeProcessBudget(t)
 				participation := filepath.Join(t.TempDir(), "participation")
 				spend := t.TempDir()
@@ -347,7 +322,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			}
 			switch fault {
 			case "cpu-pressure":
-				nativeDescriptorCPUContention(t, resolution)
+				nodefixture.ExerciseNativeCPUPressure(t, resolution)
 				resolution.FailedJoin(t, "process")
 				var event map[string]string
 				var first struct{ Resource *processresource.FailureFacts }
@@ -453,114 +428,5 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				}
 			}
 		})
-	}
-}
-
-// Create genuine scheduling pressure after successful work, without changing
-// the selected cgroup/Go/FD envelope or placing another process in the role leaf.
-func nativeDescriptorCPUContention(t *testing.T, original *nodefixture.NativeProcess) {
-	t.Helper()
-	if _, err := exec.LookPath("taskset"); err != nil {
-		t.Fatal("selected native CPU-affinity prerequisite unavailable", err)
-	}
-	proc := filepath.Join("/proc", strconv.Itoa(original.PID))
-	status, err := os.ReadFile(filepath.Join(proc, "status"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cpu := ""
-	for _, line := range strings.Split(string(status), "\n") {
-		if strings.HasPrefix(line, "Cpus_allowed_list:") {
-			cpu = strings.Split(strings.Split(strings.TrimSpace(strings.TrimPrefix(line, "Cpus_allowed_list:")), ",")[0], "-")[0]
-		}
-	}
-	if _, err := strconv.ParseUint(cpu, 10, 32); err != nil {
-		t.Fatal("original allowed CPU unavailable", err)
-	}
-	groupRaw, err := os.ReadFile(filepath.Join(proc, "cgroup"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	group := strings.TrimSpace(string(groupRaw))
-	if !strings.HasPrefix(group, "0::/") || strings.Contains(group, "\n") {
-		t.Fatal("original sole cgroup unavailable")
-	}
-	root := filepath.Join("/sys/fs/cgroup", strings.TrimPrefix(group, "0::/"))
-	maximum, err := os.ReadFile(filepath.Join(root, "cpu.max"))
-	if err != nil || string(maximum) != "100000 100000\n" {
-		t.Fatal("original CPU envelope changed before pressure", string(maximum), err)
-	}
-	pressure := func() float64 {
-		t.Helper()
-		raw, err := os.ReadFile(filepath.Join(root, "cpu.pressure"))
-		if err != nil {
-			t.Fatal("original pressure unavailable", err)
-		}
-		for _, line := range strings.Split(string(raw), "\n") {
-			fields := strings.Fields(line)
-			if len(fields) == 5 && fields[0] == "some" && strings.HasPrefix(fields[1], "avg10=") {
-				value, err := strconv.ParseFloat(strings.TrimPrefix(fields[1], "avg10="), 64)
-				if err != nil || value < 0 || value > 100 {
-					t.Fatal("actual pressure invalid", err)
-				}
-				return value
-			}
-		}
-		t.Fatal("original pressure grammar unavailable")
-		return 0
-	}
-	if pressure() != 0 {
-		t.Fatal("pressure already present before causal control")
-	}
-	if output, err := exec.Command("taskset", "-apc", cpu, strconv.Itoa(original.PID)).CombinedOutput(); err != nil {
-		t.Fatal("original allowed CPU affinity unavailable", err, string(output))
-	}
-	// Twelve bounded helper groups contend on ONE original allowed CPU. The
-	// measured development control uses at most one busy CPU, 384 MiB declared
-	// auxiliary memory and 24 helper tasks, outside the sole original leaf.
-	// Positive PSI alone is not the selected 1% overload criterion.
-	for index := range 12 {
-		unit := fmt.Sprintf("ardents-descriptor-cpu-helper-%d-%d.service", os.Getpid(), index)
-		// Independent manager limits survive a forced exit of the test driver.
-		// These are test-helper limits, never the measured Node's envelope.
-		helper := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-			"--property=RuntimeMaxSec=8s", "--property=CPUQuota=50%", "--property=MemoryMax=32M", "--property=TasksMax=2", "--property=LimitNOFILE=64",
-			"--property=DynamicUser=yes", "--property=NoNewPrivileges=yes", "--property=PrivateTmp=yes",
-			"--", "taskset", "-c", cpu, "sh", "-c", "while :; do :; done")
-		if err := helper.Start(); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run(); _ = helper.Wait() })
-		helperPID := 0
-		readyUntil := time.Now().Add(time.Second)
-		for helperPID == 0 {
-			raw, err := exec.Command("systemctl", "show", unit, "-p", "MainPID", "--value").Output()
-			if err == nil {
-				helperPID, _ = strconv.Atoi(strings.TrimSpace(string(raw)))
-			}
-			if helperPID > 1 {
-				break
-			}
-			if time.Now().After(readyUntil) {
-				t.Fatal("bounded original CPU helper unavailable")
-			}
-			helperPID = 0
-			time.Sleep(5 * time.Millisecond)
-		}
-		helperGroup, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(helperPID), "cgroup"))
-		if err != nil || bytes.Equal(helperGroup, groupRaw) {
-			t.Fatal("CPU helper entered original role leaf", err)
-		}
-	}
-	deadline := time.Now().Add(6 * time.Second)
-	for pressure() < 1 {
-		if time.Now().After(deadline) {
-			t.Fatal("causal original CPU pressure did not become measured")
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	retained, err := os.ReadFile(filepath.Join(root, "cpu.max"))
-	if err != nil || !bytes.Equal(retained, maximum) {
-		t.Fatal("pressure control changed required CPU envelope", err)
 	}
 }

@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -56,16 +56,16 @@ func TestNativeSourceOriginalInputsRetire(t *testing.T) {
 
 func nativeSourceWorkload(t *testing.T, mode string) {
 	binary := nodefixture.PinnedCommand(t)
-	f := newNetworkAdmissionFixture(t)
-	bundle, err := networkfixture.BuildClosed(f.spec)
+	spec, _, _ := nodefixture.PrepareNetworkGenesis(t, t.TempDir())
+	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := joinProcessClock(t)
+	clock, closeClock := nodefixture.StartObservedClock(t)
 	defer closeClock()
-	networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
+	networkPlan := nodefixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	server, client, unauthorized, root, serverPin, clientPin := sourcefixture.NativeTLS(t)
-	cert, key := nativeDescriptorCredential(t, server)
+	cert, key := nodefixture.WriteNativeCredential(t, server)
 	rootPath := filepath.Join(t.TempDir(), "root.pem")
 	if err := os.WriteFile(rootPath, root, 0600); err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if _, err := fmt.Sscanf(string(pid), "%d", &p.PID); err != nil || p.PID < 2 {
 		t.Fatal("original Source MainPID unavailable", err)
 	}
-	public := f.spec.Authority.Public().(ed25519.PublicKey)
+	public := spec.Authority.Public().(ed25519.PublicKey)
 	authorities := map[[32]byte]ed25519.PublicKey{sha256.Sum256(public): public}
 	clientConfig := source.Config{Sources: [2]source.Source{
 		{Address: address, ServerName: "source-native.test", Identity: [32]byte{71}, Family: "source-one", EndpointHandle: "source-one", RootPEM: root, LeafKeyDigest: serverPin},
@@ -251,7 +251,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 			loadJoined <- loadCtx.Err()
 		}()
 		t.Cleanup(func() { stopLoad(); <-loadJoined })
-		nativeDescriptorCPUContention(t, p)
+		nodefixture.ExerciseNativeCPUPressure(t, p)
 	}
 	var restore func()
 	if strings.HasPrefix(mode, "input:") {

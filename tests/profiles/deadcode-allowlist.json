@@ -2,6 +2,17 @@
   "common": [
     {
       "symbols": [
+        "tests/e2e/node.NewReleaseAuthority",
+        "tests/e2e/node.ReleaseAuthority.RootBytes",
+        "tests/e2e/node.ReleaseAuthority.Sign"
+      ],
+      "classification": "independent Release authority fixture",
+      "rationale": "The ephemeral fixture Root and quorum sign only test artifacts for the command and installed profiles.",
+      "owner": "Process tests",
+      "retirement": "Remove with the last signed command fixture."
+    },
+    {
+      "symbols": [
         "tests/e2e/service/fixturecommand/stream-app.ExchangeShort",
         "tests/e2e/service/fixturecommand/stream-app.PacingWriter",
         "tests/e2e/service/fixturecommand/stream-app.newShortRequest",
@@ -62,6 +73,14 @@
           "tests/e2e/node.DiagnosticBuffer.String",
           "tests/e2e/node.DiagnosticBuffer.Write",
           "tests/e2e/node.Launch",
+          "tests/e2e/node.InfrastructureCandidateInputs",
+          "tests/e2e/node.InfrastructureDistribution",
+          "tests/e2e/node.InfrastructureReference",
+          "tests/e2e/node.WriteInfrastructureOracleInvocationInventory",
+          "tests/e2e/node.ExerciseNativeCPUPressure",
+          "tests/e2e/node.PrepareNetworkGenesis",
+          "tests/e2e/node.StartObservedClock",
+          "tests/e2e/node.WriteNativeCredential",
           "tests/e2e/node.NativeProcess.FailedJoin",
           "tests/e2e/node.NativeProcess.Stop",
           "tests/e2e/node.PinnedCommand",

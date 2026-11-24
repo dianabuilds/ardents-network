@@ -30,6 +30,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/publication"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 // This native qualification proves the two-Endpoint platform-led document journey
@@ -451,7 +452,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		}
 		sourceServers = append(sourceServers, server)
 	}
-	rootAuthority := newConsumerReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
+	rootAuthority := nodefixture.NewReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
 	resources := endpointPlatformNativeResources()
 	resources["ardents-text-linux-amd64"] = journeyBuildWorkerBinary(t)
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)

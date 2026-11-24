@@ -25,6 +25,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -73,7 +74,7 @@ type joinPlatformStand struct {
 	pin               string
 	unit              []byte
 	uid               int
-	authority         *consumerReleaseAuthority
+	authority         *nodefixture.ReleaseAuthority
 	networkPlan       networkAuthorityPlan
 	address           string
 	nodeID            [32]byte
@@ -119,7 +120,7 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	infrastructureDistributionInvocation(t, stand.base, forwardBytes, stand.authority, 2, nil, "join", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "join", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, forwardBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +131,7 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	infrastructureDistributionInvocation(t, stand.base, stand.binaryBytes, stand.authority, 1, nil, "join", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, stand.binaryBytes, stand.authority, 1, nil, "join", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, stand.binaryBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +141,7 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
 	}
-	infrastructureDistributionInvocation(t, stand.base, forwardBytes, stand.authority, 2, nil, "join", []byte(platformUnitTemplate))
+	nodefixture.InfrastructureDistribution(t, stand.base, forwardBytes, stand.authority, 2, nil, "join", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, forwardBytes, 0555); err != nil {
 		t.Fatal(err)
 	}
@@ -355,8 +356,8 @@ func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
 		t.Fatal(err)
 	}
 
-	stand.authority = newConsumerReleaseAuthority(t, infrastructureReference.Add(365*24*time.Hour))
-	_, inventoryPin, _ := infrastructureDistributionInvocation(t, stand.base, binaryBytes, stand.authority, 1, nil, "join", []byte(platformUnitTemplate))
+	stand.authority = nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
+	_, inventoryPin, _ := nodefixture.InfrastructureDistribution(t, stand.base, binaryBytes, stand.authority, 1, nil, "join", []byte(platformUnitTemplate))
 	if err := os.WriteFile(stand.program, binaryBytes, 0555); err != nil {
 		t.Fatal(err)
 	}

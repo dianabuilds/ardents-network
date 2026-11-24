@@ -68,7 +68,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				if pair, ok := provisioned[id]; ok {
 					cert, key = pair[0], pair[1]
 				} else {
-					cert, key = nativeDescriptorCredential(t, certificates[id])
+					cert, key = nodefixture.WriteNativeCredential(t, certificates[id])
 				}
 				work := uint64(32 << 20)
 				if mode == "undercoverage" {
