@@ -84,14 +84,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					if err := listener.Close(); err != nil {
 						t.Fatal(err)
 					}
-					raw, err := json.Marshal(plan)
-					if err != nil {
-						t.Fatal(err)
-					}
-					path := filepath.Join(t.TempDir(), "config.json")
-					if err := os.WriteFile(path, raw, 0600); err != nil {
-						t.Fatal(err)
-					}
+					path := writeNodePlan(t, plan)
 					p := LaunchFreshRole(t, "issuer", binary, path, 0)
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
