@@ -52,6 +52,12 @@ type nodePlanCore struct {
 	RetirementWaitMS  uint32          `json:"retirement_wait_ms"`
 }
 
+// InvocationTarget returns the declaration fields used to open State and join
+// the original runtime. The selected role validates the declaration separately.
+func (plan nodePlanCore) InvocationTarget() (*Network, string, [32]byte, uint32) {
+	return plan.Network, plan.ParticipationRoot, plan.NodeID, plan.RetirementWaitMS
+}
+
 // ForwardingPlan is the original Forwarding invocation declaration: the common
 // core only, with no role extension field.
 type ForwardingPlan struct {
