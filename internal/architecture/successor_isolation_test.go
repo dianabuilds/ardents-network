@@ -606,6 +606,64 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 	}
 }
 
+// Cohort 2b (#858, #691) re-verified the Endpoint composition boundary at
+// d4fd6855f after Cohort 0/1/2a. The session Open*, Publisher live Open and
+// Reader coordinators compose the Linux native worker launch seam
+// (execution/runtime LaunchReader/LaunchPublisher/LaunchByteStream*), Hosting
+// /proc measurement, Instance custody and the reachability Store, none of which
+// is Unix-family portable yet. Their boundary therefore stays Linux-only with
+// unchanged !linux typed refusals; shifting it would relocate the refusal behind
+// selection/snapshot I/O while the required protections remain Linux-only. The
+// refusal-behavior tests pin that every other host refuses before any state or
+// authority. A future port of those seams must update this assertion deliberately.
+func TestCohort2bEndpointNativeBoundaryStaysLinux(t *testing.T) {
+	root := repositoryRoot(t)
+	linuxOnly := []string{
+		"internal/endpoint/session/prefix_linux.go",
+		"internal/endpoint/session/bootstrap_linux.go",
+		"internal/endpoint/session/join_linux.go",
+		"internal/endpoint/publisher/opening_linux.go",
+		"internal/endpoint/publisher/publisher_linux.go",
+		"internal/endpoint/publisher/snapshot_linux.go",
+		"internal/endpoint/publisher/byte_stream_linux.go",
+		"internal/endpoint/reader/reader_linux.go",
+		"internal/endpoint/reader/operation_linux.go",
+		"internal/endpoint/reader/source_linux.go",
+		"internal/endpoint/reader/byte_stream_linux.go",
+		"internal/endpoint/participant_linux.go",
+	}
+	refusal := []string{
+		"internal/endpoint/session/route_other.go",
+		"internal/endpoint/session/route_other_test.go",
+		"internal/endpoint/publisher/opening_other.go",
+		"internal/endpoint/publisher/opening_other_test.go",
+		"internal/endpoint/publisher/snapshot_other.go",
+		"internal/endpoint/publisher/snapshot_other_test.go",
+	}
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range linuxOnly {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("native Endpoint composition %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range refusal {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "linux"; selected != want {
+				t.Errorf("Endpoint platform refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+	}
+}
+
 // The shared channel has no native mechanism. Check actual Go file selection,
 // including tests: a passing suite must not silently omit an inherited OS file.
 func TestSuccessorRouteChannelRunsSameSourcesOnWindowsAndLinux(t *testing.T) {
