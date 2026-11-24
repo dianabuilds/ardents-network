@@ -1,12 +1,11 @@
 //go:build linux && network_preparation_native
 
-package main
+package provisioning
 
 import (
 	"bytes"
 	"context"
 	"errors"
-
 	"io"
 	"os"
 	"os/exec"
@@ -16,13 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
-
-func writeNetworkPreparation(ctx context.Context, path, name string, raw []byte) error {
-	return provisioning.PublishPreparedNetworkArtifact(ctx, path, name, raw, nil)
-}
 
 func preparationPrivateParent(t *testing.T) string {
 	t.Helper()
@@ -105,7 +99,7 @@ func TestNetworkPreparationNativeCustody(t *testing.T) {
 					t.Fatal(step, err)
 				}
 			}
-			err := provisioning.PublishPreparedNetworkArtifact(t.Context(), root, name, message, observe)
+			err := PublishPreparedNetworkArtifact(t.Context(), root, name, message, observe)
 			if fault == "healthy" {
 				if err != nil {
 					t.Fatal(err)
@@ -140,13 +134,13 @@ func TestNetworkPreparationPublicationKeepsProtectedAccessSeparate(t *testing.T)
 	}
 	payload := []byte("canonical unsigned bytes")
 	unsigned := filepath.Join(parent, "unsigned")
-	if err := writeNetworkPreparation(t.Context(), unsigned, "epoch.unsigned", payload); err != nil {
+	if err := PublishPreparedNetworkArtifact(t.Context(), unsigned, "epoch.unsigned", payload, nil); err != nil {
 		t.Fatal("caller-owned preparation refused", err)
 	}
 	for _, sensitive := range []bool{false, true} {
 		protected := filepath.Join(parent, "protected")
 		files := []artifacts.Content{{Name: "artifact", Data: payload}}
-		if err := provisioning.PublishNetworkInventory(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
+		if err := PublishNetworkInventory(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
 			t.Fatal("protected inventory admitted outside its root-controlled ancestors", sensitive)
 		}
 		if _, err := os.Lstat(protected); !errors.Is(err, os.ErrNotExist) {
@@ -165,7 +159,7 @@ func TestNetworkPreparationCancellationRetainsIncompletePrefix(t *testing.T) {
 			if stage == "before" {
 				cancel()
 			}
-			err := provisioning.PublishPreparedNetworkArtifact(ctx, root, "profile.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
+			err := PublishPreparedNetworkArtifact(ctx, root, "profile.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
 				if step == stage {
 					cancel()
 				}
@@ -183,7 +177,7 @@ func TestNetworkPreparationCancellationRetainsIncompletePrefix(t *testing.T) {
 			if stat != nil {
 				t.Fatal("uncertain prefix cleaned up", stat)
 			}
-			if err := writeNetworkPreparation(t.Context(), root, "profile.unsigned", []byte("public unsigned")); err == nil {
+			if err := PublishPreparedNetworkArtifact(t.Context(), root, "profile.unsigned", []byte("public unsigned"), nil); err == nil {
 				t.Fatal("incomplete prefix adopted")
 			}
 		})
@@ -200,7 +194,7 @@ func TestNetworkPreparationInterruptedWriterChild(t *testing.T) {
 			t.Fatal(err)
 		}
 		root := os.Getenv("ARDENTS_PREPARATION_ROOT")
-		err := writeNetworkPreparation(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096))
+		err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096), nil)
 		if !errors.Is(err, syscall.EFBIG) {
 			t.Fatal("actual partial write cause lost", err)
 		}
@@ -210,7 +204,7 @@ func TestNetworkPreparationInterruptedWriterChild(t *testing.T) {
 		}
 		return
 	}
-	err := provisioning.PublishPreparedNetworkArtifact(context.Background(), os.Getenv("ARDENTS_PREPARATION_ROOT"), "epoch.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
+	err := PublishPreparedNetworkArtifact(context.Background(), os.Getenv("ARDENTS_PREPARATION_ROOT"), "epoch.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
 		if step == os.Getenv("ARDENTS_PREPARATION_STAGE") {
 			_, _ = os.Stdout.Write([]byte("held\n"))
 			time.Sleep(time.Minute)
@@ -229,7 +223,7 @@ func TestNetworkPreparationActualPartialWrite(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatal("finite partial-write child", err, string(out))
 	}
-	if err := writeNetworkPreparation(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096)); err == nil {
+	if err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096), nil); err == nil {
 		t.Fatal("partial native output adopted")
 	}
 }
@@ -245,7 +239,7 @@ func TestNetworkPreparationUnsupportedMountRefusesBeforeBirth(t *testing.T) {
 		}
 	})
 	root := filepath.Join(parent, "prepared")
-	if err := writeNetworkPreparation(t.Context(), root, "epoch.unsigned", []byte("public")); err == nil {
+	if err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", []byte("public"), nil); err == nil {
 		t.Fatal("unsupported tmpfs durability admitted")
 	}
 	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
@@ -281,122 +275,9 @@ func TestNetworkPreparationActualProcessInterruption(t *testing.T) {
 			if _, err := os.Stat(root); err != nil {
 				t.Fatal("prefix missing", err)
 			}
-			if err := writeNetworkPreparation(t.Context(), root, "epoch.unsigned", []byte("public unsigned")); err == nil {
+			if err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", []byte("public unsigned"), nil); err == nil {
 				t.Fatal("process prefix adopted as success")
 			}
 		})
-	}
-}
-
-func TestNetworkPreparationNativeInputAndReceiptRefusals(t *testing.T) {
-	parent := preparationPrivateParent(t)
-	input := filepath.Join(parent, "plan")
-	key := bytes.Repeat([]byte{7}, 32)
-	raw := preparationJSON(t, preparationRecordPlan(key))
-	if err := os.WriteFile(input, raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	for _, fault := range []string{"symlink", "hardlink", "oversize", "malformed", "output failure", "short receipt"} {
-		t.Run(fault, func(t *testing.T) {
-			path := input
-			out := io.Writer(io.Discard)
-			if fault == "symlink" {
-				path = filepath.Join(parent, "alias")
-				if err := os.Symlink(input, path); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if fault == "hardlink" {
-				path = filepath.Join(parent, "hardlink")
-				if err := os.Link(input, path); err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() {
-					if err := os.Remove(path); err != nil {
-						t.Error(err)
-					}
-				})
-			}
-			if fault == "oversize" {
-				path = filepath.Join(parent, "large")
-				if err := os.WriteFile(path, bytes.Repeat([]byte(" "), provisioning.MaximumNetworkPreparationPlan+1), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if fault == "malformed" {
-				path = filepath.Join(parent, "bad")
-				if err := os.WriteFile(path, append(bytes.Clone(raw), raw...), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if fault == "output failure" {
-				out = preparationFailedWriter{}
-			}
-			if fault == "short receipt" {
-				out = preparationShortWriter{}
-			}
-			root := filepath.Join(parent, "output-"+fault)
-			if code := runNetworkPreparation(t.Context(), []string{"prepare-initial-node-record", path, root}, out); code == 0 {
-				t.Fatal("false successful receipt")
-			}
-			if fault != "output failure" && fault != "short receipt" {
-				if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
-					t.Fatal("invalid plan caused output effects", err)
-				}
-			}
-		})
-	}
-}
-
-type preparationFailedWriter struct{}
-
-func (preparationFailedWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
-
-type preparationShortWriter struct{}
-
-func (preparationShortWriter) Write([]byte) (int, error) { return 0, nil }
-
-func TestNetworkPreparationReceiptInterruptsActualBlockedPipe(t *testing.T) {
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := r.Close(); err != nil {
-			t.Error(err)
-		}
-		if err := w.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	fd := int(w.Fd())
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		t.Fatal(err)
-	}
-	for {
-		_, err := syscall.Write(fd, bytes.Repeat([]byte{1}, 4096))
-		if errors.Is(err, syscall.EAGAIN) {
-			break
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- writeNetworkPreparationReceipt(ctx, w, []byte("public receipt\n")) }()
-	select {
-	case err := <-done:
-		t.Fatal("full pipe completed before cancellation", err)
-	case <-time.After(20 * time.Millisecond):
-	}
-	cancel()
-	select {
-	case err := <-done:
-		if !errors.Is(err, context.Canceled) {
-			t.Fatal(err)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("blocked receipt did not join")
 	}
 }
