@@ -75,6 +75,14 @@ type NativeProcess struct {
 	Signaled   bool
 }
 
+// Wait joins the systemd-run process and records that cleanup no longer owns it.
+// exec.Cmd.Wait closes the caller's stdout pipe after the process exits.
+func (process *NativeProcess) Wait() error {
+	err := process.Command.Wait()
+	process.Joined = true
+	return err
+}
+
 // Stop joins and checks the original measured process.
 func (process *NativeProcess) Stop(t *testing.T, refusedExchange ...bool) {
 	t.Helper()
@@ -87,9 +95,7 @@ func (process *NativeProcess) Stop(t *testing.T, refusedExchange ...bool) {
 		}
 		process.Signaled = true
 	}
-	err := process.Command.Wait()
-	process.Joined = true
-	_ = process.Stdout.Close()
+	err := process.Wait()
 	var exit *exec.ExitError
 	var event map[string]string
 	decodeErr := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String())).Decode(&event)
@@ -112,9 +118,7 @@ func (process *NativeProcess) Stop(t *testing.T, refusedExchange ...bool) {
 // FailedJoin joins and checks the original measured process.
 func (process *NativeProcess) FailedJoin(t *testing.T, expectedOwner string) {
 	t.Helper()
-	err := process.Command.Wait()
-	process.Joined = true
-	_ = process.Stdout.Close()
+	err := process.Wait()
 	var exit *exec.ExitError
 	var event map[string]string
 	decodeErr := json.Unmarshal([]byte(process.Diagnostic.String()), &event)
@@ -159,9 +163,7 @@ func Launch(t testing.TB, unit, diagnosticLabel, stopErrorLabel string, args ...
 			if err != nil && stopErrorLabel != "" {
 				t.Error(stopErrorLabel, err)
 			}
-			_ = process.Command.Wait()
-			_ = process.Stdout.Close()
-			process.Joined = true
+			_ = process.Wait()
 		}
 		if t.Failed() {
 			t.Log(diagnosticLabel, process.Diagnostic.String())
@@ -232,8 +234,7 @@ func JoinRetainedRole(t testing.TB, p *NativeProcess, signal string) (int, map[s
 		}
 	}
 	stdout, readErr := io.ReadAll(p.Stdout)
-	err := p.Command.Wait()
-	p.Joined = true
+	err := p.Wait()
 	if readErr != nil {
 		t.Fatal("retained stdout", readErr)
 	}

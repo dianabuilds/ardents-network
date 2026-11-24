@@ -3,6 +3,7 @@ package launch
 import (
 	"context"
 	"errors"
+	"io"
 	"syscall"
 	"time"
 
@@ -14,9 +15,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
-// Repair observes the original public declaration and manager for one retained
+// repair observes the original public declaration and manager for one retained
 // duty. Only State can clear an admitted original producer fence.
-func Repair(ctx context.Context, role, path string) (result error) {
+func repair(ctx context.Context, role, path string) (result error) {
 	if ctx == nil || ctx.Err() != nil {
 		return artifacts.ErrObservedInput
 	}
@@ -96,4 +97,21 @@ func withRepairManager[T any, P interface {
 		return err
 	}
 	return repair(manager)
+}
+
+// RunRepair adapts retained recovery to the command writers and exit status.
+func RunRepair(ctx context.Context, role string, args []string, out, diagnostic io.Writer) int {
+	if ctx == nil || ctx.Err() != nil || len(args) != 1 {
+		return 2
+	}
+	if err := repair(ctx, role, args[0]); err != nil {
+		if serving.WriteFailureReport(diagnostic, "repair", &serving.Terminal{FirstOwner: "state", First: err}, nil) != nil {
+			return 2
+		}
+		return 1
+	}
+	if _, err := io.WriteString(out, "repaired\n"); err != nil {
+		return 2
+	}
+	return 0
 }

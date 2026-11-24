@@ -215,9 +215,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 						} else if e := exec.Command("systemctl", "set-property", "--runtime", p.Unit, "CPUQuota=50%").Run(); e != nil {
 							t.Fatal(e)
 						}
-						e := p.Command.Wait()
-						p.Joined = true
-						_ = p.Stdout.Close()
+						e := p.Wait()
 						var exit *exec.ExitError
 						var event map[string]string
 						if !errors.As(e, &exit) || exit.ExitCode() != 1 || json.Unmarshal([]byte(p.Diagnostic.String()), &event) != nil || event["outcome"] != "failed" {

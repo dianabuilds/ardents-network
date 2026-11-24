@@ -150,8 +150,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					process := LaunchFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), byte(50+index))
 					var event map[string]string
 					decodeErr := json.NewDecoder(process.Stdout).Decode(&event)
-					waitErr := process.Command.Wait()
-					process.Joined = true
+					waitErr := process.Wait()
 					if conflicted {
 						after, err := os.ReadFile(filepath.Join(participation, "current"))
 						if err != nil || !bytes.Equal(conflictPointer, after) {

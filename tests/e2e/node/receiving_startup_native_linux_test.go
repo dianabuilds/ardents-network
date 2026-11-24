@@ -197,8 +197,7 @@ func requireReceivingStartupRefusal(t *testing.T, binary string, role receivingS
 	p := LaunchFreshRole(t, role.name, binary, writeNodePlan(t, plan), role.id)
 	var event map[string]string
 	decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
-	err := p.Command.Wait()
-	p.Joined = true
+	err := p.Wait()
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || exit.ExitCode() != expected {
 		t.Fatal("original startup did not refuse", err, p.Diagnostic.String())

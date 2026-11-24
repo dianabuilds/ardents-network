@@ -587,7 +587,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "internal/network/source/command/inspect_linux.go":
 			return local == "internal/network/source/inspection" || local == "internal/platform/artifacts" || local == "internal/canonicaldigest"
 		case "internal/network/source/command/serve_linux.go":
-			return local == "internal/network/source/serving" || local == "internal/platform/artifacts" || local == "internal/processresource"
+			return local == "internal/network/source/serving" || local == "internal/platform/artifacts"
 		case "internal/network/source/command/command_linux_test.go":
 			return local == "internal/network/source/serving"
 		case "internal/network/source/command/serving_output_linux_test.go":
@@ -603,7 +603,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && local == "internal/network/source/command" {
 		switch source {
-		case "cmd/ardents-next/source_command.go", "cmd/ardents-next/repair_linux.go":
+		case "cmd/ardents-next/source_command.go":
 			return true
 		default:
 			return false
@@ -828,7 +828,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if local == "internal/release/infrastructure/launch" || local == "internal/platform/artifacts" {
 			return true
 		}
-	case "cmd/ardents-next/platform_linux_test.go", "cmd/ardents-next/repair_linux.go":
+	case "cmd/ardents-next/platform_linux_test.go", "cmd/ardents-next/node.go", "cmd/ardents-next/source_command.go":
 		if local == "internal/release/infrastructure/launch" {
 			return true
 		}

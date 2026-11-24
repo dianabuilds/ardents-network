@@ -189,8 +189,7 @@ func waitForUnavailableCompletion(t *testing.T, process *NativeProcess) {
 
 func requireUnavailableCompletion(t *testing.T, process *NativeProcess, role string) {
 	t.Helper()
-	waitErr := process.Command.Wait()
-	process.Joined = true
+	waitErr := process.Wait()
 	var exit *exec.ExitError
 	decoder := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String()))
 	var unavailable, terminal map[string]string
