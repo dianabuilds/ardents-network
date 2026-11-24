@@ -38,14 +38,19 @@ TestOriginalNativeJoinManagedMemoryPressureRetires
 TestOriginalNativeJoinProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeJoin' | grep '^TestOriginalNativeJoin' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Join resource discovery differs' >&2; exit 2; }
-expected='TestNativeJoinDuplexAndReopenTCP
-TestNativeJoinMismatchedPairRefusesTCP
-TestNativeJoinOperationBoundariesTCP
-TestNativeJoinOriginalCommandLossAfterIOTCP
-TestNativeJoinProvisionedCertificateTCP
-TestNativeJoinUndercoverageBeforeSpendTCP'
+expected='TestNativeJoinOperationBoundariesTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeJoin' | grep '^TestNativeJoin' | sort)
-test "$discovered" = "$expected" || { echo 'Join workload discovery differs' >&2; exit 2; }
+test "$discovered" = "$expected" || { echo 'Join operation discovery differs' >&2; exit 2; }
+expected_e2e='TestNativeJoinDuplexAndReopenTCP
+TestNativeJoinMismatchedPairRefusesTCP
+TestNativeJoinOriginalCommandLossAfterIOTCP
+TestNativeJoinPartialStartupRefusalsTCP
+TestNativeJoinProvisionedCertificateTCP
+TestNativeJoinRetainedLifecycle
+TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP
+TestNativeJoinUndercoverageBeforeSpendTCP'
+discovered_e2e=$("$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoin' | grep '^TestNativeJoin' | sort)
+test "$discovered_e2e" = "$expected_e2e" || { echo 'Join e2e discovery differs' >&2; exit 2; }
 
 unit=ardents-join-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \
@@ -54,13 +59,13 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeJoin' -test.timeout=90s
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenTCP|UndercoverageBeforeSpendTCP|ProvisionedCertificateTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenTCP|UndercoverageBeforeSpendTCP|ProvisionedCertificateTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeJoinOriginalAuthorityAndJoinTCP$' | grep -Fx TestNativeJoinOriginalAuthorityAndJoinTCP >/dev/null
 "$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeJoinOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalCommandLossAfterIOTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinOriginalCommandLossAfterIOTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoinPartialStartupRefusalsTCP$' | grep -Fx TestNativeJoinPartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOperationBoundariesTCP$' -test.timeout=3m
