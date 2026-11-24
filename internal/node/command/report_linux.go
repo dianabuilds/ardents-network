@@ -1,0 +1,87 @@
+package command
+
+import (
+	"encoding/json"
+	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/node"
+)
+
+// ForwardingOperation identifies the Forwarding report and its established compatibility rules.
+const ForwardingOperation = "node.forwarding"
+
+// WriteEvent encodes the bounded CLI event for an original Node operation.
+func WriteEvent(out io.Writer, operation, phase, outcome, first, cleanup, failure string) error {
+	return json.NewEncoder(out).Encode(struct {
+		FirstFailure string `json:"first_failure,omitempty"`
+		Operation    string `json:"operation"`
+		Phase        string `json:"phase"`
+		Outcome      string `json:"outcome"`
+		First        string `json:"first_owner,omitempty"`
+		Cleanup      string `json:"cleanup_owner,omitempty"`
+	}{failure, operation, phase, outcome, first, cleanup})
+}
+
+// Preserve the original one-object/string-field role report. The encoded local
+// fact contains no raw error text or private role binding and grants no authority.
+func failureDiagnostic(fact *node.FailureDiagnostic) string {
+	if fact == nil {
+		return ""
+	}
+	raw, err := json.Marshal(fact)
+	if err != nil {
+		return `{"cause":"diagnostic-unavailable"}`
+	}
+	return string(raw)
+}
+
+// ReportCompletion projects a physically joined invocation onto the CLI report and exit status.
+func ReportCompletion(diagnostic io.Writer, operation string, result node.InvocationCompletion, firstFailure func() *node.FailureDiagnostic) int {
+	forwarding := operation == ForwardingOperation
+	// Forwarding's established diagnostic contract suppresses a final event
+	// on a timed-out but otherwise clean retirement. The other roles report
+	// the retained wait failure even when the original close later succeeds.
+	if result.Outcome != "canceled" || result.AuthorityReleaseError != nil || result.TimedOut && !forwarding {
+		if result.AuthorityReleaseError != nil {
+			result.CleanupOwner = "network"
+		}
+		_ = WriteEvent(diagnostic, operation, "joined", "failed", result.FirstOwner, result.CleanupOwner,
+			failureDiagnostic(firstFailure()))
+		if result.AnnouncementError != nil && (!forwarding || !result.TimedOut) {
+			return 2
+		}
+		return 1
+	}
+	if result.TimedOut {
+		return 1
+	}
+	if result.AnnouncementError != nil {
+		return 2
+	}
+	if WriteEvent(diagnostic, operation, "joined", "canceled", "", "", "") != nil {
+		return 2
+	}
+	return 130
+}
+
+// StartupRefusal reports the original startup and State release outcomes.
+func StartupRefusal(out io.Writer, operation string, cause, cleanup error) int {
+	cleanupOwner := ""
+	if cleanup != nil {
+		cleanupOwner = "network"
+	}
+	if err := WriteEvent(out, operation, "refused", "startup-unavailable", "", cleanupOwner,
+		failureDiagnostic(node.StartupFailure(cause))); err != nil {
+		return 2
+	}
+	return 1
+}
+
+// ReportWaitExpired reports unavailability while the original invocation still joins.
+func ReportWaitExpired(diagnostic io.Writer, operation string, firstFailure func() *node.FailureDiagnostic) {
+	detail := ""
+	if operation == ForwardingOperation {
+		detail = failureDiagnostic(firstFailure())
+	}
+	_ = WriteEvent(diagnostic, operation, "retiring", "completion-unavailable", "", "", detail)
+}

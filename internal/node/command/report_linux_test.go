@@ -1,4 +1,4 @@
-package main
+package command
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 func TestForwardingStartupReportsNetworkCleanupFailure(t *testing.T) {
 	var out bytes.Buffer
-	if code := nodeStartupRefusal(&out, nodeForwardingOperation, errors.New("private startup error"), errors.New("private cleanup error")); code != 1 {
+	if code := StartupRefusal(&out, ForwardingOperation, errors.New("private startup error"), errors.New("private cleanup error")); code != 1 {
 		t.Fatal("startup refusal returned wrong result", code)
 	}
 	var event map[string]string

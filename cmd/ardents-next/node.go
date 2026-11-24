@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	nodecommand "github.com/dianabuilds/ardents-network/internal/node/command"
 	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
 )
 
@@ -15,7 +16,7 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 		if len(args) != 1 {
 			return 2
 		}
-		return inspectNodeProcess(ctx, out)
+		return nodecommand.InspectProcess(ctx, out)
 	}
 	if args[0] == "prepare-plan" {
 		return provisioning.RunPreparePlan(ctx, args[1:], out)
