@@ -5,7 +5,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -29,94 +28,29 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-type nativeForwardingProcess struct {
-	unit       string
-	command    *exec.Cmd
-	stdout     io.ReadCloser
-	diagnostic nodefixture.DiagnosticBuffer
-	pid        int
-	joined     bool
-	signaled   bool
-}
-
-func launchNativeForwarding(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func launchNativeForwarding(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-forwarding-%d-%d.service", os.Getpid(), index)
-	process := &nativeForwardingProcess{unit: unit}
-	process.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "original Forwarding retained diagnostic after physical join", "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "forwarding", "--config", plan)
-	process.command.Stderr = &process.diagnostic
-	var err error
-	process.stdout, err = process.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := process.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !process.joined {
-			_ = exec.Command("systemctl", "stop", unit).Run()
-			_ = process.command.Wait()
-			_ = process.stdout.Close()
-			process.joined = true
-		}
-		if t.Failed() {
-			t.Log("original Forwarding retained diagnostic after physical join", process.diagnostic.String())
-		}
-	})
-	return process
 }
 
-func startNativeForwarding(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func startNativeForwarding(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	process := launchNativeForwarding(t, binary, plan, index)
 	var event map[string]string
-	if err := json.NewDecoder(process.stdout).Decode(&event); err != nil || event["operation"] != "node.forwarding" || event["phase"] != "listening" {
-		t.Fatal("genuine original Node startup refused", event, err, process.diagnostic.String())
+	if err := json.NewDecoder(process.Stdout).Decode(&event); err != nil || event["operation"] != "node.forwarding" || event["phase"] != "listening" {
+		t.Fatal("genuine original Node startup refused", event, err, process.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", process.unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &process.pid); err != nil || process.pid < 2 {
+	if _, err := fmt.Sscanf(string(raw), "%d", &process.PID); err != nil || process.PID < 2 {
 		t.Fatal("actual Node MainPID unavailable", err)
 	}
 	return process
-}
-
-func (process *nativeForwardingProcess) stop(t *testing.T, refusedExchange ...bool) {
-	t.Helper()
-	if process.joined {
-		return
-	}
-	if !process.signaled {
-		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.unit).Run(); err != nil {
-			t.Fatal("original Node unavailable before explicit stop", err, process.diagnostic.String())
-		}
-		process.signaled = true
-	}
-	err := process.command.Wait()
-	process.joined = true
-	_ = process.stdout.Close()
-	var exit *exec.ExitError
-	var event map[string]string
-	decodeErr := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String())).Decode(&event)
-	if !errors.As(err, &exit) || decodeErr != nil || event["phase"] != "joined" {
-		t.Fatal("original Node did not report known joined retirement", err, decodeErr, process.diagnostic.String())
-	}
-	if exit.ExitCode() != 130 || event["outcome"] != "canceled" {
-		// The deliberate pre-spend refusal can leave an actual Route physical
-		// cleanup failure. It must remain a failed joined result, never EXIT or
-		// clean cancellation. All positive cancellation rows still require 130.
-		if len(refusedExchange) == 0 || !refusedExchange[0] || exit.ExitCode() != 1 || event["outcome"] != "failed" || event["first_owner"] != "caller" || event["cleanup_owner"] != "route" {
-			t.Fatal("original Node did not retain the expected cancellation or refusal cleanup", err, process.diagnostic.String())
-		}
-	}
-	if _, err := os.Stat(fmt.Sprintf("/proc/%d", process.pid)); !os.IsNotExist(err) {
-		t.Fatal("original Node process remains after manager join", err)
-	}
 }
 
 func TestNativeNodeForwardingTCP(t *testing.T) {
@@ -143,34 +77,6 @@ func requireNativeStartupFailure(t *testing.T, raw string) {
 	}
 }
 
-func (process *nativeForwardingProcess) failedJoin(t *testing.T, expectedOwner string) {
-	t.Helper()
-	err := process.command.Wait()
-	process.joined = true
-	_ = process.stdout.Close()
-	var exit *exec.ExitError
-	var event map[string]string
-	decodeErr := json.Unmarshal([]byte(process.diagnostic.String()), &event)
-	if !errors.As(err, &exit) || exit.ExitCode() != 1 || decodeErr != nil || event["phase"] != "joined" || event["outcome"] != "failed" || event["first_owner"] != expectedOwner {
-		t.Fatal("original Node did not retain failed physical completion", err, process.diagnostic.String())
-	}
-	if expectedOwner != "" {
-		var detail struct {
-			Kind, Phase, Cause string
-			Resource           json.RawMessage
-		}
-		if err := json.Unmarshal([]byte(event["first_failure"]), &detail); err != nil || detail.Kind != "logical" || detail.Phase == "" || detail.Cause == "" {
-			t.Fatal("original local first cause unavailable after actual join", err, process.diagnostic.String())
-		}
-		if expectedOwner == "process" && (len(detail.Resource) == 0 || string(detail.Resource) == "null") {
-			t.Fatal("original process refusal lost its actual measurement context", process.diagnostic.String())
-		}
-	}
-	if _, err := os.Stat(fmt.Sprintf("/proc/%d", process.pid)); !os.IsNotExist(err) {
-		t.Fatal("failed original Node remains after manager join", err)
-	}
-}
-
 func testNativeNodeForwarding(t *testing.T, retirement string) {
 	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
@@ -189,8 +95,10 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			seed := func() state.AuthorityDeclaration { return seedNativeNodeState(t, f, bundle, clock) }
-			var processes []*nativeForwardingProcess
+			seed := func() state.AuthorityDeclaration {
+				return nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
+			}
+			var processes []*nodefixture.NativeProcess
 			var budgets []string
 			var participation []string
 			var spendRoots []string
@@ -250,17 +158,17 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			}
 			switch retirement {
 			case "protection-loss":
-				if err := exec.Command("systemctl", "set-property", "--runtime", processes[0].unit, "CPUQuota=50%").Run(); err != nil {
+				if err := exec.Command("systemctl", "set-property", "--runtime", processes[0].Unit, "CPUQuota=50%").Run(); err != nil {
 					t.Fatal(err)
 				}
-				processes[0].failedJoin(t, "process")
+				processes[0].FailedJoin(t, "process")
 			case "clock-loss":
 				stopClock()
 				if err := os.Remove(clock); err != nil {
 					t.Fatal(err)
 				}
 				for _, process := range processes {
-					process.failedJoin(t, "network")
+					process.FailedJoin(t, "network")
 				}
 			}
 			// Retire every original caller before waiting for any peer's join.
@@ -268,25 +176,25 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			// invocations and mix that failure with the cancellation control.
 			signals := []string{"kill", "--kill-whom=main", "--signal=SIGINT"}
 			for _, process := range processes {
-				if !process.joined {
-					signals = append(signals, process.unit)
+				if !process.Joined {
+					signals = append(signals, process.Unit)
 				}
 			}
 			if len(signals) > 3 {
 				if raw, err := exec.Command("systemctl", signals...).CombinedOutput(); err != nil {
 					for _, process := range processes {
-						t.Log("original unit terminal evidence", process.unit, process.diagnostic.String())
+						t.Log("original unit terminal evidence", process.Unit, process.Diagnostic.String())
 					}
 					t.Fatal("original caller batch cancellation unavailable", err, string(raw))
 				}
 				for _, process := range processes {
-					process.signaled = true
+					process.Signaled = true
 				}
 			}
 			for index, process := range processes {
 				// A forced protection loss also closes its real peer channels;
 				// adjacent invocations retain any resulting Route cleanup failure.
-				process.stop(t, retirement == "undercoverage" || retirement == "protection-loss")
+				process.Stop(t, retirement == "undercoverage" || retirement == "protection-loss")
 				if retirement == "undercoverage" {
 					after, err := os.ReadFile(filepath.Join(spendRoots[index], "closed-token-spends"))
 					if err != nil || !bytes.Equal(initialSpends[index], after) {
@@ -323,31 +231,6 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			}
 		})
 	}
-}
-
-func seedNativeNodeState(t *testing.T, f *networkAdmissionFixture, bundle networkfixture.Closed, clock string) state.AuthorityDeclaration {
-	t.Helper()
-	var key [32]byte
-	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan := state.AuthorityDeclaration{Root: filepath.Join(t.TempDir(), "network"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
-	config, err := plan.Config()
-	if err != nil {
-		t.Fatal(err)
-	}
-	owner, err := state.Open(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := owner.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := owner.AcceptClosedProfile(bundle.Profile); err != nil {
-		t.Fatal(err)
-	}
-	if err := owner.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return plan
 }
 
 func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
@@ -405,7 +288,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 							t.Fatal(err)
 						}
 					}
-					networkPlan := seedNativeNodeState(t, f, initial, clock)
+					networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), initial, clock)
 					if fault == "state-conflict" {
 						changed := f.spec
 						changed.IssuanceAuthority[0] ^= 1
@@ -489,10 +372,10 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					// refuse without creating this invocation's accepting role.
 					process := launchNativeForwarding(t, binary, hostingConfig(t, plan), byte(50+index))
 					var event map[string]string
-					decodeErr := json.NewDecoder(process.stdout).Decode(&event)
-					waitErr := process.command.Wait()
-					process.joined = true
-					_ = process.stdout.Close()
+					decodeErr := json.NewDecoder(process.Stdout).Decode(&event)
+					waitErr := process.Command.Wait()
+					process.Joined = true
+					_ = process.Stdout.Close()
 					if conflicted {
 						after, err := os.ReadFile(filepath.Join(participation, "current"))
 						if err != nil || !bytes.Equal(conflictPointer, after) {
@@ -505,7 +388,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 							t.Fatal("invalid input reached runtime or reported acceptance", event, decodeErr, waitErr)
 						}
 					} else if decodeErr != nil || event["phase"] != "refused" || event["outcome"] != "startup-unavailable" || !errors.As(waitErr, &exit) || exit.ExitCode() != 1 {
-						t.Fatal("partial startup published accepting work or lost refusal", event, decodeErr, waitErr, process.diagnostic.String())
+						t.Fatal("partial startup published accepting work or lost refusal", event, decodeErr, waitErr, process.Diagnostic.String())
 					}
 					if _, err := os.Stat(filepath.Join(spend, "closed-token-spends")); fault == "listener-open" {
 						raw, readErr := os.ReadFile(filepath.Join(spend, "closed-token-spends"))
@@ -583,11 +466,11 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			}
 			clear(key)
 			clear(encoded)
-			plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			// Genuine restored-input control: this same signed member, Carrier and
 			// native envelope must start after removing the declared fault.
 			control := startNativeForwarding(t, binary, hostingConfig(t, plan), 80)
-			control.stop(t)
+			control.Stop(t)
 		})
 	}
 }

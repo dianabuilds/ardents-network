@@ -50,48 +50,26 @@ func nativeDescriptorCredential(t *testing.T, certificate tls.Certificate) (stri
 	return certPath, keyPath
 }
 
-func launchNativeDescriptor(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func launchNativeDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-descriptor-%d-%d.service", os.Getpid(), index)
-	p := &nativeForwardingProcess{unit: unit}
-	p.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "original Descriptor retained diagnostic", "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "descriptor", "--config", plan)
-	p.command.Stderr = &p.diagnostic
-	var err error
-	p.stdout, err = p.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !p.joined {
-			_ = exec.Command("systemctl", "stop", unit).Run()
-			_ = p.command.Wait()
-			_ = p.stdout.Close()
-			p.joined = true
-		}
-		if t.Failed() {
-			t.Log("original Descriptor retained diagnostic", p.diagnostic.String())
-		}
-	})
-	return p
 }
 
-func startNativeDescriptor(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func startNativeDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	p := launchNativeDescriptor(t, binary, plan, index)
 	var event map[string]string
-	if err := json.NewDecoder(p.stdout).Decode(&event); err != nil || event["operation"] != "node.descriptor" || event["phase"] != "listening" {
-		t.Fatal("genuine original Descriptor startup refused", event, err, p.diagnostic.String())
+	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.descriptor" || event["phase"] != "listening" {
+		t.Fatal("genuine original Descriptor startup refused", event, err, p.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", p.unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.pid); err != nil || p.pid < 2 {
+	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
 		t.Fatal("original Descriptor MainPID unavailable", err)
 	}
 	return p
@@ -128,7 +106,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					id := [32]byte{17}
 					cert, key := nativeDescriptorCredential(t, certificates[id])
 					participation, spend, budget, storeRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t), t.TempDir()
-					plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "process_profile": processresource.DescriptorProfile,
+					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.DescriptorProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget, "descriptor_root": storeRoot,
 						"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 					expected := 1
@@ -161,13 +139,13 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					sockets[id]()
 					p := launchNativeDescriptor(t, binary, hostingConfig(t, plan), id[0])
 					var event map[string]string
-					decodeErr := json.NewDecoder(p.stdout).Decode(&event)
-					err = p.command.Wait()
-					p.joined = true
-					_ = p.stdout.Close()
+					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
+					err = p.Command.Wait()
+					p.Joined = true
+					_ = p.Stdout.Close()
 					var exit *exec.ExitError
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
-						t.Fatal("actual Descriptor startup did not refuse", err, p.diagnostic.String())
+						t.Fatal("actual Descriptor startup did not refuse", err, p.Diagnostic.String())
 					}
 					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.descriptor" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
 						t.Fatal("partial startup lost bounded refusal", event, decodeErr)
@@ -215,7 +193,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					plan["certificate"], plan["private_key"] = cert, key
 					plan["hosting_root"], plan["descriptor_root"] = budget, storeRoot
 					fresh := startNativeDescriptor(t, binary, hostingConfig(t, plan), id[0])
-					fresh.stop(t)
+					fresh.Stop(t)
 				})
 			}
 		})
@@ -246,7 +224,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			// Fixture signing/issuance is input preparation, outside measured role lifetimes.
 			holder := descriptorRouteStock(t, f)
 			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
-			var processes []*nativeForwardingProcess
+			var processes []*nodefixture.NativeProcess
 			var budgets, participations, spends []string
 			var descriptorConfig map[string]any
 			descriptorRoot := t.TempDir()
@@ -266,7 +244,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 						work = hosting.Traffic{Tx: 32 << 10, Rx: (32 << 10) - 1}
 					}
 				}
-				config := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+				config := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": profile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				if id == [32]byte{17} {
 					config["descriptor_root"] = descriptorRoot
 					networkPlan := config["network"].(state.AuthorityDeclaration)
@@ -275,7 +253,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 					descriptorConfig = config
 				}
 				sockets[id]()
-				var p *nativeForwardingProcess
+				var p *nodefixture.NativeProcess
 				if id == [32]byte{17} {
 					p = startNativeDescriptor(t, binary, hostingConfig(t, config), id[0])
 				} else {
@@ -323,12 +301,12 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				if err != nil || len(entries) != 0 {
 					t.Fatal("physical undercoverage reached Store mutation", err)
 				}
-				if _, err := os.Stat(fmt.Sprintf("/proc/%d", resolution.pid)); err != nil {
+				if _, err := os.Stat(fmt.Sprintf("/proc/%d", resolution.PID)); err != nil {
 					t.Fatal("request refusal retired the original command", err)
 				}
 				// A corrected declaration applies only to a fresh original command
 				// after joined Stop, retaining the same unspent durable roots.
-				resolution.stop(t, true)
+				resolution.Stop(t, true)
 				descriptorConfig["work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
 				resolution = startNativeDescriptor(t, binary, hostingConfig(t, descriptorConfig), 17)
 				processes[len(processes)-1] = resolution
@@ -370,26 +348,26 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			switch fault {
 			case "cpu-pressure":
 				nativeDescriptorCPUContention(t, resolution)
-				resolution.failedJoin(t, "process")
+				resolution.FailedJoin(t, "process")
 				var event map[string]string
 				var first struct{ Resource *processresource.FailureFacts }
-				if err := json.Unmarshal([]byte(resolution.diagnostic.String()), &event); err != nil {
+				if err := json.Unmarshal([]byte(resolution.Diagnostic.String()), &event); err != nil {
 					t.Fatal("original CPU outcome framing unavailable", err)
 				}
 				if err := json.Unmarshal([]byte(event["first_failure"]), &first); err != nil || first.Resource == nil || first.Resource.Cause != "cpu-pressure" || first.Resource.Observation == nil || first.Resource.Observation.CPUPressure < 1 || first.Resource.Observation.CPUWindowStarted.IsZero() {
-					t.Fatal("CPU negative lacked actual retained original overload", err, resolution.diagnostic.String())
+					t.Fatal("CPU negative lacked actual retained original overload", err, resolution.Diagnostic.String())
 				}
 			case "protection-loss":
-				if err := exec.Command("systemctl", "set-property", "--runtime", resolution.unit, "CPUQuota=50%").Run(); err != nil {
+				if err := exec.Command("systemctl", "set-property", "--runtime", resolution.Unit, "CPUQuota=50%").Run(); err != nil {
 					t.Fatal(err)
 				}
-				resolution.failedJoin(t, "process")
+				resolution.FailedJoin(t, "process")
 			case "clock-loss":
 				stopDescriptorClock()
 				if err := os.Remove(descriptorClock); err != nil {
 					t.Fatal(err)
 				}
-				resolution.failedJoin(t, "network")
+				resolution.FailedJoin(t, "network")
 			case "store-marker-loss":
 				marker := filepath.Join(descriptorRoot, ".ardents-reachability-store-v3")
 				original, err := os.ReadFile(marker)
@@ -399,7 +377,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				if err := os.WriteFile(marker, []byte("foreign marker\n"), 0600); err != nil {
 					t.Fatal(err)
 				}
-				resolution.failedJoin(t, "reachability")
+				resolution.FailedJoin(t, "reachability")
 				if err := os.WriteFile(marker, original, 0600); err != nil {
 					t.Fatal(err)
 				}
@@ -419,18 +397,18 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			// distinction between deliberate cancellation and manufactured peer loss.
 			signals := []string{"kill", "--kill-whom=main", "--signal=SIGINT"}
 			for _, p := range processes {
-				if !p.joined {
-					signals = append(signals, p.unit)
+				if !p.Joined {
+					signals = append(signals, p.Unit)
 				}
 			}
 			if output, err := exec.Command("systemctl", signals...).CombinedOutput(); err != nil {
 				t.Fatal("original caller batch retirement failed", err, string(output))
 			}
 			for _, p := range processes {
-				p.signaled = true
-				p.stop(t, fault != "cancel")
+				p.Signaled = true
+				p.Stop(t, fault != "cancel")
 			}
-			if !resolution.joined {
+			if !resolution.Joined {
 				t.Fatal("Descriptor manager completion absent")
 			}
 			fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: descriptorRoot, Network: f.profile.NetworkID})
@@ -480,12 +458,12 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 
 // Create genuine scheduling pressure after successful work, without changing
 // the selected cgroup/Go/FD envelope or placing another process in the role leaf.
-func nativeDescriptorCPUContention(t *testing.T, original *nativeForwardingProcess) {
+func nativeDescriptorCPUContention(t *testing.T, original *nodefixture.NativeProcess) {
 	t.Helper()
 	if _, err := exec.LookPath("taskset"); err != nil {
 		t.Fatal("selected native CPU-affinity prerequisite unavailable", err)
 	}
-	proc := filepath.Join("/proc", strconv.Itoa(original.pid))
+	proc := filepath.Join("/proc", strconv.Itoa(original.PID))
 	status, err := os.ReadFile(filepath.Join(proc, "status"))
 	if err != nil {
 		t.Fatal(err)
@@ -534,7 +512,7 @@ func nativeDescriptorCPUContention(t *testing.T, original *nativeForwardingProce
 	if pressure() != 0 {
 		t.Fatal("pressure already present before causal control")
 	}
-	if output, err := exec.Command("taskset", "-apc", cpu, strconv.Itoa(original.pid)).CombinedOutput(); err != nil {
+	if output, err := exec.Command("taskset", "-apc", cpu, strconv.Itoa(original.PID)).CombinedOutput(); err != nil {
 		t.Fatal("original allowed CPU affinity unavailable", err, string(output))
 	}
 	// Twelve bounded helper groups contend on ONE original allowed CPU. The

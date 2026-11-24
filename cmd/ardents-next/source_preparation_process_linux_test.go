@@ -73,7 +73,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	defer closeClock()
 	var networks [2]state.AuthorityDeclaration
 	for i := range networks {
-		networks[i] = seedNativeNodeState(t, f, bundle, clock)
+		networks[i] = nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 	}
 	authority := networks[0]
 	headless := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-roles"), TimeConfidenceFile: clock, NetworkID: hex.EncodeToString(authority.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authority.Authorities[0][:])}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authority.ProfileAuthority[:])}
@@ -102,7 +102,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if raw, err := command.CombinedOutput(); err != nil {
 		t.Fatal("actual preparation", err, string(raw))
 	}
-	var processes [2]*nativeForwardingProcess
+	var processes [2]*nodefixture.NativeProcess
 	for i := range processes {
 		if err = held[i].Close(); err != nil {
 			t.Fatal(err)
@@ -121,15 +121,15 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 			}
 			failed := launchNativeSource(t, binary, filepath.Join(output, "source-2-serve.json"))
 			var refused map[string]string
-			if e = json.NewDecoder(failed.stdout).Decode(&refused); e == nil {
+			if e = json.NewDecoder(failed.Stdout).Decode(&refused); e == nil {
 				t.Fatal("partial startup announced readiness")
 			}
-			e = failed.command.Wait()
-			failed.joined = true
-			_ = failed.stdout.Close()
+			e = failed.Command.Wait()
+			failed.Joined = true
+			_ = failed.Stdout.Close()
 			var exited *exec.ExitError
 			if !errors.As(e, &exited) || exited.ExitCode() != 1 {
-				t.Fatal("partial startup physical outcome", e, failed.diagnostic.String())
+				t.Fatal("partial startup physical outcome", e, failed.Diagnostic.String())
 			}
 			if e = os.WriteFile(keyPath, keyBytes, 0600); e != nil {
 				t.Fatal(e)
@@ -138,7 +138,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		}
 		processes[i] = launchNativeSource(t, binary, filepath.Join(output, []string{"source-1-serve.json", "source-2-serve.json"}[i]))
 		var ready map[string]string
-		if err = json.NewDecoder(processes[i].stdout).Decode(&ready); err != nil || ready["phase"] != "listening" {
+		if err = json.NewDecoder(processes[i].Stdout).Decode(&ready); err != nil || ready["phase"] != "listening" {
 			t.Fatal("real Source startup", i, ready, err)
 		}
 	}
@@ -246,11 +246,11 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err := os.WriteFile(certificatePath, []byte("changed"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	err = processes[0].command.Wait()
-	processes[0].joined = true
+	err = processes[0].Command.Wait()
+	processes[0].Joined = true
 	var retired *exec.ExitError
 	if !errors.As(err, &retired) || retired.ExitCode() != 1 {
-		t.Fatal("original changed-input retirement", err, processes[0].diagnostic.String())
+		t.Fatal("original changed-input retirement", err, processes[0].Diagnostic.String())
 	}
 	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e == nil && response.Status == "ok" {
 		t.Fatal("changed original input retained an accepting path")
@@ -284,21 +284,21 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	// A failed original completion retains the serving producer. Restored input
 	// bytes cannot revive the retired lifetime, and a separate new invocation
 	// refuses before listening; only bounded recovery removes that producer.
-	refusal := processes[0].command.Wait()
-	processes[0].joined = true
-	if e := processes[0].stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
+	refusal := processes[0].Command.Wait()
+	processes[0].Joined = true
+	if e := processes[0].Stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
 		t.Fatal(e)
 	}
 	var refusedExit *exec.ExitError
 	if !errors.As(refusal, &refusedExit) || refusedExit.ExitCode() != 1 {
-		t.Fatal("separate new Source adopted a retained producer", refusal, processes[0].diagnostic.String())
+		t.Fatal("separate new Source adopted a retained producer", refusal, processes[0].Diagnostic.String())
 	}
 	var refusalTerminal struct {
 		Phase, Outcome string
 		First          string `json:"first_owner"`
 	}
-	if raw := bytes.TrimSpace([]byte(processes[0].diagnostic.String())); json.Unmarshal(raw, &refusalTerminal) != nil || refusalTerminal.Phase != "refused" || refusalTerminal.First != "state" {
-		t.Fatal("retained producer refusal cause", processes[0].diagnostic.String())
+	if raw := bytes.TrimSpace([]byte(processes[0].Diagnostic.String())); json.Unmarshal(raw, &refusalTerminal) != nil || refusalTerminal.Phase != "refused" || refusalTerminal.First != "state" {
+		t.Fatal("retained producer refusal cause", processes[0].Diagnostic.String())
 	}
 	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e == nil && response.Status == "ok" {
 		t.Fatal("refused invocation left an accepting path")
@@ -307,19 +307,19 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		t.Fatal(e)
 	}
 	second := processes[1]
-	if e := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGTERM", second.unit).Run(); e != nil {
+	if e := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGTERM", second.Unit).Run(); e != nil {
 		t.Fatal(e)
 	}
-	waitErr := second.command.Wait()
-	second.joined = true
+	waitErr := second.Command.Wait()
+	second.Joined = true
 	// Cmd.Wait owns closing its StdoutPipe after original process join.
 	// A second Close observes that completed ownership, not a runtime error.
-	if e := second.stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
+	if e := second.Stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
 		t.Fatal(e)
 	}
 	var exited *exec.ExitError
 	if !errors.As(waitErr, &exited) || exited.ExitCode() != 130 {
-		t.Fatal("original physical Wait", waitErr, second.diagnostic.String())
+		t.Fatal("original physical Wait", waitErr, second.Diagnostic.String())
 	}
 	for i := range networks {
 		reopened, e := networks[i].Config()

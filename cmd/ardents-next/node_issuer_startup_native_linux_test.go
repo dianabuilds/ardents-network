@@ -37,7 +37,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					}
 					clock, closeClock := joinProcessClock(t)
 					defer closeClock()
-					network := seedNativeNodeState(t, f, bundle, clock)
+					network := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 					id := f.profile.IssuerNodeID
 					certificate := certificates[id]
 					if fault == "tls-key" {
@@ -78,13 +78,13 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					sockets[id]()
 					p := launchNativeIssuer(t, binary, hostingConfig(t, plan))
 					var event map[string]string
-					decodeErr := json.NewDecoder(p.stdout).Decode(&event)
-					err = p.command.Wait()
-					p.joined = true
-					_ = p.stdout.Close()
+					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
+					err = p.Command.Wait()
+					p.Joined = true
+					_ = p.Stdout.Close()
 					var exit *exec.ExitError
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
-						t.Fatal("actual partial startup did not refuse", fault, err, p.diagnostic.String())
+						t.Fatal("actual partial startup did not refuse", fault, err, p.Diagnostic.String())
 					}
 					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.issuer" || event["phase"] != "refused") {
 						t.Fatal("startup refusal lost finite projection", event, decodeErr)

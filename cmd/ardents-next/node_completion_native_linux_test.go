@@ -56,7 +56,7 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			clear(key)
 			clear(encoded)
 			participation := filepath.Join(t.TempDir(), "participation")
-			plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
+			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{12}]()
 			process := startNativeForwarding(t, binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
@@ -76,23 +76,23 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 				t.Fatal(err)
 			}
 			defer journal.Close()
-			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.unit).Run(); err != nil {
+			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.Unit).Run(); err != nil {
 				t.Fatal(err)
 			}
-			waitErr := process.command.Wait()
-			process.joined = true // Actual manager/process join, not Node completion.
-			_ = process.stdout.Close()
+			waitErr := process.Command.Wait()
+			process.Joined = true // Actual manager/process join, not Node completion.
+			_ = process.Stdout.Close()
 			var exit *exec.ExitError
 			var event map[string]string
-			decodeErr := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String())).Decode(&event)
+			decodeErr := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String())).Decode(&event)
 			if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 || decodeErr != nil || event["phase"] != "retiring" || event["outcome"] != "completion-unavailable" {
-				t.Fatal("bounded command wait fabricated original completion", waitErr, decodeErr, process.diagnostic.String())
+				t.Fatal("bounded command wait fabricated original completion", waitErr, decodeErr, process.Diagnostic.String())
 			}
 			var first struct{ Kind, Phase, Cause string }
 			if err := json.Unmarshal([]byte(event["first_failure"]), &first); err != nil || first.Kind != "logical" || first.Phase != "serving" || first.Cause != "canceled" {
-				t.Fatal("bounded unknown completion lost known original caller cause", err, process.diagnostic.String())
+				t.Fatal("bounded unknown completion lost known original caller cause", err, process.Diagnostic.String())
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); !os.IsNotExist(err) {
 				t.Fatal("original process remains after manager join", err)
 			}
 			conflict, err := journal.Conflict(member.NodeID, member.FamilyID)
@@ -137,7 +137,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 			defer closeClock()
 			certificate, key := nativeDescriptorCredential(t, certificates[[32]byte{17}])
 			participation := filepath.Join(t.TempDir(), "participation")
-			networkPlan := seedNativeNodeState(t, f, bundle, clock)
+			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{17}, "process_profile": "ardents-descriptor-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "descriptor_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{17}]()
 			process := startNativeDescriptor(t, binary, hostingConfig(t, plan), 91)
@@ -158,17 +158,17 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 				t.Fatal(err)
 			}
 			defer journal.Close()
-			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.unit).Run(); err != nil {
+			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.Unit).Run(); err != nil {
 				t.Fatal(err)
 			}
 			deadline := time.Now().Add(500 * time.Millisecond)
-			for !bytes.Contains([]byte(process.diagnostic.String()), []byte("completion-unavailable")) {
+			for !bytes.Contains([]byte(process.Diagnostic.String()), []byte("completion-unavailable")) {
 				if time.Now().After(deadline) {
-					t.Fatal("bounded unavailable report absent", process.diagnostic.String())
+					t.Fatal("bounded unavailable report absent", process.Diagnostic.String())
 				}
 				time.Sleep(5 * time.Millisecond)
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); err != nil {
 				t.Fatal("command exited before original producer join", err)
 			}
 			stateConfig, err := networkPlan.Config()
@@ -180,22 +180,22 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 				_ = duplicate.Close()
 				t.Fatal("command returned original State before physical join")
 			}
-			waitErr := process.command.Wait()
-			process.joined = true
-			_ = process.stdout.Close()
+			waitErr := process.Command.Wait()
+			process.Joined = true
+			_ = process.Stdout.Close()
 			var exit *exec.ExitError
-			decoder := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String()))
+			decoder := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String()))
 			var unavailable, terminal map[string]string
 			if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 {
-				t.Fatal("bounded failure replaced by success", waitErr, process.diagnostic.String())
+				t.Fatal("bounded failure replaced by success", waitErr, process.Diagnostic.String())
 			}
 			if err := decoder.Decode(&unavailable); err != nil || unavailable["operation"] != "node.descriptor" || unavailable["phase"] != "retiring" || unavailable["outcome"] != "completion-unavailable" {
 				t.Fatal("unavailable projection changed", unavailable, err)
 			}
 			if err := decoder.Decode(&terminal); err != nil || terminal["phase"] != "joined" || terminal["outcome"] != "failed" || terminal["cleanup_owner"] != "participation" {
-				t.Fatal("failed producer cleanup reported withdrawal", terminal, err, process.diagnostic.String())
+				t.Fatal("failed producer cleanup reported withdrawal", terminal, err, process.Diagnostic.String())
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); !os.IsNotExist(err) {
 				t.Fatal("original process remains after manager join", err)
 			}
 			conflict, err := journal.Conflict(member.NodeID, member.FamilyID)
@@ -240,7 +240,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 			defer closeClock()
 			certificate, key := nativeDescriptorCredential(t, certificates[[32]byte{25}])
 			participation := filepath.Join(t.TempDir(), "participation")
-			networkPlan := seedNativeNodeState(t, f, bundle, clock)
+			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{25}, "process_profile": "ardents-introduction-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "introduction_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			if err := os.Chmod(plan["introduction_root"].(string), 0700); err != nil {
 				t.Fatal(err)
@@ -264,17 +264,17 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 				t.Fatal(err)
 			}
 			defer journal.Close()
-			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.unit).Run(); err != nil {
+			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.Unit).Run(); err != nil {
 				t.Fatal(err)
 			}
 			deadline := time.Now().Add(500 * time.Millisecond)
-			for !bytes.Contains([]byte(process.diagnostic.String()), []byte("completion-unavailable")) {
+			for !bytes.Contains([]byte(process.Diagnostic.String()), []byte("completion-unavailable")) {
 				if time.Now().After(deadline) {
-					t.Fatal("bounded unavailable report absent", process.diagnostic.String())
+					t.Fatal("bounded unavailable report absent", process.Diagnostic.String())
 				}
 				time.Sleep(5 * time.Millisecond)
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); err != nil {
 				t.Fatal("command exited before original producer join", err)
 			}
 			stateConfig, err := networkPlan.Config()
@@ -286,22 +286,22 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 				_ = duplicate.Close()
 				t.Fatal("command returned original State before physical join")
 			}
-			waitErr := process.command.Wait()
-			process.joined = true
-			_ = process.stdout.Close()
+			waitErr := process.Command.Wait()
+			process.Joined = true
+			_ = process.Stdout.Close()
 			var exit *exec.ExitError
-			decoder := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String()))
+			decoder := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String()))
 			var unavailable, terminal map[string]string
 			if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 {
-				t.Fatal("bounded failure replaced by success", waitErr, process.diagnostic.String())
+				t.Fatal("bounded failure replaced by success", waitErr, process.Diagnostic.String())
 			}
 			if err := decoder.Decode(&unavailable); err != nil || unavailable["operation"] != "node.introduction" || unavailable["phase"] != "retiring" || unavailable["outcome"] != "completion-unavailable" {
 				t.Fatal("unavailable projection changed", unavailable, err)
 			}
 			if err := decoder.Decode(&terminal); err != nil || terminal["phase"] != "joined" || terminal["outcome"] != "failed" || terminal["cleanup_owner"] != "participation" {
-				t.Fatal("failed producer cleanup reported withdrawal", terminal, err, process.diagnostic.String())
+				t.Fatal("failed producer cleanup reported withdrawal", terminal, err, process.Diagnostic.String())
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); !os.IsNotExist(err) {
 				t.Fatal("original process remains after manager join", err)
 			}
 			conflict, err := journal.Conflict(member.NodeID, member.FamilyID)
@@ -361,7 +361,7 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 			clear(key)
 			clear(encoded)
 			participation := filepath.Join(t.TempDir(), "participation")
-			plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": [32]byte{11}, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "issuance": nativeIssuerIssuanceInput(f.plan), "retirement_wait_ms": 1}
+			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{11}, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "issuance": nativeIssuerIssuanceInput(f.plan), "retirement_wait_ms": 1}
 			sockets[[32]byte{11}]()
 			process := startNativeIssuer(t, binary, hostingConfig(t, plan))
 			view, err := f.current()
@@ -381,15 +381,15 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 				t.Fatal(err)
 			}
 			defer journal.Close()
-			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.unit).Run(); err != nil {
+			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.Unit).Run(); err != nil {
 				t.Fatal(err)
 			}
 			// The public bounded timeout is observed while the actual producer close
 			// is waiting on its occupied native journal; process absence is not join.
 			deadline := time.Now().Add(500 * time.Millisecond)
-			for !bytes.Contains([]byte(process.diagnostic.String()), []byte("completion-unavailable")) {
+			for !bytes.Contains([]byte(process.Diagnostic.String()), []byte("completion-unavailable")) {
 				if time.Now().After(deadline) {
-					t.Fatal("original command did not report bounded unavailable completion", process.diagnostic.String())
+					t.Fatal("original command did not report bounded unavailable completion", process.Diagnostic.String())
 				}
 				select {
 				case <-time.After(5 * time.Millisecond):
@@ -397,24 +397,24 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 					t.Fatal(t.Context().Err())
 				}
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
-				t.Fatal("Issuer exited ahead of original producer join", err, process.diagnostic.String())
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); err != nil {
+				t.Fatal("Issuer exited ahead of original producer join", err, process.Diagnostic.String())
 			}
-			waitErr := process.command.Wait()
-			process.joined = true // Actual manager/process join, not Node completion.
-			_ = process.stdout.Close()
+			waitErr := process.Command.Wait()
+			process.Joined = true // Actual manager/process join, not Node completion.
+			_ = process.Stdout.Close()
 			var exit *exec.ExitError
 			var event map[string]string
-			decoder := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String()))
+			decoder := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String()))
 			decodeErr := decoder.Decode(&event)
 			if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 || decodeErr != nil || event["phase"] != "retiring" || event["outcome"] != "completion-unavailable" {
-				t.Fatal("bounded command wait fabricated original completion", waitErr, decodeErr, process.diagnostic.String())
+				t.Fatal("bounded command wait fabricated original completion", waitErr, decodeErr, process.Diagnostic.String())
 			}
 			var terminal map[string]string
 			if err := decoder.Decode(&terminal); err != nil || terminal["phase"] != "joined" || terminal["outcome"] != "failed" || terminal["cleanup_owner"] != "participation" {
-				t.Fatal("unavailable command lost retained failed producer cleanup", err, terminal, process.diagnostic.String())
+				t.Fatal("unavailable command lost retained failed producer cleanup", err, terminal, process.Diagnostic.String())
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); !os.IsNotExist(err) {
 				t.Fatal("original process remains after manager join", err)
 			}
 			conflict, err := journal.Conflict(member.NodeID, member.FamilyID)
@@ -459,7 +459,7 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			defer closeClock()
 			certificate, key := nativeDescriptorCredential(t, certificates[[32]byte{20}])
 			participation := filepath.Join(t.TempDir(), "participation")
-			networkPlan := seedNativeNodeState(t, f, bundle, clock)
+			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{20}, "process_profile": "ardents-join-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{20}]()
 			process := startNativeJoin(t, binary, hostingConfig(t, plan), 91)
@@ -480,17 +480,17 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 				t.Fatal(err)
 			}
 			defer journal.Close()
-			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.unit).Run(); err != nil {
+			if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGINT", process.Unit).Run(); err != nil {
 				t.Fatal(err)
 			}
 			deadline := time.Now().Add(500 * time.Millisecond)
-			for !bytes.Contains([]byte(process.diagnostic.String()), []byte("completion-unavailable")) {
+			for !bytes.Contains([]byte(process.Diagnostic.String()), []byte("completion-unavailable")) {
 				if time.Now().After(deadline) {
-					t.Fatal("bounded unavailable report absent", process.diagnostic.String())
+					t.Fatal("bounded unavailable report absent", process.Diagnostic.String())
 				}
 				time.Sleep(5 * time.Millisecond)
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); err != nil {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); err != nil {
 				t.Fatal("command exited before original producer join", err)
 			}
 			stateConfig, err := networkPlan.Config()
@@ -502,22 +502,22 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 				_ = duplicate.Close()
 				t.Fatal("command returned original State before physical join")
 			}
-			waitErr := process.command.Wait()
-			process.joined = true
-			_ = process.stdout.Close()
+			waitErr := process.Command.Wait()
+			process.Joined = true
+			_ = process.Stdout.Close()
 			var exit *exec.ExitError
-			decoder := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String()))
+			decoder := json.NewDecoder(bytes.NewBufferString(process.Diagnostic.String()))
 			var unavailable, terminal map[string]string
 			if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 {
-				t.Fatal("bounded failure replaced by success", waitErr, process.diagnostic.String())
+				t.Fatal("bounded failure replaced by success", waitErr, process.Diagnostic.String())
 			}
 			if err := decoder.Decode(&unavailable); err != nil || unavailable["operation"] != "node.join" || unavailable["phase"] != "retiring" || unavailable["outcome"] != "completion-unavailable" {
 				t.Fatal("unavailable projection changed", unavailable, err)
 			}
 			if err := decoder.Decode(&terminal); err != nil || terminal["phase"] != "joined" || terminal["outcome"] != "failed" || terminal["cleanup_owner"] != "participation" {
-				t.Fatal("failed producer cleanup reported withdrawal", terminal, err, process.diagnostic.String())
+				t.Fatal("failed producer cleanup reported withdrawal", terminal, err, process.Diagnostic.String())
 			}
-			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); !os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.PID))); !os.IsNotExist(err) {
 				t.Fatal("original process remains after manager join", err)
 			}
 			conflict, err := journal.Conflict(member.NodeID, member.FamilyID)

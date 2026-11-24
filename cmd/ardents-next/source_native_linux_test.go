@@ -32,36 +32,12 @@ import (
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
-func launchNativeSource(t *testing.T, binary, plan string) *nativeForwardingProcess {
+func launchNativeSource(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-source-%d-%d.service", os.Getpid(), time.Now().UnixNano())
-	p := &nativeForwardingProcess{unit: unit}
-	p.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "Source original diagnostic", "original Source stop unavailable",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "source", "serve", plan)
-	p.command.Stderr = &p.diagnostic
-	var err error
-	p.stdout, err = p.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !p.joined {
-			if err := exec.Command("systemctl", "stop", unit).Run(); err != nil {
-				t.Error("original Source stop unavailable", err)
-			}
-			_ = p.command.Wait()
-			_ = p.stdout.Close()
-			p.joined = true
-		}
-		if t.Failed() {
-			t.Log("Source original diagnostic", p.diagnostic.String())
-		}
-	})
-	return p
 }
 
 func TestNativeSourceAuthenticatedDistributionAndJoinedRetirement(t *testing.T) {
@@ -87,7 +63,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	}
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
-	networkPlan := seedNativeNodeState(t, f, bundle, clock)
+	networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 	server, client, unauthorized, root, serverPin, clientPin := sourcefixture.NativeTLS(t)
 	cert, key := nativeDescriptorCredential(t, server)
 	rootPath := filepath.Join(t.TempDir(), "root.pem")
@@ -124,14 +100,14 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	t.Logf("original Source configuration sha256=%x inputs=%d", inputPins[planPath], len(inputPins))
 	p := launchNativeSource(t, binary, planPath)
 	var ready map[string]string
-	if err := json.NewDecoder(p.stdout).Decode(&ready); err != nil || ready["operation"] != "source.serve" || ready["phase"] != "listening" {
+	if err := json.NewDecoder(p.Stdout).Decode(&ready); err != nil || ready["operation"] != "source.serve" || ready["phase"] != "listening" {
 		t.Fatal("original Source startup", ready, err)
 	}
-	pid, err := exec.Command("systemctl", "show", p.unit, "-p", "MainPID", "--value").Output()
+	pid, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(pid), "%d", &p.pid); err != nil || p.pid < 2 {
+	if _, err := fmt.Sscanf(string(pid), "%d", &p.PID); err != nil || p.PID < 2 {
 		t.Fatal("original Source MainPID unavailable", err)
 	}
 	public := f.spec.Authority.Public().(ed25519.PublicKey)
@@ -244,11 +220,11 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	}
 	switch mode {
 	case "cancel":
-		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGTERM", p.unit).Run(); err != nil {
+		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGTERM", p.Unit).Run(); err != nil {
 			t.Fatal(err)
 		}
 	case "protection-loss":
-		if err := exec.Command("systemctl", "set-property", "--runtime", p.unit, "CPUQuota=50%").Run(); err != nil {
+		if err := exec.Command("systemctl", "set-property", "--runtime", p.Unit, "CPUQuota=50%").Run(); err != nil {
 			t.Fatal(err)
 		}
 	case "cpu-pressure":
@@ -341,9 +317,9 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 			}
 		}
 	}
-	err = p.command.Wait()
-	p.joined = true
-	_ = p.stdout.Close()
+	err = p.Command.Wait()
+	p.Joined = true
+	_ = p.Stdout.Close()
 	var exited *exec.ExitError
 	var terminal struct {
 		Phase, Outcome string
@@ -354,15 +330,15 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if mode != "cancel" {
 		expectedCode, expectedOutcome = 1, "failed"
 	}
-	if !errors.As(err, &exited) || exited.ExitCode() != expectedCode || json.Unmarshal(bytes.TrimSpace([]byte(p.diagnostic.String())), &terminal) != nil || terminal.Phase != "joined" || terminal.Outcome != expectedOutcome {
-		t.Fatal("original Source joined outcome", err, p.diagnostic.String())
+	if !errors.As(err, &exited) || exited.ExitCode() != expectedCode || json.Unmarshal(bytes.TrimSpace([]byte(p.Diagnostic.String())), &terminal) != nil || terminal.Phase != "joined" || terminal.Outcome != expectedOutcome {
+		t.Fatal("original Source joined outcome", err, p.Diagnostic.String())
 	}
 	if mode != "cancel" && !strings.HasPrefix(mode, "input:") && terminal.First != "process" {
-		t.Fatal("retained original process cause absent", p.diagnostic.String())
+		t.Fatal("retained original process cause absent", p.Diagnostic.String())
 	}
 	if strings.HasPrefix(mode, "input:") {
 		if terminal.First != "input" {
-			t.Fatal("original input refusal cause absent", p.diagnostic.String())
+			t.Fatal("original input refusal cause absent", p.Diagnostic.String())
 		}
 		restore()
 		if response, err := fetch(clientConfig, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(networkPlan.NetworkID)}); err == nil && response.Status == "ok" {
@@ -370,7 +346,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 		}
 	}
 	if mode == "cpu-pressure" && (terminal.Resource == nil || terminal.Resource.Cause != "cpu-pressure" || terminal.Resource.Observation == nil || terminal.Resource.Observation.CPUPressure < 1 || terminal.Resource.Observation.CPUWindowStarted.IsZero()) {
-		t.Fatal("actual established overload absent", p.diagnostic.String())
+		t.Fatal("actual established overload absent", p.Diagnostic.String())
 	}
 	config, err := networkPlan.Config()
 	if err != nil {

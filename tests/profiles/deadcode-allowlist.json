@@ -61,11 +61,15 @@
         "symbols": [
           "tests/e2e/node.DiagnosticBuffer.String",
           "tests/e2e/node.DiagnosticBuffer.Write",
+          "tests/e2e/node.Launch",
+          "tests/e2e/node.NativeProcess.FailedJoin",
+          "tests/e2e/node.NativeProcess.Stop",
           "tests/e2e/node.PinnedCommand",
+          "tests/e2e/node.SeedNetworkState",
           "tests/e2e/node.verifyPinnedCommand"
         ],
         "classification": "native Node process-test driver",
-        "rationale": "Only the native Node and Source test drivers verify the pinned CLI and collect original child diagnostics; production commands never call these helpers.",
+        "rationale": "Only the native Node and Source profiles verify the pinned CLI, launch measured child services, and collect original joined diagnostics here.",
         "owner": "Node process tests",
         "retirement": "Remove when the native process test drivers retire."
       },

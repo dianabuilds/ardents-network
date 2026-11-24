@@ -133,7 +133,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			if err := os.Chmod(historyRoot, 0700); err != nil {
 				t.Fatal(err)
 			}
-			nodePlan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": [32]byte{25}, "process_profile": processresource.IntroductionProfile,
+			nodePlan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{25}, "process_profile": processresource.IntroductionProfile,
 				"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spendRoot, "hosting_root": routeProcessBudget(t), "introduction_root": historyRoot,
 				"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			if mode == "undercoverage" {
@@ -198,7 +198,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 					t.Fatal("pre-spend undercoverage changed spend/history", readErr, historyErr)
 				}
 				_ = intro.Close() // failed child retains its true physical result
-				process.stop(t, true)
+				process.Stop(t, true)
 				return
 			}
 			if err != nil {
@@ -307,25 +307,25 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 				if err := os.Remove(path); err != nil {
 					t.Fatal(err)
 				}
-				process.failedJoin(t, "introduction")
+				process.FailedJoin(t, "introduction")
 				// Restoration is only evidence for a separate full reopen; the
 				// failed original has physically joined and cannot revive.
 				if err := os.WriteFile(path, before, 0600); err != nil {
 					t.Fatal(err)
 				}
 			} else if mode == "protection-loss" {
-				if err := exec.Command("systemctl", "set-property", "--runtime", process.unit, "CPUQuota=50%").Run(); err != nil {
+				if err := exec.Command("systemctl", "set-property", "--runtime", process.Unit, "CPUQuota=50%").Run(); err != nil {
 					t.Fatal(err)
 				}
-				process.failedJoin(t, "process")
+				process.FailedJoin(t, "process")
 			} else if mode == "clock-loss" {
 				stopClock()
 				if err := os.Remove(clock); err != nil {
 					t.Fatal(err)
 				}
-				process.failedJoin(t, "network")
+				process.FailedJoin(t, "network")
 			} else {
-				process.stop(t)
+				process.Stop(t)
 			}
 			retained, err := introduction.OpenHistory(historyRoot, introduction.Binding{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, ReceiverNodeID: [32]byte{25}, ReceiverDutyGeneration: 9})
 			if err != nil {
@@ -343,48 +343,26 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 		})
 	}
 }
-func launchNativeIntroduction(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func launchNativeIntroduction(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-introduction-%d-%d.service", os.Getpid(), index)
-	p := &nativeForwardingProcess{unit: unit}
-	p.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "original Introduction retained diagnostic", "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "introduction", "--config", plan)
-	p.command.Stderr = &p.diagnostic
-	var err error
-	p.stdout, err = p.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !p.joined {
-			_ = exec.Command("systemctl", "stop", unit).Run()
-			_ = p.command.Wait()
-			_ = p.stdout.Close()
-			p.joined = true
-		}
-		if t.Failed() {
-			t.Log("original Introduction retained diagnostic", p.diagnostic.String())
-		}
-	})
-	return p
 }
 
-func startNativeIntroduction(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func startNativeIntroduction(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	p := launchNativeIntroduction(t, binary, plan, index)
 	var event map[string]string
-	if err := json.NewDecoder(p.stdout).Decode(&event); err != nil || event["operation"] != "node.introduction" || event["phase"] != "listening" {
-		t.Fatal("genuine original Introduction startup refused", event, err, p.diagnostic.String())
+	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.introduction" || event["phase"] != "listening" {
+		t.Fatal("genuine original Introduction startup refused", event, err, p.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", p.unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.pid); err != nil || p.pid < 2 {
+	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
 		t.Fatal("original Introduction MainPID unavailable", err)
 	}
 	return p
@@ -406,7 +384,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					id := [32]byte{25}
 					cert, key := nativeDescriptorCredential(t, certificates[id])
 					participation, spend, budget, historyRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t), t.TempDir()
-					plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "process_profile": processresource.IntroductionProfile,
+					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.IntroductionProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget, "introduction_root": historyRoot,
 						"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 					if err := os.Chmod(historyRoot, 0700); err != nil {
@@ -442,13 +420,13 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					sockets[id]()
 					p := launchNativeIntroduction(t, binary, hostingConfig(t, plan), id[0])
 					var event map[string]string
-					decodeErr := json.NewDecoder(p.stdout).Decode(&event)
-					err = p.command.Wait()
-					p.joined = true
-					_ = p.stdout.Close()
+					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
+					err = p.Command.Wait()
+					p.Joined = true
+					_ = p.Stdout.Close()
 					var exit *exec.ExitError
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
-						t.Fatal("actual Introduction startup did not refuse", err, p.diagnostic.String())
+						t.Fatal("actual Introduction startup did not refuse", err, p.Diagnostic.String())
 					}
 					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.introduction" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
 						t.Fatal("partial startup lost bounded refusal", event, decodeErr)
@@ -505,12 +483,12 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					if fault == "foreign-history" {
 						retained := launchNativeIntroduction(t, binary, hostingConfig(t, plan), id[0])
 						var refusal map[string]string
-						if err := json.NewDecoder(retained.stdout).Decode(&refusal); err != nil || refusal["phase"] != "refused" {
+						if err := json.NewDecoder(retained.Stdout).Decode(&refusal); err != nil || refusal["phase"] != "refused" {
 							t.Fatal("retained empty receiving root recreated birth fact", refusal, err)
 						}
-						joined := retained.command.Wait()
-						retained.joined = true
-						_ = retained.stdout.Close()
+						joined := retained.Command.Wait()
+						retained.Joined = true
+						_ = retained.Stdout.Close()
 						var exit *exec.ExitError
 						if !errors.As(joined, &exit) || exit.ExitCode() != 1 {
 							t.Fatal("retained root admitted after rejected History", joined)
@@ -521,7 +499,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 						}
 					}
 					fresh := startNativeIntroduction(t, binary, hostingConfig(t, plan), id[0])
-					fresh.stop(t)
+					fresh.Stop(t)
 				})
 			}
 		})

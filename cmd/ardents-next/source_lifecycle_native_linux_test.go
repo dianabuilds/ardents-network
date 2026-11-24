@@ -53,36 +53,12 @@ import (
 // executing a replaced program binary belongs to that installed sequence. One
 // fixture operator, not independent participants.
 
-func launchRetainedSource(t *testing.T, binary, plan string) *nativeForwardingProcess {
+func launchRetainedSource(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-source-retained-%d-%d.service", os.Getpid(), time.Now().UnixNano())
-	p := &nativeForwardingProcess{unit: unit}
-	p.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "retained Source original diagnostic", "original retained Source stop unavailable",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "source", "serve-retained", plan)
-	p.command.Stderr = &p.diagnostic
-	var err error
-	p.stdout, err = p.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !p.joined {
-			if err := exec.Command("systemctl", "stop", unit).Run(); err != nil {
-				t.Error("original retained Source stop unavailable", err)
-			}
-			_ = p.command.Wait()
-			_ = p.stdout.Close()
-			p.joined = true
-		}
-		if t.Failed() {
-			t.Log("retained Source original diagnostic", p.diagnostic.String())
-		}
-	})
-	return p
 }
 
 type retainedSourceTerminal struct {
@@ -93,18 +69,18 @@ type retainedSourceTerminal struct {
 // joinRetainedSource optionally signals the original main process, then joins
 // the actual command and decodes its terminal report. An empty signal waits for
 // a self-refusing invocation. Killed processes may leave no report at all.
-func joinRetainedSource(t *testing.T, p *nativeForwardingProcess, signal string) (int, retainedSourceTerminal, []byte) {
+func joinRetainedSource(t *testing.T, p *nodefixture.NativeProcess, signal string) (int, retainedSourceTerminal, []byte) {
 	t.Helper()
 	if signal != "" {
-		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.unit).Run(); err != nil {
+		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.Unit).Run(); err != nil {
 			t.Fatal("original retained Source signal", signal, err)
 		}
 	}
 	// Wait closes the original StdoutPipe; drain the actual output to EOF
 	// (process exit) before reaping, for both signaled and self-refusing runs.
-	stdout, readErr := io.ReadAll(p.stdout)
-	err := p.command.Wait()
-	p.joined = true
+	stdout, readErr := io.ReadAll(p.Stdout)
+	err := p.Command.Wait()
+	p.Joined = true
 	if readErr != nil {
 		t.Fatal("original retained Source stdout", readErr)
 	}
@@ -117,7 +93,7 @@ func joinRetainedSource(t *testing.T, p *nativeForwardingProcess, signal string)
 		code = exited.ExitCode()
 	}
 	var terminal retainedSourceTerminal
-	if raw := bytes.TrimSpace([]byte(p.diagnostic.String())); len(raw) > 0 {
+	if raw := bytes.TrimSpace([]byte(p.Diagnostic.String())); len(raw) > 0 {
 		if json.Unmarshal(raw, &terminal) != nil {
 			t.Fatal("original retained Source terminal report", string(raw))
 		}
@@ -215,18 +191,18 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 			}
 		}
 	}
-	waitListening := func(p *nativeForwardingProcess, phase string) {
+	waitListening := func(p *nodefixture.NativeProcess, phase string) {
 		t.Helper()
 		var ready map[string]string
-		if err := json.NewDecoder(p.stdout).Decode(&ready); err != nil || ready["operation"] != "source.serve" || ready["phase"] != "listening" {
+		if err := json.NewDecoder(p.Stdout).Decode(&ready); err != nil || ready["operation"] != "source.serve" || ready["phase"] != "listening" {
 			t.Fatal(phase, "retained Source startup", ready, err)
 		}
 	}
-	cleanStop := func(p *nativeForwardingProcess, phase string) {
+	cleanStop := func(p *nodefixture.NativeProcess, phase string) {
 		t.Helper()
 		code, terminal, _ := joinRetainedSource(t, p, "SIGTERM")
 		if code != 130 || terminal.Phase != "joined" || terminal.Outcome != "canceled" {
-			t.Fatal(phase, "original joined cancellation", code, terminal, p.diagnostic.String())
+			t.Fatal(phase, "original joined cancellation", code, terminal, p.Diagnostic.String())
 		}
 	}
 

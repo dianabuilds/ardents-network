@@ -35,7 +35,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					id := [32]byte{20}
 					cert, key := nativeDescriptorCredential(t, certificates[id])
 					participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t)
-					plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile,
+					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile,
 						"participation_root": participation, "spend_root": spend, "hosting_root": budget,
 						"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 					expected := 1
@@ -68,13 +68,13 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					}
 					p := launchNativeJoin(t, binary, hostingConfig(t, plan), id[0])
 					var event map[string]string
-					decodeErr := json.NewDecoder(p.stdout).Decode(&event)
-					err = p.command.Wait()
-					p.joined = true
-					_ = p.stdout.Close()
+					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
+					err = p.Command.Wait()
+					p.Joined = true
+					_ = p.Stdout.Close()
 					var exit *exec.ExitError
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
-						t.Fatal("actual Join startup did not refuse", err, p.diagnostic.String())
+						t.Fatal("actual Join startup did not refuse", err, p.Diagnostic.String())
 					}
 					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.join" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
 						t.Fatal("partial startup lost bounded refusal", event, decodeErr)
@@ -129,7 +129,7 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					plan["hosting_root"], plan["spend_root"] = budget, spend
 					sockets[id]()
 					fresh := startNativeJoin(t, binary, hostingConfig(t, plan), id[0])
-					fresh.stop(t)
+					fresh.Stop(t)
 				})
 			}
 		})

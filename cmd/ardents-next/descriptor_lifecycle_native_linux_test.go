@@ -45,48 +45,26 @@ import (
 // ardents-descriptor.service, no loaded-manager platform check pre-start and no
 // repair-retained manager qualification. One fixture operator, not independent
 // participants.
-func launchRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func launchRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-descriptor-retained-%d-%d.service", os.Getpid(), index)
-	process := &nativeForwardingProcess{unit: unit}
-	process.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "retained Descriptor original diagnostic", "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "descriptor", "--retained-config", plan)
-	process.command.Stderr = &process.diagnostic
-	var err error
-	process.stdout, err = process.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := process.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !process.joined {
-			_ = exec.Command("systemctl", "stop", unit).Run()
-			_ = process.command.Wait()
-			_ = process.stdout.Close()
-			process.joined = true
-		}
-		if t.Failed() {
-			t.Log("retained Descriptor original diagnostic", process.diagnostic.String())
-		}
-	})
-	return process
 }
 
-func startRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func startRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	process := launchRetainedDescriptor(t, binary, plan, index)
 	var event map[string]string
-	if err := json.NewDecoder(process.stdout).Decode(&event); err != nil || event["operation"] != "node.descriptor" || event["phase"] != "listening" {
-		t.Fatal("genuine retained Descriptor startup refused", event, err, process.diagnostic.String())
+	if err := json.NewDecoder(process.Stdout).Decode(&event); err != nil || event["operation"] != "node.descriptor" || event["phase"] != "listening" {
+		t.Fatal("genuine retained Descriptor startup refused", event, err, process.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", process.unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", process.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &process.pid); err != nil || process.pid < 2 {
+	if _, err := fmt.Sscanf(string(raw), "%d", &process.PID); err != nil || process.PID < 2 {
 		t.Fatal("actual retained Descriptor MainPID unavailable", err)
 	}
 	return process
@@ -94,16 +72,16 @@ func startRetainedDescriptor(t *testing.T, binary, plan string, index byte) *nat
 
 // joinRetainedDescriptor signals (or waits for a self-refusing invocation) and
 // joins the actual command, returning the exit code and the stdout report.
-func joinRetainedDescriptor(t *testing.T, p *nativeForwardingProcess, signal string) (int, map[string]string) {
+func joinRetainedDescriptor(t *testing.T, p *nodefixture.NativeProcess, signal string) (int, map[string]string) {
 	t.Helper()
 	if signal != "" {
-		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.unit).Run(); err != nil {
+		if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal="+signal, p.Unit).Run(); err != nil {
 			t.Fatal("retained Descriptor signal", signal, err)
 		}
 	}
-	stdout, readErr := io.ReadAll(p.stdout)
-	err := p.command.Wait()
-	p.joined = true
+	stdout, readErr := io.ReadAll(p.Stdout)
+	err := p.Command.Wait()
+	p.Joined = true
 	if readErr != nil {
 		t.Fatal("retained Descriptor stdout", readErr)
 	}
@@ -133,7 +111,7 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	}
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
-	networkPlan := seedNativeNodeState(t, f, bundle, clock)
+	networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 
 	id := [32]byte{17}
 	certPath, keyPath := nativeDescriptorCredential(t, certificates[id])
@@ -184,14 +162,14 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	// stop joins and removes the producer.
 	first := startNativeDescriptor(t, binary, planPath, id[0])
 	producerPresent(true, "first launch")
-	first.stop(t)
+	first.Stop(t)
 	producerPresent(false, "first completion")
 
 	// Retained relaunch over the existing histories: a new independently checked
 	// invocation claims the producer again and joins cleanly.
 	relaunch := startRetainedDescriptor(t, binary, planPath, id[0])
 	producerPresent(true, "retained relaunch")
-	relaunch.stop(t)
+	relaunch.Stop(t)
 	producerPresent(false, "retained relaunch completion")
 
 	// A killed retained invocation supplies no completion evidence: the live
@@ -218,7 +196,7 @@ func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
 	refused := launchRetainedDescriptor(t, binary, planPath, id[0])
 	code, event := joinRetainedDescriptor(t, refused, "")
 	if code != 1 || event["phase"] != "refused" {
-		t.Fatal("retained producer adopted after crash", code, event, refused.diagnostic.String())
+		t.Fatal("retained producer adopted after crash", code, event, refused.Diagnostic.String())
 	}
 	producerPresent(true, "after refused relaunch")
 }

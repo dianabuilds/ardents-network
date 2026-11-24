@@ -60,7 +60,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			processes := map[[32]byte]*nativeForwardingProcess{}
+			processes := map[[32]byte]*nodefixture.NativeProcess{}
 			plans := map[[32]byte]map[string]any{}
 			before := map[[32]byte][]byte{}
 			for _, id := range [][32]byte{{20}, {21}} {
@@ -74,7 +74,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				if mode == "undercoverage" {
 					work--
 				}
-				plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: work}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+				plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": id, "process_profile": processresource.JoinProfile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: work}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				sockets[id]()
 				processes[id] = startNativeJoin(t, binary, hostingConfig(t, plan), id[0])
 				plans[id] = plan
@@ -167,7 +167,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				_ = userContext.close()
 				_ = publisherContext.close()
 				for _, p := range processes {
-					p.stop(t, true)
+					p.Stop(t, true)
 				}
 				return
 			}
@@ -188,7 +188,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				_ = userContext.close()
 				_ = publisherContext.close()
 				for _, p := range processes {
-					p.stop(t, true)
+					p.Stop(t, true)
 				}
 				return
 			}
@@ -209,20 +209,20 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				if side == 0 && (mode == "caller" || mode == "process-loss" || mode == "clock-loss") {
 					p := processes[recipient.Node]
 					if mode == "caller" {
-						p.stop(t, true)
+						p.Stop(t, true)
 					} else {
 						if mode == "clock-loss" {
 							stopClock()
-						} else if e := exec.Command("systemctl", "set-property", "--runtime", p.unit, "CPUQuota=50%").Run(); e != nil {
+						} else if e := exec.Command("systemctl", "set-property", "--runtime", p.Unit, "CPUQuota=50%").Run(); e != nil {
 							t.Fatal(e)
 						}
-						e := p.command.Wait()
-						p.joined = true
-						_ = p.stdout.Close()
+						e := p.Command.Wait()
+						p.Joined = true
+						_ = p.Stdout.Close()
 						var exit *exec.ExitError
 						var event map[string]string
-						if !errors.As(e, &exit) || exit.ExitCode() != 1 || json.Unmarshal([]byte(p.diagnostic.String()), &event) != nil || event["outcome"] != "failed" {
-							t.Fatal("original post-I/O loss became success", e, p.diagnostic.String())
+						if !errors.As(e, &exit) || exit.ExitCode() != 1 || json.Unmarshal([]byte(p.Diagnostic.String()), &event) != nil || event["outcome"] != "failed" {
+							t.Fatal("original post-I/O loss became success", e, p.Diagnostic.String())
 						}
 					}
 					for _, stream := range streams {
@@ -240,8 +240,8 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 					}
 					if mode != "clock-loss" {
 						for _, other := range processes {
-							if !other.joined {
-								other.stop(t, true)
+							if !other.Joined {
+								other.Stop(t, true)
 							}
 						}
 					}
@@ -270,7 +270,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				}
 			}
 			for id, p := range processes {
-				p.stop(t)
+				p.Stop(t)
 				plan := plans[id]
 				after, e := os.ReadFile(filepath.Join(plan["spend_root"].(string), "closed-token-spends"))
 				if e != nil {
@@ -289,7 +289,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 				}
 				// A separate invocation reopens exact roots and the same ephemeral endpoint.
 				fresh := startNativeJoin(t, binary, hostingConfig(t, plan), id[0])
-				fresh.stop(t)
+				fresh.Stop(t)
 				retained, e := os.ReadFile(filepath.Join(plan["spend_root"].(string), "closed-token-spends"))
 				if e != nil || !bytes.Equal(retained, after) {
 					t.Fatal("reopen reset spends", e)
@@ -299,48 +299,26 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 	}
 }
 
-func launchNativeJoin(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func launchNativeJoin(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-join-%d-%d.service", os.Getpid(), index)
-	p := &nativeForwardingProcess{unit: unit}
-	p.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "original Join retained diagnostic", "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "join", "--config", plan)
-	p.command.Stderr = &p.diagnostic
-	var err error
-	p.stdout, err = p.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !p.joined {
-			_ = exec.Command("systemctl", "stop", unit).Run()
-			_ = p.command.Wait()
-			_ = p.stdout.Close()
-			p.joined = true
-		}
-		if t.Failed() {
-			t.Log("original Join retained diagnostic", p.diagnostic.String())
-		}
-	})
-	return p
 }
 
-func startNativeJoin(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func startNativeJoin(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
 	t.Helper()
 	p := launchNativeJoin(t, binary, plan, index)
 	var event map[string]string
-	if err := json.NewDecoder(p.stdout).Decode(&event); err != nil || event["operation"] != "node.join" || event["phase"] != "listening" {
-		t.Fatal("genuine original Join startup refused", event, err, p.diagnostic.String())
+	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.join" || event["phase"] != "listening" {
+		t.Fatal("genuine original Join startup refused", event, err, p.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", p.unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.pid); err != nil || p.pid < 2 {
+	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
 		t.Fatal("original Join MainPID unavailable", err)
 	}
 	return p

@@ -60,7 +60,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					clear(encoded)
 					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), routeProcessBudget(t)
 					work, termination := hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
-					plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": root, "spend_root": spend, "hosting_root": budgetRoot, "certificate": certPath, "private_key": keyPath, "work": work, "termination": termination, "retirement_wait_ms": 5000}
+					plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": root, "spend_root": spend, "hosting_root": budgetRoot, "certificate": certPath, "private_key": keyPath, "work": work, "termination": termination, "retirement_wait_ms": 5000}
 					sockets[[32]byte{12}]()
 					process := startNativeForwarding(t, binary, hostingConfig(t, plan), 90)
 					holder := routeRoleStock(t, f, false, true)
@@ -189,7 +189,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					// Keep the real peer open until original Node cancellation.
 					// A peer reset before stopping would manufacture collateral
 					// physical failure in the positive cancellation control.
-					process.stop(t, mode != "refill")
+					process.Stop(t, mode != "refill")
 					if blocker != nil {
 						if err := releaseRouteReservation(blocker); err != nil {
 							t.Fatal(err)

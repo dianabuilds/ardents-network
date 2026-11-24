@@ -26,48 +26,26 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-func launchNativeIssuer(t *testing.T, binary, plan string) *nativeForwardingProcess {
+func launchNativeIssuer(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-issuer-%d.service", os.Getpid())
-	p := &nativeForwardingProcess{unit: unit}
-	p.command = exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
+	return nodefixture.Launch(t, unit, "original Issuer retained joined diagnostic", "",
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "issuer", "--config", plan)
-	p.command.Stderr = &p.diagnostic
-	var err error
-	p.stdout, err = p.command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !p.joined {
-			_ = exec.Command("systemctl", "stop", unit).Run()
-			_ = p.command.Wait()
-			_ = p.stdout.Close()
-			p.joined = true
-		}
-		if t.Failed() {
-			t.Log("original Issuer retained joined diagnostic", p.diagnostic.String())
-		}
-	})
-	return p
 }
 
-func startNativeIssuer(t *testing.T, binary, plan string) *nativeForwardingProcess {
+func startNativeIssuer(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
 	t.Helper()
 	p := launchNativeIssuer(t, binary, plan)
 	var event map[string]string
-	if err := json.NewDecoder(p.stdout).Decode(&event); err != nil || event["operation"] != "node.issuer" || event["phase"] != "listening" {
-		t.Fatal("genuine original Issuer startup refused", event, err, p.diagnostic.String())
+	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.issuer" || event["phase"] != "listening" {
+		t.Fatal("genuine original Issuer startup refused", event, err, p.Diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", p.unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.pid); err != nil || p.pid < 2 {
+	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
 		t.Fatal("actual Issuer MainPID unavailable", err)
 	}
 	return p
@@ -108,15 +86,17 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			var clockOnce sync.Once
 			stopIssuerClock := func() { clockOnce.Do(closeIssuerClock) }
 			defer stopIssuerClock()
-			seed := func() state.AuthorityDeclaration { return seedNativeNodeState(t, f, bundle, clock) }
-			var peers []*nativeForwardingProcess
+			seed := func() state.AuthorityDeclaration {
+				return nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
+			}
+			var peers []*nodefixture.NativeProcess
 			var bootstrapPeers []*joinCommandProcess
 			var peerPlans []struct {
 				plan  map[string]any
 				index byte
 			}
 			var budgets []string
-			var original *nativeForwardingProcess
+			var original *nodefixture.NativeProcess
 			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, f.profile.IssuerNodeID} {
 				certificate := certificates[id]
 				certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
@@ -175,11 +155,11 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			}
 			if err := boot.issue(t.Context(), 2, nil); err != nil {
 				_ = boot.close()
-				t.Fatal("actual Node bootstrap Forward stock", err, original.diagnostic.String())
+				t.Fatal("actual Node bootstrap Forward stock", err, original.Diagnostic.String())
 			}
 			if err := boot.issue(t.Context(), 1, [][32]byte{f.profile.IssuerNodeID, f.profile.IssuerNodeID}); err != nil {
 				_ = boot.close()
-				t.Fatal("actual Node bootstrap Control stock", err, original.diagnostic.String())
+				t.Fatal("actual Node bootstrap Control stock", err, original.Diagnostic.String())
 			}
 			if err := boot.close(); err != nil {
 				t.Fatal("bootstrap physical retirement", err)
@@ -209,11 +189,11 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			}
 			if err := ordinary.issue(t.Context(), 2, nil); err != nil {
 				_ = ordinary.close()
-				t.Fatal("actual ordinary Node issuance", err, original.diagnostic.String())
+				t.Fatal("actual ordinary Node issuance", err, original.Diagnostic.String())
 			}
 			if err := ordinary.issue(t.Context(), 3, [][32]byte{f.profile.IssuerNodeID}); err != nil {
 				_ = ordinary.close()
-				t.Fatal("actual class3 finalization", err, original.diagnostic.String())
+				t.Fatal("actual class3 finalization", err, original.Diagnostic.String())
 			}
 			if err := ordinary.close(); err != nil {
 				t.Fatal("ordinary physical join", err)
@@ -231,23 +211,23 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			case "cancel":
 				// All original callers are canceled together below, before joins.
 			case "protection-loss":
-				if err := exec.Command("systemctl", "set-property", "--runtime", original.unit, "CPUQuota=50%").Run(); err != nil {
+				if err := exec.Command("systemctl", "set-property", "--runtime", original.Unit, "CPUQuota=50%").Run(); err != nil {
 					t.Fatal(err)
 				}
-				original.failedJoin(t, "process")
+				original.FailedJoin(t, "process")
 			case "clock-loss":
 				stopIssuerClock()
 				if err := os.Remove(issuerClock); err != nil {
 					t.Fatal(err)
 				}
-				original.failedJoin(t, "network")
+				original.FailedJoin(t, "network")
 			case "key-loss":
 				material := filepath.Join(f.plan.KeyRoot, "issuer.keys")
 				held := filepath.Join(t.TempDir(), "retained-material")
 				if err := os.Rename(material, held); err != nil {
 					t.Fatal(err)
 				}
-				original.failedJoin(t, "issuance")
+				original.FailedJoin(t, "issuance")
 				if err := os.Rename(held, material); err != nil {
 					t.Fatal(err)
 				}
@@ -255,11 +235,11 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			default:
 				t.Fatal("unselected native Issuer failure", fault)
 			}
-			all := append([]*nativeForwardingProcess{original}, peers...)
+			all := append([]*nodefixture.NativeProcess{original}, peers...)
 			signals := []string{"kill", "--kill-whom=main", "--signal=SIGINT"}
 			for _, p := range all {
-				if !p.joined {
-					signals = append(signals, p.unit)
+				if !p.Joined {
+					signals = append(signals, p.Unit)
 				}
 			}
 			if len(signals) > 3 {
@@ -267,13 +247,13 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 					t.Fatal("original caller batch cancellation unavailable", err, string(raw))
 				}
 				for _, p := range all {
-					if !p.joined {
-						p.signaled = true
+					if !p.Joined {
+						p.Signaled = true
 					}
 				}
 			}
 			for _, p := range all {
-				p.stop(t, fault != "cancel")
+				p.Stop(t, fault != "cancel")
 			}
 			for _, root := range budgets {
 				b, err := hosting.Open(root)

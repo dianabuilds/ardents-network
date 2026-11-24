@@ -607,10 +607,14 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	// The native test drivers verify and observe the pinned command only.
+	if localImport && source == "tests/e2e/node/network_state_fixture_linux.go" {
+		return local == "internal/network/state" || local == "tests/epochfixture/network"
+	}
+	// The native test drivers verify the pinned command and prepare signed fixture State.
 	if localImport && local == "tests/e2e/node" {
 		switch source {
-		case "cmd/ardents-next/descriptor_lifecycle_native_linux_test.go", "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go",
+		case "cmd/ardents-next/node_authority_native_linux_test.go",
+			"cmd/ardents-next/descriptor_lifecycle_native_linux_test.go", "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go",
 			"cmd/ardents-next/join_lifecycle_native_linux_test.go", "cmd/ardents-next/node_certificate_process_linux_test.go",
 			"cmd/ardents-next/node_completion_native_linux_test.go", "cmd/ardents-next/node_descriptor_native_linux_test.go",
 			"cmd/ardents-next/node_introduction_native_linux_test.go", "cmd/ardents-next/node_issuer_native_linux_test.go",
