@@ -2983,6 +2983,40 @@ composes that introduction Registry, the Node role lifetimes compose
 `declarations_linux.go` native projections. No de-tagged file adds a native
 mechanism or a weaker accepting path.
 
+Cohort 2b-endpoint (#858, #691) re-verified the Endpoint session/Publisher/Reader
+composition boundary at `d4fd6855f` after Cohort 0 (durablefile Family-A port),
+Cohort 1 N1/N2 (worker attachment peer-credential and introduction slot-history
+Unix ports) and Cohort 2a (node/receiver/serving de-tag). A scratch cross-compile
+probe (de-tag all twelve candidate composition files to `linux || darwin` and
+shift the three `!linux` stubs to `!linux && !darwin`) fails darwin on exactly
+four undefined symbols: `execution/runtime.Owner.LaunchByteStreamPublisher` and
+`LaunchByteStreamReader` (`byte_stream_linux.go`, no refusal stub),
+`connection.StreamFailureReason` (`stream_failure_linux.go`) and
+`application/connection.Refuse` (`server_refusal_linux.go`). The Publisher and
+Reader coordinators and `participant_linux.go` therefore stay Linux: they compose
+the Linux native worker launch seam (systemd/cgroup), and the participant also
+composes the Linux `endpoint/launch`, `declarations_linux.go` and
+`permission_linux.go` projections and `application/connection.Listen`. The session
+`Open*` and Publisher live Open/snapshot compositions compile clean on darwin, but
+their underlying native mechanisms — Hosting `/proc` measurement
+(`hosting/platform_other.go` typed refusal), the native worker launch,
+`publication/instance` custody and the reachability Store — are not Unix-family
+portable. Shifting their `!linux` stubs would admit darwin into the composition
+only to refuse deeper, after `selection.Open` or snapshot file I/O, changing the
+refusal ordering while the required protection stays Linux-only. Per ADR-0129
+(missing protection = explicit typed unavailable, never a weaker accepting path)
+the boundary stays `!linux`. No production tag changed. New `!linux`
+refusal-behavior tests (`session/route_other_test.go`,
+`publisher/opening_other_test.go`, `publisher/snapshot_other_test.go`) execute on
+the Windows/macOS portable lane and pin that each unsupported host returns the
+exact typed platform refusal and creates no filesystem state; a new architecture
+assertion (`TestCohort2bEndpointNativeBoundaryStaysLinux`) pins the Linux-only
+compositions and `!linux` refusals so a future seam port must move the boundary
+deliberately. The deadcode allowlist is unchanged (the stub functions were already
+reachable). The unblocking prerequisite is porting the Hosting measurement, native
+worker launch, Instance custody and reachability Store seams to the Unix family
+with security-equivalence evidence; only then may the stub boundary shift.
+
 P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
 production is already portable: the admission holder permission-request proof,
 the allocation request/decision quota grammar, the token closed-batch blind
