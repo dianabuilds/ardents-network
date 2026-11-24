@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package launch
 
 import (
@@ -6,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // These predicates admit trusted root-owned paths for the Installation lease,
@@ -23,9 +27,9 @@ func sameOwnedFile(before, after os.FileInfo) bool {
 		before.Size() != after.Size() || before.Mode() != after.Mode() || !before.ModTime().Equal(after.ModTime()) {
 		return false
 	}
-	left, leftOK := before.Sys().(*syscall.Stat_t)
-	right, rightOK := after.Sys().(*syscall.Stat_t)
-	return leftOK && rightOK && left.Ctim == right.Ctim
+	left, leftOK := durablefile.InodeChangeTime(before)
+	right, rightOK := durablefile.InodeChangeTime(after)
+	return leftOK && rightOK && left == right
 }
 
 func rootDirectory(info os.FileInfo) bool {
@@ -105,7 +109,12 @@ func sameObservedFile(before, after os.FileInfo) bool {
 	}
 	a, aOK := before.Sys().(*syscall.Stat_t)
 	b, bOK := after.Sys().(*syscall.Stat_t)
-	return aOK && bOK && a.Uid == b.Uid && a.Gid == b.Gid && a.Nlink == 1 && b.Nlink == 1 && a.Ctim == b.Ctim
+	if !aOK || !bOK || a.Uid != b.Uid || a.Gid != b.Gid || a.Nlink != 1 || b.Nlink != 1 {
+		return false
+	}
+	ac, acOK := durablefile.InodeChangeTime(before)
+	bc, bcOK := durablefile.InodeChangeTime(after)
+	return acOK && bcOK && ac == bc
 }
 
 func sameObservedDirectory(original, current os.FileInfo) bool {

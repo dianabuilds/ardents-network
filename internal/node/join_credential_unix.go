@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node
 
@@ -10,6 +10,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -95,14 +96,16 @@ func (c *joinCredential) check() error {
 		if err == nil {
 			var pathInfo os.FileInfo
 			pathInfo, err = os.Lstat(f.Name())
-			if err == nil && (!info.Mode().IsRegular() || !sameProtectedCredential(c.identity[i], info) || !sameProtectedCredential(info, pathInfo) || info.Size() != int64(len(c.contents[i]))) {
+			if err == nil && (!info.Mode().IsRegular() || !durablefile.SameFileIdentity(c.identity[i], info) || !durablefile.SameFileIdentity(info, pathInfo) || info.Size() != int64(len(c.contents[i]))) {
 				err = errors.New("original JOIN credential custody changed")
 			}
 		}
 		if err == nil {
 			original, originalOK := c.identity[i].Sys().(*syscall.Stat_t)
 			current, currentOK := info.Sys().(*syscall.Stat_t)
-			if !originalOK || !currentOK || original.Uid != current.Uid || original.Gid != current.Gid || original.Ctim != current.Ctim {
+			oc, ocOK := durablefile.InodeChangeTime(c.identity[i])
+			cc, ccOK := durablefile.InodeChangeTime(info)
+			if !originalOK || !currentOK || !ocOK || !ccOK || original.Uid != current.Uid || original.Gid != current.Gid || oc != cc {
 				err = errors.New("original JOIN credential metadata changed")
 			}
 		}

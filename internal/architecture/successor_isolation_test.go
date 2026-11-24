@@ -99,14 +99,12 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/admission/spending/inspection_linux.go",
 			"internal/hosting/inspection_linux.go",
 			"internal/node/provisioning/command_linux.go",
-			"internal/platform/artifacts/input_linux_test.go",
 			"internal/network/source/command/prepare_linux.go",
 			"internal/network/source/command/command_linux_test.go",
 			"internal/network/state/source_state_files_linux.go",
 			"internal/network/state/source_state_files_linux_test.go",
-			"internal/platform/artifacts/directory_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
-			"internal/platform/artifacts/input_linux.go",
+			"internal/platform/artifacts/protected_storage_linux.go",
 			"internal/platform/artifacts/receipt_linux.go",
 			"internal/network/source/command/inspect_linux.go",
 			"internal/network/source/inspection/inspection_linux.go",
@@ -205,6 +203,82 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 					t.Errorf("history inspection native profile %s on %s tagged=%v: %v, want %v", name, target, tagged, selected, want)
 				}
 			}
+		}
+	}
+}
+
+// Cohort 0 (#850, portability design audit #848) ported the durable-store
+// inspection idiom to the Unix family (Linux and macOS): the shared
+// internal/durablefile inspection port and the de-tagged consumer mechanisms
+// keep their exact inode-identity, root-custody, mode-bit and single-link
+// semantics on both platforms. Every other platform receives the same explicit
+// typed refusal; the genuine Linux ext4 storage floor and the Linux output
+// composition keep their Linux boundary.
+func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/durablefile/relative_open_unix.go",
+			"internal/durablefile/relative_open_unix_test.go",
+			"internal/durablefile/inspection_identity_unix.go",
+			"internal/durablefile/inspection_identity_unix_test.go",
+			"internal/application/document/snapshot_file_unix.go",
+			"internal/application/document/snapshot_file_unix_test.go",
+			"internal/endpoint/generation/file_unix.go",
+			"internal/endpoint/generation/snapshot_unix.go",
+			"internal/endpoint/generation/directory_unix.go",
+			"internal/endpoint/launch/root_ownership_unix.go",
+			"internal/endpoint/plan/custody_unix.go",
+			"internal/node/credential_unix.go",
+			"internal/node/credential_unix_test.go",
+			"internal/node/join_credential_unix.go",
+			"internal/node/join_credential_unix_test.go",
+			"internal/platform/artifacts/input_unix.go",
+			"internal/platform/artifacts/input_unix_test.go",
+			"internal/platform/artifacts/directory_unix.go",
+			"internal/platform/artifacts/retained_file_unix.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "windows"; selected != want {
+				t.Errorf("Unix-family inspection port %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/application/document/snapshot_file_other.go",
+			"internal/endpoint/plan/custody_other.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "windows"; selected != want {
+				t.Errorf("Unix-family inspection refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/durablefile/inode_times_linux.go",
+			"internal/platform/artifacts/protected_storage_linux.go",
+			"internal/node/provisioning/network_preparation_linux.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("Linux inspection boundary %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		selected, err := profile.MatchFile(path.Join(root, "internal/durablefile"), "inode_times_darwin.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := target == "darwin"; selected != want {
+			t.Errorf("macOS inspection spelling on %s: %v, want %v", target, selected, want)
 		}
 	}
 }
@@ -1046,6 +1120,11 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/custody/vault_lock_windows.go" || source == "internal/custody/vault_lock_windows_test.go" || source == "internal/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
+	// The Application document snapshot import composes only the shared
+	// Unix-family inspection mechanism, no Network or Route authority (#850).
+	if (source == "internal/application/document/snapshot_file_unix.go" || source == "internal/application/document/snapshot_file_unix_test.go") && dependency == modulePath+"/internal/durablefile" {
+		return true
+	}
 	if !inZone {
 		if (source == "cmd/ardents-custody/main_test.go" || source == "tests/e2e/service/service_custody_process_linux_test.go" || source == "tests/e2e/service/headless_instance_acquisition_process_test.go") && dependency == modulePath+"/internal/publication" {
 			return true
@@ -1092,7 +1171,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/canonicaldigest":                   {},
 		"internal/durablefile":                       {},
 		"internal/pathgrammar":                       {},
-		"internal/node":                              {"admission", "admission/receiving", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/node":                              {"admission", "admission/receiving", "durablefile", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/network":                           {},
 		"internal/network/canonicalcursor":           {},
 		"internal/network/closedprofile":             {"network/canonicalcursor"},
@@ -1132,14 +1211,14 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/release/endpoint":                  {"enrollment", "release"},
 		"internal/release/infrastructure":            {"canonicaldigest", "enrollment", "release", "pathgrammar"},
 		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "node", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
-		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
+		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "durablefile", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
 		"internal/platform/cgroup":                   {"pathgrammar"},
-		"internal/platform/artifacts":                {"pathgrammar"},
-		"internal/endpoint/plan":                     {"canonicaldigest"},
+		"internal/platform/artifacts":                {"durablefile", "pathgrammar"},
+		"internal/endpoint/plan":                     {"canonicaldigest", "durablefile"},
 
 		"internal/platform/systemd":    {},
 		"internal/platform/process":    {"canonicaldigest", "pathgrammar"},
-		"internal/endpoint/generation": {"canonicaldigest", "pathgrammar"},
+		"internal/endpoint/generation": {"canonicaldigest", "durablefile", "pathgrammar"},
 		"internal/endpoint/unit":       {"canonicaldigest", "platform/systemd"},
 		"internal/route":               {},
 		"internal/route/ardp":          {},
@@ -1552,6 +1631,11 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
+	// The Unix-family inspection port admits the reviewed x/sys/unix
+	// directory-relative open only at its mechanism boundary (#850).
+	if source == "internal/durablefile/relative_open_unix.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	if source == "internal/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
@@ -1757,6 +1841,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Carrier cannot acquire Descriptor authority", "internal/route/transport/tls/node.go", modulePath + "/internal/reachability", false},
 		{"Reachability cannot own physical Prefix", "internal/reachability/lookup_history.go", modulePath + "/internal/route/prefix", false},
 		{"Shared owner-only root DACL enforcement", "internal/durablefile/owner_root_windows.go", "golang.org/x/sys/windows", true},
+		{"Unix-family inspection port admits reviewed Openat", "internal/durablefile/relative_open_unix.go", "golang.org/x/sys/unix", true},
+		{"document snapshot import composes the shared inspection mechanism", "internal/application/document/snapshot_file_unix.go", modulePath + "/internal/durablefile", true},
+		{"document snapshot import has no Network authority", "internal/application/document/snapshot_file_unix.go", modulePath + "/internal/network/state", false},
 		{"Owner-only root mechanism test verifies the physical DACL", "internal/durablefile/owner_root_windows_test.go", "golang.org/x/sys/windows", true},
 		{"Selection Windows floor consumes the shared mechanism", "internal/route/selection/root_permissions_windows.go", "golang.org/x/sys/windows", false},
 		{"Selection Windows floor test verifies the physical DACL", "internal/route/selection/root_permissions_windows_test.go", "golang.org/x/sys/windows", true},

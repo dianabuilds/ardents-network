@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package plan
 
 import (
@@ -9,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // Only the native reader can construct this physical provenance. It is not
@@ -97,9 +101,9 @@ func sameRequestFile(before, after os.FileInfo) bool {
 		before.Size() != after.Size() || before.Mode() != after.Mode() || !before.ModTime().Equal(after.ModTime()) {
 		return false
 	}
-	left, leftOK := before.Sys().(*syscall.Stat_t)
-	right, rightOK := after.Sys().(*syscall.Stat_t)
-	return leftOK && rightOK && left.Ctim == right.Ctim
+	left, leftOK := durablefile.InodeChangeTime(before)
+	right, rightOK := durablefile.InodeChangeTime(after)
+	return leftOK && rightOK && left == right
 }
 
 func rootDirectory(info os.FileInfo) bool {

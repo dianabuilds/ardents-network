@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node
 
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -62,7 +63,7 @@ func readCredentialFile(path string, private bool) (raw []byte, result error) {
 	if protected {
 		after, statErr := f.Stat()
 		named, nameErr := os.Lstat(path)
-		if statErr != nil || nameErr != nil || !sameProtectedCredential(info, after) || !sameProtectedCredential(info, named) {
+		if statErr != nil || nameErr != nil || !durablefile.SameFileIdentity(info, after) || !durablefile.SameFileIdentity(info, named) {
 			clear(raw)
 			return nil, errors.Join(errors.New("original protected Node key changed"), statErr, nameErr)
 		}
@@ -104,13 +105,4 @@ func protectedCredentialAncestors(path string) error {
 			return nil
 		}
 	}
-}
-
-func sameProtectedCredential(before, after os.FileInfo) bool {
-	if before == nil || after == nil || !os.SameFile(before, after) || before.Mode() != after.Mode() || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
-		return false
-	}
-	a, okA := before.Sys().(*syscall.Stat_t)
-	b, okB := after.Sys().(*syscall.Stat_t)
-	return okA && okB && a.Uid == b.Uid && a.Gid == b.Gid && a.Nlink == b.Nlink && a.Ctim == b.Ctim
 }
