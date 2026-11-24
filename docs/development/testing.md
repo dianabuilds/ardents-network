@@ -3171,11 +3171,14 @@ The historical Reader socket format remains readable by the diagnostic
 collector after the runtime listener retirement.
 
 The deterministic inventory has an explicit Linux-only supplement in
-`tests/profiles/deterministic-linux-packages.txt` for Endpoint introduction,
-source, Service, token and publication owners whose files have Linux build
-constraints. Linux unit/race gates include it; Windows checks retain the common
-inventory. Architecture checks validate both inventories and Linux selection;
-no build-error-based filtering or passing platform skip supplies that membership.
+`tests/profiles/deterministic-linux-packages.txt` for owners whose files have
+Linux build constraints. Linux unit/race gates include it; Windows checks retain
+the common inventory. Architecture checks validate both inventories and Linux
+selection; no build-error-based filtering or passing platform skip supplies that
+membership. Cohort 2a (#856) moved the Source serving and inspection owners into
+the common inventory: serving runs on the Unix family (Linux and macOS) and
+inspection carries a typed non-Linux refusal, so both are listed on every
+mandatory target and the Linux-only supplement currently holds no packages.
 
 The `portable` CI lane in `.github/workflows/quality.yml` executes that common
 inventory on `windows-latest` and `macos-latest`. On each runner it builds

@@ -105,7 +105,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/network/state/source_state_files_linux_test.go",
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
-			"internal/platform/artifacts/receipt_linux.go",
 			"internal/network/source/command/inspect_linux.go",
 			"internal/network/source/inspection/inspection_linux.go",
 			"internal/network/source/inspection/inspection_linux_test.go",
@@ -351,13 +350,115 @@ func TestCohort1N2IntroductionUnixPortSelection(t *testing.T) {
 	}
 }
 
+// Cohort 2a (#856, portability design audit #848) de-tagged the universal
+// domain composition once the Cohort 0/1 leaf seams were cleared: the Node
+// role lifetimes, the Route receiver and the Direct-Origin Source serving
+// operation compose only portable rules and the already-ported Unix-family
+// mechanisms (durablefile inspection, worker peer-credential, introduction
+// root-watch, artifacts input custody). The artifacts observed-input and
+// bounded-report seams they borrow are themselves Unix-generic and join the
+// Unix family. Every other platform receives the same explicit typed refusal:
+// serving and the Node runtime refuse outside Linux and macOS, while the
+// Linux-only Source inspection (it composes state.SourcePreparationConfig)
+// refuses on every non-Linux platform. The genuine Linux native role tests and
+// the Source inspection mechanism keep their Linux boundary.
+func TestCohort2aDomainDetagSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/node/descriptor_unix.go",
+			"internal/node/forwarding_admission_unix.go",
+			"internal/node/forwarding_unix.go",
+			"internal/node/forwarding_observation_unix.go",
+			"internal/node/introduction_unix.go",
+			"internal/node/issuer_unix.go",
+			"internal/node/join_unix.go",
+			"internal/node/lifetime_unix.go",
+			"internal/node/runtime_unix.go",
+			"internal/node/descriptor_startup_unix_test.go",
+			"internal/node/failure_projection_unix_test.go",
+			"internal/node/introduction_startup_unix_test.go",
+			"internal/node/join_startup_unix_test.go",
+			"internal/node/lifetime_equivalence_unix_test.go",
+			"internal/node/retirement_unix_test.go",
+			"internal/route/receiver/admission_retirement_unix.go",
+			"internal/route/receiver/bootstrap_unix.go",
+			"internal/route/receiver/descriptor_unix.go",
+			"internal/route/receiver/issuer_unix.go",
+			"internal/route/receiver/outer_authority_unix.go",
+			"internal/route/receiver/receiver_unix.go",
+			"internal/route/receiver/receiving_admission_unix.go",
+			"internal/route/receiver/admission_retirement_unix_test.go",
+			"internal/route/receiver/introduction_parent_unix_test.go",
+			"internal/route/receiver/join_failure_unix_test.go",
+			"internal/route/receiver/outer_authority_unix_test.go",
+			"internal/route/receiver/receiver_retirement_unix_test.go",
+			"internal/network/source/serving/declaration_unix.go",
+			"internal/network/source/serving/events_unix.go",
+			"internal/network/source/serving/inputs_unix.go",
+			"internal/network/source/serving/report_unix.go",
+			"internal/network/source/serving/serving_unix.go",
+			"internal/network/source/serving/supervision_unix.go",
+			"internal/network/source/serving/declaration_unix_test.go",
+			"internal/network/source/serving/inputs_unix_test.go",
+			"internal/network/source/serving/supervision_unix_test.go",
+			"internal/platform/artifacts/observed_inputs_unix.go",
+			"internal/platform/artifacts/receipt_unix.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "windows"; selected != want {
+				t.Errorf("Unix-family domain composition %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/network/source/serving/serving_other.go",
+			"internal/network/source/serving/serving_other_test.go",
+			"internal/node/runtime_other.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "windows"; selected != want {
+				t.Errorf("Unix-family domain refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/network/source/inspection/inspection_linux.go",
+			"internal/network/source/inspection/inspection_linux_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("Linux Source inspection boundary %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{"inspection_other.go", "inspection_other_test.go"} {
+			selected, err := profile.MatchFile(path.Join(root, "internal/network/source/inspection"), name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "linux"; selected != want {
+				t.Errorf("Source inspection platform refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+	}
+}
+
 // P1-B batch 2 (#787, #691) de-tagged verified pure production files whose
 // composed symbols became portable in batch 1: the Node failure/admission
 // projections, the endpoint/funding composition and the shared reservation
 // and session deadline helpers. They add no native mechanism, so every mandatory target
 // must select them and their portable behavior tests. The Node first-failure
-// physical-join test still composes the Linux forwarding lifetime and stays
-// Linux-only.
+// physical-join test composes the Unix-family forwarding lifetime; Cohort 2a
+// (#856) registers it with the de-tagged node composition.
 func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, target := range []string{"linux", "windows", "darwin"} {
@@ -385,17 +486,6 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 			}
 			if !selected {
 				t.Errorf("portable P1-B batch 2 file %s excluded on %s", name, target)
-			}
-		}
-		for _, name := range []string{
-			"internal/node/failure_projection_linux_test.go",
-		} {
-			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if want := target == "linux"; selected != want {
-				t.Errorf("Linux forwarding first-failure test %s on %s: %v, want %v", name, target, selected, want)
 			}
 		}
 	}
@@ -1446,16 +1536,16 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_issuer_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
-		if (source == "internal/node/runtime_linux.go" || source == "internal/node/runtime_other.go") && dependency == modulePath+"/internal/admission/issuer" {
+		if (source == "internal/node/runtime_unix.go" || source == "internal/node/runtime_other.go") && dependency == modulePath+"/internal/admission/issuer" {
 			return true
 		}
-		if source == "internal/node/issuer_linux.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
+		if source == "internal/node/issuer_unix.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
 			return true
 		}
-		if source == "internal/node/introduction_linux.go" && dependency == modulePath+"/internal/route/introduction" {
+		if source == "internal/node/introduction_unix.go" && dependency == modulePath+"/internal/route/introduction" {
 			return true
 		}
-		if source == "internal/node/descriptor_linux.go" && dependency == modulePath+"/internal/reachability" {
+		if source == "internal/node/descriptor_unix.go" && dependency == modulePath+"/internal/reachability" {
 			return true
 		}
 		if source == "cmd/ardents-next/route_linux.go" && dependency == modulePath+"/internal/node" {
@@ -1594,7 +1684,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/route_issuer_linux.go" && dependency == modulePath+"/internal/route/bootstrap" {
 			return true
 		}
-		if dependency == modulePath+"/internal/reachability" && (source == "internal/route/prefix/descriptor_exchange.go" || source == "internal/route/receiver/receiver_linux.go" || source == "internal/route/receiver/descriptor_linux.go" || source == "cmd/ardents-next/route_linux.go" || source == "cmd/ardents-next/route.go" || source == "cmd/ardents-next/admission_holder.go" || source == "cmd/ardents-next/route_descriptor_linux_test.go" || source == "cmd/ardents-next/descriptor_platform_native_linux_test.go") {
+		if dependency == modulePath+"/internal/reachability" && (source == "internal/route/prefix/descriptor_exchange.go" || source == "internal/route/receiver/receiver_unix.go" || source == "internal/route/receiver/descriptor_unix.go" || source == "cmd/ardents-next/route_linux.go" || source == "cmd/ardents-next/route.go" || source == "cmd/ardents-next/admission_holder.go" || source == "cmd/ardents-next/route_descriptor_linux_test.go" || source == "cmd/ardents-next/descriptor_platform_native_linux_test.go") {
 			return true
 		}
 		if (source == "internal/admission/stock/issuance_fixture_test.go" || source == "internal/admission/stock/lifecycle_test.go" || source == "internal/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/issuance" || dependency == modulePath+"/internal/admission/quota") {
@@ -1967,7 +2057,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"unregistered manager file excludes bus client", "internal/platform/systemd/other_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Reachability verifies public delegation", "internal/reachability/descriptor.go", modulePath + "/internal/publication", true},
 		{"Prefix completes genuine private lookup", "internal/route/prefix/descriptor_exchange.go", modulePath + "/internal/reachability", true},
-		{"Receiver uses genuine Descriptor Store", "internal/route/receiver/descriptor_linux.go", modulePath + "/internal/reachability", true},
+		{"Receiver uses genuine Descriptor Store", "internal/route/receiver/descriptor_unix.go", modulePath + "/internal/reachability", true},
 		{"Carrier cannot acquire Descriptor authority", "internal/route/transport/tls/node.go", modulePath + "/internal/reachability", false},
 		{"Reachability cannot own physical Prefix", "internal/reachability/lookup_history.go", modulePath + "/internal/route/prefix", false},
 		{"Shared owner-only root DACL enforcement", "internal/durablefile/owner_root_windows.go", "golang.org/x/sys/windows", true},
@@ -1993,7 +2083,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"channel uses grammar", "internal/route/channel/session.go", modulePath + "/internal/route/ardp", true},
 		{"bootstrap consumes framing capacity", "internal/route/bootstrap/budget.go", modulePath + "/internal/route/channel", true},
 		{"bootstrap describes canonical restriction", "internal/route/bootstrap/budget.go", modulePath + "/internal/route/ardp", true},
-		{"receiver reserves bootstrap capacity", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/bootstrap", true},
+		{"receiver reserves bootstrap capacity", "internal/route/receiver/receiver_unix.go", modulePath + "/internal/route/bootstrap", true},
 		{"channel cannot acquire bootstrap policy", "internal/route/channel/session.go", modulePath + "/internal/route/bootstrap", false},
 		{"bootstrap cannot spend Admission", "internal/route/bootstrap/budget.go", modulePath + "/internal/admission/receiving", false},
 		{"bootstrap cannot import receiving composition", "internal/route/bootstrap/budget.go", modulePath + "/internal/route/receiver", false},
@@ -2002,9 +2092,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"channel cannot import TLS adapter", "internal/route/channel/session.go", modulePath + "/internal/route/transport/tls", false},
 		{"channel cannot import QUIC adapter", "internal/route/channel/session_test.go", modulePath + "/internal/route/transport/quic", false},
 		{"holder JOIN cannot import Receiver", "internal/route/join/acquisition.go", modulePath + "/internal/route/receiver", false},
-		{"Receiver cannot import holder Prefix", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/prefix", false},
-		{"actual receiver dispatches JOIN pairing", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/join/pairing", true},
-		{"receiver does not import holder JOIN", "internal/route/receiver/receiver_linux.go", modulePath + "/internal/route/join", false},
+		{"Receiver cannot import holder Prefix", "internal/route/receiver/receiver_unix.go", modulePath + "/internal/route/prefix", false},
+		{"actual receiver dispatches JOIN pairing", "internal/route/receiver/receiver_unix.go", modulePath + "/internal/route/join/pairing", true},
+		{"receiver does not import holder JOIN", "internal/route/receiver/receiver_unix.go", modulePath + "/internal/route/join", false},
 		{"holder JOIN consumes Prefix", "internal/route/join/acquisition.go", modulePath + "/internal/route/prefix", true},
 		{"former operation cannot return", "cmd/ardents-next/route_linux.go", modulePath + "/internal/route/operation", false},
 		{"Prefix cannot import JOIN consumer", "internal/route/prefix/borrowing.go", modulePath + "/internal/route/join", false},
