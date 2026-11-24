@@ -1,0 +1,24 @@
+name: Verify installed Endpoint document and stream exchange
+on:
+  push:
+    branches:
+      - codex/verify-installed-stream-f65ed9a4
+permissions:
+  contents: read
+jobs:
+  installed-exchange:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+      - name: Exercise both installed Endpoint profiles
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y systemd-container debootstrap
+          test "$(ps -p 1 -o comm=)" = systemd
+          test -r /sys/fs/cgroup/cgroup.controllers
+          sudo env PATH="$PATH" GOTOOLCHAIN=local GOENV=off GOFLAGS=-mod=readonly GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)" sh -ec 'umask 022; exec go test -race -tags endpoint_pair_native,document_worker_installed ./cmd/ardents-next -run "^TestNative(InstalledEndpointByteStream|EndpointPlatformLedJourney)$" -count=1 -v -timeout=30m'
