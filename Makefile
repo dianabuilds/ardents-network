@@ -283,6 +283,7 @@ check-core:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln deadcode
 	$(MAKE) --output-sync=target e2e
 ifeq ($(HEADLESS_GOOS),linux)
+	$(MAKE) --output-sync=target offline-admission-e2e-race
 	$(MAKE) --output-sync=target package-e2e
 endif
 
@@ -435,12 +436,18 @@ hosting-check:
 .PHONY: admission-check
 admission-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/... ./cmd/ardents-next -count=1 -timeout=5m,$(error admission-check requires Linux))
-	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=5m
+	$(MAKE) --no-print-directory offline-admission-e2e-race
+
+# Keep compiled offline command scenarios in the race inventory after their move
+# out of the command's unit-test package.
+.PHONY: offline-admission-e2e-race
+offline-admission-e2e-race:
+	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
 
 .PHONY: issuance-check
 issuance-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
-	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
+	$(MAKE) --no-print-directory offline-admission-e2e-race
 
 .PHONY: token-issuance-check
 token-issuance-check:
