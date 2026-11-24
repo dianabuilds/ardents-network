@@ -53,7 +53,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/pathgrammar"
 	case "internal/release/infrastructure/preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
-	case "internal/node/provisioning/network_report_linux.go":
+	case "internal/node/provisioning/network_report_unix.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/offline_profile_inspection.go":
 		if dependency == modulePath+"/internal/canonicaldigest" {
@@ -93,9 +93,9 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "internal/node/provisioning/epoch_plan_linux.go",
-		"internal/node/provisioning/node_certificate_linux.go",
+		"internal/node/provisioning/node_certificate_unix.go",
 		"internal/node/provisioning/node_provision_linux.go",
-		"internal/node/provisioning/node_record_linux.go":
+		"internal/node/provisioning/node_record_unix.go":
 		switch dependency {
 		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/network/epoch", modulePath + "/internal/platform/artifacts":
 			return true
@@ -104,10 +104,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/node/provisioning/initial_network_keys_native_linux_test.go",
 		"internal/node/provisioning/epoch_provision_linux.go",
 		"internal/node/provisioning/forwarding_epoch_plan_linux_test.go",
-		"internal/node/provisioning/node_provisioning_role_linux.go",
+		"internal/node/provisioning/node_provisioning_role_unix.go",
 		"internal/node/provisioning/provisioning_key_linux.go",
-		"internal/node/provisioning/public_identifier_linux.go",
-		"internal/node/provisioning/public_identifier_linux_test.go",
+		"internal/node/provisioning/public_identifier_unix.go",
+		"internal/node/provisioning/public_identifier_unix_test.go",
 		"internal/node/provisioning/source_initial_keys_linux.go",
 		"internal/node/provisioning/source_initial_plan_linux.go",
 		"internal/release/infrastructure/signing/descriptor_release_keys_linux.go",
@@ -116,7 +116,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/release/infrastructure/signing/join_release_keys_linux.go",
 		"internal/release/infrastructure/signing/node_release_arguments_linux.go",
 		"internal/release/infrastructure/signing/node_release_arguments_linux_test.go",
-		"internal/release/infrastructure/signing/release_key_receipt_linux.go",
+		"internal/release/infrastructure/signing/release_key_receipt_unix.go",
 		"internal/release/infrastructure/signing/source_release_keys_linux.go",
 		"internal/release/infrastructure/signing/source_release_plan_linux_test.go":
 		switch dependency {
@@ -139,7 +139,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/admission", modulePath + "/internal/admission/issuer", modulePath + "/internal/admission/quota", modulePath + "/internal/admission/receiving", modulePath + "/internal/admission/stock", modulePath + "/internal/admission/token", modulePath + "/internal/custody", modulePath + "/internal/network", modulePath + "/internal/network/source", modulePath + "/internal/network/state":
 			return true
 		}
-	case "internal/node/provisioning/node_certificate_linux_test.go",
+	case "internal/node/provisioning/node_certificate_unix_test.go",
 		"internal/node/provisioning/node_provision_native_linux_test.go":
 		switch dependency {
 		case modulePath + "/internal/network/epoch":
@@ -218,15 +218,15 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts", modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile":
 			return true
 		}
-	case "internal/node/provisioning/network_signing_declaration_linux.go":
+	case "internal/node/provisioning/network_signing_declaration_unix.go":
 		switch dependency {
 		case modulePath + "/internal/network/epoch", modulePath + "/internal/network/closedprofile", modulePath + "/internal/platform/artifacts":
 			return true
 		}
-	case "internal/node/provisioning/network_certificate_signing_linux.go",
-		"internal/node/provisioning/network_certificate_signing_linux_test.go":
+	case "internal/node/provisioning/network_certificate_signing_unix.go",
+		"internal/node/provisioning/network_certificate_signing_unix_test.go":
 		return dependency == modulePath+"/internal/network/epoch"
-	case "internal/node/provisioning/network_profile_signing_linux.go":
+	case "internal/node/provisioning/network_profile_signing_unix.go":
 		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/network/closedprofile"
 	case "internal/node/provisioning/network_output_linux.go", "internal/node/provisioning/network_signing_linux.go",
 		"internal/node/provisioning/network_inventory_native_linux_test.go",

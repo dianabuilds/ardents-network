@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package provisioning
 
 import "github.com/dianabuilds/ardents-network/internal/platform/artifacts"

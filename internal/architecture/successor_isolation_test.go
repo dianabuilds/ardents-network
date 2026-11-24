@@ -282,6 +282,92 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 	}
 }
 
+// Cohort 2b (#859, portability design audit #848) de-tags the universal and
+// Unix-generic Release/infrastructure and Node provisioning codecs to the Unix
+// family (Linux and macOS): the public identifier decoder, Node transport leaf
+// codec, Node Record plan, offline Network signing declaration/certificate/
+// profile codecs, the public report writer, the release-key receipt and the
+// pure option-grammar and closed-profile signing-transcript leaves they compose.
+// The genuine Linux boundaries stay Linux with the same explicit typed refusal
+// elsewhere: the ext4 storage floor and protected input/output composition
+// (artifacts output/protected_input/protected_storage, network_preparation),
+// the Enrollment infrastructure inventory and its /proc/self/exe running-program
+// proof (a macOS port needs a security-equivalent proc_pidpath point capability,
+// not os.Executable), and the systemd Release plans. The report writer's refusal
+// stub shifts to every non-Unix-family platform (ADR-0129, #859).
+func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/node/provisioning/node_provisioning_role_unix.go",
+			"internal/node/provisioning/public_identifier_unix.go",
+			"internal/node/provisioning/public_identifier_unix_test.go",
+			"internal/node/provisioning/node_certificate_unix.go",
+			"internal/node/provisioning/node_certificate_unix_test.go",
+			"internal/node/provisioning/network_report_unix.go",
+			"internal/node/provisioning/node_record_unix.go",
+			"internal/node/provisioning/forwarding_node_record_unix_test.go",
+			"internal/node/provisioning/network_signing_declaration_unix.go",
+			"internal/node/provisioning/network_certificate_signing_unix.go",
+			"internal/node/provisioning/network_certificate_signing_unix_test.go",
+			"internal/node/provisioning/network_profile_signing_unix.go",
+			"internal/node/provisioning/network_profile_signing_test.go",
+			"internal/node/provisioning/network_signing_fixture_unix_test.go",
+			"internal/release/infrastructure/signing/release_key_receipt_unix.go",
+			"internal/platform/artifacts/flag_options_unix.go",
+			"internal/network/closedprofile/signing_transcript_unix.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "windows"; selected != want {
+				t.Errorf("Unix-family Release/provisioning port %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/node/provisioning/network_report_other.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "windows"; selected != want {
+				t.Errorf("Unix-family report refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/node/provisioning/network_preparation_linux.go",
+			"internal/node/provisioning/command_linux.go",
+			"internal/node/provisioning/network_signing_linux.go",
+			"internal/node/provisioning/initial_network_keys_linux.go",
+			"internal/platform/artifacts/output_linux.go",
+			"internal/platform/artifacts/protected_input_linux.go",
+			"internal/platform/artifacts/protected_storage_linux.go",
+			"internal/enrollment/infrastructure_inventory.go",
+			"internal/enrollment/infrastructure_process_linux.go",
+			"internal/release/infrastructure/preparation_linux.go",
+			"internal/release/infrastructure/admission.go",
+			"internal/release/infrastructure/source_release_inspection_linux.go",
+			"internal/release/infrastructure/signing/node_release_linux.go",
+			"internal/release/infrastructure/signing/source_release_linux.go",
+			"internal/release/infrastructure/signing/node_release_plan_linux.go",
+			"internal/release/infrastructure/signing/source_release_plan_linux.go",
+			"internal/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("Linux Release/provisioning boundary %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+	}
+}
+
 // Cohort 1 N2 (#853, portability design audit #848) ported the Introduction
 // slot-history root to the Unix family (Linux and macOS): the shared
 // internal/durablefile directory-relative Openat/Renameat anchor every mutation

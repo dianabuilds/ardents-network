@@ -3,7 +3,7 @@
 // It owns no installed Node lifetime or Network State acceptance.
 //
 // Run in command_linux.go dispatches the offline role operations below;
-// node_provisioning_role_linux.go owns their role schemas, operation names and
+// node_provisioning_role_unix.go owns their role schemas, operation names and
 // refusal prose, and command_other.go holds the non-linux refusal stubs. The
 // native role tests exercise this entry composition through pinned programs.
 //
@@ -11,13 +11,13 @@
 //   - portable public preparation of detached unsigned bytes:
 //     network_artifact_preparation.go, network_preparation_contract.go
 //     (network_public_preparation_test.go)
-//   - shared public identifier grammar: public_identifier_linux.go
-//     (public_identifier_linux_test.go; linux)
-//   - Node transport certificate codec: node_certificate_linux.go
-//     (node_certificate_linux_test.go; linux)
+//   - shared public identifier grammar: public_identifier_unix.go
+//     (public_identifier_unix_test.go; unix)
+//   - Node transport certificate codec: node_certificate_unix.go
+//     (node_certificate_unix_test.go; unix)
 //   - role Node Record declaration, signing and certificate command:
-//     node_record_linux.go, node_provision_linux.go
-//     (forwarding_node_record_linux_test.go; linux,
+//     node_record_unix.go, node_provision_linux.go
+//     (forwarding_node_record_unix_test.go; unix,
 //     node_provision_native_linux_test.go; native linux)
 //   - role Epoch plan and genesis signing: epoch_plan_linux.go,
 //     epoch_signing_linux.go, epoch_provision_linux.go
@@ -43,12 +43,12 @@
 //     (initial_network_keys_linux_test.go; linux,
 //     initial_network_keys_native_linux_test.go; native linux)
 //   - Network signing admission and fixed record/epoch/profile/certificate
-//     purpose declarations: network_signing_declaration_linux.go,
-//     network_signing_contract.go, network_profile_signing_linux.go,
-//     network_certificate_signing_linux.go, parseNetworkSigningKey in
-//     network_signing_linux.go (network_signing_test.go,
+//     purpose declarations: network_signing_declaration_unix.go,
+//     network_signing_contract.go, network_profile_signing_unix.go,
+//     network_certificate_signing_unix.go, parseNetworkSigningKey in
+//     network_signing_linux.go (network_signing_test.go; linux,
 //     network_profile_signing_test.go,
-//     network_certificate_signing_linux_test.go; linux,
+//     network_certificate_signing_unix_test.go; unix,
 //     network_profile_native_linux_test.go; native linux)
 //   - SignNetwork operation lifetime and original input custody: SignNetwork
 //     in network_signing_linux.go, network_signing_other.go
@@ -67,6 +67,7 @@
 //     (runtime_plan_command_test.go)
 //
 // network_receipt_fixture_test.go carries the shared portable preparation
+// fixtures, network_signing_fixture_unix_test.go the shared Unix-family signing
 // fixtures, native_fixture_linux_test.go the native protected-root and
 // pinned-program fixtures, and forwarding_state_preparation_native_linux_test.go
 // the full key/record/epoch/token/profile chain cohort consumed by
