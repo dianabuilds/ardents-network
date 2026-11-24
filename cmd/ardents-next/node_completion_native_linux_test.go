@@ -58,7 +58,7 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			participation := filepath.Join(t.TempDir(), "participation")
 			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{12}]()
-			process := nodefixture.StartForwarding(t, binary, hostingConfig(t, plan), 91)
+			process := nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
 			if err != nil {
 				t.Fatal(err)
@@ -140,7 +140,7 @@ func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *test
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{17}, "process_profile": "ardents-descriptor-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "descriptor_root": t.TempDir(), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{17}]()
-			process := startNativeDescriptor(t, binary, hostingConfig(t, plan), 91)
+			process := nodefixture.StartFreshRole(t, "descriptor", binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
 			if err != nil {
 				t.Fatal(err)
@@ -246,7 +246,7 @@ func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *te
 				t.Fatal(err)
 			}
 			sockets[[32]byte{25}]()
-			process := startNativeIntroduction(t, binary, hostingConfig(t, plan), 91)
+			process := nodefixture.StartFreshRole(t, "introduction", binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
 			if err != nil {
 				t.Fatal(err)
@@ -363,7 +363,7 @@ func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.
 			participation := filepath.Join(t.TempDir(), "participation")
 			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{11}, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "issuance": nativeIssuerIssuanceInput(f.plan), "retirement_wait_ms": 1}
 			sockets[[32]byte{11}]()
-			process := startNativeIssuer(t, binary, hostingConfig(t, plan))
+			process := nodefixture.StartFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
 			view, err := f.current()
 			if err != nil {
 				t.Fatal(err)
@@ -462,7 +462,7 @@ func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			networkPlan := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
 			plan := map[string]any{"network": networkPlan, "node_id": [32]byte{20}, "process_profile": "ardents-join-process-v1", "participation_root": participation, "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certificate, "private_key": key, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 1}
 			sockets[[32]byte{20}]()
-			process := startNativeJoin(t, binary, hostingConfig(t, plan), 91)
+			process := nodefixture.StartFreshRole(t, "join", binary, hostingConfig(t, plan), 91)
 			view, err := f.current()
 			if err != nil {
 				t.Fatal(err)

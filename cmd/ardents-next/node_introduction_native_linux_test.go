@@ -11,7 +11,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -140,7 +139,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 				nodePlan["work"] = hosting.Traffic{Tx: (1 << 20) - 1}
 			}
 			sockets[[32]byte{25}]()
-			process := startNativeIntroduction(t, commandBinary, hostingConfig(t, nodePlan), 25)
+			process := nodefixture.StartFreshRole(t, "introduction", commandBinary, hostingConfig(t, nodePlan), 25)
 			plan := routePrefixPlan{Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			root := t.TempDir()
 			selected, err := selection.Open(selection.Config{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), Domain: 4, Current: f.authority.current})
@@ -343,31 +342,6 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 		})
 	}
 }
-func launchNativeIntroduction(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	unit := fmt.Sprintf("ardents-introduction-%d-%d.service", os.Getpid(), index)
-	return nodefixture.Launch(t, unit, "original Introduction retained diagnostic", "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "introduction", "--config", plan)
-}
-
-func startNativeIntroduction(t *testing.T, binary, plan string, index byte) *nodefixture.NativeProcess {
-	t.Helper()
-	p := launchNativeIntroduction(t, binary, plan, index)
-	var event map[string]string
-	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.introduction" || event["phase"] != "listening" {
-		t.Fatal("genuine original Introduction startup refused", event, err, p.Diagnostic.String())
-	}
-	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
-		t.Fatal("original Introduction MainPID unavailable", err)
-	}
-	return p
-}
-
 func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
@@ -418,7 +392,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 						}
 					}
 					sockets[id]()
-					p := launchNativeIntroduction(t, binary, hostingConfig(t, plan), id[0])
+					p := nodefixture.LaunchFreshRole(t, "introduction", binary, hostingConfig(t, plan), id[0])
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
 					err = p.Command.Wait()
@@ -481,7 +455,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 					plan["certificate"], plan["private_key"] = cert, key
 					plan["hosting_root"], plan["introduction_root"] = budget, historyRoot
 					if fault == "foreign-history" {
-						retained := launchNativeIntroduction(t, binary, hostingConfig(t, plan), id[0])
+						retained := nodefixture.LaunchFreshRole(t, "introduction", binary, hostingConfig(t, plan), id[0])
 						var refusal map[string]string
 						if err := json.NewDecoder(retained.Stdout).Decode(&refusal); err != nil || refusal["phase"] != "refused" {
 							t.Fatal("retained empty receiving root recreated birth fact", refusal, err)
@@ -498,7 +472,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 							t.Fatal(err)
 						}
 					}
-					fresh := startNativeIntroduction(t, binary, hostingConfig(t, plan), id[0])
+					fresh := nodefixture.StartFreshRole(t, "introduction", binary, hostingConfig(t, plan), id[0])
 					fresh.Stop(t)
 				})
 			}

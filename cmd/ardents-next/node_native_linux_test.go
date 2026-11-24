@@ -110,7 +110,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				}
 				plan := map[string]any{"network": seed(), "node_id": id, "process_profile": processresource.Profile, "participation_root": root, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 				sockets[id]()
-				processes = append(processes, nodefixture.StartForwarding(t, binary, hostingConfig(t, plan), index))
+				processes = append(processes, nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, plan), index))
 				before, err := os.ReadFile(filepath.Join(spend, "closed-token-spends"))
 				if err != nil || len(before) != 8+32+32+32+8 {
 					t.Fatal("fresh real receiving ledger is not an empty canonical header", err)
@@ -344,7 +344,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 					// The original reserved socket deliberately remains occupied. Only
 					// listener-open reaches that late acquisition; earlier faults must
 					// refuse without creating this invocation's accepting role.
-					process := nodefixture.LaunchForwarding(t, binary, hostingConfig(t, plan), byte(50+index))
+					process := nodefixture.LaunchFreshRole(t, "forwarding", binary, hostingConfig(t, plan), byte(50+index))
 					var event map[string]string
 					decodeErr := json.NewDecoder(process.Stdout).Decode(&event)
 					waitErr := process.Command.Wait()
@@ -443,7 +443,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 			plan := map[string]any{"network": nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": nodefixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			// Genuine restored-input control: this same signed member, Carrier and
 			// native envelope must start after removing the declared fault.
-			control := nodefixture.StartForwarding(t, binary, hostingConfig(t, plan), 80)
+			control := nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, plan), 80)
 			control.Stop(t)
 		})
 	}

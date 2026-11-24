@@ -170,25 +170,20 @@ func Launch(t testing.TB, unit, diagnosticLabel, stopErrorLabel string, args ...
 	return process
 }
 
-// LaunchForwarding starts the fresh original Forwarding process.
-func LaunchForwarding(t testing.TB, binary, plan string, index byte) *NativeProcess {
+// LaunchFreshRole starts the original role in its dedicated native unit.
+func LaunchFreshRole(t testing.TB, role, binary, plan string, index byte) *NativeProcess {
 	t.Helper()
-	unit := fmt.Sprintf("ardents-forwarding-%d-%d.service", os.Getpid(), index)
-	return launchRole(t, unit, "original Forwarding retained diagnostic after physical join", binary, "forwarding", "--config", plan)
-}
-
-// StartForwarding waits for the fresh Forwarding process to listen.
-func StartForwarding(t testing.TB, binary, plan string, index byte) *NativeProcess {
-	t.Helper()
-	return waitForRole(t, LaunchForwarding(t, binary, plan, index), "forwarding")
+	unit := fmt.Sprintf("ardents-%s-%d-%d.service", role, os.Getpid(), index)
+	if role == "issuer" {
+		unit = fmt.Sprintf("ardents-issuer-%d.service", os.Getpid())
+	}
+	return launchRole(t, unit, "original "+role+" diagnostic", binary, role, "--config", plan)
 }
 
 // StartFreshRole starts a fresh role and waits for its listening report.
 func StartFreshRole(t testing.TB, role, binary, plan string, index byte) *NativeProcess {
 	t.Helper()
-	unit := fmt.Sprintf("ardents-%s-%d-%d.service", role, os.Getpid(), index)
-	process := launchRole(t, unit, "original "+role+" diagnostic", binary, role, "--config", plan)
-	return waitForRole(t, process, role)
+	return waitForRole(t, LaunchFreshRole(t, role, binary, plan, index), role)
 }
 
 // LaunchRetainedRole starts an original Node process with the retained profile.

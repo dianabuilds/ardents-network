@@ -27,31 +27,6 @@ import (
 	"time"
 )
 
-func launchNativeIssuer(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
-	t.Helper()
-	unit := fmt.Sprintf("ardents-issuer-%d.service", os.Getpid())
-	return nodefixture.Launch(t, unit, "original Issuer retained joined diagnostic", "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", "issuer", "--config", plan)
-}
-
-func startNativeIssuer(t *testing.T, binary, plan string) *nodefixture.NativeProcess {
-	t.Helper()
-	p := launchNativeIssuer(t, binary, plan)
-	var event map[string]string
-	if err := json.NewDecoder(p.Stdout).Decode(&event); err != nil || event["operation"] != "node.issuer" || event["phase"] != "listening" {
-		t.Fatal("genuine original Issuer startup refused", event, err, p.Diagnostic.String())
-	}
-	raw, err := exec.Command("systemctl", "show", p.Unit, "-p", "MainPID", "--value").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := fmt.Sscanf(string(raw), "%d", &p.PID); err != nil || p.PID < 2 {
-		t.Fatal("actual Issuer MainPID unavailable", err)
-	}
-	return p
-}
-
 func nativeIssuerIssuanceInput(p issuer.Plan) map[string]any {
 	b := p.KeyBinding
 	return map[string]any{"admission_root": p.AdmissionRoot, "admission_binding": admissionBindingConfig(p.AdmissionBinding), "key_root": p.KeyRoot,
@@ -126,7 +101,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 					plan["issuance"] = nativeIssuerIssuanceInput(f.plan)
 					plan["process_profile"], plan["participation_root"], plan["retirement_wait_ms"] = processresource.IssuerProfile, filepath.Join(t.TempDir(), "participation"), 5000
 					plan["work"], plan["bootstrap_work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}
-					original = startNativeIssuer(t, binary, hostingConfig(t, plan))
+					original = nodefixture.StartFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
 					continue
 				}
 				p := startJoinCommandProcess(t, t.Context(), binary, "route", "receive", "--config", hostingConfig(t, plan))
@@ -182,7 +157,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			for _, prepared := range peerPlans {
 				prepared.plan["process_profile"], prepared.plan["participation_root"], prepared.plan["retirement_wait_ms"] = processresource.Profile, filepath.Join(t.TempDir(), "participation"), 5000
 				prepared.plan["work"] = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
-				peers = append(peers, nodefixture.StartForwarding(t, binary, hostingConfig(t, prepared.plan), prepared.index))
+				peers = append(peers, nodefixture.StartFreshRole(t, "forwarding", binary, hostingConfig(t, prepared.plan), prepared.index))
 			}
 			ordinary, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
@@ -312,7 +287,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					sockets[id]()
-					p := launchNativeIssuer(t, binary, hostingConfig(t, plan))
+					p := nodefixture.LaunchFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
 					var event map[string]string
 					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
 					err = p.Command.Wait()
