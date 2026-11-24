@@ -39,7 +39,6 @@ TestNativeJoinMismatchedPairRefusesTCP
 TestNativeJoinOperationBoundariesTCP
 TestNativeJoinOriginalAuthorityAndJoinTCP
 TestNativeJoinOriginalCommandLossAfterIOTCP
-TestNativeJoinPartialStartupRefusalsTCP
 TestNativeJoinProvisionedCertificateTCP
 TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP
 TestNativeJoinUndercoverageBeforeSpendTCP'
@@ -58,7 +57,8 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalCommandLossAfterIOTCP$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinPartialStartupRefusalsTCP$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoinPartialStartupRefusalsTCP$' | grep -Fx TestNativeJoinPartialStartupRefusalsTCP >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinPartialStartupRefusalsTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOperationBoundariesTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoinRetainedLifecycle$' | grep -Fx 'TestNativeJoinRetainedLifecycle' >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinRetainedLifecycle$' -test.timeout=3m
