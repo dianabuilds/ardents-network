@@ -109,10 +109,7 @@ func TestNativeNodeOriginalAuthorityAndJoinTCP(t *testing.T) {
 					}
 					unit := fmt.Sprintf("ardents-forwarding-owner-%d-%d.service", os.Getpid(), index)
 					t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run() })
-					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_NODE_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeNodeOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
+					command := processfixture.OwnerTestCommand(t, unit, binary, "TestNativeNodeOriginalAuthorityAndJoinTCP", "ARDENTS_NODE_ORIGINAL_FIXTURE", path, 120)
 					output, err := command.CombinedOutput()
 					if err != nil {
 						t.Fatalf("genuine original native composition failed: %v\n%s", err, output)
@@ -545,10 +542,7 @@ func TestNativeDescriptorOriginalAuthorityAndJoinTCP(t *testing.T) {
 					releaseSocket()
 					unit := fmt.Sprintf("ardents-descriptor-owner-%d-%d.service", os.Getpid(), index)
 					t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run() })
-					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_DESCRIPTOR_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeDescriptorOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
+					command := processfixture.OwnerTestCommand(t, unit, binary, "TestNativeDescriptorOriginalAuthorityAndJoinTCP", "ARDENTS_DESCRIPTOR_ORIGINAL_FIXTURE", path, 120)
 					if output, err := command.CombinedOutput(); err != nil {
 						t.Fatalf("genuine original Descriptor composition failed: %v\n%s", err, output)
 					}
@@ -903,10 +897,7 @@ func TestNativeIntroductionOriginalAuthorityAndJoinTCP(t *testing.T) {
 					releaseSocket()
 					unit := fmt.Sprintf("ardents-introduction-owner-%d-%d.service", os.Getpid(), index)
 					t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run() })
-					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_INTRODUCTION_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeIntroductionOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
+					command := processfixture.OwnerTestCommand(t, unit, binary, "TestNativeIntroductionOriginalAuthorityAndJoinTCP", "ARDENTS_INTRODUCTION_ORIGINAL_FIXTURE", path, 120)
 					if output, err := command.CombinedOutput(); err != nil {
 						t.Fatalf("genuine original Introduction composition failed: %v\n%s", err, output)
 					}
@@ -1283,10 +1274,7 @@ func TestNativeIssuerOriginalAuthorityAndJoinTCP(t *testing.T) {
 					releaseSocket()
 					unit := fmt.Sprintf("ardents-issuer-owner-%d-%d.service", os.Getpid(), index)
 					t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run() })
-					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_ISSUER_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeIssuerOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
+					command := processfixture.OwnerTestCommand(t, unit, binary, "TestNativeIssuerOriginalAuthorityAndJoinTCP", "ARDENTS_ISSUER_ORIGINAL_FIXTURE", path, 120)
 					output, err := command.CombinedOutput()
 					if err != nil {
 						t.Fatalf("genuine original native composition failed: %v\n%s", err, output)
@@ -1588,10 +1576,7 @@ func TestNativeJoinOriginalAuthorityAndJoinTCP(t *testing.T) {
 					releaseSocket()
 					unit := fmt.Sprintf("ardents-join-owner-%d-%d.service", os.Getpid(), index)
 					t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run() })
-					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_JOIN_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeJoinOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
+					command := processfixture.OwnerTestCommand(t, unit, binary, "TestNativeJoinOriginalAuthorityAndJoinTCP", "ARDENTS_JOIN_ORIGINAL_FIXTURE", path, 120)
 					if output, err := command.CombinedOutput(); err != nil {
 						t.Fatalf("genuine original Join composition failed: %v\n%s", err, output)
 					}

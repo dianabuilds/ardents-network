@@ -12,9 +12,13 @@ import (
 // WriteOperationMarker is shared by the original process and its independent native workload driver.
 func WriteOperationMarker(t *testing.T, root, name string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(root, name), []byte("1"), 0600); err != nil {
+	if err := writeOperationMarker(root, name); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func writeOperationMarker(root, name string) error {
+	return os.WriteFile(filepath.Join(root, name), []byte("1"), 0600)
 }
 
 // WaitOperationMarker is shared by the original process and its independent native workload driver.

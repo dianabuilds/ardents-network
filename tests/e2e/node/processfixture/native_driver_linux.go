@@ -153,12 +153,65 @@ func (process *NativeProcess) FailedJoin(t *testing.T, expectedOwner string) {
 	}
 }
 
+func nativeUnitCommand(t testing.TB, unit string, args ...string) *exec.Cmd {
+	t.Helper()
+	prefix := []string{"--quiet", "--wait", "--pipe", "--collect", "--unit=" + unit}
+	return exec.CommandContext(t.Context(), "systemd-run", append(prefix, args...)...)
+}
+
+func nodeEnvelope(runtimeSeconds int) []string {
+	return []string{
+		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms",
+		"--property=MemoryMax=1G", "--property=MemoryHigh=768M",
+		"--property=TasksMax=256", "--property=LimitNOFILE=1024",
+		fmt.Sprintf("--property=RuntimeMaxSec=%ds", runtimeSeconds),
+		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB",
+	}
+}
+
+// OwnerTestCommand constructs the measured child for an exact native Node test.
+func OwnerTestCommand(t testing.TB, unit, binary, testName, fixtureEnv, plan string, runtimeSeconds int) *exec.Cmd {
+	t.Helper()
+	args := append(nodeEnvelope(runtimeSeconds), "--setenv="+fixtureEnv+"="+plan,
+		"--", binary, "-test.v=true", "-test.run=^"+testName+"$", "-test.timeout=30s")
+	return nativeUnitCommand(t, unit, args...)
+}
+
+// StartOperationProcess starts a pinned Node test and joins it on early return.
+func StartOperationProcess(t testing.TB, unit, testName, fixtureEnv, plan, signals string, runtimeSeconds int) *NativeProcess {
+	t.Helper()
+	command := OwnerTestCommand(t, unit, PinnedOwnerTest(t), testName, fixtureEnv, plan, runtimeSeconds)
+	process := &NativeProcess{Unit: unit, Command: command}
+	command.Stdout, command.Stderr = &process.Diagnostic, &process.Diagnostic
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if !process.Joined {
+			for _, marker := range []string{"release", "stop"} {
+				if err := writeOperationMarker(signals, marker); err != nil {
+					t.Error("release original test process", err)
+				}
+			}
+			if err := process.Wait(); err != nil {
+				// Wait can join only systemd-run after its context is canceled.
+				// Stop the unit as well so it cannot survive a failed workload.
+				stopErr := exec.Command("systemctl", "stop", unit).Run()
+				t.Error("original test process cleanup", errors.Join(err, stopErr))
+			}
+		}
+		if t.Failed() {
+			t.Log("original test diagnostics", process.Diagnostic.String())
+		}
+	})
+	return process
+}
+
 // Launch starts the exact requested systemd child and registers joined cleanup.
 func Launch(t testing.TB, unit, diagnosticLabel, stopErrorLabel string, args ...string) *NativeProcess {
 	t.Helper()
 	process := &NativeProcess{Unit: unit}
-	prefix := []string{"--quiet", "--wait", "--pipe", "--collect", "--unit=" + unit}
-	process.Command = exec.CommandContext(t.Context(), "systemd-run", append(prefix, args...)...)
+	process.Command = nativeUnitCommand(t, unit, args...)
 	process.Command.Stderr = &process.Diagnostic
 	var err error
 	process.Stdout, err = process.Command.StdoutPipe()
@@ -166,7 +219,7 @@ func Launch(t testing.TB, unit, diagnosticLabel, stopErrorLabel string, args ...
 		t.Fatal(err)
 	}
 	if err := process.Command.Start(); err != nil {
-		t.Fatal(err)
+		t.Fatal(errors.Join(err, process.Stdout.Close()))
 	}
 	t.Cleanup(func() {
 		if !process.Joined {
@@ -208,9 +261,8 @@ func LaunchRetainedRole(t testing.TB, role, binary, plan string, index byte) *Na
 
 func launchRole(t testing.TB, unit, diagnosticLabel, binary, role, flag, plan string) *NativeProcess {
 	t.Helper()
-	return Launch(t, unit, diagnosticLabel, "",
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--", binary, "node", role, flag, plan)
+	args := append(nodeEnvelope(120), "--", binary, "node", role, flag, plan)
+	return Launch(t, unit, diagnosticLabel, "", args...)
 }
 
 // StartRetainedRole waits for the listening report and records the original PID.

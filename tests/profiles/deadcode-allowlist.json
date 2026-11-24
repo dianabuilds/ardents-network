@@ -150,7 +150,23 @@
           "tests/e2e/node/processfixture.FixturePermission",
           "tests/e2e/node.ProvisionNodeCertificates",
           "tests/e2e/node.IssuerDeclaration",
-          "tests/e2e/node.RequireIssuerRootsReleased",
+          "tests/e2e/node/processfixture.AwaitNativeExpiryDenial",
+          "tests/e2e/node/processfixture.DescriptorRecordCount",
+          "tests/e2e/node/processfixture.IntroductionRecordCount",
+          "tests/e2e/node/processfixture.IssuerStorageFault",
+          "tests/e2e/node/processfixture.OriginalListenerOccupied",
+          "tests/e2e/node/processfixture.PinnedOwnerTest",
+          "tests/e2e/node/processfixture.OwnerTestCommand",
+          "tests/e2e/node/processfixture.StartOperationProcess",
+          "tests/e2e/node/processfixture.nativeUnitCommand",
+          "tests/e2e/node/processfixture.nodeEnvelope",
+          "tests/e2e/node/processfixture.writeOperationMarker",
+          "tests/e2e/node/processfixture.RequireFailedStartupCleanup",
+          "tests/e2e/node/processfixture.RequireIssuerRootsHeld",
+          "tests/e2e/node/processfixture.RequireIssuerRootsReleased",
+          "tests/e2e/node/processfixture.RequireReceivingRootsHeld",
+          "tests/e2e/node/processfixture.WaitOperationMarker",
+          "tests/e2e/node/processfixture.WriteOperationMarker",
           "tests/e2e/node/processfixture.RequireStartupFailure",
           "tests/e2e/node/processfixture.SeedNetworkState",
           "tests/e2e/node/processfixture.verifyPinnedCommand"
@@ -159,6 +175,18 @@
         "rationale": "Only the native Node and Source profiles verify the pinned CLI, launch measured child services, and collect original joined diagnostics here.",
         "owner": "Node process tests",
         "retirement": "Remove when the native process test drivers retire."
+      },
+      {
+        "symbols": [
+          "tests/e2e/source.CertificateArguments",
+          "tests/e2e/source.InitialKeyArguments",
+          "tests/e2e/source.VerifyInitialKeys",
+          "tests/e2e/source.marshalCertificateInput"
+        ],
+        "classification": "native provisioning test fixtures",
+        "rationale": "The compiled CLI and native signing tests use these fixtures to create genuine initial keys, sign the Node Record and independently verify the public receipt and protected inventory.",
+        "owner": "Native provisioning tests",
+        "retirement": "Remove when the native provisioning tests no longer share these fixtures."
       },
       {
         "symbols": [

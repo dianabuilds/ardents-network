@@ -78,25 +78,8 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	}
 	plan := processfixture.DescriptorOperationPlan{Original: p, Signals: t.TempDir()}
 	sockets[[32]byte{17}]()
-	testBinary := processfixture.PinnedOwnerTest(t)
 	unit := fmt.Sprintf("ardents-descriptor-operation-%d.service", os.Getpid())
-	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_DESCRIPTOR_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeNodeDescriptorOperationProcess$", "-test.timeout=30s")
-	var diagnostic processfixture.DiagnosticBuffer
-	command.Stdout, command.Stderr = &diagnostic, &diagnostic
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	joined := false
-	t.Cleanup(func() {
-		processfixture.WriteOperationMarker(t, plan.Signals, "release")
-		processfixture.WriteOperationMarker(t, plan.Signals, "stop")
-		if !joined {
-			_ = command.Wait()
-		}
-		if t.Failed() {
-			t.Log(diagnostic.String())
-		}
-	})
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeDescriptorOperationProcess", "ARDENTS_DESCRIPTOR_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 120)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
 	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	prefix, err := startRoutePrefix(t.Context(), prefixPlan, f.authority, holder)
@@ -191,10 +174,9 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "release")
 	processfixture.WaitOperationMarker(t, plan.Signals, "joined", 3*time.Second)
-	if err := command.Wait(); err != nil {
-		t.Fatal("original operation child", err, diagnostic.String())
+	if err := process.Wait(); err != nil {
+		t.Fatal("original operation child", err, process.Diagnostic.String())
 	}
-	joined = true
 	if markerOriginal != nil {
 		if err := os.WriteFile(markerPath, markerOriginal, 0600); err != nil {
 			t.Fatal(err)
@@ -284,25 +266,8 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	}
 	plan := processfixture.IntroductionOperationPlan{Original: p, Signals: t.TempDir()}
 	sockets[[32]byte{25}]()
-	testBinary := processfixture.PinnedOwnerTest(t)
 	unit := fmt.Sprintf("ardents-introduction-operation-%d.service", os.Getpid())
-	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_INTRODUCTION_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeNodeIntroductionOperationProcess$", "-test.timeout=30s")
-	var diagnostic processfixture.DiagnosticBuffer
-	command.Stdout, command.Stderr = &diagnostic, &diagnostic
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	joined := false
-	t.Cleanup(func() {
-		processfixture.WriteOperationMarker(t, plan.Signals, "release")
-		processfixture.WriteOperationMarker(t, plan.Signals, "stop")
-		if !joined {
-			_ = command.Wait()
-		}
-		if t.Failed() {
-			t.Log(diagnostic.String())
-		}
-	})
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeIntroductionOperationProcess", "ARDENTS_INTRODUCTION_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 120)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
 	prefixPlan := routePrefixPlan{Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	selectionRoot := t.TempDir()
@@ -406,10 +371,9 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "release")
 	processfixture.WaitOperationMarker(t, plan.Signals, "joined", 3*time.Second)
-	if err := command.Wait(); err != nil {
-		t.Fatal("original operation child", err, diagnostic.String())
+	if err := process.Wait(); err != nil {
+		t.Fatal("original operation child", err, process.Diagnostic.String())
 	}
-	joined = true
 	if markerOriginal != nil {
 		if err := os.WriteFile(markerPath, markerOriginal, 0600); err != nil {
 			t.Fatal(err)
@@ -575,27 +539,8 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		}
 	}
 	sockets[f.profile.IssuerNodeID]()
-	testBinary := processfixture.PinnedOwnerTest(t)
 	unit := fmt.Sprintf("ardents-issuer-operation-%d.service", os.Getpid())
-	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
-		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=60s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_ISSUER_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeNodeIssuerOperationProcess$", "-test.timeout=30s")
-	var diagnostic processfixture.DiagnosticBuffer
-	command.Stdout, command.Stderr = &diagnostic, &diagnostic
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	joined := false
-	t.Cleanup(func() {
-		processfixture.WriteOperationMarker(t, plan.Signals, "release")
-		processfixture.WriteOperationMarker(t, plan.Signals, "stop")
-		if !joined {
-			_ = command.Wait()
-		}
-		if t.Failed() {
-			t.Log("native issuing child result", diagnostic.String())
-		}
-	})
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeIssuerOperationProcess", "ARDENTS_ISSUER_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 60)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
 	var prefixes [2]routeHandle
 	for i := range prefixes {
@@ -693,7 +638,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatal("original operation did not return its reservation", observed.ReservedBytes, diagnostic.String())
+			t.Fatal("original operation did not return its reservation", observed.ReservedBytes, process.Diagnostic.String())
 		}
 		time.Sleep(time.Millisecond)
 	}
@@ -751,11 +696,9 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 		_ = p.close()
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "stop")
-	if err := command.Wait(); err != nil {
-		joined = true
-		t.Fatal("original native child did not join", err, diagnostic.String())
+	if err := process.Wait(); err != nil {
+		t.Fatal("original native child did not join", err, process.Diagnostic.String())
 	}
-	joined = true
 	if mode == "retry" {
 		request, response := nativeIssuerCommittedPair(t, initialResult, committed)
 		defer clear(request)
@@ -908,25 +851,8 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	}
 	plan := processfixture.JoinOperationPlan{Original: p, Signals: t.TempDir()}
 	sockets[[32]byte{20}]()
-	binary := processfixture.PinnedOwnerTest(t)
 	unit := fmt.Sprintf("ardents-join-operation-%d.service", os.Getpid())
-	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_JOIN_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", binary, "-test.v=true", "-test.run=^TestNativeNodeJoinOperationProcess$", "-test.timeout=30s")
-	var diagnostic processfixture.DiagnosticBuffer
-	command.Stdout, command.Stderr = &diagnostic, &diagnostic
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	joined := false
-	t.Cleanup(func() {
-		processfixture.WriteOperationMarker(t, plan.Signals, "release")
-		processfixture.WriteOperationMarker(t, plan.Signals, "stop")
-		if !joined {
-			_ = command.Wait()
-		}
-		if t.Failed() {
-			t.Log(diagnostic.String())
-		}
-	})
+	process := processfixture.StartOperationProcess(t, unit, "TestNativeNodeJoinOperationProcess", "ARDENTS_JOIN_OPERATION_FIXTURE", hostingConfig(t, plan), plan.Signals, 120)
 	processfixture.WaitOperationMarker(t, plan.Signals, "listening", 5*time.Second)
 	root := t.TempDir()
 	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
@@ -1021,10 +947,9 @@ func nativeJoinOperationParent(t *testing.T, carrier transport.CarrierProfile, p
 	}
 	processfixture.WriteOperationMarker(t, plan.Signals, "release")
 	processfixture.WaitOperationMarker(t, plan.Signals, "joined", 3*time.Second)
-	if e := command.Wait(); e != nil {
-		t.Fatal("original operation child", e, diagnostic.String())
+	if e := process.Wait(); e != nil {
+		t.Fatal("original operation child", e, process.Diagnostic.String())
 	}
-	joined = true
 	after, err := os.ReadFile(journalPath)
 	if err != nil || !bytes.Equal(atHold, after) {
 		t.Fatal("denial added or refunded spend", err)
