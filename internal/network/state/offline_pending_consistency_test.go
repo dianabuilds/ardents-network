@@ -37,7 +37,10 @@ func TestOfflineAcceptRejectsCandidateConflictingWithPendingEpoch(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	offline := fixtureConfig(genesis, config.Root, time.Unix(genesis.now, 0).UTC())
+	offline := fixtureConfig(genesis, config.Root, time.Time{})
+	// Reopen offline without rewinding the clock used to stage the pending Epoch.
+	offline.Clock = config.Clock
+	offline.ObserveClock = config.ObserveClock
 	opened, err := state.Open(offline)
 	if err != nil {
 		t.Fatalf("open pending root offline: %v", err)
