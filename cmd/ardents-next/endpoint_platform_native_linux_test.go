@@ -23,6 +23,8 @@ import (
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
+
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 // This native qualification exercises the protected text Endpoint platform-led
@@ -533,7 +535,7 @@ func endpointPlatformNativeDeclaration(t *testing.T, stand *endpointPlatformNati
 
 func endpointPlatformNativeCredentials(t *testing.T, stand *endpointPlatformNativeStand) {
 	t.Helper()
-	_, client, _, root, _, _ := sourceNativeTLS(t)
+	_, client, _, root, _, _ := sourcefixture.NativeTLS(t)
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: client.Certificate[0]})
 	keyDER, err := x509.MarshalPKCS8PrivateKey(client.PrivateKey)
 	if err != nil {

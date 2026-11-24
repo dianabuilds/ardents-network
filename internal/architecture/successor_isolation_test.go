@@ -563,13 +563,29 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
+	// These test drivers share only independently generated TLS fixture bytes.
+	if localImport && local == "tests/e2e/source" {
+		switch source {
+		case "cmd/ardents-next/endpoint_platform_native_linux_test.go",
+			"cmd/ardents-next/source_installed_native_linux_test.go",
+			"cmd/ardents-next/source_lifecycle_native_linux_test.go",
+			"cmd/ardents-next/source_native_linux_test.go",
+			"cmd/ardents-next/source_preparation_native_linux_test.go",
+			"internal/endpoint/source_trust_native_linux_test.go",
+			"cmd/ardents-next/source_preparation_process_linux_test.go",
+			"cmd/ardents-next/source_state_linux_test.go":
+			return true
+		default:
+			return false
+		}
+	}
 	// Only the actual composition and its tests consume the Endpoint root.
 	if strings.HasPrefix(source, "cmd/ardents-next/") && localImport && local == "internal/endpoint" {
 		switch source {
 		case "cmd/ardents-next/endpoint_preparation_linux.go", "cmd/ardents-next/endpoint_construction_linux_test.go",
 			"cmd/ardents-next/endpoint_history_linux_test.go",
 			"cmd/ardents-next/installed_endpoint_linux.go", "cmd/ardents-next/source_preparation_linux.go",
-			"cmd/ardents-next/source_preparation_fixture_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go",
+			"cmd/ardents-next/source_preparation_native_linux_test.go",
 			"cmd/ardents-next/installed_source_linux_test.go", "cmd/ardents-next/source_preparation_process_linux_test.go":
 			return true
 		default:
@@ -859,7 +875,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/endpoint/history_preparation_linux.go" || source == "internal/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/network/duty" {
 			return true
 		}
-		if source == "internal/endpoint/preparation_files_linux.go" && dependency == modulePath+"/internal/platform/artifacts" {
+		if (source == "internal/endpoint/preparation_files_linux.go" || source == "internal/endpoint/source_trust_native_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
 			return true
 		}
 		if source == "internal/endpoint/history_preparation_linux_test.go" && dependency == modulePath+"/internal/admission/attempts" {

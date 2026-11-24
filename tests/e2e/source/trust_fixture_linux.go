@@ -1,29 +1,26 @@
 //go:build linux && (network_signing_native || node_process_native)
 
-package main
+package source
 
 import (
-	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
+// TrustPreparationFixture writes the public inputs for Source trust preparation.
 // All CA, leaves and keys are explicitly external fixture credentials. Product
 // preparation receives only their public files and opaque private declarations.
-func sourcePreparationFixture(t *testing.T, parent string, headless endpoint.HeadlessPlan) (map[string]any, []tls.Certificate) {
+func TrustPreparationFixture(t testing.TB, parent string, headless any) (map[string]any, []tls.Certificate) {
 	t.Helper()
-	server, client, unauthorized, root, serverPin, clientPin := sourceNativeTLS(t)
-	second, _, _, secondRoot, secondPin, _ := sourceNativeTLS(t)
+	server, client, unauthorized, root, serverPin, clientPin := NativeTLS(t)
+	second, _, _, secondRoot, secondPin, _ := NativeTLS(t)
 	hexID := func(id [32]byte) string { return hex.EncodeToString(id[:]) }
 	writePublic := func(name string, raw []byte) map[string]any {
 		path := filepath.Join(parent, name)
@@ -34,10 +31,6 @@ func sourcePreparationFixture(t *testing.T, parent string, headless endpoint.Hea
 	}
 	chain := func(c tls.Certificate) []byte {
 		return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Certificate[0]})
-	}
-	if headless.NetworkID == "" {
-		pub := ed25519.NewKeyFromSeed(make([]byte, 32)).Public().(ed25519.PublicKey)
-		headless = endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-participation"), TimeConfidenceFile: filepath.Join(parent, "clock"), NetworkID: hexID([32]byte{8}), NetworkAuthorities: []string{hex.EncodeToString(pub)}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(pub)}
 	}
 	now := time.Now().UTC().Truncate(time.Second).Format(time.RFC3339)
 	p := map[string]any{"schema": "ardents-source-trust-preparation-v1", "reference_time": now, "clock_observed_at": now, "client": headless,
@@ -53,13 +46,4 @@ func sourcePreparationFixture(t *testing.T, parent string, headless endpoint.Hea
 	}
 	p["sources"] = members
 	return p, []tls.Certificate{server, second, client, unauthorized}
-}
-
-func sourcePreparationJSON(t *testing.T, value any) []byte {
-	t.Helper()
-	raw, err := json.Marshal(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
 }

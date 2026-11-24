@@ -23,6 +23,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 // Independent authorities remain test fixtures. State genuinely authenticates
@@ -67,7 +69,7 @@ func sourceStateCustodyFixture(t *testing.T) (string, servingdeclaration.Serving
 	if err := errors.Join(accepted, seed.Close()); err != nil {
 		t.Fatal(err)
 	}
-	server, _, _, root, _, clientPin := sourceNativeTLS(t)
+	server, _, _, root, _, clientPin := sourcefixture.NativeTLS(t)
 	plan.ClientPins = [][32]byte{clientPin}
 	der, err := x509.MarshalPKCS8PrivateKey(server.PrivateKey)
 	if err != nil {
@@ -485,7 +487,7 @@ func TestSourceFailedReadyOutputJoinsRealStateAndServingGuards(t *testing.T) {
 	if err := errors.Join(acceptErr, seed.Close()); err != nil {
 		t.Fatal(err)
 	}
-	server, _, _, root, _, pin := sourceNativeTLS(t)
+	server, _, _, root, _, pin := sourcefixture.NativeTLS(t)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

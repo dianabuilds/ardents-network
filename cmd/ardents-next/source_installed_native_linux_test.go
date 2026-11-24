@@ -26,6 +26,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 // Installed Source operator acceptance (#604 stage 1.5) against the REAL
@@ -284,7 +286,7 @@ func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	server, client, _, rootPEM, serverPin, clientPin := sourceNativeTLS(t)
+	server, client, _, rootPEM, serverPin, clientPin := sourcefixture.NativeTLS(t)
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate[0]})
 	keyDER, err := x509.MarshalPKCS8PrivateKey(server.PrivateKey)
 	if err != nil {

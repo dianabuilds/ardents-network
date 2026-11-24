@@ -29,6 +29,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
+
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 // End-to-end retained Source lifecycle (#604 stage 1.2): prepare-state domain
@@ -152,7 +154,7 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	server, client, _, rootPEM, serverPin, clientPin := sourceNativeTLS(t)
+	server, client, _, rootPEM, serverPin, clientPin := sourcefixture.NativeTLS(t)
 	certPath, keyPath := nativeDescriptorCredential(t, server)
 	rootPath := filepath.Join(parent, "client-ca.pem")
 	if err := os.WriteFile(rootPath, rootPEM, 0600); err != nil {

@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package source
 
 import (
 	"crypto/ed25519"
@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// Independently prepared fixture material never comes from product execution.
-func sourceNativeTLS(t *testing.T) (tls.Certificate, tls.Certificate, tls.Certificate, []byte, [32]byte, [32]byte) {
+// NativeTLS builds independent public Source TLS fixtures. It has no product authority.
+func NativeTLS(t testing.TB) (tls.Certificate, tls.Certificate, tls.Certificate, []byte, [32]byte, [32]byte) {
 	t.Helper()
 	public, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

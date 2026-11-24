@@ -27,6 +27,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+
+	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
 func launchNativeSource(t *testing.T, binary, plan string) *nativeForwardingProcess {
@@ -85,7 +87,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
 	networkPlan := seedNativeNodeState(t, f, bundle, clock)
-	server, client, unauthorized, root, serverPin, clientPin := sourceNativeTLS(t)
+	server, client, unauthorized, root, serverPin, clientPin := sourcefixture.NativeTLS(t)
 	cert, key := nativeDescriptorCredential(t, server)
 	rootPath := filepath.Join(t.TempDir(), "root.pem")
 	if err := os.WriteFile(rootPath, root, 0600); err != nil {
@@ -182,11 +184,11 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 			case "hostname":
 				config.Sources[0].ServerName = "wrong.test"
 			case "ca":
-				_, _, _, config.Sources[0].RootPEM, _, _ = sourceNativeTLS(t)
+				_, _, _, config.Sources[0].RootPEM, _, _ = sourcefixture.NativeTLS(t)
 			case "client":
 				config.ClientCertificate = unauthorized
 			case "client-ca":
-				_, config.ClientCertificate, _, _, _, _ = sourceNativeTLS(t)
+				_, config.ClientCertificate, _, _, _, _ = sourcefixture.NativeTLS(t)
 			}
 			response, err := fetch(config, request)
 			if err == nil && response.Status == "ok" {
