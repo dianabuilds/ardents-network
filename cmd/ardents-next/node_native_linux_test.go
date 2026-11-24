@@ -33,24 +33,6 @@ func TestNativeNodeForwardingTCP(t *testing.T) {
 	}
 }
 
-// Startup's new field is a closed diagnostic projection, not permission to add
-// arbitrary fields or relax the original refusal/outcome/durability assertions.
-func requireNativeStartupFailure(t *testing.T, raw string) {
-	t.Helper()
-	var fact struct {
-		Kind, Phase, Cause string
-		ElapsedMS          *int64 `json:"elapsed_ms"`
-	}
-	decoder := json.NewDecoder(bytes.NewBufferString(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&fact); err != nil || fact.Kind != "logical" || fact.Phase != "startup" || fact.Cause != "owner-refusal" || fact.ElapsedMS == nil || *fact.ElapsedMS < 0 {
-		t.Fatal("partial startup lost closed original first-cause projection", raw, err)
-	}
-	if err := decoder.Decode(new(any)); err != io.EOF {
-		t.Fatal("startup diagnostic contains trailing data", err)
-	}
-}
-
 func testNativeNodeForwarding(t *testing.T, retirement string) {
 	binary := nodefixture.PinnedCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {

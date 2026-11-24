@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 4110b80894cb73fe9dd04ba5b6441a93ae7d6e4f
+          ref: 77ec35f29b0b616cad05aed74fc63086f5501215
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 4110b80894cb73fe9dd04ba5b6441a93ae7d6e4f
+          test "$(git rev-parse HEAD)" = 77ec35f29b0b616cad05aed74fc63086f5501215
           git show -s --format='candidate=%H tree=%T'
           . /etc/os-release
           test "$ID:$VERSION_ID" = ubuntu:24.04

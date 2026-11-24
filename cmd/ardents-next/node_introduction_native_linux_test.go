@@ -406,7 +406,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 						t.Fatal("partial startup lost bounded refusal", event, decodeErr)
 					}
 					if expected == 1 {
-						requireNativeStartupFailure(t, event["first_failure"])
+						nodefixture.RequireStartupFailure(t, event["first_failure"])
 					}
 					if expected == 2 && (decodeErr == nil || len(event) != 0) {
 						t.Fatal("invalid declaration reached runtime", event)
