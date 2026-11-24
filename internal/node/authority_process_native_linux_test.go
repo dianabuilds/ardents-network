@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"testing"
 	"time"
 
@@ -160,7 +159,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 	defer cancel()
 	current := func() (network.RuntimeView, error) {
 		actual, err := owner.CurrentRuntime()
-		if plan.Fault == "startup-cancel" && !canceledAtListener.Load() && nativeOriginalListenerOccupied(t, member) && canceledAtListener.CompareAndSwap(false, true) {
+		if plan.Fault == "startup-cancel" && !canceledAtListener.Load() && processfixture.OriginalListenerOccupied(t, member) && canceledAtListener.CompareAndSwap(false, true) {
 			// Cancel after an actual listener effect and a completed real State
 			// read, before the original consumer's successful final handoff.
 			cancel()
@@ -234,7 +233,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 		if err != nil || !bytes.Equal(budgetBefore, budgetAfter) {
 			t.Fatal("deferred Carrier opened or changed provider accounting", err)
 		}
-		if nativeOriginalListenerOccupied(t, member) {
+		if processfixture.OriginalListenerOccupied(t, member) {
 			t.Fatal("deferred Carrier retained a UDP listener")
 		}
 		return
@@ -247,7 +246,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 		if !canceledAtListener.Load() || !errors.Is(err, context.Canceled) {
 			t.Fatal("late startup cancellation lost its original cause", err)
 		}
-		checkNativeFailedStartupCleanup(t, plan, member, binding)
+		processfixture.RequireFailedStartupCleanup(t, plan.Participation, plan.Spend, plan.Hosting, member, binding)
 		return
 	}
 	if err != nil {
@@ -310,7 +309,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		networkExpiry = awaitNativeExpiryDenial(t, actual, retained, original.FirstFailure)
+		networkExpiry = processfixture.AwaitNativeExpiryDenial(t, actual, retained, func() bool { return original.FirstFailure() != nil })
 	default:
 		t.Fatal("unselected original authority fault", plan.Fault)
 	}
@@ -406,84 +405,6 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 	} else if plan.Fault == "successor" && recovered.MatchDuty(retained, recovered.ObservedAt()) == nil {
 		t.Fatal("original duty rebound to recovered successor")
 	}
-}
-
-func nativeOriginalListenerOccupied(t *testing.T, member network.Member) bool {
-	t.Helper()
-	var closer interface{ Close() error }
-	var err error
-	if member.CarrierProfile == string(transport.ClosedCarrierTCP) {
-		closer, err = net.Listen("tcp", member.Endpoint)
-	} else if member.CarrierProfile == string(transport.ClosedCarrierQUIC) {
-		closer, err = net.ListenPacket("udp", member.Endpoint)
-	} else {
-		t.Fatal("unselected native listener probe")
-	}
-	if err == nil {
-		if err := closer.Close(); err != nil {
-			t.Fatal(err)
-		}
-		return false
-	}
-	if !errors.Is(err, syscall.EADDRINUSE) {
-		t.Fatal("original native endpoint observation unavailable", err)
-	}
-	return true
-}
-
-func checkNativeFailedStartupCleanup(t *testing.T, plan nativeOriginalAuthorityPlan, member network.Member, binding spending.Binding) {
-	t.Helper()
-	if nativeOriginalListenerOccupied(t, member) {
-		t.Fatal("rejected original acquisition retained its actual listener")
-	}
-	journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: plan.Participation, Clock: time.Now})
-	if err != nil {
-		t.Fatal(err)
-	}
-	conflict, err := journal.Conflict(member.NodeID, member.FamilyID)
-	if closeErr := journal.Close(); err != nil || closeErr != nil || conflict {
-		t.Fatal("rejected original startup left a producer", conflict, err, closeErr)
-	}
-	ledger, err := spending.Open(plan.Spend, binding)
-	if err != nil {
-		t.Fatal("late startup returned before its purpose root joined", err)
-	}
-	if err := ledger.Close(); err != nil {
-		t.Fatal(err)
-	}
-	budget, err := hosting.Open(plan.Hosting)
-	if err != nil {
-		t.Fatal(err)
-	}
-	snapshot, err := budget.Observe(t.Context())
-	if closeErr := budget.Close(); err != nil || closeErr != nil || snapshot.ReservedBytes != 0 {
-		t.Fatal("late rejected acquisition retained capacity", snapshot, err, closeErr)
-	}
-}
-
-// These negative-control helpers compare real signed expiry and the original
-// retained error. They supply no accepting State, producer or process facts.
-func awaitNativeExpiryDenial(t *testing.T, actual network.RuntimeView, retained network.RetainedDuty, first func() *node.FailureDiagnostic) error {
-	t.Helper()
-	now := time.Now()
-	expiry := actual.MatchDuty(retained, now)
-	if expiry == nil || now.Before(retained.RecordValidUntil) {
-		t.Fatal("genuine original duty remained current after signed expiry")
-	}
-	// Keep physical return held until denial is known. A scheduler delay alone
-	// cannot determine whether producer or post-I/O MatchDuty observes expiry first.
-	until := time.Now().Add(2 * time.Second)
-	for first() == nil {
-		if time.Now().After(until) {
-			t.Fatal("original expiry denial unavailable while physical return remained held")
-		}
-		select {
-		case <-time.After(10 * time.Millisecond):
-		case <-t.Context().Done():
-			t.Fatal(t.Context().Err())
-		}
-	}
-	return expiry
 }
 
 func nativeExpiryFirstOwner(t *testing.T, result, networkExpiry error, fact *node.FailureDiagnostic) string {
