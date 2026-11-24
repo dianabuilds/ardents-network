@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -15,6 +16,7 @@ func TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing(t *testing.T) {
 		name, profile, extra string
 	}{
 		{"forwarding", "ardents-forwarding-process-v1", ""},
+		{"issuer", "ardents-issuer-process-v1", ""},
 		{"join", "ardents-join-process-v1", ""},
 		{"descriptor", "ardents-descriptor-process-v1", "descriptor_root"},
 		{"introduction", "ardents-introduction-process-v1", "introduction_root"},
@@ -35,6 +37,9 @@ func TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing(t *testing.T) {
 			}
 			if role.extra != "" {
 				plan[role.extra] = filepath.Join(base, "role-history")
+			}
+			if role.name == "issuer" {
+				plan["issuance"] = issuerSetupWithoutHistory(base)
 			}
 			raw, err := json.Marshal(plan)
 			if err != nil {
@@ -57,6 +62,33 @@ func TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing(t *testing.T) {
 			if err != nil || len(entries) != 0 {
 				t.Fatalf("refusal modified empty history: %v %v", entries, err)
 			}
+			entries, err = os.ReadDir(base)
+			if err != nil || len(entries) != 2 || entries[0].Name() != "plan.json" || entries[1].Name() != "state" {
+				t.Fatalf("refusal created another owner: %v %v", entries, err)
+			}
 		})
+	}
+}
+
+// The declaration is syntactically valid but provides no issuer authority.
+// Missing Network State must be rejected before any issuance owner is opened.
+func issuerSetupWithoutHistory(base string) map[string]any {
+	identity := strings.Repeat("01", 32)
+	start, end := "2026-01-01T00:00:00Z", "2026-01-01T01:00:00Z"
+	keys := make([]map[string]any, 0, 3)
+	for class := 1; class <= 3; class++ {
+		keys = append(keys, map[string]any{"window": start, "class": class, "spki": strings.Repeat("00", 346)})
+	}
+	return map[string]any{
+		"admission_root": filepath.Join(base, "quota"),
+		"key_root":       filepath.Join(base, "keys"),
+		"result_root":    filepath.Join(base, "results"),
+		"admission_binding": map[string]any{
+			"network": identity, "issuer": identity, "authority": identity, "profile": identity,
+			"duty": 1, "start": start, "end": end, "keys": keys,
+		},
+		"key_binding": map[string]any{
+			"network": identity, "issuer": identity, "signer": identity, "start": start, "end": end,
+		},
 	}
 }
