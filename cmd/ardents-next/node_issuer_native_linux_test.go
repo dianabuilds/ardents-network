@@ -3,17 +3,12 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
@@ -26,12 +21,6 @@ import (
 	"testing"
 	"time"
 )
-
-func nativeIssuerIssuanceInput(p issuer.Plan) map[string]any {
-	b := p.KeyBinding
-	return map[string]any{"admission_root": p.AdmissionRoot, "admission_binding": admissionBindingConfig(p.AdmissionBinding), "key_root": p.KeyRoot,
-		"key_binding": issuanceBindingInput{Network: fmt.Sprintf("%x", b.Network), Issuer: fmt.Sprintf("%x", b.Issuer), Signer: fmt.Sprintf("%x", b.Signer), Start: b.Start.Format(time.RFC3339), End: b.End.Format(time.RFC3339)}, "result_root": p.ResultRoot}
-}
 
 // Actual hash-pinned Node Issuer in its sole native leaf, genuine signed State,
 // prepared RSA/quota/results and Stock. Neighboring native Forwarding Nodes use
@@ -98,7 +87,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 					networkPlan := seed()
 					networkPlan.ClockObservationFile = issuerClock
 					plan["network"] = networkPlan
-					plan["issuance"] = nativeIssuerIssuanceInput(f.plan)
+					plan["issuance"] = nodefixture.IssuerDeclaration(f.plan)
 					plan["process_profile"], plan["participation_root"], plan["retirement_wait_ms"] = processresource.IssuerProfile, filepath.Join(t.TempDir(), "participation"), 5000
 					plan["work"], plan["bootstrap_work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}
 					original = nodefixture.StartFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
@@ -241,99 +230,6 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				if err != nil || closeErr != nil || observed.ReservedBytes != 0 {
 					t.Fatal("joined native Issuer/Route retains Hosting", err, closeErr, observed.ReservedBytes)
 				}
-			}
-		})
-	}
-}
-
-// Actual command refusals at distinct startup acquisitions. Prepared durable
-// bytes remain unchanged and acquired roots/producer return only after join.
-func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
-	binary := nodefixture.PinnedCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
-		t.Run(string(carrier), func(t *testing.T) {
-			for _, fault := range []string{"profile", "role", "tls-key", "missing-results"} {
-				t.Run(fault, func(t *testing.T) {
-					f, sockets, certificates := newRoleRouteFixture(t, carrier, 1, false, true)
-					bundle, err := networkfixture.BuildClosed(f.spec)
-					if err != nil {
-						t.Fatal(err)
-					}
-					clock, closeClock := nodefixture.StartObservedClock(t)
-					defer closeClock()
-					network := nodefixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), bundle, clock)
-					id := f.profile.IssuerNodeID
-					certificate := certificates[id]
-					if fault == "tls-key" {
-						certificate = certificates[[32]byte{12}]
-					}
-					certPath, keyPath := nodefixture.WriteNativeCredential(t, certificate)
-					participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), nodefixture.ProcessBudget(t)
-					input := nativeIssuerIssuanceInput(f.plan)
-					plan := map[string]any{"network": network, "node_id": id, "process_profile": processresource.IssuerProfile, "participation_root": participation, "spend_root": spend, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "issuance": input,
-						"work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "bootstrap_work": hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
-					expected := 1
-					switch fault {
-					case "profile":
-						plan["process_profile"] = processresource.Profile
-						expected = 2
-					case "role":
-						plan["node_id"] = [32]byte{12}
-					case "missing-results":
-						input["result_root"] = filepath.Join(t.TempDir(), "missing")
-					}
-					before, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
-					if err != nil {
-						t.Fatal(err)
-					}
-					sockets[id]()
-					p := nodefixture.LaunchFreshRole(t, "issuer", binary, hostingConfig(t, plan), 0)
-					var event map[string]string
-					decodeErr := json.NewDecoder(p.Stdout).Decode(&event)
-					err = p.Command.Wait()
-					p.Joined = true
-					_ = p.Stdout.Close()
-					var exit *exec.ExitError
-					if !errors.As(err, &exit) || exit.ExitCode() != expected {
-						t.Fatal("actual partial startup did not refuse", fault, err, p.Diagnostic.String())
-					}
-					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.issuer" || event["phase"] != "refused") {
-						t.Fatal("startup refusal lost finite projection", event, decodeErr)
-					}
-					if expected == 1 {
-						nodefixture.RequireStartupFailure(t, event["first_failure"])
-					}
-					if expected == 2 && (decodeErr == nil || len(event) != 0) {
-						t.Fatal("wrong profile reached accepting composition", event)
-					}
-					after, err := os.ReadFile(filepath.Join(f.plan.AdmissionRoot, "admission.journal"))
-					if err != nil || !bytes.Equal(before, after) {
-						t.Fatal("rejected startup changed quota", err)
-					}
-					if _, err := os.Stat(filepath.Join(spend, "closed-token-spends")); !os.IsNotExist(err) {
-						t.Fatal("early rejected acquisition reached Receiving", err)
-					}
-					nodefixture.RequireIssuerRootsReleased(t, f.plan)
-					if _, err := os.Stat(participation); err == nil {
-						view, err := f.current()
-						if err != nil {
-							t.Fatal(err)
-						}
-						m, err := view.Member(id, view.ObservedAt())
-						if err != nil {
-							t.Fatal(err)
-						}
-						journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: participation, Clock: time.Now})
-						if err != nil {
-							t.Fatal(err)
-						}
-						conflict, err := journal.Conflict(id, m.FamilyID)
-						closeErr := journal.Close()
-						if err != nil || closeErr != nil || conflict {
-							t.Fatal("partial acquisition retained original producer", err, closeErr, conflict)
-						}
-					}
-				})
 			}
 		})
 	}

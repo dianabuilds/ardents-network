@@ -3,6 +3,7 @@
 package node
 
 import (
+	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
@@ -60,12 +61,7 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 
 	member := bundle.Nodes[1]
 	key := member.PrivateKey
-	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
-	leaf, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certPath, keyPath := WriteNativeCredential(t, tls.Certificate{Certificate: [][]byte{leaf}, PrivateKey: key})
+	certPath, keyPath := WriteNativeCredential(t, nativeRoleCertificate(t, key))
 	budget := ProcessBudget(t)
 	participation := filepath.Join(t.TempDir(), "participation")
 	spend := t.TempDir()
@@ -152,4 +148,14 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 		t.Fatal("retained producer adopted after crash", code, event, refused.Diagnostic.String())
 	}
 	producerPresent(true, "after refused relaunch")
+}
+
+func nativeRoleCertificate(t testing.TB, key ed25519.PrivateKey) tls.Certificate {
+	t.Helper()
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
+	leaf, err := x509.CreateCertificate(rand.Reader, template, template, key.Public(), key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tls.Certificate{Certificate: [][]byte{leaf}, PrivateKey: key}
 }

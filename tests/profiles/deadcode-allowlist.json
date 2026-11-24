@@ -142,6 +142,7 @@
           "tests/e2e/node.NativeProcess.FailedJoin",
           "tests/e2e/node.NativeProcess.Stop",
           "tests/e2e/node.PinnedCommand",
+          "tests/e2e/node.IssuerDeclaration",
           "tests/e2e/node.RequireIssuerRootsReleased",
           "tests/e2e/node.RequireStartupFailure",
           "tests/e2e/node.SeedNetworkState",
