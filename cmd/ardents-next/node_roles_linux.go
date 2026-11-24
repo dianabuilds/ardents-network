@@ -7,9 +7,10 @@ import (
 	"errors"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 
@@ -41,12 +42,10 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	if err != nil {
 		return 2
 	}
-	network := (*networkAuthorityPlan)(plan.Network)
-	if plan.Network == nil || plan.ProcessProfile != processresource.Profile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 ||
-		!validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) {
+	if !plan.ValidInvocation() {
 		return 2
 	}
-	config, err := networkStateConfig(network)
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		return 2
 	}
@@ -82,15 +81,11 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if err != nil {
 		return 2
 	}
-	network := (*networkAuthorityPlan)(plan.Network)
-	if plan.Network == nil || plan.ProcessProfile != processresource.IssuerProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+	prepared, err := issuance.DecodeResultSetupDeclaration(plan.Issuance)
+	if err != nil || !plan.ValidInvocation(prepared.AdmissionRoot, prepared.KeyRoot, prepared.ResultRoot) {
 		return 2
 	}
-	prepared, err := decodeIssuanceResultPlan(plan.Issuance, "initialize-results")
-	if err != nil || !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root) {
-		return 2
-	}
-	config, err := networkStateConfig(network)
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		return 2
 	}
@@ -108,11 +103,11 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 			Certificate:       plan.Certificate,
 			PrivateKey:        plan.PrivateKey,
 			Issuance: issuer.Plan{
-				AdmissionRoot:    prepared.Admission.Root,
-				AdmissionBinding: prepared.Admission.Binding,
-				KeyRoot:          prepared.Keys.Root,
-				KeyBinding:       prepared.Keys.Binding,
-				ResultRoot:       prepared.Root,
+				AdmissionRoot:    prepared.AdmissionRoot,
+				AdmissionBinding: prepared.AdmissionBinding,
+				KeyRoot:          prepared.KeyRoot,
+				KeyBinding:       prepared.KeyBinding,
+				ResultRoot:       prepared.ResultRoot,
 			},
 			Work:          plan.Work,
 			BootstrapWork: plan.BootstrapWork,
@@ -140,14 +135,10 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 	if err != nil {
 		return 2
 	}
-	network := (*networkAuthorityPlan)(plan.Network)
-	if plan.Network == nil || plan.ProcessProfile != processresource.DescriptorProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+	if !plan.ValidInvocation() {
 		return 2
 	}
-	if !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
-		return 2
-	}
-	config, err := networkStateConfig(network)
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		return 2
 	}
@@ -193,14 +184,10 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 	if err != nil {
 		return 2
 	}
-	network := (*networkAuthorityPlan)(plan.Network)
-	if plan.Network == nil || plan.ProcessProfile != processresource.IntroductionProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+	if !plan.ValidInvocation() {
 		return 2
 	}
-	if !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
-		return 2
-	}
-	config, err := networkStateConfig(network)
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		return 2
 	}
@@ -246,14 +233,10 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if err != nil {
 		return 2
 	}
-	network := (*networkAuthorityPlan)(plan.Network)
-	if plan.Network == nil || plan.ProcessProfile != processresource.JoinProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+	if !plan.ValidInvocation() {
 		return 2
 	}
-	if !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) {
-		return 2
-	}
-	config, err := networkStateConfig(network)
+	config, err := (*state.AuthorityDeclaration)(plan.Network).Config()
 	if err != nil {
 		return 2
 	}
