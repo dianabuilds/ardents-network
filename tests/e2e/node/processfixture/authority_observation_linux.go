@@ -3,6 +3,7 @@ package processfixture
 import (
 	"errors"
 	"net"
+	"os"
 	"syscall"
 	"testing"
 	"time"
@@ -91,4 +92,35 @@ func AwaitNativeExpiryDenial(t *testing.T, actual network.RuntimeView, retained 
 		}
 	}
 	return expiry
+}
+
+// RequireReceivingRootsHeld checks the real leases during an interrupted operation.
+func RequireReceivingRootsHeld(t *testing.T, participationRoot, spendRoot string, member network.Member, binding spending.Binding, originalLock string) {
+	t.Helper()
+	journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: participationRoot, Clock: time.Now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	collision, err := journal.Conflict(member.NodeID, member.FamilyID)
+	if closeErr := journal.Close(); err != nil || closeErr != nil || !collision {
+		t.Fatal("unjoined original producer disappeared, including beyond work expiry", collision, err, closeErr)
+	}
+	if ledger, err := spending.Open(spendRoot, binding); err == nil {
+		t.Fatal("original receiving root returned before physical join", ledger.Close())
+	}
+	if originalLock == "" {
+		return
+	}
+	lock, err := os.OpenFile(originalLock, os.O_RDWR, 0)
+	if err != nil {
+		t.Fatal("actual original role lock unavailable", err)
+	}
+	defer func() {
+		if err := lock.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); !errors.Is(err, syscall.EWOULDBLOCK) {
+		t.Fatal("original role lease returned before physical join", err)
+	}
 }

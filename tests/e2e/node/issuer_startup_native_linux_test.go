@@ -98,7 +98,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					if _, err := os.Stat(filepath.Join(spend, "closed-token-spends")); !os.IsNotExist(err) {
 						t.Fatal("early rejected acquisition reached Receiving", err)
 					}
-					RequireIssuerRootsReleased(t, issuerPlan)
+					processfixture.RequireIssuerRootsReleased(t, issuerPlan)
 					if _, err := os.Stat(participation); err == nil {
 						journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: participation, Clock: time.Now})
 						if err != nil {

@@ -11,6 +11,8 @@ test -r /sys/fs/cgroup/cgroup.controllers
 : "${ARDENTS_NODE_NATIVE_COMMAND_SHA256:?independent command digest is required}"
 : "${ARDENTS_NODE_NATIVE_TEST:?native command test binary is required}"
 : "${ARDENTS_NODE_NATIVE_TEST_SHA256:?independent test digest is required}"
+: "${ARDENTS_NODE_OWNER_TEST:?native Node owner test binary is required}"
+: "${ARDENTS_NODE_OWNER_TEST_SHA256:?independent Node owner test digest is required}"
 : "${ARDENTS_NODE_E2E_TEST:?Node e2e test binary is required}"
 : "${ARDENTS_NODE_E2E_TEST_SHA256:?independent Node e2e digest is required}"
 : "${ARDENTS_NODE_RESOURCE_TEST:?native resource test binary is required}"
@@ -24,6 +26,8 @@ verify() {
 }
 verify "$ARDENTS_NODE_NATIVE_COMMAND" "$ARDENTS_NODE_NATIVE_COMMAND_SHA256"
 verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
+verify "$ARDENTS_NODE_OWNER_TEST" "$ARDENTS_NODE_OWNER_TEST_SHA256"
+"$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeNodeJoinOperationProcess$' | grep -Fx TestNativeNodeJoinOperationProcess >/dev/null
 verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
@@ -37,7 +41,6 @@ test "$discovered_resources" = "$expected_resources" || { echo 'Join resource di
 expected='TestNativeJoinDuplexAndReopenTCP
 TestNativeJoinMismatchedPairRefusesTCP
 TestNativeJoinOperationBoundariesTCP
-TestNativeJoinOriginalAuthorityAndJoinTCP
 TestNativeJoinOriginalCommandLossAfterIOTCP
 TestNativeJoinProvisionedCertificateTCP
 TestNativeJoinUndercoverageBeforeSpendTCP'
@@ -52,7 +55,8 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeJoin' -test.timeout=90s
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenTCP|UndercoverageBeforeSpendTCP|ProvisionedCertificateTCP)$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalAuthorityAndJoinTCP$' -test.timeout=3m
+"$ARDENTS_NODE_OWNER_TEST" -test.list='^TestNativeJoinOriginalAuthorityAndJoinTCP$' | grep -Fx TestNativeJoinOriginalAuthorityAndJoinTCP >/dev/null
+"$ARDENTS_NODE_OWNER_TEST" -test.v=true -test.run='^TestNativeJoinOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' | grep -Fx TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesTCP$' -test.timeout=3m

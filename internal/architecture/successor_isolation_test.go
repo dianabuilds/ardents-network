@@ -570,7 +570,6 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/connection_installed_linux_test.go",
 			"cmd/ardents-next/execution_installed_linux_test.go",
 			"cmd/ardents-next/network_admission_fixture_linux_test.go",
-			"cmd/ardents-next/node_authority_native_linux_test.go",
 			"cmd/ardents-next/node_descriptor_native_linux_test.go",
 			"cmd/ardents-next/node_introduction_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
@@ -595,6 +594,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/route_token_linux_test.go",
 			"internal/node/refill_process_native_linux_test.go",
 			"internal/node/authority_process_native_linux_test.go",
+			"internal/node/operation_process_native_linux_test.go",
 			"tests/e2e/endpoint/endpoint_platform_native_linux_test.go",
 			"tests/e2e/node/completion_native_linux_test.go",
 			"tests/e2e/node/forwarding_exchange_native_linux_test.go",
@@ -683,6 +683,10 @@ func successorImportAllowed(source, dependency string) bool {
 				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/source_preparation_native_linux_test.go":
 			return local == "internal/endpoint" || local == "tests/e2e/source"
+		case "tests/e2e/node/processfixture/authority_inputs_linux.go":
+			return local == "internal/admission/issuer" || local == "internal/network/state" || local == "tests/epochfixture/network"
+		case "tests/e2e/node/processfixture/issuer_roots_linux.go":
+			return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota"
 		case "tests/e2e/node/processfixture/authority_observation_linux.go":
 			return local == "internal/admission/spending" || local == "internal/hosting" ||
 				local == "internal/network" || local == "internal/network/duty" || local == "internal/network/epoch"
@@ -784,10 +788,20 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	// These command tests consume only the registered process and signed fixture owners.
+	if localImport && source == "internal/node/operation_process_native_linux_test.go" {
+		switch local {
+		case "internal/admission", "internal/admission/issuance", "internal/admission/issuer",
+			"internal/admission/quota", "internal/admission/spending", "internal/endpoint/funding",
+			"internal/hosting", "internal/network", "internal/network/state",
+			"internal/node", "internal/route/role":
+			return true
+		}
+	}
 	if localImport && source == "internal/node/authority_process_native_linux_test.go" {
 		switch local {
-		case "internal/admission/spending", "internal/hosting", "internal/network", "internal/network/duty",
-			"internal/network/state", "internal/node", "internal/route/role", "internal/route/transport", "tests/epochfixture/network":
+		case "internal/admission/issuance", "internal/admission/issuer", "internal/admission/spending", "internal/hosting",
+			"internal/network", "internal/network/duty", "internal/network/state", "internal/node", "internal/reachability",
+			"internal/route/introduction", "internal/route/role", "internal/route/transport", "tests/epochfixture/network":
 			return true
 		}
 	}
@@ -826,7 +840,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/forwarding_platform_native_linux_test.go", "cmd/ardents-next/infrastructure_caller_linux_test.go",
 			"cmd/ardents-next/infrastructure_linux_test.go", "cmd/ardents-next/infrastructure_preparation_native_linux_test.go",
 			"cmd/ardents-next/join_platform_native_linux_test.go",
-			"cmd/ardents-next/network_admission_fixture_linux_test.go", "cmd/ardents-next/node_authority_native_linux_test.go",
+			"cmd/ardents-next/network_admission_fixture_linux_test.go",
 			"cmd/ardents-next/node_introduction_native_linux_test.go",
 			"cmd/ardents-next/node_issuer_native_linux_test.go",
 			"cmd/ardents-next/node_join_native_linux_test.go",
@@ -1205,22 +1219,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
-		if source == "cmd/ardents-next/node_authority_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
-			return true
-		}
 		if source == "cmd/ardents-next/node_operation_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/route/transport") {
-			return true
-		}
-		if source == "cmd/ardents-next/node_authority_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_introduction_native_linux_test.go" && (dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/introduction" || dependency == modulePath+"/internal/route/capsule" || dependency == modulePath+"/internal/route/transport" || dependency == modulePath+"/internal/route/receiver" || dependency == modulePath+"/internal/route/role" || dependency == modulePath+"/internal/route/selection") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_operation_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/reachability" || dependency == modulePath+"/internal/route/transport") {
-			return true
-		}
-		if source == "cmd/ardents-next/node_authority_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/reachability" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_descriptor_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport" || dependency == modulePath+"/internal/reachability") {
@@ -1230,9 +1235,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_issuer_native_linux_test.go" && (dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/transport") {
-			return true
-		}
-		if source == "cmd/ardents-next/node_authority_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_issuer_native_linux_test.go" && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/route/transport") {
@@ -1254,9 +1256,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if (source == "cmd/ardents-next/node_native_linux_test.go") && (dependency == modulePath+"/internal/processresource" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
-			return true
-		}
-		if source == "cmd/ardents-next/node_authority_native_linux_test.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/network/duty" || dependency == modulePath+"/internal/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/document_command_installed_linux_test.go" {

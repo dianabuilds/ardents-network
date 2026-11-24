@@ -2451,7 +2451,11 @@ their corresponding `_SHA256` variables are independent expected digests.
 Missing Linux, systemd, cgroup/PSI, privilege, artifact, durable filesystem or
 loopback is an invalid environment. This lane establishes no supported Node host,
 installed operation, independent controller, capacity or privacy qualification.
-The Node owner binary runs `TestNativeNodeOriginalAuthorityAndJoinTCP`, which also supplies a direct Node control
+The Node owner binary runs the original authority controls of all five roles
+and the original Node processes for the Descriptor, Introduction, Issuer and
+JOIN operation tests. The workload driver uses the separately pinned owner
+binary for those processes.
+`TestNativeNodeOriginalAuthorityAndJoinTCP` also supplies a direct Forwarding control
 for the deferred Carrier. An actual signed historical QUIC member is retained
 by genuine State, then passed to `node.ListenForwarding` under the actual native
 process Guard. Refusal must contain the exact Carrier cause and only its fixed
