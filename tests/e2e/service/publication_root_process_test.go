@@ -1,3 +1,8 @@
+//go:build linux || windows
+
+// prepare-root opens the durable publication lease implemented for Linux and
+// Windows (durable lease_linux.go/lease_windows.go); the darwin lease stub
+// refuses, so this control excludes macOS.
 package service_test
 
 import (
