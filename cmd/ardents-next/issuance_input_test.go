@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -44,7 +45,7 @@ func TestIssuanceStrictInput(t *testing.T) {
 }
 
 func TestIssuanceResultStrictBatch(t *testing.T) {
-	_, facts, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	_, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	base := t.TempDir()
 	key := issuanceBindingInput{
 		Network: strings.Repeat("ab", 32), Issuer: strings.Repeat("cd", 32), Signer: strings.Repeat("ef", 32),

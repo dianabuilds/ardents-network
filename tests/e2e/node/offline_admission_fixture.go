@@ -1,4 +1,4 @@
-package main
+package node
 
 import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
@@ -17,7 +17,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 )
 
-func admissionCommandFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) ([]byte, admission.Facts, quota.LedgerBinding) {
+// AdmissionCommandFixture creates an independently encoded Admission request and ledger binding.
+func AdmissionCommandFixture(t *testing.T, class uint8, count uint16, max uint32, id byte) ([]byte, admission.Facts, quota.LedgerBinding) {
 	t.Helper()
 	authority := ed25519.NewKeyFromSeed(make([]byte, 32))
 	seed := make([]byte, 32)

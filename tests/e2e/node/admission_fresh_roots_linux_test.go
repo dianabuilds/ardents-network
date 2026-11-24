@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package node_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -99,16 +100,16 @@ func TestIssuanceFreshKeysAndPredecessorRootRefusal(t *testing.T) {
 }
 
 func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
-	raw, facts, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	raw, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	root := filepath.Join(t.TempDir(), "ledger")
-	initialize := func(root string) (admissionResult, error) {
+	initialize := func(root string) (issuanceResult, error) {
 		t.Helper()
-		config := hostingConfig(t, admissionInitializationConfig(root, binding))
-		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "initialize", "--config", config)
+		config := writeIssuanceConfig(t, admissionInitializationConfig(root, binding))
+		cmd := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 		var output, diagnostic bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &output, &diagnostic
 		err := cmd.Run()
-		var result admissionResult
+		var result issuanceResult
 		if json.Unmarshal(output.Bytes(), &result) != nil {
 			t.Fatal("command returned no structured outcome", err)
 		}
@@ -125,13 +126,13 @@ func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
 			t.Fatal(outcome, err)
 		}
 	}
-	if result, err := initialize(root); err != nil || result.Outcome != quota.Initialized {
+	if result, err := initialize(root); err != nil || result.Outcome != string(quota.Initialized) {
 		t.Fatal(result, err)
 	}
 	debit(quota.Debited)
 	before := snapshotAdmissionRoot(t, root)
 	for range 2 {
-		if result, err := initialize(root); err == nil || result.Outcome == quota.Initialized {
+		if result, err := initialize(root); err == nil || result.Outcome == string(quota.Initialized) {
 			t.Fatal("initialization accepted an existing spent root")
 		}
 		if !reflect.DeepEqual(before, snapshotAdmissionRoot(t, root)) {
@@ -145,7 +146,7 @@ func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
 	}
 	before = snapshotAdmissionRoot(t, foreign)
 	for range 2 {
-		if result, err := initialize(foreign); err == nil || result.Outcome != quota.Unavailable {
+		if result, err := initialize(foreign); err == nil || result.Outcome != string(quota.Unavailable) {
 			t.Fatal("predecessor journal accepted by initialization", result, err)
 		}
 		if ledger, err := quota.Open(foreign, binding); err == nil {
@@ -178,7 +179,7 @@ func snapshotAdmissionRoot(t *testing.T, root string) map[string][32]byte {
 }
 
 func TestAdmissionFreshAuthorityRefusesPredecessorPermission(t *testing.T) {
-	raw, facts, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	raw, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)

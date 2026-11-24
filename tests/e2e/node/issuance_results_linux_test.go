@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package node_test
 
 import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
@@ -13,6 +13,7 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"encoding/json"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -53,7 +54,7 @@ func issuanceResultCommandPlanWithSigner(t *testing.T, signer [32]byte) (issuanc
 	if e = s.Close(); e != nil {
 		t.Fatal(e)
 	}
-	raw, f, b := admissionCommandFixture(t, 2, 2, 2, 1)
+	raw, f, b := nodefixture.AdmissionCommandFixture(t, 2, 2, 2, 1)
 	b.Keys = nil
 	for _, key := range v.Keys {
 		b.Keys = append(b.Keys, issuerprofile.Key{Window: key.Window, Class: key.Class, SPKI: key.SPKI})
@@ -138,11 +139,11 @@ func issuanceResultCommandPlanWithSigner(t *testing.T, signer [32]byte) (issuanc
 
 func resultCommand(t *testing.T, operation string, plan map[string]any, collector string) (issuanceResult, error) {
 	t.Helper()
-	args := []string{"issuance", operation, "--config", hostingConfig(t, plan)}
+	args := []string{"issuance", operation, "--config", writeIssuanceConfig(t, plan)}
 	if collector != "" {
 		args = append(args, collector)
 	}
-	command := exec.CommandContext(t.Context(), compiledCommand(t), args...)
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), args...)
 	var out, log bytes.Buffer
 	command.Stdout = &out
 	command.Stderr = &log
@@ -230,7 +231,7 @@ func TestConfirmedIssuanceCLIOTLPAndCrash(t *testing.T) {
 			}))
 			defer server.Close()
 			defer close(release)
-			command := exec.CommandContext(t.Context(), compiledCommand(t), "issuance", "issue", "--config", hostingConfig(t, issue), server.URL)
+			command := exec.CommandContext(t.Context(), buildNodeCommand(t), "issuance", "issue", "--config", writeIssuanceConfig(t, issue), server.URL)
 			var out bytes.Buffer
 			command.Stdout = &out
 			if e := command.Start(); e != nil {

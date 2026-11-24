@@ -946,9 +946,33 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
+	if source == "tests/e2e/node/issuance_results_linux_test.go" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+		return true
+	}
+	if source == "tests/e2e/node/issuance_telemetry_linux_test.go" || source == "tests/e2e/node/admission_linux_test.go" {
+		switch dependency {
+		case "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto":
+			return true
+		}
+	}
+	if localImport {
+		switch source {
+		case "tests/e2e/node/offline_admission_fixture.go", "tests/e2e/node/issuance_linux_test.go":
+			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/issuerprofile" || local == "internal/admission/issuance"
+		case "tests/e2e/node/admission_fresh_roots_linux_test.go":
+			return local == "tests/e2e/node" || local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/issuance"
+		case "tests/e2e/node/admission_linux_test.go":
+			return local == "tests/e2e/node" || local == "internal/admission/quota"
+		case "tests/e2e/node/issuance_results_linux_test.go":
+			return local == "tests/e2e/node" || local == "internal/admission/quota" || local == "internal/admission/issuerprofile" || local == "internal/admission/issuance"
+		case "tests/e2e/node/issuer_profile_linux_test.go":
+			return local == "internal/admission/issuerprofile/signing"
+		}
+	}
 	if localImport && local == "tests/e2e/node" {
 		switch source {
-		case "cmd/ardents-next/admission_cycle_linux_test.go", "cmd/ardents-next/route_fixture_linux_test.go":
+		case "cmd/ardents-next/admission_cycle_linux_test.go", "cmd/ardents-next/route_fixture_linux_test.go",
+			"cmd/ardents-next/admission_input_test.go", "cmd/ardents-next/issuance_input_test.go":
 			return true
 		case "cmd/ardents-next/connection_installed_linux_test.go",
 			"cmd/ardents-next/publication_ack_installed_linux_test.go",
@@ -1724,7 +1748,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if dependency == modulePath+"/internal/diagnostics/telemetry" {
 		switch source {
 		case "cmd/ardents-next/admission.go", "cmd/ardents-next/hosting.go", "cmd/ardents-next/issuance.go",
-			"cmd/ardents-next/issuer_profile.go", "cmd/ardents-next/issuance_results.go":
+			"cmd/ardents-next/admission_operator.go":
 			return true
 		}
 	}
@@ -2011,7 +2035,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"public profile is leaf", "internal/admission/issuerprofile/profile.go", modulePath + "/internal/admission", false},
 		{"profile cannot borrow signing", "internal/admission/issuerprofile/profile.go", modulePath + "/internal/admission/issuerprofile/signing", false},
 		{"profile tests cannot borrow signing", "internal/admission/issuerprofile/profile_test.go", modulePath + "/internal/admission/issuerprofile/signing", false},
-		{"command cannot restore retired signer", "cmd/ardents-next/issuer_profile.go", modulePath + "/internal/successor/nodeidentity", false},
+		{"command cannot restore retired signer", "cmd/ardents-next/issuance.go", modulePath + "/internal/successor/nodeidentity", false},
 		{"retired signer cannot restore facade", "internal/successor/nodeidentity/store.go", modulePath + "/internal/admission/issuerprofile/signing", false},
 		{"identity cannot borrow ledger", "internal/admission/issuerprofile/signing/store.go", modulePath + "/internal/admission", false},
 		{"ledger public grammar", "internal/admission/binding.go", modulePath + "/internal/admission/issuerprofile", true},

@@ -1,12 +1,13 @@
 //go:build linux
 
-package main
+package node_test
 
 import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
 	"encoding/json"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -27,17 +28,17 @@ func admissionInitializationConfig(root string, binding quota.LedgerBinding) map
 }
 
 func TestAdmissionInitializationCompiledCLI(t *testing.T) {
-	raw, facts, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	raw, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	root := filepath.Join(t.TempDir(), "ledger")
-	config := hostingConfig(t, admissionInitializationConfig(root, binding))
-	command := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "initialize", "--config", config)
+	config := writeIssuanceConfig(t, admissionInitializationConfig(root, binding))
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 	var out, diagnostic bytes.Buffer
 	command.Stdout, command.Stderr = &out, &diagnostic
 	if err := command.Run(); err != nil {
 		t.Fatal(err, &out, &diagnostic)
 	}
-	var result admissionResult
-	if err := json.Unmarshal(out.Bytes(), &result); err != nil || result.Outcome != quota.Initialized {
+	var result issuanceResult
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil || result.Outcome != string(quota.Initialized) {
 		t.Fatal(result, err)
 	}
 	if bytes.Contains(diagnostic.Bytes(), []byte(root)) {
@@ -51,7 +52,7 @@ func TestAdmissionInitializationCompiledCLI(t *testing.T) {
 	}
 	retired := admissionInitializationConfig(root, binding)
 	retired["batch_file"], retired["facts"], retired["kind"] = batch, admissionFactsConfig(facts), "bootstrap"
-	command = exec.CommandContext(t.Context(), compiledCommand(t), "admission", "debit", "--config", hostingConfig(t, retired))
+	command = exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "debit", "--config", writeIssuanceConfig(t, retired))
 	output, err := command.Output()
 	exit, ok := err.(*exec.ExitError)
 	if !ok || exit.ExitCode() != 2 || json.Unmarshal(output, &result) != nil || result.Outcome != "invalid-input" {
@@ -73,12 +74,14 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 		w.Header().Set("Content-Type", "application/x-protobuf")
 	}))
 	defer server.Close()
-	_, _, binding := admissionCommandFixture(t, 2, 1, 2, 1)
+	_, _, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	root := filepath.Join(t.TempDir(), "ledger")
 	init := admissionInitializationConfig(root, binding)
-	var out, log bytes.Buffer
-	if code := run(t.Context(), []string{"admission", "initialize", "--config", hostingConfig(t, init), server.URL}, &out, &log); code != 0 {
-		t.Fatal(code, &out, &log)
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", writeIssuanceConfig(t, init), server.URL)
+	var log bytes.Buffer
+	command.Stderr = &log
+	if output, err := command.Output(); err != nil {
+		t.Fatal(err, string(output), log.String())
 	}
 	mu.Lock()
 	defer mu.Unlock()

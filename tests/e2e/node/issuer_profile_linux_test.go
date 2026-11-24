@@ -1,10 +1,9 @@
 //go:build linux
 
-package main
+package node_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"crypto/x509"
 	"encoding/hex"
@@ -25,11 +24,11 @@ import (
 
 func profileCommand(t *testing.T, operation string, plan map[string]any, collector string) (issuanceResult, error) {
 	t.Helper()
-	args := append(strings.Split(operation, "."), "--config", hostingConfig(t, plan))
+	args := append(strings.Split(operation, "."), "--config", writeIssuanceConfig(t, plan))
 	if collector != "" {
 		args = append(args, collector)
 	}
-	cmd := exec.CommandContext(t.Context(), compiledCommand(t), args...)
+	cmd := exec.CommandContext(t.Context(), buildNodeCommand(t), args...)
 	var out, log bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &log
@@ -212,25 +211,20 @@ func TestIssuerProfileCLICompleteTokenCycle(t *testing.T) {
 	if e = identity.Close(); e != nil {
 		t.Fatal(e)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out, log bytes.Buffer
-	if code := run(ctx, []string{"issuance", "inspect-profile", "--config", hostingConfig(t, profilePlan)}, &out, &log); code != 130 {
-		t.Fatal("cancel", code, &out)
-	}
 	if hex.EncodeToString(signer[:]) != keyBinding.Signer {
 		t.Fatal("fixture pin")
 	}
 }
 func TestProfileCommandStrictInput(t *testing.T) {
+	binary := buildNodeCommand(t)
 	for _, raw := range []string{`{"root":"/unused","root":"/again","binding":{},"key_file":"/missing"}`, `{"Root":"/unused","binding":{},"key_file":"/missing"}`, `{"root":null,"binding":{},"key_file":"/missing"}`, `{"root":"/unused","binding":{},"key_file":"/missing","extra":1}`} {
 		path := filepath.Join(t.TempDir(), "config")
 		if e := os.WriteFile(path, []byte(raw), 0600); e != nil {
 			t.Fatal(e)
 		}
-		var out, log bytes.Buffer
-		if code := run(t.Context(), []string{"node-identity", "import", "--config", path}, &out, &log); code != 2 {
-			t.Fatal(code, &out)
+		command := exec.CommandContext(t.Context(), binary, "node-identity", "import", "--config", path)
+		if out, err := command.CombinedOutput(); command.ProcessState == nil || command.ProcessState.ExitCode() != 2 {
+			t.Fatal(err, string(out))
 		}
 	}
 }

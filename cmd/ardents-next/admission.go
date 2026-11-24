@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
@@ -47,19 +46,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 	}
 	r := admissionResult{"admission", "input", admission.InvalidInput}
 	write := func() int {
-		code := 1
-		switch r.Outcome {
-		case quota.Initialized:
-			code = 0
-		case admission.InvalidInput:
-			code = 2
-		case admission.Canceled:
-			code = 130
-		}
-		if json.NewEncoder(out).Encode(r) != nil {
-			return 2
-		}
-		return code
+		return writeAdmissionReport(out, r, string(r.Outcome), string(quota.Initialized))
 	}
 	if len(args) != 3 && len(args) != 4 {
 		return write()
@@ -68,26 +55,13 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	r.Operation = "admission." + args[0]
-	if runtime.GOOS != "linux" || !quota.Supported() {
+	if !admissionOperatorSupported(quota.Supported()) {
 		r.Outcome = quota.Unsupported
 		return write()
 	}
-	if ctx == nil {
-		return write()
-	}
-	if ctx.Err() != nil {
-		r.Outcome = admission.Canceled
-		return write()
-	}
-	endpoint := ""
-	if len(args) == 4 {
-		endpoint = args[3]
-	}
-	if telemetry.ValidateCollector(endpoint) != nil {
-		return write()
-	}
-	raw, err := readBounded(args[2], 16<<10)
-	if err != nil {
+	raw, endpoint, outcome := readAdmissionOperatorConfig(ctx, args[2:])
+	if outcome != "" {
+		r.Outcome = admission.Outcome(outcome)
 		return write()
 	}
 	defer clear(raw)

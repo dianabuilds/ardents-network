@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package node_test
 
 import (
 	"bytes"

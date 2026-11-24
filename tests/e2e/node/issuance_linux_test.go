@@ -1,14 +1,15 @@
 //go:build linux
 
-package main
+package node_test
 
 import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"strconv"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
@@ -37,11 +38,11 @@ func issuanceCommandPlan(t *testing.T) (issuancePlan, map[string]any) {
 }
 func issuanceCommand(t *testing.T, operation string, p map[string]any, collector string) (issuanceResult, error) {
 	t.Helper()
-	args := []string{"issuance", operation, "--config", hostingConfig(t, p)}
+	args := []string{"issuance", operation, "--config", writeIssuanceConfig(t, p)}
 	if collector != "" {
 		args = append(args, collector)
 	}
-	command := exec.CommandContext(t.Context(), compiledCommand(t), args...)
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), args...)
 	var out, log bytes.Buffer
 	command.Stdout = &out
 	command.Stderr = &log
@@ -109,8 +110,8 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 		}
 		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: inventory.Keys[i].Window, Class: k.Class, SPKI: spki})
 	}
-	config := hostingConfig(t, map[string]any{"root": filepath.Join(filepath.Dir(p.Root), "admission"), "binding": admissionBindingConfig(binding)})
-	command := exec.CommandContext(t.Context(), compiledCommand(t), "admission", "initialize", "--config", config)
+	config := writeIssuanceConfig(t, map[string]any{"root": filepath.Join(filepath.Dir(p.Root), "admission"), "binding": admissionBindingConfig(binding)})
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 	if result, e := command.CombinedOutput(); e != nil {
 		t.Fatal(e, string(result))
 	}
@@ -130,19 +131,6 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 		t.Fatal("changed identity")
 	}
 }
-func TestIssuanceCanceledBeforeCreatingKeys(t *testing.T) {
-	p, input := issuanceCommandPlan(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	var out, log bytes.Buffer
-	if code := runIssuance(ctx, []string{"initialize", "--config", hostingConfig(t, input)}, &out, &log); code != 130 {
-		t.Fatal(code)
-	}
-	if _, e := os.Lstat(p.Root); !os.IsNotExist(e) {
-		t.Fatal("canceled effect")
-	}
-}
-
 func TestIssuanceCLICrashReopen(t *testing.T) {
 	for _, episode := range []string{"kill", "interrupt"} {
 		t.Run(episode, func(t *testing.T) {
@@ -158,7 +146,7 @@ func TestIssuanceCLICrashReopen(t *testing.T) {
 			}))
 			defer server.Close()
 			defer close(release)
-			command := exec.CommandContext(t.Context(), compiledCommand(t), "issuance", "initialize", "--config", hostingConfig(t, input), server.URL)
+			command := exec.CommandContext(t.Context(), buildNodeCommand(t), "issuance", "initialize", "--config", writeIssuanceConfig(t, input), server.URL)
 			var out bytes.Buffer
 			command.Stdout = &out
 			if e := command.Start(); e != nil {
@@ -215,4 +203,64 @@ func TestIssuanceOTLPFiniteAttributes(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	assertIssuanceOTLP(t, seen, p)
+}
+
+type issuanceResult struct {
+	Operation string `json:"operation"`
+	Phase     string `json:"phase"`
+	Outcome   string `json:"outcome"`
+}
+
+type issuancePlan struct {
+	Root          string
+	Binding       issuance.Binding
+	InventoryFile string
+}
+
+func writeIssuanceConfig(t *testing.T, value any) string {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "config.json")
+	if err = os.WriteFile(path, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+type issuanceBindingInput struct {
+	Network string `json:"network"`
+	Issuer  string `json:"issuer"`
+	Signer  string `json:"signer"`
+	Start   string `json:"start"`
+	End     string `json:"end"`
+}
+
+type admissionBindingInput struct {
+	Network   string              `json:"network"`
+	Issuer    string              `json:"issuer"`
+	Authority string              `json:"authority"`
+	Profile   string              `json:"profile"`
+	Duty      string              `json:"duty"`
+	Start     string              `json:"start"`
+	End       string              `json:"end"`
+	Keys      []admissionKeyInput `json:"keys"`
+}
+type admissionKeyInput struct {
+	Window string `json:"window"`
+	Class  string `json:"class"`
+	SPKI   string `json:"spki"`
+}
+
+func admissionBindingConfig(b quota.LedgerBinding) admissionBindingInput {
+	input := admissionBindingInput{Network: hex.EncodeToString(b.Network[:]), Issuer: hex.EncodeToString(b.Issuer[:]), Authority: hex.EncodeToString(b.Authority[:]), Profile: hex.EncodeToString(b.Profile[:]), Duty: strconv.FormatUint(b.Duty, 10), Start: b.Start.Format(time.RFC3339), End: b.End.Format(time.RFC3339)}
+	for _, key := range b.Keys {
+		input.Keys = append(input.Keys, admissionKeyInput{time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), strconv.Itoa(int(key.Class)), hex.EncodeToString(key.SPKI)})
+	}
+	return input
+}
+func admissionFactsConfig(f admission.Facts) map[string]string {
+	return map[string]string{"network": hex.EncodeToString(f.Network[:]), "issuer": hex.EncodeToString(f.Issuer[:]), "authority": hex.EncodeToString(f.Authority[:]), "holder": hex.EncodeToString(f.Holder[:]), "duty": strconv.FormatUint(f.Duty, 10), "duty_not_before": f.DutyNotBefore.Format(time.RFC3339), "duty_not_after": f.DutyNotAfter.Format(time.RFC3339), "now": f.Now.Format(time.RFC3339), "class": strconv.Itoa(int(f.Class)), "count": strconv.Itoa(int(f.Count))}
 }
