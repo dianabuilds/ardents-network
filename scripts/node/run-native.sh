@@ -32,8 +32,8 @@ verify "$ARDENTS_NODE_E2E_TEST" "$ARDENTS_NODE_E2E_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # Verify discovery before executing; a selected profile can never pass zero tests.
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeForwardingTCP$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeProvisionedCertificateTCP$' >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeNodeForwardingTCP$' | grep -Fx TestNativeNodeForwardingTCP >/dev/null
+"$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeNodeProvisionedCertificateTCP$' | grep -Fx TestNativeNodeProvisionedCertificateTCP >/dev/null
 "$ARDENTS_NODE_E2E_TEST" -test.list='^TestNativeNodePartialStartupRefusalsTCP$' | grep -Fx TestNativeNodePartialStartupRefusalsTCP >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeParentRefillAndReopenTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeOriginalAuthorityAndJoinTCP$' >/dev/null
@@ -65,4 +65,4 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^Test(MeasuredBriefDevelopmentStallsPreserveAdmission|NativeMemoryEventsSinglePassEquivalence|ProfileAndOriginalCallerRefuseBeforeNativeEffects|NativePressureAndUnavailableIntervalDenyAdmission|RequiredNativeCounterIsNotAnUnknownZero|RequiredPressureRejectsMissingNonfiniteAndAmbiguous|OriginalNative(ProcessProfile|EvidenceLossRetainsActualCloseFailure|ManagedMemoryPressureRetires|PlacementAndCallerRetire))$' -test.timeout=90s
 
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeNode' -test.timeout=3m
-"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNative(ForwardingRetainedLifecycle|NodePartialStartupRefusalsTCP|NodeUnavailableCompletionRetainsOriginalProducerTCP|NodeRepairRefusalKeepsBoundedReport)$' -test.timeout=3m
+"$ARDENTS_NODE_E2E_TEST" -test.v=true -test.run='^TestNative(ForwardingRetainedLifecycle|NodePartialStartupRefusalsTCP|NodeUnavailableCompletionRetainsOriginalProducerTCP|NodeRepairRefusalKeepsBoundedReport|NodeForwardingTCP|NodeProvisionedCertificateTCP)$' -test.timeout=3m

@@ -24,19 +24,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
-type localAdmissionReply struct {
-	Outcome, Stage                           string
-	Link                                     string
-	Request, Token, Response, Journal, Proof []byte
-	Digest                                   [32]byte
-	Slot                                     [32]byte
-	Permission                               admission.Permission
-	Repeated                                 bool
-	Deadline                                 time.Time
-	Bytes                                    uint64
-}
+type localAdmissionReply = nodefixture.AdmissionReply
 
 func admissionLocalCommand(t *testing.T, operation string, config any) localAdmissionReply {
 	t.Helper()
@@ -56,52 +47,7 @@ func admissionLocalCommand(t *testing.T, operation string, config any) localAdmi
 
 func admissionLocalConsole(t *testing.T, operation string, config any) (func(any) localAdmissionReply, func()) {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "admission", operation, "--config", hostingConfig(t, config))
-	in, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var log bytes.Buffer
-	cmd.Stderr = &log
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	closed := false
-	t.Cleanup(func() {
-		if !closed {
-			_ = in.Close()
-			_ = cmd.Process.Kill()
-			_ = cmd.Wait()
-		}
-		if t.Failed() && log.Len() != 0 {
-			t.Log("joined console diagnostics:", log.String())
-		}
-	})
-	encode, decode := json.NewEncoder(in), json.NewDecoder(out)
-	send := func(value any) localAdmissionReply {
-		t.Helper()
-		if err := encode.Encode(value); err != nil {
-			t.Fatal(err)
-		}
-		var reply localAdmissionReply
-		if err := decode.Decode(&reply); err != nil {
-			t.Fatal(err)
-		}
-		return reply
-	}
-	close := func() {
-		t.Helper()
-		_ = in.Close()
-		if err := cmd.Wait(); err != nil {
-			t.Fatal(err, &log)
-		}
-		closed = true
-	}
-	return send, close
+	return nodefixture.OpenAdmissionConsole(t, compiledCommand(t), operation, hostingConfig(t, config))
 }
 
 func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {

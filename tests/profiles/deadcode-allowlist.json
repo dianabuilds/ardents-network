@@ -143,6 +143,7 @@
           "tests/e2e/node.NativeProcess.Stop",
           "tests/e2e/node.NativeProcess.Wait",
           "tests/e2e/node.PinnedCommand",
+          "tests/e2e/node.OpenAdmissionConsole",
           "tests/e2e/node.ProvisionNodeCertificates",
           "tests/e2e/node.IssuerDeclaration",
           "tests/e2e/node.RequireIssuerRootsReleased",
