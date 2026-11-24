@@ -100,7 +100,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/hosting/inspection_linux.go",
 			"internal/node/provisioning/command_linux.go",
 			"internal/platform/artifacts/input_linux_test.go",
-			"cmd/ardents-next/source_state_preparation_linux.go",
+			"cmd/ardents-next/source_preparation_linux.go",
 			"cmd/ardents-next/source_state_preparation_linux_test.go",
 			"internal/network/state/source_state_files_linux.go",
 			"internal/network/state/source_state_files_linux_test.go",
@@ -876,13 +876,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_serving_fixture_linux_test.go" && dependency == modulePath+"/internal/network/state" {
 			return true
 		}
-		if source == "cmd/ardents-next/source_failure_linux.go" && dependency == modulePath+"/internal/processresource" {
+		if source == "cmd/ardents-next/source_linux.go" && dependency == modulePath+"/internal/processresource" {
 			return true
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
 			switch source {
 			case "cmd/ardents-next/inputs.go", "cmd/ardents-next/source_serving_fixture_linux_test.go", "cmd/ardents-next/route_linux.go",
-				"cmd/ardents-next/source_report.go", "cmd/ardents-next/source_failure_linux.go", "cmd/ardents-next/source_state_preparation_linux.go",
+				"cmd/ardents-next/source_linux.go", "cmd/ardents-next/source_preparation_linux.go",
 				"internal/network/state/source_state_files_linux_test.go",
 				"cmd/ardents-next/network_signing_native_linux_test.go",
 				"cmd/ardents-next/infrastructure_preparation_native_linux_test.go", "cmd/ardents-next/source_preparation_native_linux_test.go":

@@ -2942,7 +2942,7 @@ batch. The enrollment infrastructure inventory (native process/`Stat_t` seams)
 and the introduction receiving registry (native slot-history seam) were re-checked
 and remain Linux-bound non-leaves. The Node forwarding admission/observation
 files stay Linux because they compose the Linux `forwarding` lifetime and
-`route/receiver.Channel`; `cmd/ardents-next/source_failure_linux.go` stays Linux
+`route/receiver.Channel`; `cmd/ardents-next/source_linux.go` stays Linux
 because it composes the Linux `sourceTerminal`. No de-tagged file adds a native
 mechanism or a weaker accepting path.
 
