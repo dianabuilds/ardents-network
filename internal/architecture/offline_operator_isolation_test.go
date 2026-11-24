@@ -74,6 +74,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/processresource":
 			return true
 		}
+	case "internal/network/source/inspection/inspection_other.go", "internal/network/source/inspection/inspection_other_test.go":
+		// The typed platform refusal mirrors the contact result type only; it
+		// retains no input, credential or live authority (ADR-0129, #856).
+		return dependency == modulePath+"/internal/network/source"
 	case "tests/e2e/source/inspection_linux_test.go",
 		"internal/node/provisioning/source_initial_network_native_linux_test.go":
 		switch dependency {

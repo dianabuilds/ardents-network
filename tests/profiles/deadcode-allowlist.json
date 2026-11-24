@@ -1903,6 +1903,21 @@
         "rationale": "Descriptor encoding and public resource validation are portable. The ardents-next public preparation and platform admission paths and the fixed Control Release signers use these codecs on Linux. Windows refuses those native operations before effects and still runs the portable codec tests.",
         "owner": "Infrastructure artifact codec",
         "retirement": "Remove the entry when a maintained Windows production caller reaches the function."
+      },
+      {
+        "symbols": [
+          "internal/network/source/inspection.InspectLatest",
+          "internal/network/source/serving.DescribeFailure",
+          "internal/network/source/serving.Run",
+          "internal/network/source/serving.Terminal.Error",
+          "internal/network/source/serving.Terminal.Unwrap",
+          "internal/network/source/serving.ValidDeclaration",
+          "internal/network/source/serving.WriteFailureReport"
+        ],
+        "classification": "Source serving Unix-family and inspection Linux platform refusal (ADR-0129)",
+        "rationale": "Cohort 2a (#856) de-tagged the Direct-Origin Source serving operation to the Unix family (Linux and macOS) on the cleared Cohort 0/1 seams; Windows receives the serving_other.go typed refusal. Source inspection composes the Linux-only state.SourcePreparationConfig and stays Linux; inspection_other.go gives every non-Linux platform the same explicit unavailable contact result. These exact stub functions are the typed refusal boundary and have no Windows production consumer; they admit no input, process guard, State or live authority.",
+        "owner": "Product Owner and Codex; Network Source serving and inspection",
+        "retirement": "Remove each exact Windows entry when a selected genuine Windows Source composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       }
     ]
   },

@@ -1,5 +1,3 @@
-//go:build linux
-
 // Package serving owns the original Direct-Origin Source operation. It
 // acquires bounded inputs and the process guard, opens the actual Network
 // State, and joins original State, observations and inputs before handing
