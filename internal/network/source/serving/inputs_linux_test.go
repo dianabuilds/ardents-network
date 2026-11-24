@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package serving
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // This fixture isolates native file custody. It grants no healthy State,
@@ -50,7 +51,7 @@ func TestSourceOriginalInputsRetainEveryFileAndAncestor(t *testing.T) {
 			t.Run(name+"/"+fault, func(t *testing.T) {
 				path, plan := sourceCustodyFixture(t)
 				selected := map[string]string{"plan": path, "certificate": plan.Certificate, "key": plan.PrivateKey, "ca": plan.ClientRoot}[name]
-				inputs, _, err := acquireSourceInputs(t.Context(), path)
+				inputs, _, err := AcquireInputs(t.Context(), path, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -86,7 +87,7 @@ func TestSourceOriginalInputsRetainEveryFileAndAncestor(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err = inputs.Check(); !errors.Is(err, errSourceInput) {
+				if err = inputs.Check(); !errors.Is(err, artifacts.ErrObservedInput) {
 					t.Fatal("original loss accepted", err)
 				}
 				// Restore pathname bytes/access; denial remains original and permanent.
@@ -116,7 +117,7 @@ func TestSourceOriginalInputsRetainEveryFileAndAncestor(t *testing.T) {
 
 func TestSourceConcurrentInputChecksAndCopiedCloseRetainPhysicalFailure(t *testing.T) {
 	path, _ := sourceCustodyFixture(t)
-	inputs, _, err := acquireSourceInputs(t.Context(), path)
+	inputs, _, err := AcquireInputs(t.Context(), path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +138,7 @@ func TestSourceConcurrentInputChecksAndCopiedCloseRetainPhysicalFailure(t *testi
 
 func TestSourceInputCustodyDoesNotFreezeLiveClockEvidence(t *testing.T) {
 	path, plan := sourceCustodyFixture(t)
-	inputs, _, err := acquireSourceInputs(t.Context(), path)
+	inputs, _, err := AcquireInputs(t.Context(), path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +162,7 @@ func TestSourceOriginalNativeReadJoinsAfterCancellationAndLateClose(t *testing.T
 	var selected atomic.Pointer[os.File]
 	var hold, once atomic.Bool
 	entered, release := make(chan struct{}), make(chan struct{})
-	inputs, _, err := acquireObservedSourceInputs(ctx, path, func(phase string, f *os.File) {
+	inputs, _, err := AcquireInputs(ctx, path, func(phase string, f *os.File) {
 		if phase == "check" && f == selected.Load() && hold.Load() && once.CompareAndSwap(false, true) {
 			close(entered) // Original ReadAt has really returned; retain its use.
 			<-release
@@ -192,7 +193,7 @@ func TestSourceOriginalNativeReadJoinsAfterCancellationAndLateClose(t *testing.T
 		t.Fatal(err)
 	}
 	close(release)
-	if err := <-checked; !errors.Is(err, context.Canceled) || !errors.Is(err, errSourceInput) {
+	if err := <-checked; !errors.Is(err, context.Canceled) || !errors.Is(err, artifacts.ErrObservedInput) {
 		t.Fatal("late independent native observation or original cancellation was lost", err)
 	}
 	first := <-closed
@@ -206,7 +207,7 @@ func TestSourcePartialInputAcquisitionJoinsAndRefusesLateBytes(t *testing.T) {
 		t.Run([]string{"plan", "certificate", "key", "ca"}[input], func(t *testing.T) {
 			path, _ := sourceCustodyFixture(t)
 			var files []*os.File
-			inputs, _, err := acquireObservedSourceInputs(t.Context(), path, func(phase string, f *os.File) {
+			inputs, _, err := AcquireInputs(t.Context(), path, func(phase string, f *os.File) {
 				if phase != "read" {
 					return
 				}
@@ -217,7 +218,7 @@ func TestSourcePartialInputAcquisitionJoinsAndRefusesLateBytes(t *testing.T) {
 					}
 				}
 			})
-			if inputs.Context() != nil || !errors.Is(err, errSourceInput) || !errors.Is(err, os.ErrClosed) {
+			if inputs.Context() != nil || !errors.Is(err, artifacts.ErrObservedInput) || !errors.Is(err, os.ErrClosed) {
 				t.Fatal("partial acquisition adopted late input or dropped close failure", err)
 			}
 			for _, f := range files {
