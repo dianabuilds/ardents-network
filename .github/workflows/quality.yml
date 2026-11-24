@@ -264,3 +264,5 @@ jobs:
             if [[ -n "$package" ]]; then packages+=("$package"); fi
           done < tests/profiles/deterministic-packages.txt
           go test -p 4 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m
+      - name: Check portable Enrollment against the compiled command
+        run: go test ./tests/e2e/endpoint -run '^TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest$' -count=1

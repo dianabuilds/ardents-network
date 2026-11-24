@@ -3,7 +3,7 @@ package endpoint_test
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,24 +17,31 @@ func TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest(t 
 	command := buildArdentsNext(t)
 	bundle, enrolledCommand, manifestPin := enrollmentBundle(t, command)
 
-	output, err := exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify", bundle, manifestPin).CombinedOutput()
+	artifact, err := os.Stat(enrolledCommand)
 	if err != nil {
-		t.Fatalf("verify exact enrolled bundle: %v\n%s", err, output)
-	}
-	var receipt struct {
-		Outcome string `json:"outcome"`
-		Files   int    `json:"files"`
-	}
-	if err := json.Unmarshal(output, &receipt); err != nil || receipt.Outcome != "verified-initial-bundle" || receipt.Files != 6 {
-		t.Fatalf("headless enrollment result: %v %s", err, output)
-	}
-	if err := os.WriteFile(filepath.Join(bundle, "SHA256SUMS"), []byte("changed-before-parse\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output, err = exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify", bundle, manifestPin).CombinedOutput()
-	if err == nil || string(output) != "{\"outcome\":\"pin-mismatch\"}\n" {
-		t.Fatalf("changed manifest result: err=%v output=%s", err, output)
+	check := func(pin, want string, success bool) {
+		t.Helper()
+		command := exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify", bundle, pin)
+		output, err := command.CombinedOutput()
+		if (err == nil) != success || string(output) != want {
+			t.Fatalf("headless enrollment result: err=%v output=%q", err, output)
+		}
 	}
+	check(manifestPin, fmt.Sprintf("{\"outcome\":\"verified-initial-bundle\",\"files\":6,\"program_bytes\":%d}\n", artifact.Size()), true)
+	check(strings.Repeat("0", 64), "{\"outcome\":\"pin-mismatch\"}\n", false)
+
+	manifestPath := filepath.Join(bundle, "SHA256SUMS")
+	original, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeEnrollmentFile(t, manifestPath, []byte("changed-before-parse\n"), 0o600)
+	check(manifestPin, "{\"outcome\":\"pin-mismatch\"}\n", false)
+	writeEnrollmentFile(t, manifestPath, original, 0o600)
+	writeEnrollmentFile(t, filepath.Join(bundle, "timestamp.json"), []byte("substituted"), 0o600)
+	check(manifestPin, "{\"outcome\":\"binding-mismatch\"}\n", false)
 }
 
 func buildArdentsNext(t *testing.T) string {

@@ -25,3 +25,7 @@ network source, or a qualification of a released artifact.
 
 The headless profile passes the exact prebuilt Endpoint artifact through
 `ARDENTS_E2E_COMMAND`. Ordinary local runs build it from the current checkout.
+
+The portable Enrollment process test verifies the exact compiled program and
+refuses a wrong pin, changed manifest and substituted metadata. The portable
+CI jobs also run this case on macOS and Windows.
