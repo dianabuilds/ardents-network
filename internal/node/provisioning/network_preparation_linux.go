@@ -11,11 +11,15 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // PrepareNetworkArtifact writes one unsigned artifact from the original public
-// plan. It creates no signed State or runtime authority.
+// plan. It creates no signed State or runtime authority. The input reader uses
+// the Unix-family inspection port, but publication composes the Linux ext4
+// output floor (artifacts.PublishUnsigned), so the operation keeps its Linux
+// boundary until a macOS storage floor is selected (portability audit #848).
 func PrepareNetworkArtifact(ctx context.Context, operation, input, output string) (PreparedNetworkArtifact, error) {
 	if ctx == nil || !IsNetworkPreparation(operation) {
 		return PreparedNetworkArtifact{}, errNetworkPreparation
@@ -65,7 +69,12 @@ func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err e
 		return nil, errors.Join(errNetworkPreparation, e)
 	}
 	final, ok := after.Sys().(*syscall.Stat_t)
-	if !ok || final.Ctim != initial.Ctim || final.Nlink != 1 {
+	if !ok || final.Nlink != 1 {
+		return nil, errNetworkPreparation
+	}
+	initialCtime, initialOK := durablefile.InodeChangeTime(before)
+	finalCtime, finalOK := durablefile.InodeChangeTime(after)
+	if !initialOK || !finalOK || finalCtime != initialCtime {
 		return nil, errNetworkPreparation
 	}
 	linked, e := p.OpenFile(filepath.Base(path))

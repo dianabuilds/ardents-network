@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // ProtectedInput retains the original file and every direct ancestor. A later
@@ -105,7 +107,7 @@ func (s *ProtectedInput) Check(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	if !sameRetainedFileMetadata(s.info, after) {
+	if !durablefile.SameFileIdentity(s.info, after) {
 		return ErrInput
 	}
 	return ctx.Err()
@@ -117,7 +119,7 @@ func (s *ProtectedInput) CheckIdentity(ctx context.Context) error {
 		return err
 	}
 	info, err := s.file.Stat()
-	if err != nil || !sameRetainedFileMetadata(s.info, info) {
+	if err != nil || !durablefile.SameFileIdentity(s.info, info) {
 		return errors.Join(ErrInput, err)
 	}
 	return s.parent.CheckRetainedFileLink(s.file.Name(), s.info)

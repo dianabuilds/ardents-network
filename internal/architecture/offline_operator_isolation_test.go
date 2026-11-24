@@ -47,8 +47,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/platform/artifacts", modulePath + "/internal/pathgrammar", modulePath + "/internal/processresource":
 			return true
 		}
-	case "internal/platform/artifacts/directory_linux.go", "internal/platform/artifacts/input_linux.go",
-		"internal/platform/artifacts/private_file_publication_linux.go", "internal/platform/artifacts/platform_inputs_linux.go":
+	case "internal/platform/artifacts/directory_unix.go", "internal/platform/artifacts/input_unix.go",
+		"internal/platform/artifacts/retained_file_unix.go", "internal/platform/artifacts/protected_input_linux.go":
+		return dependency == modulePath+"/internal/pathgrammar" || dependency == modulePath+"/internal/durablefile"
+	case "internal/platform/artifacts/private_file_publication_linux.go", "internal/platform/artifacts/platform_inputs_linux.go":
 		return dependency == modulePath+"/internal/pathgrammar"
 	case "internal/release/infrastructure/preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
@@ -227,9 +229,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/node/provisioning/network_inventory_native_linux_test.go",
 		"internal/node/provisioning/network_profile_native_linux_test.go",
 		"internal/node/provisioning/network_signing_custody_native_linux_test.go",
-		"internal/node/provisioning/network_preparation_native_linux_test.go",
-		"internal/node/provisioning/network_preparation_linux.go":
+		"internal/node/provisioning/network_preparation_native_linux_test.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
+	case "internal/node/provisioning/network_preparation_linux.go":
+		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/durablefile"
 	case "internal/node/provisioning/network_signing_test.go":
 		return dependency == modulePath+"/tests/epochfixture/network"
 	case "internal/node/provisioning/network_profile_signing_test.go", "internal/node/provisioning/network_public_preparation_test.go":

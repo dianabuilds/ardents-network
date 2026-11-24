@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package artifacts
 
 import (
@@ -9,12 +11,24 @@ import (
 	"testing"
 )
 
+// unixTempDir resolves the platform temp root to its real path: on macOS the
+// system temp directory lives behind the /var symlink, and the no-follow walk
+// must refuse symlinked ancestors rather than traverse them.
+func unixTempDir(t *testing.T) string {
+	t.Helper()
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 func TestArtifactInputsRetainActualFilesAndLatchLoss(t *testing.T) {
 	for _, change := range []string{"replace", "same-inode", "cancel"} {
 		t.Run(change, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			path := filepath.Join(t.TempDir(), "public")
+			path := filepath.Join(unixTempDir(t), "public")
 			original := []byte("original-public-input\n")
 			if err := os.WriteFile(path, original, 0644); err != nil {
 				t.Fatal(err)
@@ -69,7 +83,7 @@ func TestArtifactInputsRetainActualFilesAndLatchLoss(t *testing.T) {
 func TestArtifactInputsReobserveEarlierNamespaceAfterLaterRead(t *testing.T) {
 	for _, change := range []string{"unchanged", "file", "ancestor"} {
 		t.Run(change, func(t *testing.T) {
-			root := t.TempDir()
+			root := unixTempDir(t)
 			earlier := filepath.Join(root, "earlier")
 			if err := os.Mkdir(earlier, 0700); err != nil {
 				t.Fatal(err)
@@ -125,7 +139,7 @@ func TestArtifactInputsReobserveEarlierNamespaceAfterLaterRead(t *testing.T) {
 }
 
 func TestDirectoryChainPreservesOriginalPathAndAccessPolicy(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "writable")
+	root := filepath.Join(unixTempDir(t), "writable")
 	child := filepath.Join(root, "selected")
 	if err := os.MkdirAll(child, 0700); err != nil {
 		t.Fatal(err)
