@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -77,7 +78,7 @@ func issuerSetupWithoutHistory(base string) map[string]any {
 	start, end := "2026-01-01T00:00:00Z", "2026-01-01T01:00:00Z"
 	keys := make([]map[string]any, 0, 3)
 	for class := 1; class <= 3; class++ {
-		keys = append(keys, map[string]any{"window": start, "class": class, "spki": strings.Repeat("00", 346)})
+		keys = append(keys, map[string]any{"window": start, "class": strconv.Itoa(class), "spki": strings.Repeat("00", 346)})
 	}
 	return map[string]any{
 		"admission_root": filepath.Join(base, "quota"),
@@ -85,7 +86,7 @@ func issuerSetupWithoutHistory(base string) map[string]any {
 		"result_root":    filepath.Join(base, "results"),
 		"admission_binding": map[string]any{
 			"network": identity, "issuer": identity, "authority": identity, "profile": identity,
-			"duty": 1, "start": start, "end": end, "keys": keys,
+			"duty": "1", "start": start, "end": end, "keys": keys,
 		},
 		"key_binding": map[string]any{
 			"network": identity, "issuer": identity, "signer": identity, "start": start, "end": end,
