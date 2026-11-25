@@ -15,7 +15,10 @@ select work, accept a protocol change or replace the GitHub execution ledger.
 
 Accepted ADRs and current product/security/technical owners remain authoritative.
 [CONTEXT.md](../../CONTEXT.md) owns product language;
-[package-map.md](package-map.md) owns actual Go packages and permitted imports.
+[package-map.md](package-map.md) owns the Go package inventory and permitted
+imports. It includes domain implementation, shared mechanisms, platform
+adapters, composition and engineering checks. This map describes those
+supporting responsibilities where they affect domain ownership or collaboration.
 Earlier strategic proposals and source receipts are retained in Git history,
 recoverable via the [pinned archive index](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md).
 This map records current ownership; proposed future boundaries remain proposals.
@@ -165,17 +168,15 @@ Public infrastructure descriptor and inventory preparation belongs to
 `internal/release/infrastructure`. Platform Artifacts supplies the retained
 root-controlled input, ext4 check and exclusive durable output.
 
-The owner-only generation stores share one pure durable-file mechanism leaf,
-`internal/durablefile` (R1, #764): the content-addressed generation grammar,
-bounded reads, exclusive creation, staged replacement, generation pruning, the
-watermark floor codec, owned-root inspection, directory sync and the exclusive
-Unix root lease with its strict regular-file/single-link identity check. It is a
-mechanism, not an owner: it holds no lease, root, marker, schema, authority or
-lifecycle, and every helper takes caller paths, bytes, names and refusal prose
-only. `internal/route/selection`, `internal/network/duty` and
-`internal/network/state/durable` consume it while keeping their distinct markers,
-locks, schemas, roots and refusal text; `internal/release` shares only the
-generation-name grammar. `internal/publication/instance` keeps its separate
+The owner-only generation stores share filesystem operations and generation
+encodings in `internal/durablefile` (R1, #764). The package implements bounded
+reads, exclusive creation, staged replacement, generation pruning, the
+watermark floor codec, owned-root inspection, directory sync and Unix root
+lease acquisition with a regular-file and single-link identity check. Each
+caller owns its root, lease lifetime, schema and authorization policy.
+Generation store consumers include `internal/route/selection`,
+`internal/network/duty` and `internal/network/state/durable`.
+`internal/release` uses the generation-name grammar. `internal/publication/instance` keeps its separate
 joined-error, TOCTOU-hardened private custody. A shared technical mechanism does
 not merge authorities, roots, leases or lifecycle owners.
 
@@ -430,7 +431,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Native observations | `platform/cgroup` observes actual kernel inventory. `platform/artifacts` retains original configuration files and executable identity. `platform/systemd` retains typed units, socket state and manager identity. `platform/process` retains native execution and principal facts. | Callers own the admitted policy, effect order and joined completion. |
 | Endpoint unit policy | `endpoint/unit` checks exact loaded Endpoint and activation-socket configuration and renders the enrolled template with the same pre-start arguments | Typed observations supply facts for Endpoint and Execution decisions. |
 | Endpoint immutable generation | `endpoint/generation` exclusively stages and seals the exact inventory and independently retains original bytes and identity | Staging consumes fresh Release proofs and original request provenance. Startup independently observes the selected generation. |
-| Process resource/lifecycle owner | Process-wide observation, pressure availability, supervision and terminal process outcome | New `processresource` measures original native placement/pressure; new `node` owns reaction and completion. Network accepted-state policy and Hosting provider-period budget remain separate; complete role/installed qualification is not inferred |
+| Process resource protection | `processresource` owns the original process and cgroup observations and the fail-closed resource profile check. | `node` and `network/source/serving` own the runtime reaction and joined completion. Network State and Hosting retain their own acceptance and provider-period budget policies. |
 | Provisioning composition and signing owner | `ardents-next network prepare-initial-keys` owns a strict finite public count, fresh distinct State/Node keys, original protected files, secret erasure and a public-only receipt, without creating identities or accepting authority. `ardents-next network prepare-initial-node-record`, `prepare-initial-epoch` and `prepare-closed-profile` adapt bounded public declarations directly to Network's canonical unsigned preparation, retaining fresh native output custody. Its separate `sign-initial-node-record`, `sign-initial-epoch` and `sign-closed-profile` consumers retain exact reviewed preparations, independent purpose-specific public pins, original protected private custody/time and exclusive durable output | Private keys stay in offline command composition, outside Network; State acceptance, assignment redraw and runtime launch are not admitted. Unsigned grammar and durable output grant neither signature nor current authority; private issuer-profile signing belongs to Admission; no new Control domain or generic signing service is introduced |
 | Integration/regression harness | Registered test composition across genuine new public/application contracts | It is not a product domain, production coordinator or new test-only command; domain-local tests remain with domain rules |
 | Document Application | Fixed bounded document exchange, selected snapshot import, UTF-8/document rules, multiplexing/credit and safe presentation; current `internal/application/document` | Application semantics remain outside Execution and Service Connection. The confined worker receives the selected snapshot and bounded bytes, never destination, publication or Endpoint authority. This product-specific owner is not another network authority |

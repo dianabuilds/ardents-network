@@ -147,8 +147,8 @@ complete registration.
 
 The current Route implementation lives at `internal/route`. Its local imports
 are restricted to the current registered owners and exact package-map edges.
-`internal/route/selection` additionally consumes the shared pure durable-file
-mechanism leaf `internal/durablefile` (R1, #764), a new foundation mechanism with
+`internal/route/selection` additionally consumes the shared durable filesystem
+mechanism `internal/durablefile` (R1, #764), a new foundation mechanism with
 no old-runtime lineage; this is a registered package-map edge, not a predecessor
 import. `internal/route/introduction` likewise consumes the shared pure
 path-validation grammar leaf `internal/pathgrammar` (G7, #772), another new
