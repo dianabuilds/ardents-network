@@ -336,8 +336,17 @@ func initializeIntroductionHistories(t *testing.T, stand installedIntroductionRe
 		t.Fatal("fresh Introduction did not initialize history", event, err, diagnostic.String())
 	}
 	introductionSystemctl(t, "kill", "--kill-whom=main", "--signal=SIGINT", unit)
-	if err := cmd.Wait(); err != nil {
-		t.Fatal("fresh Introduction did not join", err, diagnostic.String())
+	err = cmd.Wait()
+	var exit *exec.ExitError
+	var terminal struct {
+		Operation string `json:"operation"`
+		Phase     string `json:"phase"`
+		Outcome   string `json:"outcome"`
+	}
+	decodeErr := json.Unmarshal(diagnostic.Bytes(), &terminal)
+	if !errors.As(err, &exit) || exit.ExitCode() != 130 || decodeErr != nil ||
+		terminal.Operation != "node.introduction" || terminal.Phase != "joined" || terminal.Outcome != "canceled" {
+		t.Fatal("fresh Introduction did not join after SIGINT", err, diagnostic.String())
 	}
 }
 
