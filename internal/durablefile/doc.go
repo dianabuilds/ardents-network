@@ -1,17 +1,15 @@
-// Package durablefile owns the pure durable file mechanism shared by the
-// owner-only generation stores: the content-addressed generation-name grammar,
-// bounded reads, exclusive creation, staged same-directory replacement,
+// Package durablefile supplies shared filesystem operations and encodings
+// for owner-only generation stores. These include content-addressed generation
+// names, bounded reads, exclusive creation, staged same-directory replacement,
 // generation pruning, the watermark floor codec, owned-root inspection,
 // directory synchronization, the exclusive root lease with its strict
 // regular-file/single-link identity check and the Windows owner-only root
 // DACL enforcement.
 //
-// It is a mechanism leaf, not a store owner. Every helper takes caller paths,
-// bytes, names and refusal prose only; it holds no lease, root, marker, schema,
-// authority or lifecycle of its own. Each consuming package keeps its distinct
-// marker, lock name, record schema, root and refusal text, and supplies them
-// here. The shared lease identity check refuses a non-regular or multiply-linked
-// lease file so a substituted inode can never become a store's exclusive fence.
+// Each consuming package owns its root, marker, lock name and lifetime,
+// record schema, authorization policy, and refusal text. The shared lease
+// identity check refuses lease files that are non-regular or have multiple
+// links.
 //
 // Responsibility clusters and their tests:
 //   - generation grammar and hashing: generation_grammar.go (generation_grammar_test.go)
