@@ -287,10 +287,13 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 // Unix-family (Linux and macOS) with the same exclusive-fence semantics, and its
 // fixture-measure lease/storage behavior tests execute on both. Counter
 // measurement stays a platform port: the genuine Linux /proc/sys measure keeps
-// its Linux boundary, and the macOS measure is staged unavailable because the
-// routing-socket if_data64 byte counters wrap at 2^32 and cannot preserve
-// per-boot per-interface continuity (a future port must read the full 64-bit
-// IFMIB interface-data totals and re-prove the continuity facts). Every other
+// its Linux boundary, and the macOS measure reads the full 64-bit IFMIB
+// interface-data totals (#872). The #865 staging refusal is deliberately
+// superseded: the routing-socket if_data64 byte counters wrap at 2^32 and cannot
+// preserve per-boot per-interface continuity, so the macOS adapter reads IFMIB
+// (net.link.generic.ifdata) instead, with kern.boottime boot identity and an
+// index recheck, re-proven at runtime against netstat. The macOS measure files
+// keep their darwin-only boundary as a genuine platform port. Every other
 // platform receives the same explicit typed refusal. The Linux-only retained
 // history inspection keeps its ext4 floor and root-only lease, with a !linux
 // typed refusal elsewhere. No weaker accepting path is introduced.
@@ -351,7 +354,7 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 				t.Fatal(err)
 			}
 			if want := target == "darwin"; selected != want {
-				t.Errorf("macOS hosting measure staging %s on %s: %v, want %v", name, target, selected, want)
+				t.Errorf("macOS hosting measure boundary %s on %s: %v, want %v", name, target, selected, want)
 			}
 		}
 		selected, err := profile.MatchFile(path.Join(root, "internal/hosting"), "inspection_other.go")
@@ -2591,6 +2594,14 @@ func successorImportAllowed(source, dependency string) bool {
 	// directory-relative open and atomic rename only at its mechanism boundary
 	// (#850; rename #853).
 	if (source == "internal/durablefile/relative_open_unix.go" || source == "internal/durablefile/relative_rename_unix.go") && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
+	// The macOS hosting measure port admits the reviewed x/sys/unix IFMIB
+	// interface-data sysctl read and kern.boottime boot identity only at its
+	// mechanism boundary (#872). The routing-socket if_data64 byte counters wrap
+	// at 2^32 and are deliberately not used; the IFMIB totals preserve per-boot
+	// per-interface continuity.
+	if source == "internal/hosting/measure_darwin.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
 	// The macOS peer-credential refusal evidence test admits the reviewed
