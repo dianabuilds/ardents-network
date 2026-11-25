@@ -1,4 +1,4 @@
-//go:build linux || windows
+//go:build linux || darwin || windows
 
 package durable
 
@@ -12,12 +12,21 @@ import (
 )
 
 // These tests exercise exact storage rules with a controlled flush mechanism.
-// Successful native durability is separately exercised on Linux, never inferred
-// from this portable ordering/failure fixture.
+// Successful native durability is separately exercised on Linux and macOS,
+// never inferred from this portable ordering/failure fixture.
 func TestFloorCanonicalAndRefusal(t *testing.T) {
 	for _, raw := range []string{"1\n", "18446744073709551615\n", "18446744073709551616\n", "0\n", "01\n", "1", "+1\n", "1\r\n", "\n"} {
 		t.Run(raw, func(t *testing.T) {
-			config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+			// macOS locates the Go temp directory under the system /var
+			// symlink, and publication root preparation refuses symlinked
+			// ancestors on every host, so the fixture binds its root to the
+			// same physical directory by canonical path; the refusal itself
+			// is unchanged.
+			base, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := Config{Root: filepath.Join(base, "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 			flush := func(string) error { return nil }
 			root, err := openWith(context.Background(), config, flush)
 			if err != nil {
@@ -60,7 +69,11 @@ func TestFloorCanonicalAndRefusal(t *testing.T) {
 func TestMissingFloorAndForeignResidue(t *testing.T) {
 	for _, name := range []string{"current", "retired-generation", "generations/0000000000000001"} {
 		t.Run(name, func(t *testing.T) {
-			config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+			base, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := Config{Root: filepath.Join(base, "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 			flush := func(string) error { return nil }
 			root, err := openWith(context.Background(), config, flush)
 			if err != nil {
@@ -89,7 +102,11 @@ func TestMissingFloorAndForeignResidue(t *testing.T) {
 
 func TestRequiredLayoutFlushAndClose(t *testing.T) {
 	for boundary := 1; boundary <= 5; boundary++ {
-		config := Config{Root: filepath.Join(t.TempDir(), "parent", "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+		base, err := filepath.EvalSymlinks(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+		config := Config{Root: filepath.Join(base, "parent", "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 		fault := errors.New("required directory flush failed")
 		calls := 0
 		root, err := openWith(context.Background(), config, func(string) error {
@@ -106,7 +123,11 @@ func TestRequiredLayoutFlushAndClose(t *testing.T) {
 			t.Fatalf("boundary %d accepted: %v", boundary, err)
 		}
 	}
-	config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Config{Root: filepath.Join(base, "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 	root, err := openWith(context.Background(), config, func(string) error { return nil })
 	if err != nil {
 		t.Fatal(err)

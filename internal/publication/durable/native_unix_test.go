@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package durable
 
 import (
@@ -9,7 +11,15 @@ import (
 )
 
 func TestNativeOwnedRootReopen(t *testing.T) {
-	config := Config{Root: filepath.Join(t.TempDir(), "parent", "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+	// macOS locates the Go temp directory under the system /var symlink, and
+	// publication root preparation refuses symlinked ancestors on every host,
+	// so the fixture binds its root to the same physical directory by
+	// canonical path; the refusal itself is unchanged.
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Config{Root: filepath.Join(base, "parent", "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 	root, err := Open(context.Background(), config)
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +57,11 @@ func TestNativeOwnedRootReopen(t *testing.T) {
 }
 
 func TestNativeCloseRetainsReleaseFailure(t *testing.T) {
-	config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Config{Root: filepath.Join(base, "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 	root, err := Open(context.Background(), config)
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +80,11 @@ func TestNativeCloseRetainsReleaseFailure(t *testing.T) {
 }
 
 func TestNativeLeaseReplacementRefusesFloor(t *testing.T) {
-	config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Config{Root: filepath.Join(base, "publication"), Target: [32]byte{1}, Network: [32]byte{2}}
 	root, err := Open(context.Background(), config)
 	if err != nil {
 		t.Fatal(err)

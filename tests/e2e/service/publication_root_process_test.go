@@ -1,8 +1,10 @@
-//go:build linux || windows
+//go:build linux || darwin || windows
 
-// prepare-root opens the durable publication lease implemented for Linux and
-// Windows (durable lease_linux.go/lease_windows.go); the darwin lease stub
-// refuses, so this control excludes macOS.
+// prepare-root opens the durable publication lease implemented on the Unix
+// family (durable lease_unix.go: Linux and macOS) and Windows
+// (lease_windows.go). macOS locates the Go temp directory under the system
+// /var symlink, which publication root preparation refuses, so the fixture
+// binds the root to the same physical directory by canonical path.
 package service_test
 
 import (
@@ -15,7 +17,11 @@ import (
 )
 
 func TestPublicationCompiledRootPreparation(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "independent-publication")
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(base, "independent-publication")
 	target := hex.EncodeToString(bytes.Repeat([]byte{1}, 32))
 	network := hex.EncodeToString(bytes.Repeat([]byte{2}, 32))
 	command := buildProductCommand(t, "ardents-next")

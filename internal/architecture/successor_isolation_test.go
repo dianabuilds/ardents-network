@@ -700,16 +700,18 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 // macOS they run the genuine composition and on Windows the shifted stub refuses
 // before any root state. They move to linux || darwin and their refusal narrows to
 // Windows (!linux && !darwin). The Publisher live Open/snapshot, Reader and
-// participant compositions STAY Linux: publisher/opening composes the
-// publication/durable lease seam, which is still !linux && !windows (a darwin
-// refusal would land after selection/Hosting/Instance state); publisher/snapshot
-// reads the snapshot file before the native launch refusal; the Reader coordinator
-// composes the Linux-only application/connection.Refuse projection; and the
-// participant composes endpoint/launch systemd delivery plus the declarations and
-// permission Linux projections. Their !linux typed refusals are unchanged. The
+// participant compositions STAY Linux. The durable lease seam port (#880, #691)
+// made publication/durable native on Linux and macOS (plus its existing Windows
+// lease), so it no longer blocks Publisher; the boundary now rests on the
+// remaining unported compositions: publisher/opening composes the Linux native
+// worker launch, publisher/snapshot reads the snapshot file before the native
+// launch refusal, the Reader coordinator composes the Linux-only
+// application/connection.Refuse projection, and the participant composes
+// endpoint/launch systemd delivery plus the declarations and permission Linux
+// projections. Their !linux typed refusals are unchanged. The
 // refusal-behavior tests pin that every unsupported host refuses before any state
-// or authority. A future port of the durable lease / worker launch / Refuse seams
-// must update this assertion deliberately.
+// or authority. A future port of the worker launch / Refuse seams must update
+// this assertion deliberately.
 func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 	root := repositoryRoot(t)
 	unixComposition := []string{
