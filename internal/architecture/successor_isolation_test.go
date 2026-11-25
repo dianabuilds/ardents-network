@@ -282,6 +282,88 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 	}
 }
 
+// Hosting seam 1 (#865, portability design audit #848) splits the former
+// platform_linux.go by responsibility. The durable flock root lease becomes
+// Unix-family (Linux and macOS) with the same exclusive-fence semantics, and its
+// fixture-measure lease/storage behavior tests execute on both. Counter
+// measurement stays a platform port: the genuine Linux /proc/sys measure keeps
+// its Linux boundary, and the macOS measure is staged unavailable because the
+// routing-socket if_data64 byte counters wrap at 2^32 and cannot preserve
+// per-boot per-interface continuity (a future port must read the full 64-bit
+// IFMIB interface-data totals and re-prove the continuity facts). Every other
+// platform receives the same explicit typed refusal. The Linux-only retained
+// history inspection keeps its ext4 floor and root-only lease, with a !linux
+// typed refusal elsewhere. No weaker accepting path is introduced.
+func TestHostingUnixLeasePortSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/hosting/lease_unix.go",
+			"internal/hosting/lease_unix_test.go",
+			"internal/hosting/budget_unix_test.go",
+			"internal/hosting/reservation_unix_test.go",
+			"internal/hosting/deadline_unix_test.go",
+			"internal/hosting/additional_reservation_unix_test.go",
+			"internal/hosting/snapshot_unix_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "windows"; selected != want {
+				t.Errorf("Unix-family hosting lease %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/hosting/lease_other.go",
+			"internal/hosting/measure_other.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "windows"; selected != want {
+				t.Errorf("hosting typed refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/hosting/measure_linux.go",
+			"internal/hosting/counter_linux_test.go",
+			"internal/hosting/reservation_process_linux_test.go",
+			"internal/hosting/inspection_linux.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux"; selected != want {
+				t.Errorf("Linux hosting boundary %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range []string{
+			"internal/hosting/measure_darwin.go",
+			"internal/hosting/measure_darwin_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "darwin"; selected != want {
+				t.Errorf("macOS hosting measure staging %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		selected, err := profile.MatchFile(path.Join(root, "internal/hosting"), "inspection_other.go")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want := target != "linux"; selected != want {
+			t.Errorf("hosting inspection refusal on %s: %v, want %v", target, selected, want)
+		}
+	}
+}
+
 // Cohort 2b (#859, portability design audit #848) de-tags the universal and
 // Unix-generic Release/infrastructure and Node provisioning codecs to the Unix
 // family (Linux and macOS): the public identifier decoder, Node transport leaf
