@@ -17,13 +17,16 @@
 // crosses the package boundary. The service_ file group is the Instance-side
 // adapter of the Service Connection domain under that same lock. Test naming
 // follows docs/development/repository-layout.md; all tests are package
-// instance behavior tests, and the _linux tests require native custody.
+// instance behavior tests: the _unix tests require native Unix-family custody
+// and run on Linux and macOS, while the remaining _linux tests additionally
+// require the Linux-only durable publication lease.
 //
 //   - I1 root-lifecycle: root.go, generation_state.go, state_store.go,
-//     response_lifecycle.go. Tests: lifecycle_linux_test.go,
-//     root_refusal_linux_test.go, request_test.go.
-//   - I2 native-custody: custody_linux.go, custody_other.go. Tests:
-//     root_refusal_linux_test.go, lifecycle_linux_test.go.
+//     response_lifecycle.go. Tests: lifecycle_unix_test.go,
+//     root_refusal_unix_test.go, request_test.go.
+//   - I2 native-custody: custody_unix.go, custody_other.go. Tests:
+//     root_refusal_unix_test.go, lifecycle_unix_test.go,
+//     custody_other_test.go.
 //   - I3 grammar-adapter: request.go. Tests: request_test.go.
 //   - I4 binding: binding.go, generation_consumption.go. Tests:
 //     binding_linux_test.go, binding_coalescing_linux_test.go,

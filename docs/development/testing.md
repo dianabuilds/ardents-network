@@ -3111,7 +3111,9 @@ durable behavior tests. The other 21 files keep their Linux constraint:
   `cmd/ardents-next/platform_linux_test.go`, `installed_cancellation_linux_test.go`,
   `node_role_cancellation_linux_test.go`, `tests/e2e/node/retained_state_linux_test.go`,
   and `tests/e2e/service/publication_instance_process_linux_test.go` (Instance
-  private host-root custody is Linux-only, `custody_other.go`).
+  private host-root custody is Unix-family since #863 via `custody_unix.go`;
+  this compiled-command scenario stays Linux-selected, and `custody_other.go`
+  still projects `unsupported-platform` on the remaining hosts).
 - `cmd/ardents-custody/terminal_secret_linux_test.go`: the custody terminal reader
   is Linux+Windows (`terminal_line_linux.go`/`terminal_line_windows.go`, macOS
   refuses) while the control drives a Unix pseudo-terminal (`pty.UnixPty`) that

@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package instance
 
 import (
@@ -14,8 +16,16 @@ import (
 
 func nativeConfig(t *testing.T) Config {
 	t.Helper()
+	// Private custody refuses symlinked ancestors on every host. macOS locates
+	// the Go temp directory under the system /var symlink, so the fixture binds
+	// its root to the same physical directory by canonical path; the refusal
+	// itself is unchanged.
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	before := time.Now().UTC().Truncate(time.Second)
-	return Config{Root: filepath.Join(t.TempDir(), "instance"), NetworkID: [32]byte{3}, NotBefore: before, NotAfter: before.Add(time.Hour)}
+	return Config{Root: filepath.Join(base, "instance"), NetworkID: [32]byte{3}, NotBefore: before, NotAfter: before.Add(time.Hour)}
 }
 
 func TestNativeInstanceExactAcceptanceAndTerminalResponse(t *testing.T) {
