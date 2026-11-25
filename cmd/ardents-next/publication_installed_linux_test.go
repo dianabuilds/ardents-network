@@ -604,8 +604,8 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 				t.Error(err)
 			}
 		})
-		budgetRoot := filepath.Join(t.TempDir(), "budget")
-		budget := networkTestBudgetAt(t, budgetRoot)
+		budgetRoot := processfixture.ProcessBudget(t)
+		budget := networkTestOpenBudget(t, budgetRoot)
 		config := receiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
 		if reservations[f.profile.IssuerNodeID] != nil {
 			config.ReserveBootstrap = func(ctx context.Context, end time.Time) (func() error, error) {

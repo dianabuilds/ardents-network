@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
@@ -46,20 +47,6 @@ type networkAdmissionFixtureState struct {
 
 // Return one actual checked view, then withdraw the fixture's trusted clock.
 // A subsequent owner must observe that loss instead of accepting this draft.
-func (f *networkAdmissionFixture) authorityLosingClockAfterDraft(t *testing.T) admissionAuthority {
-	t.Helper()
-	authority := f.authority
-	authority.Current = func() (network.RuntimeView, error) {
-		view, err := f.current()
-		if err == nil {
-			f.clockUnavailable.Store(true)
-		}
-		return view, err
-	}
-	t.Cleanup(func() { f.clockUnavailable.Store(false) })
-	return authority
-}
-
 func TestNetworkIssuanceDraftRetainsExactBindingsAndHorizons(t *testing.T) {
 	f := newNetworkAdmissionFixture(t)
 	view, err := f.current()
@@ -321,4 +308,23 @@ type localAdmissionReply = nodefixture.AdmissionReply
 func admissionLocalConsole(t *testing.T, operation string, config any) (func(any) localAdmissionReply, func()) {
 	t.Helper()
 	return nodefixture.OpenAdmissionConsole(t, compiledCommand(t), operation, hostingConfig(t, config))
+}
+
+func networkTestBudget(t *testing.T) *hosting.Budget {
+	t.Helper()
+	return networkTestOpenBudget(t, processfixture.ProcessBudget(t))
+}
+
+func networkTestOpenBudget(t *testing.T, root string) *hosting.Budget {
+	t.Helper()
+	budget, err := hosting.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := budget.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return budget
 }

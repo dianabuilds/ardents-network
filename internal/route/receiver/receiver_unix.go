@@ -96,6 +96,9 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	if !ok || len(key) != ed25519.PrivateKeySize || string(key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) || (!forwarding && !introductionDuty && !joinDuty && !issuerDuty && !resolutionDuty) || (issuerDuty && config.Issue == nil) || (resolutionDuty != (config.DescriptorStore != nil)) {
 		return nil, errors.New("route receiving duty or private key differs")
 	}
+	if err := ValidateCarrier(m.CarrierProfile); err != nil {
+		return nil, err
+	}
 	child, cancel := context.WithCancel(ctx)
 	r := &Receiver{config: config, ctx: child, cancel: cancel, connections: make(map[net.Conn]struct{}), done: make(chan struct{}), queues: framing.NewBudget(64 << 20), bootstrap: bootstrap.NewBudget()}
 	r.joins = pairing.NewPairing(r.record)

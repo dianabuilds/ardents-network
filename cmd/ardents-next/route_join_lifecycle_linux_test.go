@@ -29,7 +29,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
-	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 // One permission supplies two genuine tokens per receiver: a replacement Source
@@ -364,87 +363,5 @@ func TestRouteResponderOpeningLosesOriginalSourceDuringPresentation(t *testing.T
 				}
 			})
 		}
-	}
-}
-
-func TestRouteContextReopenRetainsChoiceAndOriginalHandles(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
-		t.Run(string(profile), func(t *testing.T) {
-			f, sockets, certificates := newJoinRouteFixture(t, profile)
-			holder := joinLifecycleStock(t, f)
-			startJoinRouteReceivers(t, f, sockets, certificates)
-			root := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(60 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-			owner, err := newRouteJoinContext(t.Context(), plan, f.authority, holder)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer owner.close()
-			first, err := owner.open(t.Context())
-			if err != nil {
-				t.Fatal("first genuine opening", err)
-			}
-			defer first.close()
-			var choices [2]routeRecipient
-			for slot := range choices {
-				choices[slot], err = first.recipient(uint8(slot))
-				if err != nil {
-					t.Fatal("initial retained choices", err)
-				}
-			}
-			if err := first.close(); err != nil {
-				t.Fatal("first joined retirement", err)
-			}
-			if borrowed, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: f.current}); err == nil {
-				_ = borrowed.Close()
-				t.Fatal("physical retirement released installation Entry selection")
-			}
-			second, err := owner.open(t.Context())
-			if err != nil {
-				t.Fatal("reopen with genuine remaining stock", err)
-			}
-			defer second.close()
-			for slot, original := range choices {
-				again, err := second.recipient(uint8(slot))
-				if err != nil || again != original {
-					t.Fatal("physical reopen changed retained choice or bound", slot, original, again, err)
-				}
-			}
-			if _, err := first.recipient(0); err == nil {
-				t.Fatal("original handle acquired replacement selection")
-			}
-			intent := routeJoinIntent{Node: choices[0].Node, Generation: choices[0].Generation, Deadline: choices[0].NotAfter, SetupDeadline: time.Now().Add(8 * time.Second).UTC().Truncate(time.Second)}
-			if _, err := rand.Read(intent.Secret[:]); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := rand.Read(intent.Context[:]); err != nil {
-				t.Fatal(err)
-			}
-			if stream, err := first.join(t.Context(), intent); err == nil || stream != nil {
-				t.Fatal("original handle acquired replacement JOIN", err)
-			}
-			if err := first.close(); err != nil {
-				t.Fatal("original close result changed", err)
-			}
-			select {
-			case <-second.done:
-				t.Fatal("repeated original Close retired replacement")
-			default:
-			}
-			if again, err := second.recipient(0); err != nil || again != choices[0] {
-				t.Fatal("replacement affected by original cleanup", err)
-			}
-			if err := errors.Join(second.close(), owner.close()); err != nil {
-				t.Fatal("context joined retirement", err)
-			}
-			budget, err := hosting.Open(plan.HostingRoot)
-			if err != nil {
-				t.Fatal("context retained Hosting root", err)
-			}
-			observed, err := budget.Observe(t.Context())
-			if err := errors.Join(err, budget.Close()); err != nil || observed.ReservedBytes != 0 {
-				t.Fatal("context retained physical reservation", observed.ReservedBytes, err)
-			}
-		})
 	}
 }

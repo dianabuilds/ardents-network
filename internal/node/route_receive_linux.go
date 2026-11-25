@@ -77,6 +77,9 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 	if err != nil {
 		return 1
 	}
+	if err := routereceiver.ValidateCarrier(m.CarrierProfile); err != nil {
+		return 1
+	}
 	if plan.IntroductionRoot != "" && !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
 		return 2
 	}

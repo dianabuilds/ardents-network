@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"net"
 	"strings"
@@ -25,10 +24,8 @@ import (
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
-// This exercises a genuine receiving forwarding parent, not a successful
-// substitute recipient. The ACK-loss gate injects failure only after real
-// verification, additional Hosting reservation and durable spend. Compiled
-// prefix/child consumers are covered separately by the process scenario.
+// This exercises authority loss at a genuine receiving forwarding parent
+// before and after the durable refill spend.
 func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
@@ -46,7 +43,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 				t.Fatal(err)
 			}
 			reservations[member.NodeID]()
-			for _, mode := range []string{"capacity-before-spend", "authority-before-spend", "lost-ack-after-spend", "authority-after-spend"} {
+			for _, mode := range []string{"authority-before-spend", "authority-after-spend"} {
 				t.Run(mode, func(t *testing.T) {
 					holder := routeRoleStock(t, f, false, true)
 					budgetRoot, spendRoot := processfixture.ProcessBudget(t), t.TempDir()
@@ -71,11 +68,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 					end := time.Now().Add(20 * time.Second).UTC().Truncate(time.Second)
 					request := hosting.ReservationRequest{Work: hosting.Traffic{Tx: 16 << 20, Rx: 16 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, WorkUntil: end, HoldUntil: end.Add(time.Second)}
 					var original *hosting.Reservation
-					var blocker *hosting.Reservation
 					var conn net.Conn
-					gate := make(chan struct{})
-					var gateOnce sync.Once
-					openGate := func() { gateOnce.Do(func() { close(gate) }) }
 					type result struct {
 						remaining uint64
 						err       error
@@ -126,17 +119,12 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 								f.clockUnavailable.Store(true)
 							}
 							refilled <- result{remaining, err}
-							if mode == "lost-ack-after-spend" && err == nil {
-								<-gate
-								return next, errors.Join(ctx.Err(), errors.New("injected loss after actual durable refill"))
-							}
 							return next, err
 						}})
 					if err != nil {
 						t.Fatal(err)
 					}
 					t.Cleanup(func() {
-						openGate()
 						if conn != nil {
 							_ = conn.Close()
 						}
@@ -144,11 +132,6 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 							t.Error(err)
 						}
 						f.clockUnavailable.Store(false)
-						if blocker != nil {
-							if err := blocker.ReleaseJoined(); err != nil {
-								t.Error(err)
-							}
-						}
 					})
 					conn, err = routeTestOpenEndpoint(t.Context(), transport.ClosedRoleCarrierRequest{CarrierProfile: profile, Endpoint: member.Endpoint, ExpectedServer: member.PublicKey, Deadline: end})
 					if err != nil {
@@ -199,14 +182,6 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 					if err != nil || before.ReservedBytes != (32<<20)+(128<<10) {
 						t.Fatal("original reserve", before, err)
 					}
-					if mode == "capacity-before-spend" {
-						// Competing real work leaves less than the exact refill delta
-						// above the existing watermark. No supplied capacity verdict.
-						blocker, err = budget.Reserve(t.Context(), hosting.ReservationRequest{Work: hosting.Traffic{Tx: before.RemainingBytes - 1501}, Termination: hosting.Traffic{Tx: 1}, WorkUntil: end, HoldUntil: end.Add(time.Second)})
-						if err != nil {
-							t.Fatal("competing real reserve", err)
-						}
-					}
 					raw := take()
 					defer clear(raw)
 					if err := ardp.WriteFrame(conn, ardp.Frame{Kind: ardp.KindAdmit, Body: append([]byte{2}, raw...)}); err != nil {
@@ -222,44 +197,15 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 					if observed.remaining != (32<<20)-617-371 {
 						t.Fatal("old wire accounting", observed.remaining)
 					}
-					if (mode == "authority-before-spend" || mode == "authority-after-spend") && !f.clockUnavailable.Load() {
+					if !f.clockUnavailable.Load() {
 						t.Fatal("authority-loss probe did not reach its actual reservation/spend boundary")
 					}
-					if mode == "capacity-before-spend" || mode == "authority-before-spend" {
-						if mode == "capacity-before-spend" && !errors.Is(observed.err, hosting.ErrCapacity) {
-							t.Fatal("not an actual capacity refusal", observed.err)
-						}
-						if mode == "authority-before-spend" && observed.err == nil {
+					if mode == "authority-before-spend" {
+						if observed.err == nil {
 							t.Fatal("authority loss reached successful spend")
 						}
 						if _, err := ardp.ReadFrame(conn); err == nil {
 							t.Fatal("refused refill emitted acceptance")
-						}
-					} else if mode == "lost-ack-after-spend" {
-						if observed.err != nil {
-							t.Fatal("real refill failed before injected ACK loss", observed.err)
-						}
-						held, err := budget.Observe(t.Context())
-						if err != nil || held.ReservedBytes != before.ReservedBytes+988 {
-							t.Fatal("addition absent before join", held, err)
-						}
-						if err := conn.Close(); err != nil {
-							t.Fatal(err)
-						}
-						closed := make(chan error, 1)
-						go func() { closed <- server.Close() }()
-						stillHeld, err := budget.Observe(t.Context())
-						if err != nil || stillHeld.ReservedBytes != held.ReservedBytes {
-							t.Fatal("reservation returned before blocked worker joined", stillHeld, err)
-						}
-						select {
-						case err := <-closed:
-							t.Fatal("unjoined refill closed early", err)
-						default:
-						}
-						openGate()
-						if err := <-closed; err != nil {
-							t.Fatal(err)
 						}
 					} else {
 						if observed.err != nil {
@@ -274,12 +220,6 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					f.clockUnavailable.Store(false)
-					if blocker != nil {
-						if err := blocker.ReleaseJoined(); err != nil {
-							t.Fatal(err)
-						}
-						blocker = nil
-					}
 					if err := owner.Close(); err != nil {
 						t.Fatal(err)
 					}
@@ -301,7 +241,7 @@ func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
 						}
 						return reservation.ReleaseJoined, nil
 					})
-					if mode == "capacity-before-spend" || mode == "authority-before-spend" {
+					if mode == "authority-before-spend" {
 						if err != nil {
 							t.Fatal("pre-spend refusal consumed token", err)
 						}

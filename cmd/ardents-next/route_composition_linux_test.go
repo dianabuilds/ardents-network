@@ -5,12 +5,20 @@ package main
 import (
 	"context"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"net"
 	"time"
 )
+
+type routeRecipient = session.LocalRecipient
+type routeJoinIntent = session.LocalJoinIntent
+type routeCapsuleIntent = session.LocalCapsuleIntent
+type routePrefixPlan = funding.Declaration
+
+func fundingPlan(plan routePrefixPlan) funding.Plan { return plan.Plan() }
 
 type routeHandle struct {
 	bootstrap         bool

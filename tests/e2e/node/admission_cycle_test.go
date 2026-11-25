@@ -29,6 +29,9 @@ type holderCommand struct {
 	Intent       stock.IssuanceIntent `json:"intent,omitzero"`
 	Presentation stock.Presentation   `json:"presentation,omitzero"`
 	Class        uint8                `json:"class,omitzero"`
+	Receivers    [][32]byte           `json:"receivers,omitzero"`
+	Revision     uint64               `json:"revision,omitzero"`
+	Target       [32]byte             `json:"target,omitzero"`
 }
 
 func admissionCycleConfig(t *testing.T, value any) string {
@@ -65,6 +68,16 @@ func admissionLocalCommand(t *testing.T, binary, operation string, config any) l
 func admissionLocalConsole(t *testing.T, binary, operation string, config any) (func(any) localAdmissionReply, func()) {
 	t.Helper()
 	return nodefixture.OpenAdmissionConsole(t, binary, operation, admissionCycleConfig(t, config))
+}
+
+func admissionLocalConsoleResult(t *testing.T, binary, operation string, config any) (func(any) localAdmissionReply, func() error) {
+	t.Helper()
+	return nodefixture.OpenAdmissionConsoleResult(t, binary, operation, admissionCycleConfig(t, config))
+}
+
+func admissionLocalConsoleInterrupt(t *testing.T, binary, operation string, config any, prepare func(*exec.Cmd), signal func(*exec.Cmd) error) (func(any) localAdmissionReply, func() error, func() error) {
+	t.Helper()
+	return nodefixture.OpenAdmissionConsoleWithInterrupt(t, binary, operation, admissionCycleConfig(t, config), prepare, signal)
 }
 
 func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {

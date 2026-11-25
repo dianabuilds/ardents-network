@@ -134,30 +134,6 @@ func TestNetworkIssuerValidChangedDigestRefusesBeforeSigning(t *testing.T) {
 	}
 }
 
-func networkTestBudget(t *testing.T) *hosting.Budget {
-	t.Helper()
-	root := filepath.Join(t.TempDir(), "budget")
-	return networkTestBudgetAt(t, root)
-}
-
-func networkTestBudgetAt(t *testing.T, root string) *hosting.Budget {
-	t.Helper()
-	start := time.Now().UTC().Truncate(time.Hour)
-	if err := hosting.Initialize(root, hosting.Policy{Provider: "local integration", Start: start, End: start.Add(2 * time.Hour), Unit: "MiB", Quantity: 100, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1000}); err != nil {
-		t.Fatal(err)
-	}
-	budget, err := hosting.Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := budget.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	return budget
-}
-
 func networkTestReservation(t *testing.T, budget *hosting.Budget, deadline time.Time) (func() error, error) {
 	t.Helper()
 	held, err := networkTestHold(t, budget, deadline)

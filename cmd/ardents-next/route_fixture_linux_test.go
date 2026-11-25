@@ -22,9 +22,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
+
+type holderCommand = session.LocalCommand
 
 // routeFixtureBindHost is the address the fixture route nodes listen on and
 // advertise in the signed epoch. It defaults to loopback for single-host

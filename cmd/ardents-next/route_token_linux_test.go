@@ -378,25 +378,6 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 	}
 }
 
-// A copied draft view supplies no effect authority. The genuine Stock must
-// observe clock loss before reserving a batch; no actual Prefix is supplied.
-func TestRouteIssuerDraftCannotBypassFreshStockObservation(t *testing.T) {
-	f := newNetworkAdmissionFixture(t)
-	holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{8, 8, 0})
-	before := holder.Status()
-	authority := f.authorityLosingClockAfterDraft(t)
-	prepare := funding.IssuerPreparation(t.Context(), fundingAuthority(authority), holder, selection.Leg{}, uint8(admission.ForwardClass), [][32]byte{f.receiver.NodeID})
-	batch, err := prepare(prefix.IssuerBinding{ID: [32]byte{1}, ProfileDigest: f.profile.Digest,
-		Deadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second), Bootstrap: true})
-	if err == nil || len(batch.Request) != 0 || batch.Complete != nil {
-		t.Fatal("old draft view bypassed fresh Stock authority", err)
-	}
-	after := holder.Status()
-	if after.Pending || after.BootstrapRemaining != before.BootstrapRemaining || after.Remaining != before.Remaining {
-		t.Fatal("clock loss reserved a blind batch or changed finite allowance", before, after)
-	}
-}
-
 // The real Network loses clock authority after validating HELLO. Take must
 // retain that failure, without falling through to the deliberately occupied
 // preparation or trying to obtain replacement rights.

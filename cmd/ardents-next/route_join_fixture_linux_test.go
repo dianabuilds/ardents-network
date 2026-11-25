@@ -33,7 +33,34 @@ import (
 // State acceptance. The fixture owns no successful authority substitute.
 func newJoinRouteFixture(t *testing.T, profile transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	t.Helper()
-	return newJoinRouteFixtureConfigured(t, profile, nil)
+	f, reservations, certificates := newJoinRouteFixtureConfigured(t, profile, nil)
+	view, err := f.current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Members()) != 11 || len(reservations) != 10 || len(certificates) != 10 {
+		t.Fatal("JOIN fixture duty/endpoint count changed")
+	}
+	var counts [4][7]int
+	for idByte := byte(12); idByte <= 21; idByte++ {
+		id := [32]byte{idByte}
+		member, err := view.Member(id, view.ObservedAt())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if member.DutyGeneration != 9 || member.CarrierProfile != string(profile) {
+			t.Fatal("JOIN duty binding differs")
+		}
+		key, ok := certificates[id].PrivateKey.(ed25519.PrivateKey)
+		if !ok || !bytes.Equal(key.Public().(ed25519.PublicKey), member.PublicKey[:]) {
+			t.Fatal("JOIN certificate differs from signed exact member key")
+		}
+		counts[member.RoleDomain-1][member.Subrole]++
+	}
+	if counts[0][1] != 2 || counts[0][2] != 2 || counts[2][1] != 2 || counts[2][2] != 2 || counts[1][4] != 2 {
+		t.Fatal("JOIN opposite-role/terminal duties changed", counts)
+	}
+	return f, reservations, certificates
 }
 
 func newJoinRouteFixtureConfigured(t *testing.T, profile transport.CarrierProfile, configure func(*networkAdmissionFixture)) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
@@ -188,6 +215,9 @@ func joinRouteStock(t *testing.T, f *networkAdmissionFixture, role admission.All
 	if err := attempt.Complete(issued.Response, nil); err != nil {
 		t.Fatal(err)
 	}
+	if status := holder.Status(); !status.Accepted || status.Pending || status.Busy || status.Closed || status.Remaining != [3]uint32{} || status.BootstrapRemaining != 1 {
+		t.Fatalf("JOIN stock did not complete exactly one ten-token batch: %+v", status)
+	}
 	return holder
 }
 
@@ -257,47 +287,4 @@ func startJoinRouteReceiverRange(t *testing.T, f *networkAdmissionFixture, reser
 		})
 	}
 	return receivers, budgets
-}
-
-func TestJoinRouteFixtureCurrentDutiesAndStock(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
-		t.Run(string(profile), func(t *testing.T) {
-			f, reservations, certificates := newJoinRouteFixture(t, profile)
-			view, err := f.current()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(view.Members()) != 11 || len(reservations) != 10 || len(certificates) != 10 {
-				t.Fatal("JOIN fixture duty/endpoint count changed")
-			}
-			var counts [4][7]int
-			for idByte := byte(12); idByte <= 21; idByte++ {
-				id := [32]byte{idByte}
-				member, err := view.Member(id, view.ObservedAt())
-				if err != nil {
-					t.Fatal(err)
-				}
-				if member.DutyGeneration != 9 || member.CarrierProfile != string(profile) {
-					t.Fatal("JOIN duty binding differs")
-				}
-				key, ok := certificates[id].PrivateKey.(ed25519.PrivateKey)
-				if !ok || !bytes.Equal(key.Public().(ed25519.PublicKey), member.PublicKey[:]) {
-					t.Fatal("JOIN certificate differs from signed exact member key")
-				}
-				counts[member.RoleDomain-1][member.Subrole]++
-			}
-			if counts[0][1] != 2 || counts[0][2] != 2 || counts[2][1] != 2 || counts[2][2] != 2 || counts[1][4] != 2 {
-				t.Fatal("JOIN opposite-role/terminal duties changed", counts)
-			}
-			for _, role := range []admission.AllocationRole{admission.AllocationUser, admission.AllocationPublisher} {
-				holder := joinRouteStock(t, f, role)
-				status := holder.Status()
-				if !status.Accepted || status.Pending || status.Busy || status.Closed || status.Remaining != [3]uint32{} || status.BootstrapRemaining != 1 {
-					t.Fatalf("JOIN stock did not complete exactly one ten-token batch: %+v", status)
-				}
-				// This is quota/stock preparation evidence only. No TLS HELLO, presentation,
-				// receiving spend, JOIN pairing or forwarding is claimed by this smoke.
-			}
-		})
-	}
 }

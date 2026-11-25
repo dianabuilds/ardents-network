@@ -5,18 +5,17 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
-
-type holderCommand = session.LocalCommand
 
 type holderPlan struct {
 	Root        string                   `json:"root"`
 	Profile     string                   `json:"profile"`
 	Network     *networkAuthorityPlan    `json:"network,omitempty"`
 	Role        admission.AllocationRole `json:"role"`
-	Route       *routePrefixPlan         `json:"route,omitempty"`
+	Route       *funding.Declaration     `json:"route,omitempty"`
 	Publication *publicationPlan         `json:"publication,omitempty"`
 }
 
@@ -30,7 +29,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 func localHolderPlan(config holderPlan) session.LocalHolderPlan {
 	var options session.Config
 	if config.Route != nil {
-		plan := fundingPlan(*config.Route)
+		plan := config.Route.Plan()
 		options.Route = &plan
 	}
 	if config.Publication != nil {

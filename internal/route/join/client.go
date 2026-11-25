@@ -105,6 +105,9 @@ func (a *Acquisition) Join(ctx context.Context, config Config) (_ *Joined, resul
 	}
 	frame, err := ardp.ReadFrame(terminal.Stream())
 	if err != nil {
+		if cause := ctx.Err(); cause != nil {
+			err = errors.Join(err, cause)
+		}
 		return nil, err
 	}
 	status, err := ardp.DecodeJoinResult(frame.Body, request.Nonce)

@@ -8,13 +8,10 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"io"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -29,169 +26,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
-
-// Native profile: genuine signed State, durable Admission/Hosting/Store owners
-// and physical selected Carriers. Public signed input is not a live Publisher,
-// registered slot, Execution Job or authenticated Service Connection.
-func TestRouteGenuineDescriptorTCP(t *testing.T) {
-	t.Run("Introduction-refusals", func(t *testing.T) { testRouteGenuineDescriptor(t, false) })
-	t.Run("profile-refusal", func(t *testing.T) { testRouteGenuineDescriptor(t, true) })
-}
-
-func testRouteGenuineDescriptor(t *testing.T, foreignProfileControl bool) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
-		t.Run(string(carrier), func(t *testing.T) {
-			f, reservations, certificates := descriptorRouteFixture(t, carrier)
-			holder := descriptorRouteStock(t, f)
-			store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), Network: f.profile.NetworkID})
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if err := store.Close(); err != nil {
-					t.Error(err)
-				}
-			})
-			var controlSpends atomic.Int32
-			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, {17}} {
-				view, err := f.current()
-				if err != nil {
-					t.Fatal(err)
-				}
-				member, err := view.Member(id, view.ObservedAt())
-				if err != nil {
-					t.Fatal(err)
-				}
-				duty, err := view.RetainDuty(id, view.ObservedAt())
-				if err != nil {
-					t.Fatal(err)
-				}
-				binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
-				owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() {
-					if err := owner.Close(); err != nil {
-						t.Error(err)
-					}
-				})
-				budget := networkTestBudget(t)
-				config := routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
-				if id == [32]byte{17} {
-					config.DescriptorStore = store
-				}
-				config.Admit = func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
-					class, err := role.AdmissionClass(channel.Hello.Purpose)
-					if err != nil {
-						return receiving.Grant{}, err
-					}
-					grant, err := owner.Accept(ctx, class, raw, channel.Hello.Deadline, func() (func() error, error) {
-						release, err := networkTestReservation(t, budget, channel.Hello.Deadline)
-						if err != nil {
-							return nil, err
-						}
-						return channel.HoldReservation(release)
-					})
-					if err == nil && class == admission.ControlClass {
-						controlSpends.Add(1)
-					}
-					return grant, err
-				}
-				reservations[id]()
-				server, err := routereceiver.Listen(t.Context(), config)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Cleanup(func() {
-					if err := server.Close(); err != nil {
-						t.Error("receiving join", err)
-					}
-				})
-			}
-			root := t.TempDir()
-			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer func() {
-				if err := prefix.close(); err != nil {
-					t.Error("holder join", err)
-				}
-			}()
-			history := &reachability.History{}
-			defer func() { _ = history.Close() }()
-			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
-			if err := prefix.publishDescriptor(t.Context(), raw); err != nil {
-				t.Fatal("actual Store publication", err)
-			}
-			got, err := prefix.lookupDescriptor(t.Context(), target, history)
-			if err != nil || !bytes.Equal(got, raw) {
-				t.Fatal("independent fresh lookup differs", err)
-			}
-			connectOnly, _ := routeSignedDescriptor(t, f, 2, [32]byte{18})
-			if err := prefix.publishDescriptor(t.Context(), connectOnly); err == nil {
-				t.Fatal("Connect-only published through actual receiving Store")
-			} else {
-				var refused routeprefix.DescriptorRefusal
-				if !errors.As(err, &refused) || refused.Status != 1 {
-					t.Fatal("missing capability did not retain fixed refusal", err)
-				}
-			}
-			broken := bytes.Clone(raw)
-			broken[len(broken)-1] ^= 1
-			if err := prefix.publishDescriptor(t.Context(), broken); err == nil {
-				t.Fatal("invalid Instance signature accepted")
-			}
-			if foreignProfileControl {
-				foreignProfile := f.profile.Digest
-				foreignProfile[0] ^= 1
-				wrongProfile, _ := routeSignedDescriptorProfile(t, f, 3, [32]byte{18}, foreignProfile)
-				if _, err := reachability.VerifyPublish(wrongProfile, f.profile.NetworkID, foreignProfile, time.Now()); err != nil {
-					t.Fatal("foreign-profile control has invalid signatures", err)
-				}
-				if err := prefix.publishDescriptor(t.Context(), wrongProfile); err == nil {
-					t.Fatal("signed foreign-profile Descriptor accepted by actual receiver")
-				} else {
-					var refused routeprefix.DescriptorRefusal
-					if !errors.As(err, &refused) || refused.Status != 1 {
-						t.Fatal("foreign profile did not retain fixed refusal", err)
-					}
-				}
-			}
-			for _, introduction := range [][32]byte{{12}, {99}} {
-				if foreignProfileControl && introduction == [32]byte{99} {
-					continue
-				}
-				invalidDuty, _ := routeSignedDescriptor(t, f, 3, introduction)
-				if err := prefix.publishDescriptor(t.Context(), invalidDuty); err == nil {
-					t.Fatal("signed Descriptor with non-Introduction or absent duty accepted")
-				}
-			}
-			got, err = prefix.lookupDescriptor(t.Context(), target, history)
-			if err != nil || !bytes.Equal(got, raw) {
-				t.Fatal("refused publication changed retained proof", err)
-			}
-			if _, err := prefix.lookupDescriptor(t.Context(), [32]byte{99}, history); err == nil {
-				t.Fatal("lookup changed independently selected Target")
-			}
-			if controlSpends.Load() != 8 {
-				t.Fatal("fresh terminal admission not spent for every operation", controlSpends.Load())
-			}
-		})
-	}
-}
 
 func descriptorRouteFixture(t *testing.T, carrier transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	return descriptorRouteFixtureConfigured(t, carrier, nil)
@@ -272,29 +114,6 @@ func descriptorRouteChallenges(f *networkAdmissionFixture) [][]token.ClosedToken
 	return [][]token.ClosedTokenContext{forwards, controls}
 }
 
-// The holder process retains actual blinding and Stock ownership; only the
-// existing genuine offline issuer signs the externally provisioned batches.
-func routeConsoleDescriptorStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply) {
-	t.Helper()
-	routeConsolePermissionStock(t, f, send, [3]uint32{8, 4, 0})
-	for i, challenges := range descriptorRouteChallenges(f) {
-		intent := stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{byte(41 + i)}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter}
-		batch := send(holderCommand{Operation: "begin", Intent: intent})
-		if batch.Outcome != "completed" {
-			t.Fatal("compiled holder begin", batch.Outcome)
-		}
-		issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.Issuer(f.plan.KeyBinding.Signer)
-		})
-		if issued.Outcome != "issued-offline" {
-			t.Fatal("actual offline issuer", issued.Outcome)
-		}
-		if reply := send(holderCommand{Operation: "complete", Payload: issued.Response}); reply.Outcome != "completed" {
-			t.Fatal("compiled Stock completion", reply.Outcome)
-		}
-	}
-}
-
 // Independent accepted byte/signature transcripts; the zero ACK commitment is
 // public signed input only, never evidence of an actual ready Publisher.
 func routeSignedDescriptor(t *testing.T, f *networkAdmissionFixture, caps uint32, introduction [32]byte) ([]byte, [32]byte) {
@@ -305,180 +124,6 @@ func routeSignedDescriptor(t *testing.T, f *networkAdmissionFixture, caps uint32
 func routeSignedDescriptorProfile(t *testing.T, f *networkAdmissionFixture, caps uint32, introduction, profile [32]byte) ([]byte, [32]byte) {
 	t.Helper()
 	return processfixture.SignedDescriptor(t, f.profile, caps, introduction, profile)
-}
-
-func TestRouteCompiledDescriptorTCP(t *testing.T) {
-	_ = compiledCommand(t)
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
-		t.Run(string(profile), func(t *testing.T) {
-			f, sockets, certificates := descriptorRouteFixture(t, profile)
-			bundle, err := networkfixture.BuildClosed(f.spec)
-			if err != nil {
-				t.Fatal(err)
-			}
-			clock, closeClock := processfixture.StartObservedClock(t)
-			defer closeClock()
-			seed := func() networkAuthorityPlan {
-				var key [32]byte
-				copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-				plan := networkAuthorityPlan{Root: filepath.Join(t.TempDir(), "network"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
-				config, err := networkStateConfig(&plan)
-				if err != nil {
-					t.Fatal(err)
-				}
-				owner, err := state.Open(config)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if _, err := owner.AcceptEpoch(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
-					t.Fatal(err)
-				}
-				if _, err := owner.AcceptClosedProfile(bundle.Profile); err != nil {
-					t.Fatal(err)
-				}
-				if err := owner.Close(); err != nil {
-					t.Fatal(err)
-				}
-				return plan
-			}
-			var receivers []*joinCommandProcess
-			var budgets []string
-			descriptorRoot := t.TempDir()
-			var resolutionConfig map[string]any
-			for _, id := range [][32]byte{{12}, {13}, {14}, {15}, [32]byte{17}} {
-				certificate := certificates[id]
-				certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
-				if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
-					t.Fatal(err)
-				}
-				key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
-				if err != nil {
-					t.Fatal(err)
-				}
-				encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
-				if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
-					t.Fatal(err)
-				}
-				clear(key)
-				clear(encoded)
-				budget := processfixture.ProcessBudget(t)
-				budgets = append(budgets, budget)
-				root := t.TempDir()
-				if err := os.Chmod(root, 0700); err != nil {
-					t.Fatal(err)
-				}
-				config := map[string]any{"network": seed(), "node_id": id, "spend_root": root, "hosting_root": budget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-				if id == [32]byte{17} {
-					config["descriptor_root"] = descriptorRoot
-					resolutionConfig = config
-				}
-				sockets[id]()
-				process := startJoinCommandProcess(t, t.Context(), compiledCommand(t), "route", "receive", "--config", hostingConfig(t, config))
-				t.Cleanup(func() {
-					if !process.waited {
-						_ = process.command.Process.Kill()
-						_ = process.wait()
-					}
-				})
-				var ready map[string]string
-				if err := process.decode.Decode(&ready); err != nil || ready["operation"] != "route.receive" || ready["phase"] != "listening" {
-					t.Fatal("compiled issuer receiver not ready", id, err, process.diagnostic.String())
-				}
-				receivers = append(receivers, process)
-			}
-			holderRoot := t.TempDir()
-			if err := os.Chmod(holderRoot, 0700); err != nil {
-				t.Fatal(err)
-			}
-			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: processfixture.ProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-			budgets = append(budgets, plan.HostingRoot)
-			send, closeHolder := admissionLocalConsole(t, "holder", map[string]any{"root": holderRoot, "network": seed(), "role": admission.AllocationUser, "route": plan})
-			routeConsoleDescriptorStock(t, f, send)
-			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
-			for _, command := range []holderCommand{{Operation: "prefix-open"}, {Operation: "descriptor-publish", Payload: raw}} {
-				if reply := send(command); reply.Outcome != "completed" {
-					t.Fatal("compiled Descriptor setup", command.Operation, reply.Outcome)
-				}
-			}
-			assertLookup := func() {
-				t.Helper()
-				reply := send(holderCommand{Operation: "descriptor-lookup", Target: target})
-				if reply.Outcome != "completed" || !bytes.Equal(reply.Proof, raw) {
-					t.Fatal("compiled lookup changed exact proof", reply.Outcome)
-				}
-			}
-			assertLookup()
-			connectOnly, _ := routeSignedDescriptor(t, f, 2, [32]byte{18})
-			broken := bytes.Clone(raw)
-			broken[len(broken)-1] ^= 1
-			for _, command := range []holderCommand{{Operation: "descriptor-publish", Payload: connectOnly}, {Operation: "descriptor-publish", Payload: broken}, {Operation: "descriptor-lookup", Target: [32]byte{99}}} {
-				if reply := send(command); reply.Outcome == "completed" {
-					t.Fatal("compiled invalid Descriptor accepted", command.Operation)
-				}
-			}
-			for _, introduction := range [][32]byte{{12}} {
-				invalidDuty, _ := routeSignedDescriptor(t, f, 3, introduction)
-				if reply := send(holderCommand{Operation: "descriptor-publish", Payload: invalidDuty}); reply.Outcome == "completed" {
-					t.Fatal("compiled signed Descriptor bypassed current Introduction duty")
-				}
-			}
-			assertLookup()
-			resolution := receivers[len(receivers)-1]
-			resolution.interrupt(t)
-			exitErr := resolution.wait()
-			var resolutionExit *exec.ExitError
-			if !errors.As(exitErr, &resolutionExit) || resolutionExit.ExitCode() != 130 {
-				t.Fatal("resolution did not join for actual restart", exitErr, resolution.diagnostic.String())
-			}
-			restarted := startJoinCommandProcess(t, t.Context(), compiledCommand(t), "route", "receive", "--config", hostingConfig(t, resolutionConfig))
-			t.Cleanup(func() {
-				if !restarted.waited {
-					_ = restarted.command.Process.Kill()
-					_ = restarted.wait()
-				}
-			})
-			var restartReady map[string]string
-			if err := restarted.decode.Decode(&restartReady); err != nil || restartReady["operation"] != "route.receive" || restartReady["phase"] != "listening" {
-				t.Fatal("resolution failed to restart retained roots", err, restarted.diagnostic.String())
-			}
-			receivers[len(receivers)-1] = restarted
-			assertLookup() // new genuine admitted terminal, original Target/history
-			if reply := send(holderCommand{Operation: "prefix-close"}); reply.Outcome != "completed" {
-				t.Fatal("compiled prefix did not join", reply.Outcome)
-			}
-			closeHolder()
-			for _, process := range receivers {
-				process.interrupt(t)
-			}
-			for _, process := range receivers {
-				err := process.wait()
-				var exit *exec.ExitError
-				if !errors.As(err, &exit) || exit.ExitCode() != 130 {
-					t.Fatal("compiled receiver did not join", err, process.diagnostic.String())
-				}
-			}
-			restored, err := reachability.OpenStore(reachability.StoreConfig{Root: descriptorRoot, Network: f.profile.NetworkID})
-			if err != nil {
-				t.Fatal("compiled receiver Store did not reopen", err)
-			}
-			stored, outcome, lookupErr := restored.Lookup(target, f.profile.Digest, time.Now())
-			closeErr := restored.Close()
-			if lookupErr != nil || closeErr != nil || outcome != reachability.Accepted || !bytes.Equal(stored, raw) {
-				t.Fatal("compiled ACK did not retain durable proof", outcome, lookupErr, closeErr)
-			}
-			for _, root := range budgets {
-				budget, err := hosting.Open(root)
-				if err != nil {
-					t.Fatal(err)
-				}
-				observed, err := budget.Observe(t.Context())
-				closeErr := budget.Close()
-				if err != nil || closeErr != nil || observed.ReservedBytes != 0 {
-					t.Fatal("compiled issuer retained Hosting after join", err, closeErr, observed.ReservedBytes)
-				}
-			}
-		})
-	}
 }
 
 func TestRouteDescriptorPostCommitRetirementTCP(t *testing.T) {

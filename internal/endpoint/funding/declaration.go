@@ -1,14 +1,15 @@
-package main
+package funding
 
 import (
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/route"
 )
 
-type routePrefixPlan struct {
+// Declaration is the local holder's Route configuration, not a permission.
+// Its field names preserve the existing holder configuration format.
+type Declaration struct {
 	EntryRoot             string          `json:"entry_root"`
 	InteriorRoot          string          `json:"interior_root"`
 	SourceInteriorRoot    string          `json:"source_interior_root,omitempty"`
@@ -21,6 +22,7 @@ type routePrefixPlan struct {
 	Exclusions            []route.Member  `json:"exclusions,omitempty"`
 }
 
-type routeRecipient = session.LocalRecipient
-type routeJoinIntent = session.LocalJoinIntent
-type routeCapsuleIntent = session.LocalCapsuleIntent
+// Plan returns the unchanged local bounds for validation by their owners.
+func (d Declaration) Plan() Plan {
+	return Plan(d)
+}

@@ -23,12 +23,63 @@ type AdmissionReply struct {
 	Repeated                                 bool
 	Deadline                                 time.Time
 	Bytes                                    uint64
+	Recipient                                AdmissionRecipient
+	Registration                             AdmissionRegistration
+	Stock                                    AdmissionStock
+}
+
+// AdmissionStock is the public holder status returned by the console.
+type AdmissionStock struct {
+	Accepted, Pending, Busy, Closed bool
+	Remaining                       [3]uint32
+	BootstrapRemaining              uint8
+}
+
+// AdmissionRecipient is the public Rendezvous choice returned by the holder.
+type AdmissionRecipient struct {
+	Node       [32]byte
+	Generation uint64
+	NotAfter   time.Time `json:"not_after"`
+}
+
+// AdmissionRegistration is the public binding returned by a completed REGISTER.
+type AdmissionRegistration struct {
+	Network, Profile, Node, Slot [32]byte
+	Revision                     uint64
+	Created, Expiry              time.Time
+	Acknowledgement              [32]byte
 }
 
 // OpenAdmissionConsole runs and joins the compiled Admission console.
 func OpenAdmissionConsole(t testing.TB, binary, operation, config string) (func(any) AdmissionReply, func()) {
 	t.Helper()
+	send, finish := OpenAdmissionConsoleResult(t, binary, operation, config)
+	return send, func() {
+		t.Helper()
+		if err := finish(); err != nil {
+			t.Fatal("admission console result:", err)
+		}
+	}
+}
+
+// OpenAdmissionConsoleResult returns the actual joined process result to tests
+// that must distinguish a retained failure from a successful EOF.
+func OpenAdmissionConsoleResult(t testing.TB, binary, operation, config string) (func(any) AdmissionReply, func() error) {
+	send, finish, _ := openAdmissionConsole(t, binary, operation, config, nil, nil)
+	return send, finish
+}
+
+// OpenAdmissionConsoleWithInterrupt also exposes graceful interruption and join.
+func OpenAdmissionConsoleWithInterrupt(t testing.TB, binary, operation, config string, prepare func(*exec.Cmd), signal func(*exec.Cmd) error) (func(any) AdmissionReply, func() error, func() error) {
+	return openAdmissionConsole(t, binary, operation, config, prepare, signal)
+}
+
+func openAdmissionConsole(t testing.TB, binary, operation, config string, prepare func(*exec.Cmd), signal func(*exec.Cmd) error) (func(any) AdmissionReply, func() error, func() error) {
+	t.Helper()
 	cmd := exec.CommandContext(t.Context(), binary, "admission", operation, "--config", config)
+	if prepare != nil {
+		prepare(cmd)
+	}
 	in, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -77,17 +128,31 @@ func OpenAdmissionConsole(t testing.TB, binary, operation, config string) (func(
 		}
 		return reply
 	}
-	close := func() {
+	close := func() error {
 		t.Helper()
 		if joined {
-			return
+			return nil
 		}
 		closeErr := in.Close()
 		waitErr := cmd.Wait()
 		joined = true
-		if err := errors.Join(closeErr, waitErr); err != nil {
-			t.Fatal(err, &log)
-		}
+		return errors.Join(closeErr, waitErr)
 	}
-	return send, close
+	interrupt := func() error {
+		t.Helper()
+		if signal == nil {
+			return errors.New("console interruption unavailable")
+		}
+		if err := signal(cmd); err != nil {
+			return err
+		}
+		waitErr := cmd.Wait()
+		joined = true
+		closeErr := in.Close()
+		if errors.Is(closeErr, os.ErrClosed) {
+			closeErr = nil
+		}
+		return errors.Join(waitErr, closeErr)
+	}
+	return send, close, interrupt
 }

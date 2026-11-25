@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -410,4 +411,27 @@ func stopInstalledExecutionWorker(t *testing.T, ctx context.Context, role string
 		t.Fatal("loss fixture original worker changed before stop")
 	}
 	command("--system", "--no-ask-password", "--no-pager", "stop", unit)
+}
+
+// routeExpiryCloseOnly rejects joined failures containing any non-close cause.
+func routeExpiryCloseOnly(err error) bool {
+	if err == nil {
+		return false
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !routeExpiryCloseOnly(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return routeExpiryCloseOnly(wrapped.Unwrap())
+	}
+	return errors.Is(err, net.ErrClosed)
 }

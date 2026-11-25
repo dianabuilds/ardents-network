@@ -9,6 +9,8 @@ grant no eligible selection, local duty or transport execution; refuse before
 effects without fallback or signed-State rewriting. Historical both-Carrier
 receipts remain source-specific evidence. All role/authority, capacity, deadline,
 durable floor, process and joined-cleanup requirements remain binding on TCP/TLS.
+The `route receive` composition checks the authenticated member's Carrier with
+Route before opening Admission or Hosting and before acquiring a listener.
 
 Status: **current maintained technical contract.** This document describes the
 implemented closed-test-network Modules and their current Interfaces. It does

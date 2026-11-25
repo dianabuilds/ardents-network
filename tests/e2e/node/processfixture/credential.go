@@ -1,5 +1,3 @@
-//go:build linux && node_process_native
-
 package processfixture
 
 import (
@@ -18,7 +16,7 @@ import (
 // WriteNativeCredential installs only the fixture leaf and its original test key.
 func WriteNativeCredential(t testing.TB, certificate tls.Certificate) (string, string) {
 	t.Helper()
-	root := t.TempDir()
+	root := TempDir(t)
 	certPath, keyPath := filepath.Join(root, "certificate"), filepath.Join(root, "key")
 	if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
 		t.Fatal(err)
