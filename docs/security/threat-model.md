@@ -10,7 +10,8 @@ pre-effect refusal, including retained callers. No fallback or lower security
 mode is selected. Its unresolved dependency finding is preserved, not waived;
 neither transport exclusion nor passing tests establishes anonymity or availability.
 
-Status: **accepted claim registry and C0 audit input; no implementation qualified**
+Status: **accepted claim registry and C0 audit input.** Qualification evidence
+applies to its exact artifact, profile and scenario.
 
 Last reviewed: 2026-09-07
 
