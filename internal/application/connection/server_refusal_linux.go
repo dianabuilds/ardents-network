@@ -15,6 +15,9 @@ func Refuse(outcome Outcome) error {
 	return SetupRefusalError{outcome: outcome}
 }
 
+// refusal stays with the protected Linux server admission: it classifies
+// setupCleanupError, which the Linux-only server_admission.go owns. It is not a
+// portable projection until that admission type is itself ported.
 func refusal(cause error) Outcome {
 	var cleanup setupCleanupError
 	if errors.As(cause, &cleanup) {

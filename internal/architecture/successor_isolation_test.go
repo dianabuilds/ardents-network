@@ -2781,7 +2781,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"common Execution launch has no native Text exception", "internal/execution/runtime/launch.go", modulePath + "/internal/application/document", false},
 		{"other Execution composition has no Text exception", "internal/execution/runtime/other_linux.go", modulePath + "/internal/application/document", false},
 		{"installed Stream activation test uses fixed qualification protocol", "internal/execution/worker/stream_activation_installed_linux_test.go", modulePath + "/internal/application/streamqualification", true},
-		{"ordinary worker activation has no qualification protocol edge", "internal/execution/worker/activate_linux.go", modulePath + "/internal/application/streamqualification", false},
+		{"ordinary worker activation has no qualification protocol edge", "internal/execution/worker/activate.go", modulePath + "/internal/application/streamqualification", false},
 		{"ordinary Text INIT has no qualification protocol edge", "internal/execution/runtime/initialization_linux.go", modulePath + "/internal/application/streamqualification", false},
 		{"trusted Stream qualification seam uses fixed qualification protocol", "internal/execution/runtime/stream_qualification_linux.go", modulePath + "/internal/application/streamqualification", true},
 		{"common Execution launch has no qualification protocol edge", "internal/execution/runtime/launch.go", modulePath + "/internal/application/streamqualification", false},
