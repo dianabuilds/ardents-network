@@ -1,0 +1,121 @@
+name: "#688 installed infrastructure proof"
+on:
+  push:
+    branches: [codex/proof-688-infrastructure]
+permissions:
+  contents: read
+jobs:
+  installed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: Source
+            tag: source_installed_native
+            test: TestNativeSourceInstalledLifecycle
+          - role: Forwarding
+            tag: forwarding_platform_native
+            test: TestNativeForwardingPlatformInstalledLifecycle
+          - role: JOIN
+            tag: join_platform_native
+            test: TestNativeJoinPlatformInstalledLifecycle
+          - role: Descriptor
+            tag: descriptor_platform_native
+            test: TestNativeDescriptorPlatformInstalledLifecycle
+    name: Installed ${{ matrix.role }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 655a61ea2c3b5759f1b6d3e7b6f88b641ddfd54c
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Verify source and execute installed lifecycle
+        shell: bash
+        env:
+          GOFLAGS: -buildvcs=false
+          GOTOOLCHAIN: local
+          PROOF_TAG: ${{ matrix.tag }}
+          PROOF_TEST: ${{ matrix.test }}
+        run: |
+          set -euo pipefail
+          git show -s --format='candidate=%H tree=%T'
+          sudo /usr/bin/busctl --system --no-pager get-property org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager Version
+          findmnt -no FSTYPE --target /var/lib
+          test -r /sys/fs/cgroup/cgroup.controllers
+          bin="$RUNNER_TEMP/installed.test"
+          go test -c -tags "$PROOF_TAG" -o "$bin" ./tests/e2e/node
+          "$bin" -test.list "^$PROOF_TEST$" | grep -Fx "$PROOF_TEST"
+          cd tests/e2e/node
+          sudo env PATH="$PATH" GOFLAGS="$GOFLAGS" GOTOOLCHAIN=local GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)" \
+            "$bin" -test.run "^$PROOF_TEST$" -test.count=1 -test.v -test.timeout=8m | tee "$RUNNER_TEMP/installed.log"
+          grep -F -- "--- PASS: $PROOF_TEST" "$RUNNER_TEMP/installed.log"
+      - name: Verify installed fixture cleanup
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for role in source forwarding join descriptor; do
+            test ! -e "/etc/systemd/system/ardents-$role.service"
+            ! systemctl is-active --quiet "ardents-$role.service"
+          done
+          ! getent passwd ardents-source
+          ! getent passwd ardents-node
+          for dir in /etc/ardents /usr/lib/ardents /var/lib/ardents; do
+            if [[ -d "$dir" ]]; then
+              test -z "$(find "$dir" -mindepth 1 -name '*installed-*' -print -quit)"
+            fi
+          done
+  introduction:
+    name: Introduction repair and original process
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: 655a61ea2c3b5759f1b6d3e7b6f88b641ddfd54c
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: true
+      - name: Verify Introduction repair state and rejection controls
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          git show -s --format='candidate=%H tree=%T'
+          bin="$RUNNER_TEMP/repair.test"
+          go test -c -tags network_signing_native -o "$bin" ./internal/network/state
+          sudo "$bin" -test.v -test.run '^Test(IntroductionRepair|NodeDutyRepair)' -test.count=1 -test.timeout=3m | tee "$RUNNER_TEMP/repair.log"
+          grep -F -- '--- PASS: TestIntroductionRepairRootsNative' "$RUNNER_TEMP/repair.log"
+          grep -F -- '--- PASS: TestIntroductionRepairDomainAdmissionRetainsBothLeasesAndHistories' "$RUNNER_TEMP/repair.log"
+      - name: Verify the existing Introduction process profile
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+          GOFLAGS: -buildvcs=false
+        run: |
+          set -euo pipefail
+          export ARDENTS_NODE_NATIVE_COMMAND="$RUNNER_TEMP/ardents"
+          export ARDENTS_NODE_OWNER_TEST="$RUNNER_TEMP/node-owner.test"
+          export ARDENTS_NODE_E2E_TEST="$RUNNER_TEMP/node-e2e.test"
+          export ARDENTS_NODE_RESOURCE_TEST="$RUNNER_TEMP/node-resource.test"
+          go build -trimpath -buildvcs=false -ldflags=-w -o "$ARDENTS_NODE_NATIVE_COMMAND" ./cmd/ardents-next
+          go test -c -tags node_process_native -o "$ARDENTS_NODE_OWNER_TEST" ./internal/node
+          go test -c -tags node_process_native -o "$ARDENTS_NODE_E2E_TEST" ./tests/e2e/node
+          go test -c -tags node_process_native -o "$ARDENTS_NODE_RESOURCE_TEST" ./internal/processresource
+          for variable in ARDENTS_NODE_NATIVE_COMMAND ARDENTS_NODE_OWNER_TEST ARDENTS_NODE_E2E_TEST ARDENTS_NODE_RESOURCE_TEST; do
+            digest=$(sha256sum "${!variable}")
+            export "${variable}_SHA256=${digest%% *}"
+            printf '%s %s\n' "$variable" "${digest%% *}"
+          done
+          sudo --preserve-env=ARDENTS_NODE_NATIVE_COMMAND,ARDENTS_NODE_NATIVE_COMMAND_SHA256 \
+            "$ARDENTS_NODE_E2E_TEST" -test.v -test.run '^TestNativeNodeRepairRefusalKeepsBoundedReport/introduction$' -test.timeout=3m
+          sudo --preserve-env=ARDENTS_NODE_NATIVE_COMMAND,ARDENTS_NODE_NATIVE_COMMAND_SHA256,ARDENTS_NODE_OWNER_TEST,ARDENTS_NODE_OWNER_TEST_SHA256,ARDENTS_NODE_E2E_TEST,ARDENTS_NODE_E2E_TEST_SHA256,ARDENTS_NODE_RESOURCE_TEST,ARDENTS_NODE_RESOURCE_TEST_SHA256 \
+            sh ./scripts/node/run-introduction-native.sh -timeout=3m
