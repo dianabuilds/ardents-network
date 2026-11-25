@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package node
 
 import "github.com/dianabuilds/ardents-network/internal/admission/quota"

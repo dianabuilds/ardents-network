@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node_test
 
@@ -43,7 +43,7 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 	t.Helper()
 	binary := buildNodeCommand(t)
 	processfixture.WaitAdmissionHour(t)
-	spec, plan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
+	spec, plan, inventory := networkinputs.PrepareNetworkGenesis(t, processfixture.TempDir(t))
 	if class == admission.RegistrationClass {
 		spec.Nodes[1].RoleDomain, spec.Nodes[1].Subrole = 4, 3
 	}
@@ -83,7 +83,7 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 		t.Helper()
 		var key [32]byte
 		copy(key[:], spec.Authority[32:])
-		p := state.AuthorityDeclaration{Root: filepath.Join(t.TempDir(), "network"), NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clockFile}
+		p := state.AuthorityDeclaration{Root: filepath.Join(processfixture.TempDir(t), "network"), NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clockFile}
 		bad := bytes.Clone(bundle.Epoch.Raw)
 		bad[len(bad)-1] ^= 1
 		if reply := command("accept-epoch", map[string]any{"network": p, "epoch": bad, "inputs": bundle.Epoch.Inputs, "materials": bundle.Epoch.Materials}, false); reply.Outcome != "unavailable" {
@@ -110,7 +110,7 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 	if class == admission.RegistrationClass {
 		role = admission.AllocationPublisher
 	}
-	holderConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": holderNetwork, "role": role}
+	holderConfig := map[string]any{"root": processfixture.TempDir(t), "profile": "", "network": holderNetwork, "role": role}
 	holder, closeHolder := processfixture.OpenAdmissionConsole(t, binary, "holder", writeNetworkInput(t, holderConfig))
 	var maxima [3]uint32
 	maxima[class-1] = 1
@@ -154,7 +154,7 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 		t.Fatal(taken)
 	}
 	closeHolder()
-	receiverConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": receiverNetwork, "receiver": binding, "not_after": spec.NotAfter}
+	receiverConfig := map[string]any{"root": processfixture.TempDir(t), "profile": "", "network": receiverNetwork, "receiver": binding, "not_after": spec.NotAfter}
 	receiver, closeReceiver := processfixture.OpenAdmissionConsole(t, binary, "receiver", writeNetworkInput(t, receiverConfig))
 	deadline := time.Now().Add(time.Second)
 	accept := map[string]any{"operation": "accept", "token": taken.Token, "class": class, "deadline": deadline}

@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node_test
 
@@ -102,7 +102,7 @@ func TestIssuanceFreshKeysAndPredecessorRootRefusal(t *testing.T) {
 
 func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
 	raw, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
-	root := filepath.Join(t.TempDir(), "ledger")
+	root := filepath.Join(processfixture.TempDir(t), "ledger")
 	initialize := func(root string) (issuanceResult, error) {
 		t.Helper()
 		config := processfixture.WriteConfig(t, admissionInitializationConfig(root, binding))
@@ -141,7 +141,7 @@ func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
 		}
 		debit(quota.AlreadyDebited)
 	}
-	foreign := t.TempDir()
+	foreign := processfixture.TempDir(t)
 	if err := os.WriteFile(filepath.Join(foreign, "closed-token-ledger"), []byte("ARDILG02synthetic spent history"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestAdmissionFreshAuthorityRefusesPredecessorPermission(t *testing.T) {
 	defer clear(private)
 	copy(binding.Authority[:], public)
 	facts.Authority = binding.Authority
-	root := filepath.Join(t.TempDir(), "quota")
+	root := filepath.Join(processfixture.TempDir(t), "quota")
 	if err := quota.Initialize(root, binding); err != nil {
 		t.Fatal(err)
 	}

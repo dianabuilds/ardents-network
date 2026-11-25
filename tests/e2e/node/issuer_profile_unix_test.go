@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node_test
 
@@ -214,18 +214,5 @@ func TestIssuerProfileCLICompleteTokenCycle(t *testing.T) {
 	}
 	if hex.EncodeToString(signer[:]) != keyBinding.Signer {
 		t.Fatal("fixture pin")
-	}
-}
-func TestProfileCommandStrictInput(t *testing.T) {
-	binary := buildNodeCommand(t)
-	for _, raw := range []string{`{"root":"/unused","root":"/again","binding":{},"key_file":"/missing"}`, `{"Root":"/unused","binding":{},"key_file":"/missing"}`, `{"root":null,"binding":{},"key_file":"/missing"}`, `{"root":"/unused","binding":{},"key_file":"/missing","extra":1}`} {
-		path := filepath.Join(t.TempDir(), "config")
-		if e := os.WriteFile(path, []byte(raw), 0600); e != nil {
-			t.Fatal(e)
-		}
-		command := exec.CommandContext(t.Context(), binary, "node-identity", "import", "--config", path)
-		if out, err := command.CombinedOutput(); command.ProcessState == nil || command.ProcessState.ExitCode() != 2 {
-			t.Fatal(err, string(out))
-		}
 	}
 }

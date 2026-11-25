@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node_test
 
@@ -32,7 +32,7 @@ func admissionInitializationConfig(root string, binding quota.LedgerBinding) map
 
 func TestAdmissionInitializationExactInput(t *testing.T) {
 	_, _, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
-	root := filepath.Join(t.TempDir(), "ledger")
+	root := filepath.Join(processfixture.TempDir(t), "ledger")
 	valid, err := json.Marshal(admissionInitializationConfig(root, binding))
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestAdmissionInitializationExactInput(t *testing.T) {
 
 func TestAdmissionInitializationCompiledCLI(t *testing.T) {
 	raw, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
-	root := filepath.Join(t.TempDir(), "ledger")
+	root := filepath.Join(processfixture.TempDir(t), "ledger")
 	config := processfixture.WriteConfig(t, admissionInitializationConfig(root, binding))
 	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 	var out, diagnostic bytes.Buffer
@@ -126,7 +126,7 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	}))
 	defer server.Close()
 	_, _, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
-	root := filepath.Join(t.TempDir(), "ledger")
+	root := filepath.Join(processfixture.TempDir(t), "ledger")
 	init := admissionInitializationConfig(root, binding)
 	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", processfixture.WriteConfig(t, init), server.URL)
 	var log bytes.Buffer

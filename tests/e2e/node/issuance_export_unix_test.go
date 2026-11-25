@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package node_test
 
@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 func TestConfirmedIssuanceOutputCannotChangeOwnedRoots(t *testing.T) {
@@ -47,27 +49,12 @@ func TestConfirmedIssuanceOutputCannotChangeOwnedRoots(t *testing.T) {
 	}
 }
 
-func TestIssuanceOutputRefusesBeforeKeyCreation(t *testing.T) {
-	p, input := issuanceCommandPlan(t)
-	input["inventory_file"] = filepath.Join(p.Root, "inventory.json")
-	if r, err := issuanceCommand(t, "initialize", input, ""); err == nil || r.Phase != "input" || r.Outcome != "invalid-input" {
-		t.Fatalf("owned output must refuse before creating keys: %v %v", r, err)
-	}
-	if _, err := os.Stat(p.Root); !os.IsNotExist(err) {
-		t.Fatalf("invalid output created key root: %v", err)
-	}
-	input["inventory_file"] = p.InventoryFile
-	if r, err := issuanceCommand(t, "initialize", input, ""); err != nil || r.Outcome != "completed" {
-		t.Fatal("valid initialization after refusal", r, err)
-	}
-}
-
 func TestIssuanceOutputRefusesOtherOwnedRootBeforeDebit(t *testing.T) {
 	_, init, issue, _ := issuanceResultCommandPlan(t)
 	if r, err := resultCommand(t, "initialize-results", init, ""); err != nil {
 		t.Fatal(r, err)
 	}
-	foreign := t.TempDir()
+	foreign := processfixture.TempDir(t)
 	if err := os.Chmod(foreign, 0700); err != nil {
 		t.Fatal(err)
 	}

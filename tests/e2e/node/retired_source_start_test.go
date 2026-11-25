@@ -23,3 +23,20 @@ func TestPlatformRetiresDetachedSourceStartBeforeEffects(t *testing.T) {
 		t.Fatalf("retired Source startup touched input: %v", err)
 	}
 }
+
+func TestInfrastructureCompiledRejectsRetiredSourceOperations(t *testing.T) {
+	program := buildNodeCommand(t)
+	for _, operation := range []string{"preflight-initial", "preflight-candidate", "install-initial-stopped"} {
+		t.Run(operation, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "absent")
+			cmd := exec.CommandContext(t.Context(), program, "infrastructure", operation, path)
+			out, err := cmd.CombinedOutput()
+			if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 2 || len(out) != 0 {
+				t.Fatalf("retired operation returned %q, %v", out, err)
+			}
+			if _, err := os.Stat(path); !os.IsNotExist(err) {
+				t.Fatal("retired operation changed input path", err)
+			}
+		})
+	}
+}

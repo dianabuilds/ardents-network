@@ -36,6 +36,47 @@ var forbiddenGoFileNames = map[string]bool{
 	"support.go": true, "types.go": true, "util.go": true,
 }
 
+const commandGOOS = `aix|android|darwin|dragonfly|freebsd|illumos|ios|js|linux|netbsd|openbsd|plan9|solaris|wasip1|windows`
+const commandGOARCH = `386|amd64|arm|arm64|loong64|mips|mips64|mips64le|mipsle|ppc64|ppc64le|riscv64|s390x|wasm`
+
+var commandPlatformConstraint = regexp.MustCompile(`(?m)^[ \t]*//(?:go:build[ \t]+|[ \t]+\+build[ \t]+).*\b(?:` + commandGOOS + `|` + commandGOARCH + `|unix)\b`)
+var commandPlatformFilename = regexp.MustCompile(`_(?:(?:` + commandGOOS + `)(?:_(?:` + commandGOARCH + `))?|(?:` + commandGOARCH + `))\.go$`)
+
+func commandPlatformSpecific(filename string, data []byte) bool {
+	return commandPlatformFilename.MatchString(filename) || commandPlatformConstraint.Match(data)
+}
+
+func commandReadsRuntimePlatform(file *ast.File) bool {
+	for _, imported := range file.Imports {
+		if strings.Trim(imported.Path.Value, "\"`") != "runtime" {
+			continue
+		}
+		name := "runtime"
+		if imported.Name != nil {
+			name = imported.Name.Name
+		}
+		if name == "." {
+			return true
+		}
+		found := false
+		ast.Inspect(file, func(node ast.Node) bool {
+			selector, ok := node.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			base, ok := selector.X.(*ast.Ident)
+			if ok && base.Name == name && (selector.Sel.Name == "GOOS" || selector.Sel.Name == "GOARCH") {
+				found = true
+			}
+			return true
+		})
+		if found {
+			return true
+		}
+	}
+	return false
+}
+
 func TestRepositoryArchitecture(t *testing.T) {
 	t.Parallel()
 	root := repositoryRoot(t)
@@ -47,6 +88,47 @@ func TestRepositoryArchitecture(t *testing.T) {
 	assertPackages(t, root)
 	assertQualityWiring(t, root)
 	assertRepositoryContainsNoArtifacts(t, root)
+}
+
+func TestCommandPlatformBoundaryRecognizesPlatformSelection(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		want         bool
+	}{
+		{"admission_linux.go", "package main\n", true},
+		{"admission_windows_amd64.go", "package main\n", true},
+		{"admission_freebsd.go", "package main\n", true},
+		{"admission_arm64.go", "package main\n", true},
+		{"admission_other.go", "//go:build !linux && !windows\n\npackage main\n", true},
+		{"admission_other.go", "// +build !freebsd\n\npackage main\n", true},
+		{"admission_other.go", "//go:build amd64.v2\n\npackage main\n", true},
+		{"admission.go", "//go:build integration\n\npackage main\n", false},
+		{"admission.go", "// platform-specific behavior belongs to its owner\npackage main\n", false},
+	} {
+		if got := commandPlatformSpecific(tc.name, []byte(tc.source)); got != tc.want {
+			t.Errorf("%s: platform-specific = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestCommandPlatformBoundaryRecognizesRuntimeSelection(t *testing.T) {
+	for _, tc := range []struct {
+		source string
+		want   bool
+	}{
+		{`package main; import "runtime"; var _ = runtime.GOOS`, true},
+		{`package main; import r "runtime"; var _ = r.GOARCH`, true},
+		{`package main; import . "runtime"; var _ = GOOS`, true},
+		{`package main; import "runtime"; var _ = runtime.NumCPU`, false},
+	} {
+		file, err := parser.ParseFile(token.NewFileSet(), "command.go", tc.source, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := commandReadsRuntimePlatform(file); got != tc.want {
+			t.Errorf("%s: reads runtime platform = %v, want %v", tc.source, got, tc.want)
+		}
+	}
 }
 
 func assertDependenciesRegistered(t *testing.T, root string) {
@@ -308,6 +390,9 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 
 	for _, path := range files {
 		relative := relativePath(t, root, path)
+		if strings.HasPrefix(relative, "cmd/") && strings.HasSuffix(relative, "_test.go") {
+			t.Errorf("command test belongs with its owner or in the process suite: %s", relative)
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Errorf("read %s: %v", relative, err)
@@ -318,10 +403,16 @@ func assertPackage(t *testing.T, root, relativeDirectory string, files []string)
 		} else if !bytes.Equal(data, formatted) {
 			t.Errorf("Go file is not gofmt-formatted: %s", relative)
 		}
+		if relativeDirectory == "cmd/ardents-next" && commandPlatformSpecific(relative, data) {
+			t.Errorf("platform-specific implementation belongs with its owner: %s", relative)
+		}
 		file, err := parser.ParseFile(set, path, data, parser.ParseComments)
 		if err != nil {
 			t.Errorf("parse %s: %v", relative, err)
 			continue
+		}
+		if relativeDirectory == "cmd/ardents-next" && commandReadsRuntimePlatform(file) {
+			t.Errorf("runtime platform selection belongs with its owner: %s", relative)
 		}
 		if packageName == "" || !strings.HasSuffix(relative, "_test.go") {
 			packageName = file.Name.Name

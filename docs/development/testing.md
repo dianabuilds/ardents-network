@@ -54,6 +54,12 @@ Hosting state and exercise the native receiving command. The signed deferred
 QUIC refusal also uses the Linux receiving command to reach the Carrier
 decision. The portable input tests exercise refusals before native startup.
 
+The macOS CI process profile also runs compiled Network and Admission
+scenarios, including signed State, issuance, durable spending and reopening,
+input refusals, process interruption and bounded telemetry. Full local issuance
+and Admission lifecycles remain unsupported on Windows; this lane does not
+qualify Route or installed Node startup on macOS.
+
 Endpoint history-preparation units use independently signed Epoch/profile bytes
 through real Network State, actual participation and role Stock files. They
 cover first preparation and retained reopen, Reader/dual-role separation,
@@ -2663,7 +2669,12 @@ Unit and single-Module integration tests live beside their implementation.
 They replace real time or external I/O only at the owning seam and do not start
 Docker. Cross-process tests live under `tests/e2e/<behavior>/`; they build real
 named commands, observe public behavior, create fresh temporary fixtures, and
-clean every owned process and file.
+clean every owned process and file. `cmd/` contains no test files; command
+behavior is exercised through the compiled process at its test owner.
+Platform-specific implementations stay with their owners rather than in
+`cmd/ardents-next`; an architecture check rejects OS- and architecture-specific
+file names, build constraints and direct runtime OS/architecture selection
+there. Review still checks command bodies for other platform-dependent behavior.
 
 Publication durable success/reopen/failure tests execute on Linux and Windows,
 where the native lease and directory-flush adapters exist. Other developer hosts

@@ -1,34 +1,31 @@
-//go:build linux
+//go:build linux || darwin
 
 package node_test
-
-import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"strconv"
-	"strings"
-
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 func issuanceCommandPlan(t *testing.T) (issuancePlan, map[string]any) {
 	t.Helper()
-	dir := t.TempDir()
+	dir := processfixture.TempDir(t)
 	if e := os.Chmod(dir, 0700); e != nil {
 		t.Fatal(e)
 	}
@@ -133,6 +130,37 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 		t.Fatal("changed identity")
 	}
 }
+
+type issuancePlan struct {
+	Root          string
+	Binding       issuance.Binding
+	InventoryFile string
+}
+
+type admissionBindingInput struct {
+	Network   string              `json:"network"`
+	Issuer    string              `json:"issuer"`
+	Authority string              `json:"authority"`
+	Profile   string              `json:"profile"`
+	Duty      string              `json:"duty"`
+	Start     string              `json:"start"`
+	End       string              `json:"end"`
+	Keys      []admissionKeyInput `json:"keys"`
+}
+type admissionKeyInput struct {
+	Window string `json:"window"`
+	Class  string `json:"class"`
+	SPKI   string `json:"spki"`
+}
+
+func admissionBindingConfig(b quota.LedgerBinding) admissionBindingInput {
+	input := admissionBindingInput{Network: hex.EncodeToString(b.Network[:]), Issuer: hex.EncodeToString(b.Issuer[:]), Authority: hex.EncodeToString(b.Authority[:]), Profile: hex.EncodeToString(b.Profile[:]), Duty: strconv.FormatUint(b.Duty, 10), Start: b.Start.Format(time.RFC3339), End: b.End.Format(time.RFC3339)}
+	for _, key := range b.Keys {
+		input.Keys = append(input.Keys, admissionKeyInput{time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), strconv.Itoa(int(key.Class)), hex.EncodeToString(key.SPKI)})
+	}
+	return input
+}
+
 func TestIssuanceCLICrashReopen(t *testing.T) {
 	for _, episode := range []string{"kill", "interrupt"} {
 		t.Run(episode, func(t *testing.T) {
@@ -187,6 +215,21 @@ func TestIssuanceCLICrashReopen(t *testing.T) {
 	}
 }
 
+func TestIssuanceOutputRefusesBeforeKeyCreation(t *testing.T) {
+	p, input := issuanceCommandPlan(t)
+	input["inventory_file"] = filepath.Join(p.Root, "inventory.json")
+	if r, err := issuanceCommand(t, "initialize", input, ""); err == nil || r.Phase != "input" || r.Outcome != "invalid-input" {
+		t.Fatalf("owned output must refuse before creating keys: %v %v", r, err)
+	}
+	if _, err := os.Stat(p.Root); !os.IsNotExist(err) {
+		t.Fatalf("invalid output created key root: %v", err)
+	}
+	input["inventory_file"] = p.InventoryFile
+	if r, err := issuanceCommand(t, "initialize", input, ""); err != nil || r.Outcome != "completed" {
+		t.Fatal("valid initialization after refusal", r, err)
+	}
+}
+
 func TestIssuanceOTLPFiniteAttributes(t *testing.T) {
 	var mu sync.Mutex
 	seen := map[string][]byte{}
@@ -205,103 +248,4 @@ func TestIssuanceOTLPFiniteAttributes(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	assertIssuanceOTLP(t, seen, p)
-}
-
-type issuanceResult struct {
-	Operation string `json:"operation"`
-	Phase     string `json:"phase"`
-	Outcome   string `json:"outcome"`
-}
-
-type issuancePlan struct {
-	Root          string
-	Binding       issuance.Binding
-	InventoryFile string
-}
-
-type issuanceBindingInput struct {
-	Network string `json:"network"`
-	Issuer  string `json:"issuer"`
-	Signer  string `json:"signer"`
-	Start   string `json:"start"`
-	End     string `json:"end"`
-}
-
-type admissionBindingInput struct {
-	Network   string              `json:"network"`
-	Issuer    string              `json:"issuer"`
-	Authority string              `json:"authority"`
-	Profile   string              `json:"profile"`
-	Duty      string              `json:"duty"`
-	Start     string              `json:"start"`
-	End       string              `json:"end"`
-	Keys      []admissionKeyInput `json:"keys"`
-}
-type admissionKeyInput struct {
-	Window string `json:"window"`
-	Class  string `json:"class"`
-	SPKI   string `json:"spki"`
-}
-
-func admissionBindingConfig(b quota.LedgerBinding) admissionBindingInput {
-	input := admissionBindingInput{Network: hex.EncodeToString(b.Network[:]), Issuer: hex.EncodeToString(b.Issuer[:]), Authority: hex.EncodeToString(b.Authority[:]), Profile: hex.EncodeToString(b.Profile[:]), Duty: strconv.FormatUint(b.Duty, 10), Start: b.Start.Format(time.RFC3339), End: b.End.Format(time.RFC3339)}
-	for _, key := range b.Keys {
-		input.Keys = append(input.Keys, admissionKeyInput{time.Unix(int64(key.Window), 0).UTC().Format(time.RFC3339), strconv.Itoa(int(key.Class)), hex.EncodeToString(key.SPKI)})
-	}
-	return input
-}
-func admissionFactsConfig(f admission.Facts) map[string]string {
-	return map[string]string{"network": hex.EncodeToString(f.Network[:]), "issuer": hex.EncodeToString(f.Issuer[:]), "authority": hex.EncodeToString(f.Authority[:]), "holder": hex.EncodeToString(f.Holder[:]), "duty": strconv.FormatUint(f.Duty, 10), "duty_not_before": f.DutyNotBefore.Format(time.RFC3339), "duty_not_after": f.DutyNotAfter.Format(time.RFC3339), "now": f.Now.Format(time.RFC3339), "class": strconv.Itoa(int(f.Class)), "count": strconv.Itoa(int(f.Count))}
-}
-
-// TestIssuanceInventoryInputRefusal exercises the actual command and ensures
-// malformed declarations are refused before an inventory root is created.
-func TestIssuanceInventoryInputRefusal(t *testing.T) {
-	binary := buildNodeCommand(t)
-	dir := t.TempDir()
-	root := filepath.Join(dir, "keys")
-	input := map[string]any{"root": root, "inventory_file": filepath.Join(dir, "public"), "binding": issuanceBindingInput{strings.Repeat("ab", 32), strings.Repeat("cd", 32), strings.Repeat("ef", 32), "2030-01-01T00:00:00Z", "2030-01-01T01:00:00Z"}}
-	raw, err := json.Marshal(input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases := map[string]string{
-		"duplicate":  strings.Replace(string(raw), `"network":`, `"network":"`+strings.Repeat("ab", 32)+`","network":`, 1),
-		"case":       strings.Replace(string(raw), `"network":`, `"Network":`, 1),
-		"missing":    strings.Replace(string(raw), `"signer":"`+strings.Repeat("ef", 32)+`",`, "", 1),
-		"unknown":    strings.Replace(string(raw), `"binding":{`, `"binding":{"extra":0,`, 1),
-		"uppercase":  strings.Replace(string(raw), strings.Repeat("ab", 32), strings.Repeat("AB", 32), 1),
-		"null":       strings.Replace(string(raw), `"binding":{`, `"extra":null,"binding":{`, 1),
-		"fractional": strings.Replace(string(raw), "00:00:00Z", "00:00:00.001Z", 1),
-		"timezone":   strings.Replace(string(raw), "00:00:00Z", "00:00:00+00:00", 1),
-		"trailing":   string(raw) + " {}",
-	}
-	cases["valid"] = string(raw)
-	for name, value := range cases {
-		t.Run(name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "config.json")
-			if err := os.WriteFile(path, []byte(value), 0600); err != nil {
-				t.Fatal(err)
-			}
-			cmd := exec.CommandContext(t.Context(), binary, "issuance", "inspect", "--config", path)
-			output, err := cmd.Output()
-			if err == nil {
-				t.Fatal("missing root accepted")
-			}
-			var report issuanceResult
-			if err := json.Unmarshal(output, &report); err != nil {
-				t.Fatalf("invalid report %q: %v", output, err)
-			}
-			want := "invalid-input"
-			if name == "valid" {
-				want = "storage-unavailable"
-			}
-			if report.Outcome != want {
-				t.Fatalf("got outcome %q, want %q", report.Outcome, want)
-			}
-			if _, err := os.Stat(root); !os.IsNotExist(err) {
-				t.Fatalf("inventory root changed: %v", err)
-			}
-		})
-	}
 }

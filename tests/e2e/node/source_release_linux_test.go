@@ -33,23 +33,6 @@ func TestInfrastructureCompiledRejectsOverlappingHistory(t *testing.T) {
 	}
 }
 
-func TestInfrastructureCompiledRejectsRetiredSourceOperations(t *testing.T) {
-	program := buildNodeCommand(t)
-	for _, operation := range []string{"preflight-initial", "preflight-candidate", "install-initial-stopped"} {
-		t.Run(operation, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "absent")
-			cmd := exec.CommandContext(t.Context(), program, "infrastructure", operation, path)
-			out, err := cmd.CombinedOutput()
-			if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 2 || len(out) != 0 {
-				t.Fatalf("retired operation returned %q, %v", out, err)
-			}
-			if _, err := os.Stat(path); !os.IsNotExist(err) {
-				t.Fatal("retired operation changed input path", err)
-			}
-		})
-	}
-}
-
 // Independent oracle: literal ordered schemas, independently spelled names and
 // ordinary 3-of-5 signatures, without product preparation/descriptor codecs.
 func TestInfrastructureCompiledCommandInitialCandidateAndForeignArtifact(t *testing.T) {
