@@ -15,19 +15,22 @@
 //   - allowance policy, directional cost and pressure accounting: allowance.go
 //     (allowance_test.go)
 //   - budget lifecycle, durable period root and committed journal: budget.go,
-//     storage.go, failure.go (budget_linux_test.go; linux)
+//     storage.go, failure.go (budget_unix_test.go; unix)
 //   - work/termination reservation lifecycle and transfer deadlines:
 //     reservation.go (Reserve/Release/DetachTermination),
-//     reservation_request.go (reservation_linux_test.go,
-//     deadline_linux_test.go, reservation_process_linux_test.go; linux)
+//     reservation_request.go (reservation_unix_test.go, deadline_unix_test.go;
+//     unix, reservation_process_linux_test.go; linux)
 //   - joint coverage and additional joint reservations: reservation.go
 //     (CoversJoint/ReserveAdditionalJoint), joint_traffic.go
-//     (joint_traffic_test.go, additional_reservation_linux_test.go)
+//     (joint_traffic_test.go, additional_reservation_unix_test.go; unix)
 //   - shared confirmed snapshot sampling: snapshot.go
-//     (snapshot_linux_test.go; linux)
-//   - Linux counter measurement and exclusive root lease: platform_linux.go,
-//     platform_other.go, counter_file.go (counter_linux_test.go,
-//     counter_file_test.go)
-//   - retained read-only period inspection: inspection_linux.go
-//     (inspection_native_linux_test.go; native linux)
+//     (snapshot_unix_test.go; unix)
+//   - Unix-family exclusive root lease: lease_unix.go, lease_other.go
+//     (lease_unix_test.go; unix)
+//   - platform counter measurement: measure_linux.go (Linux /proc/sys),
+//     measure_darwin.go (macOS staged unavailable: routing-socket byte counters
+//     wrap at 2^32), measure_other.go, counter_file.go (counter_linux_test.go;
+//     linux, counter_file_test.go, measure_darwin_test.go; darwin refusal)
+//   - retained read-only period inspection: inspection_linux.go,
+//     inspection_other.go (inspection_native_linux_test.go; native linux)
 package hosting

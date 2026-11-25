@@ -586,6 +586,17 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/hosting.Inspection.Check",
+          "internal/hosting.Inspection.Close",
+          "internal/hosting.OpenInspection"
+        ],
+        "classification": "Non-Linux retained-Hosting inspection typed refusal with no portable consumer (#865)",
+        "rationale": "inspection_other.go (!linux) mirrors the Linux-only retained-history Inspection API as an explicit ErrUnsupportedPlatform refusal: the mechanism requires the original root-only lease and the Linux ext4 storage floor (PO decision P1.1), which macOS APFS does not satisfy. No portable production or test caller opens a retained Hosting inspection (cmd/ardents-next/hosting.go uses only the portable Budget surface), so these refusal stubs are dead on windows-amd64. The genuine Linux inspection stays Linux-tagged and is exercised by hosting/inspection_native_linux_test.go; its Linux production-dead allowance is separate. No weaker accepting path is introduced.",
+        "owner": "Product Owner and Codex; Hosting inspection owner",
+        "retirement": "Remove these exact Windows entries when a selected portable production consumer reaches the retained inspection on Windows, or when a researched macOS/Windows storage floor ports the mechanism, or when the retained-inspection contract is retired."
+      },
+      {
+        "symbols": [
           "tests/e2e/node/processfixture.FixturePermission",
           "tests/e2e/node/processfixture.OpenAdmissionConsole",
           "tests/e2e/node/processfixture.OpenAdmissionConsoleResult",
@@ -723,7 +734,7 @@
           "internal/release.StaticMetadataFiles"
         ],
         "classification": "P1-B batch 1 de-tagged pure leaf production files with Linux-native genuine consumers (#781, #691)",
-        "rationale": "These exact functions were accidentally Linux-bound pure Go (mutex reservation accounting, bounded read, copied failure projection, offline public X.509 observation, static metadata JSON projection). Batch 1 dropped their Linux build constraints after per-file purity verification at origin/dev; each composes only portable symbols and adds no native mechanism. Their genuine production consumers remain Linux-tagged (hosting reservation callers in node/endpoint/session/funding and cmd/ardents-next repair adapters; processresource.Failure in node failure_projection_linux.go and cmd source_linux.go; source.ObservePublicTrust in endpoint/source_trust_preparation_linux.go; release.StaticMetadataFiles in release/infrastructure Linux admission/signing), so they are production-dead on windows-amd64 only. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals (hosting platform_other.go, processresource native_other.go), and no weaker accepting path is introduced. De-tagged portable behavior tests execute on the windows-latest/macos-latest lane (source public_trust_test.go, release static_metadata_test.go, processresource failure_test.go); hosting reservation behavior tests remain Linux because they exercise the native flock lease. Linux production reachability is unchanged and both platform test analyses must remain empty.",
+        "rationale": "These exact functions were accidentally Linux-bound pure Go (mutex reservation accounting, bounded read, copied failure projection, offline public X.509 observation, static metadata JSON projection). Batch 1 dropped their Linux build constraints after per-file purity verification at origin/dev; each composes only portable symbols and adds no native mechanism. Their genuine production consumers remain Linux-tagged (hosting reservation callers in node/endpoint/session/funding and cmd/ardents-next repair adapters; processresource.Failure in node failure_projection_linux.go and cmd source_linux.go; source.ObservePublicTrust in endpoint/source_trust_preparation_linux.go; release.StaticMetadataFiles in release/infrastructure Linux admission/signing), so they are production-dead on windows-amd64 only. The hosting lease is now Unix-family (lease_unix.go, #865) with its typed refusal shifted to lease_other.go and measure_other.go (!linux && !darwin); the genuine Linux measure stays measure_linux.go and the macOS measure is staged unavailable (measure_darwin.go). processresource native_other.go is unchanged, and no weaker accepting path is introduced. De-tagged portable behavior tests execute on the windows-latest/macos-latest lane (source public_trust_test.go, release static_metadata_test.go, processresource failure_test.go); hosting reservation fixture-measure behavior tests are now Unix-family (linux || darwin, #865) exercising the Unix-family flock lease and still exclude Windows. Linux production reachability is unchanged and both platform test analyses must remain empty.",
         "owner": "Product Owner and Codex; hosting, processresource, Network Source and Release owners",
         "retirement": "Remove each exact Windows entry when a selected genuine portable production consumer reaches it (the next dependency-chain batch unlocks node/receiver/endpoint/funding/publisher/reader/session/runtime and cmd adapters), or when the owning contract is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -2259,6 +2270,17 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/hosting.Inspection.Check",
+          "internal/hosting.Inspection.Close",
+          "internal/hosting.OpenInspection"
+        ],
+        "classification": "Non-Linux retained-Hosting inspection typed refusal, no Windows test path (#865)",
+        "rationale": "inspection_other.go (!linux) provides the explicit ErrUnsupportedPlatform refusal for the Linux-only retained-history Inspection (ext4 storage floor, root-only lease; PO decision P1.1). No portable test opens a retained Hosting inspection on Windows; the genuine mechanism is exercised only by the Linux native-tag test hosting/inspection_native_linux_test.go. These refusal stubs are therefore fully-dead in the windows-amd64 native-tag analysis only, mirroring the windows-production allowance. The Linux native-tag test analysis remains empty. No weaker accepting path is introduced.",
+        "owner": "Product Owner and Codex; Hosting inspection owner",
+        "retirement": "Remove these exact Windows entries when a selected portable test or production path reaches the retained inspection on Windows, or when a researched storage floor ports the mechanism, or when the retained-inspection contract is retired. The Linux native-tag test analysis must remain empty."
+      },
+      {
+        "symbols": [
           "internal/hosting.Budget.CoversJoint",
           "internal/hosting.Budget.Reserve",
           "internal/hosting.Budget.ReserveAdditionalJoint",
@@ -2266,7 +2288,7 @@
           "internal/hosting.Reservation.DetachTermination"
         ],
         "classification": "Linux-native hosting reservation composition covered by Linux-tagged tests, no Windows test path (internal/hosting, P1-B batch 1 #781)",
-        "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their behavior tests remain Linux-tagged because they exercise the genuine native flock lease and /sys interface counters through Budget.transact/measureHosting (reservation_linux_test.go, additional_reservation_linux_test.go, budget_linux_test.go, deadline_linux_test.go, snapshot_linux_test.go). The bounded read (boundedFile) now has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the new portable session route-reservation helper test (session/reservation_test.go) reaches Release through ReleaseJoined, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Linux-only reservation test files and the native lease refuses with ErrUnsupportedPlatform (platform_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
+        "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their fixture-measure behavior tests are now Unix-family (linux || darwin, #865): budget_unix_test.go, reservation_unix_test.go, deadline_unix_test.go, additional_reservation_unix_test.go and snapshot_unix_test.go exercise the Unix-family flock lease (lease_unix.go) and portable durable storage through Budget.transact with an injected fixture measure, so macOS executes them after the lease port; they do not read the Linux /sys counters (the genuine measure adapter stays platform-specific). The bounded read (boundedFile) has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the portable session route-reservation helper test (session/reservation_test.go) reaches Release through ReleaseJoined, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Unix-family reservation test files and the lease and measure refuse with ErrUnsupportedPlatform (lease_other.go, measure_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; hosting provider-period accounting",
         "retirement": "Remove each exact Windows entry when a selected genuine portable test or production path reaches it (a later dependency-chain batch unlocks the node/endpoint reservation consumers), or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
