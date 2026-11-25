@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !darwin
 
 package session
 
@@ -12,11 +12,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 )
 
-// The Open* compositions open the native selection and Hosting durable roots,
-// which remain Linux-only (Cohort 2b, #858). On every other host the typed
-// boundary must refuse before opening any root, admitting any authority or
-// creating any filesystem state. The exact refusal prose pins that the platform
-// boundary fired, not a later input check.
+// The Open* compositions open the selection and Hosting durable roots, which
+// are Unix-family portable (Cohort 2d, #877): Linux and macOS run the genuine
+// composition. Windows has no ported Hosting measurement, so admitting it would
+// create selection root state before the deeper measurement refusal; the typed
+// boundary therefore refuses on Windows before opening any root, admitting any
+// authority or creating any filesystem state. The exact refusal prose pins that
+// the platform boundary fired, not a later input check.
 func TestRouteBoundaryRefusesWithoutStateOnUnsupportedHost(t *testing.T) {
 	root := t.TempDir()
 	plan := funding.Plan{

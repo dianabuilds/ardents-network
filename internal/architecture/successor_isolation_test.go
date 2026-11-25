@@ -691,22 +691,37 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 	}
 }
 
-// Cohort 2b (#858, #691) re-verified the Endpoint composition boundary at
-// d4fd6855f after Cohort 0/1/2a. The session Open*, Publisher live Open and
-// Reader coordinators compose the Linux native worker launch seam
-// (execution/runtime LaunchReader/LaunchPublisher/LaunchByteStream*), Hosting
-// /proc measurement, Instance custody and the reachability Store, none of which
-// is Unix-family portable yet. Their boundary therefore stays Linux-only with
-// unchanged !linux typed refusals; shifting it would relocate the refusal behind
-// selection/snapshot I/O while the required protections remain Linux-only. The
-// refusal-behavior tests pin that every other host refuses before any state or
-// authority. A future port of those seams must update this assertion deliberately.
-func TestCohort2bEndpointNativeBoundaryStaysLinux(t *testing.T) {
+// Cohort 2d (#877, #691) shifts the Endpoint boundary deliberately after the
+// prerequisite seams merged: Instance custody (#867), reachability Store (#870),
+// Hosting lease + IFMIB measurement (#871/#873) and the worker launch capability
+// port (#875). The session Open* compositions (prefix/bootstrap/join) compose only
+// selection (Unix-family roots), Hosting (Unix-family lease + Linux/macOS
+// measurement) and the portable Route core; they launch no native worker, so on
+// macOS they run the genuine composition and on Windows the shifted stub refuses
+// before any root state. They move to linux || darwin and their refusal narrows to
+// Windows (!linux && !darwin). The Publisher live Open/snapshot, Reader and
+// participant compositions STAY Linux: publisher/opening composes the
+// publication/durable lease seam, which is still !linux && !windows (a darwin
+// refusal would land after selection/Hosting/Instance state); publisher/snapshot
+// reads the snapshot file before the native launch refusal; the Reader coordinator
+// composes the Linux-only application/connection.Refuse projection; and the
+// participant composes endpoint/launch systemd delivery plus the declarations and
+// permission Linux projections. Their !linux typed refusals are unchanged. The
+// refusal-behavior tests pin that every unsupported host refuses before any state
+// or authority. A future port of the durable lease / worker launch / Refuse seams
+// must update this assertion deliberately.
+func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 	root := repositoryRoot(t)
+	unixComposition := []string{
+		"internal/endpoint/session/prefix_unix.go",
+		"internal/endpoint/session/bootstrap_unix.go",
+		"internal/endpoint/session/join_unix.go",
+	}
+	windowsRefusal := []string{
+		"internal/endpoint/session/route_other.go",
+		"internal/endpoint/session/route_other_test.go",
+	}
 	linuxOnly := []string{
-		"internal/endpoint/session/prefix_linux.go",
-		"internal/endpoint/session/bootstrap_linux.go",
-		"internal/endpoint/session/join_linux.go",
 		"internal/endpoint/publisher/opening_linux.go",
 		"internal/endpoint/publisher/publisher_linux.go",
 		"internal/endpoint/publisher/snapshot_linux.go",
@@ -717,9 +732,7 @@ func TestCohort2bEndpointNativeBoundaryStaysLinux(t *testing.T) {
 		"internal/endpoint/reader/byte_stream_linux.go",
 		"internal/endpoint/participant_linux.go",
 	}
-	refusal := []string{
-		"internal/endpoint/session/route_other.go",
-		"internal/endpoint/session/route_other_test.go",
+	linuxRefusal := []string{
 		"internal/endpoint/publisher/opening_other.go",
 		"internal/endpoint/publisher/opening_other_test.go",
 		"internal/endpoint/publisher/snapshot_other.go",
@@ -728,6 +741,24 @@ func TestCohort2bEndpointNativeBoundaryStaysLinux(t *testing.T) {
 	for _, target := range []string{"linux", "windows", "darwin"} {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range unixComposition {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target != "windows"; selected != want {
+				t.Errorf("Unix-family Endpoint session composition %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, name := range windowsRefusal {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "windows"; selected != want {
+				t.Errorf("Endpoint session Windows refusal %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
 		for _, name := range linuxOnly {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -737,7 +768,7 @@ func TestCohort2bEndpointNativeBoundaryStaysLinux(t *testing.T) {
 				t.Errorf("native Endpoint composition %s on %s: %v, want %v", name, target, selected, want)
 			}
 		}
-		for _, name := range refusal {
+		for _, name := range linuxRefusal {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
 				t.Fatal(err)
@@ -2855,7 +2886,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Connection ledger cannot choose Source", "internal/connection/receive_ledger.go", modulePath + "/internal/route/prefix", false},
 		{"Prefix cannot import receiving composition", "internal/route/prefix/prefix.go", modulePath + "/internal/route/receiver", false},
 		{"Prefix calls actual role owner", "internal/route/prefix/prefix.go", modulePath + "/internal/route/role", true},
-		{"holder consumes actual Prefix", "internal/endpoint/session/prefix_linux.go", modulePath + "/internal/route/prefix", true},
+		{"holder consumes actual Prefix", "internal/endpoint/session/prefix_unix.go", modulePath + "/internal/route/prefix", true},
 		{"channel cannot import receiving composition", "internal/route/channel/session.go", modulePath + "/internal/route/receiver", false},
 		{"channel cannot import Network", "internal/route/channel/session_test.go", modulePath + "/internal/network", false},
 		{"channel cannot import role authority", "internal/route/channel/session.go", modulePath + "/internal/route/role", false},
@@ -2863,7 +2894,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"role cannot spend Admission", "internal/route/role/authority.go", modulePath + "/internal/admission/receiving", false},
 		{"role consumes Network observations", "internal/route/role/authority.go", modulePath + "/internal/network", true},
 		{"Introduction exchange uses role binding", "internal/route/introduction/receiving.go", modulePath + "/internal/route/role", true},
-		{"Source command parses sealed capsule", "internal/endpoint/session/prefix_linux.go", modulePath + "/internal/route/capsule", true},
+		{"Source command parses sealed capsule", "internal/endpoint/session/prefix_unix.go", modulePath + "/internal/route/capsule", true},
 		{"submission fixture parses sealed capsule", "internal/node/route_submission_linux_test.go", modulePath + "/internal/route/capsule", true},
 		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/route/capsule", false},
 		{"submission consumes retained exclusions", "internal/route/introduction/submission.go", modulePath + "/internal/route", true},
