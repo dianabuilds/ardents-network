@@ -236,6 +236,7 @@ func assertPackages(t *testing.T, root string) {
 			t.Errorf("package map entry has no maintained package: %s", directory)
 		}
 	}
+	assertDocumentedFileImports(t, root, packages, registry)
 }
 
 type packageRegistration struct {
