@@ -800,13 +800,14 @@ withdraw actual fixture clock availability after drafting. Fresh Stock must
 refuse before reserving a batch or changing its finite allowance. The detached
 Prefix binding in that refusal case supplies no successful transport or Job.
 
-`publication/durable/generation_flush_linux_test.go` controls an original native
+`publication/durable/generation_flush_unix_test.go` controls an original native
 directory flush on a genuinely reserved Credential. The local commit comparison
 must succeed while that write is held; original reservation/root retirement
 must deny it before the write is released, while Close still waits for the
-original writer. These Linux cases run with the durable package in
-`route-prefix-linux`; they establish neither an accepting Instance nor installed
-Connection readiness.
+original writer. These Unix-family cases run with the durable package in
+`route-prefix-linux` on Linux and execute natively on macOS after the lease
+seam re-tag (#880, #691); they establish neither an accepting Instance nor
+installed Connection readiness.
 
 Instance's `binding_observation_linux_test.go` reobserves a genuinely accepted
 native root and reserved Publication floor, refusing canceled callers, changed
@@ -3077,7 +3078,13 @@ test still requires the Linux-only route-topology fixture (`AddRouteFixtureNodes
 with receiver sockets/certificates); porting that fixture is a separate follow-up,
 not part of this boundary shift. The next unblocking prerequisites are porting the
 `publication/durable` lease seam, the native worker launch composition and the
-`application/connection.Refuse` projection.
+`application/connection.Refuse` projection. Follow-up #880 (#691) has since
+re-tagged the `publication/durable` lease seam to the Unix family (Linux and
+macOS, byte-identical flock lease) while the existing Windows lease is
+unchanged; the Publisher/Reader/participant boundary now stays Linux on the
+remaining recorded grounds (native worker launch composition,
+snapshot-read-before-launch ordering, the `application/connection.Refuse`
+projection and systemd delivery), with the architecture rationale updated.
 
 P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
 production is already portable: the admission holder permission-request proof,

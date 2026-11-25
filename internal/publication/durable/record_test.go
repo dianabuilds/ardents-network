@@ -1,4 +1,4 @@
-//go:build linux || windows
+//go:build linux || darwin || windows
 
 package durable
 
@@ -39,7 +39,16 @@ func TestRetainedPublicRecordHasNoLiveAuthority(t *testing.T) {
 	for _, mode := range []string{"retained", "orphan", "wrong-target", "wrong-network", "bad-signature", "wrong-floor", "wrong-pointer"} {
 		t.Run(mode, func(t *testing.T) {
 			raw, target, network := retainedRecord()
-			config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: target, Network: network}
+			// macOS locates the Go temp directory under the system /var
+			// symlink, and publication root preparation refuses symlinked
+			// ancestors on every host, so the fixture binds its root to the
+			// same physical directory by canonical path; the refusal itself
+			// is unchanged.
+			base, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := Config{Root: filepath.Join(base, "publication"), Target: target, Network: network}
 			flush := func(string) error { return nil }
 			root, err := openWith(context.Background(), config, flush)
 			if err != nil {

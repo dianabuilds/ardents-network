@@ -1,4 +1,4 @@
-//go:build linux || windows
+//go:build linux || darwin || windows
 
 package durable
 
@@ -44,7 +44,15 @@ func generationCredential(t *testing.T, number uint64) publication.Credential {
 func TestReservedGenerationMonotonicAndExactRetry(t *testing.T) {
 	credential := generationCredential(t, ^uint64(0))
 	value := credential.Delegation()
-	config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: value.Target, Network: value.Network}
+	// macOS locates the Go temp directory under the system /var symlink, and
+	// publication root preparation refuses symlinked ancestors on every host,
+	// so the fixture binds its root to the same physical directory by
+	// canonical path; the refusal itself is unchanged.
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := Config{Root: filepath.Join(base, "publication"), Target: value.Target, Network: value.Network}
 	root, err := openWith(context.Background(), config, func(string) error { return nil })
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +114,11 @@ func TestFloorPostRenameFailureDeniesReceiptsUntilReopen(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			credential := generationCredential(t, 7)
 			value := credential.Delegation()
-			config := Config{Root: filepath.Join(t.TempDir(), "publication"), Target: value.Target, Network: value.Network}
+			base, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			config := Config{Root: filepath.Join(base, "publication"), Target: value.Target, Network: value.Network}
 			root, err := openWith(context.Background(), config, func(string) error { return nil })
 			if err != nil {
 				t.Fatal(err)

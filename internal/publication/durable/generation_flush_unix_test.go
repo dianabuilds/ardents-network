@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package durable
 
 import (
@@ -12,7 +14,15 @@ import (
 func TestGenerationCommitDoesNotWaitForNativeFlush(t *testing.T) {
 	credential := generationCredential(t, 1)
 	value := credential.Delegation()
-	root, err := Open(t.Context(), Config{Root: filepath.Join(t.TempDir(), "publication"), Target: value.Target, Network: value.Network})
+	// macOS locates the Go temp directory under the system /var symlink, and
+	// publication root preparation refuses symlinked ancestors on every host,
+	// so the fixture binds its root to the same physical directory by
+	// canonical path; the refusal itself is unchanged.
+	base, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := Open(t.Context(), Config{Root: filepath.Join(base, "publication"), Target: value.Target, Network: value.Network})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +81,11 @@ func TestGenerationCommitDeniesRetirementBeforeNativeFlushJoins(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			credential := generationCredential(t, 1)
 			value := credential.Delegation()
-			root, err := Open(t.Context(), Config{Root: filepath.Join(t.TempDir(), "publication"), Target: value.Target, Network: value.Network})
+			base, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
+			root, err := Open(t.Context(), Config{Root: filepath.Join(base, "publication"), Target: value.Target, Network: value.Network})
 			if err != nil {
 				t.Fatal(err)
 			}
