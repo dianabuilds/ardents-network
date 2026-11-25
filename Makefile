@@ -235,6 +235,7 @@ platform-installed-compile-check:
 	go test -c -tags join_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-platform-installed.test" ./tests/e2e/node
 	go test -c -tags forwarding_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-platform-installed.test" ./tests/e2e/node
 	go test -c -tags descriptor_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-platform-installed.test" ./tests/e2e/node
+	go test -c -tags introduction_repair_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-repair-installed.test" ./tests/e2e/node
 	go test -c -tags endpoint_launch_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-latency-participant.test" ./internal/endpoint
 	go test -c -tags endpoint_launch_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-idle-observation.test" ./tests/e2e/endpoint
 

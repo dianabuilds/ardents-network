@@ -1187,6 +1187,16 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
+	if localImport && source == "tests/e2e/node/introduction_repair_platform_native_linux_test.go" {
+		switch local {
+		case "internal/hosting", "internal/network/duty", "internal/network/state", "internal/platform/systemd",
+			"internal/processresource", "internal/release/infrastructure", "internal/release/infrastructure/launch",
+			"tests/e2e/node/processfixture", "tests/epochfixture/network", "tests/networkfixture", "tests/releasefixture":
+			return true
+		default:
+			return false
+		}
+	}
 	if dependency == modulePath+"/internal/admission/operator" {
 		return source == "cmd/ardents-next/admission.go" || source == "cmd/ardents-next/issuance.go" || source == "cmd/ardents-next/command.go"
 	}
