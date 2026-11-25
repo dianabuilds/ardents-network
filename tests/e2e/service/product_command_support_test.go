@@ -24,11 +24,7 @@ func buildProductCommand(t *testing.T, name string) string {
 
 func buildCommand(t *testing.T, name, packagePath string) string {
 	t.Helper()
-	_, current, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("cannot locate repository root")
-	}
-	root := filepath.Clean(filepath.Join(filepath.Dir(current), "..", "..", ".."))
+
 	filename := name
 	if runtime.GOOS == "windows" {
 		filename += ".exe"
@@ -36,8 +32,9 @@ func buildCommand(t *testing.T, name, packagePath string) string {
 	path := filepath.Join(t.TempDir(), filename)
 	arguments := []string{"build", "-trimpath", "-buildvcs=false"}
 	arguments = append(arguments, "-o", path, packagePath)
-	command := exec.Command("go", arguments...)
-	command.Dir = root
+	command := exec.CommandContext(t.Context(), "go", arguments...)
+	command.Dir = filepath.Join("..", "..", "..")
+	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("build %s: %v\n%s", name, err, output)
 	}

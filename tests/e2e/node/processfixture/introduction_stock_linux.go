@@ -1,9 +1,8 @@
-//go:build linux && node_process_native
+//go:build linux
 
 package processfixture
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -31,26 +30,7 @@ func IntroductionStock(t *testing.T, spec networkfixture.ClosedSpec, plan issuer
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
-	holder, err := stock.Open(root, admission.AllocationPublisher, observe)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := holder.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	raw, digest, err := holder.Request([3]uint32{1, 8, 1})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := holder.Import(digest, FixturePermission(t, raw, profile, spec.Authority, now)); err != nil {
-		t.Fatal(err)
-	}
+	holder := OpenPermittedStock(t, t.TempDir(), admission.AllocationPublisher, [3]uint32{1, 8, 1}, observe, profile, spec.Authority, now)
 	var batches [3][]token.ClosedTokenContext
 	challenge := func(id byte, class uint8) token.ClosedTokenContext {
 		return token.ClosedTokenContext{NetworkID: profile.NetworkID, ProfileDigest: profile.Digest,

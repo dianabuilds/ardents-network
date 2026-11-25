@@ -34,7 +34,7 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	}
 	t.Cleanup(func() { removeEndpointProcessTree(t, imageRoot) })
 	packagePath := filepath.Join(t.TempDir(), "ardents.deb")
-	builder := exec.Command("sh", packageBuilder(t))
+	builder := exec.CommandContext(t.Context(), "sh", packageBuilder(t))
 	builder.Env = append(os.Environ(), "ARDENTS_PACKAGE_VERSION=0.0.0~alpha1", "ARDENTS_PACKAGE_PROGRAM="+enrolled,
 		"ARDENTS_PACKAGE_STATIC_ROOT="+staticRoot, "ARDENTS_PACKAGE_OUTPUT="+packagePath)
 	if output, err := builder.CombinedOutput(); err != nil {
@@ -43,7 +43,7 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	foreign := filepath.Join(staticRoot, "ardents-custody-linux-amd64")
 	writeEnrollmentFile(t, foreign, []byte("foreign Custody distribution"), 0o600)
 	rejected := filepath.Join(t.TempDir(), "rejected.deb")
-	rejectBuilder := exec.Command("sh", packageBuilder(t))
+	rejectBuilder := exec.CommandContext(t.Context(), "sh", packageBuilder(t))
 	rejectBuilder.Env = append(append([]string(nil), builder.Env...), "ARDENTS_PACKAGE_OUTPUT="+rejected)
 	if output, err := rejectBuilder.CombinedOutput(); err == nil || !strings.Contains(string(output), "invalid enrollment inventory") {
 		t.Fatalf("package builder accepted unexpected Custody payload: %v\n%s", err, output)
@@ -104,7 +104,7 @@ func TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes(t *testing.T) {
 	v2Bundle, v2Enrolled := packageEnrollmentBundle(t, v2Program)
 	v2Static := packageStaticEnrollment(t, v2Bundle, filepath.Base(v2Enrolled))
 	v2Package := filepath.Join(t.TempDir(), "ardents-v2.deb")
-	v2Builder := exec.Command("sh", packageBuilder(t))
+	v2Builder := exec.CommandContext(t.Context(), "sh", packageBuilder(t))
 	v2Builder.Env = append(os.Environ(), "ARDENTS_PACKAGE_VERSION=0.0.0~alpha2", "ARDENTS_PACKAGE_PROGRAM="+v2Program,
 		"ARDENTS_PACKAGE_STATIC_ROOT="+v2Static, "ARDENTS_PACKAGE_OUTPUT="+v2Package)
 	if output, err := v2Builder.CombinedOutput(); err != nil {
@@ -212,11 +212,11 @@ func packageStaticEnrollment(t *testing.T, bundle, artifactName string) string {
 
 func packageBuilder(t *testing.T) string {
 	t.Helper()
-	_, source, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate package process test")
+	path, err := filepath.Abs(filepath.Join("..", "..", "..", "packaging", "ubuntu-deb", "build.sh"))
+	if err != nil {
+		t.Fatalf("resolve Ubuntu package builder: %v", err)
 	}
-	return filepath.Join(filepath.Dir(source), "..", "..", "..", "packaging", "ubuntu-deb", "build.sh")
+	return path
 }
 
 func installUbuntuPackage(t *testing.T, packagePath, imageRoot string) {

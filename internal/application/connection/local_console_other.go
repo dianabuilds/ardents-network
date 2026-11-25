@@ -11,8 +11,3 @@ import (
 func OpenLocalConsole() (*os.File, *os.File, error) {
 	return nil, nil, errors.New("document UI requires the selected Linux host")
 }
-
-// OpenLocalConsoleOutput reports the unavailable local presentation boundary.
-func OpenLocalConsoleOutput() (*os.File, error) {
-	return nil, errors.New("document UI requires the selected Linux host")
-}

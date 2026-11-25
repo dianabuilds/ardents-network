@@ -48,6 +48,8 @@
         "tests/",
         "tests/e2e/",
         "tests/epochfixture/",
+        "tests/releasefixture/",
+        "tests/networkfixture/",
         "packaging/alpha-bundle/",
         "packaging/ubuntu-deb/",
         "tests/qualification/",

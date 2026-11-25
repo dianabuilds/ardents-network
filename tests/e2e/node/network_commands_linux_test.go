@@ -19,9 +19,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestNetworkCommandsAndAdmissionUseAuthenticatedRoots(t *testing.T) {
@@ -43,7 +43,7 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 	t.Helper()
 	binary := buildNodeCommand(t)
 	processfixture.WaitAdmissionHour(t)
-	spec, plan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, plan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	if class == admission.RegistrationClass {
 		spec.Nodes[1].RoleDomain, spec.Nodes[1].Subrole = 4, 3
 	}
@@ -52,11 +52,11 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 		t.Fatal(err)
 	}
 	profileDigest := sha256.Sum256(bundle.Profile)
-	processfixture.PrepareIssuer(t, &plan, inventory, spec, bundle.Nodes[0], profileDigest)
+	networkinputs.PrepareIssuer(t, &plan, inventory, spec, bundle.Nodes[0], profileDigest)
 	member := bundle.Nodes[1]
 	binding := receiving.Receiver{NetworkID: spec.NetworkID, StateGeneration: bundle.Epoch.Digest, StateDigest: bundle.Epoch.Digest,
 		ProfileDigest: profileDigest, NodeID: member.NodeID, DutyGeneration: member.Generation}
-	clockFile, closeClock := processfixture.StartObservedClock(t)
+	clockFile, closeClock := networkinputs.StartObservedClock(t)
 	t.Cleanup(closeClock)
 	command := func(operation string, config any, accepted bool) struct {
 		Outcome string                `json:"outcome"`
@@ -111,7 +111,7 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 		role = admission.AllocationPublisher
 	}
 	holderConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": holderNetwork, "role": role}
-	holder, closeHolder := nodefixture.OpenAdmissionConsole(t, binary, "holder", writeNetworkInput(t, holderConfig))
+	holder, closeHolder := processfixture.OpenAdmissionConsole(t, binary, "holder", writeNetworkInput(t, holderConfig))
 	var maxima [3]uint32
 	maxima[class-1] = 1
 	request := holder(map[string]any{"operation": "request", "maxima": maxima})
@@ -155,14 +155,14 @@ func testNetworkCommandsAdmissionClass(t *testing.T, class admission.Class, sele
 	}
 	closeHolder()
 	receiverConfig := map[string]any{"root": t.TempDir(), "profile": "", "network": receiverNetwork, "receiver": binding, "not_after": spec.NotAfter}
-	receiver, closeReceiver := nodefixture.OpenAdmissionConsole(t, binary, "receiver", writeNetworkInput(t, receiverConfig))
+	receiver, closeReceiver := processfixture.OpenAdmissionConsole(t, binary, "receiver", writeNetworkInput(t, receiverConfig))
 	deadline := time.Now().Add(time.Second)
 	accept := map[string]any{"operation": "accept", "token": taken.Token, "class": class, "deadline": deadline}
 	if reply := receiver(accept); reply.Outcome != "completed" || reply.Bytes != selectedBytes || !reply.Deadline.Equal(deadline) {
 		t.Fatal(reply)
 	}
 	closeReceiver()
-	reopened, closeReopened := nodefixture.OpenAdmissionConsole(t, binary, "receiver", writeNetworkInput(t, receiverConfig))
+	reopened, closeReopened := processfixture.OpenAdmissionConsole(t, binary, "receiver", writeNetworkInput(t, receiverConfig))
 	if reply := reopened(accept); reply.Outcome != "refused" {
 		t.Fatal("reopened new executable revived durable spend", reply)
 	}
@@ -182,14 +182,14 @@ func writeNetworkInput(t *testing.T, value any) string {
 	return path
 }
 
-func invokeNetworkAdmission(t *testing.T, binary, operation string, config any) nodefixture.AdmissionReply {
+func invokeNetworkAdmission(t *testing.T, binary, operation string, config any) processfixture.AdmissionReply {
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), binary, "admission", operation, "--config", writeNetworkInput(t, config))
 	raw, err := cmd.Output()
 	if err != nil {
 		t.Fatal(operation, err)
 	}
-	var reply nodefixture.AdmissionReply
+	var reply processfixture.AdmissionReply
 	if err := json.Unmarshal(raw, &reply); err != nil {
 		t.Fatal(err)
 	}

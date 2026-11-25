@@ -32,6 +32,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // The independently pinned canonical commands provide both original Rendezvous
@@ -47,7 +48,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			processfixture.WaitAdmissionHour(t)
-			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+			spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 			listeners, certificates := addForwardingNodes(t, &spec, carrier, 1)
 			for id := byte(16); id <= 21; id++ {
 				domain, subrole := byte(3), byte(1)
@@ -67,14 +68,14 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
-			networkClock, closeNetworkClock := processfixture.StartObservedClock(t)
+			networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+			networkClock, closeNetworkClock := networkinputs.StartObservedClock(t)
 			defer closeNetworkClock()
-			clock, closeClock := processfixture.StartObservedClock(t)
+			clock, closeClock := networkinputs.StartObservedClock(t)
 			stopClock := sync.OnceFunc(closeClock)
 			defer stopClock()
 			seed := func(clock string) state.AuthorityDeclaration {
-				return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+				return networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 			}
 			declaration := seed(networkClock)
 			config, err := declaration.Config()
@@ -380,27 +381,8 @@ func fundNativeJoinStock(t *testing.T, spec networkfixture.ClosedSpec, bundle ne
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
-	holder, err := stock.Open(root, role, observe)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := holder.Close(); err != nil {
-			t.Error(err)
-		}
-	})
 	maxima := [3]uint32{0, 10, 0}
-	raw, digest, err := holder.Request(maxima)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := holder.Import(digest, processfixture.FixturePermission(t, raw, facts, spec.Authority, now)); err != nil {
-		t.Fatal(err)
-	}
+	holder := processfixture.OpenPermittedStock(t, t.TempDir(), role, maxima, observe, facts, spec.Authority, now)
 	if status := holder.Status(); !status.Accepted || status.Remaining != maxima {
 		t.Fatalf("JOIN allocation maxima changed: %+v", status)
 	}

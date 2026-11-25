@@ -14,6 +14,7 @@ import (
 )
 
 func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
+	binary := buildArdentsNext(t)
 	socket := filepath.Join(os.TempDir(), "ahc-"+time.Now().Format("150405.000000")+".sock")
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
@@ -68,12 +69,17 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	var output, diagnostic bytes.Buffer
-	command := exec.CommandContext(ctx, buildArdentsNext(t), "endpoint", "withdraw", socket)
+	command := exec.CommandContext(ctx, binary, "endpoint", "withdraw", socket)
 	command.Stdout, command.Stderr = &output, &diagnostic
 	if err := command.Run(); err != nil {
 		t.Fatalf("withdraw: %v: %s", err, diagnostic.String())
 	}
-	observed := <-result
+	var observed peerResult
+	select {
+	case observed = <-result:
+	case <-ctx.Done():
+		t.Fatalf("withdraw exited before a complete Administration exchange: %v", ctx.Err())
+	}
 	<-peerDone
 	if observed.err != nil || observed.request != "withdraw\n" {
 		t.Fatalf("administration request = %q, %v", observed.request, observed.err)

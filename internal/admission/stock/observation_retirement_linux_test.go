@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 )
 
 // Real blind issuance and native presentation journal; fixture facts isolate
@@ -105,4 +107,19 @@ func TestHolderRetirementDeniesBeforeOriginalObservationJoins(t *testing.T) {
 			}
 		})
 	}
+}
+
+// issueFixtureResponse obtains the real issuer result for the held-completion test.
+func issueFixtureResponse(t *testing.T, host *spendHostFixture, attempt Attempt) []byte {
+	t.Helper()
+	raw, _, err := attempt.Request()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(raw)
+	issued := admissionissuer.IssueCurrent(t.Context(), host.plan, raw, quota.Bootstrap, host.ProfileLocked)
+	if issued.Outcome != "issued-offline" {
+		t.Fatal(issued.Outcome)
+	}
+	return issued.Response
 }

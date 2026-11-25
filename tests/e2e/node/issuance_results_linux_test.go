@@ -29,6 +29,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 func issuanceResultCommandPlan(t *testing.T) (issuancePlan, map[string]any, map[string]any, func([]byte)) {
@@ -140,7 +141,7 @@ func issuanceResultCommandPlanWithSigner(t *testing.T, signer [32]byte) (issuanc
 
 func resultCommand(t *testing.T, operation string, plan map[string]any, collector string) (issuanceResult, error) {
 	t.Helper()
-	args := []string{"issuance", operation, "--config", writeIssuanceConfig(t, plan)}
+	args := []string{"issuance", operation, "--config", processfixture.WriteConfig(t, plan)}
 	if collector != "" {
 		args = append(args, collector)
 	}
@@ -232,7 +233,7 @@ func TestConfirmedIssuanceCLIOTLPAndCrash(t *testing.T) {
 			}))
 			defer server.Close()
 			defer close(release)
-			command := exec.CommandContext(t.Context(), buildNodeCommand(t), "issuance", "issue", "--config", writeIssuanceConfig(t, issue), server.URL)
+			command := exec.CommandContext(t.Context(), buildNodeCommand(t), "issuance", "issue", "--config", processfixture.WriteConfig(t, issue), server.URL)
 			var out bytes.Buffer
 			command.Stdout = &out
 			if e := command.Start(); e != nil {

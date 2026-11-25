@@ -18,7 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 type holderCommand struct {
@@ -34,24 +34,11 @@ type holderCommand struct {
 	Target       [32]byte             `json:"target,omitzero"`
 }
 
-func admissionCycleConfig(t *testing.T, value any) string {
-	t.Helper()
-	raw, err := json.Marshal(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(t.TempDir(), "config.json")
-	if err := os.WriteFile(path, raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	return path
-}
-
-type localAdmissionReply = nodefixture.AdmissionReply
+type localAdmissionReply = processfixture.AdmissionReply
 
 func admissionLocalCommand(t *testing.T, binary, operation string, config any) localAdmissionReply {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), binary, "admission", operation, "--config", admissionCycleConfig(t, config))
+	cmd := exec.CommandContext(t.Context(), binary, "admission", operation, "--config", processfixture.WriteConfig(t, config))
 	var output, log bytes.Buffer
 	cmd.Stdout = &output
 	cmd.Stderr = &log
@@ -67,17 +54,7 @@ func admissionLocalCommand(t *testing.T, binary, operation string, config any) l
 
 func admissionLocalConsole(t *testing.T, binary, operation string, config any) (func(any) localAdmissionReply, func()) {
 	t.Helper()
-	return nodefixture.OpenAdmissionConsole(t, binary, operation, admissionCycleConfig(t, config))
-}
-
-func admissionLocalConsoleResult(t *testing.T, binary, operation string, config any) (func(any) localAdmissionReply, func() error) {
-	t.Helper()
-	return nodefixture.OpenAdmissionConsoleResult(t, binary, operation, admissionCycleConfig(t, config))
-}
-
-func admissionLocalConsoleInterrupt(t *testing.T, binary, operation string, config any, prepare func(*exec.Cmd), signal func(*exec.Cmd) error) (func(any) localAdmissionReply, func() error, func() error) {
-	t.Helper()
-	return nodefixture.OpenAdmissionConsoleWithInterrupt(t, binary, operation, admissionCycleConfig(t, config), prepare, signal)
+	return processfixture.OpenAdmissionConsole(t, binary, operation, processfixture.WriteConfig(t, config))
 }
 
 func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
@@ -139,7 +116,7 @@ func runAdmissionCycle(t *testing.T, check func(*testing.T, admission.AuthorityF
 		p.TokenKeys[i] = admission.TokenKey{WindowStart: time.Unix(int64(k.Window), 0).UTC(), Class: k.Class}
 		copy(p.TokenKeys[i].SPKI[:], k.SPKI)
 	}
-	profile := admissionCycleConfig(t, p)
+	profile := processfixture.WriteConfig(t, p)
 	holderRoot := t.TempDir()
 	holderConfig := map[string]any{"root": holderRoot, "profile": profile, "role": admission.AllocationUser}
 	holder, closeHolder := admissionLocalConsole(t, binary, "holder", holderConfig)

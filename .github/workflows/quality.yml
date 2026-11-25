@@ -266,7 +266,7 @@ jobs:
           go test -p 4 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m
       - name: Check portable Enrollment against the compiled command
         run: go test ./tests/e2e/endpoint -run '^TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest$' -count=1
-      - name: Check portable Node dispatch and refusal against the compiled command
-        run: go test ./tests/e2e/node -run '^TestCompiledNode(DispatchRequiresExactOperation|UnsupportedPlatformRefusesBeforePrivateInput)$' -count=1
+      - name: Check portable Node dispatch, refusal, and spend evidence
+        run: go test ./tests/e2e/node -run '^Test(CompiledNode(DispatchRequiresExactOperation|UnsupportedPlatformRefusesBeforePrivateInput)|RouteSpendEvidenceRequiresOneCompleteCommittedRecord)$' -count=1
       - name: Check portable Source refusals against the compiled command
         run: go test ./tests/e2e/source -run '^TestCompiledSourceUnsupportedPlatformRefusesBeforePlanEffects$' -count=1

@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestCanceledSocketChildRetainsReservationUntilJoined(t *testing.T) {
@@ -77,10 +78,10 @@ func TestCanceledSocketChildRetainsReservationUntilJoined(t *testing.T) {
 	childStopped := make(chan struct{})
 	allowJoin := make(chan struct{})
 	transfer := func(ctx context.Context, count uint64, deadline time.Time, current func() error) error {
-		return transferLocal(ctx, count, deadline, current, func(reader io.Reader, n int64) error {
+		return networkfixture.TransferLocal(ctx, count, deadline, current, func(reader io.Reader, n int64) error {
 			close(childStarted)
 			<-ctx.Done()
-			err := discardPayload(reader, n)
+			err := networkfixture.DiscardPayload(reader, n)
 			close(childStopped)
 			<-allowJoin
 			return err

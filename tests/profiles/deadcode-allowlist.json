@@ -1,22 +1,97 @@
 {
   "common": [
     {
-      "symbols": [
-        "tests/e2e/node.AdmissionCommandFixture",
-        "tests/e2e/node.admissionCommandSPKI"
-      ],
-      "classification": "independent offline Admission fixture",
-      "rationale": "The CLI input tests and the compiled Admission and Issuance scenarios share independent request and key encodings through this test driver package.",
-      "owner": "Admission process tests",
-      "retirement": "Remove with the last caller of the independent request fixture."
+      "symbols": ["tests/e2e/endpoint.hasPermissionEvent"],
+      "classification": "Endpoint permission journal fixture",
+      "rationale": "Native Endpoint scenarios check role-specific permission events, with a portable fixture test for the evidence parser.",
+      "owner": "Endpoint process tests",
+      "retirement": "Remove with the last installed permission event check."
+    },
+    {
+      "symbols": ["tests/e2e/endpoint.ReadEnrollmentV5Artifacts"],
+      "classification": "Enrollment migration input fixture",
+      "rationale": "The native migration driver and a portable fixture test select the exact caller-supplied predecessor program pair.",
+      "owner": "Endpoint process tests",
+      "retirement": "Remove with the V5 to V6 migration scenario."
+    },
+    {
+      "symbols": ["tests/e2e/node/processfixture.OnlyFailureBranches"],
+      "classification": "Route retirement evidence fixture",
+      "rationale": "Registration and Descriptor tests reject unrelated branches in retained retirement failures. The traversal also has portable fixture checks.",
+      "owner": "Route integration tests",
+      "retirement": "Remove with the last joined retirement evidence check."
+    },
+    {
+      "symbols": ["tests/e2e/node/processfixture.AdmissionPresentations.Observe", "tests/e2e/node/processfixture.AdmissionPresentations.Check"],
+      "classification": "Connection admission evidence fixture",
+      "rationale": "Installed Connection scenarios and portable checks record and verify detached presentation and JOIN evidence. Production does not use this counter.",
+      "owner": "Connection process tests",
+      "retirement": "Remove with the last installed admission evidence scenario."
+    },
+    {
+      "symbols": ["tests/e2e/endpoint.CheckLatencyVerdict", "tests/e2e/endpoint.validateLatencyVerdict", "tests/e2e/endpoint.validateLatencySeries"],
+      "classification": "Endpoint latency report fixture",
+      "rationale": "The native latency root driver and portable tests validate the participant's component report.",
+      "owner": "Endpoint latency tests",
+      "retirement": "Remove with the latency qualification driver."
+    },
+    {
+      "symbols": ["tests/e2e/endpoint.LatencyDriverCounts", "tests/e2e/endpoint.readLatencyCount", "tests/e2e/endpoint.RenderLatencyUnit"],
+      "classification": "Endpoint latency configuration fixtures",
+      "rationale": "The native latency driver uses bounded attempt settings and a fixed qualification unit. The settings and template are also exercised portably.",
+      "owner": "Endpoint latency tests",
+      "retirement": "Remove with the latency qualification driver."
     },
     {
       "symbols": [
-        "tests/e2e/endpoint.FixtureDigest",
-        "tests/e2e/endpoint.SignedRelease",
-        "tests/e2e/node.NewReleaseAuthority",
-        "tests/e2e/node.ReleaseAuthority.RootBytes",
-        "tests/e2e/node.ReleaseAuthority.Sign"
+        "tests/networkfixture.DiscardPayload",
+        "tests/networkfixture.TransferLocal",
+        "tests/networkfixture.TransferLoopback",
+        "tests/networkfixture.WorkAuthority",
+        "tests/networkfixture.joinedClose"
+      ],
+      "classification": "loopback transfer and work authority fixtures",
+      "rationale": "Admission and Hosting test scenarios use synthetic loopback data and reobserve the accepted facts during work. These helpers run only in tests.",
+      "owner": "Admission and Hosting process tests",
+      "retirement": "Remove with the last loopback work scenario."
+    },
+    {
+      "symbols": [
+        "tests/e2e/endpoint.collectNet32Idle",
+        "tests/e2e/endpoint.evaluateNet32Idle",
+        "tests/e2e/endpoint.net32IdleTraffic"
+      ],
+      "classification": "portable idle qualification fixture",
+      "rationale": "The idle qualification and portable fixture tests invoke the projection and sampling rules.",
+      "owner": "Endpoint idle measurement tests",
+      "retirement": "Remove with the last Endpoint idle measurement scenario."
+    },
+    {
+      "symbols": ["tests/e2e/endpoint.InstallationRequest", "tests/e2e/endpoint.BindInstallationNetwork", "tests/e2e/endpoint.DualInstallationRequest", "tests/e2e/node/processfixture.SignedInstanceResponse"],
+      "classification": "installed Endpoint request fixture",
+      "rationale": "Independent JSON installation input and signed public credential responses used by native Endpoint scenarios, with portable fixture checks.",
+      "owner": "Endpoint process tests",
+      "retirement": "Remove with the last installed request scenario."
+    },
+    {
+      "symbols": [
+        "tests/e2e/node/processfixture.CommandBuild.Binary",
+        "tests/e2e/node/processfixture.CommandBuild.Run",
+        "tests/e2e/node/processfixture.ReadConsoleReply",
+        "tests/e2e/node/processfixture.WriteConfig"
+      ],
+      "classification": "process console and command input fixtures",
+      "rationale": "Installed Execution and Publication tests consume entire newline-delimited replies from a pipe. Portable fixture tests exercise complete-line synchronization, the finite reply bound and incomplete-record refusal. WriteConfig writes private JSON input for compiled command and installed process tests. CommandBuild compiles and cleans up one immutable CLI per test package. These helpers belong only to the test driver.",
+      "owner": "Execution and Publication process tests",
+      "retirement": "Remove with the last pipe-backed console test."
+    },
+    {
+      "symbols": [
+        "tests/releasefixture.FixtureDigest",
+        "tests/releasefixture.SignedRelease",
+        "tests/releasefixture.NewReleaseAuthority",
+        "tests/releasefixture.ReleaseAuthority.RootBytes",
+        "tests/releasefixture.ReleaseAuthority.Sign"
       ],
       "classification": "independent Release authority fixture",
       "rationale": "The independent Endpoint inventory and ephemeral fixture Root and quorum build and sign only test artifacts for the command and installed profiles.",
@@ -82,6 +157,228 @@
     "linux-amd64": [
       {
         "symbols": [
+          "tests/e2e/node.AdmissionCommandFixture",
+          "tests/e2e/node.admissionCommandSPKI"
+        ],
+        "classification": "independent offline Admission fixture",
+        "rationale": "The Linux Admission and Issuance command scenarios share independent request and key encodings through this test driver package.",
+        "owner": "Admission process tests",
+        "retirement": "Remove with the last caller of the independent request fixture."
+      },
+      {
+        "symbols": [
+          "tests/e2e/endpoint.LaunchStand.cleanup",
+          "tests/e2e/endpoint.LaunchStand.drainParticipant",
+          "tests/e2e/endpoint.LaunchStand.requireNoStartupExchange",
+          "tests/e2e/endpoint.LaunchStand.requireReplacementRefusal",
+          "tests/e2e/endpoint.LaunchStand.startReplacement",
+          "tests/e2e/endpoint.buildLaunchReleases",
+          "tests/e2e/endpoint.launchWait"
+        ],
+        "classification": "installed Endpoint launch fixtures",
+        "rationale": "The installed launch scenarios build release inputs, start or refuse a replacement, and drain participants through the real service manager.",
+        "owner": "Endpoint launch tests",
+        "retirement": "Remove each entry with its last scenario caller."
+      },
+      {
+        "symbols": [
+          "tests/e2e/node/processfixture.Interrupt",
+          "tests/e2e/node/processfixture.OpenAdmissionConsoleResult",
+          "tests/e2e/node/processfixture.OpenAdmissionConsoleWithInterrupt",
+          "tests/e2e/node/processfixture.TempDir",
+          "tests/e2e/node/processfixture.openAdmissionConsole"
+        ],
+        "classification": "compiled Node process fixtures",
+        "rationale": "The Node scenarios open and interrupt the compiled Admission command and allocate private temporary roots for process inputs.",
+        "owner": "Node process tests",
+        "retirement": "Remove each entry with its last scenario caller."
+      },
+      {
+        "symbols": [
+          "tests/networkfixture.RefreshObservedClock"
+        ],
+        "classification": "signed Network clock fixture",
+        "rationale": "The Root and Route scenarios refresh the fixture clock while a command is live and join the refresh before removing the input.",
+        "owner": "Network process tests",
+        "retirement": "Remove each entry with its last scenario caller."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.VerifyInstalledConnectionReopen", "tests/e2e/node/processfixture.ObserveInstalledReceivingReopen"],
+        "classification": "installed Connection retained history evidence",
+        "rationale": "Installed Connection verifies original receiving and Hosting accounting, authenticated Network, stored Descriptor and consumed Instance after the owning generations join.",
+        "owner": "Endpoint Connection tests",
+        "retirement": "Remove with the installed durable reopen scenario."
+      },
+      {
+        "symbols": [
+          "tests/e2e/node/processfixture.ObserveReceivingSpends",
+          "tests/e2e/node/processfixture.ReceivingSpendEvidence.Record",
+          "tests/e2e/node/processfixture.ReceivingSpendEvidence.RequireRetained"
+        ],
+        "classification": "joined Receiving spend evidence fixture",
+        "rationale": "Installed Execution tests reopen the original durable history, verify actually admitted tokens and check replay rollback accounting.",
+        "owner": "Installed Execution tests",
+        "retirement": "Remove with the last installed retained spend scenario."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.AssertInstalledConnectionAuthorityLoss", "tests/e2e/endpoint.InstalledConnectionWorkerIdentity", "tests/e2e/endpoint.StopInstalledConnectionWorker", "tests/e2e/endpoint.StopInstalledExecutionWorker"],
+        "classification": "native Connection authority and Worker observation fixture",
+        "rationale": "Installed tests observe the original worker, inject a real retirement and verify guarded reads and physical cleanup.",
+        "owner": "Endpoint Connection tests",
+        "retirement": "Remove with the last installed Connection authority scenario."
+      },
+      {
+        "symbols": ["tests/e2e/node/processfixture.AddPublicationFixtureNodes",
+          "tests/e2e/node/processfixture.AddRouteFixtureNodes",
+          "tests/e2e/node/processfixture.AddDescriptorFixtureNodes",
+          "tests/e2e/node/processfixture.AddJoinFixtureNodes",
+          "tests/e2e/node/processfixture.reserveTopologyAddress"],
+        "classification": "signed Publication topology fixture",
+        "rationale": "The Linux Publication scenarios reserve original fixture endpoints and authenticate the signed receiving duties without sharing runtime authority.",
+        "owner": "Publication process tests",
+        "retirement": "Remove with the last Publication topology consumer."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.RunJourneyParticipant", "tests/e2e/endpoint.DumpJourneyJournal",
+          "tests/e2e/endpoint.ExchangeJourneyCommand", "tests/e2e/endpoint.AdmitJourneyParticipant",
+          "tests/e2e/endpoint.RestartJourneyParticipant", "tests/e2e/endpoint.receiveJourneyAdmission"],
+        "classification": "native Endpoint journey participant fixture",
+        "rationale": "The guest test and real-host controller use the same staged participant and original manager diagnostics.",
+        "owner": "Endpoint journey tests",
+        "retirement": "Remove with the last native journey scenario."
+      },
+      {
+        "symbols": [
+          "tests/e2e/endpoint.VerifyInstalledDocumentCommands",
+          "tests/e2e/endpoint.installedDocumentCLI",
+          "tests/e2e/endpoint.installedDocumentOutput.Write"
+        ],
+        "classification": "native Document command scenario",
+        "rationale": "The installed scenario exercises the pinned CLI with the original Endpoint sockets, exact bytes and withdrawal behavior.",
+        "owner": "Endpoint Document tests",
+        "retirement": "Remove when the last installed Document command scenario moves to Endpoint E2E."
+      },
+      {
+        "symbols": ["tests/e2e/node/processfixture.OpenPermittedStock"],
+        "classification": "signed holder allocation fixture",
+        "rationale": "The process tests open a real Stock owner and import a signed allocation before their separate issuance or exchange.",
+        "owner": "Admission process tests",
+        "retirement": "Remove with the last signed holder allocation scenario."
+      },
+      {
+        "symbols": [
+          "tests/e2e/endpoint.InitializeInstalledServiceInstance",
+          "tests/e2e/endpoint.InstalledPairStoredProof",
+          "tests/e2e/endpoint.InstalledPairAwaitRefresh",
+          "tests/e2e/endpoint.VerifyInstalledDocumentRefresh",
+          "tests/e2e/endpoint.installedStoredProof",
+          "tests/e2e/endpoint.requireFreshDescriptor"
+        ],
+        "classification": "native Endpoint Service setup and refresh observation",
+        "rationale": "Installed Service tests initialize a Credential through the compiled CLI and observe acknowledged descriptor revisions in the actual receiving Store.",
+        "owner": "Endpoint Service tests",
+        "retirement": "Remove with the last installed Service fixture consumer."
+      },
+      {
+        "symbols": [
+          "tests/e2e/endpoint.InstallRecoveryInstance",
+          "tests/e2e/endpoint.RecoveryPinnedCommand",
+          "tests/e2e/endpoint.issueRecoveryInstance",
+          "tests/e2e/endpoint.recoveryCustodyJSON",
+          "tests/e2e/endpoint.recoveryInstanceCommand",
+          "tests/e2e/endpoint.recoveryCustodyCommand",
+          "tests/e2e/endpoint.recoveryCustodyCapture.Write",
+          "tests/e2e/endpoint.recoveryCustodyCapture.bytes"
+        ],
+        "classification": "native Custody and Instance process fixture",
+        "rationale": "Installed recovery tests acquire and verify an actual Credential through the pinned Custody and Endpoint executables.",
+        "owner": "Endpoint recovery tests",
+        "retirement": "Remove with the last installed Credential recovery scenario."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.ProvisionLaunchStand", "tests/e2e/endpoint.VerifyNativeEndpointReplacement", "tests/e2e/endpoint.StartLaunchSources", "tests/e2e/endpoint.PrepareLaunchRoots"],
+        "classification": "native Endpoint installation fixture",
+        "rationale": "Native Endpoint drivers share provisioning for signed releases, authenticated Sources, initial histories and the native unit.",
+        "owner": "Endpoint process tests",
+        "retirement": "Remove when the last external native launch driver moves to Endpoint E2E."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.StartOriginalEndpoint", "tests/e2e/endpoint.StopOriginalEndpoint", "tests/e2e/endpoint.RequireJoinedEndpoint", "tests/e2e/endpoint.WaitOriginalReader"],
+        "classification": "native Endpoint process observation fixtures",
+        "rationale": "Installed Endpoint tests observe the fixed systemd invocation, kernel Reader peer and original joined result through native fixture helpers.",
+        "owner": "Endpoint process tests",
+        "retirement": "Remove with the last original Endpoint lifecycle scenario."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.RetainLaunchScope", "tests/e2e/endpoint.LaunchScopePopulated", "tests/e2e/endpoint.RequireStoppedEndpointScopes"],
+        "classification": "retained Endpoint cgroup observation fixture",
+        "rationale": "The native Endpoint replacement scenario retains and observes the original Linux cgroup descriptor through stop.",
+        "owner": "Endpoint process tests",
+        "retirement": "Remove with the last native replacement scenario."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.WriteLaunchFile", "tests/e2e/endpoint.PublishPermissionResponse", "tests/e2e/endpoint.GrantOriginalPermissions", "tests/e2e/endpoint.ApproveFixturePermission", "tests/e2e/endpoint.waitPermissionEvent"],
+        "classification": "native Endpoint permission handover fixtures",
+        "rationale": "The native Endpoint launcher and latency driver stage signed permission response bytes and expose them through the actual file handover.",
+        "owner": "Endpoint process tests",
+        "retirement": "Remove with the last native permission handover case."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.InstallLatencyParticipant", "tests/e2e/endpoint.StartLatencyUnit", "tests/e2e/endpoint.WaitLatencyReport"],
+        "classification": "native Endpoint latency participant fixture",
+        "rationale": "The Linux root driver installs the actual qualification participant binary for the systemd unit.",
+        "owner": "Endpoint latency tests",
+        "retirement": "Remove with the latency qualification driver."
+      },
+      {
+        "symbols": ["tests/e2e/endpoint.LiveSnapshotWorker", "tests/e2e/endpoint.PublishAndFindSnapshotWorker"],
+        "classification": "native Endpoint replacement fixtures",
+        "rationale": "The root-driver replacement scenario publishes via the genuine Administration socket and checks the native snapshot worker inode and cgroup before replacement.",
+        "owner": "Endpoint replacement process tests",
+        "retirement": "Remove with the last installed snapshot worker replacement test."
+      },
+      {
+        "symbols": ["tests/e2e/node/processfixture.WaitReturnedReservations"],
+        "classification": "native receiving borrower join fixture",
+        "rationale": "The installed Execution scenario checks actual receiving Hosting budgets and original reservation returns before invoking server cleanup.",
+        "owner": "Execution process tests",
+        "retirement": "Remove with the last installed borrower join scenario."
+      },
+      {
+        "symbols": ["tests/networkfixture.OpenIndependentState"],
+        "classification": "independent signed State fixture",
+        "rationale": "Signed State isolation and native connection and publication tests open an independent receiving State root. Production does not invoke the fixture.",
+        "owner": "Network integration tests",
+        "retirement": "Remove with the last independent State fixture consumer."
+      },
+      {
+        "symbols": [
+          "tests/networkfixture.OpenSignedAdmission",
+          "tests/networkfixture.SignedAdmission.ObserveIssuer",
+          "tests/networkfixture.AdmissionFacts"
+        ],
+        "classification": "signed Admission integration fixture",
+        "rationale": "Issuer and Receiving tests open original State through the signed fixture and reobserve its authentic authority. Production commands never consume fixture authority.",
+        "owner": "Admission integration tests",
+        "retirement": "Remove with the last signed Admission integration case."
+      },
+      {
+        "symbols": [
+          "tests/e2e/endpoint.MeasureNET32Idle",
+          "tests/e2e/endpoint.observeNet32Idle",
+          "tests/e2e/endpoint.readNet32Sample",
+          "tests/e2e/endpoint.readNet32HostingState",
+          "tests/e2e/endpoint.net32ClientCgroups",
+          "tests/e2e/endpoint.net32CgroupUsage",
+          "tests/e2e/endpoint.net32StateProfileBytes"
+        ],
+        "classification": "native idle qualification fixture",
+        "rationale": "The installed Endpoint idle qualification invokes the Linux Hosting and cgroup observation driver.",
+        "owner": "Endpoint idle measurement tests",
+        "retirement": "Remove with the last Endpoint idle measurement scenario."
+      },
+      {
+        "symbols": [
           "tests/e2e/source.SigningWorkspace"
         ],
         "classification": "native signing workspace fixture",
@@ -142,25 +439,25 @@
           "tests/e2e/node/processfixture.ProcessBudget",
           "tests/e2e/node/processfixture.ProcessBudgetWithCapacity",
           "tests/e2e/node/processfixture.StartRetainedRole",
-          "tests/e2e/node.InfrastructureCandidateInputs",
-          "tests/e2e/node.InfrastructureDistribution",
-          "tests/e2e/node.InfrastructureReference",
-          "tests/e2e/node.WriteInfrastructureOracleInvocationInventory",
+          "tests/releasefixture.InfrastructureCandidateInputs",
+          "tests/releasefixture.InfrastructureDistribution",
+          "tests/releasefixture.InfrastructureReference",
+          "tests/releasefixture.WriteInfrastructureOracleInvocationInventory",
           "tests/e2e/node.ExerciseNativeCPUPressure",
-          "tests/e2e/node/processfixture.PrepareNetworkGenesis",
-          "tests/e2e/node/processfixture.PrepareIssuer",
+          "tests/networkfixture.PrepareNetworkGenesis",
+          "tests/networkfixture.PrepareIssuer",
           "tests/e2e/node/processfixture.SignedDescriptor",
           "tests/e2e/node/processfixture.WaitAdmissionHour",
           "tests/e2e/node/processfixture.AddReceivingFixtureNode",
           "tests/e2e/node/processfixture.IntroductionStock",
           "tests/e2e/node/processfixture.RoleCertificate",
-          "tests/e2e/node/processfixture.StartObservedClock",
+          "tests/networkfixture.StartObservedClock",
           "tests/e2e/node/processfixture.WriteNativeCredential",
           "tests/e2e/node/processfixture.NativeProcess.FailedJoin",
           "tests/e2e/node/processfixture.NativeProcess.Stop",
           "tests/e2e/node/processfixture.NativeProcess.Wait",
           "tests/e2e/node/processfixture.PinnedCommand",
-          "tests/e2e/node.OpenAdmissionConsole",
+          "tests/e2e/node/processfixture.OpenAdmissionConsole",
           "tests/e2e/node/processfixture.FixturePermission",
           "tests/e2e/node.ProvisionNodeCertificates",
           "tests/e2e/node.IssuerDeclaration",
@@ -179,7 +476,7 @@
           "tests/e2e/node/processfixture.WaitOperationMarker",
           "tests/e2e/node/processfixture.WriteOperationMarker",
           "tests/e2e/node/processfixture.RequireStartupFailure",
-          "tests/e2e/node/processfixture.SeedNetworkState",
+          "tests/networkfixture.SeedNetworkState",
           "tests/e2e/node/processfixture.verifyPinnedCommand",
           "tests/e2e/node/processfixture.AwaitNativeExpiryDenial",
           "tests/e2e/node/processfixture.OriginalListenerOccupied",
@@ -219,7 +516,7 @@
           "internal/release/infrastructure.ForwardingAuthorization.Targets"
         ],
         "classification": "retired transitional Forwarding orchestration; retained candidate-admission test coverage",
-        "rationale": "The transitional installation/forwarding orchestration and its canonical Node initial/start consumers retired (#604 FJD stage D, ADR-0125). The retained Forwarding forward-Release predecessor verification consumes AuthenticateForwardingCandidate/Check in production; the exact target-pair and no-initial-facts assertions remain exercised by the genuine signed-artifact integration in cmd/ardents-next/forwarding_artifact_linux_test.go. Platform-led installed admission uses the mandatory platform check, not this candidate pair. Linux-native only; the file is excluded on Windows.",
+        "rationale": "The transitional installation/forwarding orchestration and its canonical Node initial/start consumers retired (#604 FJD stage D, ADR-0125). The retained Forwarding forward-Release predecessor verification consumes AuthenticateForwardingCandidate/Check in production; the exact target-pair and no-initial-facts assertions remain exercised by the genuine signed-artifact integration in internal/release/infrastructure/forwarding_artifact_linux_test.go. Platform-led installed admission uses the mandatory platform check, not this candidate pair. Linux-native only; the file is excluded on Windows.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove them if the forward-Release candidate admission loses its signed-artifact integration coverage or gains a production consumer again."
       },
@@ -287,6 +584,42 @@
       }
     ],
     "windows-amd64": [
+      {
+        "symbols": [
+          "tests/e2e/node/processfixture.FixturePermission",
+          "tests/e2e/node/processfixture.OpenAdmissionConsole",
+          "tests/e2e/node/processfixture.OpenAdmissionConsoleResult",
+          "tests/e2e/node/processfixture.TempDir",
+          "tests/e2e/node/processfixture.WaitAdmissionHour",
+          "tests/e2e/node/processfixture.openAdmissionConsole"
+        ],
+        "classification": "Admission command fixtures",
+        "rationale": "The Node E2E suite drives the compiled Admission console and its independent permission, time-window and temporary-root inputs. These symbols belong to the test driver.",
+        "owner": "Node process tests",
+        "retirement": "Remove each entry when production reaches the symbol on Windows or its last test caller is retired."
+      },
+      {
+        "symbols": [
+          "tests/networkfixture.PrepareIssuer",
+          "tests/networkfixture.PrepareNetworkGenesis",
+          "tests/networkfixture.RefreshObservedClock",
+          "tests/networkfixture.SeedNetworkState",
+          "tests/networkfixture.StartObservedClock"
+        ],
+        "classification": "signed Network command fixtures",
+        "rationale": "The Node E2E suite provisions signed Network State and Issuer input and maintains the observed clock during command execution. These symbols belong to the test driver.",
+        "owner": "Network process tests",
+        "retirement": "Remove each entry when production reaches the symbol on Windows or its last test caller is retired."
+      },
+      {
+        "symbols": [
+          "internal/route/receiver.ValidateCarrier"
+        ],
+        "classification": "closed receiving Carrier rule",
+        "rationale": "The receiver command uses this rule before native composition on Unix. The portable owner test compiles on Windows and checks exact TCP selection and refusal of deferred or malformed profiles.",
+        "owner": "Route receiving",
+        "retirement": "Remove each entry when production reaches the symbol on Windows or its last test caller is retired."
+      },
       {
         "symbols": [
           "internal/node.credential.close",

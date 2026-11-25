@@ -8,12 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -24,7 +24,7 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, _, files := nodefixture.InfrastructureDistribution(t, t.TempDir(), binary, nil, 1, nil, "source")
+	dir, _, files := releasefixture.InfrastructureDistribution(t, t.TempDir(), binary, nil, 1, nil, "source")
 	template := filepath.Join(parent, "template")
 	if err := os.WriteFile(template, files["ardents-source.service"], 0600); err != nil {
 		t.Fatal(err)
@@ -69,13 +69,13 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 			t.Fatalf("retired %s touched output: %v", retired.operation, err)
 		}
 	}
-	oraclePin := nodefixture.WriteInfrastructureOracleInvocationInventory(t, dir, files, 1, "source")
+	oraclePin := releasefixture.WriteInfrastructureOracleInvocationInventory(t, dir, files, 1, "source")
 	if fmt.Sprintf("%x", sha256.Sum256(prepared)) != oraclePin {
 		t.Fatal("independent inventory oracle")
 	}
 	// The independently prepared pin here is a controlled test input, not an
 	// operational independent distribution or permission for first execution.
-	cmd = exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, oraclePin, filepath.Join(parent, "history"), "h3-test", "new-release-test", nodefixture.InfrastructureReference().Format("2006-01-02T15:04:05Z07:00"))
+	cmd = exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, oraclePin, filepath.Join(parent, "history"), "h3-test", "new-release-test", releasefixture.InfrastructureReference().Format("2006-01-02T15:04:05Z07:00"))
 	if out, err := cmd.CombinedOutput(); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) {
 		t.Fatalf("prepared actual self and Release pair %s %v", out, err)
 	}

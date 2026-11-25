@@ -6,7 +6,7 @@ x86-64 qualification host with systemd 255, cgroup v2, polkit, the fixed
 Build the exact candidate outside Git with the selected Go toolchain,
 `GOOS=linux`, `GOARCH=amd64` and `CGO_ENABLED=0`.
 
-    go test -c -tags document_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./cmd/ardents-next
+    go test -c -tags document_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./internal/endpoint
     go build -trimpath -buildvcs=false -o "$candidate/ardents-next" ./cmd/ardents-next
     go build -trimpath -buildvcs=false -o "$candidate/ardents-custody" ./cmd/ardents-custody
     go build -trimpath -buildvcs=false -o "$candidate/ardents-text" ./internal/application/document/worker

@@ -5,6 +5,7 @@ package node_test
 import (
 	"bytes"
 	"errors"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"os/exec"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 func TestHostingReportsOutputFailureAfterInitialization(t *testing.T) {
 	plan := hostingInitializePlan(t)
-	config := admissionCycleConfig(t, map[string]any{"root": plan.Root, "policy": plan.Policy})
+	config := processfixture.WriteConfig(t, map[string]any{"root": plan.Root, "policy": plan.Policy})
 	full, err := os.OpenFile("/dev/full", os.O_WRONLY, 0)
 	if err != nil {
 		t.Fatal(err)

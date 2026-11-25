@@ -29,6 +29,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // The root driver supplies only independently signed inputs and a bounded
@@ -56,7 +57,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			processfixture.WaitAdmissionHour(t)
-			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+			spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 			spec.Nodes = spec.Nodes[:1]
 			listeners := make(map[[32]byte]net.Listener)
 			certificates := make(map[[32]byte]tls.Certificate)
@@ -80,14 +81,14 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
-			networkClock, closeNetworkClock := processfixture.StartObservedClock(t)
+			networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+			networkClock, closeNetworkClock := networkinputs.StartObservedClock(t)
 			defer closeNetworkClock()
-			clock, closeClock := processfixture.StartObservedClock(t)
+			clock, closeClock := networkinputs.StartObservedClock(t)
 			stopClock := sync.OnceFunc(closeClock)
 			defer stopClock()
 			seed := func(clock string) state.AuthorityDeclaration {
-				return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+				return networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 			}
 			declaration := seed(networkClock)
 			config, err := declaration.Config()

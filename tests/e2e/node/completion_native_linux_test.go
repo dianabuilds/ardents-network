@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 type completionRole struct {
@@ -54,7 +55,7 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 	t.Helper()
 	binary := processfixture.PinnedCommand(t)
 	t.Run(epoch.CarrierClosedTCP, func(t *testing.T) {
-		spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+		spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 		listener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)
@@ -72,9 +73,9 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		clock, stopClock := processfixture.StartObservedClock(t)
+		clock, stopClock := networkinputs.StartObservedClock(t)
 		defer stopClock()
-		network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+		network := networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 		config, err := network.Config()
 		if err != nil {
 			t.Fatal(err)
@@ -113,7 +114,7 @@ func testNativeUnavailableCompletion(t *testing.T, role completionRole) {
 		}
 		if role.name == "issuer" {
 			plan["bootstrap_work"] = hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}
-			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[index], sha256.Sum256(bundle.Profile))
+			networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[index], sha256.Sum256(bundle.Profile))
 			plan["issuance"] = IssuerDeclaration(issuerPlan)
 		}
 		if err := listener.Close(); err != nil {

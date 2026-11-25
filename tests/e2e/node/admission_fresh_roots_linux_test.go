@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 // These are command/storage controls with fixture bindings, not authenticated
@@ -104,7 +105,7 @@ func TestAdmissionFreshInitializationCannotResetSpentHistory(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "ledger")
 	initialize := func(root string) (issuanceResult, error) {
 		t.Helper()
-		config := writeIssuanceConfig(t, admissionInitializationConfig(root, binding))
+		config := processfixture.WriteConfig(t, admissionInitializationConfig(root, binding))
 		cmd := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 		var output, diagnostic bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &output, &diagnostic

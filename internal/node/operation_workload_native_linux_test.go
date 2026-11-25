@@ -34,6 +34,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // Fault scheduling pauses an actual State return on the real operation stack.
@@ -836,7 +837,7 @@ type operationNetwork struct {
 func openOperationNetwork(t *testing.T, carrier, measuredRole string) *operationNetwork {
 	t.Helper()
 	processfixture.WaitAdmissionHour(t)
-	spec, plan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, plan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	spec.Nodes = spec.Nodes[:1]
 	fixture := &operationNetwork{plan: plan, listeners: make(map[[32]byte]net.Listener), certificates: make(map[[32]byte]tls.Certificate)}
 	type duty struct{ id, domain, subrole byte }
@@ -876,8 +877,8 @@ func openOperationNetwork(t *testing.T, carrier, measuredRole string) *operation
 	if err != nil {
 		t.Fatal(err)
 	}
-	processfixture.PrepareIssuer(t, &fixture.plan, inventory, spec, fixture.bundle.Nodes[0], sha256.Sum256(fixture.bundle.Profile))
-	clock, closeClock := processfixture.StartObservedClock(t)
+	networkinputs.PrepareIssuer(t, &fixture.plan, inventory, spec, fixture.bundle.Nodes[0], sha256.Sum256(fixture.bundle.Profile))
+	clock, closeClock := networkinputs.StartObservedClock(t)
 	fixture.clock = clock
 	t.Cleanup(closeClock)
 	declaration := fixture.seed(t)
@@ -905,7 +906,7 @@ func openOperationNetwork(t *testing.T, carrier, measuredRole string) *operation
 
 func (f *operationNetwork) seed(t *testing.T) state.AuthorityDeclaration {
 	t.Helper()
-	return processfixture.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), f.bundle, f.clock)
+	return networkinputs.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), f.bundle, f.clock)
 }
 
 func (f *operationNetwork) issuerObservation() (admission.AuthorityFacts, time.Time, error) {

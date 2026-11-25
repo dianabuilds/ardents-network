@@ -141,7 +141,7 @@ owner ([retained-only launch refusal](../technical/network-route-node.md#platfor
 
 ## Evidence boundary
 
-The native installed gates (`forwarding_platform_native_linux_test.go`,
+The native installed gates in `tests/e2e/node` (`forwarding_platform_native_linux_test.go`,
 `join_platform_native_linux_test.go`, `descriptor_platform_native_linux_test.go`)
 provision the genuine State accept/profile, Hosting initialize, plan, launch,
 first pin, rendered unit, fresh `--config` pre-init and retained `--retained-config`

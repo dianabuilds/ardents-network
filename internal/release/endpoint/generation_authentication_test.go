@@ -10,8 +10,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
-// Genuine signed-byte/owned-history acceptance and refusal are exercised through
-// the production command in cmd/ardents-next; these controls grant no authority.
+// Signed-byte and owned-history behavior is exercised by the independent
+// authorization integration tests; these zero-value controls grant no authority.
 func TestZeroInventoryAndAuthorizationGrantNothing(t *testing.T) {
 	if _, err := AuthenticateInitial(context.Background(), nil, enrollment.Bundle{}, release.Inputs{}); !errors.Is(err, ErrInput) {
 		t.Fatalf("zero initial inventory: %v", err)

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/dianabuilds/ardents-network/internal/admission/operator"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/node"
 	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"
@@ -54,7 +55,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 		return runNetwork(ctx, args, out)
 	case "node-identity":
 		if len(args) > 0 && args[0] == "import" {
-			return runIssuerProfile(ctx, "node-identity.import", args[1:], out, diagnostic)
+			return operator.RunIssuerProfile(ctx, "node-identity.import", args[1:], out, diagnostic)
 		}
 	case "issuance":
 		return runIssuance(ctx, args, out, diagnostic)

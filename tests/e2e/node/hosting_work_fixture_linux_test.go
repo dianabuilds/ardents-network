@@ -8,6 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 	"time"
 )
 
@@ -24,7 +25,7 @@ type hostingWorkFixture struct {
 
 // runHostingFixture composes domain owners only for integration tests.
 func runHostingFixture(ctx context.Context, p hostingWorkFixture) error {
-	return runHostingFixtureWithTransfer(ctx, p, transferLoopback)
+	return runHostingFixtureWithTransfer(ctx, p, networkfixture.TransferLoopback)
 }
 
 func runHostingFixtureWithTransfer(ctx context.Context, p hostingWorkFixture, transfer func(context.Context, uint64, time.Time, func() error) error) (outcome error) {
@@ -70,7 +71,7 @@ func runHostingFixtureWithTransfer(ctx context.Context, p hostingWorkFixture, tr
 	if err != nil {
 		return err
 	}
-	// transferLoopback joins its reader on every path before this release runs.
+	// networkfixture.TransferLoopback joins its reader on every path before this release runs.
 	defer func() { outcome = errors.Join(outcome, grant.Release()) }()
 	if p.Bytes > grant.Allowance().Bytes() {
 		return errors.New("work exceeds allowance")
@@ -79,19 +80,7 @@ func runHostingFixtureWithTransfer(ctx context.Context, p hostingWorkFixture, tr
 	deadline := grant.Allowance().Deadline()
 	admittedCtx, stop := context.WithDeadline(workCtx, deadline)
 	defer stop()
-	return transfer(admittedCtx, p.Bytes, deadline, workAuthority(initial, observedAt, deadline, observe))
-}
-
-// workAuthority retains the accepted facts and a monotonic observation floor.
-func workAuthority(initial admission.AuthorityFacts, floor, deadline time.Time, observe func() (admission.AuthorityFacts, time.Time, error)) func() error {
-	return func() error {
-		facts, now, err := observe()
-		if err != nil || facts != initial || now.Before(floor) || now.Before(initial.NotBefore) || !now.Before(initial.NotAfter) || !now.Before(deadline) {
-			return errors.Join(errors.New("work authority unavailable"), err)
-		}
-		floor = now
-		return nil
-	}
+	return transfer(admittedCtx, p.Bytes, deadline, networkfixture.WorkAuthority(initial, observedAt, deadline, observe))
 }
 
 // The same observation floor spans admission, durable spend and active work.

@@ -5,12 +5,11 @@ package node_test
 import (
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"os/exec"
 	"testing"
 	"time"
-
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 func TestAdmissionHolderInterruptJoinsInputAndReleasesLease(t *testing.T) {
@@ -38,7 +37,7 @@ func TestAdmissionHolderInterruptJoinsInputAndReleasesLease(t *testing.T) {
 	if err := json.NewEncoder(input).Encode(map[string]string{"operation": "status"}); err != nil {
 		t.Fatal(err)
 	}
-	var status nodefixture.AdmissionReply
+	var status processfixture.AdmissionReply
 	if err := json.NewDecoder(output).Decode(&status); err != nil || status.Outcome != "completed" {
 		t.Fatalf("holder status: %v, %+v", err, status)
 	}
@@ -60,7 +59,7 @@ func TestAdmissionHolderInterruptJoinsInputAndReleasesLease(t *testing.T) {
 		joined = true
 		t.Fatal("interrupted holder retained stdin or lease")
 	}
-	send, closeConsole := nodefixture.OpenAdmissionConsole(t, binary, "holder", config)
+	send, closeConsole := processfixture.OpenAdmissionConsole(t, binary, "holder", config)
 	if reply := send(map[string]string{"operation": "status"}); reply.Outcome != "completed" {
 		t.Fatal("interrupt retained lease", reply)
 	}

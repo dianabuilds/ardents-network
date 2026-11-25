@@ -32,16 +32,16 @@ func TestExecutionRouteHolderRefusesRetiredTargetLinkBeforeOpeningRoots(t *testi
 		t.Fatal(err)
 	}
 	binary := buildNodeCommand(t)
-	run := func() (error, string, string) {
+	run := func() (string, string, error) {
 		command := exec.CommandContext(t.Context(), binary, "execution", "route-holder", "--config", path)
 		command.Stdin = strings.NewReader("")
 		var out, diagnostic bytes.Buffer
 		command.Stdout, command.Stderr = &out, &diagnostic
 		err := command.Run()
-		return err, out.String(), diagnostic.String()
+		return out.String(), diagnostic.String(), err
 	}
 	var exit *exec.ExitError
-	if err, out, diagnostic := run(); !errors.As(err, &exit) || exit.ExitCode() != 1 || out != "" || diagnostic != "" {
+	if out, diagnostic, err := run(); !errors.As(err, &exit) || exit.ExitCode() != 1 || out != "" || diagnostic != "" {
 		t.Fatalf("valid declaration did not reach host refusal: error=%v, stdout=%q, stderr=%q", err, out, diagnostic)
 	}
 	config["target_link"] = "retired-reader-input"
@@ -52,7 +52,7 @@ func TestExecutionRouteHolderRefusesRetiredTargetLinkBeforeOpeningRoots(t *testi
 	if err := os.WriteFile(path, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err, out, diagnostic := run(); !errors.As(err, &exit) || exit.ExitCode() != 2 || out != "" || diagnostic != "" {
+	if out, diagnostic, err := run(); !errors.As(err, &exit) || exit.ExitCode() != 2 || out != "" || diagnostic != "" {
 		t.Fatalf("retired input: error=%v, stdout=%q, stderr=%q", err, out, diagnostic)
 	}
 	for _, path := range []string{stock, network, entry, interior, hosting} {

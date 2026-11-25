@@ -24,7 +24,9 @@ first-execution verifier, alpha provenance, a participant-contact proof, a
 network source, or a qualification of a released artifact.
 
 The headless profile passes the exact prebuilt Endpoint artifact through
-`ARDENTS_E2E_COMMAND`. Ordinary local runs build it from the current checkout.
+`ARDENTS_E2E_COMMAND`. Ordinary local runs build one command from the current
+checkout for the test package. Scenarios that need a modified program write a
+separate copy into their own fixture directory.
 
 The portable Enrollment process test verifies the exact compiled program and
 refuses a wrong pin, changed manifest and substituted metadata. The portable

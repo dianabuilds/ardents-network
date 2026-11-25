@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestNativeForwardingRetainedLifecycle(t *testing.T) {
@@ -37,7 +38,7 @@ func TestNativeJoinRetainedLifecycle(t *testing.T) {
 func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain, subrole byte, work hosting.Traffic) {
 	t.Helper()
 	binary := processfixture.PinnedCommand(t)
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -51,9 +52,9 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := processfixture.StartObservedClock(t)
+	clock, closeClock := networkinputs.StartObservedClock(t)
 	defer closeClock()
-	networkPlan := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+	networkPlan := networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 
 	member := bundle.Nodes[1]
 	key := member.PrivateKey

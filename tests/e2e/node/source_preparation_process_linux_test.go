@@ -25,6 +25,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 
 	sourceowner "github.com/dianabuilds/ardents-network/internal/network/source/serving"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
@@ -65,16 +66,16 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
 		t.Fatal("invalid environment: original workspace is not native ext4", err)
 	}
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := processfixture.StartObservedClock(t)
+	clock, closeClock := networkinputs.StartObservedClock(t)
 	defer closeClock()
 	var networks [2]state.AuthorityDeclaration
 	for i := range networks {
-		networks[i] = processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+		networks[i] = networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	}
 	authority := networks[0]
 	headless := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", NetworkStateRoot: filepath.Join(parent, "client-state"), LocalRoleStateRoot: filepath.Join(parent, "client-roles"), TimeConfidenceFile: clock, NetworkID: hex.EncodeToString(authority.NetworkID[:]), NetworkAuthorities: []string{hex.EncodeToString(authority.Authorities[0][:])}, NetworkThreshold: 1, ClosedProfileAuthority: hex.EncodeToString(authority.ProfileAuthority[:])}

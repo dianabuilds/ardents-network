@@ -29,9 +29,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
+	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
@@ -109,12 +110,12 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := processfixture.StartObservedClock(t)
+	clock, closeClock := networkinputs.StartObservedClock(t)
 	defer closeClock()
 
 	parent := t.TempDir()
@@ -261,11 +262,11 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	// independent paths. The platform initialize-trust fixed-path composition
 	// is installed evidence (stage 1.5); the runtime role pair binds below
 	// through the retained candidate handoff.
-	authority := nodefixture.NewReleaseAuthority(t, nodefixture.InfrastructureReference().Add(365*24*time.Hour))
-	dirV1, pinV1, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), binaryBytes, authority, 1, nil, "source", []byte(systemd.PlatformUnitTemplate))
+	authority := releasefixture.NewReleaseAuthority(t, releasefixture.InfrastructureReference().Add(365*24*time.Hour))
+	dirV1, pinV1, _ := releasefixture.InfrastructureDistribution(t, t.TempDir(), binaryBytes, authority, 1, nil, "source", []byte(systemd.PlatformUnitTemplate))
 	releaseRoot := filepath.Join(parent, "release-trust")
 	pinCommand := exec.CommandContext(t.Context(), filepath.Join(dirV1, infrastructure.ProgramName),
-		"infrastructure", "authenticate-initial", dirV1, pinV1, releaseRoot, "h3-test", "new-release-test", nodefixture.InfrastructureReference().Format(time.RFC3339))
+		"infrastructure", "authenticate-initial", dirV1, pinV1, releaseRoot, "h3-test", "new-release-test", releasefixture.InfrastructureReference().Format(time.RFC3339))
 	if out, err := pinCommand.CombinedOutput(); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) || !bytes.Contains(out, []byte(`"program_outcome":"release-accepted"`)) {
 		t.Fatal("explicit first pin", string(out), err)
 	}
@@ -295,8 +296,8 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	// against retained floors; rollback and mixed metadata refuse without
 	// touching State or participation bytes.
 	forwardBytes := append(bytes.Clone(binaryBytes), '\n')
-	dirV2, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), forwardBytes, authority, 2, nil, "source", []byte(systemd.PlatformUnitTemplate))
-	dirMixed, _, _ := nodefixture.InfrastructureDistribution(t, t.TempDir(), forwardBytes, authority, 3, func(targets map[string]*metadata.TargetFiles) {
+	dirV2, _, _ := releasefixture.InfrastructureDistribution(t, t.TempDir(), forwardBytes, authority, 2, nil, "source", []byte(systemd.PlatformUnitTemplate))
+	dirMixed, _, _ := releasefixture.InfrastructureDistribution(t, t.TempDir(), forwardBytes, authority, 3, func(targets map[string]*metadata.TargetFiles) {
 		generation := targets["ardents/linux-amd64/infrastructure/source"]
 		var fields map[string]any
 		if err := json.Unmarshal(*generation.Custom, &fields); err != nil {
@@ -316,7 +317,7 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return c, nodefixture.InfrastructureCandidateInputs(t, c)
+		return c, releasefixture.InfrastructureCandidateInputs(t, c)
 	}
 	candidateV1, inputV1 := loadCandidate(dirV1)
 	candidateV2, inputV2 := loadCandidate(dirV2)

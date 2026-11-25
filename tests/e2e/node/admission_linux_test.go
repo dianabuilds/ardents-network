@@ -20,6 +20,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/protobuf/proto"
@@ -68,7 +69,7 @@ func TestAdmissionInitializationExactInput(t *testing.T) {
 	}
 	input := admissionBindingConfig(binding)
 	input.Issuer = input.Network
-	config := writeIssuanceConfig(t, map[string]any{"root": root, "binding": input})
+	config := processfixture.WriteConfig(t, map[string]any{"root": root, "binding": input})
 	command := exec.CommandContext(t.Context(), binary, "admission", "initialize", "--config", config)
 	output, err := command.Output()
 	var result issuanceResult
@@ -80,7 +81,7 @@ func TestAdmissionInitializationExactInput(t *testing.T) {
 func TestAdmissionInitializationCompiledCLI(t *testing.T) {
 	raw, facts, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	root := filepath.Join(t.TempDir(), "ledger")
-	config := writeIssuanceConfig(t, admissionInitializationConfig(root, binding))
+	config := processfixture.WriteConfig(t, admissionInitializationConfig(root, binding))
 	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 	var out, diagnostic bytes.Buffer
 	command.Stdout, command.Stderr = &out, &diagnostic
@@ -102,7 +103,7 @@ func TestAdmissionInitializationCompiledCLI(t *testing.T) {
 	}
 	retired := admissionInitializationConfig(root, binding)
 	retired["batch_file"], retired["facts"], retired["kind"] = batch, admissionFactsConfig(facts), "bootstrap"
-	command = exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "debit", "--config", writeIssuanceConfig(t, retired))
+	command = exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "debit", "--config", processfixture.WriteConfig(t, retired))
 	output, err := command.Output()
 	exit, ok := err.(*exec.ExitError)
 	if !ok || exit.ExitCode() != 2 || json.Unmarshal(output, &result) != nil || result.Outcome != "invalid-input" {
@@ -127,7 +128,7 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	_, _, binding := nodefixture.AdmissionCommandFixture(t, 2, 1, 2, 1)
 	root := filepath.Join(t.TempDir(), "ledger")
 	init := admissionInitializationConfig(root, binding)
-	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", writeIssuanceConfig(t, init), server.URL)
+	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", processfixture.WriteConfig(t, init), server.URL)
 	var log bytes.Buffer
 	command.Stderr = &log
 	if output, err := command.Output(); err != nil {

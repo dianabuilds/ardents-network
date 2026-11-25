@@ -8,16 +8,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
+	"runtime"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // RunCommand owns the native infrastructure artifact operation and its bounded report.
 func RunCommand(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || len(args) == 0 || !CommandHostSupported() {
+	if ctx == nil || len(args) == 0 || runtime.GOARCH != "amd64" {
 		return 2
 	}
 	if ctx.Err() != nil {

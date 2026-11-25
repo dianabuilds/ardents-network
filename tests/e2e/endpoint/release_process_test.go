@@ -3,14 +3,13 @@ package endpoint_test
 import (
 	"encoding/json"
 	"errors"
+	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-
-	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 
 func TestReleaseSyntaxRefusesBeforeHistoryEffects(t *testing.T) {
@@ -42,7 +41,7 @@ func currentReleasePlatform(protected bool) string {
 
 func signedReleaseProfile(t *testing.T, platform string, protected bool) (string, string, string) {
 	t.Helper()
-	return endpointfixture.SignedRelease(t, buildArdentsNext(t), platform, protected, false, 1, nil, nil, 1, 1)
+	return releasefixture.SignedRelease(t, buildArdentsNext(t), platform, protected, false, 1, nil, nil, 1, 1)
 }
 
 func TestReleaseCompiledForeignPlatformRefusesBeforeHistory(t *testing.T) {

@@ -145,7 +145,14 @@ func TestNativeEndpointColdWarmLatencyParticipant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(control, "result.json"), raw, 0600); err != nil {
+	// The root driver polls result.json. Publish it only after the complete
+	// report has been written inside the participant-owned control directory.
+	pending := filepath.Join(control, "result.pending")
+	defer os.Remove(pending)
+	if err := os.WriteFile(pending, raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(pending, filepath.Join(control, "result.json")); err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("cold/warm verdict: cold p95=%.1fms warm p95=%.1fms", verdict.ColdStats.P95MS, verdict.WarmStats.P95MS)

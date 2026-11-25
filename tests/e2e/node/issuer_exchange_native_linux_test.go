@@ -23,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // Actual hash-pinned Node Issuer in its sole native leaf, genuine signed State,
@@ -44,7 +45,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			processfixture.WaitAdmissionHour(t)
-			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+			spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 			listeners, certificates := addForwardingNodes(t, &spec, carrier, 1)
 			issuerID := spec.Nodes[0].NodeID
 			listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -59,15 +60,15 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
-			clock, closeClock := processfixture.StartObservedClock(t)
+			networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+			clock, closeClock := networkinputs.StartObservedClock(t)
 			defer closeClock()
-			issuerClock, closeIssuerClock := processfixture.StartObservedClock(t)
+			issuerClock, closeIssuerClock := networkinputs.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopIssuerClock := func() { clockOnce.Do(closeIssuerClock) }
 			defer stopIssuerClock()
 			seed := func() state.AuthorityDeclaration {
-				return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+				return networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 			}
 			var peers []*processfixture.NativeProcess
 			var bootstrapPeers []*bootstrapPeer
@@ -126,7 +127,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				"hosting_root": budget, "domain": 1, "deadline": time.Now().Add(30 * time.Second).UTC().Truncate(time.Second),
 				"work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			holder := map[string]any{"root": t.TempDir(), "network": networkPlan, "role": admission.AllocationUser, "route": route}
-			send, closeHolder := OpenAdmissionConsole(t, binary, "holder", writeNodePlan(t, holder))
+			send, closeHolder := processfixture.OpenAdmissionConsole(t, binary, "holder", writeNodePlan(t, holder))
 			request := send(map[string]any{"operation": "request", "maxima": [3]uint32{2, 4, 1}})
 			if request.Outcome != "completed" {
 				t.Fatal("holder request", request.Outcome)

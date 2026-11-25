@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/protobuf/proto"
@@ -82,7 +83,7 @@ func TestHostingCompiledCLIInitializationAndObservation(t *testing.T) {
 	plan := hostingInitializePlan(t)
 	command := func(operation string, input any) (hostingResult, error) {
 		t.Helper()
-		cmd := exec.CommandContext(t.Context(), binary, "hosting", operation, "--config", admissionCycleConfig(t, input))
+		cmd := exec.CommandContext(t.Context(), binary, "hosting", operation, "--config", processfixture.WriteConfig(t, input))
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
@@ -127,7 +128,7 @@ func TestHostingOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_PROTOCOL", "http/json")
 	t.Setenv("OTEL_TRACES_SAMPLER", "always_off")
 	p := hostingInitializePlan(t)
-	config := admissionCycleConfig(t, map[string]any{"root": p.Root, "policy": p.Policy})
+	config := processfixture.WriteConfig(t, map[string]any{"root": p.Root, "policy": p.Policy})
 	var out, log bytes.Buffer
 	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "hosting", "initialize", "--config", config, server.URL+"/")
 	command.Stdout, command.Stderr = &out, &log
@@ -229,7 +230,7 @@ func TestHostingCollectorFailurePreservesCommittedResult(t *testing.T) {
 				endpoint = server.URL
 			}
 			p := hostingInitializePlan(t)
-			config := admissionCycleConfig(t, map[string]any{"root": p.Root, "policy": p.Policy})
+			config := processfixture.WriteConfig(t, map[string]any{"root": p.Root, "policy": p.Policy})
 			var out, diagnostic bytes.Buffer
 			start := time.Now()
 			command := exec.CommandContext(t.Context(), binary, "hosting", "initialize", "--config", config, endpoint)

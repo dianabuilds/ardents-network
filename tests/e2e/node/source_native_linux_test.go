@@ -27,6 +27,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 
 	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
@@ -57,14 +58,14 @@ func TestNativeSourceOriginalInputsRetire(t *testing.T) {
 
 func nativeSourceWorkload(t *testing.T, mode string) {
 	binary := processfixture.PinnedCommand(t)
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, closeClock := processfixture.StartObservedClock(t)
+	clock, closeClock := networkinputs.StartObservedClock(t)
 	defer closeClock()
-	networkPlan := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+	networkPlan := networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	server, client, unauthorized, root, serverPin, clientPin := sourcefixture.NativeTLS(t)
 	cert, key := processfixture.WriteNativeCredential(t, server)
 	rootPath := filepath.Join(t.TempDir(), "root.pem")

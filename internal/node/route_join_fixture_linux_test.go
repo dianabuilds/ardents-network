@@ -1,0 +1,262 @@
+//go:build linux
+
+package node_test
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/tls"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/network"
+	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
+
+	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
+)
+
+type joinReceivingFixture struct {
+	spec      networkfixture.ClosedSpec
+	plan      issuer.Plan
+	profile   admission.AuthorityFacts
+	current   func() (network.RuntimeView, error)
+	authority funding.AdmissionAuthority
+}
+
+// newJoinRouteFixture supplies signed records and profiles through real new
+// State acceptance. The fixture owns no successful authority substitute.
+func newJoinRouteFixture(t *testing.T, profile transport.CarrierProfile) (*joinReceivingFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	t.Helper()
+	f, reservations, certificates := openJoinReceivingFixture(t, profile)
+	view, err := f.current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Members()) != 11 || len(reservations) != 10 || len(certificates) != 10 {
+		t.Fatal("JOIN fixture duty/endpoint count changed")
+	}
+	var counts [4][7]int
+	for idByte := byte(12); idByte <= 21; idByte++ {
+		id := [32]byte{idByte}
+		member, err := view.Member(id, view.ObservedAt())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if member.DutyGeneration != 9 || member.CarrierProfile != string(profile) {
+			t.Fatal("JOIN duty binding differs")
+		}
+		key, ok := certificates[id].PrivateKey.(ed25519.PrivateKey)
+		if !ok || !bytes.Equal(key.Public().(ed25519.PublicKey), member.PublicKey[:]) {
+			t.Fatal("JOIN certificate differs from signed exact member key")
+		}
+		counts[member.RoleDomain-1][member.Subrole]++
+	}
+	if counts[0][1] != 2 || counts[0][2] != 2 || counts[2][1] != 2 || counts[2][2] != 2 || counts[1][4] != 2 {
+		t.Fatal("JOIN opposite-role/terminal duties changed", counts)
+	}
+	return f, reservations, certificates
+}
+
+func openJoinReceivingFixture(t *testing.T, profile transport.CarrierProfile) (*joinReceivingFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	t.Helper()
+	if profile != transport.ClosedCarrierTCP && profile != transport.ClosedCarrierQUIC {
+		t.Fatal("unselected JOIN Carrier")
+	}
+	reservations := make(map[[32]byte]func())
+	certificates := make(map[[32]byte]tls.Certificate)
+	processfixture.WaitAdmissionHour(t)
+	fixture := networkinputs.OpenSignedAdmission(t, func(spec *networkfixture.ClosedSpec) {
+		processfixture.AddJoinFixtureNodes(t, spec, reservations, certificates, string(profile), profile == transport.ClosedCarrierTCP)
+	})
+	owner := fixture.State
+	authority := funding.NetworkAdmissionAuthority(owner.CurrentRuntime, owner.Close, owner.CurrentRuntimeWitness)
+	facts, _, err := authority.ObserveFacts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := &joinReceivingFixture{spec: fixture.Spec, plan: fixture.Plan, profile: facts, current: owner.CurrentRuntime, authority: authority}
+
+	return f, reservations, certificates
+}
+
+// joinRouteStock prepares one independently allocated principal's genuine
+// blinded class-2 batch, with one token for each of the ten actual receivers.
+// No token is presented until the real transport consumer authenticates HELLO.
+func joinRouteStock(t *testing.T, f *joinReceivingFixture, role admission.AllocationRole) *stock.Owner {
+	t.Helper()
+	if role != admission.AllocationUser && role != admission.AllocationPublisher {
+		t.Fatal("JOIN principal role unavailable")
+	}
+	root := t.TempDir()
+	if err := os.Chmod(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	holder, err := stock.Open(root, role, f.authority.ObserveFacts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := holder.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	maxima := [3]uint32{0, 10, 0}
+	raw, digest, err := holder.Request(maxima)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := allocation.Prepare(raw, f.profile.NetworkID, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision, err := request.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal := filepath.Join(t.TempDir(), "allocation")
+	if err := os.WriteFile(journal, decision.Journal(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	committed, err := os.ReadFile(journal)
+	if err != nil || !bytes.Equal(committed, decision.Journal()) {
+		t.Fatal("JOIN allocation durable readback", err)
+	}
+	permission := decision.Permission()
+	copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
+	encoded, err := admission.EncodePermission(permission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := holder.Import(digest, encoded); err != nil {
+		t.Fatal(err)
+	}
+	if status := holder.Status(); !status.Accepted || status.Remaining != maxima {
+		t.Fatalf("JOIN allocation maxima changed: %+v", status)
+	}
+	var challenges []token.ClosedTokenContext
+	view, err := f.current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for idByte := byte(12); idByte <= 21; idByte++ {
+		id := [32]byte{idByte}
+		member, err := view.Member(id, view.ObservedAt())
+		if err != nil {
+			t.Fatal(err)
+		}
+		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: id, ReceiverDutyGeneration: member.DutyGeneration, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
+	}
+	attempt, err := holder.Begin(stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{31, byte(role)}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	batch, _, err := attempt.Request()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := admission.DecodeClosedTokenBatch(batch)
+	if err != nil || decoded.Class != 2 || len(decoded.BlindedRequests) != 10 {
+		t.Fatal("JOIN blinded batch class/count", err)
+	}
+	issued := issuer.IssueCurrent(t.Context(), f.plan, batch, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
+		return f.authority.Issuer(f.plan.KeyBinding.Signer)
+	})
+	if issued.Outcome != "issued-offline" {
+		t.Fatal(issued)
+	}
+	response, err := admission.DecodeClosedTokenBatchResult(issued.Response)
+	if err != nil || response.Status != admission.ClosedTokenIssued || len(response.Signatures) != 10 {
+		t.Fatal("JOIN blind issuance result class/count", err)
+	}
+	if err := attempt.Complete(issued.Response, nil); err != nil {
+		t.Fatal(err)
+	}
+	if status := holder.Status(); !status.Accepted || status.Pending || status.Busy || status.Closed || status.Remaining != [3]uint32{} || status.BootstrapRemaining != 1 {
+		t.Fatalf("JOIN stock did not complete exactly one ten-token batch: %+v", status)
+	}
+	return holder
+}
+
+// startJoinRouteReceivers owns distinct receiving histories and Hosting budgets.
+// Each accepted Channel retains its real reservation until physical join.
+func startJoinRouteReceivers(t *testing.T, f *joinReceivingFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) ([]*routereceiver.Receiver, []*hosting.Budget) {
+	t.Helper()
+	return startJoinRouteReceiverRange(t, f, reservations, certificates, 21)
+}
+
+func startJoinRouteReceiverRange(t *testing.T, f *joinReceivingFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, last byte) ([]*routereceiver.Receiver, []*hosting.Budget) {
+	t.Helper()
+	var receivers []*routereceiver.Receiver
+	var budgets []*hosting.Budget
+	for idByte := byte(12); idByte <= last; idByte++ {
+		id := [32]byte{idByte}
+		view, err := f.current()
+		if err != nil {
+			t.Fatal(err)
+		}
+		member, err := view.Member(id, view.ObservedAt())
+		if err != nil {
+			t.Fatal(err)
+		}
+		duty, err := view.RetainDuty(id, view.ObservedAt())
+		if err != nil {
+			t.Fatal(err)
+		}
+		binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: member.DutyGeneration}
+		owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.Receiver(binding, member.NotAfter()) })
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := owner.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		budget := openReceivingFixtureBudget(t)
+		budgets = append(budgets, budget)
+		reservation, ok := reservations[id]
+		if !ok {
+			t.Fatal("JOIN endpoint reservation absent")
+		}
+		reservation()
+		certificate, ok := certificates[id]
+		if !ok {
+			t.Fatal("JOIN exact certificate absent")
+		}
+		receiver, err := routereceiver.Listen(t.Context(), routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificate, Admit: func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
+			return owner.Accept(ctx, admission.ForwardClass, raw, channel.Hello.Deadline, func() (func() error, error) {
+				release, err := reserveReceivingFixtureWork(ctx, budget, channel.Hello.Deadline)
+				if err != nil {
+					return nil, err
+				}
+				return channel.HoldReservation(release)
+			})
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		receivers = append(receivers, receiver)
+		t.Cleanup(func() {
+			if err := receiver.Close(); err != nil {
+				t.Error("JOIN receiver physical close", err)
+			}
+		})
+	}
+	return receivers, budgets
+}

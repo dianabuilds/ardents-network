@@ -20,11 +20,12 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
 func profileCommand(t *testing.T, operation string, plan map[string]any, collector string) (issuanceResult, error) {
 	t.Helper()
-	args := append(strings.Split(operation, "."), "--config", writeIssuanceConfig(t, plan))
+	args := append(strings.Split(operation, "."), "--config", processfixture.WriteConfig(t, plan))
 	if collector != "" {
 		args = append(args, collector)
 	}

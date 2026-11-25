@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,12 +13,11 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 func TestAdmissionAuthorityDoesNotInitializeMissingHistory(t *testing.T) {
 	binary, _, holderConfig := admissionConsoleFixture(t)
-	send, closeConsole := nodefixture.OpenAdmissionConsole(t, binary, "holder", holderConfig)
+	send, closeConsole := processfixture.OpenAdmissionConsole(t, binary, "holder", holderConfig)
 	if result := send(map[string]string{"operation": "status"}); result.Outcome != "completed" {
 		t.Fatal("positive holder control failed", result)
 	}

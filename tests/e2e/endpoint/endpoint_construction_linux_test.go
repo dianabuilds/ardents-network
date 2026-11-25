@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -229,7 +228,13 @@ func TestEndpointConstructPlanCommandRendersFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var plan endpoint.HeadlessPlan
+	var plan struct {
+		Schema                 string
+		NetworkID              string   `json:"network_id"`
+		NetworkAuthorities     []string `json:"network_authorities"`
+		ClosedProfileAuthority string   `json:"closed_profile_authority"`
+		NetworkThreshold       int      `json:"network_threshold"`
+	}
 	if err := json.Unmarshal(raw, &plan); err != nil || plan.Schema != "ardents-headless-runtime-v2" {
 		t.Fatalf("rendered headless plan is unavailable: %v %+v", err, plan)
 	}
@@ -242,7 +247,10 @@ func TestEndpointConstructPlanCommandRendersFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sourcePlan endpoint.SourcePlan
+	var sourcePlan struct {
+		Schema  string
+		Sources []json.RawMessage
+	}
 	if err := json.Unmarshal(sourceRaw, &sourcePlan); err != nil || sourcePlan.Schema != "ardents-source-plan-v1" || len(sourcePlan.Sources) != 2 {
 		t.Fatalf("rendered source plan is unavailable: %v", err)
 	}

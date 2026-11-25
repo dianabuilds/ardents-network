@@ -23,7 +23,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 		}
 		return file
 	}
-	fixture := parse("cmd/ardents-next/connection_response_loss_linux_test.go")
+	fixture := parse("internal/endpoint/connection_response_loss_linux_test.go")
 	constants := make(map[string]int)
 	ast.Inspect(fixture, func(node ast.Node) bool {
 		value, ok := node.(*ast.ValueSpec)
@@ -133,7 +133,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 func TestSuccessorConnectionControlProfileSelectsOriginalWriteSites(t *testing.T) {
 	root := repositoryRoot(t)
 	set := token.NewFileSet()
-	fixture, err := parser.ParseFile(set, filepath.Join(root, "cmd/ardents-next/connection_response_loss_linux_test.go"), nil, 0)
+	fixture, err := parser.ParseFile(set, filepath.Join(root, "internal/endpoint/connection_response_loss_linux_test.go"), nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

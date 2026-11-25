@@ -13,35 +13,37 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
-	processfixture "github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
+
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestEndpointHistoryCommandPreparesGenuineStateOnce(t *testing.T) {
 	binary := buildArdentsNext(t)
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	signed, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	root := t.TempDir()
 	public := hex.EncodeToString(spec.Authority.Public().(ed25519.PublicKey))
-	plan := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", Role: "reader",
-		NetworkStateRoot: filepath.Join(root, "state"), LocalRoleStateRoot: filepath.Join(root, "participation"), ApplicationTokenRoot: filepath.Join(root, "stock"),
-		TimeConfidenceFile: filepath.Join(root, "clock"), NetworkID: hex.EncodeToString(spec.NetworkID[:]),
-		EntryStateRoot:     filepath.Join(root, "route"),
-		NetworkAuthorities: []string{public}, ClosedProfileAuthority: public, NetworkThreshold: 1}
-	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot} {
+	stateRoot, roleRoot := filepath.Join(root, "state"), filepath.Join(root, "participation")
+	stockRoot, entryRoot, clock := filepath.Join(root, "stock"), filepath.Join(root, "route"), filepath.Join(root, "clock")
+	for _, path := range []string{stateRoot, roleRoot, stockRoot, entryRoot} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(plan.TimeConfidenceFile, nil, 0644); err != nil {
+	if err := os.WriteFile(clock, nil, 0644); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := json.Marshal(plan)
+	raw, err := json.Marshal(map[string]any{
+		"schema": "ardents-headless-runtime-v2", "role": "reader",
+		"network_state_root": stateRoot, "local_role_state_root": roleRoot, "text_token_root": stockRoot,
+		"time_confidence_file": clock, "network_id": hex.EncodeToString(spec.NetworkID[:]), "entry_state_root": entryRoot,
+		"network_authorities": []string{public}, "closed_profile_authority": public, "network_threshold": 1,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

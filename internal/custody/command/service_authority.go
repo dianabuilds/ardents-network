@@ -1,0 +1,121 @@
+package command
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"flag"
+	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/custody"
+)
+
+type serviceRequestCommitmentInput interface {
+	ReadServiceRequestCommitment(context.Context) ([32]byte, error)
+}
+
+func serviceAuthority(ctx context.Context, mode string, arguments []string, output io.Writer, input custody.SecretInput) error {
+	flags := flag.NewFlagSet(mode, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var root, record, requestPath, responsePath, environment, network, authorityRoot, kind, identity string
+	flags.StringVar(&root, "vault-root", "", "exclusive custody vault root")
+	flags.StringVar(&record, "record", "", "current opaque Service Authority record identifier")
+	flags.StringVar(&requestPath, "request", "", "canonical public Service Instance request")
+	flags.StringVar(&responsePath, "response", "", "new canonical public Service Credential response")
+	flags.StringVar(&environment, "environment-commitment", "", "environment SHA-256 commitment")
+	flags.StringVar(&network, "network-commitment", "", "Network identifier")
+	flags.StringVar(&authorityRoot, "root-commitment", "", "authority-root SHA-256 commitment")
+	flags.StringVar(&kind, "kind", "", "fixed service authority kind")
+	flags.StringVar(&identity, "id-commitment", "", "Service Authority identity commitment")
+	if err := flags.Parse(arguments); err != nil {
+		return err
+	}
+	if flags.NArg() != 0 || root == "" || input == nil {
+		return errors.New(mode + " requires a vault root, public inputs, and interactive secret input")
+	}
+	var operation custody.Operation
+	switch mode {
+	case "create-service-authority":
+		if record != "" || requestPath != "" || responsePath != "" || kind != "" || identity != "" {
+			return errors.New("create-service-authority accepts no record, request, response, kind, or identity")
+		}
+		binding, err := newAuthorityBinding(mode, custody.AuthorityService, environment, network, authorityRoot)
+		if err != nil {
+			return err
+		}
+		operation = custody.Operation{Kind: custody.OperationCreateServiceAuthority,
+			Binding: binding}
+	case "issue-service-credential":
+		if record == "" || requestPath == "" || responsePath == "" {
+			return errors.New("issue-service-credential requires record, request, and response")
+		}
+		binding, err := commandBinding(environment, network, authorityRoot, kind, identity)
+		if err != nil || binding.Kind != custody.AuthorityService {
+			return errors.New("issue-service-credential requires one exact Service Authority binding")
+		}
+		request, err := readAuthorityRequest(requestPath, 1024, "service Instance request")
+		if err != nil {
+			return err
+		}
+		commitmentInput, ok := input.(serviceRequestCommitmentInput)
+		if !ok {
+			return errors.New("issue-service-credential requires an independently transferred request commitment")
+		}
+		approvedCommitment, err := commitmentInput.ReadServiceRequestCommitment(ctx)
+		if err != nil {
+			return err
+		}
+		requestCommitment := sha256.Sum256(request)
+		if approvedCommitment != requestCommitment {
+			return errors.New("service request does not match the independently transferred commitment")
+		}
+		operation = custody.Operation{Kind: custody.OperationIssueServiceCredential,
+			RecordID: record, Expected: binding, ServiceRequest: request,
+			ServiceRequestCommitment: approvedCommitment}
+	default:
+		return errors.New("unsupported service Authority operation")
+	}
+	vault, err := custody.Open(custody.VaultConfig{Root: root})
+	if err != nil {
+		return err
+	}
+	receipt, executeErr := vault.Execute(ctx, operation, input)
+	if err := errors.Join(executeErr, vault.Close()); err != nil {
+		return err
+	}
+	if mode == "create-service-authority" {
+		return encodeServiceAuthorityReceipt(output, receipt)
+	}
+	if err := receipt.PublishServiceResponse(responsePath); err != nil {
+		return err
+	}
+	return encodeServiceCredentialReceipt(output, receipt)
+}
+
+func encodeServiceAuthorityReceipt(output io.Writer, receipt custody.Receipt) error {
+	return json.NewEncoder(output).Encode(struct {
+		Schema          string `json:"schema"`
+		RecordID        string `json:"record_id"`
+		IDCommitment    string `json:"id_commitment"`
+		AuthorityPublic string `json:"authority_public"`
+		Target          string `json:"target"`
+	}{Schema: "ardents-service-authority-v1", RecordID: receipt.RecordID,
+		IDCommitment:    hex.EncodeToString(receipt.Authority.Binding.IDCommitment[:]),
+		AuthorityPublic: hex.EncodeToString(receipt.ServiceAuthority.Public[:]),
+		Target:          hex.EncodeToString(receipt.ServiceAuthority.Target[:])})
+}
+
+func encodeServiceCredentialReceipt(output io.Writer, receipt custody.Receipt) error {
+	digest := sha256.Sum256(receipt.ServiceResponse)
+	return json.NewEncoder(output).Encode(struct {
+		Schema         string `json:"schema"`
+		RecordID       string `json:"record_id"`
+		Generation     uint64 `json:"generation"`
+		Response       []byte `json:"response"`
+		ResponseSHA256 string `json:"response_sha256"`
+	}{Schema: "ardents-service-credential-response-v1", RecordID: receipt.RecordID,
+		Generation: receipt.Authority.Watermarks[0].Value, Response: receipt.ServiceResponse,
+		ResponseSHA256: hex.EncodeToString(digest[:])})
+}

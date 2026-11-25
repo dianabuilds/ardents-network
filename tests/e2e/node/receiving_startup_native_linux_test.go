@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 type receivingStartupRole struct {
@@ -65,7 +66,7 @@ func testNativeReceivingStartup(t *testing.T, role receivingStartupRole) {
 
 func testReceivingStartupFault(t *testing.T, binary string, role receivingStartupRole, fault string) {
 	t.Helper()
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -79,9 +80,9 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 		t.Fatal(err)
 	}
 	member, other := bundle.Nodes[1], bundle.Nodes[0]
-	clock, stopClock := processfixture.StartObservedClock(t)
+	clock, stopClock := networkinputs.StartObservedClock(t)
 	defer stopClock()
-	network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+	network := networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 	cert, key := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
 	participation, spend, budget := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 	plan := map[string]any{

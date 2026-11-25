@@ -7,8 +7,10 @@ Select the registered Go toolchain and GNU Make on PATH before running
 checks the staged diff and does not invoke the full build.
 The architecture helper tests also require Python 3.11 or newer for
 `ExceptionGroup`/`BaseExceptionGroup` and the registered PowerShell release.
-On macOS, put the chosen Python installation's `libexec/bin` and the explicitly
-installed `ARDENTS_POWERSHELL_ROOT/bin` ahead of system tools on PATH. The
+On macOS, put the registered GNU Make on PATH ahead of the system `make`.
+The system version cannot read the package inventories. Put the chosen Python
+installation's `libexec/bin` and the explicitly installed
+`ARDENTS_POWERSHELL_ROOT/bin` ahead of system tools on PATH. The
 [dependency register](dependencies.md#development-tools) owns exact tool versions
 and the explicit installation workflow. Normal checks never install tools or
 skip missing prerequisites.
@@ -45,6 +47,12 @@ macOS and Windows. It checks exact refusal stdout, empty stderr and exit code
 1 for all five native startups and four retained repairs with absent plan files.
 The same dispatch returns exit code 2 if the refusal writer fails. The test
 checks that no plan file is created.
+
+The Node process suite selects the live Route Bootstrap, HELLO, Registration,
+Descriptor and JOIN scenarios on Linux. They provision real Admission and
+Hosting state and exercise the native receiving command. The signed deferred
+QUIC refusal also uses the Linux receiving command to reach the Carrier
+decision. The portable input tests exercise refusals before native startup.
 
 Endpoint history-preparation units use independently signed Epoch/profile bytes
 through real Network State, actual participation and role Stock files. They
@@ -134,7 +142,7 @@ refusals. The platform-led Forwarding lifecycle replaces them: the canonical
 platform unit with its mandatory `platform check` ExecStartPre gate,
 `ardents-next node forwarding --retained-config` and
 `ardents-next forwarding repair-retained`. Retained native evidence is
-`TestNativeForwardingPlatformInstalledLifecycle` under the
+`TestNativeForwardingPlatformInstalledLifecycle` in `tests/e2e/node` under the
 `forwarding_platform_native` build tag (the installed gate),
 `TestNativeNodeForwardingTCP` and `TestNativeForwardingRetainedLifecycle` in
 `forwarding-process-linux` (`node_process_native`). Forwarding Release signing
@@ -154,7 +162,7 @@ next retained opening refuses before listening). Its lifecycle legs are
 single-unit: one JOIN pair member owns its own participation root and sole
 node-duty fence; genuine paired JOIN byte transfer remains
 `TestNativeJoinDuplexAndReopenTCP` in `join-process-linux`.
-`TestNativeJoinPlatformInstalledLifecycle` under the `join_platform_native`
+`TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/node` under the `join_platform_native`
 build tag is the installed gate against the real platform systemd manager: the
 mandatory `platform check` ExecStartPre of `ardents-join.service`,
 `ardents-next node join --retained-config` as the shared fixed `ardents-node`
@@ -181,7 +189,7 @@ root, sole node-duty fence and Store root. The readiness oracle is the
 authenticated listener, NOT publication readiness; genuine publish/lookup over
 the Route prefix remains `TestNativeDescriptorPublishLookupAndReopenTCP` in
 `descriptor-process-linux`.
-`TestNativeDescriptorPlatformInstalledLifecycle` under the
+`TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/node` under the
 `descriptor_platform_native` build tag is the installed gate against the real
 platform systemd manager: the mandatory `platform check` ExecStartPre of
 `ardents-descriptor.service`, `ardents-next node descriptor --retained-config`
@@ -218,7 +226,7 @@ are removed. `ardents-node join ...` returns typed before-effect refusals. The
 platform-led JOIN lifecycle replaces them: the canonical platform unit with its
 mandatory `platform check` ExecStartPre gate, `ardents-next node join
 --retained-config` and `ardents-next join repair-retained`. Retained native
-evidence is `TestNativeJoinPlatformInstalledLifecycle` under the
+evidence is `TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/node` under the
 `join_platform_native` build tag (the installed gate), the `TestNativeJoin*`
 workloads in `join-process-linux`, including `TestNativeJoinRetainedLifecycle`
 (`node_process_native`). JOIN Release signing is preserved and cut over to the
@@ -244,7 +252,7 @@ refusals. The platform-led Descriptor lifecycle replaces them: the canonical
 platform unit with its mandatory `platform check` ExecStartPre gate,
 `ardents-next node descriptor --retained-config` and `ardents-next descriptor
 repair-retained`. Retained native evidence is
-`TestNativeDescriptorPlatformInstalledLifecycle` under the
+`TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/node` under the
 `descriptor_platform_native` build tag (the installed gate), the
 `TestNativeDescriptor*` workloads in `descriptor-process-linux`
 (`node-descriptor-check`), including `TestNativeDescriptorRetainedLifecycle`
@@ -835,8 +843,8 @@ foreign profile refusal and no allocation/presentation refunds.
 The retired installed installer profiles are superseded by the platform-led
 launch, replacement and two-host journey qualifications documented below.
 
-`TestExecutionSignedInstalledResources` in the Linux command profile builds the
-actual canonical participant and Text programs, combines the seven maintained
+`TestExecutionSignedInstalledResources` in the deterministic Release profile
+builds the canonical linux-amd64 participant and Text programs on the test host, combines the seven maintained
 packaging resources with independently encoded signed Enrollment/Release inventory,
 and executes genuine initial generation byte authentication. A coherent signed
 candidate advances the same retained Root and history; the older signed snapshot
@@ -844,7 +852,7 @@ must then refuse as a candidate. Its ephemeral signing
 and builder facts are fixtures. It does not start a manager, supply a completion
 peer or establish installed startup, containment or independent release custody.
 Changing the actual Text binary with the original pin and signed inventory must
-refuse before a fresh Release history directory exists.
+refuse Enrollment verification against the original signed inventory.
 The ordinary metadata fixture retains its separate synthetic static-byte scope.
 
 `TestInstalledSourceInputsRetainGenuineNetworkAuthority` exercises the new command's
@@ -1122,7 +1130,7 @@ establish the complete replay/Terminal/authority matrix or two independently
 installed Endpoint managers.
 
 `make execution-route-check` selects `TestInstalledExecutionRouteTCP`
-from the tagged `cmd/ardents-next` test binary installed at
+from the tagged `internal/endpoint` test binary installed at
 `/usr/lib/ardents/qualification/execution-command.test`
 and requires `service-authentication` on each selected Carrier. The separate
 `service-setup-handoff` control cancels Publisher's individual setup caller after
@@ -1132,6 +1140,10 @@ caller has already been canceled by its successful authentication return. The
 control preserves the original Work Safety deadline; the authority profile's
 earlier deadline and the stream profile's parent-loss controls remain separate
 refusal evidence.
+The installed Reader and Publisher console scenarios invoke the same
+`session.RunExecutionHolder` entry point as the CLI adapter, with typed
+execution plans inside the pinned non-root MainPID. The independent compiled
+Command refusal scenario exercises the CLI entry point.
 The authentication component
 uses the genuinely qualified original snapshot Publisher and ordinary Reader,
 command Publication composition, synced Descriptor Store, independently
@@ -1661,7 +1673,7 @@ checks. They share no live state or manager/account effects; complete inventorie
 exact birth checks, refusal cases and the selected native deadline remain unchanged.
 
 The genuine issuer exclusive-work, signed-State-loss and receiver-cancellation
-scenarios in `cmd/ardents-next/route_bootstrap_linux_test.go` and receiving
+scenarios in `internal/node/route_bootstrap_linux_test.go` and receiving
 Registration in `route_registration_linux_test.go` run in parallel.
 Each constructs its own authenticated State, Admission/Hosting histories, holder
 and reserved listeners; they share no live authority, roots or transport. Their
@@ -1670,7 +1682,7 @@ join assertions and the command package's five-minute terminal timeout. This
 schedule avoids adding their independent complete matrices serially to that
 package's elapsed time; it neither filters checks nor qualifies installed work.
 
-Issuer transport scenarios in `cmd/ardents-next/route_bootstrap_linux_test.go`
+Issuer transport scenarios in `internal/node/route_bootstrap_linux_test.go`
 and `route_process_linux_test.go` start with genuine permission but no offline
 token stock. Actual holder commands obtain two bootstrap batches, refuse a third,
 join bootstrap and establish fresh admitted channels before ordinary issuance on
@@ -1745,8 +1757,9 @@ the separate permission-only holder/compiled issuer scenario above.
 - `make route-check` runs only the new Network, Admission, Hosting,
   Publication, Connection, Reachability, Enrollment, Release, Installation and Route
   plus Execution local rules, installed preparation and physical mechanisms
-  owners plus `ardents-next`, with Linux race execution, both selected real
-  Carriers, compiled prefix/receiver processes and causal lifecycle cases.
+  owners, with Linux race execution. The Node E2E step runs the compiled
+  Prefix, receiving and JOIN scenarios over TCP/TLS and checks deferred
+  QUIC refusal before startup effects.
   Packages execute sequentially because genuine Hosting measurements count
   whole interfaces: concurrent packages would spend one another's loopback
   headroom between Observe and Reserve. All package tests, internal concurrency
@@ -1939,12 +1952,6 @@ These reservations do not qualify installed networking or systemd/cgroup use.
   absolute directory of an independently retained source archive. The verifiers
   still compare every recorded source digest and keep the report formats tied
   to the original capture. These reports are point-in-time observations.
-- `make text-role-durable-state-capture` runs the Linux-only isolated Role
-  publication/lookup/withdrawal observation. It requires
-  `ARDENTS_TEXT_ROLE_OBSERVATIONS` to name a writable capture directory outside
-  Git; the test writes secret-bearing raw observations there and retains them
-  locally. A non-Linux host or missing capture directory is an invalid profile,
-  not a passing skip.
 - `make fuzz` mutation-fuzzes the selected State target for a bounded
   30 seconds. State owns canonical Epoch/Node Record framing and checks
   successful parser digest/key/raw invariants. The command fails if the named
@@ -2486,7 +2493,10 @@ prerequisites. Missing Docker, binaries, privilege, platform, host input, or
 artifact is an invalid environment, never a skip or passing result.
 The architecture gate checks a declared timeout against that Make target's
 recipe and its target dependencies, so another profile's timeout cannot satisfy
-the registry entry.
+the registry entry. For literal local package arguments with a top-level test
+filter, it also checks that a test declaration matches on a maintained platform
+with the recipe's build tags. Running the profile verifies its host
+prerequisites and test outcomes.
 
 The maintained local profiles are:
 
@@ -2575,14 +2585,6 @@ The maintained local profiles are:
   offline provisioning and Release signing tests. Successor platform-led Endpoint
   qualification is a separate selected composition;
 - `service-credential-response-linux`;
-- `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
-  durable-state observation; it retains secret-bearing raw observations only in
-  an existing, writable, non-symlink directory outside the Git worktree. State,
-  OS placement and pressure/owner-use are explicit component models: participants
-  share a container cgroup, so its departing processes cannot supply isolated
-  Role owner-use evidence. Duties still run through Node with real durable
-  hosting allowance accounting. This profile does not qualify systemd/cgroup
-  placement, resource use, latency or full P3 protection;
 - the retired two-Endpoint alpha-control runner is no longer a contributor
   route. Its historical receipts remain in their existing evidence locations;
   its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
@@ -2775,7 +2777,7 @@ Neither category substitutes for the other.
 | Introduction recipient reobservation preserves the exact original cancellation, physical failure and mixed cause without inventing a duty mismatch | `internal/route/prefix/introduction_channel_test.go`, `TestRegistrationRecipientObservationRetainsOriginalFailure`; failure-only observations exercise the same member-check owner used by actual registration. Successful signed authority and ACK remain genuine command scenarios |
 | Handshake failure category: a refused peer cannot hide an unrelated listener or cleanup failure in a joined error | `internal/route/transport/handshake_failure_test.go`; portable complete-tree classification, with original error causes retained. Receiving composition uses this category to decide whether its listener remains usable |
 | Shared actual-adapter contract: TCP/TLS classifies direct/Node arrivals, exchange ordered bytes, bound handshake capacity and join readers interrupted by physical Close | `internal/route/prefix/adapter_contract_test.go` and `adapter_retirement_test.go`, external tests on Windows/Linux. The actual opening/composition owner hosts this external contract matrix and imports the real TCP/TLS adapter; lower transport imports neither, including in its tests. Prefix and receiver select the exact profile at their real opening/listening operations; the former carrier package has no runtime or test facade |
-| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `cmd/ardents-next/route_prefix_caller_linux_test.go`, `route_refill_linux_test.go`, `route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
+| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/node/route_refill_linux_test.go`, `tests/e2e/node/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
 | Prefix original-generation retention: idle retirement of a stopped terminal borrower waits for its physical join before parent readers and resource return, preserves its late failure and repeated result | `internal/route/prefix/borrowing_test.go`; controlled borrower completion with actual parent pipe readers. No successful authority or Registration is supplied. The actual Prefix mechanics and these tests are portable on Windows and Linux; Prefix is the actual generation owner |
 
 These are behavior-owner links, not a second task ledger or an installed
@@ -2793,7 +2795,7 @@ key/encapsulation/info; this is suite evidence, not live authority.
 `recipient_lifetime_test.go` retains an original failure-only user across Close
 and requires key/capacity erasure after its join. Genuine signed Network,
 host-generated Instance and TCP/TLS REGISTER composition in
-`cmd/ardents-next/publication_registration_linux_test.go` exercises the same
+`internal/node/publication_registration_linux_test.go` exercises the same
 borrowed fixed opening and exact foreign-binding refusal. Candidate Rendezvous,
 Connection and Work Safety fields in that scenario remain unaccepted input;
 this evidence establishes no replay commit or successful downstream delivery.
@@ -2820,7 +2822,7 @@ Genuine TCP/TLS admitted and compiled JOIN scenarios remain in
 `cmd/ardents-next` and the full new-domain profile.
 
 Original WITHDRAW caller cancellation has two genuine TCP/TLS controls in
-`cmd/ardents-next/route_registration_linux_test.go`: cancellation just after a
+`internal/node/route_registration_linux_test.go`: cancellation just after a
 live caller observation with its callback delayed, and cancellation while its
 callback stop completes after the real Registry ACK. Both require canceled
 operation and retained Close results, exactly one callback stop, joined cleanup
@@ -3075,7 +3077,7 @@ insufficient: executing the candidates on macOS and tracing their production
 seams showed most compose Linux-only mechanisms or serve Linux-only consumers.
 Three files are genuinely portable and were de-tagged to execute in the portable
 deterministic inventory on Windows and macOS: the Network initial-key
-argument/cancellation refusals (`cmd/ardents-next/network_keys_test.go`, refused
+argument/cancellation refusals (`tests/e2e/node/network_keys_input_test.go`, refused
 before `provisioning.PrepareInitialNetworkKeys`), the issuance owned-destination
 inventory refusal (`internal/admission/issuance/inventory_delivery_test.go`,
 refused before the platform seam), and the custody symlinked-record-directory
@@ -3090,25 +3092,21 @@ durable behavior tests. The other 21 files keep their Linux constraint:
 
 - Fixtures whose only consumers are Linux-tagged tests, so de-tagging would add
   windows-test-dead helpers without a portable consumer:
-  `network_socket_fixture_linux_test.go`, `tests/e2e/node/hosting_transfer_fixture_linux_test.go`,
   `route_composition_linux_test.go` (session `Open*` keep `!linux` refusals),
   `publication_registration_linux_test.go` (also composes Linux-only Instance
   custody), `issuance_telemetry_linux_test.go`, and
   `application/document/reader_connection_fixture_test.go` (serves only the Linux
   AAI3 listener control).
 - Tests that open Linux-only production seams and refuse at runtime on other
-  platforms: `cmd/ardents-next/hosting_linux_test.go` and
-  `internal/hosting/counter_linux_test.go` (hosting platform lease and `/sys`
-  counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
+  platforms: `internal/hosting/counter_linux_test.go` (Hosting platform lease
+  and `/sys` counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
   (the retained-opening test is Linux-selected),
   `admission/issuer/lifecycle_linux_test.go` (issuance `storage_linux.go`/
-  `results_linux.go`), `cmd/ardents-next/document_publisher_linux_test.go`
-  (`document.ReadSnapshotFile` no-follow Linux importer), and
-  `cmd/ardents-next/execution_artifact_linux_test.go` (linux-amd64 systemd
-  installed-resource Enrollment).
+  `results_linux.go`), `internal/application/administration/document_publisher_linux_test.go`
+  (`document.ReadSnapshotFile` no-follow Linux importer).
 - Tests whose exact refusal projection is produced only by the Linux command
   composition; the `!linux` stubs project `unsupported-platform` instead:
-  `cmd/ardents-next/platform_linux_test.go`, `installed_cancellation_linux_test.go`,
+  `installed_cancellation_linux_test.go`,
   `node_role_cancellation_linux_test.go`, `tests/e2e/node/retained_state_linux_test.go`,
   and `tests/e2e/service/publication_instance_process_linux_test.go` (Instance
   private host-root custody is Unix-family since #863 via `custody_unix.go`;
@@ -3309,7 +3307,7 @@ terminal cannot accumulate another full burst, emission and joined disposal
 never refund its debit, fractional refill survives, and copied handles cannot
 multiply the actual adjacency or return another claim.
 
-`cmd/ardents-next/route_bootstrap_linux_test.go` uses genuine signed Network,
+`internal/node/route_bootstrap_linux_test.go` uses genuine signed Network,
 Stock, receiving spend and Hosting on TCP/TLS: four pending restricted
 children retain their actual Hosting work/termination and Route allocations,
 the fifth refuses before TLS/admission and
@@ -3463,8 +3461,11 @@ a distinct build of the same checked source.
 ## Protected Endpoint platform-led full-launch native qualification
 
 The `endpoint_launch_native` build tag selects
-`cmd/ardents-next/endpoint_launch_native_linux_test.go`
-(`TestNativeEndpointPlatformLedLaunch` + `...Refusals`), a real-host root-driver
+`tests/e2e/endpoint/launch_replacement_native_linux_test.go`
+(`TestNativeEndpointPlatformLedLaunch`) and
+`tests/e2e/endpoint/launch_refusals_native_linux_test.go`
+(`TestNativeEndpointPlatformLedLaunchRefusals`). Run them serially with
+`go test -tags endpoint_launch_native -run '^TestNativeEndpointPlatformLedLaunch' -count=1 -v ./tests/e2e/endpoint`. This is a real-host root-driver
 qualification on an admitted Ubuntu/systemd manager (systemd 249/255,
 `/usr/bin/busctl --system`, cgroup v2). Missing privileges or manager fail, never
 a passing skip. It is not a `make quick-check` executed lane; the ordinary suite
@@ -3518,7 +3519,7 @@ Build and run the v6 fixture with:
 sudo env "PATH=$PATH" "GOTOOLCHAIN=local" \
   "ARDENTS_ENROLLMENT_V5_ARTIFACTS=/absolute/path/to/pinned-v5-artifacts" \
   go test -tags endpoint_launch_native,endpoint_enrollment_migration_native \
-  ./cmd/ardents-next -run '^TestNativeEndpointEnrollmentV5ToV6$' -count=1
+  ./tests/e2e/endpoint -run '^TestNativeEndpointEnrollmentV5ToV6$' -count=1
 ```
 
 The original v5 program stages and boots the signed predecessor with its
@@ -3541,12 +3542,14 @@ This is real-host replacement evidence with a live Worker and fixture authority.
 ## Protected Endpoint NET-32 user-idle native measurement
 
 The `endpoint_launch_native` build tag additionally selects
-`cmd/ardents-next/endpoint_idle_native_linux_test.go`
-(`TestNativeEndpointPlatformLedIdle` and
-`TestNET32IdleFreshBoundaryBypassesRecentHostingSample`), a real-host root-driver
+`tests/e2e/endpoint/endpoint_idle_native_linux_test.go`
+(`TestNativeEndpointPlatformLedIdle`), a real-host root-driver
 measurement on an admitted Ubuntu/systemd manager (systemd 249/255, cgroup v2).
+The same tag selects the fresh Hosting boundary regression in `tests/e2e/endpoint`.
+That package also owns the portable projection and sampling tests and the
+Linux provider-accounting integration test.
 Run it explicitly, for example `go test -tags endpoint_launch_native -run
-'^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./cmd/ardents-next`;
+'^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./tests/e2e/endpoint`;
 missing privileges or manager are an invalid environment and fail, never a
 passing skip. Like the sibling native qualifications it is not a `make
 quick-check` executed lane and has no profiles.json entry; it is
@@ -3622,9 +3625,10 @@ dependency; its bounded use and patched-systemd applicability are recorded in
 ## Protected Endpoint platform-led text journey native qualification
 
 The `endpoint_pair_native` build tag additionally selects
-`cmd/ardents-next/endpoint_journey_native_linux_test.go` (compiled together with
+`internal/endpoint/endpoint_journey_native_linux_test.go` (compiled together with
 `document_worker_installed`), the #391 S2.2 journey harness. It reuses one unchanged
-platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`):
+platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`) in
+`tests/e2e/endpoint/journey_participant_native_linux_test.go`:
 the participant receives only public signed Network material and actual
 permission requests/responses over a local fixture channel, independently
 provisions and platform-led-launches a dual-role Endpoint with its own random
@@ -3916,7 +3920,7 @@ profile (`make join-installed-check`, `join_installed_native`,
 `JOIN_INSTALLED_TEST` protected-startup/pair, forward-replacement and
 replacement-recovery journeys) retired with the transitional JOIN orchestration
 (#604 FJD stage D, ADR-0125). The platform-led JOIN lifecycle owns installed
-qualification; see `TestNativeJoinPlatformInstalledLifecycle` under the
+qualification; see `TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/node` under the
 `join_platform_native` build tag and the retained repair mechanism. The ordinary
 fixed manager grammar still admits only the JOIN object on the retained
 read-only JoinRuntime vocabulary and rejects every other Node/Source object and
@@ -4021,8 +4025,7 @@ covered by `TestManagerCgroupControlTargetPolicy`.
 ### Installed Endpoint latency qualification
 
 The cold/warm latency pair uses `TestNativeEndpointColdWarmLatency` in
-`cmd/ardents-next` and `TestNativeEndpointColdWarmLatencyParticipant` in
-`internal/endpoint`, selected by `endpoint_launch_native`. The driver requires
+`internal/endpoint` alongside `TestNativeEndpointColdWarmLatencyParticipant`, selected by `endpoint_launch_native`. The driver requires
 a real Ubuntu/systemd host, `/usr/bin/busctl --system`, a loaded
 `ardents-endpoint.service` qualification unit and a platform-led installed root.
 `make platform-installed-compile-check` compiles the pair. An explicit native

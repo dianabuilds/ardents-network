@@ -456,9 +456,8 @@ Docker Desktop is not a substitute for one.
 
 Run `ardents-next diagnostics timeline` with the existing bounded stdin interface
 for its exact human-readable Node/Source/Endpoint projection. The common package
-recognizes those schemas for its own fixed metrics. For isolated Role state,
-use the existing `make text-role-durable-state-capture` with its explicit Linux
-input/output contract. For heap dumps, use `heapdump-capture`/`heapdump-role-map`
+recognizes those schemas for its own fixed metrics. For heap dumps, use
+`heapdump-capture`/`heapdump-role-map`
 with their existing manifest/profile prerequisites. Installed worker runners
 remain on actual qualifying hosts; this container cannot supply systemd
 confinement or replace an installed receipt.

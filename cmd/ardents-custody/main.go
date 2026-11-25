@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+
+	"github.com/dianabuilds/ardents-network/internal/custody/command"
 )
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	input := terminalSecretInput{terminal: os.Stdin, prompts: os.Stderr}
-	if err := run(ctx, os.Args[1:], os.Stdout, input); err != nil {
+	if err := command.Run(ctx, os.Args[1:], os.Stdout, os.Stderr, os.Stdin); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}

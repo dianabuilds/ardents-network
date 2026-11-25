@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +40,7 @@ func issuanceCommandPlan(t *testing.T) (issuancePlan, map[string]any) {
 }
 func issuanceCommand(t *testing.T, operation string, p map[string]any, collector string) (issuanceResult, error) {
 	t.Helper()
-	args := []string{"issuance", operation, "--config", writeIssuanceConfig(t, p)}
+	args := []string{"issuance", operation, "--config", processfixture.WriteConfig(t, p)}
 	if collector != "" {
 		args = append(args, collector)
 	}
@@ -111,7 +112,7 @@ func TestIssuanceCompiledCLI(t *testing.T) {
 		}
 		binding.Keys = append(binding.Keys, issuerprofile.Key{Window: inventory.Keys[i].Window, Class: k.Class, SPKI: spki})
 	}
-	config := writeIssuanceConfig(t, map[string]any{"root": filepath.Join(filepath.Dir(p.Root), "admission"), "binding": admissionBindingConfig(binding)})
+	config := processfixture.WriteConfig(t, map[string]any{"root": filepath.Join(filepath.Dir(p.Root), "admission"), "binding": admissionBindingConfig(binding)})
 	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "admission", "initialize", "--config", config)
 	if result, e := command.CombinedOutput(); e != nil {
 		t.Fatal(e, string(result))
@@ -147,7 +148,7 @@ func TestIssuanceCLICrashReopen(t *testing.T) {
 			}))
 			defer server.Close()
 			defer close(release)
-			command := exec.CommandContext(t.Context(), buildNodeCommand(t), "issuance", "initialize", "--config", writeIssuanceConfig(t, input), server.URL)
+			command := exec.CommandContext(t.Context(), buildNodeCommand(t), "issuance", "initialize", "--config", processfixture.WriteConfig(t, input), server.URL)
 			var out bytes.Buffer
 			command.Stdout = &out
 			if e := command.Start(); e != nil {
@@ -216,19 +217,6 @@ type issuancePlan struct {
 	Root          string
 	Binding       issuance.Binding
 	InventoryFile string
-}
-
-func writeIssuanceConfig(t *testing.T, value any) string {
-	t.Helper()
-	raw, err := json.Marshal(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(t.TempDir(), "config.json")
-	if err = os.WriteFile(path, raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	return path
 }
 
 type issuanceBindingInput struct {

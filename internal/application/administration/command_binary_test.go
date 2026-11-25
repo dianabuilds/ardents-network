@@ -22,17 +22,13 @@ func buildArdentsNext(t *testing.T) string {
 		}
 		return prebuilt
 	}
-	_, source, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("locate E2E source")
-	}
 	name := "ardents-next"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
 	path := filepath.Join(t.TempDir(), name)
-	build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "./cmd/ardents-next")
-	build.Dir = filepath.Clean(filepath.Join(filepath.Dir(source), "..", "..", ".."))
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "./cmd/ardents-next")
+	build.Dir = filepath.Join("..", "..", "..")
 	build.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build Ardents Next command: %v\n%s", err, output)

@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 func admissionConsoleFixture(t *testing.T) (string, string, string) {
@@ -81,14 +81,14 @@ func admissionConsoleFixture(t *testing.T) (string, string, string) {
 func TestAdmissionConsolesCloseAndReopen(t *testing.T) {
 	binary, config, holderConfig := admissionConsoleFixture(t)
 	for range 2 {
-		send, closeConsole := nodefixture.OpenAdmissionConsole(t, binary, "receiver", config)
+		send, closeConsole := processfixture.OpenAdmissionConsole(t, binary, "receiver", config)
 		if reply := send(map[string]string{"operation": "release"}); reply.Outcome != "completed" {
 			t.Fatal("receiver refused release", reply)
 		}
 		closeConsole()
 	}
 	for range 2 {
-		send, closeConsole := nodefixture.OpenAdmissionConsole(t, binary, "holder", holderConfig)
+		send, closeConsole := processfixture.OpenAdmissionConsole(t, binary, "holder", holderConfig)
 		if reply := send(map[string]string{"operation": "status"}); reply.Outcome != "completed" {
 			t.Fatal("holder refused status", reply)
 		}

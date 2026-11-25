@@ -32,6 +32,7 @@ import (
 	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // The driver owns only signed inputs and a real client. Both initial admission
@@ -52,7 +53,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 							t.Fatal(t.Context().Err())
 						}
 					}
-					spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+					spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 					listener, err := net.Listen("tcp", "127.0.0.1:0")
 					if err != nil {
 						t.Fatal(err)
@@ -64,11 +65,11 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 						t.Fatal(err)
 					}
 					profile := sha256.Sum256(bundle.Profile)
-					processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], profile)
-					clock, closeClock := processfixture.StartObservedClock(t)
+					networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], profile)
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
 					seed := func() state.AuthorityDeclaration {
-						return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+						return networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 					}
 					authorityPlan := seed()
 					config, err := authorityPlan.Config()

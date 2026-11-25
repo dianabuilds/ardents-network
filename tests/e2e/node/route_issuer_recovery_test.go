@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // TestIssuerLostResultDoesNotReconstructHolder uses real holder and offline
@@ -27,19 +28,19 @@ import (
 func TestIssuerLostResultDoesNotReconstructHolder(t *testing.T) {
 	binary := buildNodeCommand(t)
 	processfixture.WaitAdmissionHour(t)
-	spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, processfixture.TempDir(t))
+	spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, processfixture.TempDir(t))
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
-	processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
-	clock, stopClock := processfixture.StartObservedClock(t)
+	networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+	clock, stopClock := networkinputs.StartObservedClock(t)
 	defer stopClock()
 	var authorityKey [32]byte
 	copy(authorityKey[:], spec.Authority.Public().(ed25519.PublicKey))
 	seed := func() state.AuthorityDeclaration {
 		t.Helper()
-		return processfixture.SeedNetworkState(t, spec.NetworkID, authorityKey, bundle, clock)
+		return networkinputs.SeedNetworkState(t, spec.NetworkID, authorityKey, bundle, clock)
 	}
 	networkPlan := seed()
 	config, err := networkPlan.Config()
@@ -97,7 +98,7 @@ func TestIssuerLostResultDoesNotReconstructHolder(t *testing.T) {
 	}
 	refuse := func(input map[string]any) localAdmissionReply {
 		t.Helper()
-		cmd := exec.CommandContext(t.Context(), binary, "admission", "issue-current", "--config", admissionCycleConfig(t, input))
+		cmd := exec.CommandContext(t.Context(), binary, "admission", "issue-current", "--config", processfixture.WriteConfig(t, input))
 		output, err := cmd.CombinedOutput()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) || exit.ExitCode() != 1 {

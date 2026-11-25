@@ -12,6 +12,7 @@ import (
 
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
+	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 )
 
 // CopyNativeDistribution stages a fixture bundle under the native test root.
@@ -65,7 +66,7 @@ func NativeLaunch(t *testing.T, requestPath, distribution string) launch.Declara
 		if err != nil {
 			t.Fatal(err)
 		}
-		inputs[path] = FixtureDigest(data)
+		inputs[path] = releasefixture.FixtureDigest(data)
 	}
 	descriptor, err := os.ReadFile(filepath.Join(distribution, "protected-endpoint.json"))
 	if err != nil {
@@ -74,8 +75,8 @@ func NativeLaunch(t *testing.T, requestPath, distribution string) launch.Declara
 	return launch.Declaration{
 		Role: "endpoint", Distribution: distribution, ReleaseRoot: decl.ReleaseFloorRoot,
 		Environment: "h3-test", Network: "new-release-test",
-		Program:       filepath.Join(decl.InstallationRoot, "generations", FixtureDigest(descriptor), "ardents-linux-amd64"),
-		Configuration: requestPath, ConfigSHA256: FixtureDigest(raw), WritableRoots: roots, Inputs: inputs,
+		Program:       filepath.Join(decl.InstallationRoot, "generations", releasefixture.FixtureDigest(descriptor), "ardents-linux-amd64"),
+		Configuration: requestPath, ConfigSHA256: releasefixture.FixtureDigest(raw), WritableRoots: roots, Inputs: inputs,
 	}
 }
 
@@ -87,7 +88,7 @@ func writePlatformNativeLaunch(t *testing.T, path string, launch launch.Declarat
 	}
 	raw = append(raw, '\n')
 	writePlatformNativeFile(t, path, raw, 0644)
-	return FixtureDigest(raw)
+	return releasefixture.FixtureDigest(raw)
 }
 
 func writePlatformNativeFile(t *testing.T, path string, data []byte, mode os.FileMode) {
@@ -174,7 +175,7 @@ func platformNativeWorkers(t *testing.T, distribution string, gid int) {
 		}
 		writePlatformNativeFile(t, path, data, mode)
 		if name != "ardents-text.conf" {
-			digests[path] = FixtureDigest(data)
+			digests[path] = releasefixture.FixtureDigest(data)
 		}
 	}
 	if err := os.Chmod(workerRoot, 0555); err != nil {

@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+// newAttachment binds an accepted local socket to the exact worker process
+// identity whose credentials every read must present.
+func newAttachment(connection *net.UnixConn, pid, uid uint32) *Attachment {
+	return &Attachment{connection: connection, pid: pid, uid: uid}
+}
+
 // Activate performs the installed activation sequence: parent-service and
 // platform verification, artifact pinning, activation-socket inspection,
 // instance baseline, socket dial, credential preparation, socket identity

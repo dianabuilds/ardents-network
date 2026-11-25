@@ -77,8 +77,14 @@ func (a *Acquisition) Join(ctx context.Context, config Config) (_ *Joined, resul
 	terminal, side, err := a.borrows.OpenChannel(child, ctx, config.Duty, config.Deadline, config.SetupDeadline)
 	var joined *Joined
 	defer func() {
+		callerFailure := ctx.Err()
 		terminal.JoinSetupInterruption()
 		if result != nil {
+			// Cancellation may first surface as a physical I/O failure while
+			// opening the terminal or exchanging JOIN frames.
+			if callerFailure != nil && !errors.Is(result, callerFailure) {
+				result = errors.Join(result, callerFailure)
+			}
 			result = errors.Join(result, a.cleanupJoin(joined, terminal))
 		}
 	}()
@@ -105,9 +111,6 @@ func (a *Acquisition) Join(ctx context.Context, config Config) (_ *Joined, resul
 	}
 	frame, err := ardp.ReadFrame(terminal.Stream())
 	if err != nil {
-		if cause := ctx.Err(); cause != nil {
-			err = errors.Join(err, cause)
-		}
 		return nil, err
 	}
 	status, err := ardp.DecodeJoinResult(frame.Body, request.Nonce)

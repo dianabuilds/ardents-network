@@ -18,22 +18,22 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // These are genuine State servers and a real compiled profile intake consumer.
 // All fixture infrastructure has one controller. No installed startup, root
 // completion exchange, independent Source families or Service readiness is proved.
 func TestSourceRefreshRetainsGenuineNetworkAuthority(t *testing.T) {
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	bundle, err := networkfixture.BuildClosed(spec)
 	if err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	clockPath, closeClock := processfixture.StartObservedClock(t)
+	clockPath, closeClock := networkinputs.StartObservedClock(t)
 	t.Cleanup(closeClock)
 	public := spec.Authority.Public().(ed25519.PublicKey)
 	var authorityKey [32]byte

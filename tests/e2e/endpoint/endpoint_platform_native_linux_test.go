@@ -25,9 +25,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
+	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
-	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 
@@ -183,7 +183,7 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer.ManifestSHA256 = endpointfixture.FixtureDigest(newerManifest)
+	newer.ManifestSHA256 = releasefixture.FixtureDigest(newerManifest)
 	raw, err := json.Marshal(newer)
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +234,7 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest := endpointfixture.FixtureDigest(descriptor)
+	digest := releasefixture.FixtureDigest(descriptor)
 	if !bytes.Contains(selectedBytes, []byte(digest)) {
 		t.Fatal("selection does not identify the independently pinned descriptor")
 	}
@@ -269,12 +269,12 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 		t.Fatal(err)
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
-	authority := nodefixture.NewReleaseAuthority(t, ref.Add(365*24*time.Hour))
+	authority := releasefixture.NewReleaseAuthority(t, ref.Add(365*24*time.Hour))
 	resources := endpointfixture.NativeResources()
 
 	// Version 1 establishes complete retained Release floors through genuine
 	// initial-pin provenance and the actual two-target authorization.
-	firstDir, firstPin, firstProgram := endpointfixture.SignedRelease(t, binary, "linux-amd64", true, true, 1, resources, authority, 1, 1)
+	firstDir, firstPin, firstProgram := releasefixture.SignedRelease(t, binary, "linux-amd64", true, true, 1, resources, authority, 1, 1)
 
 	stand := &endpointPlatformNativeStand{binary: binary, binaryBytes: binaryBytes}
 	stand.base = filepath.Join("/var/lib/ardents", fmt.Sprintf("ep-proof-%d-%d", os.Getpid(), time.Now().UnixNano()))
@@ -295,7 +295,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	// Version 2 is the enrolled protected candidate the platform delivers. Its
 	// program bytes are the actual compiled consumer; the generation executable
 	// is the same bytes at the selected generation path.
-	stand.distribution, _, _ = endpointfixture.SignedRelease(t, binary, "linux-amd64", true, true, 2, resources, authority, 2, 2)
+	stand.distribution, _, _ = releasefixture.SignedRelease(t, binary, "linux-amd64", true, true, 2, resources, authority, 2, 2)
 	candidate, err := enrollment.ReadCandidate(ctx, stand.distribution)
 	if err != nil {
 		t.Fatal("enrolled candidate:", err)
@@ -448,13 +448,13 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 // stage seeds and accepts them through their actual owners).
 func endpointPlatformNativeDeclaration(t *testing.T, stand *endpointPlatformNativeStand) requestinput.Declaration {
 	t.Helper()
-	spec, _, _ := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	key := spec.Authority.Public().(ed25519.PublicKey)
 	keyHex := hex.EncodeToString(key)
 	networkID := hex.EncodeToString(spec.NetworkID[:])
 	roles := filepath.Join(stand.base, "roles", "endpoint")
 	run := filepath.Join("/run/ardents", fmt.Sprintf("ep-proof-%d", os.Getpid()))
-	clock, closeClock := processfixture.StartObservedClock(t)
+	clock, closeClock := networkinputs.StartObservedClock(t)
 	t.Cleanup(closeClock)
 	return requestinput.Declaration{
 		Schema:           "ardents-endpoint-installation-request-v1",

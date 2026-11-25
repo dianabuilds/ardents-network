@@ -1,11 +1,12 @@
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
+github.com/dianabuilds/ardents-network/internal/custody/command
 github.com/dianabuilds/ardents-network/internal/application/administration
 github.com/dianabuilds/ardents-network/internal/diagnostics/process
 github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry
 github.com/dianabuilds/ardents-network/internal/diagnostics/timeline
 github.com/dianabuilds/ardents-network/internal/architecture
-github.com/dianabuilds/ardents-network/internal/admission
 github.com/dianabuilds/ardents-network/cmd/ardents-next
+github.com/dianabuilds/ardents-network/internal/admission
 
 github.com/dianabuilds/ardents-network/internal/application/document/worker
 github.com/dianabuilds/ardents-network/tests/qualification/worker-lifecycle/stream-worker
@@ -13,6 +14,8 @@ github.com/dianabuilds/ardents-network/internal/application/connection
 github.com/dianabuilds/ardents-network/internal/application/document
 github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network
+github.com/dianabuilds/ardents-network/tests/releasefixture
+github.com/dianabuilds/ardents-network/tests/networkfixture
 github.com/dianabuilds/ardents-network/internal/hosting
 github.com/dianabuilds/ardents-network/internal/publication
 github.com/dianabuilds/ardents-network/internal/publication/durable
@@ -21,6 +24,7 @@ github.com/dianabuilds/ardents-network/internal/publication/runtime
 github.com/dianabuilds/ardents-network/internal/reachability
 github.com/dianabuilds/ardents-network/internal/enrollment
 github.com/dianabuilds/ardents-network/internal/admission/issuance
+github.com/dianabuilds/ardents-network/internal/admission/operator
 github.com/dianabuilds/ardents-network/internal/admission/issuer
 github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing
 github.com/dianabuilds/ardents-network/internal/admission/issuerprofile

@@ -30,6 +30,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestNativeNodeForwardingTCP(t *testing.T) {
@@ -43,7 +44,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 	for _, carrier := range []string{epoch.CarrierClosedTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			processfixture.WaitAdmissionHour(t)
-			spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+			spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 			listeners, certificates := addForwardingNodes(t, &spec, carrier, 3)
 			var provisioned map[[32]byte][2]string
 			if retirement == "certificate" {
@@ -53,13 +54,13 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
-			clock, closeClock := processfixture.StartObservedClock(t)
+			networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+			clock, closeClock := networkinputs.StartObservedClock(t)
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
 			seed := func() state.AuthorityDeclaration {
-				return processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+				return networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 			}
 			authorityPlan := seed()
 			config, err := authorityPlan.Config()
@@ -115,7 +116,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				"work": hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10},
 			}
 			holder := map[string]any{"root": t.TempDir(), "network": seed(), "role": admission.AllocationUser, "route": route}
-			send, closeHolder := OpenAdmissionConsole(t, binary, "holder", writeNodePlan(t, holder))
+			send, closeHolder := processfixture.OpenAdmissionConsole(t, binary, "holder", writeNodePlan(t, holder))
 			fundForwardingConsole(t, send, spec, bundle, issuerPlan, authority.CurrentRuntime)
 			opened := send(map[string]string{"operation": "prefix-open"})
 			if retirement == "undercoverage" {
@@ -205,7 +206,7 @@ func TestNativeNodeProvisionedCertificateTCP(t *testing.T) {
 	testNativeNodeForwarding(t, "certificate")
 }
 
-func fundForwardingConsole(t *testing.T, send func(any) AdmissionReply, spec networkfixture.ClosedSpec, bundle networkfixture.Closed, plan issuer.Plan, read func() (network.RuntimeView, error)) {
+func fundForwardingConsole(t *testing.T, send func(any) processfixture.AdmissionReply, spec networkfixture.ClosedSpec, bundle networkfixture.Closed, plan issuer.Plan, read func() (network.RuntimeView, error)) {
 	t.Helper()
 	observe := func() (admission.AuthorityFacts, time.Time, error) {
 		view, err := read()

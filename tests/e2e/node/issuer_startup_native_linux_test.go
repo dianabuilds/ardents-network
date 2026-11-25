@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // Actual command refusals at distinct startup acquisitions. Prepared durable
@@ -30,7 +31,7 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "role", "tls-key", "missing-results"} {
 				t.Run(fault, func(t *testing.T) {
-					spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+					spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 					listener, err := net.Listen("tcp", "127.0.0.1:0")
 					if err != nil {
 						t.Fatal(err)
@@ -43,10 +44,10 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					}
 					member, foreign := bundle.Nodes[0], bundle.Nodes[1]
 					id := member.NodeID
-					processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
-					clock, closeClock := processfixture.StartObservedClock(t)
+					networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
-					network := processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
+					network := networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock)
 					key := member.PrivateKey
 					if fault == "tls-key" {
 						key = foreign.PrivateKey

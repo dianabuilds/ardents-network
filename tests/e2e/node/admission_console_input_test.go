@@ -2,14 +2,13 @@ package node_test
 
 import (
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"testing"
-
-	nodefixture "github.com/dianabuilds/ardents-network/tests/e2e/node"
 )
 
 func TestAdmissionConsoleInputGrammar(t *testing.T) {
 	binary, _, config := admissionConsoleFixture(t)
-	send, closeConsole := nodefixture.OpenAdmissionConsole(t, binary, "holder", config)
+	send, closeConsole := processfixture.OpenAdmissionConsole(t, binary, "holder", config)
 	defer closeConsole()
 	for _, raw := range []string{
 		`{"operation":"status","Operation":"close"}`,

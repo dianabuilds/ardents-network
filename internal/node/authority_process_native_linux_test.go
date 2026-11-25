@@ -35,6 +35,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // This is a native composition test, not a replacement command or installed
@@ -73,9 +74,9 @@ func TestNativeNodeOriginalAuthorityAndJoinTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := processfixture.StartObservedClock(t)
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
-					plan := nativeOriginalAuthorityPlan{Network: processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Fault: fault}
+					plan := nativeOriginalAuthorityPlan{Network: networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Fault: fault}
 					plan.Certificate, plan.PrivateKey = processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
 					next := spec
 					next.Number++
@@ -438,7 +439,7 @@ func nativeExpiryFirstOwner(t *testing.T, result, networkExpiry error, fact *nod
 
 func authorityProcessInput(t *testing.T, carrier transport.CarrierProfile, id, domain, subrole byte, fault string) (networkfixture.ClosedSpec, issuer.Plan, issuance.Inventory, networkfixture.ClosedNode, func()) {
 	t.Helper()
-	spec, issuerPlan, inventory := processfixture.PrepareNetworkGenesis(t, t.TempDir())
+	spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	member := &spec.Nodes[1]
 	if id == 11 {
 		member = &spec.Nodes[0]
@@ -519,10 +520,10 @@ func TestNativeDescriptorOriginalAuthorityAndJoinTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := processfixture.StartObservedClock(t)
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
 					cert, key := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
-					plan := processfixture.DescriptorAuthorityPlan{Network: processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
+					plan := processfixture.DescriptorAuthorityPlan{Network: networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Descriptor: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
 					next := spec
 					next.Number++
 					next.Previous = bundle.Epoch.Digest
@@ -871,10 +872,10 @@ func TestNativeIntroductionOriginalAuthorityAndJoinTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := processfixture.StartObservedClock(t)
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
 					cert, key := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
-					plan := processfixture.IntroductionAuthorityPlan{Network: processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
+					plan := processfixture.IntroductionAuthorityPlan{Network: networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Introduction: t.TempDir(), Certificate: cert, PrivateKey: key, Fault: fault}
 					if err := os.Chmod(plan.Introduction, 0700); err != nil {
 						t.Fatal(err)
 					}
@@ -1249,10 +1250,10 @@ func TestNativeIssuerOriginalAuthorityAndJoinTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := processfixture.StartObservedClock(t)
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
-					plan := processfixture.IssuerAuthorityPlan{Network: processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Fault: fault}
-					processfixture.PrepareIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
+					plan := processfixture.IssuerAuthorityPlan{Network: networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Fault: fault}
+					networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, member, sha256.Sum256(bundle.Profile))
 					plan.Issuance = issuerPlan
 					plan.Certificate, plan.PrivateKey = processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
 					next := spec
@@ -1553,10 +1554,10 @@ func TestNativeJoinOriginalAuthorityAndJoinTCP(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					clock, closeClock := processfixture.StartObservedClock(t)
+					clock, closeClock := networkinputs.StartObservedClock(t)
 					defer closeClock()
 					cert, key := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
-					plan := processfixture.JoinAuthorityPlan{Network: processfixture.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: fault}
+					plan := processfixture.JoinAuthorityPlan{Network: networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), Participation: filepath.Join(t.TempDir(), "participation"), Spend: t.TempDir(), Hosting: processfixture.ProcessBudget(t), Certificate: cert, PrivateKey: key, Fault: fault}
 					next := spec
 					next.Number++
 					next.Previous = bundle.Epoch.Digest

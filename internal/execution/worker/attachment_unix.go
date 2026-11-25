@@ -31,12 +31,6 @@ type Attachment struct {
 	closeErr   error
 }
 
-// newAttachment binds an accepted local socket to the exact worker process
-// identity whose credentials every read must present.
-func newAttachment(connection *net.UnixConn, pid, uid uint32) *Attachment {
-	return &Attachment{connection: connection, pid: pid, uid: uid}
-}
-
 // SetDeadline moves the bound socket's I/O deadline; the zero time releases it.
 func (attachment *Attachment) SetDeadline(deadline time.Time) error {
 	if attachment == nil || attachment.connection == nil {
