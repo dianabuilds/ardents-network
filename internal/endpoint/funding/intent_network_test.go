@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package funding_test
 
 import (

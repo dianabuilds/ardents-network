@@ -1199,7 +1199,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"tests/e2e/node/issuer_exchange_native_linux_test.go",
 			"tests/e2e/node/issuer_startup_native_linux_test.go",
 			"tests/e2e/node/join_exchange_native_linux_test.go",
-			"tests/e2e/node/network_commands_linux_test.go",
+			"tests/e2e/node/network_commands_unix_test.go",
 			"tests/e2e/node/receiving_startup_native_linux_test.go",
 			"tests/e2e/node/retained_lifecycle_native_linux_test.go",
 			"tests/e2e/node/route_bootstrap_linux_test.go",
@@ -1266,7 +1266,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && local == "tests/e2e/node/processfixture" {
 		switch source {
 		case "tests/e2e/node/admission_authority_test.go", "tests/e2e/node/forwarding_exchange_native_linux_test.go", "tests/e2e/node/admission_console_input_test.go",
-			"tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/issuer_exchange_native_linux_test.go", "tests/e2e/node/network_commands_linux_test.go",
+			"tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/issuer_exchange_native_linux_test.go", "tests/e2e/node/network_commands_unix_test.go",
 			"tests/e2e/node/admission_cycle_test.go", "tests/e2e/node/admission_receiver_test.go", "tests/e2e/node/admission_interrupt_unix_test.go":
 			return true
 		case "internal/node/route_bootstrap_linux_test.go", "internal/node/route_token_linux_test.go":
@@ -1317,13 +1317,17 @@ func successorImportAllowed(source, dependency string) bool {
 			"tests/e2e/node/source_native_linux_test.go",
 			"tests/e2e/node/source_preparation_process_linux_test.go":
 			return true
-		case "tests/e2e/node/admission_fresh_roots_linux_test.go",
-			"tests/e2e/node/admission_linux_test.go",
+		case "tests/e2e/node/admission_fresh_roots_unix_test.go",
+			"tests/e2e/node/admission_unix_test.go",
 			"tests/e2e/node/hosting_commands_linux_test.go",
 			"tests/e2e/node/hosting_output_linux_test.go",
-			"tests/e2e/node/issuance_linux_test.go",
-			"tests/e2e/node/issuance_results_linux_test.go",
-			"tests/e2e/node/issuer_profile_linux_test.go":
+			"tests/e2e/node/issuance_commands_unix_test.go",
+			"tests/e2e/node/issuance_export_unix_test.go",
+			"tests/e2e/node/issuance_input_unix_test.go",
+			"tests/e2e/node/issuance_results_unix_test.go",
+			"tests/e2e/node/issuance_telemetry_unix_test.go",
+			"tests/e2e/node/issuer_profile_input_unix_test.go",
+			"tests/e2e/node/issuer_profile_unix_test.go":
 			return true
 		default:
 			return false
@@ -1386,7 +1390,7 @@ func successorImportAllowed(source, dependency string) bool {
 				dependency == "go.opentelemetry.io/proto/otlp/collector/trace/v1" || dependency == "google.golang.org/protobuf/proto"
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
 			return dependency == "github.com/dianabuilds/ardents-network/internal/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/dianabuilds/ardents-network/internal/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
-		case "tests/e2e/node/network_commands_linux_test.go":
+		case "tests/e2e/node/network_commands_unix_test.go":
 			return dependency == modulePath+"/internal/admission" || dependency == modulePath+"/internal/admission/quota" ||
 				dependency == modulePath+"/internal/admission/receiving" || dependency == modulePath+"/internal/admission/stock" ||
 				dependency == modulePath+"/internal/admission/token" || dependency == modulePath+"/internal/network" ||
@@ -1776,10 +1780,10 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	if source == "tests/e2e/node/issuance_results_linux_test.go" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+	if source == "tests/e2e/node/issuance_results_unix_test.go" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if source == "tests/e2e/node/issuance_telemetry_linux_test.go" || source == "tests/e2e/node/admission_linux_test.go" {
+	if source == "tests/e2e/node/issuance_telemetry_unix_test.go" || source == "tests/e2e/node/admission_unix_test.go" {
 		switch dependency {
 		case "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto":
 			return true
@@ -1787,15 +1791,15 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport {
 		switch source {
-		case "tests/e2e/node/offline_admission_fixture_linux.go", "tests/e2e/node/issuance_linux_test.go":
+		case "tests/e2e/node/offline_admission_fixture_unix.go", "tests/e2e/node/issuance_unix_test.go", "tests/e2e/node/issuance_commands_unix_test.go":
 			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/issuerprofile" || local == "internal/admission/issuance"
-		case "tests/e2e/node/admission_fresh_roots_linux_test.go":
+		case "tests/e2e/node/admission_fresh_roots_unix_test.go":
 			return local == "tests/e2e/node" || local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/issuance"
-		case "tests/e2e/node/admission_linux_test.go":
+		case "tests/e2e/node/admission_unix_test.go":
 			return local == "tests/e2e/node" || local == "internal/admission/quota"
-		case "tests/e2e/node/issuance_results_linux_test.go":
+		case "tests/e2e/node/issuance_results_unix_test.go":
 			return local == "tests/e2e/node" || local == "internal/admission/quota" || local == "internal/admission/issuerprofile" || local == "internal/admission/issuance"
-		case "tests/e2e/node/issuer_profile_linux_test.go":
+		case "tests/e2e/node/issuer_profile_unix_test.go":
 			return local == "internal/admission/issuerprofile/signing"
 		}
 	}
