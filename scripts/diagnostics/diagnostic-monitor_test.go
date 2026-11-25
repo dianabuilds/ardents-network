@@ -140,6 +140,29 @@ func TestMonitorStartFailureHasTerminalEvidence(t *testing.T) {
 	}
 }
 
+func fillMonitorConsolePipe(t *testing.T, consoleW *os.File) {
+	t.Helper()
+	// Fill the empty pipe to its actual capacity before starting the monitor.
+	// A short deadline can expire before the first write is scheduled.
+	raw, err := consoleW.SyscallConn()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capacity int
+	var capacityErr error
+	if err := raw.Control(func(fd uintptr) {
+		capacity, capacityErr = unix.FcntlInt(fd, unix.F_GETPIPE_SZ, 0)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if capacityErr != nil || capacity <= 0 || capacity > 1<<20 {
+		t.Fatalf("blocked pipe fixture capacity invalid: %d, %v", capacity, capacityErr)
+	}
+	if n, err := consoleW.Write(make([]byte, capacity)); err != nil || n != capacity {
+		t.Fatalf("blocked pipe fixture fill: n=%d want=%d err=%v", n, capacity, err)
+	}
+}
+
 func TestMonitorBlockedConsoleKeepsDrainingAndJoins(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "monitor")
 	root, err := openMonitorRoot(out)
@@ -156,6 +179,8 @@ func TestMonitorBlockedConsoleKeepsDrainingAndJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer consoleR.Close()
+	defer consoleW.Close()
+	fillMonitorConsolePipe(t, consoleW)
 	delivery := newMonitorDelivery(store, consoleW, false, time.Now().UTC())
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -429,25 +454,7 @@ func TestMonitorPublishesSourceExitBeforeSinkCleanup(t *testing.T) {
 	}
 	defer consoleR.Close()
 	defer consoleW.Close()
-	// Fill the empty pipe to its actual capacity before starting the monitor.
-	// A short deadline can expire before the first write is scheduled.
-	raw, err := consoleW.SyscallConn()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var capacity int
-	var capacityErr error
-	if err := raw.Control(func(fd uintptr) {
-		capacity, capacityErr = unix.FcntlInt(fd, unix.F_GETPIPE_SZ, 0)
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if capacityErr != nil || capacity <= 0 || capacity > 1<<20 {
-		t.Fatalf("blocked pipe fixture capacity invalid: %d, %v", capacity, capacityErr)
-	}
-	if n, err := consoleW.Write(make([]byte, capacity)); err != nil || n != capacity {
-		t.Fatalf("blocked pipe fixture fill: n=%d want=%d err=%v", n, capacity, err)
-	}
+	fillMonitorConsolePipe(t, consoleW)
 	delivery := newMonitorDelivery(store, consoleW, false, at)
 	done := make(chan error, 1)
 	go func() {
