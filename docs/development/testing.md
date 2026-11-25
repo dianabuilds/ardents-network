@@ -3036,6 +3036,49 @@ reachable). The unblocking prerequisite is porting the Hosting measurement, nati
 worker launch, Instance custody and reachability Store seams to the Unix family
 with security-equivalence evidence; only then may the stub boundary shift.
 
+Cohort 2d (#877, #691) shifted the Endpoint session boundary deliberately at
+`55410a72b` after the prerequisite seams merged: Instance custody (#867),
+reachability Store (#870), Hosting lease (#871) + IFMIB measurement (#873) and the
+worker launch capability port (#875). Per-file re-verification moved the session
+`OpenPrefix`/`OpenBootstrap`/`OpenJoinContext` compositions
+(`prefix_linux.go`/`bootstrap_linux.go`/`join_linux.go` renamed to `*_unix.go`) from
+`linux` to `linux || darwin`, and narrowed their typed refusal `route_other.go` and
+its behavior test from `!linux` to `!linux && !darwin` (Windows-only). These
+compositions open only selection (Unix-family roots), Hosting (Unix-family lease +
+Linux/macOS measurement) and the portable Route core, and launch no native worker,
+so macOS runs the genuine composition with no refusal and Linux behavior is
+byte-identical; Windows has no ported Hosting measurement, so the stub keeps
+refusing before any selection root state or authority (the exact-prose Windows
+refusal test pins this). The remaining Endpoint compositions STAY Linux with
+recorded evidence: `publisher/opening_linux.go` composes the `publication/durable`
+lease seam, which is still Linux-and-Windows-only (`lease_other.go`
+`!linux && !windows`) — a newly identified unported adjacent seam whose macOS
+refusal would land after selection/Hosting/Instance root state, so shifting it would
+break refusal ordering; `publisher/snapshot_linux.go` reads the snapshot file before
+the native launch refusal; `publisher/publisher_linux.go` and `byte_stream_linux.go`
+are coupled to live Open; `reader/reader_linux.go` composes the Linux-only
+`application/connection.Refuse` projection (setupCleanupError classification), and
+`reader/operation_linux.go`/`source_linux.go`/`byte_stream_linux.go` have only that
+Linux coordinator as a production consumer (de-tagging them alone would add
+Windows/macOS production-dead code); `participant_linux.go` composes `endpoint/launch`
+systemd delivery plus the `declarations_linux.go`/`permission_linux.go` projections.
+The architecture assertion was renamed `TestCohort2bEndpointNativeBoundaryStaysLinux`
+→ `TestCohort2dEndpointNativeBoundary` and re-pins the new boundary (session Unix
+composition + Windows refusal; Publisher/Reader/participant Linux + `!linux`
+refusals). The deadcode allowlist symbols are unchanged (`session.minRouteDeadline`
+stays Windows-production-dead because the Windows stub does not reach it); only the
+stale batch-2 rationale prose was updated. The session composition adds no native
+mechanism: it is platform-independent orchestration over seams already proven at
+runtime on macOS individually (selection Unix roots, Hosting loopback IFMIB measure
+`TestDarwinMeasureLoopbackContinuity` #873, Instance custody #867, reachability Store
+#870), and the identical shared code is exercised by the unchanged Linux native
+Route bootstrap/prefix tests. A dedicated Unix-lane genuine session-open integration
+test still requires the Linux-only route-topology fixture (`AddRouteFixtureNodes`
+with receiver sockets/certificates); porting that fixture is a separate follow-up,
+not part of this boundary shift. The next unblocking prerequisites are porting the
+`publication/durable` lease seam, the native worker launch composition and the
+`application/connection.Refuse` projection.
+
 P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
 production is already portable: the admission holder permission-request proof,
 the allocation request/decision quota grammar, the token closed-batch blind
