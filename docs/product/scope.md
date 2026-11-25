@@ -28,10 +28,13 @@ trust floors. Runtime owners validate their configuration, admit and complete
 their own work, and retain their durable data. Ardents does not introduce a
 general installer or a separate lifecycle manager.
 
-The existing native installation code is transitional implementation. Removing
-it requires equivalent ownership of necessary authorization, configuration,
-predecessor completion and failure guarantees; neither source moves nor unit
-tests qualify a platform replacement. Existing data and floors are preserved.
+The selected Ubuntu delivery uses the host service manager to start and
+stop the protected Endpoint and fixed infrastructure roles. Endpoint
+delivery and infrastructure deployment retain exact artifact and configuration
+binding, predecessor completion, joined cleanup, and existing data and floors.
+The [technical ownership map](../development/domain-map.md#software-delivery-and-infrastructure-deployment)
+and [command reference](../reference/commands.md) describe the current owners
+and entry points.
 
 Windows, Ubuntu and macOS are mandatory product targets. The product contract
 and every behavior that can be implemented portably are shared across them.
@@ -68,8 +71,8 @@ and key import are not required. Provision new purpose-specific material and
 independently admitted trust; a matching schema or empty directory is not
 migration authority. This narrows predecessor deployment compatibility, not the
 accepted public grammar or the new installation's own durable-state contract.
-New-installation restart, replacement and recovery must preserve its expenses,
-exact retries, keys and authority/freshness floors. Old code retirement follows
+New-installation restart, replacement and recovery must preserve its Admission
+spend history, exact retries, keys and authority/freshness floors. Old code retirement follows
 its actual remaining consumers; it does not automatically delete stored files.
 
 ## Product core
@@ -121,13 +124,12 @@ covers review, design, implementation and trials of the changed system in a
 declared test environment. This selects a development direction, not an
 additional C0 implementation slice or a stronger claim for existing bytes.
 [ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) selects the
-[successor privacy architecture](../technical/common-privacy-architecture.md)
-and [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) completes
-the [closed successor contract](protected-service-workload.md): Target-Link
-document publication/read, confidential control/admission, the selected TCP/TLS Carrier
-and confined Ubuntu workers. This is selected future implementation scope;
-the current C0 facts below remain until explicit adoption. It admits no public
-wire, canonical Name producer or quantitative anonymity claim.
+[protection architecture](../technical/common-privacy-architecture.md).
+[ADR-0081](../adr/0081-select-closed-protected-service-contract.md) sets the
+[closed Service workload](protected-service-workload.md) with confidential
+control and admission, Target Links and confined Ubuntu workers.
+[ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
+adds the bidirectional Application byte-stream profile alongside documents.
 
 ## C0 Closed Alpha readiness profile
 
@@ -168,25 +170,28 @@ plans and signatures. Operator instructions must describe the command order
 without requiring edits to JSON, test-fixture keys, package knowledge, or ADR
 lookup.
 
-The readiness journey is: verify the supplied artifact before execution,
-create its supported local state, start the selected project-controlled
-components, publish one Service Instance, obtain a Target Link, establish a
-second Endpoint Service Connection, read the published document through that
-Connection, then stop and restart without losing required durable state. A supported manual
-replacement remains authenticated and explicit; automatic update is outside
-this profile.
+The readiness journey starts with independent artifact verification, supported
+local state setup, and startup of the selected components. For each workload,
+one installed Endpoint publishes a Service Instance and presents a Target Link.
+A second installed Endpoint uses that Link to read the document or exchange
+byte-exact data in both directions. The byte-stream profile requires explicit
+refusal of incompatible profiles and authenticated terminal completion.
+The readiness gate also covers stop and restart with required durable state
+preserved and explicit authenticated replacement. Automatic update is outside
+this profile. See the [workload acceptance contract](protected-service-workload.md#acceptance-and-limits).
 
-The profile does not select Browser or GUI delivery, Windows qualification,
-public or permissionless operation, independently audited operator control,
-canonical Service Names or Namespace governance, additional Carriers,
-mobile/macOS, high-load operation, availability, anonymity, or
-censorship-resistance claims. Distinct known families are an eligibility
-precondition, not proof that hidden common control is absent. Those unselected
-capabilities and claims remain outside C0 unless a later Product Owner
-decision, research question, and required durable decision admit them.
+Windows, Ubuntu and macOS are required product targets. The installed C0
+qualification profile is Ubuntu LTS `x86-64`. Component portability evidence
+has the scope of the platform and mechanism exercised. Browser and GUI
+delivery, mobile, public or permissionless operation, independently audited
+operator control, canonical Service Names, Namespace governance, additional
+Carriers and high-load operation remain outside the selected profile. Distinct
+known families establish only eligibility under the accepted assignment rules.
+The [claim limits](#claims-withheld-from-c0) govern what can be inferred from
+closed evidence.
 
 Current C0 delivery status and work sequencing belong in GitHub Issues under
-the [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestones),
+the [`C0 Closed Alpha` milestone](https://github.com/dianabuilds/ardents-network/milestone/1),
 not in this contract or research records. The product contract remains stable;
 the tracker is the one live task ledger.
 
@@ -219,75 +224,36 @@ resource; cancellation or timeout; and closed Service Connection. A lower
 level diagnostic may add detail but cannot silently reinterpret one of these
 classes as success or fallback.
 
-The generic AAI2 Endpoint Connection route and the per-user Portable
-enrollment commands were removed with the old CLI. The document Application
-has its own fixed workload and confinement contract. Endpoint
-delivery uses the protected platform unit (ADR-0125). The read-only
-`ardents enrollment verify` operation checks the manifest against the
-independent pin before parsing its enrollment facts. The historical persisted
-`alpha-enrollment.json` form was retired by ADR-0127. Enrollment verification
-grants no Resolution or Route authority.
+Endpoint delivery uses the protected platform unit. The read-only
+`ardents enrollment verify` operation checks the manifest against an
+independent pin before parsing enrollment facts. Enrollment grants no
+Resolution or Route authority. The
+[Enrollment owner](../technical/enrollment-verification.md) defines the retained
+bundle grammar and the [Endpoint owner](../technical/endpoint-service-runtime.md#v1-startup-retirement)
+defines the pre-effect refusal of persisted v1 plans. V2 remains the sole
+accepted headless startup schema.
 
-The selected Endpoint startup transition retires acceptance of
-`ardents-headless-runtime-v1` rather than converting it into the protected v2
-composition. Existing root and floor bytes remain retained evidence, not
-authority for an automatic migration. The
-[Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement)
-owns the exact refusal and effect boundary. The command now implements that
-boundary: bounded persisted v1 plans are refused without runtime effects, while
-v2 remains the sole accepted headless startup schema. The separate
-[generic Connection command](../technical/endpoint-service-runtime.md#generic-connection-command-retirement)
-has its own selected retirement boundary; neither decision retires the
-Administration interface.
-
-[ADR-0088](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md)
-selects final retirement of Alpha Service Links and fresh corpus intake rather
-than a grace period or conversion. Both transitions are integrated: intake
-refuses before floor effects, and the Endpoint has no accepting Alpha
-destination adapter or Target-Link fallback. Human-facing Service Names remain
-a broader future product function requiring a separately selected protected
-contract; they do not keep the legacy Alpha network path alive. Existing floor
-bytes remain retained evidence pending
-a separate data decision. The
-[Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
-owns the exact effect and compatibility boundary.
-
-[ADR-0089](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
-retires every new old Node-role, Source-profile, and Transit-issuer start
-rather than keeping a second accepting network path. The selected closed Node
-duties, closed Source profile, and closed issuer remain unchanged.
-[ADR-0114](../adr/0114-remove-dedicated-host-contributor-retirement.md)
-completed the dedicated-host Contributor retirement: no live installation
-remains, so the de-installation mechanism and the ADR-0089 retained bounded
-no-start actions are removed entirely and the subcommand is no longer
-recognized. Existing roots, keys, floors, installation records, and historical
-profile identity remain evidence, not migration or execution authority. The
-[Network/Node owner](../technical/network-route-node.md#old-start-retirement)
-defines the exact selectors and effect boundary.
-
-[ADR-0090](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0090-retire-name-operator-network-adapters.md) retired the
-old operator `name resolve` and `name control` HTTP/OHTTP
-adapters before any file, State, transport, output, or Namespace effect;
-[ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
-retired `name encode` and deleted the whole canonical Naming grammar, so no
-maintained surface presents or consumes Service Names. The successor
-protected wire, Resolver/Gateway topology, authority, governance, migration,
-and AAI3 integration remain unselected; future protected Service Name access
-requires an entirely new scoped design. The
-[Current scope](#c0-command-roles-state-and-outcomes)
-defines the retired surface and state boundary. The refusal is integrated and
-the command-owned HTTP/OHTTP adapters are absent; this does not make protected
-Service Name access available.
+The closed CLI accepts explicit Target Links. Retired Alpha links, corpus
+intake, old Node and Source starts, and the former generic AAI2 Connection
+remain outside the accepted surfaces. Existing retained data follows its
+owner's compatibility rules. The exact
+[Alpha destination boundary](../technical/endpoint-service-runtime.md#alpha-destination-retirement),
+[generic Connection boundary](../technical/endpoint-service-runtime.md#generic-connection-command-retirement),
+and [retired-start boundary](../technical/network-route-node.md#old-start-retirement)
+belong to their technical owners. Future protected Service Names require a
+separate accepted contract covering authority, resolution, governance and
+Application integration.
 
 ## C0 Network candidate
 
 The Network audit candidate is the headless maintained product surface:
 
 - the participant and infrastructure command `ardents`, the offline
-  `ardents-custody` command and the systemd document worker;
-- Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
-  Service publication/connection/instance/reachability, enrollment,
-  Release, Custody and resource Modules;
+  `ardents-custody` command and the signed systemd Application worker for the
+  document and byte-stream profiles;
+- Network State and Source, Admission, Hosting, Entry, Route and Carrier,
+  Node duties, Endpoint, Service Publication, Connection, Instance and
+  Reachability, Enrollment, Release, Custody and process resource protection;
 - the Local Grant and session lifecycle owned by `internal/execution`;
 - the typed local Connection Interface in `internal/application/connection`
   and separately authorized Administration Interface in
@@ -313,17 +279,18 @@ to the selected GitHub ledger. An audit does not qualify public operation.
 
 ## C0 Application Interface
 
-The maintained local Connection Interface is the typed v2 contract with
-AAI3 grammar in `internal/application/connection`; its Target-Link request is
-admitted only by the protected document composition. The Administration
-Interface has its own v1 contract in `internal/application/administration`. Each owns its
-versioned local contract, bounds, lifecycle, outcome grammar, local transport,
-and conformance evidence. The successor Endpoint composes the server behavior,
-and maintained commands use only the selected interface
-seam. The former `internal/application/interfacev1/connection` AAI2 grammar and
-exclusive Endpoint adapter are absent; AAI3 rejects an AAI2 request before
-Application owner I/O. No Browser client, presentation, native
-host or extension is a current product surface.
+The local [Connection Interface](../technical/endpoint-service-runtime.md#ownership)
+owns the AAI3 document and AAI4 bidirectional byte-stream requests in
+`internal/application/connection`. The selected Endpoint protects both
+profiles under the same authority and confinement rules. The authenticated
+Service Instance confirms the requested profile before payload effects, and
+Connection continuity retains that binding.
+
+The separately authorized v1 Administration Interface in
+`internal/application/administration` owns publication and withdrawal and the
+fixed byte-stream upgrade for the Publisher attachment. The Interface owners
+define versioned framing, bounds, local transport, refusal and cleanup.
+The former AAI2 request remains refused before Application owner I/O.
 
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence
@@ -368,7 +335,7 @@ C0 preparation and an internal audit do not establish:
 - independent operators, builders, auditors, control, or public governance;
 - supported public deployment, capacity, hostile-load, soak, VPS, or platform
   qualification;
-- a public permissionless Namespace, participant Browser Entry, signed release,
+- a public permissionless Namespace, participant Browser Entry, public release
   or Public Beta;
 - Application-level network isolation for a generic Adapter; or
 - a complete participant journey using only the supplied artifacts and

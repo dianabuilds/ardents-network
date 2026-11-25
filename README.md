@@ -30,11 +30,13 @@ evidence only.
 ## Working on the repository
 
 Follow [CONTRIBUTING.md](CONTRIBUTING.md) and [repository instructions](AGENTS.md).
-Maintained Go code belongs in thin command adapters and cohesive domain Modules.
+Maintained Go code uses thin command adapters and cohesive packages under
+`internal/`, with responsibilities and imports registered in the package map.
 Run `make quick-check` while changing code and `make check` before integration;
 package and dependency registration are part of the architecture contract.
-The current human instruction keeps Connection working and holds new
-implementations; documentation cleanup selects no additional slice.
+The Product Owner's current selection and the
+[C0 milestone](https://github.com/dianabuilds/ardents-network/milestone/1) govern
+which implementation work is active.
 
 ## License
 

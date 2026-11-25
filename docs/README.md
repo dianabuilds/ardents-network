@@ -6,12 +6,13 @@ Accepted ADRs outrank product/security contracts; source and historical experime
 cannot silently change either. [Documentation policy](development/documentation.md)
 defines promotion and retirement.
 
-The selected contract is a closed Ubuntu text-Service by Target Link, with one
-common protection baseline and the TCP/TLS Carrier (ADR-0122 selects TCP/TLS
-alone for the nearest closed release; QUIC is deferred and refused pre-effect).
-Component implementations
-and their receipts do not establish a complete installed Service, platform support,
-independent security validation, anonymity or public-operation qualification.
+The closed Ubuntu C0 profile covers document Services and bidirectional
+Application streams by Target Link under one common protection baseline.
+TCP/TLS is the sole Carrier for the nearest closed release under ADR-0122.
+Deferred QUIC selection refuses before effects. Qualification applies to the
+exact candidates and scenarios exercised. The scope defines the limits on
+platform support, independent security validation, anonymity and public
+operation.
 Service Names remain a future product function; the accepting Namespace and Alpha
 Link routes are retired. Public transport, storage, consensus and blockchain are
 unselected. The [scope](product/scope.md) owns these boundaries.
@@ -47,9 +48,9 @@ The [research queue](research/questions.md) distinguishes undecided questions
 from selected execution; read its evidence only for a named decision.
 
 GitHub [#497](https://github.com/dianabuilds/ardents-network/issues/497) owns the
-domain completion plan, dependencies and acceptance criteria; the C0 milestone
-owns live work. The current human instruction keeps Connection working and holds
-new implementations. Neither an old plan nor available WIP capacity authorizes
-starting the next domain. The [execution workflow](development/agent-execution.md)
-and [Route migration contract](development/route-migration-contract.md) remain
-mandatory within authorized scope.
+domain completion plan, dependencies and acceptance criteria. The
+[C0 milestone](https://github.com/dianabuilds/ardents-network/milestone/1) tracks
+live work. The Product Owner's current selection and the
+[execution workflow](development/agent-execution.md) govern admission.
+Route changes follow the
+[Route migration contract](development/route-migration-contract.md).

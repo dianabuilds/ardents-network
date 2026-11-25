@@ -1,24 +1,23 @@
 # Protected Service workload
 
 The nearest closed release uses only TCP/TLS under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). This supersedes the
-dual-Carrier qualification clauses below for that release. QUIC-selected work
-must refuse before effects, never fall back. Every Application, authority,
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). A QUIC selection
+refuses before effects without a transport fallback. Every Application, authority,
 confinement, resource, recovery and joined-cleanup obligation remains required
 on TCP/TLS; historical dual-Carrier receipts do not qualify changed artifacts.
 
-Status: **selected design scope**, from the Product Owner's two explicit
-answers on 2026-09-07. This describes the successor to implement and test;
-it does not qualify existing C0 or authorize a public deployment.
-The [common architecture](../technical/common-privacy-architecture.md) remains
-the single protection construction.
+Status: **selected closed workload** under ADR-0081 and ADR-0132.
+The [common architecture](../technical/common-privacy-architecture.md) provides
+one protection construction for both profiles. The
+[C0 scope](scope.md#c0-closed-alpha-readiness-profile) owns the qualification
+boundary and release claim limits.
 
 ## Outcome and supported scope
 
-One owner publishes an immutable UTF-8 document through a Service. A User
-opens its explicit Target Link, receives the
-document, and reads its safely rendered text. The User chooses a Service,
-not peers, a route, a proxy, padding or a security level.
+A participant uses an explicit Target Link to reach a Service. The document
+profile publishes immutable UTF-8 text and renders the received document
+safely. The byte-stream profile exchanges ordered Application bytes in both
+directions. Endpoint selects the protected Route.
 
 The first delivery is a closed test network with explicitly provisioned Nodes,
 State authority, time witness, issuers and finite resource permissions.
@@ -50,10 +49,12 @@ must survive for process confinement to hold.
 ## Participant interface for arbitrary data
 
 [ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
-selects this interface. The protected Ubuntu candidate has passed the
-document journey and the byte-exact exchange through the public CLI on two
-separately installed Endpoints. The installed scenarios cover the exercised
-artifacts and authorities under their closed fixture.
+selects this interface. The
+[installed-pair run](https://github.com/dianabuilds/ardents-network/actions/runs/45275563719)
+passed the document journey and the byte-exact public CLI exchange on two
+separately installed Ubuntu Endpoints. The run exercised source
+`b271ee71d8d1e3ebb6081dabe84ee3121c5eabd6` with its own artifacts and closed
+fixture authorities.
 The [command reference](../reference/commands.md) lists current commands.
 
 | Person | Installs | Selected action |

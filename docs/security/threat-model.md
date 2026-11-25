@@ -10,7 +10,8 @@ pre-effect refusal, including retained callers. No fallback or lower security
 mode is selected. Its unresolved dependency finding is preserved, not waived;
 neither transport exclusion nor passing tests establishes anonymity or availability.
 
-Status: **accepted claim registry and C0 audit input; no implementation qualified**
+Status: **accepted claim registry and C0 audit input.** Qualification evidence
+applies to its exact artifact, profile and scenario.
 
 Last reviewed: 2026-09-07
 
@@ -44,11 +45,11 @@ This threat model covers the current [C0 product scope](../product/scope.md) and
 the stronger public-product claims retained for later decisions. It is not a
 statement that the C0 implementation passed audit or qualification.
 
-The C0 Network candidate includes the maintained commands, document worker,
-Network, Endpoint, Service, enrollment, Release, Custody and local Application
-Interfaces listed in the [product scope](../product/scope.md#c0-network-candidate).
-The local Application Interfaces are reviewed for seam, privilege, artifact,
-and dependency correctness. The review scope grants no Application-level
+The [C0 candidate inventory](../product/scope.md#c0-network-candidate) includes
+the maintained commands, confined worker, document and bidirectional byte-stream
+profiles, and their underlying Network and software-acceptance owners. Review
+the local Application Interfaces and their worker handoffs for privilege,
+artifact binding, lifecycle and dependency correctness. The review scope grants no Application-level
 Endpoint Location Privacy claim. The active Browser
 implementation and qualification lanes are retired; non-executable compatibility
 evidence and historical campaign implementations are outside the candidate
