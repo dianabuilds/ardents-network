@@ -2101,8 +2101,13 @@ experiment.
 ## Reachability audit
 
 Receiving Store native tests in `internal/reachability` exercise actual
-Linux/Windows roots and lease/directory sync, independent signed Descriptor
+Unix-family/Windows roots and lease/directory sync, independent signed Descriptor
 inputs, full retained conflict/capacity/reopen cases and original operation join.
+The Store lease mechanism is the shared `linux || darwin` flock adapter
+(`store_platform_unix.go`), so the macOS lane executes the same lease code against
+real APFS state: contended flock, `SameFile` identity after lock replacement and
+the actual rlimit partial-write recovery (`store_lease_unix_test.go`,
+`store_write_unix_test.go`).
 `store_lifetime_native_test.go` delays only a real publication's foreign
 observation: Lookup must progress, Close must deny and retain the original lease
 until that observation returns, and pre-effect denied work must leave no floor.
@@ -2110,8 +2115,9 @@ Original root/records/marker/record loss permanently refuses after restoration;
 fresh explicit reopen revalidates exact signed bytes. Windows can physically
 block retained-object rename with sharing violation, or retained-directory rename
 with access denied; the positive control requires original custody and exact
-proof to remain healthy. Linux performs and detects every actual object loss.
-`store_lease_linux_test.go` separately replaces/restores the actual lock path and
+proof to remain healthy. Unix-family hosts perform and detect every actual object
+loss.
+`store_lease_unix_test.go` separately replaces/restores the actual lock path and
 closes the actual original lease descriptor, checking permanent denial and the
 same retained physical Close error across concurrent callers. These cases are
 component native/race evidence, not command protection, power-loss, full rollback

@@ -45,8 +45,9 @@ or Publisher readiness. The private response-termination responsibility remains
 inside Prefix; lookup and refusal do not create an acknowledged publish result.
 
 Proof verification, conflict rules, History and the Prefix exchange are
-portable. Store lease and durable publication use explicit Linux/Windows
-adapters; unsupported native targets refuse before filesystem effects. The
+portable. Store lease and durable publication use explicit Unix-family
+(shared `linux || darwin` flock) and Windows adapters; unsupported native
+targets refuse before filesystem effects. The
 current receiving command composition requires its native Linux owners. This
 boundary establishes neither installed Windows support nor a live Publisher,
 registered slot, qualified Execution Job or Instance-authenticated Connection.

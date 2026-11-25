@@ -1,4 +1,4 @@
-//go:build linux || windows
+//go:build linux || darwin || windows
 
 package reachability_test
 
@@ -15,7 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 )
 
-// These tests require the actual Linux/Windows lease and directory-sync adapter.
+// These tests require the actual Unix-family/Windows lease and directory-sync adapter.
 // Public proof/rule code itself has no native dependency or installed claim.
 func TestStorePublishCapabilityAndOriginalEffectChecks(t *testing.T) {
 	raw, target, network, profile, at := signedDescriptor(2)
