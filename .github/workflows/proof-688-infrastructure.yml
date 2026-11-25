@@ -21,6 +21,9 @@ jobs:
           - role: JOIN
             tag: join_platform_native
             test: TestNativeJoinPlatformInstalledLifecycle
+          - role: Introduction repair
+            tag: introduction_repair_native
+            test: TestNativeIntroductionPlatformRepairsCrashedProducer
           - role: Descriptor
             tag: descriptor_platform_native
             test: TestNativeDescriptorPlatformInstalledLifecycle
@@ -28,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 655a61ea2c3b5759f1b6d3e7b6f88b641ddfd54c
+          ref: 17f04e90ab941dcb8a7d80c78a6fe482b6c13b24
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -59,7 +62,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for role in source forwarding join descriptor; do
+          for role in source forwarding join descriptor introduction; do
             test ! -e "/etc/systemd/system/ardents-$role.service"
             ! systemctl is-active --quiet "ardents-$role.service"
           done
@@ -67,7 +70,7 @@ jobs:
           ! getent passwd ardents-node
           for dir in /etc/ardents /usr/lib/ardents /var/lib/ardents; do
             if [[ -d "$dir" ]]; then
-              test -z "$(find "$dir" -mindepth 1 -name '*installed-*' -print -quit)"
+              test -z "$(find "$dir" -mindepth 1 \( -name '*installed-*' -o -name 'introduction-repair-*' \) -print -quit)"
             fi
           done
   introduction:
@@ -77,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 655a61ea2c3b5759f1b6d3e7b6f88b641ddfd54c
+          ref: 17f04e90ab941dcb8a7d80c78a6fe482b6c13b24
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
