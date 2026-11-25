@@ -10,7 +10,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"net"
-	"time"
 )
 
 type routeRecipient = session.LocalRecipient
@@ -33,11 +32,6 @@ type routeHandle struct {
 	lookupDescriptor  func(context.Context, [32]byte, *reachability.History) ([]byte, error)
 	submitCapsule     func(context.Context, routeRecipient, []byte) error
 	sealSubmitCapsule func(context.Context, routeRecipient, routeCapsuleIntent) error
-}
-
-type routeJoinContext struct {
-	open  func(context.Context) (routeHandle, error)
-	close func() error
 }
 
 type routeRegistration struct {
@@ -63,19 +57,6 @@ func startRouteBootstrap(ctx context.Context, p routePrefixPlan, a admissionAuth
 	}
 	return testRouteHandle(x), nil
 }
-func newRouteJoinContext(ctx context.Context, p routePrefixPlan, a admissionAuthority, h *stock.Owner) (routeJoinContext, error) {
-	x, err := session.OpenJoinContext(ctx, fundingPlan(p), fundingAuthority(a), h)
-	if err != nil {
-		return routeJoinContext{}, err
-	}
-	return routeJoinContext{close: x.Close, open: func(ctx context.Context) (routeHandle, error) {
-		p, err := x.Open(ctx)
-		if err != nil {
-			return routeHandle{}, err
-		}
-		return testRouteHandle(p), nil
-	}}, nil
-}
 func testRouteHandle(p session.Prefix) routeHandle {
 	return routeHandle{bootstrap: p.Bootstrap(), close: p.Close, done: p.Done(), issue: p.Issue, replenish: p.Replenish,
 		publishDescriptor: p.PublishDescriptor, lookupDescriptor: p.LookupDescriptor,
@@ -98,13 +79,4 @@ func testRouteHandle(p session.Prefix) routeHandle {
 			return p.SealSubmitCapsule(ctx, session.Recipient(r), session.CapsuleIntent(i))
 		},
 	}
-}
-
-func minRouteDeadline(end time.Time, bounds ...time.Time) time.Time {
-	for _, bound := range bounds {
-		if bound.Before(end) {
-			end = bound
-		}
-	}
-	return end
 }

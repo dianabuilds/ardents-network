@@ -304,12 +304,6 @@ func networkStateConfig(plan *networkAuthorityPlan) (state.Config, error) { retu
 
 type localAdmissionReply = nodefixture.AdmissionReply
 
-// admissionLocalConsole starts the same process console used by E2E fixtures.
-func admissionLocalConsole(t *testing.T, operation string, config any) (func(any) localAdmissionReply, func()) {
-	t.Helper()
-	return nodefixture.OpenAdmissionConsole(t, compiledCommand(t), operation, hostingConfig(t, config))
-}
-
 func networkTestBudget(t *testing.T) *hosting.Budget {
 	t.Helper()
 	return networkTestOpenBudget(t, processfixture.ProcessBudget(t))

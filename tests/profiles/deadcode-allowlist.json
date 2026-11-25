@@ -161,6 +161,13 @@
           "tests/e2e/node/processfixture.NativeProcess.Wait",
           "tests/e2e/node/processfixture.PinnedCommand",
           "tests/e2e/node.OpenAdmissionConsole",
+          "tests/e2e/node.OpenAdmissionConsoleResult",
+          "tests/e2e/node.OpenAdmissionConsoleWithInterrupt",
+          "tests/e2e/node.openAdmissionConsole",
+          "tests/e2e/node/processfixture.Interrupt",
+          "tests/e2e/node/processfixture.PrepareInterrupt",
+          "tests/e2e/node/processfixture.RefreshObservedClock",
+          "tests/e2e/node/processfixture.TempDir",
           "tests/e2e/node/processfixture.FixturePermission",
           "tests/e2e/node.ProvisionNodeCertificates",
           "tests/e2e/node.IssuerDeclaration",
@@ -298,6 +305,26 @@
         "rationale": "Credential decoding and clearing and the retirement error filter run in portable tests and serve the Linux runtime. The command composition is analyzed on Windows too, but actual Windows invocation refuses before opening the plan.",
         "owner": "Node command",
         "retirement": "Remove each symbol when a maintained Windows Node role consumes it."
+      },
+      {
+        "symbols": [
+          "internal/node.routeAdmissionAuthority.issuer",
+          "internal/node.routeAdmissionAuthority.observe",
+          "internal/node.routeAdmissionAuthority.receiver"
+        ],
+        "classification": "portable Node rules with Linux role startup",
+        "rationale": "The route admission authority helpers are defined in the portable route_admission.go and are composed by the Linux receiving startup in route_receive_linux.go: the issue batch reaches issuer and observe, and the receiving owner reaches receiver. The command composition is analyzed on Windows too, but actual Windows route receiving refuses before opening the admission authority.",
+        "owner": "Node command",
+        "retirement": "Remove each symbol when a maintained Windows Node role consumes it."
+      },
+      {
+        "symbols": [
+          "internal/application/connection.OpenLocalConsoleOutput"
+        ],
+        "classification": "portable local console presentation behind Linux command composition",
+        "rationale": "The Linux application console runner and the administration local link open the interruptible inherited-stdout output through this function. The Windows adapters reach the local_console_other.go typed refusal before any presentation effect, so the open is production-dead on windows-amd64 only; portable tests still exercise the refusal boundary.",
+        "owner": "Application Connection local presentation",
+        "retirement": "Remove the entry when a maintained Windows production caller reaches the function."
       },
       {
         "symbols": [
@@ -1004,6 +1031,7 @@
           "internal/route/prefix.prefixOpeningFailure.Unwrap",
           "internal/route/prefix.prefixSetupInterruption.join",
           "internal/route/prefix.replenishParent",
+          "internal/route/receiver.ValidateCarrier",
           "internal/route/receiver.nodePool.Close",
           "internal/route/receiver.nodePool.borrow",
           "internal/route/receiver.nodePool.interrupt",
@@ -1886,6 +1914,7 @@
       },
       {
         "symbols": [
+          "internal/release/infrastructure.CommandHostSupported",
           "internal/release/infrastructure.DecodeDescriptor",
           "internal/release/infrastructure.PrepareRuntimeDescriptor",
           "internal/release/infrastructure.ValidateDescriptorResources",
@@ -1918,6 +1947,34 @@
         "rationale": "Cohort 2a (#856) de-tagged the Direct-Origin Source serving operation to the Unix family (Linux and macOS) on the cleared Cohort 0/1 seams; Windows receives the serving_other.go typed refusal. Source inspection composes the Linux-only state.SourcePreparationConfig and stays Linux; inspection_other.go gives every non-Linux platform the same explicit unavailable contact result. These exact stub functions are the typed refusal boundary and have no Windows production consumer; they admit no input, process guard, State or live authority.",
         "owner": "Product Owner and Codex; Network Source serving and inspection",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows Source composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
+          "tests/e2e/node.OpenAdmissionConsole",
+          "tests/e2e/node.OpenAdmissionConsoleResult",
+          "tests/e2e/node.OpenAdmissionConsoleWithInterrupt",
+          "tests/e2e/node.openAdmissionConsole",
+          "tests/e2e/node/processfixture.AddReceivingFixtureNode",
+          "tests/e2e/node/processfixture.FixturePermission",
+          "tests/e2e/node/processfixture.Interrupt",
+          "tests/e2e/node/processfixture.PrepareInterrupt",
+          "tests/e2e/node/processfixture.PrepareIssuer",
+          "tests/e2e/node/processfixture.PrepareNetworkGenesis",
+          "tests/e2e/node/processfixture.ProcessBudget",
+          "tests/e2e/node/processfixture.ProcessBudgetWithCapacity",
+          "tests/e2e/node/processfixture.RefreshObservedClock",
+          "tests/e2e/node/processfixture.RoleCertificate",
+          "tests/e2e/node/processfixture.SeedNetworkState",
+          "tests/e2e/node/processfixture.SignedDescriptor",
+          "tests/e2e/node/processfixture.StartObservedClock",
+          "tests/e2e/node/processfixture.TempDir",
+          "tests/e2e/node/processfixture.WaitAdmissionHour",
+          "tests/e2e/node/processfixture.WriteNativeCredential"
+        ],
+        "classification": "native Node process-test driver",
+        "rationale": "Only the native Node and Source profiles verify the pinned CLI, launch measured child services, and collect original joined diagnostics through these fixtures; all callers belong to the real native test profiles. The shipped-command analysis on windows-amd64 reaches none of them because every non-test caller is Linux-native, and the Windows native-tag test analysis still counts the genuine untagged process-test callers, so this mirrors the reviewed Linux native Node process-test driver allowance without weakening either check.",
+        "owner": "Node process tests",
+        "retirement": "Remove when the native process test drivers retire."
       }
     ]
   },
@@ -1927,13 +1984,12 @@
       {
         "symbols": [
           "internal/hosting.Budget.CoversJoint",
-          "internal/hosting.Budget.Reserve",
           "internal/hosting.Budget.ReserveAdditionalJoint",
           "internal/hosting.Budget.reserveAdditional",
           "internal/hosting.Reservation.DetachTermination"
         ],
         "classification": "Linux-native hosting reservation composition covered by Linux-tagged tests, no Windows test path (internal/hosting, P1-B batch 1 #781)",
-        "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their behavior tests remain Linux-tagged because they exercise the genuine native flock lease and /sys interface counters through Budget.transact/measureHosting (reservation_linux_test.go, additional_reservation_linux_test.go, budget_linux_test.go, deadline_linux_test.go, snapshot_linux_test.go). The bounded read (boundedFile) now has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the new portable session route-reservation helper test (session/reservation_test.go) reaches Release through ReleaseJoined, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Linux-only reservation test files and the native lease refuses with ErrUnsupportedPlatform (platform_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
+        "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their behavior tests remain Linux-tagged because they exercise the genuine native flock lease and /sys interface counters through Budget.transact/measureHosting (reservation_linux_test.go, additional_reservation_linux_test.go, budget_linux_test.go, deadline_linux_test.go, snapshot_linux_test.go). The bounded read (boundedFile) now has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the new portable session route-reservation helper test (session/reservation_test.go) reaches Release through ReleaseJoined, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). #868 green-baseline reconciliation removed Budget.Reserve from this entry: the portable Endpoint funding composition (funding/prefix.go, funding/source.go) calls budget.Reserve from the Flow methods, and the untagged funding behavior test (preparation_test.go) constructs the Flow, so the function is live in the windows-amd64 native-tag test analysis at this tip (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Linux-only reservation test files and the native lease refuses with ErrUnsupportedPlatform (platform_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; hosting provider-period accounting",
         "retirement": "Remove each exact Windows entry when a selected genuine portable test or production path reaches it (a later dependency-chain batch unlocks the node/endpoint reservation consumers), or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
@@ -2061,6 +2117,31 @@
         "rationale": "This exact internal/execution/runtime function is covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification composition. Windows excludes the Linux-only native test executable and refuses native stream qualification launch, so the function is fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
+      },
+      {
+        "symbols": [
+          "internal/application/connection.OpenLocalConsoleOutput",
+          "internal/node.routeAdmissionAuthority.issuer",
+          "internal/node.routeAdmissionAuthority.observe",
+          "internal/node.routeAdmissionAuthority.receiver",
+          "internal/release/infrastructure.CommandHostSupported",
+          "internal/route/receiver.ValidateCarrier"
+        ],
+        "classification": "Linux/unix-family native composition with no Windows test path (deadcode #868 command-to-domain relocation reconciliation)",
+        "rationale": "The Windows native-tag test binary compiles none of these consumers: the local console open is reached only by local_console_linux.go and administration/local_link_linux.go, the route admission authority methods only by route_receive_linux.go, CommandHostSupported only by command_linux.go, and ValidateCarrier by receiver_unix.go (linux || darwin) and route_receive_linux.go. Untagged behavior tests do not call through the Linux native roots, so these functions are fully-dead in the windows-amd64 native-tag analysis only; they carry the same-symbol reviewed Windows production allowances above. This is reviewed platform-native coverage, not unreviewed test-only dead; the Linux native-tag test analysis remains empty.",
+        "owner": "Product Owner and Codex; Node command, Application Connection local presentation, Infrastructure artifact codec and Route receiver owners (#868)",
+        "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
+      },
+      {
+        "symbols": [
+          "internal/application/connection_test.buildArdentsNext",
+          "tests/e2e/node.AdmissionCommandFixture",
+          "tests/e2e/node.admissionCommandSPKI"
+        ],
+        "classification": "Native process-test fixtures whose genuine callers are Linux-tagged tests, no Windows test path (deadcode #868 command-to-domain relocation reconciliation)",
+        "rationale": "These fixtures are defined in untagged files but their only genuine callers are Linux-tagged native process tests: the connection command-binary builder is used solely by stream_private_link_linux_test.go, and the Admission command fixture and its SPKI helper (reached only through it) are used solely by the tests/e2e/node *_linux_test.go native drivers. Windows excludes those Linux-tagged test files, so the fixtures are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the functions have maintained real callers on Linux and the Linux native-tag test analysis remains empty.",
+        "owner": "Node process tests; Application Connection process tests",
+        "retirement": "Remove each exact Windows entry when the native process test drivers retire or a genuine Windows test path reaches it. The Linux native-tag test analysis must remain empty."
       }
     ]
   }

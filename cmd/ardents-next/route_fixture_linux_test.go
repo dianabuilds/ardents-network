@@ -264,47 +264,6 @@ func routePermissionStockAt(t *testing.T, f *networkAdmissionFixture, role admis
 	return holder
 }
 
-// Permission/stock are volatile and must be created inside the actual holder
-// process. Only its irreversible presentation history survives reopening.
-func routeConsoleRoleStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply, introduction bool, refill ...bool) {
-	t.Helper()
-	maxima := [3]uint32{0, 4, 0}
-	if len(refill) != 0 && refill[0] {
-		maxima[1] = 8
-	}
-	if introduction {
-		maxima[2] = 1
-	}
-	routeConsolePermissionStock(t, f, send, maxima)
-	var challenges []token.ClosedTokenContext
-	for i := byte(12); i < 16; i++ {
-		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
-		if len(refill) != 0 && refill[0] {
-			challenges = append(challenges, challenges[len(challenges)-1])
-		}
-	}
-	batches := [][]token.ClosedTokenContext{challenges}
-	if introduction {
-		batches = append(batches, []token.ClosedTokenContext{{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{16}, ReceiverDutyGeneration: 9, Class: 3, WindowStart: time.Now().UTC().Truncate(time.Hour)}})
-	}
-	for index, contexts := range batches {
-		intent := stock.IssuanceIntent{Challenges: contexts, Selection: stock.ExchangeBinding{ID: [32]byte{byte(31 + index)}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: f.profile.NotAfter}
-		batch := send(holderCommand{Operation: "begin", Intent: intent})
-		if batch.Outcome != "completed" {
-			t.Fatal("holder begin", batch.Outcome)
-		}
-		issued := issuer.IssueCurrent(t.Context(), f.plan, batch.Request, quota.Bootstrap, func() (admission.AuthorityFacts, time.Time, error) {
-			return f.authority.Issuer(f.plan.KeyBinding.Signer)
-		})
-		if issued.Outcome != "issued-offline" {
-			t.Fatal(issued.Outcome)
-		}
-		if reply := send(holderCommand{Operation: "complete", Payload: issued.Response}); reply.Outcome != "completed" {
-			t.Fatal("holder complete", reply.Outcome)
-		}
-	}
-}
-
 // This provisions only genuine offline permission in the actual holder process.
 // It neither obtains a token nor transfers successful local issuer results.
 func routeConsolePermissionStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply, maxima [3]uint32) {
