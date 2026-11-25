@@ -2,33 +2,78 @@
 
 package hosting
 
-// macOS measurement is staged unavailable (#865). The universal budget core
-// derives per-boot per-interface monotonic byte continuity from the facts a
-// measure adapter supplies (hostingState.observe): the same boot, the same
-// name+index, and non-decreasing transmit/receive totals. A macOS adapter must
-// supply facts that preserve that guarantee, never a weaker accepting path.
-//
-// Runtime evidence on macOS 27.0.1 (arm64) falsifies the NET_RT_IFLIST2 design
-// premise that IfData64.Ibytes/Obytes are 64-bit monotonic host totals. The
-// routing-socket if_data64 byte counters are truncated to 32 bits: for en0 the
-// snapshot reported Ibytes=2646041600 while the true host total was
-// 165855302598 (the snapshot equals the true total mod 2^32), and the same
-// truncation holds for lo0 and for the classic NET_RT_IFLIST if_data counters.
-// Packet counters are full-width; only the byte totals wrap. A byte counter that
-// wraps at 2^32 resets without a boot or interface-index change, so observe()
-// would refuse continuity after every 4 GiB on a busy interface. That cannot
-// preserve the guarantee, so this adapter refuses rather than accept a weaker
-// counter source.
-//
-// The full 64-bit totals are available through the IFMIB interface-data sysctl
-// (net.link.generic.ifdata.<ifindex>, IFDATA_GENERAL): the same probe read
-// 165861754137 there, an exact match to the host total. A future macOS measure
-// port should resolve name->index and read that source (its constants/struct are
-// not exported by the admitted x/sys/unix and need their own reviewed admission),
-// with the same boot-identity and index-recheck continuity facts. Until that
-// redesign is accepted, macOS receives the explicit typed refusal.
-func hostingPlatform() error { return ErrUnsupportedPlatform }
+import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"net"
 
-func measureHosting([]string) (hostingReading, error) {
-	return hostingReading{}, ErrUnsupportedPlatform
+	"golang.org/x/sys/unix"
+)
+
+// macOS measurement reads the IFMIB interface-data sysctl
+// (net.link.generic.ifdata.<ifindex>, IFDATA_GENERAL), which reports full 64-bit
+// per-interface byte totals. The routing-socket if_data64 byte counters
+// (NET_RT_IFLIST2 and the classic NET_RT_IFLIST) are truncated to 32 bits on
+// macOS: they wrap at 2^32 without a boot or interface-index change, so they
+// cannot preserve the per-boot per-interface monotonic byte continuity that
+// hostingState.observe requires. This adapter therefore reads IFMIB, never the
+// routing-socket counters (#865 finding, #872 redesign).
+//
+// The IFDATA_GENERAL selector and the ifmibdata field offsets below are not
+// exported by the admitted x/sys/unix and are admitted here from the macOS SDK
+// net/if_mib.h and net/if_var.h, verified by an offsetof probe and an exact
+// netstat -ib runtime match. struct ifmibdata is ifmd_name[IFNAMSIZ] followed by
+// ifmd_pcount, ifmd_flags, ifmd_snd_len, ifmd_snd_maxlen, ifmd_snd_drops (five
+// uint32) and ifmd_filler[4] (four uint32) = 52 bytes, then ifmd_data (struct
+// if_data64, which the kernel aligns to 4 bytes) at offset 52. Within if_data64
+// ifi_ibytes is at +64 and ifi_obytes at +72, and sizeof(struct ifmibdata) is 180.
+// The named sysctl resolves the CTL_NET/PF_LINK/NETLINK_GENERIC/IFMIB_IFDATA MIB
+// through the kernel, so only the selector and these offsets are owned here. The
+// raw buffer is decoded at those offsets rather than overlaid, keeping the
+// adapter free of unsafe.
+const (
+	ifdataGeneral     = 1                    // IFDATA_GENERAL: generic interface statistics.
+	ifmibDataOffset   = 52                   // offsetof(struct ifmibdata, ifmd_data).
+	ifmibIbytesOffset = ifmibDataOffset + 64 // ifi_ibytes within struct if_data64.
+	ifmibObytesOffset = ifmibDataOffset + 72 // ifi_obytes within struct if_data64.
+	ifmibSize         = 180                  // sizeof(struct ifmibdata).
+)
+
+func hostingPlatform() error { return nil }
+
+func measureHosting(names []string) (hostingReading, error) {
+	var reading hostingReading
+	boot, err := unix.SysctlTimeval("kern.boottime")
+	if err != nil {
+		return reading, err
+	}
+	// Canonical boot identity: the kernel boot timeval is stable within a boot and
+	// changes on reboot. observe() only requires a non-empty string that stays
+	// equal across observations of the same boot.
+	reading.Boot = fmt.Sprintf("%d.%06d", boot.Sec, boot.Usec)
+	for _, name := range names {
+		iface, err := net.InterfaceByName(name)
+		if err != nil {
+			return hostingReading{}, err
+		}
+		index := iface.Index
+		raw, err := unix.SysctlRaw("net.link.generic.ifdata", index, ifdataGeneral)
+		if err != nil {
+			return hostingReading{}, err
+		}
+		if len(raw) != ifmibSize {
+			return hostingReading{}, errors.New("hosting interface counter is unavailable")
+		}
+		rx := binary.LittleEndian.Uint64(raw[ifmibIbytesOffset : ifmibIbytesOffset+8])
+		tx := binary.LittleEndian.Uint64(raw[ifmibObytesOffset : ifmibObytesOffset+8])
+		// Recheck identity after sampling: a removed/recreated device is no longer
+		// the counter source bound to this period, even when its name is reused.
+		after, err := net.InterfaceByName(name)
+		if err != nil || after.Index != index {
+			return hostingReading{}, errors.New("hosting interface changed during observation")
+		}
+		reading.Interfaces = append(reading.Interfaces, hostingInterface{Name: name, Index: uint64(index), Tx: tx, Rx: rx})
+	}
+	return reading, nil
 }
