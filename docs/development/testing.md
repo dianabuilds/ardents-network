@@ -3086,6 +3086,37 @@ remaining recorded grounds (native worker launch composition,
 snapshot-read-before-launch ordering, the `application/connection.Refuse`
 projection and systemd delivery), with the architecture rationale updated.
 
+Follow-up #883 (#691) shifted the Publisher composition itself to the Unix family
+(Linux and macOS) after the durable lease port. Per-file re-verification at the
+current tip confirmed every dependency is now portable or Unix-family, so
+`opening_linux.go`/`publisher_linux.go`/`snapshot_linux.go`/`byte_stream_linux.go`
+were renamed to `*_unix.go` (`linux || darwin`) and the opening/snapshot refusals
+(`opening_other.go`, `snapshot_other.go`) plus their behavior tests narrowed from
+`!linux` to `!linux && !darwin` (Windows-only). live Open composes only Unix-family
+selection/Hosting/Instance/durable roots with the portable domain Publisher and
+launches no native worker itself — the same pattern as the session `Open*` shift;
+the coordinator launches the native worker (`LaunchPublisher`/
+`LaunchByteStreamPublisher`) before live Open, so macOS receives the typed worker
+refusal before any root state. `LaunchSnapshotFile` imports the caller input
+read-only (`document.ReadSnapshotFile` opens `O_RDONLY`/`O_NOFOLLOW` into a
+caller-owned buffer and creates no filesystem state or authority) before the same
+typed launch refusal, so the snapshot-read-before-launch ordering no longer blocks
+the port — reading caller input is not state creation. The byte-stream adapter
+composes only the portable `application/connection` contract (`contract.go`), not
+the Linux-only `Refuse`/`setupCleanupError` projection (which remains the Reader's
+blocker at `reader_linux.go`). macOS worker launch stays a typed refusal
+(`execution/runtime` `!linux` stubs); no unconfined worker is spawned and Linux
+behavior is byte-identical. A new macOS refusal test (`snapshot_darwin_test.go`)
+pins read-only input then typed launch refusal with no state created; the Windows
+refusal tests keep pinning refusal before any snapshot I/O. The Reader coordinator
+and participant stay Linux (Refuse projection, systemd delivery). The architecture
+assertion `TestCohort2dEndpointNativeBoundary` was re-pinned (Publisher Unix
+composition + Windows refusal; Reader/participant Linux); the deadcode allowlist
+symbols are unchanged (linux/windows selections identical, only batch-3 rationale
+prose updated). The next unblocking prerequisites are the
+`application/connection.Refuse` projection (Reader) and `endpoint/launch` systemd
+delivery (participant), then the cmd adapters.
+
 P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
 production is already portable: the admission holder permission-request proof,
 the allocation request/decision quota grammar, the token closed-batch blind

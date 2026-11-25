@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !darwin
 
 package publisher
 
@@ -13,10 +13,11 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
 
-// Live Open composes the native selection, Hosting and Instance custody roots
-// and the Linux native worker seam, which remain Linux-only (Cohort 2b, #858).
-// On every other host the typed boundary must refuse before opening any root or
-// creating any filesystem state.
+// Live Open composes the Unix-family selection, Hosting, Instance custody and
+// durable history roots with the portable domain Publisher (Linux and macOS,
+// #883); it launches no native worker itself. Windows lacks the ported Hosting
+// measurement and Instance custody, so the typed boundary must refuse before
+// opening any root or creating any filesystem state.
 func TestOpenBoundaryRefusesWithoutStateOnUnsupportedHost(t *testing.T) {
 	root := t.TempDir()
 	plan := Plan{InstanceRoot: filepath.Join(root, "instance"), Root: filepath.Join(root, "publication")}
