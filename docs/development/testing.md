@@ -3518,6 +3518,22 @@ ADR-0125). One fixture Release authority and one operator — not independent
 participants, not whole-host privacy qualification; the forward executable is
 a distinct build of the same checked source.
 
+## Introduction installed repair
+
+The `introduction_repair_native` tag selects
+`TestNativeIntroductionPlatformRepairsCrashedProducer` in `tests/e2e/node`.
+Use a clean Ubuntu/systemd host with a root driver, cgroup v2, ext4, and free
+fixed Node units and account. The test uses the compiled command, signed fixture
+delivery, the real fixed unit, and the original retained histories. It kills
+the installed process, repairs its sole participation fence through the public
+command, compares the original file identities and bytes in the other roots,
+and verifies a distinct producer on the next launch. Repair on a live or already
+clean invocation must refuse.
+
+`make platform-installed-compile-check` compiles the test. Run the binary from
+`tests/e2e/node` with the selected Go toolchain available to the root driver.
+This test covers installed Introduction repair with fixture authority.
+
 ## Protected Endpoint platform-led full-launch native qualification
 
 The `endpoint_launch_native` build tag selects
