@@ -35,6 +35,12 @@
 //     stream_qualification_installed_linux_test.go.
 //   - ER6 init-seam: initialization_linux.go, initialization_other.go;
 //     exercised through the installed launch and native-refusal tests.
+//   - ER7 byte-stream: byte_stream.go (portable ExchangeByteStream),
+//     byte_stream_linux.go (Linux launch and protocol), byte_stream_other.go
+//     (non-Linux LaunchByteStreamPublisher/LaunchByteStreamReader refusal stubs,
+//     #866). The authority-rechecking borrow shared by the Reader and Stream
+//     qualification bridges is worker_borrow_unix.go (Linux and macOS); its
+//     behavior test is worker_borrow_unix_test.go.
 //
 // Installed fixture helpers carry no behavior of their own:
 // activation_observation_installed_linux_test.go,

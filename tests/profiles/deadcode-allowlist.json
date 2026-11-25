@@ -665,6 +665,18 @@
       },
       {
         "symbols": [
+          "internal/connection.StreamFailureReason",
+          "internal/connection.attachmentFailureReason",
+          "internal/execution/runtime.Owner.LaunchByteStreamPublisher",
+          "internal/execution/runtime.Owner.LaunchByteStreamReader"
+        ],
+        "classification": "portable Connection failure projection and byte-stream launch refusal stubs with Ubuntu-only protected composition (#866)",
+        "rationale": "StreamFailureReason and attachmentFailureReason are pure portable failure-category projections whose only production consumers are the Linux endpoint reader/publisher byte-stream composition. LaunchByteStreamPublisher/LaunchByteStreamReader are the non-Linux refusal stubs that close the compile gap flagged by the Cohort 2b endpoint boundary review (PR #860); their only consumers are the same Linux endpoint byte-stream composition. The worker capability port (#866) de-tagged the projection and added the refusal stubs without moving the endpoint boundary, so Windows still refuses before any worker or stream effect.",
+        "owner": "Product Owner and Codex; Execution worker capability port (#866)",
+        "retirement": "Remove each exact Windows entry when the endpoint byte-stream/failure composition is de-tagged onto a selected genuine native path or the projection is retired."
+      },
+      {
+        "symbols": [
           "internal/network/closedprofile.Prepare",
           "internal/network/epoch.PrepareInitialClosedEpoch",
           "internal/network/epoch.PrepareInitialClosedRecord",
@@ -2416,6 +2428,16 @@
         "rationale": "This exact internal/execution/runtime function is covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification composition. Windows excludes the Linux-only native test executable and refuses native stream qualification launch, so the function is fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
+      },
+      {
+        "symbols": [
+          "internal/execution/runtime.Owner.LaunchByteStreamPublisher",
+          "internal/execution/runtime.Owner.LaunchByteStreamReader"
+        ],
+        "classification": "Linux-native byte-stream launch covered by Linux tests, no Windows test path (internal/execution/runtime, #866)",
+        "rationale": "These non-Linux refusal stubs close the compile gap flagged by the Cohort 2b endpoint boundary review (PR #860). Their only consumers and tests are the Linux endpoint byte-stream composition; Windows excludes that Linux-only composition and refuses native byte-stream launch, so the stubs are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "owner": "Product Owner and Codex; Execution worker capability port (#866)",
+        "retirement": "Remove each exact Windows entry when the endpoint byte-stream composition is de-tagged onto a selected genuine native test or production path, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       }
     ]
   }
