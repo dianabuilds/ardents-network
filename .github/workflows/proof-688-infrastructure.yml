@@ -92,6 +92,7 @@ jobs:
           git show -s --format='candidate=%H tree=%T'
           bin="$RUNNER_TEMP/repair.test"
           go test -c -tags network_signing_native -o "$bin" ./internal/network/state
+          cd internal/network/state
           sudo "$bin" -test.v -test.run '^Test(IntroductionRepair|NodeDutyRepair)' -test.count=1 -test.timeout=3m | tee "$RUNNER_TEMP/repair.log"
           grep -F -- '--- PASS: TestIntroductionRepairRootsNative' "$RUNNER_TEMP/repair.log"
           grep -F -- '--- PASS: TestIntroductionRepairDomainAdmissionRetainsBothLeasesAndHistories' "$RUNNER_TEMP/repair.log"
