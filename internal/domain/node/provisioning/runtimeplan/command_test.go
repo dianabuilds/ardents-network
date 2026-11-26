@@ -1,4 +1,4 @@
-package provisioning
+package runtimeplan
 
 import (
 	"bytes"
@@ -78,11 +78,17 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		if err != nil {
 			t.Fatal("produced Forwarding plan does not decode:", err)
 		}
+		if !p.ValidInvocation() {
+			t.Fatal("produced Forwarding plan fails invocation checks")
+		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot}, p.RetirementWaitMS
 	case "join":
 		p, err := node.DecodeJoinPlan(raw)
 		if err != nil {
 			t.Fatal("produced JOIN plan does not decode:", err)
+		}
+		if !p.ValidInvocation() {
+			t.Fatal("produced JOIN plan fails invocation checks")
 		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot}, p.RetirementWaitMS
 	case "descriptor":
@@ -90,11 +96,17 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		if err != nil {
 			t.Fatal("produced Descriptor plan does not decode:", err)
 		}
+		if !p.ValidInvocation() {
+			t.Fatal("produced Descriptor plan fails invocation checks")
+		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.DescriptorRoot}, p.RetirementWaitMS
 	case "introduction":
 		p, err := node.DecodeIntroductionPlan(raw)
 		if err != nil {
 			t.Fatal("produced Introduction plan does not decode:", err)
+		}
+		if !p.ValidInvocation() {
+			t.Fatal("produced Introduction plan fails invocation checks")
 		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.IntroductionRoot}, p.RetirementWaitMS
 	case "issuer":
@@ -106,13 +118,16 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		if err != nil {
 			t.Fatal("produced Issuer issuance sub-plan does not decode:", err)
 		}
+		if !p.ValidInvocation(prepared.AdmissionRoot, prepared.KeyRoot, prepared.ResultRoot) {
+			t.Fatal("produced Issuer plan fails invocation checks")
+		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, prepared.AdmissionRoot, prepared.KeyRoot, prepared.ResultRoot}, p.RetirementWaitMS
 	}
 	t.Fatal("unknown role")
 	return nil, "", nil, 0
 }
 
-func TestNodePreparePlanProducesRuntimeAdmissiblePlan(t *testing.T) {
+func TestPreparePlanPreservesInvocationFacts(t *testing.T) {
 	roles := []struct{ name, profile string }{
 		{"forwarding", processguard.ForwardingProfile},
 		{"join", processguard.JoinProfile},
@@ -137,7 +152,7 @@ func TestNodePreparePlanProducesRuntimeAdmissiblePlan(t *testing.T) {
 			}
 			args := preparePlanTestArgs(role.name, base, extra)
 			var out bytes.Buffer
-			if code := RunPreparePlan(t.Context(), args, &out); code != 0 {
+			if code := Run(t.Context(), args, &out); code != 0 {
 				t.Fatalf("prepare-plan refused valid inputs: %d %s", code, &out)
 			}
 			if !bytes.Contains(out.Bytes(), []byte(`"outcome":"prepared"`)) {
@@ -146,6 +161,16 @@ func TestNodePreparePlanProducesRuntimeAdmissiblePlan(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join(base, "plan.json"))
 			if err != nil {
 				t.Fatal("prepare-plan wrote no plan:", err)
+			}
+			var credentials struct {
+				Certificate string `json:"certificate"`
+				Key         string `json:"private_key"`
+			}
+			if err := json.Unmarshal(raw, &credentials); err != nil {
+				t.Fatal(err)
+			}
+			if credentials.Certificate != filepath.Join(base, "cert.pem") || credentials.Key != filepath.Join(base, "key.pem") {
+				t.Fatal("prepared plan did not preserve the certificate and private-key purposes")
 			}
 			network, profile, roots, wait := decodedPreparePlanFacts(t, role.name, raw)
 			if profile != role.profile || wait != 5000 || network == nil {
@@ -207,7 +232,7 @@ func TestNodePreparePlanRefusesBeforeEffect(t *testing.T) {
 				args = append(args, "--"+key, value)
 			}
 			var out bytes.Buffer
-			if code := RunPreparePlan(t.Context(), args, &out); code != 2 {
+			if code := Run(t.Context(), args, &out); code != 2 {
 				t.Fatalf("invalid prepare-plan input accepted: %d %s", code, &out)
 			}
 			if _, err := os.Stat(filepath.Join(base, "plan.json")); !os.IsNotExist(err) {
@@ -224,7 +249,7 @@ func TestNodePreparePlanRefusesDuplicateFlagTokenAndClobber(t *testing.T) {
 	// A repeated --work token (distinct from a repeated map key) must refuse.
 	args = append(args, "--work", "1:1")
 	var out bytes.Buffer
-	if code := RunPreparePlan(t.Context(), args, &out); code != 2 {
+	if code := Run(t.Context(), args, &out); code != 2 {
 		t.Fatal("duplicate flag token accepted:", code)
 	}
 	// An existing output file is never clobbered.
@@ -233,7 +258,7 @@ func TestNodePreparePlanRefusesDuplicateFlagTokenAndClobber(t *testing.T) {
 		t.Fatal(err)
 	}
 	out.Reset()
-	if code := RunPreparePlan(t.Context(), fresh, &out); code != 2 {
+	if code := Run(t.Context(), fresh, &out); code != 2 {
 		t.Fatal("prepare-plan clobbered an existing output:", code)
 	}
 	if raw, _ := os.ReadFile(filepath.Join(base, "plan.json")); string(raw) != "existing" {
@@ -248,7 +273,7 @@ func TestNodePreparePlanCanceledRefusesBeforeEffect(t *testing.T) {
 	cancel()
 	args := preparePlanTestArgs("forwarding", base, nil)
 	var out bytes.Buffer
-	if code := RunPreparePlan(ctx, args, &out); code != 130 {
+	if code := Run(ctx, args, &out); code != 130 {
 		t.Fatal("canceled prepare-plan did not refuse before effect:", code)
 	}
 	if _, err := os.Stat(filepath.Join(base, "plan.json")); !os.IsNotExist(err) {

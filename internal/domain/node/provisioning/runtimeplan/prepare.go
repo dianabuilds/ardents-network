@@ -1,4 +1,4 @@
-package provisioning
+package runtimeplan
 
 import (
 	"context"
@@ -20,12 +20,12 @@ import (
 
 var errRuntimePlan = errors.New("invalid runtime plan input")
 
-// ErrRuntimePlanWrite is a failure to finish writing an exclusively created plan.
-var ErrRuntimePlanWrite = errors.New("runtime plan write failed")
+// errRuntimePlanWrite is a failure to finish writing an exclusively created plan.
+var errRuntimePlanWrite = errors.New("runtime plan write failed")
 
-// PrepareRuntimePlan creates one detached runtime declaration. It uses the
+// prepare creates one detached runtime declaration. It uses the
 // selected role's codec and creates no semantic root or signed authority.
-func PrepareRuntimePlan(ctx context.Context, role string, flags map[string]string) error {
+func prepare(ctx context.Context, role string, flags map[string]string) error {
 	if ctx == nil {
 		return errRuntimePlan
 	}
@@ -57,7 +57,7 @@ func PrepareRuntimePlan(ctx context.Context, role string, flags map[string]strin
 	if err != nil {
 		return errRuntimePlan
 	}
-	wait, err := admissionNumber(flags["retirement-wait-ms"], 32)
+	wait, err := parsePlanNumber(flags["retirement-wait-ms"], 32)
 	if err != nil || wait == 0 || wait > 5000 {
 		return errRuntimePlan
 	}
@@ -97,7 +97,7 @@ func PrepareRuntimePlan(ctx context.Context, role string, flags map[string]strin
 	}
 	_, writeErr := f.Write(append(raw, '\n'))
 	if err := errors.Join(writeErr, f.Close()); err != nil {
-		return errors.Join(ErrRuntimePlanWrite, err)
+		return errors.Join(errRuntimePlanWrite, err)
 	}
 	return ctx.Err()
 }
@@ -150,7 +150,7 @@ func preparePlanRole(role string, flags map[string]string) (profile string, root
 }
 
 // preparePlanGrammar confirms the produced bytes decode through the same closed
-// node codec the runtime consumes, so the written plan is runtime-admissible.
+// Node codec the runtime consumes. The result supplies declaration facts only.
 func preparePlanGrammar(role string, raw []byte) error {
 	switch role {
 	case "forwarding":
@@ -179,18 +179,18 @@ func preparePlanTraffic(value string) (hosting.Traffic, error) {
 	if len(parts) != 2 {
 		return hosting.Traffic{}, errors.New("invalid traffic reservation")
 	}
-	tx, err := admissionNumber(parts[0], 64)
+	tx, err := parsePlanNumber(parts[0], 64)
 	if err != nil {
 		return hosting.Traffic{}, err
 	}
-	rx, err := admissionNumber(parts[1], 64)
+	rx, err := parsePlanNumber(parts[1], 64)
 	if err != nil {
 		return hosting.Traffic{}, err
 	}
 	return hosting.Traffic{Tx: tx, Rx: rx}, nil
 }
 
-func admissionNumber(value string, bits int) (uint64, error) {
+func parsePlanNumber(value string, bits int) (uint64, error) {
 	number, err := strconv.ParseUint(value, 10, bits)
 	if err != nil || strconv.FormatUint(number, 10) != value {
 		return 0, errRuntimePlan

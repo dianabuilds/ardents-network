@@ -2457,7 +2457,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/domain/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/domain/endpoint/launch" || dependency == modulePath+"/internal/domain/execution" || dependency == modulePath+"/internal/domain/execution/runtime") {
 			return true
 		}
-		if source == "cmd/ardents-next/node.go" && dependency == modulePath+"/internal/domain/node/provisioning" {
+		if source == "cmd/ardents-next/node.go" && dependency == modulePath+"/internal/domain/node/provisioning/runtimeplan" {
 			return true
 		}
 		if source == "internal/domain/endpoint/declarations_linux.go" && (dependency == modulePath+"/internal/domain/execution" || dependency == modulePath+"/internal/domain/network/source") {

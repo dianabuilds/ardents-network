@@ -5,7 +5,7 @@ import (
 	"io"
 
 	nodecommand "github.com/dianabuilds/ardents-network/internal/domain/node/command"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/runtimeplan"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
 )
 
@@ -20,7 +20,7 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 		return nodecommand.InspectProcess(ctx, out)
 	}
 	if args[0] == "prepare-plan" {
-		return provisioning.RunPreparePlan(ctx, args[1:], out)
+		return runtimeplan.Run(ctx, args[1:], out)
 	}
 	operation, tail := args[0], args[1:]
 	switch operation {
