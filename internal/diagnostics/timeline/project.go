@@ -3,12 +3,12 @@ package timeline
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 // Project renders the three bounded runtime event schemas from
@@ -42,99 +42,20 @@ func Project(ctx context.Context, input io.ReadCloser, output io.Writer) error {
 }
 
 func diagnosticTimelineRow(raw []byte) (string, bool, error) {
-	var fields map[string]json.RawMessage
-	if json.Unmarshal(raw, &fields) != nil || fields == nil {
-		return "", false, errors.New("runtime diagnostic input has an invalid JSON record")
+	record, present, err := runtimeevent.Decode(raw)
+	if err != nil || !present {
+		return "", false, err
 	}
-	journalAt := time.Time{}
-	pid := "-"
-	if _, direct := fields["schema"]; !direct {
-		message := diagnosticString(fields, "MESSAGE")
-		if message == "" {
-			return "", false, nil
-		}
-		journalAt = diagnosticJournalTime(diagnosticString(fields, "__REALTIME_TIMESTAMP"))
-		if observed := diagnosticString(fields, "_PID"); diagnosticPID(observed) {
-			pid = observed
-		}
-		// Decode MESSAGE independently. Unmarshal into the journal map would
-		// retain envelope keys that are absent from the runtime event.
-		var event map[string]json.RawMessage
-		if json.Unmarshal([]byte(message), &event) != nil {
-			return "", false, nil
-		}
-		fields = event
-	}
-	kind := diagnosticString(fields, "kind")
-	owner, role, carrier, state, reason := "", "", "", "", ""
-	switch diagnosticString(fields, "schema") {
-	case nodeEventSchema:
-		if err := validateStringFields(fields, "kind", "at", "assignment", "carrier_profile", "state", "reason"); err != nil {
-			return "", false, err
-		}
-		switch kind {
-		case nodeLifecycle, nodeResource, nodeResourceSample:
-		default:
-			return "", false, nil
-		}
-		owner = "node"
-		role = diagnosticString(fields, "assignment")
-		carrier = diagnosticString(fields, "carrier_profile")
-		state = diagnosticString(fields, "state")
-		reason = diagnosticString(fields, "reason")
-	case sourceEventSchema:
-		if err := validateStringFields(fields, "kind", "at", "reason"); err != nil {
-			return "", false, err
-		}
-		owner, reason = "source", diagnosticString(fields, "reason")
-		switch kind {
-		case sourceFailed:
-			if reason != sourceBackgroundWork && reason != sourceCleanup {
-				return "", false, errors.New("source diagnostic has an invalid reason category")
-			}
-		case sourceReady, sourceWaveAccepted:
-			if reason != "" {
-				return "", false, errors.New("source diagnostic has an invalid reason category")
-			}
-		default:
-			return "", false, nil
-		}
-	case endpointEventSchema:
-		if err := validateStringFields(fields, "kind", "at", "surface", "failure"); err != nil {
-			return "", false, err
-		}
-		switch kind {
-		case endpointReady, endpointPermissionRequired, endpointFailed,
-			endpointPublicationRefreshFailed, endpointPublicationWithdrawalFailed,
-			endpointConnectionOperationFailed:
-		default:
-			return "", false, nil
-		}
-		owner = "endpoint"
-		role = diagnosticString(fields, "surface")
-		reason = diagnosticString(fields, "failure")
-	default:
-		return "", false, nil
-	}
-	if !diagnosticToken(kind, 64) || role != "" && !diagnosticToken(role, 64) ||
-		carrier != "" && !diagnosticToken(carrier, 64) ||
-		state != "" && !diagnosticToken(state, 32) || len(reason) > 256 {
-		return "", false, errors.New("runtime diagnostic contains an invalid category")
-	}
-	at := time.Time{}
-	clock := "event"
-	if stamp := diagnosticString(fields, "at"); stamp != "" {
-		var err error
-		at, err = time.Parse(time.RFC3339Nano, stamp)
-		if err != nil {
-			return "", false, errors.New("runtime diagnostic time is invalid")
-		}
-	}
+	at, clock := record.At, "event"
 	if at.IsZero() {
-		at, clock = journalAt, "journal"
+		at, clock = record.JournalAt, "journal"
 	}
 	if at.IsZero() {
 		return "", false, errors.New("runtime diagnostic has no event or journal time")
+	}
+	pid, role, carrier, state := record.PID, record.Role, record.Carrier, record.State
+	if pid == "" {
+		pid = "-"
 	}
 	if role == "" {
 		role = "-"
@@ -146,59 +67,5 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		state = "-"
 	}
 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%q\n",
-		at.UTC().Format(time.RFC3339Nano), clock, owner, pid, role, carrier, kind, state, reason), true, nil
-}
-
-func validateStringFields(fields map[string]json.RawMessage, names ...string) error {
-	for _, name := range names {
-		if raw, present := fields[name]; present {
-			var value *string
-			if json.Unmarshal(raw, &value) != nil || value == nil {
-				return errors.New("runtime diagnostic contains an invalid field type")
-			}
-		}
-	}
-	return nil
-}
-
-func diagnosticString(fields map[string]json.RawMessage, name string) string {
-	var value string
-	if json.Unmarshal(fields[name], &value) != nil {
-		return ""
-	}
-	return value
-}
-
-func diagnosticJournalTime(raw string) time.Time {
-	micros, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil || micros <= 0 {
-		return time.Time{}
-	}
-	return time.UnixMicro(micros).UTC()
-}
-
-func diagnosticToken(value string, limit int) bool {
-	if value == "" || len(value) > limit {
-		return false
-	}
-	for _, ch := range value {
-		if ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' ||
-			ch >= '0' && ch <= '9' || ch == '-' || ch == '_' || ch == '.' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-func diagnosticPID(value string) bool {
-	if value == "" || len(value) > 10 {
-		return false
-	}
-	for _, digit := range value {
-		if digit < '0' || digit > '9' {
-			return false
-		}
-	}
-	return true
+		at.UTC().Format(time.RFC3339Nano), clock, record.Owner, pid, role, carrier, record.Kind, state, record.Reason), true, nil
 }

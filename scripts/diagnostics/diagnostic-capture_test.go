@@ -290,3 +290,51 @@ func TestSourceMutationInvalidatesExactCandidateReceipt(t *testing.T) {
 		t.Fatal(string(body))
 	}
 }
+
+func TestProjectionJournalEnvelopeCannotSupplyEvent(t *testing.T) {
+	p := newProjection(t)
+	p.line([]byte(`{"schema":"ardents-source-event-v1","kind":"source-ready","MESSAGE":"{}"}`))
+	if len(p.summary.Counts) != 0 || p.summary.UnrecognizedLines != 1 {
+		t.Fatalf("outer fields created event: %+v", p.summary)
+	}
+	journal := `{"reason":"private-outer-detail","MESSAGE":"{\"schema\":\"ardents-source-event-v1\",\"kind\":\"source-ready\"}"}`
+	p.line([]byte(journal))
+	if p.summary.Counts["source-ready"] != 1 || p.summary.UnknownCategories != 0 {
+		t.Fatalf("outer reason changed event: %+v", p.summary)
+	}
+}
+
+func TestProjectionRejectsMalformedKnownRecord(t *testing.T) {
+	for _, body := range []string{
+		`{"schema":"ardents-source-event-v1","kind":"source-ready","reason":"cleanup"}`,
+		`{"schema":"ardents-source-event-v1","kind":"source-failed","reason":"private-marker"}`,
+		`{"schema":"ardents-node-event-v1","kind":"lifecycle","state":42}`,
+		`{"schema":"ardents-node-event-v1","kind":"lifecycle","at":false}`,
+		`{"schema":"ardents-node-event-v1","kind":"lifecycle","at":"not-a-time"}`,
+	} {
+		p := newProjection(t)
+		p.line([]byte(body))
+		if p.summary.InvalidLines != 1 || !p.summary.CaptureIncomplete || len(p.summary.Counts) != 0 || len(p.summary.LastEvents) != 0 {
+			t.Fatalf("malformed known event accepted: %+v", p.summary)
+		}
+	}
+}
+
+func TestOrdinaryConsoleAndGoTestOutputDoNotDeclareCorruptEvents(t *testing.T) {
+	p := newProjection(t)
+	for _, line := range []string{"ordinary console output", "=== RUN   TestWorker", "--- PASS: TestWorker (0.01s)"} {
+		p.line([]byte(line))
+		wrapped, err := json.Marshal(map[string]string{"Action": "output", "Output": line + "\n"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.line(wrapped)
+	}
+	if p.summary.UnrecognizedLines != 6 || p.summary.InvalidLines != 0 || p.summary.CaptureIncomplete || len(p.summary.Counts) != 0 {
+		t.Fatalf("ordinary output became corrupt event: %+v", p.summary)
+	}
+	p.line([]byte(`{"schema":"ardents-node-event-v1","kind":"lifecycle"`))
+	if p.summary.InvalidLines != 1 || !p.summary.CaptureIncomplete {
+		t.Fatalf("corrupt JSON event was hidden: %+v", p.summary)
+	}
+}

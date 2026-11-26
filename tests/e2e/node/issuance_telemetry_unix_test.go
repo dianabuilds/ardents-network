@@ -5,6 +5,7 @@ package node_test
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/protobuf/proto"
@@ -62,5 +63,28 @@ func assertIssuanceOTLP(t *testing.T, seen map[string][]byte, p issuancePlan, ca
 		if bytes.Contains(raw, []byte(p.Root)) || bytes.Contains(raw, []byte(hex.EncodeToString(p.Binding.Signer[:]))) {
 			t.Fatal("metadata leaked")
 		}
+	}
+}
+
+func assertIssuanceDelivery(t *testing.T, diagnostic []byte, collector, phase string) {
+	t.Helper()
+	if len(diagnostic) == 0 && phase == "input" {
+		return
+	} // Rejected before exporters opened.
+	var event struct {
+		Telemetry string `json:"telemetry"`
+	}
+	if err := json.Unmarshal(diagnostic, &event); err != nil {
+		t.Fatalf("missing diagnostic delivery status: %v", err)
+	}
+	want := "completed"
+	if collector == "" {
+		want = "local-only"
+	}
+	if collector == "http://127.0.0.1:1" {
+		want = "unavailable"
+	}
+	if event.Telemetry != want {
+		t.Fatalf("delivery=%q want=%q", event.Telemetry, want)
 	}
 }

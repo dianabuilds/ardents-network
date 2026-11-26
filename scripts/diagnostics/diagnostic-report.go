@@ -17,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 // Reports are fixed-category projections of private evidence. Both CLI and HTTP
@@ -408,16 +410,16 @@ func readReportEvents(root *os.Root, r *runReport, expected map[string]uint64) {
 			r.gap("collector-time-order-uncertain")
 		}
 		previous = e.ObservedAt
-		if e.UnknownCategories > 0 || e.Failure == "unclassified" {
+		if e.UnknownCategories > 0 || e.Failure == runtimeevent.Unclassified {
 			r.gap("owner-category-unclassified")
 			r.Complete = false
 		}
 		if e.Failure != "" || e.State == "FAILED" || strings.HasSuffix(e.Kind, "-failed") || e.Kind == "headless-runtime-permission-required" {
 			owner := "Node"
-			if e.Schema == "ardents-source-event-v1" {
+			if e.Schema == runtimeevent.SourceSchema {
 				owner = "Source"
 			}
-			if e.Schema == "ardents-headless-runtime-event-v1" {
+			if e.Schema == runtimeevent.EndpointSchema {
 				owner = "Endpoint"
 			}
 			f := reportFailure{Owner: owner, Kind: e.Kind, State: e.State, Category: e.Failure, ObservedAt: e.ObservedAt, Record: record}
@@ -459,20 +461,16 @@ func safeReportEvent(e event) bool {
 	if e.ObservedAt.IsZero() {
 		return false
 	}
-	kinds, failures := eventCategories(e.Schema)
-	if kinds == "" {
+	if !runtimeevent.KnownKind(e.Schema, e.Kind) {
 		return false
 	}
-	if selected(e.Kind, kinds) == "" {
+	if e.State != "" && !runtimeevent.KnownState(e.State) {
 		return false
 	}
-	if e.State != "" && selected(e.State, "ABSENT PREPARED READY DRAINING WITHDRAWN FAILED OBSERVED NORMAL PROTECT DRAIN EXIT") == "" {
+	if e.Carrier != "" && !runtimeevent.KnownCarrier(e.Carrier) {
 		return false
 	}
-	if e.Carrier != "" && selected(e.Carrier, "ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2") == "" {
-		return false
-	}
-	return e.Failure == "" || selected(e.Failure, failures) != "" || e.Failure == "unclassified" && e.Schema != "ardents-node-event-v1"
+	return e.Failure == "" || runtimeevent.KnownFailure(e.Schema, e.Failure) || e.Failure == runtimeevent.Unclassified && e.Schema != runtimeevent.NodeSchema
 }
 
 func readReportSamples(root *os.Root, r *runReport, expected uint64) {
@@ -699,7 +697,8 @@ func safeSummaryForPanel(s summary) (summary, error) {
 	}
 	clean := s
 	clean.Counts = map[string]uint64{}
-	for _, k := range strings.Fields("lifecycle resource resource-sample source-ready source-wave-accepted source-failed headless-runtime-failed headless-runtime-ready headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed") {
+	for _, category := range runtimeevent.Categories() {
+		k := category.Kind
 		if n, ok := s.Counts[k]; ok {
 			clean.Counts[k] = n
 		}

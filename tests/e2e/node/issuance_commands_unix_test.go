@@ -58,6 +58,7 @@ func issuanceCommand(t *testing.T, operation string, p map[string]any, collector
 	if bytes.Contains(log.Bytes(), []byte(p["root"].(string))) {
 		t.Fatal("path leaked")
 	}
+	assertIssuanceDelivery(t, log.Bytes(), collector, r.Phase)
 	return r, err
 }
 func TestIssuanceCompiledCLI(t *testing.T) {

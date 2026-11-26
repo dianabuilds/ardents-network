@@ -22,6 +22,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 func sourceDiffDigest(ctx context.Context, root string) string {
@@ -142,7 +144,8 @@ func metricText(s summary) string {
 			fmt.Fprintf(&b, "ardents_diagnostic_peak_%s %s\n", name, strconv.FormatFloat(value, 'g', -1, 64))
 		}
 	}
-	for _, kind := range strings.Fields("lifecycle resource resource-sample source-ready source-wave-accepted source-failed headless-runtime-failed headless-runtime-ready headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed") {
+	for _, category := range runtimeevent.Categories() {
+		kind := category.Kind
 		fmt.Fprintf(&b, "ardents_diagnostic_events_total{kind=%q} %d\n", kind, s.Counts[kind])
 	}
 	return b.String()

@@ -83,14 +83,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	}
 	r.Outcome = hosting.Outcome(err)
 	finish(r.Phase, r.Outcome)
-	ok := o.Close()
-	telemetry := "completed"
-	if telemetryErr != nil || !ok {
-		telemetry = "unavailable"
-	}
-	if endpoint == "" {
-		telemetry = "local-only"
-	}
-	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome, Telemetry string }{r.Operation, r.Phase, r.Outcome, telemetry})
+	delivery := o.CloseWithStatus(telemetryErr)
+	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome, Telemetry string }{r.Operation, r.Phase, string(r.Outcome), string(delivery)})
 	return write()
 }

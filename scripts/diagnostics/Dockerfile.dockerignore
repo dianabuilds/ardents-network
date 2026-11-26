@@ -11,3 +11,7 @@
 !scripts/diagnostics/
 !scripts/diagnostics/diagnostic-*.go
 !scripts/diagnostics/install-powershell.sh
+!internal/
+!internal/diagnostics/
+!internal/diagnostics/runtimeevent/
+!internal/diagnostics/runtimeevent/*.go

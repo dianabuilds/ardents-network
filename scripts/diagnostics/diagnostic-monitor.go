@@ -17,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 const monitorTailBytes = 48 << 10
@@ -124,7 +126,7 @@ func (d *monitorDelivery) row(stream string, body []byte, oversized bool) {
 		d.mu.Unlock()
 	}
 	d.mu.Lock()
-	isSample := entry.Kind == "resource-sample"
+	isSample := entry.Kind == runtimeevent.ResourceSample
 	var sequence uint64
 	if isSample {
 		d.state.TotalSamples++
