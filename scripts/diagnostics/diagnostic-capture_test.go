@@ -319,3 +319,22 @@ func TestProjectionRejectsMalformedKnownRecord(t *testing.T) {
 		}
 	}
 }
+
+func TestOrdinaryConsoleAndGoTestOutputDoNotDeclareCorruptEvents(t *testing.T) {
+	p := newProjection(t)
+	for _, line := range []string{"ordinary console output", "=== RUN   TestWorker", "--- PASS: TestWorker (0.01s)"} {
+		p.line([]byte(line))
+		wrapped, err := json.Marshal(map[string]string{"Action": "output", "Output": line + "\n"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.line(wrapped)
+	}
+	if p.summary.UnrecognizedLines != 6 || p.summary.InvalidLines != 0 || p.summary.CaptureIncomplete || len(p.summary.Counts) != 0 {
+		t.Fatalf("ordinary output became corrupt event: %+v", p.summary)
+	}
+	p.line([]byte(`{"schema":"ardents-node-event-v1","kind":"lifecycle"`))
+	if p.summary.InvalidLines != 1 || !p.summary.CaptureIncomplete {
+		t.Fatalf("corrupt JSON event was hidden: %+v", p.summary)
+	}
+}

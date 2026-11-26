@@ -60,7 +60,8 @@ absent; collector receipt time never becomes producer time. Local timeline
 roles and bounded Node reasons are not safe export labels. Its collector
 projection drops those fields and projects unknown finite categories as
 unclassified/incomplete. Malformed records increment invalid-line accounting
-and make the saved capture incomplete. The original schema and
+and make the saved capture incomplete. Ordinary non-object console and Go test
+output remains unrecognized text, not a declared corrupt event. The original schema and
 category spellings remain input compatibility; the reader does not establish
 that current runtimes produce those events. Unknown schemas and event kinds
 are filtered; malformed fields in known schemas are refused without raw echoes.

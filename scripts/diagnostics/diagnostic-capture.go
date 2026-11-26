@@ -130,6 +130,13 @@ func selected(value any, allowed string) string {
 }
 
 func project(body []byte) (event, string) {
+	// A supervised command and go test also emit ordinary console text. Only
+	// object-shaped input declares a possible event record; JSON field validation
+	// belongs to the shared decoder.
+	body = bytes.TrimSpace(body)
+	if len(body) == 0 || body[0] != '{' {
+		return event{}, "unknown"
+	}
 	record, present, err := runtimeevent.Decode(body)
 	if err != nil {
 		return event{}, "invalid"
