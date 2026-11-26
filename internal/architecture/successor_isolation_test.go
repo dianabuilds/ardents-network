@@ -2494,6 +2494,16 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
+		// The Service TLS owners borrow only the closed key-exchange group list
+		// from the Route TLS contract (#903). Peer identity, certificate and
+		// proof checks stay with each Service owner; no other file gains the edge.
+		if dependency == modulePath+"/internal/route/transport" {
+			switch source {
+			case "internal/connection/initiator_authentication.go", "internal/connection/initiator_replacement.go",
+				"internal/domain/publication/instance/service_attachment.go":
+				return true
+			}
+		}
 		if source == "internal/domain/release/infrastructure/source_plan_linux.go" && dependency == modulePath+"/internal/network/source" {
 			return true
 		}
@@ -3097,6 +3107,15 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint journey native qualification uses actual document exchange", "tests/e2e/endpoint/journey_participant_native_linux_test.go", modulePath + "/internal/application/document", true},
 		{"Endpoint journey native qualification excludes old Endpoint", "internal/domain/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/domain/endpoint", false},
 		{"Endpoint journey native qualification has no Node runtime", "internal/domain/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/domain/node", false},
+		{"Initiator authentication borrows closed key-exchange groups", "internal/connection/initiator_authentication.go", modulePath + "/internal/route/transport", true},
+		{"Initiator replacement borrows closed key-exchange groups", "internal/connection/initiator_replacement.go", modulePath + "/internal/route/transport", true},
+		{"Publisher attachment borrows closed key-exchange groups", "internal/domain/publication/instance/service_attachment.go", modulePath + "/internal/route/transport", true},
+		{"Connection stream has no Route TLS contract", "internal/connection/stream.go", modulePath + "/internal/route/transport", false},
+		{"Initiator Source seam does not widen to the Route TLS contract", "internal/connection/initiator_source.go", modulePath + "/internal/route/transport", false},
+		{"Connection replacement commit has no Route TLS contract", "internal/connection/initiator_replacement_commit.go", modulePath + "/internal/route/transport", false},
+		{"Instance capsule opening has no Route TLS contract", "internal/domain/publication/instance/capsule_opening.go", modulePath + "/internal/route/transport", false},
+		{"Instance recipient has no Route TLS contract", "internal/domain/publication/instance/recipient.go", modulePath + "/internal/route/transport", false},
+		{"Instance replacement has no Route TLS contract", "internal/domain/publication/instance/service_replacement.go", modulePath + "/internal/route/transport", false},
 		{"unsafe", "internal/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {

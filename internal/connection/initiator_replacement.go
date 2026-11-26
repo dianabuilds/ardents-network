@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // One finite original-key proposal owns all new physical resources until its
@@ -118,7 +119,7 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 	attachment := &initiatorAttachment{binding: binding, physical: physical, ctx: child, cancel: cancelPhysical, watcherDone: make(chan struct{})}
 	attachment.self = attachment
 	attachment.connection = tls.Client(initiatorTLSBorrow{attachment: attachment}, &tls.Config{
-		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519},
+		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, CurvePreferences: transport.ClosedProfileKeyExchangeGroups(),
 		InsecureSkipVerify: true, // Exact independently verified Instance only.
 		VerifyConnection: func(state tls.ConnectionState) error {
 			return verifyInstanceCertificate(state, binding.identity.Instance)

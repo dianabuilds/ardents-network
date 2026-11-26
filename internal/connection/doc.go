@@ -48,7 +48,9 @@
 //     publisher_authentication.go (initiator_setup_test.go,
 //     initiator_lifetime_test.go)
 //   - initiator source seam: initiator_source.go (the sole
-//     network/reachability/route seam) (initiator_source_test.go)
+//     network/reachability/route operation seam) (initiator_source_test.go).
+//     The initiator and replacement TLS configurations borrow only the closed
+//     key-exchange group list from route/transport; they gain no Route operation.
 //   - finite recovery and replacement: recovery_episode.go,
 //     publisher_recovery.go, initiator_replacement.go,
 //     initiator_replacement_commit.go, publisher_replacement.go,
