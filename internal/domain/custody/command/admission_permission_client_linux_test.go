@@ -8,7 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 	"os"
 	"path/filepath"
 	"testing"

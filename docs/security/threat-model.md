@@ -792,7 +792,7 @@ or privacy claim.
   for publication/configuration but cannot create/import/export/rotate an
   Authority, issue a Credential, or export either root or Instance key.
   Authority Custody is intentionally not on the Local Grant surface; the
-  "non-collapse" claim is upheld by access being only through `internal/custody`
+  "non-collapse" claim is upheld by access being only through `internal/domain/custody`
   operations, not by a separate broker.Surface.
 - Name Authority is distinct from Service Authority and controls only the
   authenticated Service Name binding. It is unnecessary for ordinary

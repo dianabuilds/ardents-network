@@ -23,7 +23,7 @@ The [qualification release operation](../operations/qualification-release.md)
 owns preparation, protected key files, bounded signing, retained refusals and
 the completed public bootstrap receipt. It changes no runtime verifier policy.
 
-`internal/custody` owns the bounded encrypted-record, Admission and
+`internal/domain/custody` owns the bounded encrypted-record, Admission and
 Service operations consumed directly by `cmd/ardents-custody`. Pure
 `internal/publication` owns Service v3 request/response bytes,
 unsigned fixed-purpose Credential transcript and exact public verification.
@@ -176,8 +176,8 @@ implementation defects in the current Module.
 ## Evidence
 
 - [ADR-0021](../adr/0021-use-password-derived-authority-custody.md)
-- `internal/custody/record_refusal_test.go` and `bundle_publication_test.go` (retained envelope/refusal and Bundle publication oracles)
-- `internal/custody` behavior, independent envelope and native failure tests
+- `internal/domain/custody/record_refusal_test.go` and `bundle_publication_test.go` (retained envelope/refusal and Bundle publication oracles)
+- `internal/domain/custody` behavior, independent envelope and native failure tests
 - `tests/e2e/service/admission_custody_process_test.go` (canonical built terminal consumer)
 - `make custody-check` and the ordinary checked deterministic/process/race inventories
 

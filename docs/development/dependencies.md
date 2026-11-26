@@ -1227,7 +1227,7 @@ Authority Custody uses `golang.org/x/crypto/argon2` from module
 owners select the same module version; integration must produce one shared
 exact root-module version, never parallel copies.
 
-`internal/custody/canonical_envelope.go` (new encrypted-record/Admission/Service owner) is the exact maintained Argon2 caller. It uses only
+`internal/domain/custody/canonical_envelope.go` (new encrypted-record/Admission/Service owner) is the exact maintained Argon2 caller. It uses only
 `argon2.IDKey` with the fixed v1 profile and passes the derived
 32-byte key to the selected Go standard-library `crypto/aes` and
 `cipher.NewGCMWithRandomNonce`. No other

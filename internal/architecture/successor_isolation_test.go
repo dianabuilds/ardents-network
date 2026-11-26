@@ -1028,7 +1028,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
-		"internal/admission", "internal/canonicaldigest", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
+		"internal/admission", "internal/canonicaldigest", "internal/connection", "internal/domain/custody", "internal/durablefile", "internal/endpoint",
 		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/domain/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
@@ -1209,40 +1209,40 @@ func successorImportAllowed(source, dependency string) bool {
 	if dependency == modulePath+"/internal/admission/operator" {
 		return source == "cmd/ardents-next/admission.go" || source == "cmd/ardents-next/issuance.go" || source == "cmd/ardents-next/command.go"
 	}
-	if strings.HasPrefix(source, "internal/custody/command/") {
+	if strings.HasPrefix(source, "internal/domain/custody/command/") {
 		// The package map also checks the package-wide import set.
-		if dependency == modulePath+"/internal/custody" {
+		if dependency == modulePath+"/internal/domain/custody" {
 			switch source {
-			case "internal/custody/command/command.go", "internal/custody/command/terminal_secret.go",
-				"internal/custody/command/command_test.go", "internal/custody/command/service_authority.go",
-				"internal/custody/command/admission_authority.go", "internal/custody/command/verify_record.go",
-				"internal/custody/command/recovery_bundle.go", "internal/custody/command/purge_record.go",
-				"internal/custody/command/admission_permission_client_linux_test.go":
+			case "internal/domain/custody/command/command.go", "internal/domain/custody/command/terminal_secret.go",
+				"internal/domain/custody/command/command_test.go", "internal/domain/custody/command/service_authority.go",
+				"internal/domain/custody/command/admission_authority.go", "internal/domain/custody/command/verify_record.go",
+				"internal/domain/custody/command/recovery_bundle.go", "internal/domain/custody/command/purge_record.go",
+				"internal/domain/custody/command/admission_permission_client_linux_test.go":
 				return true
 			}
 		}
-		if source == "internal/custody/command/command_test.go" && dependency == modulePath+"/internal/publication" ||
-			source == "internal/custody/command/admission_permission_client_linux_test.go" && dependency == modulePath+"/internal/admission" {
+		if source == "internal/domain/custody/command/command_test.go" && dependency == modulePath+"/internal/publication" ||
+			source == "internal/domain/custody/command/admission_permission_client_linux_test.go" && dependency == modulePath+"/internal/admission" {
 			return true
 		}
 	}
-	if source == "cmd/ardents-custody/main.go" && dependency == modulePath+"/internal/custody/command" {
+	if source == "cmd/ardents-custody/main.go" && dependency == modulePath+"/internal/domain/custody/command" {
 		return true
 	}
 	switch source {
-	case "internal/custody/command/terminal_secret.go":
+	case "internal/domain/custody/command/terminal_secret.go":
 		if dependency == "golang.org/x/term" {
 			return true
 		}
-	case "internal/custody/command/terminal_line_linux.go":
+	case "internal/domain/custody/command/terminal_line_linux.go":
 		if dependency == "golang.org/x/sys/unix" || dependency == "golang.org/x/term" {
 			return true
 		}
-	case "internal/custody/command/terminal_line_windows.go":
+	case "internal/domain/custody/command/terminal_line_windows.go":
 		if dependency == "golang.org/x/sys/windows" {
 			return true
 		}
-	case "internal/custody/command/terminal_secret_linux_test.go":
+	case "internal/domain/custody/command/terminal_secret_linux_test.go":
 		if dependency == "github.com/aymanbagabas/go-pty" {
 			return true
 		}
@@ -2125,10 +2125,10 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 	}
-	if source == "internal/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
+	if source == "internal/domain/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
 		return true
 	}
-	if (source == "internal/custody/vault_lock_windows.go" || source == "internal/custody/vault_lock_windows_test.go" || source == "internal/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	// The Application document snapshot import composes only the shared
@@ -2236,7 +2236,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "tests/e2e/service/service_custody_process_linux_test.go" || source == "tests/e2e/service/headless_instance_acquisition_process_test.go") && dependency == modulePath+"/internal/publication" {
 			return true
 		}
-		if dependency == modulePath+"/internal/custody" {
+		if dependency == modulePath+"/internal/domain/custody" {
 			switch source {
 			case "internal/endpoint/permission_test.go", "internal/endpoint/issuance_test.go", "internal/endpoint/permission_files_linux_test.go", "internal/endpoint/network_fixture_window_test.go":
 				return true
@@ -2289,7 +2289,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/admission":                         {"admission/issuerprofile"},
 		"internal/admission/issuerprofile":           {},
 		"internal/admission/allocation":              {"admission"},
-		"internal/custody":                           {"admission", "admission/allocation", "publication"},
+		"internal/domain/custody":                    {"admission", "admission/allocation", "publication"},
 		"internal/admission/attempts":                {"pathgrammar"},
 		"internal/admission/spending":                {"pathgrammar"},
 		"internal/admission/token":                   {"admission", "admission/issuerprofile"},
@@ -3006,11 +3006,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"issuance public grammar", "internal/admission/issuance/profile.go", modulePath + "/internal/admission/issuerprofile", true},
 		{"no inherited nested imports", "internal/admission/issuance/nested/file.go", modulePath + "/internal/admission", false},
 		{"no inherited nested third party", "internal/admission/issuance/nested/file.go", "github.com/cloudflare/circl/blindsign/blindrsa", false},
-		{"custody allocation owner", "internal/custody/admission_authority.go", modulePath + "/internal/admission/allocation", true},
-		{"custody excludes old backend", "internal/custody/vault.go", modulePath + "/internal/custody", false},
-		{"custody excludes live Instance parser", "internal/custody/authority_state.go", modulePath + "/internal/publication/instance", false},
-		{"custody excludes Route", "internal/custody/vault.go", modulePath + "/internal/route", false},
-		{"Service command uses genuine new custody", "internal/custody/command/service_authority.go", modulePath + "/internal/custody", true},
+		{"custody allocation owner", "internal/domain/custody/admission_authority.go", modulePath + "/internal/admission/allocation", true},
+		{"custody excludes old backend", "internal/domain/custody/vault.go", modulePath + "/internal/domain/custody", false},
+		{"custody excludes live Instance parser", "internal/domain/custody/authority_state.go", modulePath + "/internal/publication/instance", false},
+		{"custody excludes Route", "internal/domain/custody/vault.go", modulePath + "/internal/route", false},
+		{"Service command uses genuine new custody", "internal/domain/custody/command/service_authority.go", modulePath + "/internal/domain/custody", true},
 		{"unregistered caller", "internal/successor/future/file.go", modulePath + "/internal/admission", false},
 		{"unregistered dependency", "cmd/ardents-next/main.go", modulePath + "/internal/successor/future", false},
 		{"standard", "internal/admission/check.go", "context", true},

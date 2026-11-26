@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/dianabuilds/ardents-network/internal/custody/command"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody/command"
 )
 
 func main() {

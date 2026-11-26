@@ -29,7 +29,7 @@ func assertQualityWiring(t *testing.T, root string) {
 		"go test -p 1 $$packages $(RACE_TEST_FLAGS)",
 		"race-shard-packages RACE_SHARD=$(RACE_SHARD)",
 		`case "$(RACE_SHARD)" in 0|1|2|3)`,
-		`assigned = ($$0 ~ /\/internal\/custody$$/) ? 3 : (NR-1)%4`,
+		`assigned = ($$0 ~ /\/internal\/domain\/custody$$/) ? 3 : (NR-1)%4`,
 		"GOTOOLCHAIN := local",
 		"GOMODCACHE := $(QUALITY_CACHE_ROOT)/go-mod",
 	} {

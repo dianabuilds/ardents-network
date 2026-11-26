@@ -113,7 +113,7 @@ initialization cannot replace its restart or recovery.
 
 | Source | Admission-owned part | What remains outside |
 | --- | --- | --- |
-| [Retired Custody source](https://github.com/dianabuilds/ardents-network/blob/e269c74744df91588f77c90b14d4e81b3908b472/internal/custody/admission_authority.go) | Allocation decisions and permission grammar now owned by new Allocation and public Permission | New Custody owns durable encrypted commit, signing key and custody operation; the retired backend supplies no runtime authority |
+| [Retired Custody source](https://github.com/dianabuilds/ardents-network/blob/e269c74744df91588f77c90b14d4e81b3908b472/internal/domain/custody/admission_authority.go) | Allocation decisions and permission grammar now owned by new Allocation and public Permission | New Custody owns durable encrypted commit, signing key and custody operation; the retired backend supplies no runtime authority |
 | internal/endpoint/participant_linux.go and the retired runtime plan | Aggregate role maxima represented by allocation.ValidateMaxima | Selecting the user's context/role and configuring file paths |
 | internal/endpoint/permission.go; internal/endpoint/issuance.go | Holder request, accepted permission, pending batch and stock | Context authorization, choosing an exchange, joining network work |
 | internal/domain/node/authority/token.go; internal/domain/node/admission.go | Receiver token verification and spend scenario represented by receiving | Current authority observation, host reservation and actual channel ownership |
