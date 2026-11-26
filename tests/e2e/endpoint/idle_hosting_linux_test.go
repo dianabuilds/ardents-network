@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 )
 
 func TestNET32IdleHostingReservationKeepsProviderAccounting(t *testing.T) {

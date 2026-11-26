@@ -1,7 +1,7 @@
 package session
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"path/filepath"
 	"testing"
 	"time"

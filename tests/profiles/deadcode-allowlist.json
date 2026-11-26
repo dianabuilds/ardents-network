@@ -556,19 +556,19 @@
           "internal/admission/spending.Inspection.Check",
           "internal/admission/spending.Inspection.Close",
           "internal/admission/spending.spendInspection.close",
-          "internal/hosting.OpenInspection",
-          "internal/hosting.openInspection",
-          "internal/hosting.periodInspection.openDirectory",
-          "internal/hosting.periodInspection.openLeaf",
-          "internal/hosting.periodInspection.local",
-          "internal/hosting.periodInspection.read",
-          "internal/hosting.samePeriodInspectionFile",
-          "internal/hosting.periodInspection.identities",
-          "internal/hosting.periodInspection.nativeRoot",
-          "internal/hosting.periodInspection.check",
-          "internal/hosting.Inspection.Check",
-          "internal/hosting.Inspection.Close",
-          "internal/hosting.periodInspection.close"
+          "internal/domain/hosting.OpenInspection",
+          "internal/domain/hosting.openInspection",
+          "internal/domain/hosting.periodInspection.openDirectory",
+          "internal/domain/hosting.periodInspection.openLeaf",
+          "internal/domain/hosting.periodInspection.local",
+          "internal/domain/hosting.periodInspection.read",
+          "internal/domain/hosting.samePeriodInspectionFile",
+          "internal/domain/hosting.periodInspection.identities",
+          "internal/domain/hosting.periodInspection.nativeRoot",
+          "internal/domain/hosting.periodInspection.check",
+          "internal/domain/hosting.Inspection.Check",
+          "internal/domain/hosting.Inspection.Close",
+          "internal/domain/hosting.periodInspection.close"
         ],
         "classification": "retired transitional Descriptor replacement orchestration; retained read-only inspection mechanism test coverage",
         "rationale": "The transitional installation/descriptor replacement orchestration and its canonical Node consumer retired (#604 FJD stage D, ADR-0125); replacement_inspections_linux.go was the sole production caller of these read-only retained-root inspection openers. The platform-led Descriptor lifecycle owns replacement through systemd and the canonical platform unit, and the bounded retained-producer repair uses its own dead-unit/lease openers, so these inspection openers have no remaining production consumer. They are retained as reviewed mechanism code because genuine Linux native tests exercise their exact numeric-principal custody, exclusive read-only lease, signed-floor/uncertain-history refusal without creation or repair, inode-restoration refusal, held-reader and physical Close join, and cancellation semantics: state/node_inspection_native_linux_test.go, duty/inspection_native_linux_test.go (which also covers the retained SourceInspection exposure policy), reachability/store_inspection_native_linux_test.go and store_inspection_join_native_linux_test.go (the descriptor-store-inspection-check lane), spending/inspection_native_linux_test.go and hosting/inspection_native_linux_test.go. The shared custody/floor/reader helpers they call (durable.OpenInspection, readRetainedInspection, inspectionLocalClosure, participationInspection, checkRetainedStoreRoot, retainStoreCustody, restoreStoreFloors, inspectStoreCustody) remain production-live through SourceInspection, the live Store and the bounded repair, and are not listed here. Linux-native only; these files are excluded on Windows. No Linux/common checker exemption, successful authority substitute or installed qualification is added.",
@@ -588,9 +588,9 @@
     "windows-amd64": [
       {
         "symbols": [
-          "internal/hosting.Inspection.Check",
-          "internal/hosting.Inspection.Close",
-          "internal/hosting.OpenInspection"
+          "internal/domain/hosting.Inspection.Check",
+          "internal/domain/hosting.Inspection.Close",
+          "internal/domain/hosting.OpenInspection"
         ],
         "classification": "Non-Linux retained-Hosting inspection typed refusal with no portable consumer (#865)",
         "rationale": "inspection_other.go (!linux) mirrors the Linux-only retained-history Inspection API as an explicit ErrUnsupportedPlatform refusal: the mechanism requires the original root-only lease and the Linux ext4 storage floor (PO decision P1.1), which macOS APFS does not satisfy. No portable production or test caller opens a retained Hosting inspection (cmd/ardents-next/hosting.go uses only the portable Budget surface), so these refusal stubs are dead on windows-amd64. The genuine Linux inspection stays Linux-tagged and is exercised by hosting/inspection_native_linux_test.go; its Linux production-dead allowance is separate. No weaker accepting path is introduced.",
@@ -742,13 +742,13 @@
       },
       {
         "symbols": [
-          "internal/hosting.Budget.CoversJoint",
-          "internal/hosting.Budget.Reserve",
-          "internal/hosting.Budget.ReserveAdditionalJoint",
-          "internal/hosting.Budget.reserveAdditional",
-          "internal/hosting.Reservation.DetachTermination",
-          "internal/hosting.Reservation.Release",
-          "internal/hosting.boundedFile",
+          "internal/domain/hosting.Budget.CoversJoint",
+          "internal/domain/hosting.Budget.Reserve",
+          "internal/domain/hosting.Budget.ReserveAdditionalJoint",
+          "internal/domain/hosting.Budget.reserveAdditional",
+          "internal/domain/hosting.Reservation.DetachTermination",
+          "internal/domain/hosting.Reservation.Release",
+          "internal/domain/hosting.boundedFile",
           "internal/network/source.ObservePublicTrust",
           "internal/network/source.observeChain",
           "internal/network/source.publicCertificates",
@@ -785,7 +785,7 @@
           "internal/endpoint/funding.PrepareSelectedPrefix",
           "internal/endpoint/funding.minRouteDeadline",
           "internal/endpoint/session.minRouteDeadline",
-          "internal/hosting.Reservation.ReleaseJoined",
+          "internal/domain/hosting.Reservation.ReleaseJoined",
           "internal/domain/node.admissionFacts",
           "internal/domain/node.expiredMeasurement",
           "internal/domain/node.failureRecord.retain",
@@ -1213,7 +1213,7 @@
       },
       {
         "symbols": [
-          "internal/hosting.JointTraffic.cost"
+          "internal/domain/hosting.JointTraffic.cost"
         ],
         "classification": "Portable shared-work arithmetic with Linux physical consumer",
         "rationale": "The Linux holder and receiving Route compositions in cmd/ardents-next/route_linux.go call Linux-only CoversJoint and ReserveAdditionalJoint, which consume this portable provider-direction arithmetic. Windows refuses physical Hosting and Route before acquisition; independent portable arithmetic tests exercise the exact cost function there. No Windows physical-work method or test-only additional-reservation API is retained.",
@@ -2295,9 +2295,9 @@
     "windows-amd64": [
       {
         "symbols": [
-          "internal/hosting.Inspection.Check",
-          "internal/hosting.Inspection.Close",
-          "internal/hosting.OpenInspection"
+          "internal/domain/hosting.Inspection.Check",
+          "internal/domain/hosting.Inspection.Close",
+          "internal/domain/hosting.OpenInspection"
         ],
         "classification": "Non-Linux retained-Hosting inspection typed refusal, no Windows test path (#865)",
         "rationale": "inspection_other.go (!linux) provides the explicit ErrUnsupportedPlatform refusal for the Linux-only retained-history Inspection (ext4 storage floor, root-only lease; PO decision P1.1). No portable test opens a retained Hosting inspection on Windows; the genuine mechanism is exercised only by the Linux native-tag test hosting/inspection_native_linux_test.go. These refusal stubs are therefore fully-dead in the windows-amd64 native-tag analysis only, mirroring the windows-production allowance. The Linux native-tag test analysis remains empty. No weaker accepting path is introduced.",
@@ -2306,13 +2306,13 @@
       },
       {
         "symbols": [
-          "internal/hosting.Budget.CoversJoint",
-          "internal/hosting.Budget.Reserve",
-          "internal/hosting.Budget.ReserveAdditionalJoint",
-          "internal/hosting.Budget.reserveAdditional",
-          "internal/hosting.Reservation.DetachTermination"
+          "internal/domain/hosting.Budget.CoversJoint",
+          "internal/domain/hosting.Budget.Reserve",
+          "internal/domain/hosting.Budget.ReserveAdditionalJoint",
+          "internal/domain/hosting.Budget.reserveAdditional",
+          "internal/domain/hosting.Reservation.DetachTermination"
         ],
-        "classification": "Linux-native hosting reservation composition covered by Linux-tagged tests, no Windows test path (internal/hosting, P1-B batch 1 #781)",
+        "classification": "Linux-native hosting reservation composition covered by Linux-tagged tests, no Windows test path (internal/domain/hosting, P1-B batch 1 #781)",
         "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their fixture-measure behavior tests are now Unix-family (linux || darwin, #865): budget_unix_test.go, reservation_unix_test.go, deadline_unix_test.go, additional_reservation_unix_test.go and snapshot_unix_test.go exercise the Unix-family flock lease (lease_unix.go) and portable durable storage through Budget.transact with an injected fixture measure, so macOS executes them after the lease port; they do not read the Linux /sys counters (the genuine measure adapter stays platform-specific). The bounded read (boundedFile) has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the portable session route-reservation helper test (session/reservation_test.go) reaches Release through ReleaseJoined, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Unix-family reservation test files and the lease and measure refuse with ErrUnsupportedPlatform (lease_other.go, measure_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; hosting provider-period accounting",
         "retirement": "Remove each exact Windows entry when a selected genuine portable test or production path reaches it (a later dependency-chain batch unlocks the node/endpoint reservation consumers), or when the owning operation is retired. The Linux native-tag test analysis must remain empty."

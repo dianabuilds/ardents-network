@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 

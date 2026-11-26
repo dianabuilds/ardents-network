@@ -90,7 +90,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/admission/issuance" || dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/processresource"
 	case "internal/domain/node/provisioning/runtime_plan.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuance", modulePath + "/internal/canonicaldigest", modulePath + "/internal/hosting", modulePath + "/internal/network/state",
+		case modulePath + "/internal/admission/issuance", modulePath + "/internal/canonicaldigest", modulePath + "/internal/domain/hosting", modulePath + "/internal/network/state",
 			modulePath + "/internal/domain/node", modulePath + "/internal/pathgrammar", modulePath + "/internal/platform/artifacts", modulePath + "/internal/processresource":
 			return true
 		}

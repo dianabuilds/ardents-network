@@ -10,8 +10,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"
-	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
