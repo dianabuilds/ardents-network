@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -458,10 +459,13 @@ func testRouteRegistration(t *testing.T, registration, refill bool, special ...s
 			if _, err := authority.Current(); err == nil || err.Error() != clockRefusal {
 				t.Fatal("original Network State did not report the exact clock refusal", err)
 			}
-			// The physical Prefix watcher can observe the same clock failure
-			// first and interrupt the registration's private context.
+			// The holder watcher may interrupt the private context, or a
+			// receiver observing the same loss may close the transport first.
+			// The clock observation above and the original receivers' joined
+			// terminal reports below establish the cause independently of
+			// which failure crosses this stream first.
 			if caller.Err() != nil || !processfixture.OnlyFailureBranches(registerErr, func(branch error) bool {
-				return branch == context.Canceled || branch.Error() == clockRefusal
+				return branch == context.Canceled || branch == io.EOF || branch.Error() == clockRefusal
 			}) {
 				t.Fatal("registration did not refuse on clock loss", registerErr, caller.Err())
 			}
