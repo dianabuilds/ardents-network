@@ -407,7 +407,7 @@ func TestRouteProfileSerializesWholeInterfaceMeasurements(t *testing.T) {
 		t.Fatal("Route profile boundary absent")
 	}
 	body := makefile[start : start+end]
-	if !strings.Contains(body, "go test -p 1 -race ./internal/network/...") || !strings.Contains(body, "./internal/endpoint/... ./internal/node ./tests/networkfixture -count=1 -timeout=5m") {
+	if !strings.Contains(body, "go test -p 1 -race ./internal/network/...") || !strings.Contains(body, "./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m") {
 		t.Fatal("Route profile must serialize whole-interface borrowers without changing its full inventory or package bound")
 	}
 }

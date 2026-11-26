@@ -13,7 +13,7 @@ contract, exact checks and refusal grammar live in the technical owner
 this procedure sequences the existing commands and adds no authority.
 
 The runtime invocation declaration is domain-owned configuration validation
-(ADR-0125 decision 6): `internal/node` owns one pure closed plan grammar
+(ADR-0125 decision 6): `internal/domain/node` owns one pure closed plan grammar
 (`plan_declaration.go`) mirroring `network/source/servingdeclaration.ServingDeclaration`, shared by
 the runtime, the retained repair commands and `node prepare-plan`. The codec
 returns declaration facts only; it accepts no State, creates no root, initializes

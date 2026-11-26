@@ -491,7 +491,7 @@ and the native platform adapters. Existing installed roots and durable role
 histories stay with their current owners.
 
 The node-role runtime invocation declaration grammar is owned by
-`internal/node` (`plan_declaration.go`): a pure closed byte codec
+`internal/domain/node` (`plan_declaration.go`): a pure closed byte codec
 mirroring `network/source.ServingDeclaration`, shared by the five node-role
 runtime commands, the four retained repair commands (Forwarding/JOIN/Descriptor/
 Introduction) and the `ardents-next node prepare-plan` operator command (#673,
@@ -503,11 +503,11 @@ Node validates the role and independent roots for recovery.
 actual manager while Network State decides whether to repair. The Node role composition borrows `network/state` for the original State
 acquisition; State retains its own authority and joined lifetime. The five
 runtime commands share that composition and bounded outcome projection in
-`internal/node/role_command.go`. Each invocation retains its own genuine typed
+`internal/domain/node/role_command.go`. Each invocation retains its own genuine typed
 constructor and role roots. Introduction retained repair now consumes the
 same full Introduction declaration grammar as its runtime (the former six-field
 repair subset is normalized). `node prepare-plan` delegates exclusive production of the role plan JSON to
-`internal/node/provisioning` with before-effect typed refusals; it codifies the
+`internal/domain/node/provisioning` with before-effect typed refusals; it codifies the
 native installed provisioning recipe without acquiring any provisioning effect.
 Source's separate serving declaration grammar is unchanged. The operator
 procedure is recorded in `docs/operations/node-role-platform-lifecycle.md`.
@@ -682,7 +682,7 @@ consumer cannot establish a supported Node installation or qualified host.
 
 ### Realized prerequisites and design limits
 
-`internal/node/route_receive_linux.go` composes genuine State, retained duty,
+`internal/domain/node/route_receive_linux.go` composes genuine State, retained duty,
 receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
 Descriptor owners only when that exact duty requires them. Receiver supports
 TCP/TLS, refuses deferred QUIC before listening, reobserves authority and joins its work.
@@ -694,9 +694,9 @@ issuance selection. This command is an existing component consumer. Its
 Forwarding refill uses the same reserve-before-spend operation as the original
 Node Forwarding role. Each consumer retains its own reservation map and lifetime.
 
-`internal/node` composes original Forwarding, Issuer, Descriptor, Introduction and
+`internal/domain/node` composes original Forwarding, Issuer, Descriptor, Introduction and
 JOIN lifetimes through the typed CLI adapters in
-`internal/node/role_command.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
+`internal/domain/node/role_command.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
 producer and fixed TLS custody, full class-2 reserve-before-spend and retained
 joined completion. Matching, both RESULT writes, credit, EOF and CLOSE remain
 Route rules. It grants no refill, Service authority or automatic replacement.

@@ -54,7 +54,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 			switch owner {
 			case "cmd/ardents-next", "internal/connection", "internal/endpoint", "internal/endpoint/funding",
 				"internal/endpoint/publisher", "internal/endpoint/reader", "internal/endpoint/session",
-				"internal/node", "internal/publication/instance", "internal/publication/runtime":
+				"internal/domain/node", "internal/publication/instance", "internal/publication/runtime":
 			default:
 				return false
 			}
@@ -105,7 +105,7 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		allowed                  bool
 	}{
 		{"old Endpoint consumer", "internal/endpoint/source.go", modulePath + "/internal/route", false},
-		{"old Node adapter", "internal/node/authority/token.go", modulePath + "/internal/route/receiver", false},
+		{"old Node adapter", "internal/domain/node/authority/token.go", modulePath + "/internal/route/receiver", false},
 		{"old Route test consumer", "internal/route/closed_join_test.go", modulePath + "/internal/route", false},
 		{"old command consumer", "cmd/ardents/route.go", modulePath + "/internal/route", false},
 		{"e2e bridge", "tests/e2e/route/scenario_test.go", modulePath + "/internal/route/receiver", false},
@@ -113,7 +113,7 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"old Carrier dependency", "internal/route/channel/frame_schedule.go", modulePath + "/internal/route/carrier", false},
 		{"old Admission dependency", "internal/route/receiving/admission.go", modulePath + "/internal/admission/receiving", false},
 		{"old Entry dependency", "internal/route/selection.go", modulePath + "/internal/entry", false},
-		{"old Node dependency in test", "internal/route/role_test.go", modulePath + "/internal/node/outer", false},
+		{"old Node dependency in test", "internal/route/role_test.go", modulePath + "/internal/domain/node/outer", false},
 		{"external fixture dependency", "internal/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
 		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/route", true},
 		{"retired canonical installed Descriptor role denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route/role", false},

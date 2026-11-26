@@ -106,7 +106,7 @@ native evidence; these units supply no fake accepting inspection or manager.
 ### Node-role declaration codec and prepare-plan command
 
 The node domain's pure runtime-plan declaration codec
-(`internal/node/plan_declaration.go`, #673, ADR-0125 decision 6) has
+(`internal/domain/node/plan_declaration.go`, #673, ADR-0125 decision 6) has
 portable behavior tests (`plan_declaration_test.go`): full per-role grammar
 acceptance, exact closed role field sets (a foreign role extension refuses),
 duplicate/null/unknown-member and short/overlong 32-byte array refusal, exact
@@ -116,7 +116,7 @@ preserves the existing runtime byte grammar, including omitted zero-valued membe
 and opens no resource. It performs no State acceptance, root creation, Hosting
 initialization or processresource policy.
 
-`internal/node/provisioning/runtime_plan_command_test.go` exercises the `node prepare-plan`
+`internal/domain/node/provisioning/runtime_plan_command_test.go` exercises the `node prepare-plan`
 operator command portably (host quick-check): positive plan production for all five
 roles, where each produced plan must decode through the runtime node codec AND be
 accepted by the same runtime admission gate (`validAdmissionAuthority` +
@@ -1680,7 +1680,7 @@ checks. They share no live state or manager/account effects; complete inventorie
 exact birth checks, refusal cases and the selected native deadline remain unchanged.
 
 The genuine issuer exclusive-work, signed-State-loss and receiver-cancellation
-scenarios in `internal/node/route_bootstrap_linux_test.go` and receiving
+scenarios in `internal/domain/node/route_bootstrap_linux_test.go` and receiving
 Registration in `route_registration_linux_test.go` run in parallel.
 Each constructs its own authenticated State, Admission/Hosting histories, holder
 and reserved listeners; they share no live authority, roots or transport. Their
@@ -1689,7 +1689,7 @@ join assertions and the command package's five-minute terminal timeout. This
 schedule avoids adding their independent complete matrices serially to that
 package's elapsed time; it neither filters checks nor qualifies installed work.
 
-Issuer transport scenarios in `internal/node/route_bootstrap_linux_test.go`
+Issuer transport scenarios in `internal/domain/node/route_bootstrap_linux_test.go`
 and `route_process_linux_test.go` start with genuine permission but no offline
 token stock. Actual holder commands obtain two bootstrap batches, refuse a third,
 join bootstrap and establish fresh admitted channels before ordinary issuance on
@@ -2795,7 +2795,7 @@ Neither category substitutes for the other.
 | Introduction recipient reobservation preserves the exact original cancellation, physical failure and mixed cause without inventing a duty mismatch | `internal/route/prefix/introduction_channel_test.go`, `TestRegistrationRecipientObservationRetainsOriginalFailure`; failure-only observations exercise the same member-check owner used by actual registration. Successful signed authority and ACK remain genuine command scenarios |
 | Handshake failure category: a refused peer cannot hide an unrelated listener or cleanup failure in a joined error | `internal/route/transport/handshake_failure_test.go`; portable complete-tree classification, with original error causes retained. Receiving composition uses this category to decide whether its listener remains usable |
 | Shared actual-adapter contract: TCP/TLS classifies direct/Node arrivals, exchange ordered bytes, bound handshake capacity and join readers interrupted by physical Close | `internal/route/prefix/adapter_contract_test.go` and `adapter_retirement_test.go`, external tests on Windows/Linux. The actual opening/composition owner hosts this external contract matrix and imports the real TCP/TLS adapter; lower transport imports neither, including in its tests. Prefix and receiver select the exact profile at their real opening/listening operations; the former carrier package has no runtime or test facade |
-| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/node/route_refill_linux_test.go`, `tests/e2e/node/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
+| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/domain/node/route_refill_linux_test.go`, `tests/e2e/node/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
 | Prefix original-generation retention: idle retirement of a stopped terminal borrower waits for its physical join before parent readers and resource return, preserves its late failure and repeated result | `internal/route/prefix/borrowing_test.go`; controlled borrower completion with actual parent pipe readers. No successful authority or Registration is supplied. The actual Prefix mechanics and these tests are portable on Windows and Linux; Prefix is the actual generation owner |
 
 These are behavior-owner links, not a second task ledger or an installed
@@ -2813,7 +2813,7 @@ key/encapsulation/info; this is suite evidence, not live authority.
 `recipient_lifetime_test.go` retains an original failure-only user across Close
 and requires key/capacity erasure after its join. Genuine signed Network,
 host-generated Instance and TCP/TLS REGISTER composition in
-`internal/node/publication_registration_linux_test.go` exercises the same
+`internal/domain/node/publication_registration_linux_test.go` exercises the same
 borrowed fixed opening and exact foreign-binding refusal. Candidate Rendezvous,
 Connection and Work Safety fields in that scenario remain unaccepted input;
 this evidence establishes no replay commit or successful downstream delivery.
@@ -2840,7 +2840,7 @@ Genuine TCP/TLS admitted and compiled JOIN scenarios remain in
 `cmd/ardents-next` and the full new-domain profile.
 
 Original WITHDRAW caller cancellation has two genuine TCP/TLS controls in
-`internal/node/route_registration_linux_test.go`: cancellation just after a
+`internal/domain/node/route_registration_linux_test.go`: cancellation just after a
 live caller observation with its callback delayed, and cancellation while its
 callback stop completes after the real Registry ACK. Both require canceled
 operation and retained Close results, exactly one callback stop, joined cleanup
@@ -3431,7 +3431,7 @@ terminal cannot accumulate another full burst, emission and joined disposal
 never refund its debit, fractional refill survives, and copied handles cannot
 multiply the actual adjacency or return another claim.
 
-`internal/node/route_bootstrap_linux_test.go` uses genuine signed Network,
+`internal/domain/node/route_bootstrap_linux_test.go` uses genuine signed Network,
 Stock, receiving spend and Hosting on TCP/TLS: four pending restricted
 children retain their actual Hosting work/termination and Route allocations,
 the fifth refuses before TLS/admission and
@@ -3942,7 +3942,7 @@ process pins; its own exact retirement notice is not an independent failure.
 
 ### Forwarding local protection during held authority
 
-`internal/node`'s `node_process_native` component test
+`internal/domain/node`'s `node_process_native` component test
 `TestForwardingNativeLocalProtectionDuringHeldAuthority` requires its own actual
 sole-process cgroup-v2 leaf under the unchanged Forwarding process envelope,
 including GOMAXPROCS=1 and the exact CPU/RAM/PID/FD limits. Build with `-race` and
@@ -4139,7 +4139,7 @@ signing controls, not installed or independent-builder claims.
 
 The same target also executes
 `TestSourcePreparationNativeInitialNetworkAndNonrootState`
-(`internal/node/provisioning`): genuine initial Source key/plan/Record/Epoch
+(`internal/domain/node/provisioning`): genuine initial Source key/plan/Record/Epoch
 preparation through the pinned `ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM`, then
 actual nonroot State acceptance in an OS child with numeric UID/GID199 under a
 separate root-owned 0755 `ARDENTS_SOURCE_STATE_FIXTURE_PARENT`. A prepared root is

@@ -440,7 +440,7 @@ namespace. A supplied subprocess must start the real local network fixture there
 ```sh
 docker compose -f scripts/diagnostics/compose.yaml --profile network run --rm network \
   run -raw -out /evidence/delay-a -timeout 5m -- sh -c \
-  'tc qdisc add dev lo root netem delay 20ms; go test ./internal/node/forwarding -run "^Test" -count=1; result=$?; tc qdisc del dev lo root; exit "$result"'
+  'tc qdisc add dev lo root netem delay 20ms; go test ./internal/domain/node/forwarding -run "^Test" -count=1; result=$?; tc qdisc del dev lo root; exit "$result"'
 ```
 
 Run the same selected test without netem as a baseline. A perturbation failure

@@ -83,14 +83,14 @@ github.com/dianabuilds/ardents-network/internal/processresource
 github.com/dianabuilds/ardents-network/internal/durablefile
 github.com/dianabuilds/ardents-network/internal/canonicaldigest
 github.com/dianabuilds/ardents-network/internal/pathgrammar
-github.com/dianabuilds/ardents-network/internal/node
-github.com/dianabuilds/ardents-network/internal/node/command
+github.com/dianabuilds/ardents-network/internal/domain/node
+github.com/dianabuilds/ardents-network/internal/domain/node/command
 github.com/dianabuilds/ardents-network/internal/connection/wire
 github.com/dianabuilds/ardents-network/internal/endpoint/session
 github.com/dianabuilds/ardents-network/internal/release/infrastructure
 github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch
 github.com/dianabuilds/ardents-network/internal/endpoint
-github.com/dianabuilds/ardents-network/internal/node/provisioning
+github.com/dianabuilds/ardents-network/internal/domain/node/provisioning
 github.com/dianabuilds/ardents-network/internal/platform/artifacts
 github.com/dianabuilds/ardents-network/internal/release/infrastructure/signing
 github.com/dianabuilds/ardents-network/internal/platform/launch

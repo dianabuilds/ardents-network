@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/operator"
+	"github.com/dianabuilds/ardents-network/internal/domain/node"
 	"github.com/dianabuilds/ardents-network/internal/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/node"
 	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"
 )
 

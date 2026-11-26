@@ -633,10 +633,10 @@
       },
       {
         "symbols": [
-          "internal/node.credential.close",
-          "internal/node.decodeCredential",
-          "internal/node.originalRetirementResult",
-          "internal/node.removeOriginalRetirementNotice"
+          "internal/domain/node.credential.close",
+          "internal/domain/node.decodeCredential",
+          "internal/domain/node.originalRetirementResult",
+          "internal/domain/node.removeOriginalRetirementNotice"
         ],
         "classification": "portable Node rules with Linux role startup",
         "rationale": "Credential decoding and clearing and the retirement error filter run in portable tests and serve the Linux runtime. The command composition is analyzed on Windows too, but actual Windows invocation refuses before opening the plan.",
@@ -691,15 +691,15 @@
           "internal/network/epoch.candidateCarrierEligible",
           "internal/network/epoch.encodeInitialClosedEpoch",
           "internal/network/epoch.initialPreparationInterval",
-          "internal/node/provisioning.PrepareClosedNetworkProfile",
-          "internal/node/provisioning.PrepareInitialEpoch",
-          "internal/node/provisioning.PrepareInitialNodeRecord",
-          "internal/node/provisioning.PrepareNetworkPublic",
-          "internal/node/provisioning.preparationBytes.UnmarshalJSON",
-          "internal/node/provisioning.preparationID.UnmarshalJSON",
-          "internal/node/provisioning.preparationTime",
-          "internal/node/provisioning.profilePreparationKey.UnmarshalJSON",
-          "internal/node/provisioning.profilePreparationNode.UnmarshalJSON",
+          "internal/domain/node/provisioning.PrepareClosedNetworkProfile",
+          "internal/domain/node/provisioning.PrepareInitialEpoch",
+          "internal/domain/node/provisioning.PrepareInitialNodeRecord",
+          "internal/domain/node/provisioning.PrepareNetworkPublic",
+          "internal/domain/node/provisioning.preparationBytes.UnmarshalJSON",
+          "internal/domain/node/provisioning.preparationID.UnmarshalJSON",
+          "internal/domain/node/provisioning.preparationTime",
+          "internal/domain/node/provisioning.profilePreparationKey.UnmarshalJSON",
+          "internal/domain/node/provisioning.profilePreparationNode.UnmarshalJSON",
           "internal/platform/artifacts.DecodeDeclaration"
         ],
         "classification": "portable unsigned Network formats behind native offline custody",
@@ -709,7 +709,7 @@
       },
       {
         "symbols": [
-          "internal/node.RepairDeclaration"
+          "internal/domain/node.RepairDeclaration"
         ],
         "classification": "portable original Node repair declaration behind Linux custody",
         "rationale": "The native Linux retained repair validates the role and original ordered roots through this portable decoder before opening the manager. Portable tests exercise role substitution and overlapping roots. Windows production refuses the native repair before file effects.",
@@ -784,11 +784,11 @@
           "internal/endpoint/funding.minRouteDeadline",
           "internal/endpoint/session.minRouteDeadline",
           "internal/hosting.Reservation.ReleaseJoined",
-          "internal/node.admissionFacts",
-          "internal/node.expiredMeasurement",
-          "internal/node.failureRecord.retain",
-          "internal/node.failureRecord.retainCleanup",
-          "internal/node.failureRecord.snapshot"
+          "internal/domain/node.admissionFacts",
+          "internal/domain/node.expiredMeasurement",
+          "internal/domain/node.failureRecord.retain",
+          "internal/domain/node.failureRecord.retainCleanup",
+          "internal/domain/node.failureRecord.snapshot"
         ],
         "classification": "P1-B batch 2 de-tagged newly-unlocked pure production files with Linux-native genuine consumers (#787, #691)",
         "rationale": "These exact functions were accidentally Linux-bound pure Go unlocked by batch 1: the Node first-failure and admission public-observation projections (node/failure_projection.go, node/admission_projection.go), the whole endpoint/funding composition (source/preparation/prefix/issuance/parents/observation/reservation) and the endpoint/session deadline helper. Hosting ReleaseJoined now owns the shared bounded release and is reached by the portable nil-reservation test. Batch 2 dropped their Linux build constraints after per-file purity verification at the integration candidate: each composes only portable symbols (batch-1 hosting reservation release, processresource failure projection, stock/token/prefix/selection helpers) and adds no native mechanism. Their genuine production consumers remain Windows-excluded (session OpenPrefix/OpenBootstrap/OpenJoinContext run the genuine Unix-family composition on Linux/macOS, Cohort 2d #877, but keep a Windows typed refusal in route_other.go (!linux && !darwin) that does not reach the deadline helper; endpoint publisher/reader and cmd/ardents-next adapters stay Linux; node role lifetimes compose the Linux forwarding lifetime and route/receiver.Channel), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Node projections (failure_projection_test.go, admission_projection_test.go), the session reservation helpers (reservation_test.go) and funding's Stock-preparation coordination (preparation_test.go), so those are production-dead but not test-dead; the remaining funding Source/Prefix/Parents/issuance compositions are fully dead on Windows and carry a separate reviewed test_dead allowance. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals, and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",

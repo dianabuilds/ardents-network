@@ -98,7 +98,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/network/duty/node_inspection_linux.go",
 			"internal/admission/spending/inspection_linux.go",
 			"internal/hosting/inspection_linux.go",
-			"internal/node/provisioning/command_linux.go",
+			"internal/domain/node/provisioning/command_linux.go",
 			"internal/network/source/command/prepare_linux.go",
 			"internal/network/source/command/command_linux_test.go",
 			"internal/network/state/source_state_files_linux.go",
@@ -125,10 +125,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/release/infrastructure/signing/source_release_keys_linux.go",
 			"internal/release/infrastructure/signing/source_release_plan_linux.go",
 			"internal/release/infrastructure/signing/source_release_plan_linux_test.go",
-			"internal/node/provisioning/source_initial_keys_linux.go",
-			"internal/node/provisioning/source_initial_network_linux.go",
-			"internal/node/provisioning/source_initial_network_linux_test.go",
-			"internal/node/provisioning/source_initial_plan_linux.go",
+			"internal/domain/node/provisioning/source_initial_keys_linux.go",
+			"internal/domain/node/provisioning/source_initial_network_linux.go",
+			"internal/domain/node/provisioning/source_initial_network_linux_test.go",
+			"internal/domain/node/provisioning/source_initial_plan_linux.go",
 			"internal/platform/artifacts/key_linux.go",
 			"internal/platform/systemd/node_slots_linux.go",
 			"internal/platform/systemd/node_slots_linux_test.go",
@@ -230,10 +230,10 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 			"internal/endpoint/generation/directory_unix.go",
 			"internal/endpoint/launch/root_ownership_unix.go",
 			"internal/endpoint/plan/custody_unix.go",
-			"internal/node/credential_unix.go",
-			"internal/node/credential_unix_test.go",
-			"internal/node/join_credential_unix.go",
-			"internal/node/join_credential_unix_test.go",
+			"internal/domain/node/credential_unix.go",
+			"internal/domain/node/credential_unix_test.go",
+			"internal/domain/node/join_credential_unix.go",
+			"internal/domain/node/join_credential_unix_test.go",
 			"internal/platform/artifacts/input_unix.go",
 			"internal/platform/artifacts/input_unix_test.go",
 			"internal/platform/artifacts/directory_unix.go",
@@ -262,7 +262,7 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 		for _, name := range []string{
 			"internal/durablefile/inode_times_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
-			"internal/node/provisioning/network_preparation_linux.go",
+			"internal/domain/node/provisioning/network_preparation_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -386,20 +386,20 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/node/provisioning/node_provisioning_role_unix.go",
-			"internal/node/provisioning/public_identifier_unix.go",
-			"internal/node/provisioning/public_identifier_unix_test.go",
-			"internal/node/provisioning/node_certificate_unix.go",
-			"internal/node/provisioning/node_certificate_unix_test.go",
-			"internal/node/provisioning/network_report_unix.go",
-			"internal/node/provisioning/node_record_unix.go",
-			"internal/node/provisioning/forwarding_node_record_unix_test.go",
-			"internal/node/provisioning/network_signing_declaration_unix.go",
-			"internal/node/provisioning/network_certificate_signing_unix.go",
-			"internal/node/provisioning/network_certificate_signing_unix_test.go",
-			"internal/node/provisioning/network_profile_signing_unix.go",
-			"internal/node/provisioning/network_profile_signing_test.go",
-			"internal/node/provisioning/network_signing_fixture_unix_test.go",
+			"internal/domain/node/provisioning/node_provisioning_role_unix.go",
+			"internal/domain/node/provisioning/public_identifier_unix.go",
+			"internal/domain/node/provisioning/public_identifier_unix_test.go",
+			"internal/domain/node/provisioning/node_certificate_unix.go",
+			"internal/domain/node/provisioning/node_certificate_unix_test.go",
+			"internal/domain/node/provisioning/network_report_unix.go",
+			"internal/domain/node/provisioning/node_record_unix.go",
+			"internal/domain/node/provisioning/forwarding_node_record_unix_test.go",
+			"internal/domain/node/provisioning/network_signing_declaration_unix.go",
+			"internal/domain/node/provisioning/network_certificate_signing_unix.go",
+			"internal/domain/node/provisioning/network_certificate_signing_unix_test.go",
+			"internal/domain/node/provisioning/network_profile_signing_unix.go",
+			"internal/domain/node/provisioning/network_profile_signing_test.go",
+			"internal/domain/node/provisioning/network_signing_fixture_unix_test.go",
 			"internal/release/infrastructure/signing/release_key_receipt_unix.go",
 			"internal/platform/artifacts/flag_options_unix.go",
 			"internal/network/closedprofile/signing_transcript_unix.go",
@@ -413,7 +413,7 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/node/provisioning/network_report_other.go",
+			"internal/domain/node/provisioning/network_report_other.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -424,10 +424,10 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/node/provisioning/network_preparation_linux.go",
-			"internal/node/provisioning/command_linux.go",
-			"internal/node/provisioning/network_signing_linux.go",
-			"internal/node/provisioning/initial_network_keys_linux.go",
+			"internal/domain/node/provisioning/network_preparation_linux.go",
+			"internal/domain/node/provisioning/command_linux.go",
+			"internal/domain/node/provisioning/network_signing_linux.go",
+			"internal/domain/node/provisioning/initial_network_keys_linux.go",
 			"internal/platform/artifacts/output_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
@@ -539,21 +539,21 @@ func TestCohort2aDomainDetagSelection(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/node/descriptor_unix.go",
-			"internal/node/forwarding_admission_unix.go",
-			"internal/node/forwarding_unix.go",
-			"internal/node/forwarding_observation_unix.go",
-			"internal/node/introduction_unix.go",
-			"internal/node/issuer_unix.go",
-			"internal/node/join_unix.go",
-			"internal/node/lifetime_unix.go",
-			"internal/node/runtime_unix.go",
-			"internal/node/descriptor_startup_unix_test.go",
-			"internal/node/failure_projection_unix_test.go",
-			"internal/node/introduction_startup_unix_test.go",
-			"internal/node/join_startup_unix_test.go",
-			"internal/node/lifetime_equivalence_unix_test.go",
-			"internal/node/retirement_unix_test.go",
+			"internal/domain/node/descriptor_unix.go",
+			"internal/domain/node/forwarding_admission_unix.go",
+			"internal/domain/node/forwarding_unix.go",
+			"internal/domain/node/forwarding_observation_unix.go",
+			"internal/domain/node/introduction_unix.go",
+			"internal/domain/node/issuer_unix.go",
+			"internal/domain/node/join_unix.go",
+			"internal/domain/node/lifetime_unix.go",
+			"internal/domain/node/runtime_unix.go",
+			"internal/domain/node/descriptor_startup_unix_test.go",
+			"internal/domain/node/failure_projection_unix_test.go",
+			"internal/domain/node/introduction_startup_unix_test.go",
+			"internal/domain/node/join_startup_unix_test.go",
+			"internal/domain/node/lifetime_equivalence_unix_test.go",
+			"internal/domain/node/retirement_unix_test.go",
 			"internal/route/receiver/admission_retirement_unix.go",
 			"internal/route/receiver/bootstrap_unix.go",
 			"internal/route/receiver/descriptor_unix.go",
@@ -589,7 +589,7 @@ func TestCohort2aDomainDetagSelection(t *testing.T) {
 		for _, name := range []string{
 			"internal/network/source/serving/serving_other.go",
 			"internal/network/source/serving/serving_other_test.go",
-			"internal/node/runtime_other.go",
+			"internal/domain/node/runtime_other.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -636,10 +636,10 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/node/failure_projection.go",
-			"internal/node/failure_projection_test.go",
-			"internal/node/admission_projection.go",
-			"internal/node/admission_projection_test.go",
+			"internal/domain/node/failure_projection.go",
+			"internal/domain/node/failure_projection_test.go",
+			"internal/domain/node/admission_projection.go",
+			"internal/domain/node/admission_projection_test.go",
 			"internal/hosting/reservation.go",
 			"internal/endpoint/funding/issuance.go",
 			"internal/endpoint/funding/parents.go",
@@ -1029,7 +1029,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
 		"internal/admission", "internal/canonicaldigest", "internal/connection", "internal/custody", "internal/durablefile", "internal/endpoint",
-		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/node",
+		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/domain/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
 	} {
@@ -1316,14 +1316,14 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/endpoint/publication_installed_linux_test.go",
 			"internal/endpoint/funding/intent_network_test.go",
 			"internal/network/source/command/state_lifetime_linux_test.go",
-			"internal/node/authority_process_native_linux_test.go",
-			"internal/node/introduction_exchange_native_linux_test.go",
-			"internal/node/operation_workload_native_linux_test.go",
-			"internal/node/refill_process_native_linux_test.go",
-			"internal/node/route_descriptor_linux_test.go",
-			"internal/node/route_join_fixture_linux_test.go",
-			"internal/node/route_bootstrap_linux_test.go",
-			"internal/node/route_receiving_fixture_linux_test.go",
+			"internal/domain/node/authority_process_native_linux_test.go",
+			"internal/domain/node/introduction_exchange_native_linux_test.go",
+			"internal/domain/node/operation_workload_native_linux_test.go",
+			"internal/domain/node/refill_process_native_linux_test.go",
+			"internal/domain/node/route_descriptor_linux_test.go",
+			"internal/domain/node/route_join_fixture_linux_test.go",
+			"internal/domain/node/route_bootstrap_linux_test.go",
+			"internal/domain/node/route_receiving_fixture_linux_test.go",
 			"tests/e2e/endpoint/endpoint_history_linux_test.go",
 			"tests/e2e/endpoint/launch_refusals_native_linux_test.go",
 			"tests/e2e/endpoint/launch_replacement_native_linux_test.go",
@@ -1404,13 +1404,13 @@ func successorImportAllowed(source, dependency string) bool {
 			"tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/issuer_exchange_native_linux_test.go", "tests/e2e/node/network_commands_unix_test.go",
 			"tests/e2e/node/admission_cycle_test.go", "tests/e2e/node/admission_receiver_test.go", "tests/e2e/node/admission_interrupt_unix_test.go":
 			return true
-		case "internal/node/route_bootstrap_linux_test.go", "internal/node/route_token_linux_test.go":
+		case "internal/domain/node/route_bootstrap_linux_test.go", "internal/domain/node/route_token_linux_test.go":
 			return true
-		case "internal/node/route_join_linux_test.go", "internal/node/route_join_fixture_linux_test.go":
+		case "internal/domain/node/route_join_linux_test.go", "internal/domain/node/route_join_fixture_linux_test.go":
 			return true
-		case "internal/node/route_descriptor_linux_test.go":
+		case "internal/domain/node/route_descriptor_linux_test.go":
 			return true
-		case "internal/node/publication_registration_linux_test.go", "tests/e2e/endpoint/service_instance_linux.go":
+		case "internal/domain/node/publication_registration_linux_test.go", "tests/e2e/endpoint/service_instance_linux.go":
 			return true
 		case "tests/e2e/node/command_test.go", "tests/e2e/endpoint/command_test.go", "internal/endpoint/connection_accepted_request_installed_linux_test.go":
 			return true
@@ -1426,18 +1426,18 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/endpoint/connection_installed_linux_test.go",
 			"internal/endpoint/execution_installed_linux_test.go",
 			"internal/endpoint/network_admission_fixture_linux_test.go",
-			"internal/node/introduction_exchange_native_linux_test.go",
+			"internal/domain/node/introduction_exchange_native_linux_test.go",
 			"tests/e2e/node/join_exchange_native_linux_test.go",
-			"internal/node/operation_workload_native_linux_test.go",
+			"internal/domain/node/operation_workload_native_linux_test.go",
 			"internal/endpoint/publication_ack_installed_linux_test.go",
 			"internal/endpoint/publication_installed_linux_test.go",
 			"internal/endpoint/route_issuer_fixture_linux_test.go",
 			"internal/endpoint/route_fixture_linux_test.go",
-			"internal/node/refill_process_native_linux_test.go",
-			"internal/node/route_receiving_fixture_linux_test.go",
-			"internal/node/route_refusal_linux_test.go", "internal/node/route_refill_linux_test.go", "internal/node/route_registration_linux_test.go", "internal/node/route_submission_linux_test.go",
-			"internal/node/authority_process_native_linux_test.go",
-			"internal/node/operation_process_native_linux_test.go",
+			"internal/domain/node/refill_process_native_linux_test.go",
+			"internal/domain/node/route_receiving_fixture_linux_test.go",
+			"internal/domain/node/route_refusal_linux_test.go", "internal/domain/node/route_refill_linux_test.go", "internal/domain/node/route_registration_linux_test.go", "internal/domain/node/route_submission_linux_test.go",
+			"internal/domain/node/authority_process_native_linux_test.go",
+			"internal/domain/node/operation_process_native_linux_test.go",
 			"tests/e2e/endpoint/endpoint_platform_native_linux_test.go",
 			"tests/e2e/node/completion_native_linux_test.go",
 			"tests/e2e/node/forwarding_startup_native_linux_test.go",
@@ -1468,19 +1468,19 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	if strings.HasPrefix(source, "internal/node/command/") && localImport {
+	if strings.HasPrefix(source, "internal/domain/node/command/") && localImport {
 		switch source {
-		case "internal/node/command/process.go":
+		case "internal/domain/node/command/process.go":
 			return local == "internal/processresource"
-		case "internal/node/command/input.go":
+		case "internal/domain/node/command/input.go":
 			return local == "internal/platform/artifacts"
-		case "internal/node/command/report.go", "internal/node/command/report_test.go":
-			return local == "internal/node"
+		case "internal/domain/node/command/report.go", "internal/domain/node/command/report_test.go":
+			return local == "internal/domain/node"
 		default:
 			return false
 		}
 	}
-	if localImport && local == "internal/node/command" {
+	if localImport && local == "internal/domain/node/command" {
 		switch source {
 		case "cmd/ardents-next/node.go", "cmd/ardents-next/node_roles.go":
 			return true
@@ -1776,7 +1776,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	// These command tests consume only the registered process and signed fixture owners.
-	if localImport && source == "internal/node/introduction_exchange_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/introduction_exchange_native_linux_test.go" {
 		switch local {
 		case "internal/endpoint/funding", "internal/endpoint/session", "internal/hosting",
 			"internal/network/epoch", "internal/network/state", "internal/processresource", "internal/route/capsule",
@@ -1784,7 +1784,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if localImport && source == "internal/node/operation_workload_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/operation_workload_native_linux_test.go" {
 		switch local {
 		case "internal/admission", "internal/admission/issuer", "internal/admission/quota",
 			"internal/admission/stock", "internal/admission/token", "internal/endpoint/funding",
@@ -1794,38 +1794,38 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if localImport && source == "internal/node/operation_process_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/operation_process_native_linux_test.go" {
 		switch local {
 		case "internal/admission", "internal/admission/issuance", "internal/admission/issuer",
 			"internal/admission/quota", "internal/admission/spending", "internal/endpoint/funding",
 			"internal/hosting", "internal/network", "internal/network/state",
-			"internal/node", "internal/route/role":
+			"internal/domain/node", "internal/route/role":
 			return true
 		}
 	}
-	if localImport && source == "internal/node/authority_process_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/authority_process_native_linux_test.go" {
 		switch local {
 		case "internal/admission/issuance", "internal/admission/issuer", "internal/admission/spending", "internal/hosting",
-			"internal/network", "internal/network/duty", "internal/network/state", "internal/node", "internal/reachability",
+			"internal/network", "internal/network/duty", "internal/network/state", "internal/domain/node", "internal/reachability",
 			"internal/route/introduction", "internal/route/role", "internal/route/transport", "tests/epochfixture/network":
 			return true
 		}
 	}
 	if localImport {
 		switch source {
-		case "internal/node/route_refusal_linux_test.go":
+		case "internal/domain/node/route_refusal_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/endpoint/funding", "internal/endpoint/session",
 				"internal/hosting", "internal/route/receiver", "internal/route/role", "internal/route/selection":
 				return true
 			}
-		case "internal/node/route_receiving_fixture_linux_test.go":
+		case "internal/domain/node/route_receiving_fixture_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock", "internal/admission/token",
 				"internal/endpoint/funding", "internal/network/state", "internal/route/transport", "tests/epochfixture/network":
 				return true
 			}
-		case "internal/node/route_join_fixture_linux_test.go":
+		case "internal/domain/node/route_join_fixture_linux_test.go":
 			switch local {
 			case "internal/route/receiver", "tests/e2e/node/processfixture", "internal/admission", "internal/admission/allocation",
 				"internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving", "internal/admission/stock",
@@ -1833,27 +1833,27 @@ func successorImportAllowed(source, dependency string) bool {
 				"tests/epochfixture/network", "tests/networkfixture", "internal/route/role", "internal/route/transport":
 				return true
 			}
-		case "internal/node/route_join_lifecycle_linux_test.go":
+		case "internal/domain/node/route_join_lifecycle_linux_test.go":
 			switch local {
 			case "internal/route/join", "internal/route/prefix", "internal/route/transport", "internal/admission",
 				"internal/admission/allocation", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
 				"internal/admission/token", "internal/hosting", "internal/route/ardp", "internal/route/selection":
 				return true
 			}
-		case "internal/node/route_join_linux_test.go":
+		case "internal/domain/node/route_join_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/stock", "internal/endpoint/funding", "internal/hosting",
 				"internal/route/prefix", "internal/route/selection", "internal/route/transport", "tests/e2e/node/processfixture":
 				return true
 			}
-		case "internal/node/route_token_linux_test.go":
+		case "internal/domain/node/route_token_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/stock", "internal/admission/token", "internal/endpoint/funding",
 				"internal/hosting", "internal/route/ardp", "internal/route/prefix", "internal/route/selection",
 				"internal/route/transport", "tests/e2e/node/processfixture":
 				return true
 			}
-		case "internal/node/route_bootstrap_linux_test.go":
+		case "internal/domain/node/route_bootstrap_linux_test.go":
 			switch local {
 			case "internal/endpoint/funding", "internal/endpoint/session", "internal/admission", "internal/admission/issuer",
 				"internal/admission/quota", "internal/admission/receiving", "internal/admission/stock", "internal/hosting",
@@ -1861,14 +1861,14 @@ func successorImportAllowed(source, dependency string) bool {
 				"internal/route/role", "internal/route/transport", "tests/e2e/node/processfixture":
 				return true
 			}
-		case "internal/node/route_bootstrap_capacity_linux_test.go":
+		case "internal/domain/node/route_bootstrap_capacity_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/admission/stock", "internal/hosting",
 				"internal/route/ardp", "internal/route/channel", "internal/route/receiver", "internal/route/role",
 				"internal/route/transport", "internal/route/transport/tls":
 				return true
 			}
-		case "internal/node/route_descriptor_linux_test.go":
+		case "internal/domain/node/route_descriptor_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
 				"internal/admission/stock", "internal/admission/token", "internal/endpoint/funding", "internal/endpoint/session", "internal/hosting",
@@ -1876,26 +1876,26 @@ func successorImportAllowed(source, dependency string) bool {
 				"internal/route/transport", "tests/epochfixture/network":
 				return true
 			}
-		case "internal/node/route_submission_linux_test.go":
+		case "internal/domain/node/route_submission_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/endpoint/funding", "internal/endpoint/session",
 				"internal/hosting", "internal/route/capsule", "internal/route/introduction", "internal/route/prefix",
 				"internal/route/receiver", "internal/route/role", "internal/route/selection":
 				return true
 			}
-		case "internal/node/route_registration_linux_test.go":
+		case "internal/domain/node/route_registration_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/endpoint/funding", "internal/endpoint/session",
 				"internal/hosting", "internal/route/ardp", "internal/route/channel", "internal/route/introduction", "internal/route/receiver", "internal/route/role":
 				return true
 			}
-		case "internal/node/publication_registration_linux_test.go":
+		case "internal/domain/node/publication_registration_linux_test.go":
 			switch local {
 			case "internal/publication", "internal/publication/durable", "internal/publication/instance", "internal/reachability",
 				"internal/route/capsule", "internal/route/introduction":
 				return true
 			}
-		case "internal/node/route_refill_linux_test.go":
+		case "internal/domain/node/route_refill_linux_test.go":
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/admission/stock", "internal/hosting", "internal/network",
 				"internal/route/ardp", "internal/route/channel", "internal/route/receiver", "internal/route/role", "internal/route/transport",
@@ -1904,7 +1904,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 	}
-	if localImport && source == "internal/node/refill_process_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/refill_process_native_linux_test.go" {
 		switch local {
 		case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
 			"internal/admission/stock", "internal/admission/token", "internal/endpoint/funding", "internal/hosting",
@@ -2148,11 +2148,11 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "cmd/ardents-next/command.go":
-			if local == "internal/node" || local == "internal/endpoint" || local == "internal/platform/launch" {
+			if local == "internal/domain/node" || local == "internal/endpoint" || local == "internal/platform/launch" {
 				return true
 			}
 		case "cmd/ardents-next/node.go":
-			if local == "internal/node" {
+			if local == "internal/domain/node" {
 				return true
 			}
 		case "cmd/ardents-next/infrastructure_operator.go":
@@ -2179,19 +2179,19 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/platform/artifacts" {
 				return true
 			}
-		case "internal/node/route_admission_linux.go":
+		case "internal/domain/node/route_admission_linux.go":
 			if local == "internal/admission/issuer" {
 				return true
 			}
-		case "internal/node/role_command.go":
+		case "internal/domain/node/role_command.go":
 			if local == "internal/admission/issuer" || local == "internal/admission/issuance" || local == "internal/network/state" {
 				return true
 			}
-		case "internal/node/role_input.go":
+		case "internal/domain/node/role_input.go":
 			if local == "internal/platform/artifacts" {
 				return true
 			}
-		case "internal/node/route_receive_linux.go":
+		case "internal/domain/node/route_receive_linux.go":
 			if local == "internal/admission/issuer" || local == "internal/admission/quota" || local == "internal/network/state" || local == "internal/platform/artifacts" || local == "internal/reachability" || local == "internal/route/channel" || local == "internal/route/introduction" {
 				return true
 			}
@@ -2262,7 +2262,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
 		return true
 	}
-	if dependency == modulePath+"/internal/node/provisioning" {
+	if dependency == modulePath+"/internal/domain/node/provisioning" {
 		switch source {
 		case "cmd/ardents-next/network.go":
 			return true
@@ -2275,7 +2275,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/canonicaldigest":                   {},
 		"internal/durablefile":                       {},
 		"internal/pathgrammar":                       {},
-		"internal/node":                              {"admission", "admission/receiving", "durablefile", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/domain/node":                       {"admission", "admission/receiving", "durablefile", "hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/network":                           {},
 		"internal/network/canonicalcursor":           {},
 		"internal/network/closedprofile":             {"network/canonicalcursor"},
@@ -2315,7 +2315,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit", "canonicaldigest", "pathgrammar"},
 		"internal/release/endpoint":                  {"enrollment", "release"},
 		"internal/release/infrastructure":            {"canonicaldigest", "enrollment", "release", "pathgrammar"},
-		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "node", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
+		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "domain/node", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
 		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "durablefile", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
 		"internal/platform/cgroup":                   {"pathgrammar"},
 		"internal/platform/artifacts":                {"durablefile", "pathgrammar"},
@@ -2374,22 +2374,22 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 
-		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/node" || dependency == modulePath+"/internal/processresource") {
+		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
-		if (source == "internal/node/runtime_unix.go" || source == "internal/node/runtime_other.go") && dependency == modulePath+"/internal/admission/issuer" {
+		if (source == "internal/domain/node/runtime_unix.go" || source == "internal/domain/node/runtime_other.go") && dependency == modulePath+"/internal/admission/issuer" {
 			return true
 		}
-		if source == "internal/node/issuer_unix.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
+		if source == "internal/domain/node/issuer_unix.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
 			return true
 		}
-		if source == "internal/node/introduction_unix.go" && dependency == modulePath+"/internal/route/introduction" {
+		if source == "internal/domain/node/introduction_unix.go" && dependency == modulePath+"/internal/route/introduction" {
 			return true
 		}
-		if source == "internal/node/descriptor_unix.go" && dependency == modulePath+"/internal/reachability" {
+		if source == "internal/domain/node/descriptor_unix.go" && dependency == modulePath+"/internal/reachability" {
 			return true
 		}
-		if source == "cmd/ardents-next/route_linux.go" && dependency == modulePath+"/internal/node" {
+		if source == "cmd/ardents-next/route_linux.go" && dependency == modulePath+"/internal/domain/node" {
 			return true
 		}
 		if source == "internal/endpoint/document_command_installed_linux_test.go" {
@@ -2437,7 +2437,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/endpoint/launch" || dependency == modulePath+"/internal/execution" || dependency == modulePath+"/internal/execution/runtime") {
 			return true
 		}
-		if source == "cmd/ardents-next/node.go" && dependency == modulePath+"/internal/node/provisioning" {
+		if source == "cmd/ardents-next/node.go" && dependency == modulePath+"/internal/domain/node/provisioning" {
 			return true
 		}
 		if source == "internal/endpoint/declarations_linux.go" && (dependency == modulePath+"/internal/execution" || dependency == modulePath+"/internal/network/source") {
@@ -2749,7 +2749,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"public issuer inspection excludes private issuer", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/admission/issuer", false},
 		{"public issuer inspection excludes Network authority", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/network/state", false},
 		{"public issuer inspection excludes Route", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/route/role", false},
-		{"adjacent Control has no inherited codec access", "internal/node/provisioning/unregistered.go", modulePath + "/internal/admission/issuerprofile", false},
+		{"adjacent Control has no inherited codec access", "internal/domain/node/provisioning/unregistered.go", modulePath + "/internal/admission/issuerprofile", false},
 		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/enrollment", true},
 		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/release", true},
 		{"Endpoint release producer excludes retired Enrollment path", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/enrollment", false},
@@ -2883,7 +2883,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"channel cannot acquire bootstrap policy", "internal/route/channel/session.go", modulePath + "/internal/route/bootstrap", false},
 		{"bootstrap cannot spend Admission", "internal/route/bootstrap/budget.go", modulePath + "/internal/admission/receiving", false},
 		{"bootstrap cannot import receiving composition", "internal/route/bootstrap/budget.go", modulePath + "/internal/route/receiver", false},
-		{"old receiver cannot import new bootstrap", "internal/node/forwarding/link.go", modulePath + "/internal/route/bootstrap", false},
+		{"old receiver cannot import new bootstrap", "internal/domain/node/forwarding/link.go", modulePath + "/internal/route/bootstrap", false},
 		{"channel uses ordered transport", "internal/route/channel/session.go", modulePath + "/internal/route/transport", true},
 		{"channel cannot import TLS adapter", "internal/route/channel/session.go", modulePath + "/internal/route/transport/tls", false},
 		{"channel cannot import QUIC adapter", "internal/route/channel/session_test.go", modulePath + "/internal/route/transport/quic", false},
@@ -2914,7 +2914,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"role consumes Network observations", "internal/route/role/authority.go", modulePath + "/internal/network", true},
 		{"Introduction exchange uses role binding", "internal/route/introduction/receiving.go", modulePath + "/internal/route/role", true},
 		{"Source command parses sealed capsule", "internal/endpoint/session/prefix_unix.go", modulePath + "/internal/route/capsule", true},
-		{"submission fixture parses sealed capsule", "internal/node/route_submission_linux_test.go", modulePath + "/internal/route/capsule", true},
+		{"submission fixture parses sealed capsule", "internal/domain/node/route_submission_linux_test.go", modulePath + "/internal/route/capsule", true},
 		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/route/capsule", false},
 		{"submission consumes retained exclusions", "internal/route/introduction/submission.go", modulePath + "/internal/route", true},
 		{"Introduction history birth consumes only its genuine receiving owner", "internal/route/introduction/receiving_history_unix.go", modulePath + "/internal/admission/receiving", true},
@@ -2955,7 +2955,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"retired command has no Enrollment grant", "cmd/ardents/endpoint.go", modulePath + "/internal/enrollment", false},
 		{"funded Source uses real token grammar", "internal/endpoint/funding/source.go", modulePath + "/internal/admission/token", true},
 		{"funded Source uses finite bootstrap", "internal/endpoint/funding/source.go", modulePath + "/internal/route/bootstrap", true},
-		{"funded Source behavior selects real Carrier", "internal/node/route_token_linux_test.go", modulePath + "/internal/route/transport", true},
+		{"funded Source behavior selects real Carrier", "internal/domain/node/route_token_linux_test.go", modulePath + "/internal/route/transport", true},
 		{"other funding adapter has no bootstrap exception", "cmd/ardents-next/route_funding_linux.go", modulePath + "/internal/route/bootstrap", false},
 		{"installed Execution scenario uses shared Carrier identity", "internal/endpoint/execution_installed_linux_test.go", modulePath + "/internal/route/transport", true},
 		{"installed Execution scenario excludes direct TLS construction", "internal/endpoint/execution_installed_linux_test.go", modulePath + "/internal/route/transport/tls", false},
@@ -2990,9 +2990,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"former selector cannot return in caller test", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/route/carrier", false},
 		{"no production Carrier allowance", "cmd/ardents-next/route_prefix_caller_linux.go", modulePath + "/internal/route/carrier", false},
 		{"caller test cannot reach old Carrier", "cmd/ardents-next/route_prefix_caller_linux_test.go", modulePath + "/internal/route/carrier", false},
-		{"JOIN cannot retain former selector", "internal/node/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
+		{"JOIN cannot retain former selector", "internal/domain/node/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
 		{"JOIN production excludes Carrier adapter", "cmd/ardents-next/route_join_linux.go", modulePath + "/internal/route/carrier", false},
-		{"JOIN test excludes old Carrier", "internal/node/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
+		{"JOIN test excludes old Carrier", "internal/domain/node/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
 		{"external public-contract test", "internal/admission/issuerprofile/provenance_test.go", modulePath + "/internal/admission/issuerprofile", true},
 		{"no production self import", "internal/admission/issuerprofile/profile.go", modulePath + "/internal/admission/issuerprofile", false},
 		{"no unregistered test self import", "internal/successor/future/file_test.go", modulePath + "/internal/successor/future", false},
@@ -3029,10 +3029,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"unregistered State consumer", "internal/service/publication/publication.go", modulePath + "/internal/network/state", false},
 		{"State excludes debit", "internal/network/state/open.go", modulePath + "/internal/admission/quota", false},
 		{"State excludes old backend", "internal/network/state/open.go", modulePath + "/internal/network/state", false},
-		{"legacy admission consumer isolated", "internal/node/authority/admission_observation.go", modulePath + "/internal/admission/receiving", false},
-		{"legacy token consumer isolated", "internal/node/authority/token.go", modulePath + "/internal/admission/receiving", false},
-		{"observation excludes spending root", "internal/node/authority/admission_observation.go", modulePath + "/internal/admission/spending", false},
-		{"observation bridge is exact", "internal/node/authority/receiver.go", modulePath + "/internal/admission/receiving", false},
+		{"legacy admission consumer isolated", "internal/domain/node/authority/admission_observation.go", modulePath + "/internal/admission/receiving", false},
+		{"legacy token consumer isolated", "internal/domain/node/authority/token.go", modulePath + "/internal/admission/receiving", false},
+		{"observation excludes spending root", "internal/domain/node/authority/admission_observation.go", modulePath + "/internal/admission/spending", false},
+		{"observation bridge is exact", "internal/domain/node/authority/receiver.go", modulePath + "/internal/admission/receiving", false},
 		{"acquisition policy adapter", "internal/network/state/acquisition_history.go", modulePath + "/internal/network", true},
 		{"acquisition adapter is exact", "internal/network/state/attempts.go", modulePath + "/internal/network", false},
 		{"participation policy adapter", "internal/network/duty/participation_policy.go", modulePath + "/internal/network", true},
@@ -3044,7 +3044,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"public token adapter is exact", "internal/network/closedprofile/profile.go", modulePath + "/internal/admission/issuerprofile", false},
 		{"public token adapter excludes signing", "internal/network/closedprofile/token_spki.go", modulePath + "/internal/admission/issuance", false},
 		{"network excludes old state", "internal/network/membership.go", modulePath + "/internal/network/state", false},
-		{"network excludes execution", "internal/network/membership.go", modulePath + "/internal/node", false},
+		{"network excludes execution", "internal/network/membership.go", modulePath + "/internal/domain/node", false},
 		{"network excludes debit", "internal/network/membership.go", modulePath + "/internal/admission", false},
 		{"network excludes reservations", "internal/network/membership.go", modulePath + "/internal/hosting", false},
 		{"issuance confirmed debit", "internal/admission/issuance/store.go", modulePath + "/internal/admission", true},
@@ -3075,17 +3075,17 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint platform native qualification uses unit contract", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/unit", true},
 		{"Endpoint platform native qualification excludes old Endpoint", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint platform native qualification excludes retired Release path", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
-		{"Endpoint platform native qualification has no Node runtime", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/node", false},
+		{"Endpoint platform native qualification has no Node runtime", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/release", false},
 		{"Endpoint launch delegates Enrollment to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/enrollment", false},
 		{"Endpoint launch delegates unit rendering to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
 		{"Endpoint launch roots use the Source bundle codec", "tests/e2e/endpoint/launch_roots_linux.go", modulePath + "/internal/network/source", true},
 		{"Endpoint launch native qualification excludes old Endpoint", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/endpoint", false},
-		{"Endpoint launch native qualification has no Node runtime", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/node", false},
+		{"Endpoint launch native qualification has no Node runtime", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"adjacent Endpoint launch test has no inherited Source edge", "cmd/ardents-next/other_endpoint_launch_native_linux_test.go", modulePath + "/internal/network/source", false},
 		{"Endpoint pair native controller has no direct Enrollment edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/enrollment", false},
 		{"Endpoint pair native controller excludes old Endpoint", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/endpoint", false},
-		{"Endpoint pair native controller has no Node runtime", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/node", false},
+		{"Endpoint pair native controller has no Node runtime", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"Endpoint pair native controller has no direct Source edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/network/source", false},
 		{"Endpoint journey delegates Enrollment to platform CLI", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/enrollment", false},
 		{"Endpoint journey delegates unit rendering to platform CLI", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
@@ -3096,7 +3096,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint journey native qualification uses public Connection client", "tests/e2e/endpoint/journey_participant_native_linux_test.go", modulePath + "/internal/application/connection", true},
 		{"Endpoint journey native qualification uses actual document exchange", "tests/e2e/endpoint/journey_participant_native_linux_test.go", modulePath + "/internal/application/document", true},
 		{"Endpoint journey native qualification excludes old Endpoint", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/endpoint", false},
-		{"Endpoint journey native qualification has no Node runtime", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/node", false},
+		{"Endpoint journey native qualification has no Node runtime", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"unsafe", "internal/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {

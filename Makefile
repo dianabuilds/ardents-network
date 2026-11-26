@@ -98,7 +98,7 @@ platform-launch-unit:
 	go test ./tests/e2e/node -run '^TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing$$' -count=1 -timeout=3m
 	go test ./internal/network/source/command -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$$' -count=1 -timeout=3m
 	go test ./internal/network/source/serving -run '^TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion$$' -count=1 -timeout=3m
-	go test ./internal/node/provisioning -run '^TestSourceInitialNetworkPlanKeepsDistinctPurposeAndPublicPins$$' -count=1 -timeout=3m
+	go test ./internal/domain/node/provisioning -run '^TestSourceInitialNetworkPlanKeepsDistinctPurposeAndPublicPins$$' -count=1 -timeout=3m
 	go test ./internal/platform/artifacts -run '^TestArtifactInputs' -count=1 -timeout=3m
 	go test ./internal/platform/process -run '^TestDedicatedAccountID$$' -count=1 -timeout=3m
 	go test ./internal/network/state -run '^Test(Source(Participation|Completion|InitialPreparation|PreparationConfig).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
@@ -425,17 +425,17 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/enrollment/... ./internal/release/... ./internal/platform/... ./internal/execution/... ./internal/route/... ./internal/endpoint/... ./internal/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/enrollment/... ./internal/release/... ./internal/platform/... ./internal/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
 hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/hosting ./internal/admission/receiving ./internal/node -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/hosting ./internal/admission/receiving ./internal/domain/node -count=1 -timeout=3m,$(error hosting-check requires Linux))
 	go test -race ./tests/e2e/node -run '^Test(AdmissionHostingReservationAndWork|HostingPlanExactFields|HostingCompiledCLIInitializationAndObservation|HostingOTLPContainsOnlyFiniteAttributes|HostingCollectorFailurePreservesCommittedResult|CanceledSocketChildRetainsReservationUntilJoined)' -count=1 -timeout=3m
 
 .PHONY: admission-check
 admission-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/... ./internal/endpoint/session ./internal/node ./tests/networkfixture -count=1 -timeout=5m,$(error admission-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/... ./internal/endpoint/session ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error admission-check requires Linux))
 	$(MAKE) --no-print-directory offline-admission-e2e-race
 
 # Keep compiled offline command scenarios in the race inventory after their move
@@ -446,16 +446,16 @@ offline-admission-e2e-race:
 
 .PHONY: issuance-check
 issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/issuance ./internal/admission/operator ./internal/endpoint/session ./internal/node ./tests/networkfixture -count=1 -timeout=3m,$(error issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/issuance ./internal/admission/operator ./internal/endpoint/session ./internal/domain/node ./tests/networkfixture -count=1 -timeout=3m,$(error issuance-check requires Linux))
 	$(MAKE) --no-print-directory offline-admission-e2e-race
 
 .PHONY: token-issuance-check
 token-issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission ./internal/admission/issuerprofile ./internal/admission/issuance ./internal/admission/issuer ./internal/admission/operator ./internal/endpoint/session ./internal/node ./tests/networkfixture -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission ./internal/admission/issuerprofile ./internal/admission/issuance ./internal/admission/issuer ./internal/admission/operator ./internal/endpoint/session ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
 
 .PHONY: issuer-profile-check
 issuer-profile-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission ./internal/admission/issuerprofile ./internal/admission/issuerprofile/signing ./internal/admission/issuance ./internal/admission/issuer ./internal/admission/operator ./internal/node ./tests/networkfixture -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission ./internal/admission/issuerprofile ./internal/admission/issuerprofile/signing ./internal/admission/issuance ./internal/admission/issuer ./internal/admission/operator ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
 	go test ./internal/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
 	go test ./internal/admission/issuerprofile/signing -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
 
@@ -474,7 +474,7 @@ network-preparation-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-preparation-check requires Linux and native ext4 TMPDIR"; exit 2)
 	go test -race ./internal/platform/artifacts -run '^TestWriteReportJoinsCanceledFullPipe$$' -count=1 -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./tests/e2e/node -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./internal/node/provisioning -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./internal/domain/node/provisioning -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
 
 network-preparation-compile-check: export GOOS := linux
 network-preparation-compile-check: export GOARCH := amd64
@@ -482,7 +482,7 @@ network-preparation-compile-check: export CGO_ENABLED := 0
 network-preparation-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_preparation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-preparation.test" ./tests/e2e/node
-	go test -c -tags network_preparation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-publication.test" ./internal/node/provisioning
+	go test -c -tags network_preparation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-publication.test" ./internal/domain/node/provisioning
 
 .PHONY: network-signing-check network-signing-compile-check
 
@@ -499,18 +499,18 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNative(OutputSubstitutionRefuses|PublicMountRefusal)$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^Test(NetworkSigning(InitialKeys|OriginalCancellationBeforeEffects|OriginalTimeAfterIO|DurableInventory|ConcurrentOutput|UnsupportedMount|OriginalInputCustody|OriginalRefusalCannotRevive|InterruptedChild|ActualPartialAndProcessCuts|Profile(NativeCommit|ActualExpiry|ReceiptExpiry|Contention)|NodeCertificate(LateTime|FinalOutputAndPhysicalFailure|Contention))|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/node/provisioning -run '^Test(NetworkSigning(InitialKeys|OriginalCancellationBeforeEffects|OriginalTimeAfterIO|DurableInventory|ConcurrentOutput|UnsupportedMount|OriginalInputCustody|OriginalRefusalCannotRevive|InterruptedChild|ActualPartialAndProcessCuts|Profile(NativeCommit|ActualExpiry|ReceiptExpiry|Contention)|NodeCertificate(LateTime|FinalOutputAndPhysicalFailure|Contention))|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^Test(Forwarding|Join)PreparationNative(InitialReleasePurposeAndKeyCustody|ForwardReleasePreservesRootAndRaisesFloors)$$|^TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/node/provisioning -run '^TestSourcePreparationNativeInitialNetworkAndNonrootState$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/node/provisioning -run '^TestSourcePreparationNativeInitialNetworkAndNonrootState$$' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64
 network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-provisioning.test" ./internal/node/provisioning
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-provisioning.test" ./internal/domain/node/provisioning
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-release-signing.test" ./internal/release/infrastructure/signing
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/operator-artifacts.test" ./internal/platform/artifacts
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/ardents-infrastructure" ./cmd/ardents-next
