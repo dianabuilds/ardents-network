@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 )
 
 // WaitReturnedReservations observes original receiving budgets before teardown

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 )
 
 type hostingResult struct {

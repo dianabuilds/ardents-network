@@ -4,7 +4,7 @@ This bounded successor slice reuses the maintained Hosting arithmetic and
 durable transaction semantics described in network-route-node.md and
 private-admission.md. It grants no admission, token or network authority.
 
-The standard-library-only internal/successor/hosting owner provides Initialize,
+The standard-library-only internal/domain/hosting owner provides Initialize,
 Open, Observe, Sample, Reserve, Close and Reservation.Release. Policy, Traffic and
 Observation retain finite provider-period bounds and separate Tx/Rx counts.
 Sample shares confirmed persisted observations up to one second old; every read
@@ -198,9 +198,9 @@ is never refunded. Wire debit and token spend remain outside Hosting.
 
 | Existing source | Final owner and disposition | Behavioral evidence |
 | --- | --- | --- |
-| internal/hosting policy/ledger | Hosting Policy, allowance and durable Budget; checked directions, overflow, floors and watermark | TestDirectionalCostAndOverflow; TestReserveUsesProviderDirections; TestIndependentOwnersCannotOversubscribe |
-| internal/hosting sampler/shared observation | Budget.Sample; shared persisted measurement under lease, no copied global cache | TestSharedSnapshotFreshnessAndReservationVisibility; TestSampleDoesNotRenewExpiredPeriod |
-| internal/hosting storage and counters | Hosting root/transaction/counter implementation; fail closed on unknown continuity, no history reset | TestHostingLostCounterContinuityRefuses; TestForeignAndPendingStateRefusedWithoutMutation; TestHostingCorruptStateIsNeverInitializedAgain |
+| internal/domain/hosting policy/ledger | Hosting Policy, allowance and durable Budget; checked directions, overflow, floors and watermark | TestDirectionalCostAndOverflow; TestReserveUsesProviderDirections; TestIndependentOwnersCannotOversubscribe |
+| internal/domain/hosting sampler/shared observation | Budget.Sample; shared persisted measurement under lease, no copied global cache | TestSharedSnapshotFreshnessAndReservationVisibility; TestSampleDoesNotRenewExpiredPeriod |
+| internal/domain/hosting storage and counters | Hosting root/transaction/counter implementation; fail closed on unknown continuity, no history reset | TestHostingLostCounterContinuityRefuses; TestForeignAndPendingStateRefusedWithoutMutation; TestHostingCorruptStateIsNeverInitializedAgain |
 | Existing work/termination reservation lifecycle | Hosting owns atomic capacity and one refund; consumer owns stop/join | TestCompletionCoverageDoesNotRenewWork; TestCopiedReservationCannotRefundAnotherHandle; TestHostingReleaseAfterPersistenceFailureStaysUnresolved |
 | internal/domain/node/hosting control/join/admission/lifetime | Remain role consumers: role envelope construction and child lifetime do not belong in budget | Test-only composition demonstrates reservation ownership without role rules in Hosting |
 | Admission token/quota/spending | Remain Admission; budget grants no token authority | TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen: actual issuance, durable spending, local transfer, release and replay refusal |

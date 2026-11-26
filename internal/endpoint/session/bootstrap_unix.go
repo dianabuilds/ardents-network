@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/route/bootstrap"
 	"github.com/dianabuilds/ardents-network/internal/route/prefix"

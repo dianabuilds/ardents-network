@@ -15,11 +15,11 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/endpoint/reader"
-	"github.com/dianabuilds/ardents-network/internal/hosting"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )

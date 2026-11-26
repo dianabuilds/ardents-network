@@ -16,7 +16,7 @@ github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network
 github.com/dianabuilds/ardents-network/tests/releasefixture
 github.com/dianabuilds/ardents-network/tests/networkfixture
-github.com/dianabuilds/ardents-network/internal/hosting
+github.com/dianabuilds/ardents-network/internal/domain/hosting
 github.com/dianabuilds/ardents-network/internal/publication
 github.com/dianabuilds/ardents-network/internal/publication/durable
 github.com/dianabuilds/ardents-network/internal/publication/instance

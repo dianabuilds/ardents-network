@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 )
 
 // ProcessBudget initializes a fresh loopback Hosting budget for an original process.
