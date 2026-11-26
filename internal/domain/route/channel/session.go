@@ -1,0 +1,781 @@
+package channel
+
+import (
+	"context"
+	"encoding/binary"
+	"errors"
+	"io"
+	"math"
+	"net"
+	"os"
+	"sync"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+)
+
+const Window = uint32(64 << 10)
+
+// replaceRemaining commits a verified refill against the usage witnessed after
+// its ADMIT debit. Traffic charged during verification remains charged against
+// the replacement reserve; cumulative usage and child credit never reset.
+func (s *Session) replaceRemaining(witness, remaining uint64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped || s.dedicated || !time.Now().Before(s.end) || remaining == 0 ||
+		witness > s.used || s.used > s.limit || witness > math.MaxUint64-remaining || s.used-witness > remaining {
+		return errors.New("route replenishment transition unavailable")
+	}
+	s.limit = witness + remaining
+	return nil
+}
+
+// Session owns one physical framing boundary and all of its borrowers. The
+// owner cancels admission before interrupting I/O; Close waits for the reader
+// and every child handler, retaining physical and protocol cleanup failures.
+type Session struct {
+	conn                    net.Conn
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	end                     time.Time
+	mu                      sync.Mutex
+	deadlineMu              sync.Mutex // Physical deadline effects, never state admission.
+	deadlines               sync.WaitGroup
+	lanes                   map[uint32]*Lane
+	next, last              uint32
+	live                    uint32
+	reservedControls        uint32
+	queued, used, limit     uint64
+	stopped                 bool
+	finishingRole           bool
+	failure                 error
+	writer                  chan struct{}
+	opening                 chan struct{}
+	active                  *Lane
+	activeKind              uint8
+	activeControl           bool
+	activeEnd               time.Time
+	activeDeadline          *outputDeadline
+	pending                 bool
+	dedicated               bool
+	queues                  *Budget
+	readerDone              chan struct{}
+	readerOnce              sync.Once
+	children                sync.WaitGroup
+	writes                  sync.WaitGroup
+	finishes                sync.WaitGroup
+	physicalOnce, closeOnce sync.Once
+	physicalErr, closeErr   error
+	closeOutcome            error
+	writeErr                error
+	output                  []*frameTurn
+	outbound, controlQueued uint64
+	lastData                uint32
+	lastControl             bool
+	open                    func(context.Context, *Lane, []byte) error
+	prepareOpen             func(*Lane, []byte) error
+	check                   func() error
+	parentControl           func(context.Context, ardp.Frame, uint64, uint64) error
+	chargeOutput            func(uint64) error
+	exchange                *parentExchange
+}
+
+func New(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *Budget, open func(context.Context, *Lane, []byte) error) *Session {
+	s := Prepare(ctx, conn, end, limit, check, pending, queues, Handlers{Open: open})
+	s.Start()
+	return s
+}
+
+// Start transfers the sole reader only after its owning handshake has
+// committed. A refused preparation joins without starting physical input.
+func (s *Session) Start() {
+	s.readerOnce.Do(func() {
+		s.mu.Lock()
+		stopped := s.stopped
+		s.mu.Unlock()
+		if stopped {
+			close(s.readerDone)
+			return
+		}
+		go s.read()
+	})
+}
+
+// Handlers are fixed before the reader is transferred. Composition
+// supplies decisions; the framing owner supplies the accounted input witness.
+type Handlers struct {
+	// PrepareOpen reserves finite child capacity before the sole reader can
+	// retain pipelined handshake bytes. It runs outside the framing lock and
+	// must not perform transport or wait for the child handler.
+	PrepareOpen   func(*Lane, []byte) error
+	Open          func(context.Context, *Lane, []byte) error
+	ParentControl func(context.Context, ardp.Frame, uint64, uint64) error
+	// Output admits each complete physical frame before debit or emission.
+	// It runs under the framing lock and must perform no I/O or reenter it.
+	Output func(uint64) error
+}
+
+// Prepare leaves reading stopped so a dedicated accepted lane can be
+// installed atomically before any peer data arrives at the framing owner.
+func Prepare(ctx context.Context, conn net.Conn, end time.Time, limit uint64, check func() error, pending bool, queues *Budget, handlers Handlers) *Session {
+	child, cancel := context.WithDeadline(ctx, end)
+	s := &Session{conn: conn, ctx: child, cancel: cancel, end: end, lanes: make(map[uint32]*Lane), next: 1,
+		limit:         limit,
+		writer:        make(chan struct{}, 1),
+		opening:       make(chan struct{}, 1),
+		readerDone:    make(chan struct{}),
+		check:         check,
+		pending:       pending,
+		queues:        queues,
+		open:          handlers.Open,
+		prepareOpen:   handlers.PrepareOpen,
+		parentControl: handlers.ParentControl,
+		chargeOutput:  handlers.Output,
+	}
+	return s
+}
+
+func (s *Session) physicalClose() error {
+	s.physicalOnce.Do(func() {
+		s.closeOutcome = s.conn.Close()
+		if lower := lowerFramingLane(s.conn); lower != nil && s.closeOutcome != nil {
+			// The exact lower lane retains whether CLOSE actually failed in
+			// physical output. Its authority/pre-output refusal is still this
+			// borrower's close outcome, but not an invented socket failure.
+			cleanup, joined := lower.CleanupResult()
+			if !joined {
+				cleanup = errors.Join(cleanup, errors.New("original lower lane cleanup did not join"))
+			}
+			s.physicalErr = cleanup
+		} else if lower == nil && s.closeOutcome != nil {
+			s.physicalErr = &physicalCloseFailure{owner: s, cause: s.closeOutcome}
+		}
+	})
+	return s.closeOutcome
+}
+
+func (s *Session) Retire(cause error) {
+	s.mu.Lock()
+	if !s.stopped {
+		s.stopped = true
+		s.failure = cause
+		for _, l := range s.lanes {
+			l.stopLocked(cause)
+		}
+	}
+	s.mu.Unlock()
+	s.cancel()
+	_ = s.physicalClose()
+}
+
+func (s *Session) Close() error {
+	s.closeOnce.Do(func() {
+		s.Retire(nil)
+		s.Start()
+		<-s.readerDone
+		s.children.Wait()
+		// Every selected physical write has relinquished serialization before
+		// this result can authorize reservation release.
+		s.writes.Wait()
+		s.deadlines.Wait()
+		s.mu.Lock()
+		s.closeErr = errors.Join(s.failure, s.closeOutcome, s.physicalErr, s.writeErr)
+		s.queues.release(s.queued)
+		s.queued = 0
+		var returns []func()
+		for _, l := range s.lanes {
+			if l.queueBound != nil {
+				l.queueBound.release(uint64(len(l.buffer)))
+				if l.queueTermination {
+					l.queueBound.release(ardp.HeaderSize + 1)
+					l.queueTermination = false
+				}
+			}
+			l.buffer = nil
+			s.finishChildLocked(l)
+			if l.afterFinish != nil {
+				returns = append(returns, l.afterFinish)
+				l.afterFinish = nil
+			}
+		}
+		s.mu.Unlock()
+		for _, release := range returns {
+			release()
+		}
+		// A borrower can have detached its empty lane just before parent
+		// retirement. Its already started physical return must still join.
+		// Every retained lane is now finished, so no later Finish can add work.
+		s.finishes.Wait()
+	})
+	return s.closeErr
+}
+
+// PhysicalFailure is read only after Close has joined all physical
+// writers. Peer protocol refusal, EOF and authority cancellation remain local
+// session outcomes; an owned physical write/close failure survives retirement.
+func (s *Session) PhysicalFailure() error {
+	return errors.Join(s.physicalErr, s.writeErr)
+}
+
+// Live is the framing owner's admission fact. Borrowers do not inspect its
+// mutex or retirement state to decide whether an existing channel is usable.
+func (s *Session) Live() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.stopped && !s.finishingRole
+}
+
+// WaitTerminal joins the sole dedicated reader within the original channel
+// horizon. Its caller still joins the writer and physical owner through Close.
+func (s *Session) WaitTerminal(bound time.Time) error {
+	if err := s.conn.SetReadDeadline(MinDeadline(s.end, bound)); err != nil {
+		return err
+	}
+	<-s.readerDone
+	return nil
+}
+
+func (s *Session) HoldControl() (func(), error) { return s.queues.HoldControl() }
+
+func (s *Session) read() {
+	defer close(s.readerDone)
+	interruptDone := make(chan struct{})
+	stop := context.AfterFunc(s.ctx, func() { defer close(interruptDone); s.Retire(s.ctx.Err()) })
+	defer func() {
+		if !stop() {
+			<-interruptDone
+		}
+	}()
+	for {
+		f, err := ardp.ReadFrame(s.conn)
+		if err != nil {
+			if s.dedicated && err == io.EOF {
+				// A raw TLS/Carrier EOF is not the inner JOIN terminal. Keep
+				// already accepted bytes and their reservation until consumed.
+				err = io.ErrUnexpectedEOF
+			}
+			s.mu.Lock()
+			stopped := s.stopped
+			if !stopped && s.finishingRole && err == io.EOF {
+				// Orderly local role completion still needs the exact lower
+				// peer CLOSE. Keep that reader alive rather than aborting its
+				// Carrier as soon as the reverse direction reaches EOF.
+				s.failure = err
+				s.mu.Unlock()
+				return
+			}
+			s.mu.Unlock()
+			if !stopped {
+				s.Retire(transport.RetainedPeerReadCause(s.conn, err))
+			}
+			return
+		}
+		if s.check != nil {
+			if err := s.check(); err != nil {
+				s.Retire(err)
+				return
+			}
+		}
+		s.mu.Lock()
+		if s.stopped {
+			s.mu.Unlock()
+			return
+		}
+		cost := uint64(ardp.HeaderSize + len(f.Body))
+		if f.Lane == 0 && f.Kind == ardp.KindAccept && s.exchange != nil && s.exchange.reply != nil && s.exchange.charged {
+			status, credit, acceptErr := ardp.DecodeAcceptFrame(f)
+			refillBytes := s.exchange.remaining
+			if acceptErr != nil || status != 0 || credit != Window || s.exchange.caller == nil || s.exchange.caller.Err() != nil ||
+				s.exchange.witness > s.used || s.exchange.witness > math.MaxUint64-refillBytes {
+				s.mu.Unlock()
+				s.Retire(errors.Join(errors.New("route refill acknowledgement refused"), acceptErr))
+				return
+			}
+			// Replacement precedes the ACK debit; concurrent debits remain used.
+			s.limit = s.exchange.witness + refillBytes
+		}
+		if cost > s.limit-s.used {
+			s.mu.Unlock()
+			s.Retire(errors.New("route byte allowance exhausted"))
+			return
+		}
+		s.used += cost
+		if s.dedicated && f.Lane != 1 {
+			s.mu.Unlock()
+			s.Retire(errors.New("unexpected dedicated JOIN lane"))
+			return
+		}
+		if f.Lane == 0 {
+			if s.exchange != nil && s.exchange.reply != nil && s.exchange.charged && f.Kind == ardp.KindAccept {
+				reply := s.exchange.reply
+				s.exchange.reply = nil
+				reply <- f
+				s.mu.Unlock()
+				continue
+			}
+			remaining := s.limit - s.used
+			if s.parentControl != nil && s.exchange == nil && f.Kind == ardp.KindAdmit && len(f.Body) == 355 && f.Body[0] == 2 && remaining != 0 {
+				s.exchange = &parentExchange{charged: true, witness: s.used}
+				witness := s.used
+				s.children.Add(1)
+				s.mu.Unlock()
+				go func() {
+					defer s.children.Done()
+					defer clear(f.Body)
+					err := s.parentControl(s.ctx, f, witness, remaining)
+					if err != nil {
+						s.Retire(err)
+					}
+					s.mu.Lock()
+					s.exchange = nil
+					s.mu.Unlock()
+				}()
+				continue
+			}
+			s.mu.Unlock()
+			s.Retire(errors.New("unexpected Route parent control"))
+			return
+		}
+		l := s.lanes[f.Lane]
+		if f.Kind == ardp.KindOpen {
+			if s.open == nil || l != nil || f.Lane%2 != 1 || f.Lane <= s.last {
+				s.mu.Unlock()
+				s.Retire(errors.New("route child unavailable"))
+				return
+			}
+			l = s.newChildLocked(f.Lane, f.Body)
+			if l == nil {
+				s.mu.Unlock()
+				s.Retire(errors.New("route child unavailable"))
+				return
+			}
+			s.last = f.Lane
+			l.trafficUsed = cost
+			body := append([]byte(nil), f.Body...)
+			s.children.Add(1)
+			s.mu.Unlock()
+			var prepared error
+			if s.prepareOpen != nil {
+				prepared = s.prepareOpen(l, body)
+				if prepared != nil {
+					l.Seal()
+				}
+			}
+			go func() {
+				defer s.children.Done()
+				defer l.Finish()
+				err := prepared
+				if err == nil {
+					err = s.open(l.ctx, l, body)
+				}
+				status := byte(0)
+				if err != nil {
+					status = 1
+				}
+				if closeErr := l.closeStatus(status); closeErr != nil && !localCapacityRefusal(closeErr) {
+					s.Retire(errors.Join(err, closeErr))
+				}
+			}()
+			continue
+		}
+		if l == nil {
+			if f.Lane%2 == 1 && ((s.open != nil && f.Lane <= s.last) || (s.open == nil && f.Lane < s.next)) {
+				s.mu.Unlock()
+				continue
+			}
+			s.mu.Unlock()
+			s.Retire(errors.New("unknown Route lane"))
+			return
+		}
+		// A retired lane retains its identifier. Late input cannot acquire a
+		// queue reservation or poison live siblings.
+		// Retain an exact peer terminal even during local Close: it can still
+		// discharge our queued terminal before physical output starts. Other
+		// late traffic cannot revive the lane or acquire input capacity.
+		firstPeerClose := f.Kind == ardp.KindClose && l.localClosed && !l.peerClosed
+		if ((l.closed && !firstPeerClose) || !time.Now().Before(l.end)) && !(s.dedicated && f.Kind == ardp.KindClose) {
+			l.stopLocked(os.ErrDeadlineExceeded)
+			s.mu.Unlock()
+			continue
+		}
+		if l.trafficLimit != 0 && f.Kind != ardp.KindClose {
+			if cost > l.trafficLimit-l.trafficUsed {
+				l.stopLocked(errors.New("route child byte allowance exhausted"))
+				s.mu.Unlock()
+				continue
+			}
+			l.trafficUsed += cost
+		}
+		var deadline *outputDeadline
+		switch f.Kind {
+		case ardp.KindBytes:
+			if l.handshake && l.handshakeBytes+l.handshakeOutput+uint32(len(f.Body)) > 4096 {
+				err = errors.New("route pending TLS allowance exhausted")
+			} else if l.eof || l.pendingCredit+l.queuedCredit > l.receive || uint32(len(f.Body)) > l.receive-l.pendingCredit-l.queuedCredit || len(l.buffer)+len(f.Body) > int(Window) || s.queued+s.outbound+uint64(len(f.Body)) > 4<<20 {
+				err = errors.New("route receive credit exhausted")
+			} else if l.queueBound != nil && !l.queueBound.reserve(uint64(len(f.Body))) {
+				// Exhausting this child group's smaller queue denies only this
+				// child. Its reserved terminal capacity still permits CLOSE.
+				l.stopLocked(errors.New("route child queue exhausted"))
+			} else if !s.queues.reserve(uint64(len(f.Body))) {
+				if l.queueBound != nil {
+					l.queueBound.release(uint64(len(f.Body)))
+				}
+				err = errors.New("route receive credit exhausted")
+			} else {
+				l.receive -= uint32(len(f.Body))
+				if l.handshake {
+					l.handshakeBytes += uint32(len(f.Body))
+				}
+				l.buffer = append(l.buffer, f.Body...)
+				s.queued += uint64(len(f.Body))
+				l.signalLocked()
+			}
+		case ardp.KindCredit:
+			n := binary.BigEndian.Uint32(f.Body)
+			if n > Window-l.credit {
+				err = errors.New("route credit overflow")
+			} else {
+				l.credit += n
+				l.signalLocked()
+			}
+		case ardp.KindEOF:
+			if l.eof {
+				err = errors.New("duplicate Route EOF")
+			} else {
+				l.eof = true
+				l.signalLocked()
+			}
+		case ardp.KindClose:
+			l.peerClosed = true
+			l.peerRefused = f.Body[0] != 0
+			l.signalLocked() // Local retirement may already have sealed the lane.
+			cause := error(nil)
+			if f.Body[0] != 0 {
+				cause = errors.New("route peer refused lane")
+				if s.dedicated {
+					// This sole lane is the whole JOIN channel, so its refusal
+					// also remains the channel's joined terminal outcome.
+					err = cause
+				}
+			}
+			l.stopLocked(cause)
+			deadline = l.interruptOutputLocked()
+		default:
+			err = errors.New("unexpected Route child frame")
+		}
+		s.mu.Unlock()
+		if _, interrupt := s.applyOutputDeadline(deadline); interrupt != nil {
+			err = errors.Join(err, interrupt)
+		}
+		if err != nil {
+			s.Retire(err)
+			return
+		}
+		if s.dedicated && f.Kind == ardp.KindClose {
+			// The authenticated inner terminal ends this reader. The stream
+			// owner still joins writers and drains or releases retained input.
+			return
+		}
+	}
+}
+
+// write distinguishes queued work from a started physical frame. Expired
+// queued work consumes neither physical output nor credit. A failed started
+// frame invalidates the shared framing boundary even when Write returns zero.
+func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
+	raw, err := ardp.EncodeFrame(f)
+	if err != nil {
+		return err
+	}
+	release, err := s.turn(l, f, terminal, uint64(len(raw)))
+	if err != nil {
+		return err
+	}
+	defer release()
+	if s.check != nil {
+		if err := s.check(); err != nil {
+			s.Retire(err)
+			return err
+		}
+	}
+	s.mu.Lock()
+	end := l.frameDeadline(f, terminal)
+	if s.stopped || s.finishingRole || s.ctx.Err() != nil || l.peerClosed || (!terminal && l.closed) {
+		s.mu.Unlock()
+		return &frameRetirement{lane: l, kind: f.Kind}
+	}
+	if !time.Now().Before(end) {
+		s.mu.Unlock()
+		return &frameExpiry{end: end}
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && l.caller != nil {
+		// Currentness observation can finish after the original operation is
+		// canceled, before its cancellation callback closes the control lane.
+		// Refuse synchronously before capacity, debit or physical output.
+		if err := l.caller.Err(); err != nil {
+			s.mu.Unlock()
+			return err
+		}
+	}
+	cost := uint64(len(raw))
+	if cost > s.limit-s.used {
+		s.mu.Unlock()
+		return errors.New("route byte allowance exhausted")
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && cost == s.limit-s.used {
+		s.mu.Unlock()
+		return errors.New("route refill requires positive original reserve")
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && l.refill != nil && l.refill.requiresHold {
+		needed := l.refill.remaining - (s.limit - s.used - cost)
+		if needed > l.refill.held {
+			s.mu.Unlock()
+			return &refillCapacityDelta{additional: needed - l.refill.held}
+		}
+	}
+	if f.Kind == ardp.KindBytes {
+		if l.handshake && uint32(len(f.Body)) > 4096-l.handshakeOutput-l.handshakeBytes {
+			s.mu.Unlock()
+			return errors.New("route pending TLS output allowance exhausted")
+		}
+		if uint32(len(f.Body)) > l.credit {
+			s.mu.Unlock()
+			return errors.New("route credit changed")
+		}
+	}
+	if l.trafficLimit != 0 && !(terminal && f.Kind == ardp.KindClose) && cost > l.trafficLimit-l.trafficUsed {
+		cause := errors.New("route child byte allowance exhausted")
+		l.stopLocked(cause)
+		s.mu.Unlock()
+		return &frameCapacityRefusal{cause: cause}
+	}
+	if s.chargeOutput != nil {
+		if err := s.chargeOutput(cost); err != nil {
+			l.stopLocked(err)
+			s.mu.Unlock()
+			return &frameCapacityRefusal{cause: err}
+		}
+	}
+	if l.chargeOutput != nil {
+		if err := l.chargeOutput(cost, terminal && f.Kind == ardp.KindClose); err != nil {
+			l.stopLocked(err)
+			s.mu.Unlock()
+			return &frameCapacityRefusal{cause: err}
+		}
+	}
+	if l.trafficLimit != 0 && !(terminal && f.Kind == ardp.KindClose) {
+		l.trafficUsed += cost
+	}
+	if f.Kind == ardp.KindBytes {
+		l.credit -= uint32(len(f.Body))
+		if l.handshake {
+			l.handshakeOutput += uint32(len(f.Body))
+		}
+	}
+	s.used += cost
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 {
+		if l.refill != nil {
+			l.refill.witness = s.used
+			l.refill.charged = true
+		}
+	}
+	s.active = l
+	s.activeKind = f.Kind
+	// An already selected directional EOF is a terminal, not payload. Like
+	// selected CREDIT it must join its actual writer under bounded cleanup;
+	// expiring it inside TLS can poison a healthy multiplexed parent.
+	control := f.Kind == ardp.KindCredit || f.Kind == ardp.KindEOF || l.controlOutput != 0
+	s.activeControl = control
+	s.activeEnd = end
+	s.activeDeadline = &outputDeadline{lane: l, end: end, cutoff: end}
+	deadline := l.retainOutputDeadlineLocked()
+	s.mu.Unlock()
+	performed, err := s.applyOutputDeadline(deadline)
+	output := physicalOutput{err: err}
+	refused := false
+	if performed && err == nil {
+		// The deadline effect can block outside state while this exact lane
+		// seals. Refuse before entering TLS/Carrier Write: even an unemitted
+		// TLS failure can make that shared writer permanently unusable.
+		// Already selected control retains only its original cleanup bound.
+		s.mu.Lock()
+		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (terminal && l.peerClosed) || (!terminal && l.closed && (!control || f.Kind == ardp.KindEOF)) {
+			output.err = &frameRetirement{lane: l, kind: f.Kind}
+			refused = true
+		} else if !time.Now().Before(deadline.end) {
+			output.err = &frameExpiry{end: deadline.end}
+			refused = true
+		} else if f.Kind == ardp.KindOpen {
+			// Cleanup may emit CLOSE only once this original OPEN is
+			// admitted to Write, never merely because its deadline started.
+			l.openEmitted = true
+		} else if f.Kind == ardp.KindCredit {
+			credit := binary.BigEndian.Uint32(f.Body)
+			if credit > l.queuedCredit {
+				output.err = errors.New("route unearned receive credit")
+				refused = true
+			} else {
+				// The peer may use the grant before Write returns. Admit it at
+				// physical output, never while consumption or queued output waits.
+				l.queuedCredit -= credit
+			}
+		}
+		s.mu.Unlock()
+	}
+	if performed && !refused {
+		output = writePhysicalOutput(s.conn, f.Kind, raw, err, control)
+	} else if !performed && err == nil {
+		output.err = &frameRetirement{lane: l, kind: f.Kind}
+		refused = true
+	}
+	err = output.err
+	s.mu.Lock()
+	// The selected writer stays active until native provenance and failure are
+	// published together. An adapter refusal cannot mint a lower-lane attempt;
+	// nested TLS still retains every preceding physical record from this write.
+	if output.physical {
+		l.physicalAttempts++
+		if f.Kind != ardp.KindCredit {
+			l.payloadAttempts++
+		}
+	}
+	if err != nil {
+		if output.failure != nil {
+			l.physicalWriteFailed = true
+			physical := output.failure
+			if !output.nested {
+				physical = &physicalWriteFailure{owner: s, kind: f.Kind, cause: physical}
+				err = physical
+			} else {
+				err = errors.Join(err, physical)
+			}
+			l.physicalErr = errors.Join(l.physicalErr, physical)
+			s.writeErr = errors.Join(s.writeErr, physical)
+		}
+	}
+	s.active = nil
+	s.activeDeadline = nil
+	s.activeControl = false
+	s.mu.Unlock()
+	if err != nil && !refused {
+		// A lower refusal/local closure with no new lower output remains this
+		// channel's failed terminal result, not a fabricated physical failure
+		// of its receiving owner. Actual lower failures stay with that owner.
+		s.Retire(err)
+	}
+	return err
+}
+
+func (s *Session) newLaneLocked(id uint32) *Lane {
+	l := &Lane{s: s, id: id, end: s.end, readEnd: s.end, writeEnd: s.end, credit: Window, receive: Window}
+	l.ctx, l.cancel = context.WithCancelCause(s.ctx)
+	l.hardEnd = s.end
+	l.handshake = s.pending
+	if s.pending {
+		l.end = MinDeadline(s.end, time.Now().Add(10*time.Second))
+		l.readEnd = l.end
+		l.writeEnd = l.end
+	}
+	s.lanes[id] = l
+	s.live++
+	return l
+}
+
+func (s *Session) Open(ctx, caller context.Context, body []byte) (*Lane, error) {
+	if ctx == nil || caller == nil || len(body) != 49 && len(body) != 50 {
+		return nil, errors.New("route OPEN shape invalid")
+	}
+	var opened ardp.Open
+	var err error
+	if len(body) == 50 {
+		var envelope ardp.NodeOpen
+		envelope, err = ardp.DecodeNodeOpen(body)
+		opened = envelope.Recipient
+	} else {
+		opened, err = ardp.DecodeOpen(body)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !time.Now().Before(opened.Deadline) {
+		return nil, errors.New("route OPEN facts invalid")
+	}
+	// Allocation and complete OPEN emission share one bounded operation. The
+	// peer enforces monotonically increasing IDs, so a later allocation must
+	// not enter physical scheduling ahead of an earlier caller.
+	openEnd := MinDeadline(MinDeadline(opened.Deadline, s.end), time.Now().Add(10*time.Second))
+	timer := time.NewTimer(time.Until(openEnd))
+	defer timer.Stop()
+	select {
+	case s.opening <- struct{}{}:
+		defer func() { <-s.opening }()
+	case <-s.ctx.Done():
+		return nil, s.ctx.Err()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-caller.Done():
+		return nil, caller.Err()
+	case <-timer.C:
+		return nil, os.ErrDeadlineExceeded
+	}
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := caller.Err(); err != nil {
+		return nil, err
+	}
+	if !time.Now().Before(openEnd) {
+		return nil, os.ErrDeadlineExceeded
+	}
+	s.mu.Lock()
+	if s.stopped || s.finishingRole || s.next == 0 {
+		s.mu.Unlock()
+		return nil, errors.New("route child capacity unavailable")
+	}
+	id := s.next
+	l := s.newChildLocked(id, body)
+	if l == nil {
+		s.mu.Unlock()
+		return nil, errors.New("route child capacity unavailable")
+	}
+	s.next += 2
+	// Cancellation of the physical child may lose the original deadline reason.
+	// Retain the actual caller so retirement cannot resurrect expired output.
+	l.caller = caller
+	l.openEnd = openEnd
+	s.mu.Unlock()
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = l.Close() })
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+	}()
+	if err := l.Bound(opened.Deadline); err != nil {
+		_ = l.Close()
+		l.Finish()
+		return nil, err
+	}
+	l.writeMu.Lock()
+	err = s.write(l, ardp.Frame{Kind: ardp.KindOpen, Lane: id, Body: body}, false)
+	l.writeMu.Unlock()
+	if err != nil {
+		_ = l.Close()
+		l.Finish()
+		return nil, errors.Join(ctx.Err(), caller.Err(), err)
+	}
+	if err := errors.Join(ctx.Err(), caller.Err()); err != nil {
+		closeErr := l.Close()
+		l.Finish()
+		return nil, errors.Join(err, closeErr)
+	}
+	return l, nil
+}
+
+// Done signals sole-reader retirement. Close still joins every writer and child.
+func (s *Session) Done() <-chan struct{} { return s.readerDone }

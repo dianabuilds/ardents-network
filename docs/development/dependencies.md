@@ -1014,7 +1014,7 @@ is a capability port under ADR-0125/ADR-0129, not a new platform commitment.
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
 current process owner full control and nobody else. The owner-only store-root
 enforcement is the shared `internal/durablefile` mechanism
-(`owner_root_windows.go`, #793), consumed by `internal/route/selection` and
+(`owner_root_windows.go`, #793), consumed by `internal/domain/route/selection` and
 `internal/domain/network/duty`; the Windows lease owners keep their own lock handles.
 The module is a direct platform-specific product dependency. It avoids a child
 PowerShell process and avoids first-party `unsafe`. Unix builds retain the

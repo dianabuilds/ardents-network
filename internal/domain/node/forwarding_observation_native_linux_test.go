@@ -12,8 +12,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 
 // This component requires the real sole-process Node native envelope. Genuine

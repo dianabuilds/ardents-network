@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 )
 
 type registrationPair struct {

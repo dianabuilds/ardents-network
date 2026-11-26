@@ -19,7 +19,7 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 // Publisher JOIN starts only after its original delivery completed RESULT/CLOSE.
@@ -32,7 +32,7 @@ func (g *publicationDeliveryCloseGate) observePublisherJoin(current func() (netw
 	joinOpening, publisher := false, false
 	for {
 		frame, more := frames.Next()
-		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/route/join.(*Acquisition).Join"
+		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/route/join.(*Acquisition).Join"
 		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime.(*Publisher).NextAuthentication"
 		if !more {
 			break
@@ -373,15 +373,15 @@ func (gate *installedControlWriteGate) observe() {
 				boundary = frame.Line == line
 				before = frame.Line == connectionInitiatorControlWriteBeforeLine
 			}
-		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderScope).Check":
+		case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*ResponderScope).Check":
 			direct = true
-		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
+		case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
 			responderBorrow = true
-		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*Prefix).originalCurrent":
+		case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*Prefix).originalCurrent":
 			physicalDepth++
-		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*SourceScope).Check":
+		case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*SourceScope).Check":
 			source = true
-		case "github.com/dianabuilds/ardents-network/internal/route/join.(*Joined).CheckSourceCaller":
+		case "github.com/dianabuilds/ardents-network/internal/domain/route/join.(*Joined).CheckSourceCaller":
 			source = true
 		}
 		if !more {
@@ -490,13 +490,13 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 				body = frame.Line == connectionControlFramingReadLine
 			case "github.com/dianabuilds/ardents-network/internal/domain/publication/instance.(*ServiceAttachment).Read":
 				post = frame.Line == connectionControlReadRecheckLine
-			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderScope).Check":
+			case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*ResponderScope).Check":
 				scope = true
-			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
+			case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
 				responderBorrow = true
-			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*Prefix).originalCurrent":
+			case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*Prefix).originalCurrent":
 				physicalDepth++
-			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*SourceScope).Check":
+			case "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.(*SourceScope).Check":
 				source = true
 			case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*Stream).readRecords":
 				actor = true

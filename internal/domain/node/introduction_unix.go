@@ -12,12 +12,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 
 // IntroductionConfig declares one original authenticated Introduction duty. State

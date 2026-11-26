@@ -10,9 +10,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/capsule"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
 )
 
 // IntroductionOpening retains one accepting pair, its private recipient and

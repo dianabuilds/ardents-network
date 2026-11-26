@@ -22,8 +22,8 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 func TestInstalledDocumentCommandsThroughJoinedNetworkTCP(t *testing.T) {

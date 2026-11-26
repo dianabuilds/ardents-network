@@ -7,7 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/tls"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	"os"
 	"path/filepath"
@@ -27,8 +27,8 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 
-	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 type joinReceivingFixture struct {

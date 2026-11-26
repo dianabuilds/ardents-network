@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/domain/route"
 )
 
 // Plan declares original local roots and finite opening bounds, not a CLI

@@ -8,7 +8,7 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
 )
 
 // This is admission/refusal coverage only. Empty handles never substitute for

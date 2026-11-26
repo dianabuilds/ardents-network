@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 )
 
 // Publication signs only one exact genuine REGISTER receipt for this consumed

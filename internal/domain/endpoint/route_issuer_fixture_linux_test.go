@@ -15,9 +15,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

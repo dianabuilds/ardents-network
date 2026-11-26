@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 )
 
 // BeginReplacement retains the SAME original logical lease and Instance key.

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 )
 
 // The Reader retains its original JOIN until all TLS users have actually

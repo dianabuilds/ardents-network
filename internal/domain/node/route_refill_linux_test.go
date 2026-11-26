@@ -5,9 +5,9 @@ package node_test
 import (
 	"context"
 	"crypto/rand"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
+	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	roletls "github.com/dianabuilds/ardents-network/internal/domain/route/transport/tls"
 	"net"
 	"strings"
 	"sync"
@@ -19,10 +19,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 
-	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
