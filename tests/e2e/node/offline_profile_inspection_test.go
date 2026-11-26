@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 )
 
 // Real Stock preparation supplies only exclusion, never successful permission,

@@ -66,7 +66,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 		}
 		if !routeDependency {
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/admission/spending",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/spending",
 				"internal/durablefile", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state", "internal/pathgrammar", "internal/domain/reachability":
 			default:
 				return false
@@ -111,19 +111,19 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"e2e bridge", "tests/e2e/route/scenario_test.go", modulePath + "/internal/route/receiver", false},
 		{"script bridge", "scripts/route_probe.go", modulePath + "/internal/route", false},
 		{"old Carrier dependency", "internal/route/channel/frame_schedule.go", modulePath + "/internal/route/carrier", false},
-		{"old Admission dependency", "internal/route/receiving/admission.go", modulePath + "/internal/admission/receiving", false},
+		{"old Admission dependency", "internal/route/receiving/admission.go", modulePath + "/internal/domain/admission/receiving", false},
 		{"old Entry dependency", "internal/route/selection.go", modulePath + "/internal/entry", false},
 		{"old Node dependency in test", "internal/route/role_test.go", modulePath + "/internal/domain/node/outer", false},
 		{"external fixture dependency", "internal/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
 		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/route", true},
 		{"retired canonical installed Descriptor role denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route/role", false},
 		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route", false},
-		{"new Admission boundary", "internal/route/receiver/admission.go", modulePath + "/internal/admission/receiving", true},
+		{"new Admission boundary", "internal/route/receiver/admission.go", modulePath + "/internal/domain/admission/receiving", true},
 		{"new Network boundary", "internal/route/prefix/prefix.go", modulePath + "/internal/domain/network/state", true},
 		{"new Hosting boundary", "internal/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
 		{"migrated Endpoint consumer", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
 		{"unregistered Endpoint subpackage", "internal/domain/endpoint/old/source_linux_test.go", modulePath + "/internal/route/selection", false},
-		{"unregistered Admission subpackage", "internal/route/receiver/admission.go", modulePath + "/internal/admission/legacy", false},
+		{"unregistered Admission subpackage", "internal/route/receiver/admission.go", modulePath + "/internal/domain/admission/legacy", false},
 		{"retired Route package", "internal/route/prefix/prefix.go", modulePath + "/internal/successor/route", false},
 		{"retired Route source", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/route", false},
 		{"Route external test", "internal/route/path_test.go", modulePath + "/internal/route", true},

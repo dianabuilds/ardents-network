@@ -14,7 +14,7 @@ func offlineOperatorFile(source string) bool {
 	}
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
-		"internal/admission/issuance/artifact_export_unix.go",
+		"internal/domain/admission/issuance/artifact_export_unix.go",
 		"internal/domain/release/infrastructure/preparation_linux.go",
 		"internal/domain/release/infrastructure/preparation_native_linux_test.go",
 		"internal/domain/endpoint/source_trust_preparation_linux.go",
@@ -64,7 +64,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		fallthrough
 	case "tests/e2e/node/offline_profile_inspection_test.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuerprofile", modulePath + "/internal/domain/network/closedprofile":
+		case modulePath + "/internal/domain/admission/issuerprofile", modulePath + "/internal/domain/network/closedprofile":
 			return true
 		}
 	case "cmd/ardents-next/source_inspection_linux.go":
@@ -87,10 +87,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "internal/domain/node/provisioning/runtime_plan_command_test.go":
-		return dependency == modulePath+"/internal/admission/issuance" || dependency == modulePath+"/internal/domain/network/state" || dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/processresource"
+		return dependency == modulePath+"/internal/domain/admission/issuance" || dependency == modulePath+"/internal/domain/network/state" || dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/processresource"
 	case "internal/domain/node/provisioning/runtime_plan.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuance", modulePath + "/internal/canonicaldigest", modulePath + "/internal/domain/hosting", modulePath + "/internal/domain/network/state",
+		case modulePath + "/internal/domain/admission/issuance", modulePath + "/internal/canonicaldigest", modulePath + "/internal/domain/hosting", modulePath + "/internal/domain/network/state",
 			modulePath + "/internal/domain/node", modulePath + "/internal/pathgrammar", modulePath + "/internal/platform/artifacts", modulePath + "/internal/processresource":
 			return true
 		}
@@ -138,7 +138,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		}
 	case "internal/domain/node/provisioning/forwarding_token_authority_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/admission", modulePath + "/internal/admission/issuer", modulePath + "/internal/admission/quota", modulePath + "/internal/admission/receiving", modulePath + "/internal/admission/stock", modulePath + "/internal/admission/token", modulePath + "/internal/domain/custody", modulePath + "/internal/domain/network", modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/state":
+		case modulePath + "/internal/domain/admission", modulePath + "/internal/domain/admission/issuer", modulePath + "/internal/domain/admission/quota", modulePath + "/internal/domain/admission/receiving", modulePath + "/internal/domain/admission/stock", modulePath + "/internal/domain/admission/token", modulePath + "/internal/domain/custody", modulePath + "/internal/domain/network", modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/state":
 			return true
 		}
 	case "internal/domain/node/provisioning/node_certificate_unix_test.go",
@@ -154,7 +154,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		}
 	case "internal/domain/node/provisioning/profile_plan_linux.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuerprofile", modulePath + "/internal/domain/network", modulePath + "/internal/domain/network/closedprofile", modulePath + "/internal/domain/network/epoch", modulePath + "/internal/domain/network/source", modulePath + "/internal/platform/artifacts":
+		case modulePath + "/internal/domain/admission/issuerprofile", modulePath + "/internal/domain/network", modulePath + "/internal/domain/network/closedprofile", modulePath + "/internal/domain/network/epoch", modulePath + "/internal/domain/network/source", modulePath + "/internal/platform/artifacts":
 			return true
 		}
 	case "internal/domain/node/provisioning/profile_signing_linux.go":
@@ -164,12 +164,12 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		}
 	case "internal/domain/node/provisioning/token_material_linux.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuance", modulePath + "/internal/platform/artifacts":
+		case modulePath + "/internal/domain/admission/issuance", modulePath + "/internal/platform/artifacts":
 			return true
 		}
 	case "internal/domain/node/provisioning/token_material_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/admission/issuance", modulePath + "/internal/admission/issuerprofile":
+		case modulePath + "/internal/domain/admission/issuance", modulePath + "/internal/domain/admission/issuerprofile":
 			return true
 		}
 	case "internal/domain/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go",
@@ -244,7 +244,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/domain/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network"
 	case "internal/domain/node/provisioning/network_commands.go":
 		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathgrammar"
-	case "internal/admission/issuance/artifact_export_unix.go":
+	case "internal/domain/admission/issuance/artifact_export_unix.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/infrastructure_operator.go":
 		return dependency == modulePath+"/internal/domain/node/provisioning" || dependency == modulePath+"/internal/domain/release/infrastructure" ||

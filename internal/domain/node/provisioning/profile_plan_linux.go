@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"

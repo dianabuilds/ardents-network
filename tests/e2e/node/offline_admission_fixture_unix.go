@@ -2,7 +2,7 @@
 
 package node
 
-import "github.com/dianabuilds/ardents-network/internal/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 
 import (
 	"crypto/ed25519"
@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 )
 
 // AdmissionCommandFixture creates an independently encoded Admission request and ledger binding.

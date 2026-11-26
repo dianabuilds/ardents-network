@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 )
 
 // WorkAuthority retains the accepted facts and a monotonic observation floor.

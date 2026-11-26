@@ -25,7 +25,7 @@ Issue(ctx,DebitConfirmation,now) returns defensive response bytes and category;
 Close retains the shared result. Store must remain open until ResultStore closes.
 Admission -> key Store -> ResultStore is the fixed command lease order, reverse
 cleanup with retained errors. The real operation owner is
-`internal/admission/issuer`: `Initialize(ctx, Plan)` and
+`internal/domain/admission/issuer`: `Initialize(ctx, Plan)` and
 `Issue(ctx, Plan, raw, Facts, Kind)` open those owners before debit and close in
 reverse order. Its project imports are Admission contracts, quota, issuance and issuer-profile signing. The current-authority operation IssueCurrent reuses the same debit/sign/result path with fresh authority and permission-time checks before and after durable work. The command handles strict configuration, response export and OTel;
 quota and signing rules remain within their respective domains. No arbitrary

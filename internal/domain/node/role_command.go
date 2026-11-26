@@ -5,8 +5,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )

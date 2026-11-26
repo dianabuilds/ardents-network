@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/allocation"
 )
 
 const admissionAllocationWatermark = "admission-allocation-sequence"
@@ -209,7 +209,7 @@ func signAdmissionPermission(private ed25519.PrivateKey, permission admission.Pe
 	if len(private) != ed25519.PrivateKeySize {
 		return nil, ErrInvalid
 	}
-	// The signed grammar is single-sourced in internal/admission: Custody
+	// The signed grammar is single-sourced in internal/domain/admission: Custody
 	// signs the exact transcript the authority verifies against.
 	copy(permission.Signature[:], ed25519.Sign(private, admission.PermissionTranscript(permission)))
 	return admission.EncodePermission(permission)

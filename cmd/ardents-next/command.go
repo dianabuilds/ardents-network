@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/operator"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/operator"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"
 	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"

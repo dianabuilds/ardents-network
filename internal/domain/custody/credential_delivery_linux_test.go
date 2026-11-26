@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 )
 
 func TestCredentialDeliveryKeepsSeparateRetryAccessPolicies(t *testing.T) {

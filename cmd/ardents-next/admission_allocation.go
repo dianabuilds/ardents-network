@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/allocation"
 )
 
 // Allocation exports an unsigned decision for the external Custody commit and

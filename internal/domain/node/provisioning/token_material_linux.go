@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 )
 
 // This is an offline key-material request, not an issuer appointment, signed
