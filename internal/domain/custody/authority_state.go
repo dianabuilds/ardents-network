@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 

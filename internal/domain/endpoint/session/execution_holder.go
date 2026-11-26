@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"

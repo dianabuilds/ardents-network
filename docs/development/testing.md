@@ -1604,7 +1604,7 @@ replacement/recovery or capacity permission.
 
 `TestSpendInspectionNative*` belongs to the existing root/ext4
 `network-signing-linux` profile. Run its bounded owner selection with
-`go test -race -tags network_signing_native ./internal/admission/spending -run '^TestSpendInspectionNative' -count=1 -timeout=2m`
+`go test -race -tags network_signing_native ./internal/domain/admission/spending -run '^TestSpendInspectionNative' -count=1 -timeout=2m`
 (also run by `make network-signing-check`; E1-2 executed proof restored)
 under the profile's original development lock, private root-controlled native
 TMPDIR and pinned toolchain/dependencies. It uses genuine spend persistence and
@@ -3205,7 +3205,7 @@ Three files are genuinely portable and were de-tagged to execute in the portable
 deterministic inventory on Windows and macOS: the Network initial-key
 argument/cancellation refusals (`tests/e2e/node/network_keys_input_test.go`, refused
 before `provisioning.PrepareInitialNetworkKeys`), the issuance owned-destination
-inventory refusal (`internal/admission/issuance/inventory_delivery_test.go`,
+inventory refusal (`internal/domain/admission/issuance/inventory_delivery_test.go`,
 refused before the platform seam), and the custody symlinked-record-directory
 authority-birth refusal (merged into
 `internal/domain/custody/independent_root_refusal_test.go`, portable `os.ReadDir`

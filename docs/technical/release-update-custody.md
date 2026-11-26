@@ -67,7 +67,7 @@ independently transferred SHA-256 commitment. It returns a public digest
 receipt and writes the signed 228-byte permission only to the specified
 owner-only, same-directory no-replace output. Linux exact output retry refuses
 group/other access and checks the originally observed file before reading it.
-The [Admission allocation owner](../../internal/admission/allocation/doc.go)
+The [Admission allocation owner](../../internal/domain/admission/allocation/doc.go)
 validates the current-hour request and journal transition. Custody retains the
 key, signing and serialized encrypted persistence. The Vault record advances its
 encrypted allocation successor, exact readback and monotonic floor before acknowledgement; neither command accepts

@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )

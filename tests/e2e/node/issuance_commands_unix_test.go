@@ -17,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

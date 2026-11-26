@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/operator"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/operator"
 )
 
 func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer) int {

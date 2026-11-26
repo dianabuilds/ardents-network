@@ -2,7 +2,7 @@
 
 package node_test
 
-import "github.com/dianabuilds/ardents-network/internal/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 
 import (
 	"bytes"

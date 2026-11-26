@@ -122,7 +122,7 @@ initialization cannot replace its restart or recovery.
 | internal/route/closed_join_replenishment.go | No accepted JOIN refill right: this predecessor path contradicts ADR-0085 and is source evidence only | New Route rejects later JOIN ADMIT before another Hosting reservation or irreversible spend; class-2 allowance alone cannot authorize refill |
 | internal/route/closed_duty_limits.go | Verification admission bound represented by receiving.VerificationGate | Other transport/role counters and scheduling |
 | internal/successor/network/closedprofile/token_spki.go and profile key fields | Canonical token key grammar represented by issuerprofile | Signed profile acceptance, membership and currentness |
-| internal/admission/spending/introduction_slots.go | None: slot replay belongs to Route's receiving Introduction owner | Whole slot history and registration lifetime |
+| internal/domain/admission/spending/introduction_slots.go | None: slot replay belongs to Route's receiving Introduction owner | Whole slot history and registration lifetime |
 
 This is a responsibility review of the named sources, not a claim that
 every line in the repository has been semantically classified. The old runtime

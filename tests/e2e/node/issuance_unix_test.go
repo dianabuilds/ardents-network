@@ -4,7 +4,7 @@ package node_test
 
 import (
 	"encoding/hex"
-	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"strconv"
 	"time"
 )

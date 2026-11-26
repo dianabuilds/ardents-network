@@ -3,7 +3,7 @@
 package introduction
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 )
 
 // OpenReceivingRegistry refuses before consuming any fresh-root fact on

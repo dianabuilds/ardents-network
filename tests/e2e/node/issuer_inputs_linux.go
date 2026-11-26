@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 )
 
 // IssuerDeclaration encodes the public CLI plan for the independently prepared issuer.

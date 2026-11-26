@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/domain/endpoint/reader"

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"

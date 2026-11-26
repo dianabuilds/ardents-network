@@ -7,9 +7,9 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 )
 
 // RequireIssuerRootsReleased reopens the original quota, keys and result store.

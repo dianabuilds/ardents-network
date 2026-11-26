@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 )
 
 // OpenPermittedStock gives the holder a signed allocation. Scenarios obtain tokens separately.

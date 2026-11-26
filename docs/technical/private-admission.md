@@ -42,7 +42,7 @@ issuer. Provisioning is an explicit closed-network operation, not public signup.
 
 A User installation receives at most 4,096 token reservations per hour in
 total across its context-scoped permissions; a Publisher receives at most
-16,384 across its publication roles. The [Admission allocation owner](../../internal/admission/allocation/doc.go)
+16,384 across its publication roles. The [Admission allocation owner](../../internal/domain/admission/allocation/doc.go)
 decides these finite maxima before signing; Custody records its decision durably
 and refuses overlapping allocations that exceed them. Its private provisioning
 record can associate its own recipients: blindness does not hide that record
@@ -96,15 +96,15 @@ a new context needs a fresh permission within the operator's remaining hourly
 allocation. Neither that crash nor an unused permission refunds a signed
 allocation or an issuer debit.
 
-The [token owner](../../internal/admission/token/doc.go) owns canonical batches,
+The [token owner](../../internal/domain/admission/token/doc.go) owns canonical batches,
 volatile holder blind state and cryptographic token verification. The
-[receiving owner](../../internal/admission/receiving/doc.go) selects the exact
+[receiving owner](../../internal/domain/admission/receiving/doc.go) selects the exact
 current receiver/key/hour and owns both initial and refill redemption. Hosting
 and channel reservations precede durable spend; acceptance checks the deadline
 again after persistence. Failed admission releases acquired reservations and
 retains cleanup failures, while an already spent token remains spent. Route
 owns framing, TLS binding and the transferred physical channel lifetime. The
-[issuer owner](../../internal/admission/issuer/doc.go) owns live private keys,
+[issuer owner](../../internal/domain/admission/issuer/doc.go) owns live private keys,
 serialized durable reservations, exact retries and bounded issuance serving.
 Node supplies authenticated State and Hosting admission and joins children
 before closing the issuer root. An initialized root with a missing lease refuses
@@ -154,7 +154,7 @@ issuer pins. It uses `issuerprofile` without opening private issuer roots.
 The report contains the signed public inventory and its validity interval.
 State acceptance separately validates currentness and authority.
 
-The holder [Admission stock owner](../../internal/admission/stock/doc.go) consumes the participant's opened State owner
+The holder [Admission stock owner](../../internal/domain/admission/stock/doc.go) consumes the participant's opened State owner
 and the retained local context established by a verified worker launch. The
 worker's Connection Grant does not confer its parent's Publisher authority.
 One context retains one holder and exact public request per aligned hour;
@@ -166,7 +166,7 @@ Endpoint shutdown erase its private holder. Expiry requires a fresh holder,
 never a refund or revival of the preceding allocation. These local ownership
 checks do not themselves authorize a network lane or establish Time Confidence.
 
-The Linux [Admission permission-file adapter](../../internal/admission/permissionfile/doc.go) exports that exact public request
+The Linux [Admission permission-file adapter](../../internal/domain/admission/permissionfile/doc.go) exports that exact public request
 and returns its commitment separately. It accepts only a canonical absolute
 path in an existing directory owned by the Endpoint account with mode 0700;
 regular request/response files require mode 0600, matching ownership and one
@@ -322,7 +322,7 @@ The [new Admission class owner](../../internal/successor/admission/class.go)
 enforces the selected 1 MiB Registration allowance and unchanged 600-second
 maximum. Receiving returns this allowance after genuine verification and
 durable spend; Route consumes it without implementing another quota.
-The preserved [predecessor class owner](../../internal/admission/class.go) still
+The preserved [predecessor class owner](../../internal/domain/admission/class.go) still
 returns 8 MiB, as recorded by the
 [predecessor Introduction receiver description](network-route-node.md#closed-introduction-registration-receiver).
 That increase is not an accepted policy, and the predecessor is not switched or
