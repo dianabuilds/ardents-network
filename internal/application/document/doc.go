@@ -8,8 +8,9 @@
 //   - safe UTF-8 presentation: presentation.go (presentation_test.go)
 //   - immutable snapshot publication exchange: snapshot_exchange.go
 //     (snapshot_exchange_test.go)
-//   - trusted local snapshot file import: snapshot_file_linux.go,
-//     snapshot_file_other.go (snapshot_file_linux_test.go; linux)
+//   - trusted local snapshot file import: snapshot_file_unix.go (Linux and
+//     macOS), snapshot_file_other.go (explicit refusal on other platforms)
+//     (snapshot_file_unix_test.go)
 //   - worker initialization and readiness binding:
 //     worker_attachment_initialization.go, readWorkerInitialization and
 //     writeWorkerReadiness in worker_initialization.go
