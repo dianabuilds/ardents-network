@@ -710,17 +710,26 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 // receives the typed worker refusal before any root state; snapshot imports the
 // caller input read-only (document.ReadSnapshotFile creates no filesystem state or
 // authority) before the same typed launch refusal; byte_stream composes only the
-// portable application/connection contract, not the Linux-only Refuse projection.
+// portable application/connection contract, not the Refuse typed-refusal projection.
 // They move to linux || darwin and their opening/snapshot refusals narrow to
 // Windows (!linux && !darwin). macOS worker launch stays a typed refusal
 // (execution/runtime !linux stubs); no unconfined worker is spawned and Linux
-// behavior is byte-identical. The Reader coordinator and participant STAY Linux:
-// reader composes the Linux-only application/connection.Refuse projection
-// (setupCleanupError classification) and participant composes endpoint/launch
-// systemd delivery plus the declarations and permission Linux projections. Their
-// !linux typed refusals are unchanged. The refusal-behavior tests pin that every
-// unsupported host refuses before any state or authority. A future port of the
-// worker launch / Refuse seams must update this assertion deliberately.
+// behavior is byte-identical.
+//
+// The Reader coordinator (#885, #691) now shifts the same way after the pure
+// typed refusal constructor application/connection.Refuse was split into the
+// portable server_refusal.go (byte-identical; the Linux-only refusal
+// setupCleanupError classifier stays with the protected Linux server admission).
+// reader/operation/source/byte_stream compose only portable or Unix-family roots
+// and the typed !linux LaunchReader/LaunchByteStreamReader worker refusals, so on
+// macOS beginRead reaches the typed worker refusal before any Source or root
+// state; they are linux || darwin. The Reader has no Windows refusal stub: its
+// sole production consumer is the Linux participant, so the composition adds no
+// Windows production code. The participant STAYS Linux: it composes endpoint/launch
+// systemd delivery plus the declarations and permission Linux projections. The
+// refusal-behavior tests pin that every unsupported host refuses before any state
+// or authority. A future port of the worker launch / systemd delivery seams must
+// update this assertion deliberately.
 func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 	root := repositoryRoot(t)
 	unixComposition := []string{
@@ -731,6 +740,10 @@ func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 		"internal/endpoint/publisher/publisher_unix.go",
 		"internal/endpoint/publisher/snapshot_unix.go",
 		"internal/endpoint/publisher/byte_stream_unix.go",
+		"internal/endpoint/reader/reader_unix.go",
+		"internal/endpoint/reader/operation_unix.go",
+		"internal/endpoint/reader/source_unix.go",
+		"internal/endpoint/reader/byte_stream_unix.go",
 	}
 	windowsRefusal := []string{
 		"internal/endpoint/session/route_other.go",
@@ -741,10 +754,6 @@ func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 		"internal/endpoint/publisher/snapshot_other_test.go",
 	}
 	linuxOnly := []string{
-		"internal/endpoint/reader/reader_linux.go",
-		"internal/endpoint/reader/operation_linux.go",
-		"internal/endpoint/reader/source_linux.go",
-		"internal/endpoint/reader/byte_stream_linux.go",
 		"internal/endpoint/participant_linux.go",
 	}
 	for _, target := range []string{"linux", "windows", "darwin"} {
@@ -2535,7 +2544,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return false
 	}
-	if (source == "internal/endpoint/reader/operation_linux.go" || source == "internal/endpoint/reader/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
+	if (source == "internal/endpoint/reader/operation_unix.go" || source == "internal/endpoint/reader/byte_stream_unix.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
 	if (source == "internal/application/administration/byte_stream_linux.go" || source == "internal/application/administration/published_link_client_linux.go") && dependency == modulePath+"/internal/application/connection" {
@@ -2544,7 +2553,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/application/document/local_publication.go" || source == "internal/application/document/local_link_linux.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
-	if (source == "internal/endpoint/reader/reader_linux.go" || source == "internal/endpoint/reader/operation_linux.go" || source == "internal/endpoint/reader/byte_stream_linux.go" || source == "internal/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/endpoint/reader/reader_unix.go" || source == "internal/endpoint/reader/operation_unix.go" || source == "internal/endpoint/reader/byte_stream_unix.go" || source == "internal/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "cmd/ardents-next/diagnostic_timeline.go" && local == "internal/diagnostics/timeline" {
@@ -2788,9 +2797,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"native Publisher scenario excludes concrete TLS adapter", "internal/endpoint/publication_installed_linux_test.go", modulePath + "/internal/route/transport/tls", false},
 		{"native Publisher scenario excludes concrete QUIC adapter", "internal/endpoint/publication_installed_linux_test.go", modulePath + "/internal/route/transport/quic", false},
 		{"another native test has no Publisher exception", "cmd/ardents-next/unregistered_installed_linux_test.go", modulePath + "/internal/publication/instance", false},
-		{"installed Reader retains original worker", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/execution/runtime", true},
-		{"installed Reader consumes authenticated Source", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/connection", true},
-		{"installed Reader local byte contract", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/application/connection", true},
+		{"installed Reader retains original worker", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/execution/runtime", true},
+		{"installed Reader consumes authenticated Source", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/connection", true},
+		{"installed Reader local byte contract", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/application/connection", true},
 		{"installed Reader local Text projection", "internal/endpoint/reader/result.go", modulePath + "/internal/application/document", true},
 		{"installed participant owns Reader listener", "internal/endpoint/participant_linux.go", modulePath + "/internal/application/connection", true},
 		{"first participant preparation initializes participation", "internal/endpoint/history_preparation_linux.go", modulePath + "/internal/network/duty", true},
@@ -2811,7 +2820,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"other installed adapter has no Publisher authority", "cmd/ardents-next/installed_other_linux.go", modulePath + "/internal/execution/runtime", false},
 		{"installed Publisher cannot use old Endpoint", "internal/endpoint/publisher/publisher_unix.go", modulePath + "/internal/endpoint", false},
 		{"unregistered installed adapter has no local byte exception", "cmd/ardents-next/other_installed_linux.go", modulePath + "/internal/application/connection", false},
-		{"installed Reader cannot use old Connection", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/service/connection", false},
+		{"installed Reader cannot use old Connection", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/service/connection", false},
 		{"qualified Publisher uses only native Text protocol", "internal/execution/runtime/publisher_worker_linux.go", modulePath + "/internal/application/document", true},
 		{"qualified Reader uses only native Text protocol", "internal/execution/runtime/reader_worker_linux.go", modulePath + "/internal/application/document", true},
 		{"qualified Reader input uses only byte-stream boundary", "internal/execution/runtime/reader_stream.go", modulePath + "/internal/application/connection", true},
@@ -2933,10 +2942,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"session cannot call command implementation", "internal/endpoint/session/session.go", modulePath + "/cmd/ardents-next", false},
 		{"session cannot use old Endpoint", "internal/endpoint/session/session.go", modulePath + "/internal/endpoint", false},
 		{"funding cannot depend on session", "internal/endpoint/funding/source.go", modulePath + "/internal/endpoint/session", false},
-		{"Reader cannot own installed participant", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/endpoint", false},
+		{"Reader cannot own installed participant", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/endpoint", false},
 		{"other binaries cannot acquire holder session", "cmd/ardents/main.go", modulePath + "/internal/endpoint/session", false},
 		{"funding cannot depend on Reader", "internal/endpoint/funding/source.go", modulePath + "/internal/endpoint/reader", false},
-		{"Reader cannot own Publication", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/publication/runtime", false},
+		{"Reader cannot own Publication", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/publication/runtime", false},
 		{"Publisher cannot import command composition", "internal/endpoint/publisher/publisher_unix.go", modulePath + "/cmd/ardents-next", false},
 		{"other binaries cannot acquire new funding", "cmd/ardents/main.go", modulePath + "/internal/endpoint/funding", false},
 		{"enrollment verification uses Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
@@ -2955,7 +2964,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"hostile Publisher sibling tests the Application stream", "internal/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/application/connection", true},
 		{"hostile Publisher sibling cannot acquire legacy Service authority", "internal/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/service/connection", false},
 		{"recovery Custody process fixture has a terminal", "tests/e2e/endpoint/recovery_custody_terminal_linux.go", "github.com/aymanbagabas/go-pty", true},
-		{"installed Reader cannot open a fixture terminal", "internal/endpoint/reader/operation_linux.go", "github.com/aymanbagabas/go-pty", false},
+		{"installed Reader cannot open a fixture terminal", "internal/endpoint/reader/operation_unix.go", "github.com/aymanbagabas/go-pty", false},
 		{"recovery issuance proof consumes the public verifier", "tests/e2e/endpoint/recovery_custody_instance_linux.go", modulePath + "/internal/publication", true},
 		{"recovery issuance proof cannot open private Instance authority", "tests/e2e/endpoint/recovery_custody_instance_linux.go", modulePath + "/internal/publication/instance", false},
 		{"accepted-request recovery observes genuine Connection", "internal/endpoint/connection_accepted_request_installed_linux_test.go", modulePath + "/internal/connection", true},
@@ -2968,8 +2977,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"caller loss checks exact Application outcome", "internal/endpoint/connection_response_loss_linux_test.go", modulePath + "/internal/application/connection", true},
 		{"response loss excludes direct TLS construction", "internal/endpoint/connection_response_loss_linux_test.go", modulePath + "/internal/route/transport/tls", false},
 		{"response loss excludes direct QUIC construction", "internal/endpoint/connection_response_loss_linux_test.go", modulePath + "/internal/route/transport/quic", false},
-		{"ordinary Text Reader consumes genuine Connection", "internal/endpoint/reader/source_linux.go", modulePath + "/internal/connection", true},
-		{"installed Reader consumes qualified original worker", "internal/endpoint/reader/operation_linux.go", modulePath + "/internal/execution/runtime", true},
+		{"ordinary Text Reader consumes genuine Connection", "internal/endpoint/reader/source_unix.go", modulePath + "/internal/connection", true},
+		{"installed Reader consumes qualified original worker", "internal/endpoint/reader/operation_unix.go", modulePath + "/internal/execution/runtime", true},
 		{"another command cannot borrow Reader composition", "cmd/ardents-next/route.go", modulePath + "/internal/connection", false},
 		{"installed Service scenario consumes real Publisher", "internal/endpoint/connection_installed_linux_test.go", modulePath + "/internal/publication/runtime", true},
 		{"installed Service scenario excludes direct TLS construction", "internal/endpoint/connection_installed_linux_test.go", modulePath + "/internal/route/transport/tls", false},

@@ -3117,6 +3117,32 @@ prose updated). The next unblocking prerequisites are the
 `application/connection.Refuse` projection (Reader) and `endpoint/launch` systemd
 delivery (participant), then the cmd adapters.
 
+Follow-up #885 (#691) split the pure typed refusal constructor
+`application/connection.Refuse` into the portable `server_refusal.go`
+(byte-identical bounded-outcome validation + `SetupRefusalError`), leaving the
+Linux-only `refusal` setupCleanupError classifier with the protected Linux server
+admission (`server_admission.go`/`transport.go` stay Linux). Per-file
+re-verification of the Reader dependency closure then confirmed every remaining
+dependency is portable, Unix-family, or has a typed `!linux` worker-launch
+refusal, so `reader/reader_linux.go`/`operation_linux.go`/`source_linux.go`/
+`byte_stream_linux.go` were renamed to `*_unix.go` (`linux || darwin`). macOS now
+runs the genuine Reader coordinator composition; `beginRead` reaches the
+`!linux` `LaunchReader`/`LaunchByteStreamReader` typed refusal before any Source
+or root state, so no unconfined worker is spawned and Linux behavior is
+byte-identical. The Reader has no Windows refusal stub: its sole production
+consumer is the Linux participant, so the composition adds no Windows production
+code. The participant STAYS Linux (`endpoint/launch` systemd delivery plus the
+`declarations_linux.go`/`permission_linux.go` projections, Layer 2). A portable
+`Refuse` behavior test (`server_refusal_test.go`) joins the deterministic lane;
+the `refusal` classifier test stays Linux. The architecture assertion
+`TestCohort2dEndpointNativeBoundary` was re-pinned (Reader Unix composition;
+participant Linux) and the filename-keyed isolation allowances re-pathed. The
+deadcode allowlist adds one Windows-production entry for `Refuse`
+(production-dead but test-reachable through its portable test); Linux production
+and both native-tag test analyses are unchanged, and the batch-3 reader prose was
+re-pathed to `reader_unix.go`. The next unblocking prerequisite is
+`endpoint/launch` systemd delivery (participant), then the cmd adapters.
+
 P1-C batch 1 (#788, #691) de-tagged verified pure test files in packages whose
 production is already portable: the admission holder permission-request proof,
 the allocation request/decision quota grammar, the token closed-batch blind
