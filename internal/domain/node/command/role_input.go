@@ -1,4 +1,4 @@
-package node
+package command
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-// ReadRolePlan owns the shared configuration flags and bounded file read.
+// readRolePlan owns the shared configuration flags and bounded file read.
 // Role adapters decode their own declarations and open their original owners.
-func ReadRolePlan(args []string) (raw []byte, retained bool, err error) {
+func readRolePlan(args []string) (raw []byte, retained bool, err error) {
 	if len(args) != 2 {
 		return nil, false, errors.New("invalid Node role arguments")
 	}
@@ -25,19 +25,19 @@ func ReadRolePlan(args []string) (raw []byte, retained bool, err error) {
 	return raw, retained, err
 }
 
-// ReadCancelableRolePlan preserves the early cancellation receipt shared
+// readCancelableRolePlan preserves the early cancellation receipt shared
 // by Descriptor, Introduction, and JOIN, before touching the plan path.
-func ReadCancelableRolePlan(ctx context.Context, operation string, args []string, out io.Writer) ([]byte, bool, int) {
+func readCancelableRolePlan(ctx context.Context, operation string, args []string, out io.Writer) ([]byte, bool, int) {
 	if ctx == nil {
 		return nil, false, 2
 	}
 	if ctx.Err() != nil {
-		if err := WriteEvent(out, operation, "refused", "canceled", "", "", ""); err != nil {
+		if err := writeEvent(out, operation, "refused", "canceled", "", "", ""); err != nil {
 			return nil, false, 2
 		}
 		return nil, false, 130
 	}
-	raw, retained, err := ReadRolePlan(args)
+	raw, retained, err := readRolePlan(args)
 	if err != nil {
 		return nil, false, 2
 	}
