@@ -6,7 +6,7 @@ import (
 	"errors"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 )
 
 // OpenReceivingRegistry prepares the original Route capacity/history owner

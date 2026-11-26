@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"

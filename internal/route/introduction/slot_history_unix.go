@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/spending"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )

@@ -544,18 +544,18 @@
           "internal/domain/reachability.StoreInspection.Check",
           "internal/domain/reachability.StoreInspection.Close",
           "internal/domain/reachability.storeInspection.close",
-          "internal/admission/spending.OpenInspection",
-          "internal/admission/spending.openInspection",
-          "internal/admission/spending.spendInspection.openDirectory",
-          "internal/admission/spending.spendInspection.openLeaf",
-          "internal/admission/spending.spendInspection.local",
-          "internal/admission/spending.spendInspection.readJournal",
-          "internal/admission/spending.sameSpendInspectionFile",
-          "internal/admission/spending.spendInspection.check",
-          "internal/admission/spending.spendInspection.checkNativeRoot",
-          "internal/admission/spending.Inspection.Check",
-          "internal/admission/spending.Inspection.Close",
-          "internal/admission/spending.spendInspection.close",
+          "internal/domain/admission/spending.OpenInspection",
+          "internal/domain/admission/spending.openInspection",
+          "internal/domain/admission/spending.spendInspection.openDirectory",
+          "internal/domain/admission/spending.spendInspection.openLeaf",
+          "internal/domain/admission/spending.spendInspection.local",
+          "internal/domain/admission/spending.spendInspection.readJournal",
+          "internal/domain/admission/spending.sameSpendInspectionFile",
+          "internal/domain/admission/spending.spendInspection.check",
+          "internal/domain/admission/spending.spendInspection.checkNativeRoot",
+          "internal/domain/admission/spending.Inspection.Check",
+          "internal/domain/admission/spending.Inspection.Close",
+          "internal/domain/admission/spending.spendInspection.close",
           "internal/domain/hosting.OpenInspection",
           "internal/domain/hosting.openInspection",
           "internal/domain/hosting.periodInspection.openDirectory",
@@ -720,7 +720,7 @@
       },
       {
         "symbols": [
-          "internal/admission/issuance.DecodeInstalledResultSetup",
+          "internal/domain/admission/issuance.DecodeInstalledResultSetup",
           "internal/platform/systemd.InfrastructureAccount",
           "internal/platform/systemd.InfrastructureUnit.Render",
           "internal/platform/systemd.InfrastructureUnit.checkProgram",
@@ -815,8 +815,8 @@
       },
       {
         "symbols": [
-          "internal/admission/receiving.OpenRetained",
-          "internal/admission/spending.OpenRetained"
+          "internal/domain/admission/receiving.OpenRetained",
+          "internal/domain/admission/spending.OpenRetained"
         ],
         "classification": "Linux retained Forwarding composition with portable history tests",
         "rationale": "The genuine Linux Node retained Forwarding opening consumes receiving.OpenRetained and its strict spending.OpenRetained owner without creating or repairing missing history. Windows has no native Node caller; portable Receiving and Spending tests exercise retained reopen, damaged history, original lease return and no fresh-root authority. No Linux production exception is granted, and both platform test analyses must remain empty.",
@@ -1078,7 +1078,7 @@
       },
       {
         "symbols": [
-          "internal/admission.UnpadClosedTokenBatch",
+          "internal/domain/admission.UnpadClosedTokenBatch",
           "internal/route/ardp.DecodeIssuerRequest",
           "internal/route/ardp.DecodeIssuerResult",
           "internal/route/ardp.EncodeIssuerRequest",
@@ -1161,12 +1161,12 @@
       },
       {
         "symbols": [
-          "internal/admission/receiving.Owner.TakeFreshRoot",
-          "internal/admission/spending.FreshRoot.Begin",
-          "internal/admission/spending.Ledger.TakeFreshRoot",
-          "internal/admission/spending.RootInitialization.Check",
-          "internal/admission/spending.RootInitialization.Complete",
-          "internal/admission/spending.RootInitialization.check"
+          "internal/domain/admission/receiving.Owner.TakeFreshRoot",
+          "internal/domain/admission/spending.FreshRoot.Begin",
+          "internal/domain/admission/spending.Ledger.TakeFreshRoot",
+          "internal/domain/admission/spending.RootInitialization.Check",
+          "internal/domain/admission/spending.RootInitialization.Complete",
+          "internal/domain/admission/spending.RootInitialization.check"
         ],
         "classification": "Linux Route independent-root initialization closure",
         "rationale": "The Linux receiving Introduction command consumes the genuine one-use Admission journal creation fact through Receiver and Route slot-history initialization. Windows refuses Route before root acquisition. Portable Admission behavior tests reach each fact operation without providing a Windows Route consumer; Linux production reaches the entire exact closure.",
@@ -1525,10 +1525,10 @@
       },
       {
         "symbols": [
-          "internal/admission/stock.Owner.Prepare",
-          "internal/admission/stock.Preparation.Begin",
-          "internal/admission/stock.Preparation.Close",
-          "internal/admission/stock.Preparation.Missing",
+          "internal/domain/admission/stock.Owner.Prepare",
+          "internal/domain/admission/stock.Preparation.Begin",
+          "internal/domain/admission/stock.Preparation.Close",
+          "internal/domain/admission/stock.Preparation.Missing",
           "internal/domain/connection.AuthenticateInitiator",
           "internal/domain/connection.AuthenticatePublisher",
           "internal/domain/connection.AuthenticatedAttachment.Close",
@@ -1911,10 +1911,10 @@
       },
       {
         "symbols": [
-          "internal/admission/attempts.OpenRetained"
+          "internal/domain/admission/attempts.OpenRetained"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/admission/attempts)",
-        "rationale": "These exact internal/admission/attempts functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/admission/attempts)",
+        "rationale": "These exact internal/domain/admission/attempts functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -1943,10 +1943,10 @@
       },
       {
         "symbols": [
-          "internal/admission/stock.OpenRetained"
+          "internal/domain/admission/stock.OpenRetained"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/admission/stock)",
-        "rationale": "These exact internal/admission/stock functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/admission/stock)",
+        "rationale": "These exact internal/domain/admission/stock functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -2357,19 +2357,19 @@
       },
       {
         "symbols": [
-          "internal/admission/attempts.OpenRetained"
+          "internal/domain/admission/attempts.OpenRetained"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/admission/attempts)",
-        "rationale": "These exact internal/admission/attempts functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/admission/attempts)",
+        "rationale": "These exact internal/domain/admission/attempts functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [
-          "internal/admission/stock.OpenRetained"
+          "internal/domain/admission/stock.OpenRetained"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/admission/stock)",
-        "rationale": "These exact internal/admission/stock functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/admission/stock)",
+        "rationale": "These exact internal/domain/admission/stock functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },

@@ -2,7 +2,7 @@
 
 package node_test
 
-import "github.com/dianabuilds/ardents-network/internal/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 
 import (
 	"bytes"
@@ -27,8 +27,8 @@ import (
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

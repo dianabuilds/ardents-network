@@ -1,7 +1,7 @@
 # Independent offline Admission accounting
 
 This completed slice design owns offline verification and durable issuance-right
-accounting in `internal/admission/quota`, consumed by the Issuer and the initialization command. It does
+accounting in `internal/domain/admission/quota`, consumed by the Issuer and the initialization command. It does
 not authorize network work, sign tokens, authenticate live State/time, provision
 permissions or migrate existing issuer roots. Hosting remains independent.
 

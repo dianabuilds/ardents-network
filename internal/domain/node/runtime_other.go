@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 

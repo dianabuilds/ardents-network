@@ -19,7 +19,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile/signing"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

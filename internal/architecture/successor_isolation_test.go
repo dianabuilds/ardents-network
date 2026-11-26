@@ -96,7 +96,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/network/duty/source_inspection_linux.go",
 			"internal/domain/network/duty/inspection_linux.go",
 			"internal/domain/network/duty/node_inspection_linux.go",
-			"internal/admission/spending/inspection_linux.go",
+			"internal/domain/admission/spending/inspection_linux.go",
 			"internal/domain/hosting/inspection_linux.go",
 			"internal/domain/node/provisioning/command_linux.go",
 			"internal/domain/network/source/command/prepare_linux.go",
@@ -191,7 +191,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 				"internal/domain/release/infrastructure/signing/join_forward_release_native_linux_test.go",
 				"internal/domain/network/state/node_inspection_native_linux_test.go",
 				"internal/domain/network/duty/inspection_native_linux_test.go",
-				"internal/admission/spending/inspection_native_linux_test.go",
+				"internal/domain/admission/spending/inspection_native_linux_test.go",
 				"internal/domain/hosting/inspection_native_linux_test.go",
 			} {
 				selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
@@ -1028,7 +1028,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
-		"internal/admission", "internal/canonicaldigest", "internal/domain/connection", "internal/domain/custody", "internal/durablefile", "internal/domain/endpoint",
+		"internal/domain/admission", "internal/canonicaldigest", "internal/domain/connection", "internal/domain/custody", "internal/durablefile", "internal/domain/endpoint",
 		"internal/domain/enrollment", "internal/domain/execution", "internal/domain/hosting", "internal/domain/network", "internal/domain/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/domain/publication",
 		"internal/domain/reachability", "internal/domain/release", "internal/route",
@@ -1079,7 +1079,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "internal/domain/endpoint/connection_accepted_request_installed_linux_test.go":
 			switch local {
-			case "internal/admission/receiving", "internal/domain/connection", "internal/domain/execution/runtime", "internal/domain/execution/worker",
+			case "internal/domain/admission/receiving", "internal/domain/connection", "internal/domain/execution/runtime", "internal/domain/execution/worker",
 				"internal/domain/hosting", "internal/route/ardp", "internal/route/receiver", "internal/route/transport",
 				"tests/e2e/endpoint", "tests/e2e/node/processfixture":
 				return true
@@ -1091,8 +1091,8 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/endpoint/connection_installed_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
-				"internal/admission/token", "internal/domain/connection", "internal/domain/endpoint/funding", "internal/domain/endpoint/publisher",
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
+				"internal/domain/admission/token", "internal/domain/connection", "internal/domain/endpoint/funding", "internal/domain/endpoint/publisher",
 				"internal/domain/execution", "internal/domain/execution/runtime", "internal/domain/hosting", "internal/domain/network",
 				"internal/domain/publication/runtime", "internal/domain/reachability", "internal/route", "internal/route/introduction",
 				"internal/route/prefix", "internal/route/receiver", "internal/route/selection", "internal/route/transport",
@@ -1107,7 +1107,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/endpoint/document_command_installed_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/application/administration", "internal/application/connection", "internal/application/document",
+			case "internal/domain/admission", "internal/application/administration", "internal/application/connection", "internal/application/document",
 				"internal/domain/endpoint/funding", "internal/domain/endpoint/publisher", "internal/domain/endpoint/reader", "internal/domain/execution",
 				"internal/domain/execution/runtime", "internal/domain/hosting", "internal/domain/reachability", "internal/route/selection",
 				"internal/route/transport", "tests/e2e/endpoint":
@@ -1135,7 +1135,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/endpoint/execution_installed_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
+			case "internal/domain/admission", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
 				"internal/domain/network/state", "internal/route/transport", "tests/e2e/endpoint", "tests/e2e/node/processfixture",
 				"tests/epochfixture/network", "tests/networkfixture":
 				return true
@@ -1147,7 +1147,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/endpoint/network_admission_fixture_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
 				"internal/domain/endpoint/funding",
 				"internal/domain/network", "internal/domain/network/epoch", "internal/domain/network/state", "tests/e2e/node/processfixture",
 				"tests/epochfixture/network", "tests/networkfixture":
@@ -1155,7 +1155,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/endpoint/publication_ack_installed_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/stock", "internal/domain/endpoint/funding", "internal/domain/endpoint/publisher",
+			case "internal/domain/admission", "internal/domain/admission/stock", "internal/domain/endpoint/funding", "internal/domain/endpoint/publisher",
 				"internal/domain/execution", "internal/domain/execution/runtime", "internal/domain/hosting", "internal/domain/network",
 				"internal/domain/publication", "internal/domain/reachability", "internal/route/introduction", "internal/route/prefix",
 				"internal/route/transport", "tests/e2e/endpoint", "tests/e2e/node/processfixture":
@@ -1163,8 +1163,8 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/endpoint/publication_installed_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
-				"internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/publisher",
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
+				"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/publisher",
 				"internal/domain/endpoint/session", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state",
 				"internal/domain/publication", "internal/domain/publication/instance", "internal/domain/reachability", "internal/route/ardp",
 				"internal/route/capsule", "internal/route/introduction", "internal/route/receiver", "internal/route/role",
@@ -1175,13 +1175,13 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/route/transport" || local == "tests/e2e/node/processfixture"
 		case "internal/domain/endpoint/installed_route_fixture_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/admission/stock", "internal/domain/endpoint/session",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/endpoint/session",
 				"internal/domain/endpoint/funding", "internal/domain/hosting", "internal/route/introduction", "tests/e2e/node/processfixture":
 				return true
 			}
 		case "internal/domain/endpoint/route_issuer_fixture_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
 				"internal/domain/hosting", "internal/route/receiver", "internal/route/role", "internal/route/transport",
 				"tests/e2e/node/processfixture":
 				return true
@@ -1190,7 +1190,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && (source == "tests/e2e/node/descriptor_platform_native_linux_test.go" || source == "tests/e2e/node/forwarding_platform_native_linux_test.go" || source == "tests/e2e/node/join_platform_native_linux_test.go") {
 		switch local {
-		case "internal/admission", "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
+		case "internal/domain/admission", "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
 			"internal/processresource", "internal/domain/reachability", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
 			"tests/e2e/node/processfixture", "tests/epochfixture/network", "tests/networkfixture", "tests/releasefixture":
 			return true
@@ -1206,7 +1206,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	if dependency == modulePath+"/internal/admission/operator" {
+	if dependency == modulePath+"/internal/domain/admission/operator" {
 		return source == "cmd/ardents-next/admission.go" || source == "cmd/ardents-next/issuance.go" || source == "cmd/ardents-next/command.go"
 	}
 	if strings.HasPrefix(source, "internal/domain/custody/command/") {
@@ -1222,7 +1222,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 		if source == "internal/domain/custody/command/command_test.go" && dependency == modulePath+"/internal/domain/publication" ||
-			source == "internal/domain/custody/command/admission_permission_client_linux_test.go" && dependency == modulePath+"/internal/admission" {
+			source == "internal/domain/custody/command/admission_permission_client_linux_test.go" && dependency == modulePath+"/internal/domain/admission" {
 			return true
 		}
 	}
@@ -1247,33 +1247,33 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if (source == "internal/domain/endpoint/funding/intent_network_test.go" || source == "internal/admission/receiving/registration_initialization_integration_test.go") && localImport && local == "tests/epochfixture/network" {
+	if (source == "internal/domain/endpoint/funding/intent_network_test.go" || source == "internal/domain/admission/receiving/registration_initialization_integration_test.go") && localImport && local == "tests/epochfixture/network" {
 		return true
 	}
-	if source == "internal/admission/receiving/registration_initialization_integration_test.go" && localImport && local == "internal/domain/network/state" {
+	if source == "internal/domain/admission/receiving/registration_initialization_integration_test.go" && localImport && local == "internal/domain/network/state" {
 		return true
 	}
 	if localImport && source == "internal/domain/endpoint/session/issuance_recipient_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
-			"internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "tests/e2e/node/processfixture", "tests/networkfixture":
+		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
+			"internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "tests/e2e/node/processfixture", "tests/networkfixture":
 			return true
 		default:
 			return false
 		}
 	}
-	if localImport && source == "internal/admission/receiving/network_lifetime_linux_test.go" {
-		return local == "internal/admission" || local == "internal/admission/receiving" ||
-			local == "internal/admission/spending" || local == "tests/networkfixture"
+	if localImport && source == "internal/domain/admission/receiving/network_lifetime_linux_test.go" {
+		return local == "internal/domain/admission" || local == "internal/domain/admission/receiving" ||
+			local == "internal/domain/admission/spending" || local == "tests/networkfixture"
 	}
-	if localImport && source == "internal/admission/receiving/registration_allowance_linux_test.go" {
-		return local == "internal/admission" || local == "internal/admission/receiving" ||
+	if localImport && source == "internal/domain/admission/receiving/registration_allowance_linux_test.go" {
+		return local == "internal/domain/admission" || local == "internal/domain/admission/receiving" ||
 			local == "tests/epochfixture/network" || local == "tests/networkfixture"
 	}
-	if localImport && (source == "internal/admission/receiving/network_reservation_linux_test.go" || source == "internal/admission/receiving/network_joined_work_linux_test.go") {
+	if localImport && (source == "internal/domain/admission/receiving/network_reservation_linux_test.go" || source == "internal/domain/admission/receiving/network_joined_work_linux_test.go") {
 		switch local {
-		case "internal/admission", "internal/admission/allocation", "internal/admission/issuer", "internal/admission/quota",
-			"internal/admission/receiving", "internal/admission/spending", "internal/admission/token", "internal/domain/hosting", "internal/domain/network/state",
+		case "internal/domain/admission", "internal/domain/admission/allocation", "internal/domain/admission/issuer", "internal/domain/admission/quota",
+			"internal/domain/admission/receiving", "internal/domain/admission/spending", "internal/domain/admission/token", "internal/domain/hosting", "internal/domain/network/state",
 			"tests/epochfixture/network", "tests/networkfixture":
 			return true
 		default:
@@ -1283,15 +1283,15 @@ func successorImportAllowed(source, dependency string) bool {
 	if strings.HasPrefix(source, "tests/networkfixture/") && localImport {
 		switch source {
 		case "tests/networkfixture/genesis.go":
-			return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota" || local == "internal/domain/network/epoch" || local == "tests/epochfixture/network"
+			return local == "internal/domain/admission/issuance" || local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/epoch" || local == "tests/epochfixture/network"
 		case "tests/networkfixture/work_authority.go", "tests/networkfixture/loopback_test.go":
-			return local == "internal/admission"
+			return local == "internal/domain/admission"
 		case "tests/networkfixture/signed_admission.go":
-			return local == "internal/admission" || local == "internal/admission/issuer" || local == "internal/domain/network" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/issuer" || local == "internal/domain/network" ||
 				local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/networkfixture/issuer_conflict_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/allocation", "internal/admission/issuer", "internal/admission/quota", "internal/admission/token", "internal/domain/network/state", "tests/epochfixture/network":
+			case "internal/domain/admission", "internal/domain/admission/allocation", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/token", "internal/domain/network/state", "tests/epochfixture/network":
 				return true
 			default:
 				return false
@@ -1310,7 +1310,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/hosting_work_fixture_linux_test.go", "tests/e2e/node/hosting_work_lifecycle_linux_test.go":
 			return true
 		case
-			"internal/admission/receiving/registration_initialization_integration_test.go",
+			"internal/domain/admission/receiving/registration_initialization_integration_test.go",
 			"internal/domain/endpoint/execution_installed_linux_test.go",
 			"internal/domain/endpoint/network_admission_fixture_linux_test.go",
 			"internal/domain/endpoint/publication_installed_linux_test.go",
@@ -1526,9 +1526,9 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
 			return dependency == "github.com/dianabuilds/ardents-network/internal/domain/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
 		case "tests/e2e/node/network_commands_unix_test.go":
-			return dependency == modulePath+"/internal/admission" || dependency == modulePath+"/internal/admission/quota" ||
-				dependency == modulePath+"/internal/admission/receiving" || dependency == modulePath+"/internal/admission/stock" ||
-				dependency == modulePath+"/internal/admission/token" || dependency == modulePath+"/internal/domain/network" ||
+			return dependency == modulePath+"/internal/domain/admission" || dependency == modulePath+"/internal/domain/admission/quota" ||
+				dependency == modulePath+"/internal/domain/admission/receiving" || dependency == modulePath+"/internal/domain/admission/stock" ||
+				dependency == modulePath+"/internal/domain/admission/token" || dependency == modulePath+"/internal/domain/network" ||
 				dependency == modulePath+"/internal/domain/network/state" || dependency == modulePath+"/tests/e2e/node" ||
 				dependency == modulePath+"/tests/epochfixture/network"
 		}
@@ -1538,52 +1538,52 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/command_usage_test.go":
 			return local == "internal/platform/systemd"
 		case "tests/e2e/node/offline_profile_inspection_test.go":
-			return local == "internal/admission/issuerprofile" || local == "internal/domain/network/closedprofile"
+			return local == "internal/domain/admission/issuerprofile" || local == "internal/domain/network/closedprofile"
 		case "tests/e2e/node/admission_authority_test.go", "tests/e2e/node/execution_route_refusal_test.go":
-			return local == "internal/admission" || local == "internal/domain/network/state" || local == "tests/e2e/node"
+			return local == "internal/domain/admission" || local == "internal/domain/network/state" || local == "tests/e2e/node"
 		case "tests/e2e/node/admission_receiver_test.go":
-			return local == "internal/admission" || local == "internal/admission/issuerprofile" ||
-				local == "internal/admission/receiving" || local == "tests/e2e/node"
+			return local == "internal/domain/admission" || local == "internal/domain/admission/issuerprofile" ||
+				local == "internal/domain/admission/receiving" || local == "tests/e2e/node"
 		case "tests/e2e/node/admission_interrupt_unix_test.go", "tests/e2e/node/admission_console_input_test.go":
 			return local == "tests/e2e/node"
 		case "tests/e2e/node/admission_cycle_test.go":
-			return local == "internal/admission" || local == "internal/admission/issuance" ||
-				local == "internal/admission/issuer" || local == "internal/admission/quota" ||
-				local == "internal/admission/receiving" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "tests/e2e/node"
+			return local == "internal/domain/admission" || local == "internal/domain/admission/issuance" ||
+				local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" ||
+				local == "internal/domain/admission/receiving" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "tests/e2e/node"
 		case "tests/e2e/node/route_bootstrap_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network" || local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/route_issuer_recovery_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/route_quic_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/route_registration_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network" || local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/route_join_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" ||
 				local == "internal/domain/hosting" || local == "internal/domain/network" || local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/route_descriptor_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "internal/domain/reachability" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/route_hello_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/stock" ||
-				local == "internal/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/admission_hosting_linux_test.go", "tests/e2e/node/hosting_work_fixture_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/receiving" || local == "internal/domain/hosting"
+			return local == "internal/domain/admission" || local == "internal/domain/admission/receiving" || local == "internal/domain/hosting"
 		case "tests/e2e/node/hosting_transfer_linux_test.go":
-			return local == "internal/admission"
+			return local == "internal/domain/admission"
 		case "tests/e2e/node/hosting_work_lifecycle_linux_test.go":
-			return local == "internal/admission" || local == "internal/admission/issuerprofile" ||
-				local == "internal/admission/receiving" || local == "internal/admission/token" || local == "internal/domain/hosting"
+			return local == "internal/domain/admission" || local == "internal/domain/admission/issuerprofile" ||
+				local == "internal/domain/admission/receiving" || local == "internal/domain/admission/token" || local == "internal/domain/hosting"
 		case "tests/e2e/node/source_installed_native_linux_test.go":
 			return local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" ||
 				local == "internal/domain/network/source" || local == "internal/domain/network/source/servingdeclaration" ||
@@ -1595,18 +1595,18 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/node/certificate_native_linux_test.go":
 			return local == "tests/e2e/source"
 		case "tests/e2e/node/processfixture/authority_inputs_linux.go":
-			return local == "internal/admission/issuer" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
+			return local == "internal/domain/admission/issuer" || local == "internal/domain/network/state" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/processfixture/issuer_roots_linux.go":
-			return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota"
+			return local == "internal/domain/admission/issuance" || local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota"
 		case "tests/e2e/node/processfixture/authority_observation_linux.go":
-			return local == "internal/admission/spending" || local == "internal/domain/hosting" ||
+			return local == "internal/domain/admission/spending" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network" || local == "internal/domain/network/duty" || local == "internal/domain/network/epoch"
 		case "tests/e2e/node/processfixture/receiving_fixture_linux.go":
 			return local == "tests/epochfixture/network"
 		case "tests/e2e/node/processfixture/introduction_stock_linux.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
-				"internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/network", "tests/epochfixture/network":
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
+				"internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/network", "tests/epochfixture/network":
 				return true
 			default:
 				return false
@@ -1618,12 +1618,12 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	if localImport && source == "tests/e2e/node/processfixture/descriptor_input_linux.go" {
-		return local == "internal/admission"
+		return local == "internal/domain/admission"
 	}
 	if localImport && source == "tests/e2e/node/join_exchange_native_linux_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuer", "internal/admission/quota",
-			"internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
+		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
+			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 			"internal/domain/hosting", "internal/domain/network", "internal/domain/network/epoch", "internal/domain/network/state",
 			"internal/processresource", "tests/epochfixture/network":
 			return true
@@ -1633,8 +1633,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "tests/e2e/node/descriptor_exchange_native_linux_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
-			"internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting", "internal/domain/network/duty",
+		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
+			"internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting", "internal/domain/network/duty",
 			"internal/domain/network/epoch", "internal/domain/network/state", "internal/processresource", "internal/domain/reachability", "tests/epochfixture/network":
 			return true
 		default:
@@ -1643,8 +1643,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "tests/e2e/node/forwarding_exchange_native_linux_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuer", "internal/admission/quota",
-			"internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",
+		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
+			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",
 			"internal/domain/network", "internal/domain/network/duty", "internal/domain/network/epoch", "internal/domain/network/state",
 			"internal/processresource", "tests/epochfixture/network":
 			return true
@@ -1653,22 +1653,22 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	if localImport && source == "tests/e2e/node/processfixture/installed_receiving_reopen_linux.go" {
-		return local == "internal/admission" || local == "internal/admission/receiving" || local == "internal/domain/hosting"
+		return local == "internal/domain/admission" || local == "internal/domain/admission/receiving" || local == "internal/domain/hosting"
 	}
 	if localImport && source == "tests/e2e/node/processfixture/receiving_spend_linux.go" {
-		return local == "internal/admission" || local == "internal/admission/receiving"
+		return local == "internal/domain/admission" || local == "internal/domain/admission/receiving"
 	}
 	if localImport && source == "tests/e2e/node/processfixture/route_topology_linux.go" {
 		return local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/processfixture/permitted_stock_unix.go" {
-		return local == "internal/admission" || local == "internal/admission/stock"
+		return local == "internal/domain/admission" || local == "internal/domain/admission/stock"
 	}
 	if localImport && source == "tests/e2e/node/processfixture/admission_permission.go" {
-		return local == "internal/admission" || local == "internal/admission/allocation"
+		return local == "internal/domain/admission" || local == "internal/domain/admission/allocation"
 	}
 	if localImport && source == "tests/e2e/node/processfixture/admission_console.go" {
-		return local == "internal/admission"
+		return local == "internal/domain/admission"
 	}
 	if localImport && source == "tests/e2e/node/provisioning_linux.go" {
 		return local == "internal/platform/artifacts" || local == "tests/epochfixture/network"
@@ -1682,16 +1682,16 @@ func successorImportAllowed(source, dependency string) bool {
 			local == "internal/domain/network/state" || local == "internal/processresource" || local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_exchange_native_linux_test.go" {
-		return local == "internal/admission" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
+		return local == "internal/domain/admission" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
 			local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "internal/processresource" ||
 			local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_startup_native_linux_test.go" {
-		return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota" || local == "internal/domain/hosting" ||
+		return local == "internal/domain/admission/issuance" || local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/hosting" ||
 			local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" || local == "internal/processresource" || local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_inputs_linux.go" {
-		return local == "internal/admission/issuance" || local == "internal/admission/issuer" || local == "internal/admission/quota"
+		return local == "internal/domain/admission/issuance" || local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota"
 	}
 	if localImport && source == "tests/e2e/node/retained_lifecycle_native_linux_test.go" {
 		return local == "internal/domain/hosting" || local == "internal/domain/network/duty" ||
@@ -1751,10 +1751,10 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	if localImport && source == "tests/e2e/endpoint/permission_approval_linux_test.go" {
-		return local == "internal/admission"
+		return local == "internal/domain/admission"
 	}
 	if localImport && source == "tests/e2e/endpoint/permission_approval_linux.go" {
-		return local == "internal/admission" || local == "internal/admission/allocation"
+		return local == "internal/domain/admission" || local == "internal/domain/admission/allocation"
 	}
 	if localImport && source == "tests/e2e/endpoint/installation_network_test.go" {
 		return local == "internal/domain/endpoint/plan"
@@ -1786,8 +1786,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "internal/domain/node/operation_workload_native_linux_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuer", "internal/admission/quota",
-			"internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding",
+		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
+			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding",
 			"internal/domain/endpoint/session", "internal/domain/hosting", "internal/domain/network/epoch",
 			"internal/domain/network/state", "internal/processresource", "internal/domain/reachability",
 			"internal/route/introduction", "tests/epochfixture/network":
@@ -1796,8 +1796,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "internal/domain/node/operation_process_native_linux_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuance", "internal/admission/issuer",
-			"internal/admission/quota", "internal/admission/spending", "internal/domain/endpoint/funding",
+		case "internal/domain/admission", "internal/domain/admission/issuance", "internal/domain/admission/issuer",
+			"internal/domain/admission/quota", "internal/domain/admission/spending", "internal/domain/endpoint/funding",
 			"internal/domain/hosting", "internal/domain/network", "internal/domain/network/state",
 			"internal/domain/node", "internal/route/role":
 			return true
@@ -1805,7 +1805,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "internal/domain/node/authority_process_native_linux_test.go" {
 		switch local {
-		case "internal/admission/issuance", "internal/admission/issuer", "internal/admission/spending", "internal/domain/hosting",
+		case "internal/domain/admission/issuance", "internal/domain/admission/issuer", "internal/domain/admission/spending", "internal/domain/hosting",
 			"internal/domain/network", "internal/domain/network/duty", "internal/domain/network/state", "internal/domain/node", "internal/domain/reachability",
 			"internal/route/introduction", "internal/route/role", "internal/route/transport", "tests/epochfixture/network":
 			return true
@@ -1815,77 +1815,77 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "internal/domain/node/route_refusal_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 				"internal/domain/hosting", "internal/route/receiver", "internal/route/role", "internal/route/selection":
 				return true
 			}
 		case "internal/domain/node/route_receiving_fixture_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock", "internal/admission/token",
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock", "internal/domain/admission/token",
 				"internal/domain/endpoint/funding", "internal/domain/network/state", "internal/route/transport", "tests/epochfixture/network":
 				return true
 			}
 		case "internal/domain/node/route_join_fixture_linux_test.go":
 			switch local {
-			case "internal/route/receiver", "tests/e2e/node/processfixture", "internal/admission", "internal/admission/allocation",
-				"internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving", "internal/admission/stock",
-				"internal/admission/token", "internal/domain/hosting", "internal/domain/endpoint/funding", "internal/domain/network",
+			case "internal/route/receiver", "tests/e2e/node/processfixture", "internal/domain/admission", "internal/domain/admission/allocation",
+				"internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving", "internal/domain/admission/stock",
+				"internal/domain/admission/token", "internal/domain/hosting", "internal/domain/endpoint/funding", "internal/domain/network",
 				"tests/epochfixture/network", "tests/networkfixture", "internal/route/role", "internal/route/transport":
 				return true
 			}
 		case "internal/domain/node/route_join_lifecycle_linux_test.go":
 			switch local {
-			case "internal/route/join", "internal/route/prefix", "internal/route/transport", "internal/admission",
-				"internal/admission/allocation", "internal/admission/issuer", "internal/admission/quota", "internal/admission/stock",
-				"internal/admission/token", "internal/domain/hosting", "internal/route/ardp", "internal/route/selection":
+			case "internal/route/join", "internal/route/prefix", "internal/route/transport", "internal/domain/admission",
+				"internal/domain/admission/allocation", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
+				"internal/domain/admission/token", "internal/domain/hosting", "internal/route/ardp", "internal/route/selection":
 				return true
 			}
 		case "internal/domain/node/route_join_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/stock", "internal/domain/endpoint/funding", "internal/domain/hosting",
+			case "internal/domain/admission", "internal/domain/admission/stock", "internal/domain/endpoint/funding", "internal/domain/hosting",
 				"internal/route/prefix", "internal/route/selection", "internal/route/transport", "tests/e2e/node/processfixture":
 				return true
 			}
 		case "internal/domain/node/route_token_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding",
+			case "internal/domain/admission", "internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding",
 				"internal/domain/hosting", "internal/route/ardp", "internal/route/prefix", "internal/route/selection",
 				"internal/route/transport", "tests/e2e/node/processfixture":
 				return true
 			}
 		case "internal/domain/node/route_bootstrap_linux_test.go":
 			switch local {
-			case "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/admission", "internal/admission/issuer",
-				"internal/admission/quota", "internal/admission/receiving", "internal/admission/stock", "internal/domain/hosting",
+			case "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/admission", "internal/domain/admission/issuer",
+				"internal/domain/admission/quota", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/hosting",
 				"internal/domain/network", "tests/epochfixture/network", "tests/networkfixture", "internal/route/receiver",
 				"internal/route/role", "internal/route/transport", "tests/e2e/node/processfixture":
 				return true
 			}
 		case "internal/domain/node/route_bootstrap_capacity_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/admission/stock", "internal/domain/hosting",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/hosting",
 				"internal/route/ardp", "internal/route/channel", "internal/route/receiver", "internal/route/role",
 				"internal/route/transport", "internal/route/transport/tls":
 				return true
 			}
 		case "internal/domain/node/route_descriptor_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
-				"internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
+				"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
 				"internal/domain/network", "internal/domain/reachability", "internal/route/channel", "internal/route/receiver", "internal/route/role",
 				"internal/route/transport", "tests/epochfixture/network":
 				return true
 			}
 		case "internal/domain/node/route_submission_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 				"internal/domain/hosting", "internal/route/capsule", "internal/route/introduction", "internal/route/prefix",
 				"internal/route/receiver", "internal/route/role", "internal/route/selection":
 				return true
 			}
 		case "internal/domain/node/route_registration_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 				"internal/domain/hosting", "internal/route/ardp", "internal/route/channel", "internal/route/introduction", "internal/route/receiver", "internal/route/role":
 				return true
 			}
@@ -1897,7 +1897,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		case "internal/domain/node/route_refill_linux_test.go":
 			switch local {
-			case "internal/admission", "internal/admission/receiving", "internal/admission/stock", "internal/domain/hosting", "internal/domain/network",
+			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/hosting", "internal/domain/network",
 				"internal/route/ardp", "internal/route/channel", "internal/route/receiver", "internal/route/role", "internal/route/transport",
 				"internal/route/transport/tls":
 				return true
@@ -1906,8 +1906,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "internal/domain/node/refill_process_native_linux_test.go" {
 		switch local {
-		case "internal/admission", "internal/admission/issuer", "internal/admission/quota", "internal/admission/receiving",
-			"internal/admission/stock", "internal/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",
+		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
+			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",
 			"internal/domain/network/state", "internal/processresource", "internal/route/ardp", "internal/route/transport",
 			"internal/route/transport/tls", "tests/e2e/node/processfixture", "tests/epochfixture/network":
 			return true
@@ -1927,15 +1927,15 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport {
 		switch source {
 		case "tests/e2e/node/offline_admission_fixture_unix.go", "tests/e2e/node/issuance_unix_test.go", "tests/e2e/node/issuance_commands_unix_test.go":
-			return local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/issuerprofile" || local == "internal/admission/issuance"
+			return local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/issuerprofile" || local == "internal/domain/admission/issuance"
 		case "tests/e2e/node/admission_fresh_roots_unix_test.go":
-			return local == "tests/e2e/node" || local == "internal/admission" || local == "internal/admission/quota" || local == "internal/admission/issuance"
+			return local == "tests/e2e/node" || local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/issuance"
 		case "tests/e2e/node/admission_unix_test.go":
-			return local == "tests/e2e/node" || local == "internal/admission/quota"
+			return local == "tests/e2e/node" || local == "internal/domain/admission/quota"
 		case "tests/e2e/node/issuance_results_unix_test.go":
-			return local == "tests/e2e/node" || local == "internal/admission/quota" || local == "internal/admission/issuerprofile" || local == "internal/admission/issuance"
+			return local == "tests/e2e/node" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/issuerprofile" || local == "internal/domain/admission/issuance"
 		case "tests/e2e/node/issuer_profile_unix_test.go":
-			return local == "internal/admission/issuerprofile/signing"
+			return local == "internal/domain/admission/issuerprofile/signing"
 		}
 	}
 	if localImport && local == "tests/e2e/node" {
@@ -1988,7 +1988,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	switch source {
 	case "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go":
-		if dependency == modulePath+"/internal/admission" {
+		if dependency == modulePath+"/internal/domain/admission" {
 			return true
 		}
 		fallthrough
@@ -2104,7 +2104,7 @@ func successorImportAllowed(source, dependency string) bool {
 	// exact files. Directory nesting does not grant policy or Admission access.
 	if strings.HasPrefix(source, "internal/domain/network/") {
 		sourceAdapter := source
-		if sourceAdapter == "internal/domain/network/closedprofile/token_spki.go" && dependency == modulePath+"/internal/admission/issuerprofile" {
+		if sourceAdapter == "internal/domain/network/closedprofile/token_spki.go" && dependency == modulePath+"/internal/domain/admission/issuerprofile" {
 			return true
 		}
 		if sourceAdapter == "internal/domain/network/duty/participation_policy.go" && dependency == modulePath+"/internal/domain/network" {
@@ -2159,7 +2159,7 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/domain/release/infrastructure" {
 				return true
 			}
-		case "internal/admission/issuer/current_authority.go", "internal/admission/receiving/current_authority.go":
+		case "internal/domain/admission/issuer/current_authority.go", "internal/domain/admission/receiving/current_authority.go":
 			if local == "internal/domain/network" {
 				return true
 			}
@@ -2180,11 +2180,11 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "internal/domain/node/route_admission_linux.go":
-			if local == "internal/admission/issuer" {
+			if local == "internal/domain/admission/issuer" {
 				return true
 			}
 		case "internal/domain/node/role_command.go":
-			if local == "internal/admission/issuer" || local == "internal/admission/issuance" || local == "internal/domain/network/state" {
+			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/issuance" || local == "internal/domain/network/state" {
 				return true
 			}
 		case "internal/domain/node/role_input.go":
@@ -2192,7 +2192,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "internal/domain/node/route_receive_linux.go":
-			if local == "internal/admission/issuer" || local == "internal/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/reachability" || local == "internal/route/channel" || local == "internal/route/introduction" {
+			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/reachability" || local == "internal/route/channel" || local == "internal/route/introduction" {
 				return true
 			}
 		case "internal/domain/network/state/offline_declaration.go":
@@ -2208,22 +2208,22 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "internal/domain/endpoint/funding/current_issuer.go":
-			if local == "internal/admission/issuer" || local == "internal/admission/quota" {
+			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" {
 				return true
 			}
 		case "internal/domain/endpoint/funding/local_receiver.go", "internal/domain/endpoint/funding/receiver_conversation.go":
-			if local == "internal/admission/receiving" {
+			if local == "internal/domain/admission/receiving" {
 				return true
 			}
 		case "internal/domain/endpoint/funding/admission_authority.go":
-			if local == "internal/admission/issuer" || local == "internal/admission/receiving" || local == "internal/platform/artifacts" {
+			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/receiving" || local == "internal/platform/artifacts" {
 				return true
 			}
-		case "internal/admission/issuer/profile_declaration.go":
+		case "internal/domain/admission/issuer/profile_declaration.go":
 			if local == "internal/canonicaldigest" || local == "internal/platform/artifacts" {
 				return true
 			}
-		case "internal/domain/hosting/command_declaration.go", "internal/admission/issuer/result_operation.go":
+		case "internal/domain/hosting/command_declaration.go", "internal/domain/admission/issuer/result_operation.go":
 			if local == "internal/platform/artifacts" {
 				return true
 			}
@@ -2242,21 +2242,21 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
-		if (source == "tests/e2e/service/admission_custody_process_test.go" || source == "internal/domain/endpoint/permission_request_fixture_test.go" || source == "internal/admission/stock/permission_request_fixture_test.go" || source == "internal/admission/stock/permission_view_test.go") && dependency == modulePath+"/internal/admission" {
+		if (source == "tests/e2e/service/admission_custody_process_test.go" || source == "internal/domain/endpoint/permission_request_fixture_test.go" || source == "internal/domain/admission/stock/permission_request_fixture_test.go" || source == "internal/domain/admission/stock/permission_view_test.go") && dependency == modulePath+"/internal/domain/admission" {
 			return true
 		}
 		return !zoneDependency
 	}
-	if (source == "internal/route/introduction/receiving_history_unix.go" || source == "internal/route/introduction/receiving_history_other.go") && dependency == modulePath+"/internal/admission/receiving" {
+	if (source == "internal/route/introduction/receiving_history_unix.go" || source == "internal/route/introduction/receiving_history_other.go") && dependency == modulePath+"/internal/domain/admission/receiving" {
 		return true
 	}
-	if (source == "internal/admission/issuer/current_authority.go" || source == "internal/admission/receiving/current_authority.go") && dependency == modulePath+"/internal/domain/network" {
+	if (source == "internal/domain/admission/issuer/current_authority.go" || source == "internal/domain/admission/receiving/current_authority.go") && dependency == modulePath+"/internal/domain/network" {
 		return true
 	}
-	if source == "internal/admission/issuer/profile_declaration.go" && dependency == modulePath+"/internal/canonicaldigest" {
+	if source == "internal/domain/admission/issuer/profile_declaration.go" && dependency == modulePath+"/internal/canonicaldigest" {
 		return true
 	}
-	if (source == "internal/admission/issuance/result_declaration.go" || source == "internal/domain/hosting/command_declaration.go" || source == "internal/admission/issuer/profile_declaration.go") && dependency == modulePath+"/internal/platform/artifacts" {
+	if (source == "internal/domain/admission/issuance/result_declaration.go" || source == "internal/domain/hosting/command_declaration.go" || source == "internal/domain/admission/issuer/profile_declaration.go") && dependency == modulePath+"/internal/platform/artifacts" {
 		return true
 	}
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
@@ -2275,7 +2275,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/canonicaldigest":                          {},
 		"internal/durablefile":                              {},
 		"internal/pathgrammar":                              {},
-		"internal/domain/node":                              {"admission", "admission/receiving", "durablefile", "domain/hosting", "domain/network", "domain/network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/domain/node":                              {"domain/admission", "domain/admission/receiving", "durablefile", "domain/hosting", "domain/network", "domain/network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/domain/network":                           {},
 		"internal/domain/network/canonicalcursor":           {},
 		"internal/domain/network/closedprofile":             {"domain/network/canonicalcursor"},
@@ -2286,20 +2286,20 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/network/source/servingdeclaration": {},
 		"internal/domain/network/state":                     {"domain/network/canonicalcursor", "canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathgrammar"},
 		"internal/domain/network/state/durable":             {"durablefile", "pathgrammar"},
-		"internal/admission":                                {"admission/issuerprofile"},
-		"internal/admission/issuerprofile":                  {},
-		"internal/admission/allocation":                     {"admission"},
-		"internal/domain/custody":                           {"admission", "admission/allocation", "domain/publication"},
-		"internal/admission/attempts":                       {"pathgrammar"},
-		"internal/admission/spending":                       {"pathgrammar"},
-		"internal/admission/token":                          {"admission", "admission/issuerprofile"},
-		"internal/admission/receiving":                      {"admission", "admission/token", "admission/spending", "platform/artifacts"},
-		"internal/admission/stock":                          {"admission", "admission/allocation", "admission/attempts", "admission/token"},
-		"internal/admission/quota":                          {"admission", "admission/issuerprofile", "pathgrammar"},
-		"internal/admission/issuance":                       {"canonicaldigest", "admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
-		"internal/admission/operator":                       {"admission", "admission/issuance", "admission/issuer", "admission/quota", "platform/artifacts"},
-		"internal/admission/issuer":                         {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing", "pathgrammar"},
-		"internal/admission/issuerprofile/signing":          {"admission/issuerprofile", "pathgrammar"},
+		"internal/domain/admission":                         {"domain/admission/issuerprofile"},
+		"internal/domain/admission/issuerprofile":           {},
+		"internal/domain/admission/allocation":              {"domain/admission"},
+		"internal/domain/custody":                           {"domain/admission", "domain/admission/allocation", "domain/publication"},
+		"internal/domain/admission/attempts":                {"pathgrammar"},
+		"internal/domain/admission/spending":                {"pathgrammar"},
+		"internal/domain/admission/token":                   {"domain/admission", "domain/admission/issuerprofile"},
+		"internal/domain/admission/receiving":               {"domain/admission", "domain/admission/token", "domain/admission/spending", "platform/artifacts"},
+		"internal/domain/admission/stock":                   {"domain/admission", "domain/admission/allocation", "domain/admission/attempts", "domain/admission/token"},
+		"internal/domain/admission/quota":                   {"domain/admission", "domain/admission/issuerprofile", "pathgrammar"},
+		"internal/domain/admission/issuance":                {"canonicaldigest", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuerprofile/signing", "pathgrammar"},
+		"internal/domain/admission/operator":                {"domain/admission", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/quota", "platform/artifacts"},
+		"internal/domain/admission/issuer":                  {"domain/admission", "domain/admission/quota", "domain/admission/issuance", "domain/admission/issuerprofile/signing", "pathgrammar"},
+		"internal/domain/admission/issuerprofile/signing":   {"domain/admission/issuerprofile", "pathgrammar"},
 		"internal/domain/hosting":                           {"canonicaldigest", "pathgrammar"},
 		"internal/domain/publication":                       {},
 		"internal/domain/publication/durable":               {"domain/publication"},
@@ -2315,7 +2315,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/execution/worker":                  {"platform/systemd", "domain/endpoint/unit", "canonicaldigest", "pathgrammar"},
 		"internal/domain/release/endpoint":                  {"domain/enrollment", "domain/release"},
 		"internal/domain/release/infrastructure":            {"canonicaldigest", "domain/enrollment", "domain/release", "pathgrammar"},
-		"internal/domain/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
+		"internal/domain/release/infrastructure/launch":     {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
 		"internal/domain/endpoint/launch":                   {"domain/release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "domain/release", "platform/cgroup", "platform/systemd", "platform/process", "domain/endpoint/generation", "domain/endpoint/unit", "domain/endpoint/plan"},
 		"internal/platform/cgroup":                          {"pathgrammar"},
 		"internal/platform/artifacts":                       {"durablefile", "pathgrammar"},
@@ -2327,26 +2327,26 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/endpoint/unit":       {"canonicaldigest", "platform/systemd"},
 		"internal/route":                      {},
 		"internal/route/ardp":                 {},
-		"internal/route/issuer":               {"route/ardp", "admission"},
+		"internal/route/issuer":               {"route/ardp", "domain/admission"},
 		"internal/route/transport":            {},
 		"internal/route/channel":              {"route/ardp", "route/transport"},
 		"internal/route/bootstrap":            {"route/ardp", "route/channel"},
 		"internal/route/transport/tls":        {"route/transport"},
 
-		"internal/route/introduction":        {"admission/spending", "durablefile", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "domain/network", "admission", "pathgrammar"},
+		"internal/route/introduction":        {"domain/admission/spending", "durablefile", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "domain/network", "domain/admission", "pathgrammar"},
 		"internal/route/capsule":             {},
 		"internal/route/selection":           {"route", "domain/network", "durablefile"},
-		"internal/route/role":                {"route", "route/ardp", "route/channel", "route/transport", "domain/network", "admission"},
-		"internal/route/join":                {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "domain/network", "admission"},
+		"internal/route/role":                {"route", "route/ardp", "route/channel", "route/transport", "domain/network", "domain/admission"},
+		"internal/route/join":                {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "domain/network", "domain/admission"},
 		"internal/route/join/pairing":        {"route/ardp", "route/channel", "route/role"},
-		"internal/route/prefix":              {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "domain/network", "admission"},
-		"internal/route/receiver":            {"route/issuer", "route/join/pairing", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "domain/network", "admission", "admission/receiving"},
-		"internal/domain/endpoint/session":   {"admission", "admission/stock", "domain/endpoint/funding", "domain/endpoint/publisher", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/channel", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection", "pathgrammar", "platform/artifacts"},
-		"internal/domain/endpoint":           {"domain/endpoint/funding", "domain/endpoint/reader", "domain/endpoint/publisher", "admission", "admission/stock", "canonicaldigest", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/endpoint/launch", "domain/network", "domain/network/source", "domain/network/state", "pathgrammar"},
-		"internal/domain/endpoint/publisher": {"domain/endpoint/funding", "admission", "admission/stock", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/publication/durable", "domain/publication/instance", "domain/publication/runtime", "route/prefix", "route/selection", "pathgrammar"},
-		"internal/domain/endpoint/reader":    {"domain/endpoint/funding", "admission", "admission/stock", "domain/connection", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/reachability", "route/prefix", "route/selection"},
-		"internal/domain/endpoint/funding":   {"admission", "admission/stock", "admission/token", "domain/hosting", "domain/network", "domain/network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection", "pathgrammar"},
-		"cmd/ardents-next":                   {"canonicaldigest", "pathgrammar", "domain/endpoint/session", "domain/endpoint", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "route/introduction", "route/prefix", "domain/network", "domain/network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "domain/hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
+		"internal/route/prefix":              {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "domain/network", "domain/admission"},
+		"internal/route/receiver":            {"route/issuer", "route/join/pairing", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "domain/network", "domain/admission", "domain/admission/receiving"},
+		"internal/domain/endpoint/session":   {"domain/admission", "domain/admission/stock", "domain/endpoint/funding", "domain/endpoint/publisher", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/channel", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection", "pathgrammar", "platform/artifacts"},
+		"internal/domain/endpoint":           {"domain/endpoint/funding", "domain/endpoint/reader", "domain/endpoint/publisher", "domain/admission", "domain/admission/stock", "canonicaldigest", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/endpoint/launch", "domain/network", "domain/network/source", "domain/network/state", "pathgrammar"},
+		"internal/domain/endpoint/publisher": {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/publication/durable", "domain/publication/instance", "domain/publication/runtime", "route/prefix", "route/selection", "pathgrammar"},
+		"internal/domain/endpoint/reader":    {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/connection", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/reachability", "route/prefix", "route/selection"},
+		"internal/domain/endpoint/funding":   {"domain/admission", "domain/admission/stock", "domain/admission/token", "domain/hosting", "domain/network", "domain/network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection", "pathgrammar"},
+		"cmd/ardents-next":                   {"canonicaldigest", "pathgrammar", "domain/endpoint/session", "domain/endpoint", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "route/introduction", "route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
 		if (source == "internal/domain/endpoint/history_preparation_linux.go" || source == "internal/domain/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/route/selection" {
@@ -2358,7 +2358,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/domain/endpoint/preparation_files_linux.go" || source == "internal/domain/endpoint/source_trust_native_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
 			return true
 		}
-		if source == "internal/domain/endpoint/history_preparation_linux_test.go" && dependency == modulePath+"/internal/admission/attempts" {
+		if source == "internal/domain/endpoint/history_preparation_linux_test.go" && dependency == modulePath+"/internal/domain/admission/attempts" {
 			return true
 		}
 
@@ -2377,10 +2377,10 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/processresource") {
 			return true
 		}
-		if (source == "internal/domain/node/runtime_unix.go" || source == "internal/domain/node/runtime_other.go") && dependency == modulePath+"/internal/admission/issuer" {
+		if (source == "internal/domain/node/runtime_unix.go" || source == "internal/domain/node/runtime_other.go") && dependency == modulePath+"/internal/domain/admission/issuer" {
 			return true
 		}
-		if source == "internal/domain/node/issuer_unix.go" && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
+		if source == "internal/domain/node/issuer_unix.go" && (dependency == modulePath+"/internal/domain/admission/issuer" || dependency == modulePath+"/internal/domain/admission/quota" || dependency == modulePath+"/internal/route/bootstrap") {
 			return true
 		}
 		if source == "internal/domain/node/introduction_unix.go" && dependency == modulePath+"/internal/route/introduction" {
@@ -2478,10 +2478,10 @@ func successorImportAllowed(source, dependency string) bool {
 		if dependency == modulePath+"/internal/domain/reachability" && (source == "internal/route/prefix/descriptor_exchange.go" || source == "internal/route/receiver/receiver_unix.go" || source == "internal/route/receiver/descriptor_unix.go" || source == "cmd/ardents-next/route_linux.go" || source == "cmd/ardents-next/route.go" || source == "cmd/ardents-next/admission_holder.go") {
 			return true
 		}
-		if (source == "internal/admission/stock/issuance_fixture_test.go" || source == "internal/admission/stock/observation_retirement_linux_test.go" || source == "internal/admission/stock/lifecycle_test.go" || source == "internal/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/admission/issuer" || dependency == modulePath+"/internal/admission/issuance" || dependency == modulePath+"/internal/admission/quota") {
+		if (source == "internal/domain/admission/stock/issuance_fixture_test.go" || source == "internal/domain/admission/stock/observation_retirement_linux_test.go" || source == "internal/domain/admission/stock/lifecycle_test.go" || source == "internal/domain/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/domain/admission/issuer" || dependency == modulePath+"/internal/domain/admission/issuance" || dependency == modulePath+"/internal/domain/admission/quota") {
 			return true
 		}
-		if (source == "internal/admission/stock/cycle_test.go" || source == "internal/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/admission/receiving" || dependency == modulePath+"/internal/admission/spending") {
+		if (source == "internal/domain/admission/stock/cycle_test.go" || source == "internal/domain/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/domain/admission/receiving" || dependency == modulePath+"/internal/domain/admission/spending") {
 			return true
 		}
 		if source == "internal/domain/connection/publisher_recovery.go" && dependency == modulePath+"/internal/route/prefix" {
@@ -2638,13 +2638,13 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/endpoint/publisher/snapshot_unix.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (owner == "internal/admission/issuance" || owner == "internal/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+	if (owner == "internal/domain/admission/issuance" || owner == "internal/domain/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
 	if (source == "internal/platform/systemd/manager_reference_linux.go" || source == "internal/platform/systemd/node_slots_linux.go" || source == "internal/platform/systemd/forwarding_manager_linux.go" || source == "internal/platform/systemd/introduction_manager_linux.go" || source == "internal/platform/systemd/endpoint_reference_linux.go" || source == "internal/platform/systemd/startup_observation_linux.go" || source == "internal/platform/systemd/source_preflight_linux.go" || source == "internal/platform/systemd/source_stopped_linux.go" || source == "internal/platform/systemd/source_manager_linux.go" || source == "internal/platform/systemd/source_control_linux.go" || source == "internal/platform/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
-	if (owner == "internal/admission/spending" || owner == "internal/domain/network/duty" || owner == "internal/domain/network/state/durable") && dependency == "golang.org/x/sys/windows" {
+	if (owner == "internal/domain/admission/spending" || owner == "internal/domain/network/duty" || owner == "internal/domain/network/state/durable") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
@@ -2731,8 +2731,8 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if dependency == modulePath+"/internal/diagnostics/telemetry" {
 		switch source {
-		case "cmd/ardents-next/hosting.go", "internal/admission/operator/admission.go", "internal/admission/operator/issuance.go",
-			"internal/admission/operator/input_report.go":
+		case "cmd/ardents-next/hosting.go", "internal/domain/admission/operator/admission.go", "internal/domain/admission/operator/issuance.go",
+			"internal/domain/admission/operator/input_report.go":
 			return true
 		}
 	}
@@ -2769,12 +2769,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
-		{"public issuer inspection uses new codec", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/admission/issuerprofile", true},
-		{"public issuer inspection excludes old codec", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/admission", false},
-		{"public issuer inspection excludes private issuer", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/admission/issuer", false},
+		{"public issuer inspection uses new codec", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"public issuer inspection excludes old codec", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/admission", false},
+		{"public issuer inspection excludes private issuer", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/admission/issuer", false},
 		{"public issuer inspection excludes Network authority", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/network/state", false},
 		{"public issuer inspection excludes Route", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/route/role", false},
-		{"adjacent Control has no inherited codec access", "internal/domain/node/provisioning/unregistered.go", modulePath + "/internal/admission/issuerprofile", false},
+		{"adjacent Control has no inherited codec access", "internal/domain/node/provisioning/unregistered.go", modulePath + "/internal/domain/admission/issuerprofile", false},
 		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/domain/enrollment", true},
 		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/domain/release", true},
 		{"Endpoint release producer excludes retired Enrollment path", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/enrollment", false},
@@ -2783,8 +2783,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint release producer has no Route runtime", "scripts/sign-qualification-release.go", modulePath + "/internal/route/role", false},
 		{"Endpoint release producer retains TUF mechanism", "scripts/sign-qualification-release.go", "github.com/theupdateframework/go-tuf/v2/metadata", true},
 		{"Endpoint release producer retains signing mechanism", "scripts/sign-qualification-release.go", "github.com/sigstore/sigstore/pkg/signature", true},
-		{"retained heap map validates the public Permission framing", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/admission", true},
-		{"retained heap map cannot open a spending root", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/admission/spending", false},
+		{"retained heap map validates the public Permission framing", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/domain/admission", true},
+		{"retained heap map cannot open a spending root", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/domain/admission/spending", false},
 		{"retained heap map does not import predecessor Endpoint", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/domain/endpoint", false},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
@@ -2830,8 +2830,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"first participant preparation initializes participation", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/domain/network/duty", true},
 		{"first participant preparation initializes selection history", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
 		{"participant runtime cannot initialize participation directly", "internal/domain/endpoint/participant_linux.go", modulePath + "/internal/domain/network/duty", false},
-		{"first participant preparation uses Stock owner", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/admission/stock", true},
-		{"first participant preparation cannot bypass Stock", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/admission/attempts", false},
+		{"first participant preparation uses Stock owner", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/domain/admission/stock", true},
+		{"first participant preparation cannot bypass Stock", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/domain/admission/attempts", false},
 		{"first participant preparation has no old backend", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/domain/endpoint", false},
 		{"plan constructor authenticates retained State", "internal/domain/endpoint/plan_construction_linux.go", modulePath + "/internal/domain/network/state", true},
 		{"plan constructor observes authenticated facts", "internal/domain/endpoint/plan_construction_linux.go", modulePath + "/internal/domain/endpoint/funding", true},
@@ -2906,7 +2906,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"bootstrap describes canonical restriction", "internal/route/bootstrap/budget.go", modulePath + "/internal/route/ardp", true},
 		{"receiver reserves bootstrap capacity", "internal/route/receiver/receiver_unix.go", modulePath + "/internal/route/bootstrap", true},
 		{"channel cannot acquire bootstrap policy", "internal/route/channel/session.go", modulePath + "/internal/route/bootstrap", false},
-		{"bootstrap cannot spend Admission", "internal/route/bootstrap/budget.go", modulePath + "/internal/admission/receiving", false},
+		{"bootstrap cannot spend Admission", "internal/route/bootstrap/budget.go", modulePath + "/internal/domain/admission/receiving", false},
 		{"bootstrap cannot import receiving composition", "internal/route/bootstrap/budget.go", modulePath + "/internal/route/receiver", false},
 		{"old receiver cannot import new bootstrap", "internal/domain/node/forwarding/link.go", modulePath + "/internal/route/bootstrap", false},
 		{"channel uses ordered transport", "internal/route/channel/session.go", modulePath + "/internal/route/transport", true},
@@ -2935,17 +2935,17 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"channel cannot import Network", "internal/route/channel/session_test.go", modulePath + "/internal/domain/network", false},
 		{"channel cannot import role authority", "internal/route/channel/session.go", modulePath + "/internal/route/role", false},
 		{"role cannot import receiving composition", "internal/route/role/authority.go", modulePath + "/internal/route/receiver", false},
-		{"role cannot spend Admission", "internal/route/role/authority.go", modulePath + "/internal/admission/receiving", false},
+		{"role cannot spend Admission", "internal/route/role/authority.go", modulePath + "/internal/domain/admission/receiving", false},
 		{"role consumes Network observations", "internal/route/role/authority.go", modulePath + "/internal/domain/network", true},
 		{"Introduction exchange uses role binding", "internal/route/introduction/receiving.go", modulePath + "/internal/route/role", true},
 		{"Source command parses sealed capsule", "internal/domain/endpoint/session/prefix_unix.go", modulePath + "/internal/route/capsule", true},
 		{"submission fixture parses sealed capsule", "internal/domain/node/route_submission_linux_test.go", modulePath + "/internal/route/capsule", true},
 		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/route/capsule", false},
 		{"submission consumes retained exclusions", "internal/route/introduction/submission.go", modulePath + "/internal/route", true},
-		{"Introduction history birth consumes only its genuine receiving owner", "internal/route/introduction/receiving_history_unix.go", modulePath + "/internal/admission/receiving", true},
-		{"Introduction cannot own receiving Grant", "internal/route/introduction/receiving.go", modulePath + "/internal/admission/receiving", false},
+		{"Introduction history birth consumes only its genuine receiving owner", "internal/route/introduction/receiving_history_unix.go", modulePath + "/internal/domain/admission/receiving", true},
+		{"Introduction cannot own receiving Grant", "internal/route/introduction/receiving.go", modulePath + "/internal/domain/admission/receiving", false},
 		{"Introduction cannot call listener composition", "internal/route/introduction/receiving.go", modulePath + "/internal/route/receiver", false},
-		{"channel cannot import Admission", "internal/route/channel/session.go", modulePath + "/internal/admission", false},
+		{"channel cannot import Admission", "internal/route/channel/session.go", modulePath + "/internal/domain/admission", false},
 		{"channel cannot import Hosting", "internal/route/channel/session.go", modulePath + "/internal/domain/hosting", false},
 		{"transport cannot import framing", "internal/route/transport/stream.go", modulePath + "/internal/route/channel", false},
 		{"transport cannot import concrete implementation", "internal/route/transport/stream.go", modulePath + "/internal/route/carrier", false},
@@ -2962,7 +2962,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"transport exporter cannot import QUIC adapter", "internal/route/transport/role_exporter.go", modulePath + "/internal/route/transport/quic", false},
 		{"production command excludes lower contract", "cmd/ardents-next/route_linux.go", modulePath + "/internal/route/transport", false},
 		{"bootstrap scenario uses shared contract", "internal/domain/endpoint/route_issuer_fixture_linux_test.go", modulePath + "/internal/route/transport", true},
-		{"session consumes genuine stock", "internal/domain/endpoint/session/session.go", modulePath + "/internal/admission/stock", true},
+		{"session consumes genuine stock", "internal/domain/endpoint/session/session.go", modulePath + "/internal/domain/admission/stock", true},
 		{"session consumes original Execution permission", "internal/domain/endpoint/session/session.go", modulePath + "/internal/domain/execution/runtime", true},
 		{"session cannot call command implementation", "internal/domain/endpoint/session/session.go", modulePath + "/cmd/ardents-next", false},
 		{"session cannot use old Endpoint", "internal/domain/endpoint/session/session.go", modulePath + "/internal/domain/endpoint", false},
@@ -2978,7 +2978,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"diagnostics cannot consume Route", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/route/transport", false},
 		{"withdraw uses the Application Administration client", "cmd/ardents-next/endpoint_administration_client.go", modulePath + "/internal/application/administration", true},
 		{"retired command has no Enrollment grant", "cmd/ardents/endpoint.go", modulePath + "/internal/domain/enrollment", false},
-		{"funded Source uses real token grammar", "internal/domain/endpoint/funding/source.go", modulePath + "/internal/admission/token", true},
+		{"funded Source uses real token grammar", "internal/domain/endpoint/funding/source.go", modulePath + "/internal/domain/admission/token", true},
 		{"funded Source uses finite bootstrap", "internal/domain/endpoint/funding/source.go", modulePath + "/internal/route/bootstrap", true},
 		{"funded Source behavior selects real Carrier", "internal/domain/node/route_token_linux_test.go", modulePath + "/internal/route/transport", true},
 		{"other funding adapter has no bootstrap exception", "cmd/ardents-next/route_funding_linux.go", modulePath + "/internal/route/bootstrap", false},
@@ -3018,30 +3018,30 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"JOIN cannot retain former selector", "internal/domain/node/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
 		{"JOIN production excludes Carrier adapter", "cmd/ardents-next/route_join_linux.go", modulePath + "/internal/route/carrier", false},
 		{"JOIN test excludes old Carrier", "internal/domain/node/route_join_linux_test.go", modulePath + "/internal/route/carrier", false},
-		{"external public-contract test", "internal/admission/issuerprofile/provenance_test.go", modulePath + "/internal/admission/issuerprofile", true},
-		{"no production self import", "internal/admission/issuerprofile/profile.go", modulePath + "/internal/admission/issuerprofile", false},
+		{"external public-contract test", "internal/domain/admission/issuerprofile/provenance_test.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"no production self import", "internal/domain/admission/issuerprofile/profile.go", modulePath + "/internal/domain/admission/issuerprofile", false},
 		{"no unregistered test self import", "internal/successor/future/file_test.go", modulePath + "/internal/successor/future", false},
-		{"public profile is leaf", "internal/admission/issuerprofile/profile.go", modulePath + "/internal/admission", false},
-		{"profile cannot borrow signing", "internal/admission/issuerprofile/profile.go", modulePath + "/internal/admission/issuerprofile/signing", false},
-		{"profile tests cannot borrow signing", "internal/admission/issuerprofile/profile_test.go", modulePath + "/internal/admission/issuerprofile/signing", false},
+		{"public profile is leaf", "internal/domain/admission/issuerprofile/profile.go", modulePath + "/internal/domain/admission", false},
+		{"profile cannot borrow signing", "internal/domain/admission/issuerprofile/profile.go", modulePath + "/internal/domain/admission/issuerprofile/signing", false},
+		{"profile tests cannot borrow signing", "internal/domain/admission/issuerprofile/profile_test.go", modulePath + "/internal/domain/admission/issuerprofile/signing", false},
 		{"command cannot restore retired signer", "cmd/ardents-next/issuance.go", modulePath + "/internal/successor/nodeidentity", false},
-		{"retired signer cannot restore facade", "internal/successor/nodeidentity/store.go", modulePath + "/internal/admission/issuerprofile/signing", false},
-		{"identity cannot borrow ledger", "internal/admission/issuerprofile/signing/store.go", modulePath + "/internal/admission", false},
-		{"ledger public grammar", "internal/admission/binding.go", modulePath + "/internal/admission/issuerprofile", true},
-		{"issuance public grammar", "internal/admission/issuance/profile.go", modulePath + "/internal/admission/issuerprofile", true},
-		{"no inherited nested imports", "internal/admission/issuance/nested/file.go", modulePath + "/internal/admission", false},
-		{"no inherited nested third party", "internal/admission/issuance/nested/file.go", "github.com/cloudflare/circl/blindsign/blindrsa", false},
-		{"custody allocation owner", "internal/domain/custody/admission_authority.go", modulePath + "/internal/admission/allocation", true},
+		{"retired signer cannot restore facade", "internal/successor/nodeidentity/store.go", modulePath + "/internal/domain/admission/issuerprofile/signing", false},
+		{"identity cannot borrow ledger", "internal/domain/admission/issuerprofile/signing/store.go", modulePath + "/internal/domain/admission", false},
+		{"ledger public grammar", "internal/domain/admission/binding.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"issuance public grammar", "internal/domain/admission/issuance/profile.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"no inherited nested imports", "internal/domain/admission/issuance/nested/file.go", modulePath + "/internal/domain/admission", false},
+		{"no inherited nested third party", "internal/domain/admission/issuance/nested/file.go", "github.com/cloudflare/circl/blindsign/blindrsa", false},
+		{"custody allocation owner", "internal/domain/custody/admission_authority.go", modulePath + "/internal/domain/admission/allocation", true},
 		{"custody excludes old backend", "internal/domain/custody/vault.go", modulePath + "/internal/domain/custody", false},
 		{"custody excludes live Instance parser", "internal/domain/custody/authority_state.go", modulePath + "/internal/domain/publication/instance", false},
 		{"custody excludes Route", "internal/domain/custody/vault.go", modulePath + "/internal/route", false},
 		{"Service command uses genuine new custody", "internal/domain/custody/command/service_authority.go", modulePath + "/internal/domain/custody", true},
-		{"unregistered caller", "internal/successor/future/file.go", modulePath + "/internal/admission", false},
+		{"unregistered caller", "internal/successor/future/file.go", modulePath + "/internal/domain/admission", false},
 		{"unregistered dependency", "cmd/ardents-next/main.go", modulePath + "/internal/successor/future", false},
-		{"standard", "internal/admission/check.go", "context", true},
-		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/admission", true},
+		{"standard", "internal/domain/admission/check.go", "context", true},
+		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/domain/admission", true},
 		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/domain/hosting", true},
-		{"independent domains", "internal/domain/hosting/budget.go", modulePath + "/internal/admission", false},
+		{"independent domains", "internal/domain/hosting/budget.go", modulePath + "/internal/domain/admission", false},
 		{"network input adapter", "internal/domain/network/state/membership.go", modulePath + "/internal/domain/network", true},
 		{"network adapter is exact", "internal/domain/network/state/other.go", modulePath + "/internal/domain/network", false},
 		{"application observation", "internal/domain/network/state/runtime_observation.go", modulePath + "/internal/domain/network", true},
@@ -3052,12 +3052,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"State consumer has no domain access", "internal/domain/endpoint/source_state.go", modulePath + "/internal/domain/network", false},
 		{"State consumer has no physical root access", "internal/domain/endpoint/source_state.go", modulePath + "/internal/domain/network/state/durable", false},
 		{"unregistered State consumer", "internal/service/publication/publication.go", modulePath + "/internal/domain/network/state", false},
-		{"State excludes debit", "internal/domain/network/state/open.go", modulePath + "/internal/admission/quota", false},
+		{"State excludes debit", "internal/domain/network/state/open.go", modulePath + "/internal/domain/admission/quota", false},
 		{"State excludes old backend", "internal/domain/network/state/open.go", modulePath + "/internal/domain/network/state", false},
-		{"legacy admission consumer isolated", "internal/domain/node/authority/admission_observation.go", modulePath + "/internal/admission/receiving", false},
-		{"legacy token consumer isolated", "internal/domain/node/authority/token.go", modulePath + "/internal/admission/receiving", false},
-		{"observation excludes spending root", "internal/domain/node/authority/admission_observation.go", modulePath + "/internal/admission/spending", false},
-		{"observation bridge is exact", "internal/domain/node/authority/receiver.go", modulePath + "/internal/admission/receiving", false},
+		{"legacy admission consumer isolated", "internal/domain/node/authority/admission_observation.go", modulePath + "/internal/domain/admission/receiving", false},
+		{"legacy token consumer isolated", "internal/domain/node/authority/token.go", modulePath + "/internal/domain/admission/receiving", false},
+		{"observation excludes spending root", "internal/domain/node/authority/admission_observation.go", modulePath + "/internal/domain/admission/spending", false},
+		{"observation bridge is exact", "internal/domain/node/authority/receiver.go", modulePath + "/internal/domain/admission/receiving", false},
 		{"acquisition policy adapter", "internal/domain/network/state/acquisition_history.go", modulePath + "/internal/domain/network", true},
 		{"acquisition adapter is exact", "internal/domain/network/state/attempts.go", modulePath + "/internal/domain/network", false},
 		{"participation policy adapter", "internal/domain/network/duty/participation_policy.go", modulePath + "/internal/domain/network", true},
@@ -3065,30 +3065,30 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"candidate policy adapter", "internal/domain/network/epoch/candidate_evaluation.go", modulePath + "/internal/domain/network", true},
 		{"assignment adapter", "internal/domain/network/epoch/assignment.go", modulePath + "/internal/domain/network", true},
 		{"candidate adapter is exact", "internal/domain/network/epoch/record.go", modulePath + "/internal/domain/network", false},
-		{"public token grammar adapter", "internal/domain/network/closedprofile/token_spki.go", modulePath + "/internal/admission/issuerprofile", true},
-		{"public token adapter is exact", "internal/domain/network/closedprofile/profile.go", modulePath + "/internal/admission/issuerprofile", false},
-		{"public token adapter excludes signing", "internal/domain/network/closedprofile/token_spki.go", modulePath + "/internal/admission/issuance", false},
+		{"public token grammar adapter", "internal/domain/network/closedprofile/token_spki.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"public token adapter is exact", "internal/domain/network/closedprofile/profile.go", modulePath + "/internal/domain/admission/issuerprofile", false},
+		{"public token adapter excludes signing", "internal/domain/network/closedprofile/token_spki.go", modulePath + "/internal/domain/admission/issuance", false},
 		{"network excludes old state", "internal/domain/network/membership.go", modulePath + "/internal/domain/network/state", false},
 		{"network excludes execution", "internal/domain/network/membership.go", modulePath + "/internal/domain/node", false},
-		{"network excludes debit", "internal/domain/network/membership.go", modulePath + "/internal/admission", false},
+		{"network excludes debit", "internal/domain/network/membership.go", modulePath + "/internal/domain/admission", false},
 		{"network excludes reservations", "internal/domain/network/membership.go", modulePath + "/internal/domain/hosting", false},
-		{"issuance confirmed debit", "internal/admission/issuance/store.go", modulePath + "/internal/admission", true},
-		{"operation owners", "internal/admission/issuer/operation.go", modulePath + "/internal/admission/issuance", true},
-		{"operation excludes hosting", "internal/admission/issuer/operation.go", modulePath + "/internal/domain/hosting", false},
-		{"issuance excludes hosting", "internal/admission/issuance/store.go", modulePath + "/internal/domain/hosting", false},
-		{"identity purpose", "internal/admission/issuerprofile/signing/store.go", modulePath + "/internal/admission/issuerprofile", true},
-		{"identity cannot borrow issuance", "internal/admission/issuerprofile/signing/store.go", modulePath + "/internal/admission/issuance", false},
-		{"admission cannot borrow identity", "internal/admission/issuer_profile.go", modulePath + "/internal/admission/issuerprofile/signing", false},
-		{"admission excludes composition", "internal/admission/ledger.go", modulePath + "/internal/admission/issuer", false},
-		{"admission cannot borrow keys", "internal/admission/batch.go", modulePath + "/internal/admission/issuance", false},
-		{"admission cannot borrow budget", "internal/admission/check.go", modulePath + "/internal/domain/hosting", false},
-		{"legacy", "internal/admission/check.go", modulePath + "/internal/admission", false},
-		{"legacy test fixture", "internal/admission/check_test.go", modulePath + "/tests/fixtures", false},
-		{"third party bridge", "internal/admission/check.go", "example.org/bridge", false},
-		{"reverse", "internal/domain/endpoint/runtime.go", modulePath + "/internal/admission", false},
-		{"prefix collision", "internal/admission/check.go", modulePath + "/internal/successorold", false},
+		{"issuance confirmed debit", "internal/domain/admission/issuance/store.go", modulePath + "/internal/domain/admission", true},
+		{"operation owners", "internal/domain/admission/issuer/operation.go", modulePath + "/internal/domain/admission/issuance", true},
+		{"operation excludes hosting", "internal/domain/admission/issuer/operation.go", modulePath + "/internal/domain/hosting", false},
+		{"issuance excludes hosting", "internal/domain/admission/issuance/store.go", modulePath + "/internal/domain/hosting", false},
+		{"identity purpose", "internal/domain/admission/issuerprofile/signing/store.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"identity cannot borrow issuance", "internal/domain/admission/issuerprofile/signing/store.go", modulePath + "/internal/domain/admission/issuance", false},
+		{"admission cannot borrow identity", "internal/domain/admission/issuer_profile.go", modulePath + "/internal/domain/admission/issuerprofile/signing", false},
+		{"admission excludes composition", "internal/domain/admission/ledger.go", modulePath + "/internal/domain/admission/issuer", false},
+		{"admission cannot borrow keys", "internal/domain/admission/batch.go", modulePath + "/internal/domain/admission/issuance", false},
+		{"admission cannot borrow budget", "internal/domain/admission/check.go", modulePath + "/internal/domain/hosting", false},
+		{"legacy", "internal/domain/admission/check.go", modulePath + "/internal/domain/admission", false},
+		{"legacy test fixture", "internal/domain/admission/check_test.go", modulePath + "/tests/fixtures", false},
+		{"third party bridge", "internal/domain/admission/check.go", "example.org/bridge", false},
+		{"reverse", "internal/domain/endpoint/runtime.go", modulePath + "/internal/domain/admission", false},
+		{"prefix collision", "internal/domain/admission/check.go", modulePath + "/internal/successorold", false},
 		{"unrelated", "internal/domain/endpoint/runtime.go", "context", true},
-		{"relative", "internal/admission/check.go", "../admission", false},
+		{"relative", "internal/domain/admission/check.go", "../admission", false},
 		{"Source publication control excludes State authority", "internal/domain/release/infrastructure/source_canonical_publication_profile_native_linux_test.go", modulePath + "/internal/domain/network/state", false},
 		{"Source startup native prefix excludes State authority", "internal/domain/release/infrastructure/source_startup_physical_prefix_profile_native_linux_test.go", modulePath + "/internal/domain/network/state", false},
 		{"Source startup observer excludes State authority", "internal/domain/release/infrastructure/source_startup_physical_observer_native_linux_test.go", modulePath + "/internal/domain/network/state", false},
@@ -3131,7 +3131,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Instance capsule opening has no Route TLS contract", "internal/domain/publication/instance/capsule_opening.go", modulePath + "/internal/route/transport", false},
 		{"Instance recipient has no Route TLS contract", "internal/domain/publication/instance/recipient.go", modulePath + "/internal/route/transport", false},
 		{"Instance replacement has no Route TLS contract", "internal/domain/publication/instance/service_replacement.go", modulePath + "/internal/route/transport", false},
-		{"unsafe", "internal/admission/check.go", "unsafe", false},
+		{"unsafe", "internal/domain/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := successorImportAllowed(test.source, test.dependency); got != test.allowed {

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 )
 
 func forwardingTokenNativeArgs(output, signer string) []string {

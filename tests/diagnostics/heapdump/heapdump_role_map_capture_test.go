@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 )
 
 var heapObservationPhases = []string{"startup", "published", "withdrawn"}

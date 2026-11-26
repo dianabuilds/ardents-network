@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"io"
 	"time"
