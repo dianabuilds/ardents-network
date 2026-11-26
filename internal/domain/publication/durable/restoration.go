@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 func (root *Root) restore(flush func(string) error) error {

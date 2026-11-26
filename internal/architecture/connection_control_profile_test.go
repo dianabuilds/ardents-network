@@ -44,7 +44,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 		postRead       bool
 	}{
 		{"internal/connection/attachment_record_reader.go", "connectionControlFramingReadLine", false},
-		{"internal/publication/instance/service_attachment.go", "connectionControlReadRecheckLine", true},
+		{"internal/domain/publication/instance/service_attachment.go", "connectionControlReadRecheckLine", true},
 	} {
 		file := parse(site.path)
 		matches := 0
@@ -156,8 +156,8 @@ func TestSuccessorConnectionControlProfileSelectsOriginalWriteSites(t *testing.T
 		path, receiver, constant, check string
 		after                           bool
 	}{
-		{"internal/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteBeforeLine", "enter", false},
-		{"internal/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteAfterLine", "recheck", true},
+		{"internal/domain/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteBeforeLine", "enter", false},
+		{"internal/domain/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteAfterLine", "recheck", true},
 		{"internal/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteBeforeLine", "enter", false},
 		{"internal/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteAfterLine", "check", true},
 	} {

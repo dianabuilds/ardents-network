@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 // Fixture issuance/signing supplies independent public bytes. It does not

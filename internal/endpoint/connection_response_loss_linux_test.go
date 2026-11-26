@@ -16,9 +16,9 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/connection"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
 	"github.com/dianabuilds/ardents-network/internal/network"
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
@@ -33,7 +33,7 @@ func (g *publicationDeliveryCloseGate) observePublisherJoin(current func() (netw
 	for {
 		frame, more := frames.Next()
 		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/route/join.(*Acquisition).Join"
-		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/publication/runtime.(*Publisher).NextAuthentication"
+		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime.(*Publisher).NextAuthentication"
 		if !more {
 			break
 		}
@@ -355,7 +355,7 @@ func (gate *installedControlWriteGate) observe() {
 			progressCommit = frame.Line == connectionProgressCommitLine
 		case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).writeRecords":
 			actor = true
-		case "github.com/dianabuilds/ardents-network/internal/publication/instance.(*ServiceAttachment).Write":
+		case "github.com/dianabuilds/ardents-network/internal/domain/publication/instance.(*ServiceAttachment).Write":
 			if gate.role == "publisher" {
 				line := connectionPublisherControlWriteBeforeLine
 				if gate.after {
@@ -488,7 +488,7 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 			switch frame.Function {
 			case "github.com/dianabuilds/ardents-network/internal/connection.(*attachmentRecordReader).Read":
 				body = frame.Line == connectionControlFramingReadLine
-			case "github.com/dianabuilds/ardents-network/internal/publication/instance.(*ServiceAttachment).Read":
+			case "github.com/dianabuilds/ardents-network/internal/domain/publication/instance.(*ServiceAttachment).Read":
 				post = frame.Line == connectionControlReadRecheckLine
 			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderScope).Check":
 				scope = true

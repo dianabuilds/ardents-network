@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 func TestTargetLinkPreservesIndependentV3Vector(t *testing.T) {

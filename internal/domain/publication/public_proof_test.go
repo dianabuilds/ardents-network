@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 // Independent signed input, without an accepting Publisher or readiness ACK.

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 )
 
 // These controls isolate composition retirement, not successful Publication,

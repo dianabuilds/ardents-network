@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 // VerifyInstalledDocumentCommands drives the pinned CLI through publish, Link, read and withdrawal.

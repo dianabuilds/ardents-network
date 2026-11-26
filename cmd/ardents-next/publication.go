@@ -6,9 +6,9 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	"github.com/dianabuilds/ardents-network/internal/publication/durable"
-	"github.com/dianabuilds/ardents-network/internal/publication/instance"
 )
 
 func runPublication(ctx context.Context, args []string, out io.Writer) int {

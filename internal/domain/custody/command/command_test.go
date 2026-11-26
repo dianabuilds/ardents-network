@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/custody"
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 func TestVerifyRecordUsesCustodyWithoutPrintingSecretMaterial(t *testing.T) {
