@@ -456,7 +456,11 @@ Docker Desktop is not a substitute for one.
 
 Run `ardents-next diagnostics timeline` with the existing bounded stdin interface
 for its exact human-readable Node/Source/Endpoint projection. The common package
-recognizes those schemas for its own fixed metrics. For heap dumps, use
+recognizes retained schemas and explicitly adapts current Node/Source command
+reports through fixed operation/phase/outcome transitions. Command reports have
+no event time: timeline shows journal receipt time or an explicit unavailable
+clock, while collector receipt time remains separate. No private failure details
+or resource subobjects from a command report become measurements. For heap dumps, use
 `heapdump-capture`/`heapdump-role-map`
 with their existing manifest/profile prerequisites. Installed worker runners
 remain on actual qualifying hosts; this container cannot supply systemd

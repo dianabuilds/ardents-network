@@ -338,3 +338,67 @@ func TestOrdinaryConsoleAndGoTestOutputDoNotDeclareCorruptEvents(t *testing.T) {
 		t.Fatalf("corrupt JSON event was hidden: %+v", p.summary)
 	}
 }
+
+func TestCurrentCommandReportsReachSafeCollectorProjection(t *testing.T) {
+	p := newProjection(t)
+	for _, raw := range []string{
+		`{"operation":"node.forwarding","phase":"listening","outcome":"original-duty","first_failure":"SECRET","resource":{"fds":99},"at":"2030-01-01T00:00:00Z"}`,
+		`{"operation":"node.forwarding","phase":"retiring","outcome":"completion-unavailable","first_owner":"SECRET"}`,
+		`{"operation":"node.forwarding","phase":"joined","outcome":"failed","cleanup_owner":"SECRET"}`,
+		`{"operation":"source.serve","phase":"joined","outcome":"canceled","request_digest":"SECRET"}`,
+	} {
+		p.line([]byte(raw))
+	}
+	if len(p.summary.LastEvents) != 4 || p.summary.Counts["node.forwarding"] != 3 || p.summary.CaptureIncomplete {
+		t.Fatalf("current reports lost: %+v", p.summary)
+	}
+	rows := p.summary.LastEvents
+	if rows[0].Failure != "" || rows[0].Phase != "listening" || rows[0].Outcome != "original-duty" || rows[0].At != "" || len(rows[0].Resource) != 0 || rows[0].Owner != "node" {
+		t.Fatal("listening became failure or invented measurement")
+	}
+	if rows[1].Failure != "completion-unavailable" || rows[2].Failure != "failed" || rows[3].Failure != "" {
+		t.Fatal("unavailable, failed and canceled results conflated")
+	}
+	for _, row := range rows {
+		if !safeReportEvent(row) {
+			t.Fatalf("live and saved readers disagree: %+v", row)
+		}
+	}
+	clean, err := safeSummaryForPanel(p.summary)
+	raw, _ := json.Marshal(clean)
+	if err != nil || bytes.Contains(raw, []byte("SECRET")) {
+		t.Fatal("private command detail reached panel", err)
+	}
+	p.line([]byte(`{"operation":"node.forwarding","phase":"joined","outcome":"original-duty"}`))
+	if p.summary.InvalidLines != 1 || !p.summary.CaptureIncomplete {
+		t.Fatal("invalid transition hidden")
+	}
+}
+
+func TestStructuredStderrIsProjectedWithoutRawCapture(t *testing.T) {
+	p := newProjection(t)
+	stdout := "{\"operation\":\"source.serve\",\"phase\":\"listening\",\"outcome\":\"original-source\"}\n"
+	stderr := "{\"operation\":\"source.serve\",\"phase\":\"joined\",\"outcome\":\"failed\",\"first_owner\":\"SECRET\"}\n"
+	if err := drain(strings.NewReader(stdout), nil, p, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := drain(strings.NewReader(stderr), nil, p, false); err != nil {
+		t.Fatal(err)
+	}
+	if p.summary.StdoutBytes != int64(len(stdout)) || p.summary.StderrBytes != int64(len(stderr)) || p.summary.Counts["source.serve"] != 2 || len(p.summary.LastEvents) != 2 {
+		t.Fatalf("stderr event lost: %+v", p.summary)
+	}
+	if p.summary.LastEvents[0].Failure != "" || p.summary.LastEvents[1].Failure != "failed" {
+		t.Fatal("stream was treated as event severity")
+	}
+	body, _ := json.Marshal(p.summary)
+	if bytes.Contains(body, []byte("SECRET")) {
+		t.Fatal("stderr private detail retained")
+	}
+	if err := drain(strings.NewReader(strings.Repeat("SECRET", lineLimit)+"\n"+stderr), nil, p, false); err != nil {
+		t.Fatal(err)
+	}
+	if p.summary.OversizedLines != 1 || p.summary.Counts["source.serve"] != 3 {
+		t.Fatal("oversized stderr stopped later event projection")
+	}
+}

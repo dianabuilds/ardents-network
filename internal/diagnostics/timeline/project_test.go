@@ -252,3 +252,18 @@ func TestDiagnosticTimelineJournalMessageTakesPrecedenceOverOuterSchema(t *testi
 		t.Fatalf("envelope invented event: %q %v", output.String(), err)
 	}
 }
+
+func TestCurrentCommandTimelinePreservesUnavailableAndJournalTime(t *testing.T) {
+	report := `{"operation":"source.serve","phase":"retiring","outcome":"completion-unavailable","first_failure":"PRIVATE"}`
+	wrapped, _ := json.Marshal(map[string]string{"MESSAGE": report, "__REALTIME_TIMESTAMP": "1795701600000000", "_PID": "123"})
+	var output bytes.Buffer
+	input := report + "\n" + string(wrapped) + "\n"
+	if err := Project(t.Context(), io.NopCloser(strings.NewReader(input)), &output); err != nil {
+		t.Fatal(err)
+	}
+	want := "-\tunavailable\tsource\t-\t-\t-\tsource.serve\tretiring\t\"completion-unavailable\"\n" +
+		"2026-11-26T14:00:00Z\tjournal\tsource\t123\t-\t-\tsource.serve\tretiring\t\"completion-unavailable\"\n"
+	if output.String() != want {
+		t.Fatalf("timeline=%q want=%q", output.String(), want)
+	}
+}
