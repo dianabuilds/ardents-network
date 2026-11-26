@@ -1,4 +1,4 @@
-package node
+package credential
 
 import (
 	"crypto/ed25519"
@@ -36,7 +36,7 @@ func TestDecodeCredentialRetainsAndClearsRuntimeKey(t *testing.T) {
 	if !private.Equal(material.key) {
 		t.Fatal("decoded credential did not retain the original key")
 	}
-	if err := material.close(); err != nil {
+	if err := material.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if material.certificate.PrivateKey != nil || !material.key.Equal(ed25519.PrivateKey(make([]byte, ed25519.PrivateKeySize))) {

@@ -1702,7 +1702,7 @@ recorded source; source inspection alone is not execution.
 | Issuer: `internal/domain/node/role_command.go` → `node.IssuerPlan.Start` | Common inputs plus `issuance` plan with separate Admission quota, private key and result roots/bindings; Control work, bootstrap work and termination. Admission issuer application opens exact prepared material; signed current State binds its issuer reference | Admission owns quotas/key/results and durable debit before response; Route owns Credential listener and physical users; Hosting owns separate Control/Bootstrap coverage. Node retains all until join. No Forward refill, generic signer or key export |
 | Descriptor: `internal/domain/node/role_command.go` → `node.DescriptorPlan.Start` | Common inputs plus independent Descriptor root, Control/termination coverage. Genuine `reachability.OpenStore` verifies proof/history, Receiver owns transport/admission | Store owns proof/conflict/floors and ACK; Node joins Receiver before Store/Receiving/Hosting/producer/process/key; State last. Store ACK is not Publication readiness |
 | Introduction: `internal/domain/node/role_command.go` → `node.IntroductionPlan.Start` | Common inputs plus independent Introduction root. `introduction.OpenReceivingRegistry` consumes the genuine Receiving fresh-root fact before listening; Registry checks native/history binding | Route owns slots/non-reclaim floors/capsule delivery, not Admission. Join Receiver/children before Registry/Receiving/Hosting and producer/Guard/key; State last. REGISTER ACK is not installed or Service readiness |
-| JOIN: `internal/domain/node/role_command.go` → `node.JoinPlan.Start` | Common inputs with JOIN profile and full class-2/termination coverage. Exact Rendezvous DataJoin duty; original credential file pins (`node/join_credential_linux.go`); genuine Receiver/Pairing | Route owns opposite-side match, both RESULT barrier, credit/EOF/CLOSE and physical join. Node retains Receiving/Hosting/producer/native pins/TLS until actual join; command keeps State. No refill, retry or renewed setup deadline |
+| JOIN: `internal/domain/node/role_command.go` → `node.JoinPlan.Start` | Common inputs with JOIN profile and full class-2/termination coverage. Exact Rendezvous DataJoin duty; original credential file pins (`node/internal/credential/join_unix.go`); genuine Receiver/Pairing | Route owns opposite-side match, both RESULT barrier, credit/EOF/CLOSE and physical join. Node retains Receiving/Hosting/producer/native pins/TLS until actual join; command keeps State. No refill, retry or renewed setup deadline |
 
 Common Node declarations are exact Network config, NodeID, distinct participation,
 spend and Hosting roots, certificate/private-key paths, exact role process profile,
@@ -1712,11 +1712,22 @@ validation); changing directory names cannot create new authority or erase histo
 Network alone binds signed member/key/family/assignment/endpoint/Carrier/windows.
 Node retains its original producer and admission latch; Receiver reobserves
 current authority at effects. Process protection is not Hosting byte capacity.
-`node/credential_unix.go` (Unix-family, #850) loads exact matching Ed25519 material with owner-only
+`node/internal/credential/load_unix.go` (Unix-family, #850) loads exact matching Ed25519 material with owner-only
 private file access; Forwarding/Issuer/Descriptor/Introduction retain the loaded
 pair, whereas JOIN additionally pins and rechecks original files. Do not claim
 all five have JOIN's custody. Installation must independently bind inputs for
 all roles; neither memory retention nor a self-signed leaf proves installation.
+
+For the Forwarding and Descriptor runtime path, start at
+`node/role_command.go` and follow the selected Plan's Start to
+`node/forwarding_unix.go` or `node/descriptor_unix.go`. Both compare the
+loaded TLS public key with the member from the same original duty observation
+before opening the listener. The key's file access and erasure live in
+`node/internal/credential`. The role uses `node/lifetime_unix.go` to deny
+work and join the Receiver before returning the key. Descriptor also joins
+its Store before returning Receiving, Hosting and the original process
+resources. The command joins the enclosing State observation after role
+completion.
 
 ### Producer, proof and external-input inventory
 

@@ -292,6 +292,12 @@ func TestClientWriteAndCloseInputPreserveFrameOrder(t *testing.T) {
 	if closeInputErr != nil {
 		t.Fatalf("CloseInput returned %v", closeInputErr)
 	}
+	// Both output calls have returned. Close the attachment so the peer can
+	// check for trailing bytes even on hosts where shutdown does not wake
+	// an AF_UNIX peer's pending read.
+	if err := application.Close(); err != nil {
+		t.Fatal(err)
+	}
 	got := awaitCapture(t, received)
 	if written.err == nil {
 		if written.written != len(payload) || !bytes.Equal(got, payload) {
@@ -299,9 +305,6 @@ func TestClientWriteAndCloseInputPreserveFrameOrder(t *testing.T) {
 		}
 	} else if written.written != 0 || !errors.Is(written.err, net.ErrClosed) || len(got) != 0 {
 		t.Fatalf("CloseInput won ordering with Write=%d, %v received=%d", written.written, written.err, len(got))
-	}
-	if err := application.Close(); err != nil {
-		t.Fatal(err)
 	}
 }
 

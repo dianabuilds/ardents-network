@@ -635,8 +635,8 @@
       },
       {
         "symbols": [
-          "internal/domain/node.credential.close",
-          "internal/domain/node.decodeCredential",
+          "internal/domain/node/internal/credential.Material.Close",
+          "internal/domain/node/internal/credential.decodeCredential",
           "internal/domain/node.originalRetirementResult",
           "internal/domain/node.removeOriginalRetirementNotice"
         ],

@@ -1,8 +1,10 @@
 //go:build linux || darwin
 
-package node
+package credential
 
 import (
+	"crypto/ed25519"
+	"crypto/tls"
 	"errors"
 	"io"
 	"os"
@@ -13,7 +15,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
-func loadCredential(certPath, keyPath string) (_ *credential, result error) {
+// Load reads the original runtime certificate and key using the Node file policy.
+func Load(certPath, keyPath string) (_ *Material, result error) {
 	if !pathcheck.IsCleanAbsolute(certPath) || !pathcheck.IsCleanAbsolute(keyPath) {
 		return nil, errors.New("invalid Node credential paths")
 	}
@@ -105,4 +108,15 @@ func protectedCredentialAncestors(path string) error {
 			return nil
 		}
 	}
+}
+
+// PublicKey returns the key identity for the caller's membership comparison.
+func (m *Material) PublicKey() [ed25519.PublicKeySize]byte {
+	return [ed25519.PublicKeySize]byte(m.key.Public().(ed25519.PublicKey))
+}
+
+// TLSCertificate lends the original material to the caller's TLS lifetime.
+// The caller must join all TLS users before Close.
+func (m *Material) TLSCertificate() tls.Certificate {
+	return m.certificate
 }

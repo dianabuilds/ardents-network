@@ -4,7 +4,6 @@ package node
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
@@ -83,7 +83,7 @@ func (handle *Forwarding) FirstFailure() *FailureDiagnostic {
 type forwarding struct {
 	nodeLifetime
 	config         ForwardingConfig
-	credential     *credential
+	credential     *credential.Material
 	reservationsMu sync.Mutex
 	reservations   map[receiver.Channel]*hosting.Reservation
 }
@@ -130,11 +130,11 @@ func listenForwarding(ctx context.Context, config ForwardingConfig, opening forw
 	if err != nil || !((m.RoleDomain == 1 || m.RoleDomain == 3 || m.RoleDomain == 4) && (m.Subrole == 1 || m.Subrole == 2)) {
 		return nil, errors.Join(errors.New("original Forwarding assignment unavailable"), err)
 	}
-	f.credential, err = loadCredential(config.Certificate, config.PrivateKey)
+	f.credential, err = credential.Load(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	if string(f.credential.key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) {
+	if f.credential.PublicKey() != m.PublicKey {
 		return nil, errors.New("original Forwarding TLS key differs")
 	}
 	retained := opening == retainForwardingHistory
@@ -270,8 +270,8 @@ func (f *forwarding) denyOwner(error) {}
 func (f *forwarding) cleanupRole(roleResult error) (func(func(string, error)), error) {
 	return nil, roleResult
 }
-func (f *forwarding) credentialClose() error       { return f.credential.close() }
-func (f *forwarding) certificate() tls.Certificate { return f.credential.certificate }
+func (f *forwarding) credentialClose() error       { return f.credential.Close() }
+func (f *forwarding) certificate() tls.Certificate { return f.credential.TLSCertificate() }
 func (f *forwarding) listenerConfig() receiver.ReceiverConfig {
 	return receiver.ReceiverConfig{Refill: f.refill}
 }

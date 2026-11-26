@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package node
+package credential
 
 import (
 	"crypto/ed25519"
@@ -48,12 +48,12 @@ func TestJoinCredentialRetainsOriginalCustodyAndFailure(t *testing.T) {
 	for _, fault := range []string{"replace", "bytes", "mode", "descriptor"} {
 		t.Run(fault, func(t *testing.T) {
 			cert, key := joinCredentialFiles(t)
-			original, err := loadJoinCredential(cert, key)
+			original, err := OpenJoin(cert, key)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer original.close()
-			if err := original.check(); err != nil {
+			defer original.Close()
+			if err := original.Check(); err != nil {
 				t.Fatal(err)
 			}
 			raw, err := os.ReadFile(key)
@@ -85,22 +85,22 @@ func TestJoinCredentialRetainsOriginalCustodyAndFailure(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			first := original.check()
+			first := original.Check()
 			if first == nil {
 				t.Fatal("lost original custody admitted key")
 			}
 			if err := os.WriteFile(key, raw, 0600); err != nil {
 				t.Fatal(err)
 			}
-			if original.check() != first {
+			if original.Check() != first {
 				t.Fatal("restored files revived original key custody")
 			}
 			private := original.material.key
-			closed := original.close()
+			closed := original.Close()
 			if fault == "descriptor" && !errors.Is(closed, os.ErrClosed) {
 				t.Fatal("actual close failure disappeared", closed)
 			}
-			if original.close() != closed {
+			if original.Close() != closed {
 				t.Fatal("repeated Close replaced original physical result")
 			}
 			for _, b := range private {

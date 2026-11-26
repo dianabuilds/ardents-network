@@ -230,10 +230,10 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 			"internal/domain/endpoint/generation/directory_unix.go",
 			"internal/domain/endpoint/launch/root_ownership_unix.go",
 			"internal/domain/endpoint/plan/custody_unix.go",
-			"internal/domain/node/credential_unix.go",
-			"internal/domain/node/credential_unix_test.go",
-			"internal/domain/node/join_credential_unix.go",
-			"internal/domain/node/join_credential_unix_test.go",
+			"internal/domain/node/internal/credential/load_unix.go",
+			"internal/domain/node/internal/credential/load_unix_test.go",
+			"internal/domain/node/internal/credential/join_unix.go",
+			"internal/domain/node/internal/credential/join_unix_test.go",
 			"internal/platform/artifacts/input_unix.go",
 			"internal/platform/artifacts/input_unix_test.go",
 			"internal/platform/artifacts/directory_unix.go",
@@ -1471,6 +1471,23 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
+	if localImport && strings.HasPrefix(source, "internal/domain/node/internal/credential/") {
+		switch source {
+		case "internal/domain/node/internal/credential/load_unix.go", "internal/domain/node/internal/credential/join_unix.go":
+			return local == "internal/durablefile" || local == "internal/pathcheck"
+		default:
+			return false
+		}
+	}
+	if localImport && local == "internal/domain/node/internal/credential" {
+		switch source {
+		case "internal/domain/node/forwarding_unix.go", "internal/domain/node/descriptor_unix.go",
+			"internal/domain/node/introduction_unix.go", "internal/domain/node/issuer_unix.go", "internal/domain/node/join_unix.go":
+			return true
+		default:
+			return false
+		}
+	}
 	if strings.HasPrefix(source, "internal/domain/node/command/") && localImport {
 		switch source {
 		case "internal/domain/node/command/process.go":
@@ -2278,7 +2295,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/canonicaldigest":                          {},
 		"internal/durablefile":                              {},
 		"internal/pathcheck":                                {},
-		"internal/domain/node":                              {"domain/admission", "domain/admission/receiving", "durablefile", "domain/hosting", "domain/network", "domain/network/duty", "pathcheck", "platform/processguard", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
+		"internal/domain/node":                              {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/duty", "pathcheck", "platform/processguard", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
 		"internal/domain/network":                           {},
 		"internal/domain/network/canonicalcursor":           {},
 		"internal/domain/network/closedprofile":             {"domain/network/canonicalcursor"},

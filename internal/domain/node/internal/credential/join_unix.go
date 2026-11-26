@@ -1,9 +1,11 @@
 //go:build linux || darwin
 
-package node
+package credential
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/tls"
 	"errors"
 	"io"
 	"os"
@@ -14,11 +16,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
-// joinCredential retains original file custody as well as the exact in-memory
+// Join retains original file custody as well as the exact in-memory
 // TLS key. A changed path never authorizes reloading or replacing that key.
-type joinCredential struct {
+type Join struct {
 	mu             sync.Mutex
-	material       *credential
+	material       *Material
 	files          [2]*os.File
 	identity       [2]os.FileInfo
 	contents       [2][]byte
@@ -27,14 +29,15 @@ type joinCredential struct {
 	protectedKey   bool
 }
 
-func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result error) {
+// OpenJoin loads the original material and retains its files for reobservation.
+func OpenJoin(certPath, keyPath string) (_ *Join, result error) {
 	if !pathcheck.IsCleanAbsolute(certPath) || !pathcheck.IsCleanAbsolute(keyPath) {
 		return nil, errors.New("invalid original JOIN credential paths")
 	}
-	c := &joinCredential{}
+	c := &Join{}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, c.close())
+			result = errors.Join(result, c.Close())
 		}
 	}()
 	for i, path := range []string{certPath, keyPath} {
@@ -67,13 +70,14 @@ func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result err
 		return nil, err
 	}
 	c.material = material
-	if err := c.check(); err != nil {
+	if err := c.Check(); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (c *joinCredential) check() error {
+// Check reobserves the original files and retains the first custody failure.
+func (c *Join) Check() error {
 	if c == nil {
 		return errors.New("original JOIN credential absent")
 	}
@@ -128,7 +132,8 @@ func (c *joinCredential) check() error {
 	return nil
 }
 
-func (c *joinCredential) close() error {
+// Close releases original file pins and erases the key after TLS join.
+func (c *Join) Close() error {
 	if c == nil {
 		return nil
 	}
@@ -142,7 +147,7 @@ func (c *joinCredential) close() error {
 			}
 			clear(c.contents[i])
 		}
-		c.result = errors.Join(c.result, c.material.close())
+		c.result = errors.Join(c.result, c.material.Close())
 	}
 	return c.result
 }
@@ -159,4 +164,14 @@ func joinPrivateCredentialAccess(info os.FileInfo, uid, gid uint32) bool {
 	}
 	native, ok := info.Sys().(*syscall.Stat_t)
 	return ok && native.Uid == uid && info.Mode().Perm()&0077 == 0
+}
+
+// PublicKey returns the original key identity for membership comparison.
+func (c *Join) PublicKey() [ed25519.PublicKeySize]byte {
+	return c.material.PublicKey()
+}
+
+// TLSCertificate lends the original material until its borrowers join.
+func (c *Join) TLSCertificate() tls.Certificate {
+	return c.material.TLSCertificate()
 }

@@ -4,7 +4,6 @@ package node
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
@@ -78,7 +78,7 @@ func (handle *Introduction) FirstFailure() *FailureDiagnostic {
 type introductionInvocation struct {
 	nodeLifetime
 	config     IntroductionConfig
-	credential *credential
+	credential *credential.Material
 	registry   *introduction.Registry
 }
 
@@ -124,11 +124,11 @@ func listenIntroduction(ctx context.Context, config IntroductionConfig, retained
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.credential, err = loadCredential(config.Certificate, config.PrivateKey)
+	f.credential, err = credential.Load(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	if string(f.credential.key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) {
+	if f.credential.PublicKey() != m.PublicKey {
 		return nil, errors.New("original Introduction TLS key differs")
 	}
 	if err := f.admission(); err != nil {
@@ -233,8 +233,8 @@ func (f *introductionInvocation) cleanupRole(roleResult error) (func(func(string
 	}, originalRetirementResult(roleResult, historyFailure)
 }
 
-func (f *introductionInvocation) credentialClose() error       { return f.credential.close() }
-func (f *introductionInvocation) certificate() tls.Certificate { return f.credential.certificate }
+func (f *introductionInvocation) credentialClose() error       { return f.credential.Close() }
+func (f *introductionInvocation) certificate() tls.Certificate { return f.credential.TLSCertificate() }
 func (f *introductionInvocation) listenerConfig() receiver.ReceiverConfig {
 	return receiver.ReceiverConfig{Introduction: f.registry}
 }

@@ -1,4 +1,4 @@
-package node
+package credential
 
 import (
 	"crypto/ed25519"
@@ -6,16 +6,16 @@ import (
 	"errors"
 )
 
-// credential retains the exact runtime TLS material through Route join. It
+// Material retains the exact runtime TLS material through Route join. It
 // grants no provisioning, offline signing or membership and never hot-reloads.
-type credential struct {
+type Material struct {
 	certificate tls.Certificate
 	key         ed25519.PrivateKey
 }
 
 var errInvalidRuntimeKey = errors.New("invalid Node runtime TLS key")
 
-func decodeCredential(cert, key []byte) (*credential, error) {
+func decodeCredential(cert, key []byte) (*Material, error) {
 	pair, err := tls.X509KeyPair(cert, key)
 	if err != nil {
 		return nil, err
@@ -24,10 +24,11 @@ func decodeCredential(cert, key []byte) (*credential, error) {
 	if !ok || len(private) != ed25519.PrivateKeySize {
 		return nil, errInvalidRuntimeKey
 	}
-	return &credential{certificate: pair, key: private}, nil
+	return &Material{certificate: pair, key: private}, nil
 }
 
-func (key *credential) close() error {
+// Close erases the owned key after the caller joins its TLS borrowers.
+func (key *Material) Close() error {
 	if key != nil {
 		clear(key.key)
 		key.certificate.PrivateKey = nil
