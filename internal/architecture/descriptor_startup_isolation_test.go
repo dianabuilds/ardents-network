@@ -7,7 +7,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
 	case "internal/release/infrastructure/descriptor_admission.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/enrollment", "github.com/dianabuilds/ardents-network/internal/release":
+		case "github.com/dianabuilds/ardents-network/internal/domain/enrollment", "github.com/dianabuilds/ardents-network/internal/release":
 			return true
 		}
 	case "internal/platform/systemd/descriptor_manager_linux.go":

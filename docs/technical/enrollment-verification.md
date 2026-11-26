@@ -2,7 +2,7 @@
 
 Status: **current maintained technical contract.** This document defines the
 bounded first-artifact verification contract. The maintained
-`ardents-next enrollment verify` consumes `internal/enrollment`. The
+`ardents-next enrollment verify` consumes `internal/domain/enrollment`. The
 independent pin authenticates the exact v6 inventory.
 
 ## Interface and ownership
@@ -103,7 +103,7 @@ provides no authenticated initial facts or state mutation.
 
 ### Isolated new owner
 
-`internal/enrollment` owns portable initial verification.
+`internal/domain/enrollment` owns portable initial verification.
 `ardents-next enrollment verify` takes the Bundle Root and the independent
 manifest pin. The command obtains the original executable path from the OS
 and reports the verified inventory and whether it includes protected resources.
@@ -120,7 +120,7 @@ The result has private construction and returns copied authenticated initial
 facts/bytes. No Release inputs, metadata URLs, permission or durable floor is
 created here. Future new Release composition must consume these exact bytes
 and establish its own authorization. The same companion and protected-group rules apply to independent candidate loading. The
-[new owner design](../../internal/enrollment/README.md) records the
+[new owner design](../../internal/domain/enrollment/README.md) records the
 stages and refusal obligations; the selected GitHub issue owns verification
 and acceptance status.
 

@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 

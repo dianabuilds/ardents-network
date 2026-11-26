@@ -52,7 +52,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/platform/artifacts/private_file_publication_unix.go", "internal/platform/artifacts/platform_inputs_linux.go":
 		return dependency == modulePath+"/internal/pathgrammar"
 	case "internal/release/infrastructure/preparation_linux.go":
-		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/enrollment"
+		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/domain/enrollment"
 	case "internal/release/infrastructure/preparation_native_linux_test.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/domain/node/provisioning/network_report_unix.go":
@@ -202,12 +202,12 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/release/infrastructure/signing/node_release_predecessor_linux.go",
 		"internal/release/infrastructure/signing/source_release_predecessor_linux.go":
 		switch dependency {
-		case modulePath + "/internal/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
 	case "internal/release/infrastructure/signing/source_release_coherence_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
 	case "internal/release/infrastructure/signing/source_release_timestamp_native_linux_test.go":

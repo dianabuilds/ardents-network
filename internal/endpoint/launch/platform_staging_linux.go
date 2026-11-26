@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"

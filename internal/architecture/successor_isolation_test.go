@@ -16,7 +16,7 @@ import (
 // selected on both platforms. ADR-0123's separate Source artifact extension is
 // Linux-only and checked against its exact genuine consumer profile below.
 func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
-	directory := path.Join(repositoryRoot(t), "internal/enrollment")
+	directory := path.Join(repositoryRoot(t), "internal/domain/enrollment")
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatal(err)
@@ -77,10 +77,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/enrollment/infrastructure_inventory.go",
-			"internal/enrollment/infrastructure_inventory_test.go",
-			"internal/enrollment/descriptor_inventory_linux_test.go",
-			"internal/enrollment/infrastructure_process_linux.go",
+			"internal/domain/enrollment/infrastructure_inventory.go",
+			"internal/domain/enrollment/infrastructure_inventory_test.go",
+			"internal/domain/enrollment/descriptor_inventory_linux_test.go",
+			"internal/domain/enrollment/infrastructure_process_linux.go",
 			"internal/platform/systemd/infrastructure_prestart_linux.go",
 			"internal/platform/systemd/infrastructure_prestart_linux_test.go",
 			"internal/release/infrastructure/admission.go",
@@ -431,8 +431,8 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/platform/artifacts/output_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
-			"internal/enrollment/infrastructure_inventory.go",
-			"internal/enrollment/infrastructure_process_linux.go",
+			"internal/domain/enrollment/infrastructure_inventory.go",
+			"internal/domain/enrollment/infrastructure_process_linux.go",
 			"internal/release/infrastructure/preparation_linux.go",
 			"internal/release/infrastructure/admission.go",
 			"internal/release/infrastructure/source_release_inspection_linux.go",
@@ -1029,7 +1029,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 func isMigratedDomain(name string) bool {
 	for _, root := range []string{
 		"internal/admission", "internal/canonicaldigest", "internal/connection", "internal/domain/custody", "internal/durablefile", "internal/endpoint",
-		"internal/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/domain/node",
+		"internal/domain/enrollment", "internal/execution", "internal/hosting", "internal/network", "internal/domain/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/publication",
 		"internal/reachability", "internal/release", "internal/route",
 	} {
@@ -1354,7 +1354,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	if source == "tests/releasefixture/infrastructure_linux.go" && (dependency == modulePath+"/internal/enrollment" || dependency == modulePath+"/internal/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+	if source == "tests/releasefixture/infrastructure_linux.go" && (dependency == modulePath+"/internal/domain/enrollment" || dependency == modulePath+"/internal/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 		return true
 	}
 	if (source == "internal/release/infrastructure/forwarding_artifact_linux_test.go" || source == "internal/release/infrastructure/authorization_lifetime_linux_test.go") && dependency == modulePath+"/internal/release/infrastructure" {
@@ -1524,7 +1524,7 @@ func successorImportAllowed(source, dependency string) bool {
 				dependency == "go.opentelemetry.io/proto/otlp/collector/metrics/v1" ||
 				dependency == "go.opentelemetry.io/proto/otlp/collector/trace/v1" || dependency == "google.golang.org/protobuf/proto"
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
-			return dependency == "github.com/dianabuilds/ardents-network/internal/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/dianabuilds/ardents-network/internal/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
+			return dependency == "github.com/dianabuilds/ardents-network/internal/domain/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/dianabuilds/ardents-network/internal/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
 		case "tests/e2e/node/network_commands_unix_test.go":
 			return dependency == modulePath+"/internal/admission" || dependency == modulePath+"/internal/admission/quota" ||
 				dependency == modulePath+"/internal/admission/receiving" || dependency == modulePath+"/internal/admission/stock" ||
@@ -1703,7 +1703,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport {
 		switch source {
 		case "tests/e2e/endpoint/endpoint_platform_native_linux_test.go":
-			return local == "internal/enrollment" || local == "internal/release" ||
+			return local == "internal/domain/enrollment" || local == "internal/release" ||
 				local == "internal/release/endpoint" || local == "internal/release/infrastructure/launch" ||
 				local == "internal/endpoint/plan" || local == "internal/endpoint/unit" ||
 				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/e2e/endpoint"
@@ -2001,7 +2001,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if source == "scripts/sign-qualification-release.go" {
 		switch dependency {
-		case modulePath + "/internal/enrollment", modulePath + "/internal/release",
+		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/release",
 			"github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata", "golang.org/x/sys/unix":
 			return true
 		}
@@ -2009,7 +2009,7 @@ func successorImportAllowed(source, dependency string) bool {
 		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 	}
 	if source == "cmd/ardents-next/enrollment.go" && localImport {
-		return local == "internal/enrollment"
+		return local == "internal/domain/enrollment"
 	}
 	if dependency == modulePath+"/internal/platform/systemd" {
 		switch source {
@@ -2308,15 +2308,15 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/connection":                        {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
 		"internal/connection/wire":                   {},
 		"internal/reachability":                      {"publication", "pathgrammar"},
-		"internal/enrollment":                        {"canonicaldigest", "pathgrammar"},
+		"internal/domain/enrollment":                 {"canonicaldigest", "pathgrammar"},
 		"internal/release":                           {"canonicaldigest", "durablefile", "pathgrammar"},
 		"internal/execution":                         {},
 		"internal/execution/runtime":                 {"execution", "execution/worker"},
 		"internal/execution/worker":                  {"platform/systemd", "endpoint/unit", "canonicaldigest", "pathgrammar"},
-		"internal/release/endpoint":                  {"enrollment", "release"},
-		"internal/release/infrastructure":            {"canonicaldigest", "enrollment", "release", "pathgrammar"},
-		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "domain/node", "enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
-		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "durablefile", "enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
+		"internal/release/endpoint":                  {"domain/enrollment", "release"},
+		"internal/release/infrastructure":            {"canonicaldigest", "domain/enrollment", "release", "pathgrammar"},
+		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
+		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
 		"internal/platform/cgroup":                   {"pathgrammar"},
 		"internal/platform/artifacts":                {"durablefile", "pathgrammar"},
 		"internal/endpoint/plan":                     {"canonicaldigest", "durablefile"},
@@ -2453,7 +2453,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/infrastructure_linux.go" {
 			return dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/platform/artifacts"
 		}
-		if dependency == modulePath+"/internal/enrollment" && source == "cmd/ardents-next/enrollment.go" {
+		if dependency == modulePath+"/internal/domain/enrollment" && source == "cmd/ardents-next/enrollment.go" {
 			return true
 		}
 
@@ -2750,7 +2750,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"public issuer inspection excludes Network authority", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/network/state", false},
 		{"public issuer inspection excludes Route", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/route/role", false},
 		{"adjacent Control has no inherited codec access", "internal/domain/node/provisioning/unregistered.go", modulePath + "/internal/admission/issuerprofile", false},
-		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/enrollment", true},
+		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/domain/enrollment", true},
 		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/release", true},
 		{"Endpoint release producer excludes retired Enrollment path", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/enrollment", false},
 		{"Endpoint release producer excludes retired Release path", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/release", false},
@@ -2763,11 +2763,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"retained heap map does not import predecessor Endpoint", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
-		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
+		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment.go", modulePath + "/internal/domain/enrollment", true},
 		{"packaging commands exclude retired Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/successor/enrollment", false},
-		{"standalone packaging helpers cannot consume Enrollment", "scripts/packaging-check.go", modulePath + "/internal/enrollment", false},
+		{"standalone packaging helpers cannot consume Enrollment", "scripts/packaging-check.go", modulePath + "/internal/domain/enrollment", false},
 		{"packaging commands exclude Release authority", "cmd/ardents-next/enrollment.go", modulePath + "/internal/release", false},
-		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/enrollment", false},
+		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/domain/enrollment", false},
 		{"Fixed Node Release signing uses exact artifact resources", "internal/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/release/infrastructure", true},
 		{"Fixed Node Release predecessor verifies genuine Release", "internal/release/infrastructure/signing/node_release_predecessor_linux.go", modulePath + "/internal/release", true},
 		{"JOIN key birth grants no Release observation", "internal/release/infrastructure/signing/join_release_keys_linux.go", modulePath + "/internal/release", false},
@@ -2948,11 +2948,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Reader cannot own Publication", "internal/endpoint/reader/reader_unix.go", modulePath + "/internal/publication/runtime", false},
 		{"Publisher cannot import command composition", "internal/endpoint/publisher/publisher_unix.go", modulePath + "/cmd/ardents-next", false},
 		{"other binaries cannot acquire new funding", "cmd/ardents/main.go", modulePath + "/internal/endpoint/funding", false},
-		{"enrollment verification uses Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
+		{"enrollment verification uses Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/domain/enrollment", true},
 		{"diagnostics uses the local timeline projector", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/diagnostics/timeline", true},
 		{"diagnostics cannot consume Route", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/route/transport", false},
 		{"withdraw uses the Application Administration client", "cmd/ardents-next/endpoint_administration_client.go", modulePath + "/internal/application/administration", true},
-		{"retired command has no Enrollment grant", "cmd/ardents/endpoint.go", modulePath + "/internal/enrollment", false},
+		{"retired command has no Enrollment grant", "cmd/ardents/endpoint.go", modulePath + "/internal/domain/enrollment", false},
 		{"funded Source uses real token grammar", "internal/endpoint/funding/source.go", modulePath + "/internal/admission/token", true},
 		{"funded Source uses finite bootstrap", "internal/endpoint/funding/source.go", modulePath + "/internal/route/bootstrap", true},
 		{"funded Source behavior selects real Carrier", "internal/domain/node/route_token_linux_test.go", modulePath + "/internal/route/transport", true},
@@ -3068,7 +3068,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Source startup native prefix excludes State authority", "internal/release/infrastructure/source_startup_physical_prefix_profile_native_linux_test.go", modulePath + "/internal/network/state", false},
 		{"Source startup observer excludes State authority", "internal/release/infrastructure/source_startup_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
 		{"Source retirement observer excludes State authority", "internal/release/infrastructure/source_retirement_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
-		{"Endpoint platform native qualification uses new Enrollment", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/enrollment", true},
+		{"Endpoint platform native qualification uses new Enrollment", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/enrollment", true},
 		{"Endpoint platform native qualification uses fresh Release", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/release", true},
 		{"Endpoint platform native qualification uses generation authorization", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/release/endpoint", true},
 		{"Endpoint platform native qualification uses request grammar", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/plan", true},
@@ -3077,17 +3077,17 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint platform native qualification excludes retired Release path", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
 		{"Endpoint platform native qualification has no Node runtime", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/release", false},
-		{"Endpoint launch delegates Enrollment to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/enrollment", false},
+		{"Endpoint launch delegates Enrollment to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/domain/enrollment", false},
 		{"Endpoint launch delegates unit rendering to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
 		{"Endpoint launch roots use the Source bundle codec", "tests/e2e/endpoint/launch_roots_linux.go", modulePath + "/internal/network/source", true},
 		{"Endpoint launch native qualification excludes old Endpoint", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint launch native qualification has no Node runtime", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"adjacent Endpoint launch test has no inherited Source edge", "cmd/ardents-next/other_endpoint_launch_native_linux_test.go", modulePath + "/internal/network/source", false},
-		{"Endpoint pair native controller has no direct Enrollment edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/enrollment", false},
+		{"Endpoint pair native controller has no direct Enrollment edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/domain/enrollment", false},
 		{"Endpoint pair native controller excludes old Endpoint", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint pair native controller has no Node runtime", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/domain/node", false},
 		{"Endpoint pair native controller has no direct Source edge", "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", modulePath + "/internal/network/source", false},
-		{"Endpoint journey delegates Enrollment to platform CLI", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/enrollment", false},
+		{"Endpoint journey delegates Enrollment to platform CLI", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/domain/enrollment", false},
 		{"Endpoint journey delegates unit rendering to platform CLI", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
 		{"Endpoint journey fixture opens genuine State", "tests/e2e/endpoint/journey_participant_linux.go", modulePath + "/internal/network/state", true},
 		{"Endpoint journey native qualification names selected Carrier", "internal/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/route/transport", true},

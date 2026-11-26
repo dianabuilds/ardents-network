@@ -577,7 +577,7 @@
       },
       {
         "symbols": [
-          "internal/enrollment.ValidateInfrastructureInventory"
+          "internal/domain/enrollment.ValidateInfrastructureInventory"
         ],
         "classification": "retired transitional role selected-generation validation; retained canonical inventory mechanism test coverage",
         "rationale": "ValidateInfrastructureInventory checks the closed seven-file infrastructure byte grammar against caller-supplied immutable images and returns copied declarations/digests. Its production consumers were the transitional JOIN/Descriptor selected-generation validation in the retired installation orchestration (#604 FJD stage D, ADR-0125); the retained prepare-inventory producers use PrepareInfrastructureInventory and the retained predecessor/candidate admission uses VerifyInfrastructure/ReadInfrastructureCandidate, so this validator has no remaining production caller. It is retained as reviewed mechanism code because genuine kept Linux tests exercise its exact canonical-byte equality, foreign-role and mutated-inventory refusal: enrollment/infrastructure_inventory_test.go and enrollment/descriptor_inventory_linux_test.go. The shared parseInfrastructureInventory/PrepareInfrastructureInventory helpers remain production-live and are not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
@@ -1006,10 +1006,10 @@
       },
       {
         "symbols": [
-          "internal/enrollment.Candidate.Facts",
-          "internal/enrollment.Candidate.File",
-          "internal/enrollment.Candidate.MetadataNames",
-          "internal/enrollment.Candidate.Names",
+          "internal/domain/enrollment.Candidate.Facts",
+          "internal/domain/enrollment.Candidate.File",
+          "internal/domain/enrollment.Candidate.MetadataNames",
+          "internal/domain/enrollment.Candidate.Names",
           "internal/release/endpoint.AuthenticateCandidate",
           "internal/release/endpoint.AuthenticateInitial",
           "internal/release/endpoint.Authorization.InitialFacts",
