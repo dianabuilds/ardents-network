@@ -54,7 +54,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 			switch owner {
 			case "cmd/ardents-next", "internal/connection", "internal/endpoint", "internal/endpoint/funding",
 				"internal/endpoint/publisher", "internal/endpoint/reader", "internal/endpoint/session",
-				"internal/domain/node", "internal/publication/instance", "internal/publication/runtime":
+				"internal/domain/node", "internal/domain/publication/instance", "internal/domain/publication/runtime":
 			default:
 				return false
 			}

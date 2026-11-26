@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
-	"github.com/dianabuilds/ardents-network/internal/publication/durable"
-	"github.com/dianabuilds/ardents-network/internal/publication/instance"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"

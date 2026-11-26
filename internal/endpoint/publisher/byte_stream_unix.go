@@ -11,7 +11,7 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 )
 
 func serveByteStream(ctx context.Context, publisher *publicationruntime.Publisher, operation *executionruntime.Operation, port document.ByteStreamPort) (result error) {

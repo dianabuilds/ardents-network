@@ -17,10 +17,10 @@ github.com/dianabuilds/ardents-network/tests/epochfixture/network
 github.com/dianabuilds/ardents-network/tests/releasefixture
 github.com/dianabuilds/ardents-network/tests/networkfixture
 github.com/dianabuilds/ardents-network/internal/domain/hosting
-github.com/dianabuilds/ardents-network/internal/publication
-github.com/dianabuilds/ardents-network/internal/publication/durable
-github.com/dianabuilds/ardents-network/internal/publication/instance
-github.com/dianabuilds/ardents-network/internal/publication/runtime
+github.com/dianabuilds/ardents-network/internal/domain/publication
+github.com/dianabuilds/ardents-network/internal/domain/publication/durable
+github.com/dianabuilds/ardents-network/internal/domain/publication/instance
+github.com/dianabuilds/ardents-network/internal/domain/publication/runtime
 github.com/dianabuilds/ardents-network/internal/reachability
 github.com/dianabuilds/ardents-network/internal/domain/enrollment
 github.com/dianabuilds/ardents-network/internal/admission/issuance

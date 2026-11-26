@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 // ErrConsumed denies a Credential whose generation is already in this root's
