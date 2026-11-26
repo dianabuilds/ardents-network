@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 )
 
 var errUsage = errors.New("usage: ardents-custody <create-service-authority|issue-service-credential|create-admission-authority|issue-admission-permission|verify-record|export-recovery-bundle|restore-recovery-bundle|purge-record> [flags]")

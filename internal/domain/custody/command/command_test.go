@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 
