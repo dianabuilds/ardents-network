@@ -514,11 +514,11 @@
       },
       {
         "symbols": [
-          "internal/release/infrastructure.ForwardingAuthorization.InitialFacts",
-          "internal/release/infrastructure.ForwardingAuthorization.Targets"
+          "internal/domain/release/infrastructure.ForwardingAuthorization.InitialFacts",
+          "internal/domain/release/infrastructure.ForwardingAuthorization.Targets"
         ],
         "classification": "retired transitional Forwarding orchestration; retained candidate-admission test coverage",
-        "rationale": "The transitional installation/forwarding orchestration and its canonical Node initial/start consumers retired (#604 FJD stage D, ADR-0125). The retained Forwarding forward-Release predecessor verification consumes AuthenticateForwardingCandidate/Check in production; the exact target-pair and no-initial-facts assertions remain exercised by the genuine signed-artifact integration in internal/release/infrastructure/forwarding_artifact_linux_test.go. Platform-led installed admission uses the mandatory platform check, not this candidate pair. Linux-native only; the file is excluded on Windows.",
+        "rationale": "The transitional installation/forwarding orchestration and its canonical Node initial/start consumers retired (#604 FJD stage D, ADR-0125). The retained Forwarding forward-Release predecessor verification consumes AuthenticateForwardingCandidate/Check in production; the exact target-pair and no-initial-facts assertions remain exercised by the genuine signed-artifact integration in internal/domain/release/infrastructure/forwarding_artifact_linux_test.go. Platform-led installed admission uses the mandatory platform check, not this candidate pair. Linux-native only; the file is excluded on Windows.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove them if the forward-Release candidate admission loses its signed-artifact integration coverage or gains a production consumer again."
       },
@@ -726,14 +726,14 @@
           "internal/platform/systemd.InfrastructureUnit.checkProgram",
           "internal/platform/systemd.InfrastructureUnit.prestartArgs",
           "internal/platform/systemd.InfrastructureUnit.runtimeArgs",
-          "internal/release/infrastructure/launch.Declaration.unit",
-          "internal/release/infrastructure/launch.below",
-          "internal/release/infrastructure/launch.credentialPaths",
-          "internal/release/infrastructure/launch.equalRoots",
-          "internal/release/infrastructure/launch.independentRoots",
-          "internal/release/infrastructure/launch.valid",
-          "internal/release/infrastructure/launch.validInfrastructure",
-          "internal/release/infrastructure/launch.writableRoots"
+          "internal/domain/release/infrastructure/launch.Declaration.unit",
+          "internal/domain/release/infrastructure/launch.below",
+          "internal/domain/release/infrastructure/launch.credentialPaths",
+          "internal/domain/release/infrastructure/launch.equalRoots",
+          "internal/domain/release/infrastructure/launch.independentRoots",
+          "internal/domain/release/infrastructure/launch.valid",
+          "internal/domain/release/infrastructure/launch.validInfrastructure",
+          "internal/domain/release/infrastructure/launch.writableRoots"
         ],
         "classification": "portable infrastructure declaration and unit rendering behind native Linux launch",
         "rationale": "The maintained Linux platform unit/check paths use the complete original infrastructure declaration, Admission result setup and canonical argv rendering. Windows execution refuses before accessing original artifacts or the service manager. Portable launch tests exercise literal POSIX paths, complete writable-root and credential projections, and systemd unit bytes for the six fixed roles.",
@@ -752,7 +752,7 @@
           "internal/network/source.ObservePublicTrust",
           "internal/network/source.observeChain",
           "internal/network/source.publicCertificates",
-          "internal/release.StaticMetadataFiles"
+          "internal/domain/release.StaticMetadataFiles"
         ],
         "classification": "P1-B batch 1 de-tagged pure leaf production files with Linux-native genuine consumers (#781, #691)",
         "rationale": "These exact functions were accidentally Linux-bound pure Go (mutex reservation accounting, bounded read, copied failure projection, offline public X.509 observation, static metadata JSON projection). Batch 1 dropped their Linux build constraints after per-file purity verification at origin/dev; each composes only portable symbols and adds no native mechanism. Their genuine production consumers remain Linux-tagged (hosting reservation callers in node/endpoint/session/funding and cmd/ardents-next repair adapters; processresource.Failure in node failure_projection_linux.go and cmd source_linux.go; source.ObservePublicTrust in endpoint/source_trust_preparation_linux.go; release.StaticMetadataFiles in release/infrastructure Linux admission/signing), so they are production-dead on windows-amd64 only. The hosting lease is now Unix-family (lease_unix.go, #865) with its typed refusal shifted to lease_other.go and measure_other.go (!linux && !darwin); the genuine Linux measure stays measure_linux.go and the macOS measure reads the full 64-bit IFMIB interface-data totals (measure_darwin.go, #872; the routing-socket if_data64 byte counters wrap at 2^32 and are deliberately not used). processresource native_other.go is unchanged, and no weaker accepting path is introduced. De-tagged portable behavior tests execute on the windows-latest/macos-latest lane (source public_trust_test.go, release static_metadata_test.go, processresource failure_test.go); hosting reservation fixture-measure behavior tests are now Unix-family (linux || darwin, #865) exercising the Unix-family flock lease and still exclude Windows. Linux production reachability is unchanged and both platform test analyses must remain empty.",
@@ -1010,15 +1010,15 @@
           "internal/domain/enrollment.Candidate.File",
           "internal/domain/enrollment.Candidate.MetadataNames",
           "internal/domain/enrollment.Candidate.Names",
-          "internal/release/endpoint.AuthenticateCandidate",
-          "internal/release/endpoint.AuthenticateInitial",
-          "internal/release/endpoint.Authorization.InitialFacts",
-          "internal/release/endpoint.CandidateInputs",
-          "internal/release/endpoint.Authorization.Resources",
-          "internal/release.Decision.SameBuildPolicy",
-          "internal/release/endpoint.coherentReleasePair",
-          "internal/release/endpoint.CoherentTargets",
-          "internal/release/endpoint.authenticate",
+          "internal/domain/release/endpoint.AuthenticateCandidate",
+          "internal/domain/release/endpoint.AuthenticateInitial",
+          "internal/domain/release/endpoint.Authorization.InitialFacts",
+          "internal/domain/release/endpoint.CandidateInputs",
+          "internal/domain/release/endpoint.Authorization.Resources",
+          "internal/domain/release.Decision.SameBuildPolicy",
+          "internal/domain/release/endpoint.coherentReleasePair",
+          "internal/domain/release/endpoint.CoherentTargets",
+          "internal/domain/release/endpoint.authenticate",
           "internal/platform/cgroup.parseEvents",
           "internal/platform/cgroup.scopeUnit",
           "internal/platform/cgroup.workerScope",
@@ -1069,7 +1069,7 @@
           "internal/endpoint/unit.verifyActivationSocketState",
           "internal/endpoint/unit.verifyRunningInvocation",
           "internal/pathgrammar.LiteralPOSIXPath",
-          "internal/release.OpenRetained"
+          "internal/domain/release.OpenRetained"
         ],
         "classification": "portable Endpoint artifact and configuration checks behind Linux platform delivery",
         "rationale": "Linux platform stage-endpoint and startup consume exact native request, Enrollment/Release and generation proofs, require checked account, process and systemd observations, and retain existing floors through signed replacement. Windows has no native Endpoint delivery. The portable plan, unit and path predicates reproduce the Linux deployment grammar in cross-platform tests; the runtime launch and original-file effects remain Linux-only.",
@@ -1951,11 +1951,11 @@
       },
       {
         "symbols": [
-          "internal/release/endpoint.Authorization.Descriptor",
-          "internal/release/endpoint.Authorization.Targets"
+          "internal/domain/release/endpoint.Authorization.Descriptor",
+          "internal/domain/release/endpoint.Authorization.Targets"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/release/endpoint)",
-        "rationale": "These exact internal/release/endpoint functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/release/endpoint)",
+        "rationale": "These exact internal/domain/release/endpoint functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -2255,18 +2255,18 @@
       },
       {
         "symbols": [
-          "internal/release/infrastructure.DecodeDescriptor",
-          "internal/release/infrastructure.PrepareRuntimeDescriptor",
-          "internal/release/infrastructure.ValidateDescriptorResources",
-          "internal/release/infrastructure.ValidateForwardingResources",
-          "internal/release/infrastructure.ValidateJoinResources",
-          "internal/release/infrastructure.ValidateResources",
-          "internal/release/infrastructure.ValidateRuntimeResources",
-          "internal/release/infrastructure.decodeDescriptor",
-          "internal/release/infrastructure.digest",
-          "internal/release/infrastructure.prepareDescriptor",
-          "internal/release/infrastructure.runtimeNames",
-          "internal/release/infrastructure.validateResources"
+          "internal/domain/release/infrastructure.DecodeDescriptor",
+          "internal/domain/release/infrastructure.PrepareRuntimeDescriptor",
+          "internal/domain/release/infrastructure.ValidateDescriptorResources",
+          "internal/domain/release/infrastructure.ValidateForwardingResources",
+          "internal/domain/release/infrastructure.ValidateJoinResources",
+          "internal/domain/release/infrastructure.ValidateResources",
+          "internal/domain/release/infrastructure.ValidateRuntimeResources",
+          "internal/domain/release/infrastructure.decodeDescriptor",
+          "internal/domain/release/infrastructure.digest",
+          "internal/domain/release/infrastructure.prepareDescriptor",
+          "internal/domain/release/infrastructure.runtimeNames",
+          "internal/domain/release/infrastructure.validateResources"
         ],
         "classification": "Portable code used by current Linux command compositions",
         "rationale": "Descriptor encoding and public resource validation are portable. The ardents-next public preparation and platform admission paths and the fixed Control Release signers use these codecs on Linux. Windows refuses those native operations before effects and still runs the portable codec tests.",

@@ -6,8 +6,8 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/release"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/domain/release/endpoint"
 )
 
 func authenticateSuccessor(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous generationBinding) (Authorization, error) {

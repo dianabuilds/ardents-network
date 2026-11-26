@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
+	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
@@ -26,8 +28,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
-	"github.com/dianabuilds/ardents-network/internal/release"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"

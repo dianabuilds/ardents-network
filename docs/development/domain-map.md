@@ -165,7 +165,7 @@ current transition remains with its technical owner until that transfer.
 ## Supporting mechanisms and composition
 
 Public infrastructure descriptor and inventory preparation belongs to
-`internal/release/infrastructure`. Platform Artifacts supplies the retained
+`internal/domain/release/infrastructure`. Platform Artifacts supplies the retained
 root-controlled input, ext4 check and exclusive durable output.
 
 The owner-only generation stores share filesystem operations and generation
@@ -176,7 +176,7 @@ lease acquisition with a regular-file and single-link identity check. Each
 caller owns its root, lease lifetime, schema and authorization policy.
 Generation store consumers include `internal/route/selection`,
 `internal/network/duty` and `internal/network/state/durable`.
-`internal/release` uses the generation-name grammar. `internal/domain/publication/instance` keeps its separate
+`internal/domain/release` uses the generation-name grammar. `internal/domain/publication/instance` keeps its separate
 joined-error, TOCTOU-hardened private custody. A shared technical mechanism does
 not merge authorities, roots, leases or lifecycle owners.
 
@@ -231,7 +231,7 @@ with `hex.EncodeToString` of the authenticated digest (the one deliberate
 tightening; no reachable acceptance is lost). A shared validation atom does not
 merge roots, custody or authority owners.
 
-Source artifact authentication in `internal/release/infrastructure` joins the
+Source artifact authentication in `internal/domain/release/infrastructure` joins the
 Release verifier before returning inspection facts. Enrollment owns original
 distribution provenance and the initial pin. Release owns retained trust and
 floors. The independent inspection history is distinct from platform startup
@@ -499,7 +499,7 @@ ADR-0125 decision 6 keeps configuration validation with the runtime owner). It
 returns declaration facts only; it performs no State acceptance, root creation,
 hosting initialization or signing, and supplies no universal role policy. The runtime commands convert their declaration into `state.Config`.
 Node validates the role and independent roots for recovery.
-`internal/release/infrastructure/launch` retains the original public plan and
+`internal/domain/release/infrastructure/launch` retains the original public plan and
 actual manager while Network State decides whether to repair. The Node role composition borrows `network/state` for the original State
 acquisition; State retains its own authority and joined lifetime. The five
 runtime commands share that composition and bounded outcome projection in

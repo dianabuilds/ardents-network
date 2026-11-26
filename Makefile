@@ -93,8 +93,8 @@ unit:
 .PHONY: platform-launch-unit
 platform-launch-unit:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
-	go test ./internal/release/infrastructure/launch -run '^Test(Platform|IssuerProjectionRetainsKeyLeaseOnly$$)' -count=1 -timeout=3m
-	go test ./internal/release/infrastructure -run '^TestPlatform(RuntimeRelease|SourceForwardProgram)' -count=1 -timeout=3m
+	go test ./internal/domain/release/infrastructure/launch -run '^Test(Platform|IssuerProjectionRetainsKeyLeaseOnly$$)' -count=1 -timeout=3m
+	go test ./internal/domain/release/infrastructure -run '^TestPlatform(RuntimeRelease|SourceForwardProgram)' -count=1 -timeout=3m
 	go test ./tests/e2e/node -run '^TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing$$' -count=1 -timeout=3m
 	go test ./internal/network/source/command -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$$' -count=1 -timeout=3m
 	go test ./internal/network/source/serving -run '^TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion$$' -count=1 -timeout=3m
@@ -425,7 +425,7 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/connection/... ./internal/reachability/... ./internal/domain/enrollment/... ./internal/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/connection/... ./internal/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
@@ -490,7 +490,7 @@ network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race ./internal/platform/artifacts -run '^TestWriteReportJoinsCanceledFullPipe$$' -count=1 -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint -run '^TestSourcePreparationNative(CommitmentsAndCustody|OriginalProcessCuts|PartialWrite|ReferenceExpiry|Child)$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./tests/e2e/node -run '^Test(NetworkSigning(NodeCertificate(Command|Receipt)|StaticNativeRefusals|CommandsGenuineStateChain|Infrastructure(Preparation|RoleInventories)|InitialKeys(Command|StateChain|ReceiptFailure|BlockedReceipt|StaticRefusals))|SourcePreparationNative(PublicOnlyCommand|ReceiptFailure))$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestSource(InspectionNative|PreparationNativeStateCommand)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -v -timeout=3m
@@ -500,9 +500,9 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNative(OutputSubstitutionRefuses|PublicMountRefusal)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/node/provisioning -run '^Test(NetworkSigning(InitialKeys|OriginalCancellationBeforeEffects|OriginalTimeAfterIO|DurableInventory|ConcurrentOutput|UnsupportedMount|OriginalInputCustody|OriginalRefusalCannotRevive|InterruptedChild|ActualPartialAndProcessCuts|Profile(NativeCommit|ActualExpiry|ReceiptExpiry|Contention)|NodeCertificate(LateTime|FinalOutputAndPhysicalFailure|Contention))|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^Test(Forwarding|Join)PreparationNative(InitialReleasePurposeAndKeyCustody|ForwardReleasePreservesRootAndRaisesFloors)$$|^TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^TestControlReleaseKeyReceiptsNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^Test(Forwarding|Join)PreparationNative(InitialReleasePurposeAndKeyCustody|ForwardReleasePreservesRootAndRaisesFloors)$$|^TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/node/provisioning -run '^TestSourcePreparationNativeInitialNetworkAndNonrootState$$' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
@@ -511,11 +511,11 @@ network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-provisioning.test" ./internal/domain/node/provisioning
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-release-signing.test" ./internal/release/infrastructure/signing
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/infrastructure-release-signing.test" ./internal/domain/release/infrastructure/signing
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/operator-artifacts.test" ./internal/platform/artifacts
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/ardents-infrastructure" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/release/infrastructure
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/domain/release/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-trust-owner.test" ./internal/endpoint
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-public-preparation.test" ./tests/e2e/node
@@ -529,7 +529,7 @@ descriptor-store-inspection-check:
 .PHONY: descriptor-forward-release-check
 descriptor-forward-release-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-forward-release-check requires explicit root/ext4 canonical artifact stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/release/infrastructure/signing -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m
 
 .PHONY: worker-descriptor-audit-check
 worker-descriptor-audit-check:

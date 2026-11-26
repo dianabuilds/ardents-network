@@ -9,14 +9,14 @@ func offlineOperatorFile(source string) bool {
 	if strings.HasPrefix(source, "internal/platform/artifacts/") ||
 		strings.HasPrefix(source, "internal/network/source/inspection/") ||
 		strings.HasPrefix(source, "internal/domain/node/provisioning/") ||
-		strings.HasPrefix(source, "internal/release/infrastructure/signing/") {
+		strings.HasPrefix(source, "internal/domain/release/infrastructure/signing/") {
 		return true
 	}
 	switch source {
 	case "cmd/ardents-next/infrastructure_operator.go",
 		"internal/admission/issuance/artifact_export_unix.go",
-		"internal/release/infrastructure/preparation_linux.go",
-		"internal/release/infrastructure/preparation_native_linux_test.go",
+		"internal/domain/release/infrastructure/preparation_linux.go",
+		"internal/domain/release/infrastructure/preparation_native_linux_test.go",
 		"internal/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "tests/e2e/source/inspection_linux_test.go",
@@ -51,9 +51,9 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/pathgrammar" || dependency == modulePath+"/internal/durablefile"
 	case "internal/platform/artifacts/private_file_publication_unix.go", "internal/platform/artifacts/platform_inputs_linux.go":
 		return dependency == modulePath+"/internal/pathgrammar"
-	case "internal/release/infrastructure/preparation_linux.go":
+	case "internal/domain/release/infrastructure/preparation_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/domain/enrollment"
-	case "internal/release/infrastructure/preparation_native_linux_test.go":
+	case "internal/domain/release/infrastructure/preparation_native_linux_test.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/domain/node/provisioning/network_report_unix.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
@@ -112,15 +112,15 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/domain/node/provisioning/public_identifier_unix_test.go",
 		"internal/domain/node/provisioning/source_initial_keys_linux.go",
 		"internal/domain/node/provisioning/source_initial_plan_linux.go",
-		"internal/release/infrastructure/signing/descriptor_release_keys_linux.go",
-		"internal/release/infrastructure/signing/forwarding_release_keys_linux.go",
-		"internal/release/infrastructure/signing/infrastructure_release_keys_linux.go",
-		"internal/release/infrastructure/signing/join_release_keys_linux.go",
-		"internal/release/infrastructure/signing/node_release_arguments_linux.go",
-		"internal/release/infrastructure/signing/node_release_arguments_linux_test.go",
-		"internal/release/infrastructure/signing/release_key_receipt_unix.go",
-		"internal/release/infrastructure/signing/source_release_keys_linux.go",
-		"internal/release/infrastructure/signing/source_release_plan_linux_test.go":
+		"internal/domain/release/infrastructure/signing/descriptor_release_keys_linux.go",
+		"internal/domain/release/infrastructure/signing/forwarding_release_keys_linux.go",
+		"internal/domain/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+		"internal/domain/release/infrastructure/signing/join_release_keys_linux.go",
+		"internal/domain/release/infrastructure/signing/node_release_arguments_linux.go",
+		"internal/domain/release/infrastructure/signing/node_release_arguments_linux_test.go",
+		"internal/domain/release/infrastructure/signing/release_key_receipt_unix.go",
+		"internal/domain/release/infrastructure/signing/source_release_keys_linux.go",
+		"internal/domain/release/infrastructure/signing/source_release_plan_linux_test.go":
 		switch dependency {
 		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts":
 			return true
@@ -172,47 +172,47 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/admission/issuance", modulePath + "/internal/admission/issuerprofile":
 			return true
 		}
-	case "internal/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go",
-		"internal/release/infrastructure/signing/forwarding_forward_release_native_linux_test.go",
-		"internal/release/infrastructure/signing/join_forward_release_native_linux_test.go":
+	case "internal/domain/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go",
+		"internal/domain/release/infrastructure/signing/forwarding_forward_release_native_linux_test.go",
+		"internal/domain/release/infrastructure/signing/join_forward_release_native_linux_test.go":
 		switch dependency {
 		case modulePath + "/internal/platform/systemd":
 			return true
 		}
-	case "internal/release/infrastructure/signing/descriptor_release_native_linux_test.go",
-		"internal/release/infrastructure/signing/forwarding_release_native_linux_test.go",
-		"internal/release/infrastructure/signing/join_release_native_linux_test.go",
-		"internal/release/infrastructure/signing/source_release_native_linux_test.go":
+	case "internal/domain/release/infrastructure/signing/descriptor_release_native_linux_test.go",
+		"internal/domain/release/infrastructure/signing/forwarding_release_native_linux_test.go",
+		"internal/domain/release/infrastructure/signing/join_release_native_linux_test.go",
+		"internal/domain/release/infrastructure/signing/source_release_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/platform/systemd", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/platform/systemd", modulePath + "/internal/domain/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/release/infrastructure/signing/node_release_linux.go",
-		"internal/release/infrastructure/signing/source_release_linux.go":
+	case "internal/domain/release/infrastructure/signing/node_release_linux.go",
+		"internal/domain/release/infrastructure/signing/source_release_linux.go":
 		switch dependency {
-		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/domain/release", modulePath + "/internal/domain/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/release/infrastructure/signing/node_release_plan_linux.go",
-		"internal/release/infrastructure/signing/source_release_plan_linux.go":
+	case "internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
+		"internal/domain/release/infrastructure/signing/source_release_plan_linux.go":
 		switch dependency {
-		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/systemd", modulePath + "/internal/release/infrastructure":
+		case modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/systemd", modulePath + "/internal/domain/release/infrastructure":
 			return true
 		}
-	case "internal/release/infrastructure/signing/node_release_predecessor_linux.go",
-		"internal/release/infrastructure/signing/source_release_predecessor_linux.go":
+	case "internal/domain/release/infrastructure/signing/node_release_predecessor_linux.go",
+		"internal/domain/release/infrastructure/signing/source_release_predecessor_linux.go":
 		switch dependency {
-		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/domain/release", modulePath + "/internal/domain/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/release/infrastructure/signing/source_release_coherence_native_linux_test.go":
+	case "internal/domain/release/infrastructure/signing/source_release_coherence_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/platform/artifacts", modulePath + "/internal/domain/release", modulePath + "/internal/domain/release/infrastructure", "github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/release/infrastructure/signing/source_release_timestamp_native_linux_test.go":
+	case "internal/domain/release/infrastructure/signing/source_release_timestamp_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/release", modulePath + "/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case modulePath + "/internal/domain/release", modulePath + "/internal/domain/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
 	case "internal/domain/node/provisioning/network_artifact_preparation.go":
@@ -247,8 +247,8 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/admission/issuance/artifact_export_unix.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "cmd/ardents-next/infrastructure_operator.go":
-		return dependency == modulePath+"/internal/domain/node/provisioning" || dependency == modulePath+"/internal/release/infrastructure" ||
-			dependency == modulePath+"/internal/release/infrastructure/signing"
+		return dependency == modulePath+"/internal/domain/node/provisioning" || dependency == modulePath+"/internal/domain/release/infrastructure" ||
+			dependency == modulePath+"/internal/domain/release/infrastructure/signing"
 	}
 	return false
 }

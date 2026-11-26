@@ -65,8 +65,8 @@ github.com/dianabuilds/ardents-network/internal/endpoint/funding
 github.com/dianabuilds/ardents-network/internal/endpoint/reader
 github.com/dianabuilds/ardents-network/internal/endpoint/publisher
 github.com/dianabuilds/ardents-network/internal/route/prefix
-github.com/dianabuilds/ardents-network/internal/release
-github.com/dianabuilds/ardents-network/internal/release/endpoint
+github.com/dianabuilds/ardents-network/internal/domain/release
+github.com/dianabuilds/ardents-network/internal/domain/release/endpoint
 github.com/dianabuilds/ardents-network/internal/endpoint/launch
 github.com/dianabuilds/ardents-network/internal/endpoint/plan
 github.com/dianabuilds/ardents-network/internal/domain/execution
@@ -87,10 +87,10 @@ github.com/dianabuilds/ardents-network/internal/domain/node
 github.com/dianabuilds/ardents-network/internal/domain/node/command
 github.com/dianabuilds/ardents-network/internal/connection/wire
 github.com/dianabuilds/ardents-network/internal/endpoint/session
-github.com/dianabuilds/ardents-network/internal/release/infrastructure
-github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch
+github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure
+github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch
 github.com/dianabuilds/ardents-network/internal/endpoint
 github.com/dianabuilds/ardents-network/internal/domain/node/provisioning
 github.com/dianabuilds/ardents-network/internal/platform/artifacts
-github.com/dianabuilds/ardents-network/internal/release/infrastructure/signing
+github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing
 github.com/dianabuilds/ardents-network/internal/platform/launch

@@ -8,19 +8,19 @@ package architecture
 // and detached inventory accessors retired with the orchestration.
 func descriptorInitialImportAllowed(source, dependency string) bool {
 	switch source {
-	case "internal/release/infrastructure/signing/descriptor_release_native_linux_test.go":
+	case "internal/domain/release/infrastructure/signing/descriptor_release_native_linux_test.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+		case "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go":
+	case "internal/domain/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/release/infrastructure":
+		case "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure":
 			return true
 		}
-	case "internal/release/infrastructure/descriptor_admission.go":
+	case "internal/domain/release/infrastructure/descriptor_admission.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/domain/enrollment", "github.com/dianabuilds/ardents-network/internal/release":
+		case "github.com/dianabuilds/ardents-network/internal/domain/enrollment", "github.com/dianabuilds/ardents-network/internal/domain/release":
 			return true
 		}
 	}

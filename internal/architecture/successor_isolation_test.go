@@ -83,9 +83,9 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/enrollment/infrastructure_process_linux.go",
 			"internal/platform/systemd/infrastructure_prestart_linux.go",
 			"internal/platform/systemd/infrastructure_prestart_linux_test.go",
-			"internal/release/infrastructure/admission.go",
-			"internal/release/infrastructure/source_release_inspection_linux.go",
-			"internal/release/infrastructure/preparation_linux.go",
+			"internal/domain/release/infrastructure/admission.go",
+			"internal/domain/release/infrastructure/source_release_inspection_linux.go",
+			"internal/domain/release/infrastructure/preparation_linux.go",
 			"internal/platform/cgroup/source_quiescence_linux.go",
 			"internal/network/state/source_inspection_linux.go",
 			"internal/network/state/source_preparation_linux.go",
@@ -109,22 +109,22 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/network/source/inspection/inspection_linux.go",
 			"internal/network/source/inspection/inspection_linux_test.go",
 			"tests/e2e/source/inspection_linux_test.go",
-			"internal/release/infrastructure/command_linux.go",
-			"internal/release/infrastructure/signing/command_linux.go",
-			"internal/release/infrastructure/signing/join_release_keys_linux.go",
-			"internal/release/infrastructure/signing/infrastructure_release_keys_linux.go",
-			"internal/release/infrastructure/signing/node_release_plan_linux.go",
-			"internal/release/infrastructure/signing/node_release_arguments_linux.go",
-			"internal/release/infrastructure/signing/node_release_linux.go",
-			"internal/release/infrastructure/signing/node_release_predecessor_linux.go",
-			"internal/release/infrastructure/signing/join_release_plan_linux_test.go",
-			"internal/release/infrastructure/join_admission.go",
+			"internal/domain/release/infrastructure/command_linux.go",
+			"internal/domain/release/infrastructure/signing/command_linux.go",
+			"internal/domain/release/infrastructure/signing/join_release_keys_linux.go",
+			"internal/domain/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+			"internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
+			"internal/domain/release/infrastructure/signing/node_release_arguments_linux.go",
+			"internal/domain/release/infrastructure/signing/node_release_linux.go",
+			"internal/domain/release/infrastructure/signing/node_release_predecessor_linux.go",
+			"internal/domain/release/infrastructure/signing/join_release_plan_linux_test.go",
+			"internal/domain/release/infrastructure/join_admission.go",
 			"internal/platform/artifacts/output_linux.go",
-			"internal/release/infrastructure/signing/source_release_linux.go",
-			"internal/release/infrastructure/signing/source_release_predecessor_linux.go",
-			"internal/release/infrastructure/signing/source_release_keys_linux.go",
-			"internal/release/infrastructure/signing/source_release_plan_linux.go",
-			"internal/release/infrastructure/signing/source_release_plan_linux_test.go",
+			"internal/domain/release/infrastructure/signing/source_release_linux.go",
+			"internal/domain/release/infrastructure/signing/source_release_predecessor_linux.go",
+			"internal/domain/release/infrastructure/signing/source_release_keys_linux.go",
+			"internal/domain/release/infrastructure/signing/source_release_plan_linux.go",
+			"internal/domain/release/infrastructure/signing/source_release_plan_linux_test.go",
 			"internal/domain/node/provisioning/source_initial_keys_linux.go",
 			"internal/domain/node/provisioning/source_initial_network_linux.go",
 			"internal/domain/node/provisioning/source_initial_network_linux_test.go",
@@ -134,8 +134,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/systemd/node_slots_linux_test.go",
 			"internal/platform/systemd/source_object_linux_test.go",
 			"internal/platform/systemd/source_manager_linux.go",
-			"internal/release/history_binding_linux.go",
-			"internal/release/history_binding_linux_test.go",
+			"internal/domain/release/history_binding_linux.go",
+			"internal/domain/release/history_binding_linux_test.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -148,12 +148,12 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		}
 		for _, name := range []string{
 			"internal/platform/systemd/infrastructure_unit_template.go",
-			"internal/release/infrastructure/doc.go",
-			"internal/release/infrastructure/artifact.go",
-			"internal/release/infrastructure/artifact_test.go",
-			"internal/release/infrastructure/descriptor_artifact.go",
-			"internal/release/infrastructure/forwarding_artifact.go",
-			"internal/release/infrastructure/join_artifact.go",
+			"internal/domain/release/infrastructure/doc.go",
+			"internal/domain/release/infrastructure/artifact.go",
+			"internal/domain/release/infrastructure/artifact_test.go",
+			"internal/domain/release/infrastructure/descriptor_artifact.go",
+			"internal/domain/release/infrastructure/forwarding_artifact.go",
+			"internal/domain/release/infrastructure/join_artifact.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -168,8 +168,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		// behavior test on every mandatory target. The native history binding
 		// above stays Linux-only.
 		for _, name := range []string{
-			"internal/release/static_metadata.go",
-			"internal/release/static_metadata_test.go",
+			"internal/domain/release/static_metadata.go",
+			"internal/domain/release/static_metadata_test.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -186,9 +186,9 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 			for _, name := range []string{
 				"internal/network/state/source_inspection_native_linux_test.go",
-				"internal/release/infrastructure/preparation_native_linux_test.go",
-				"internal/release/infrastructure/signing/join_release_native_linux_test.go",
-				"internal/release/infrastructure/signing/join_forward_release_native_linux_test.go",
+				"internal/domain/release/infrastructure/preparation_native_linux_test.go",
+				"internal/domain/release/infrastructure/signing/join_release_native_linux_test.go",
+				"internal/domain/release/infrastructure/signing/join_forward_release_native_linux_test.go",
 				"internal/network/state/node_inspection_native_linux_test.go",
 				"internal/network/duty/inspection_native_linux_test.go",
 				"internal/admission/spending/inspection_native_linux_test.go",
@@ -400,7 +400,7 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/domain/node/provisioning/network_profile_signing_unix.go",
 			"internal/domain/node/provisioning/network_profile_signing_test.go",
 			"internal/domain/node/provisioning/network_signing_fixture_unix_test.go",
-			"internal/release/infrastructure/signing/release_key_receipt_unix.go",
+			"internal/domain/release/infrastructure/signing/release_key_receipt_unix.go",
 			"internal/platform/artifacts/flag_options_unix.go",
 			"internal/network/closedprofile/signing_transcript_unix.go",
 		} {
@@ -433,14 +433,14 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/platform/artifacts/protected_storage_linux.go",
 			"internal/domain/enrollment/infrastructure_inventory.go",
 			"internal/domain/enrollment/infrastructure_process_linux.go",
-			"internal/release/infrastructure/preparation_linux.go",
-			"internal/release/infrastructure/admission.go",
-			"internal/release/infrastructure/source_release_inspection_linux.go",
-			"internal/release/infrastructure/signing/node_release_linux.go",
-			"internal/release/infrastructure/signing/source_release_linux.go",
-			"internal/release/infrastructure/signing/node_release_plan_linux.go",
-			"internal/release/infrastructure/signing/source_release_plan_linux.go",
-			"internal/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+			"internal/domain/release/infrastructure/preparation_linux.go",
+			"internal/domain/release/infrastructure/admission.go",
+			"internal/domain/release/infrastructure/source_release_inspection_linux.go",
+			"internal/domain/release/infrastructure/signing/node_release_linux.go",
+			"internal/domain/release/infrastructure/signing/source_release_linux.go",
+			"internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
+			"internal/domain/release/infrastructure/signing/source_release_plan_linux.go",
+			"internal/domain/release/infrastructure/signing/infrastructure_release_keys_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -1031,7 +1031,7 @@ func isMigratedDomain(name string) bool {
 		"internal/admission", "internal/canonicaldigest", "internal/connection", "internal/domain/custody", "internal/durablefile", "internal/endpoint",
 		"internal/domain/enrollment", "internal/domain/execution", "internal/domain/hosting", "internal/network", "internal/domain/node",
 		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/domain/publication",
-		"internal/reachability", "internal/release", "internal/route",
+		"internal/reachability", "internal/domain/release", "internal/route",
 	} {
 		if name == root || strings.HasPrefix(name, root+"/") {
 			return true
@@ -1057,16 +1057,16 @@ func successorImportAllowed(source, dependency string) bool {
 		return false
 	}
 	switch source {
-	case "internal/release/infrastructure/infrastructure_inventory_refusal_linux_test.go":
+	case "internal/domain/release/infrastructure/infrastructure_inventory_refusal_linux_test.go":
 		if dependency == modulePath+"/tests/releasefixture" {
 			return true
 		}
-	case "internal/release/infrastructure/source_release_linux_test.go":
+	case "internal/domain/release/infrastructure/source_release_linux_test.go":
 		if dependency == modulePath+"/tests/releasefixture" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
 	}
-	if source == "internal/release/infrastructure/platform_release_linux_test.go" {
+	if source == "internal/domain/release/infrastructure/platform_release_linux_test.go" {
 		switch dependency {
 		case modulePath + "/internal/network/duty", modulePath + "/internal/network/state",
 			modulePath + "/internal/platform/systemd", modulePath + "/tests/epochfixture/network",
@@ -1191,7 +1191,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && (source == "tests/e2e/node/descriptor_platform_native_linux_test.go" || source == "tests/e2e/node/forwarding_platform_native_linux_test.go" || source == "tests/e2e/node/join_platform_native_linux_test.go") {
 		switch local {
 		case "internal/admission", "internal/domain/hosting", "internal/network/duty", "internal/network/state", "internal/platform/systemd",
-			"internal/processresource", "internal/reachability", "internal/release/infrastructure", "internal/release/infrastructure/launch",
+			"internal/processresource", "internal/reachability", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
 			"tests/e2e/node/processfixture", "tests/epochfixture/network", "tests/networkfixture", "tests/releasefixture":
 			return true
 		}
@@ -1199,7 +1199,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && source == "tests/e2e/node/introduction_repair_platform_native_linux_test.go" {
 		switch local {
 		case "internal/domain/hosting", "internal/network/duty", "internal/network/state", "internal/platform/systemd",
-			"internal/processresource", "internal/release/infrastructure", "internal/release/infrastructure/launch",
+			"internal/processresource", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
 			"tests/e2e/node/processfixture", "tests/epochfixture/network", "tests/networkfixture", "tests/releasefixture":
 			return true
 		default:
@@ -1354,24 +1354,24 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	if source == "tests/releasefixture/infrastructure_linux.go" && (dependency == modulePath+"/internal/domain/enrollment" || dependency == modulePath+"/internal/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+	if source == "tests/releasefixture/infrastructure_linux.go" && (dependency == modulePath+"/internal/domain/enrollment" || dependency == modulePath+"/internal/domain/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 		return true
 	}
-	if (source == "internal/release/infrastructure/forwarding_artifact_linux_test.go" || source == "internal/release/infrastructure/authorization_lifetime_linux_test.go") && dependency == modulePath+"/internal/release/infrastructure" {
+	if (source == "internal/domain/release/infrastructure/forwarding_artifact_linux_test.go" || source == "internal/domain/release/infrastructure/authorization_lifetime_linux_test.go") && dependency == modulePath+"/internal/domain/release/infrastructure" {
 		return true
 	}
 	// Independent signed Release data is shared only by these test owners.
 	if localImport && local == "tests/releasefixture" {
 		switch source {
-		case "internal/release/infrastructure/authorization_lifetime_linux_test.go",
-			"internal/release/infrastructure/forwarding_artifact_linux_test.go",
+		case "internal/domain/release/infrastructure/authorization_lifetime_linux_test.go",
+			"internal/domain/release/infrastructure/forwarding_artifact_linux_test.go",
 			"tests/e2e/node/infrastructure_preparation_native_linux_test.go",
-			"internal/release/endpoint/authorization_integration_test.go", "internal/release/endpoint/execution_artifact_test.go",
+			"internal/domain/release/endpoint/authorization_integration_test.go", "internal/domain/release/endpoint/execution_artifact_test.go",
 			"tests/e2e/node/descriptor_platform_native_linux_test.go", "tests/e2e/endpoint/journey_participant_linux.go",
 			"tests/e2e/node/forwarding_platform_native_linux_test.go", "tests/e2e/node/join_platform_native_linux_test.go",
 			"tests/e2e/endpoint/endpoint_platform_native_linux_test.go", "tests/e2e/endpoint/native_delivery_linux.go", "tests/e2e/endpoint/launch_releases_linux.go",
 			"tests/e2e/endpoint/release_process_test.go",
-			"internal/release/infrastructure/platform_release_linux_test.go", "tests/e2e/node/source_installed_native_linux_test.go",
+			"internal/domain/release/infrastructure/platform_release_linux_test.go", "tests/e2e/node/source_installed_native_linux_test.go",
 			"tests/e2e/node/source_lifecycle_native_linux_test.go", "tests/e2e/node/source_release_linux_test.go":
 			return true
 		default:
@@ -1395,7 +1395,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "tests/e2e/node/infrastructure_preparation_native_linux_test.go" && localImport {
 		return local == "tests/e2e/node" || local == "tests/e2e/source"
 	}
-	if source == "internal/release/infrastructure/preparation_native_linux_test.go" && localImport {
+	if source == "internal/domain/release/infrastructure/preparation_native_linux_test.go" && localImport {
 		return local == "internal/platform/artifacts"
 	}
 	if localImport && local == "tests/e2e/node/processfixture" {
@@ -1524,7 +1524,7 @@ func successorImportAllowed(source, dependency string) bool {
 				dependency == "go.opentelemetry.io/proto/otlp/collector/metrics/v1" ||
 				dependency == "go.opentelemetry.io/proto/otlp/collector/trace/v1" || dependency == "google.golang.org/protobuf/proto"
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
-			return dependency == "github.com/dianabuilds/ardents-network/internal/domain/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/release" || dependency == "github.com/dianabuilds/ardents-network/internal/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
+			return dependency == "github.com/dianabuilds/ardents-network/internal/domain/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
 		case "tests/e2e/node/network_commands_unix_test.go":
 			return dependency == modulePath+"/internal/admission" || dependency == modulePath+"/internal/admission/quota" ||
 				dependency == modulePath+"/internal/admission/receiving" || dependency == modulePath+"/internal/admission/stock" ||
@@ -1588,7 +1588,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return local == "internal/network/duty" || local == "internal/network/epoch" ||
 				local == "internal/network/source" || local == "internal/network/source/servingdeclaration" ||
 				local == "internal/network/state" || local == "internal/platform/systemd" ||
-				local == "internal/release/infrastructure" || local == "internal/release/infrastructure/launch" ||
+				local == "internal/domain/release/infrastructure" || local == "internal/domain/release/infrastructure/launch" ||
 				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/epochfixture/network"
 		case "tests/e2e/node/source_preparation_native_linux_test.go":
 			return local == "internal/endpoint" || local == "tests/e2e/source"
@@ -1703,12 +1703,12 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport {
 		switch source {
 		case "tests/e2e/endpoint/endpoint_platform_native_linux_test.go":
-			return local == "internal/domain/enrollment" || local == "internal/release" ||
-				local == "internal/release/endpoint" || local == "internal/release/infrastructure/launch" ||
+			return local == "internal/domain/enrollment" || local == "internal/domain/release" ||
+				local == "internal/domain/release/endpoint" || local == "internal/domain/release/infrastructure/launch" ||
 				local == "internal/endpoint/plan" || local == "internal/endpoint/unit" ||
 				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/e2e/endpoint"
 		case "tests/e2e/endpoint/native_delivery_linux.go":
-			return local == "internal/endpoint/plan" || local == "internal/release/infrastructure/launch"
+			return local == "internal/endpoint/plan" || local == "internal/domain/release/infrastructure/launch"
 		case "tests/e2e/endpoint/journey_participant_native_linux_test.go":
 			return local == "tests/e2e/endpoint" || local == "internal/application/administration" || local == "internal/application/connection" || local == "internal/application/document"
 		case "tests/e2e/endpoint/journey_participant_linux.go":
@@ -2001,7 +2001,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if source == "scripts/sign-qualification-release.go" {
 		switch dependency {
-		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/release",
+		case modulePath + "/internal/domain/enrollment", modulePath + "/internal/domain/release",
 			"github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata", "golang.org/x/sys/unix":
 			return true
 		}
@@ -2028,7 +2028,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	switch source {
 	case "cmd/ardents-next/platform_endpoint_staging_linux.go":
-		if local == "internal/endpoint/launch" || local == "internal/release" {
+		if local == "internal/endpoint/launch" || local == "internal/domain/release" {
 			return true
 		}
 	case "cmd/ardents-next/platform_endpoint_linux.go":
@@ -2041,15 +2041,15 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "cmd/ardents-next/platform_linux.go":
-		if local == "internal/release/infrastructure/launch" || local == "internal/platform/artifacts" {
+		if local == "internal/domain/release/infrastructure/launch" || local == "internal/platform/artifacts" {
 			return true
 		}
 	case "cmd/ardents-next/node.go", "cmd/ardents-next/source_command.go":
-		if local == "internal/release/infrastructure/launch" {
+		if local == "internal/domain/release/infrastructure/launch" {
 			return true
 		}
 	case "cmd/ardents-next/release.go":
-		if local == "internal/release/endpoint" {
+		if local == "internal/domain/release/endpoint" {
 			return true
 		}
 	case "cmd/ardents-next/platform.go":
@@ -2156,14 +2156,14 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "cmd/ardents-next/infrastructure_operator.go":
-			if local == "internal/release/infrastructure" {
+			if local == "internal/domain/release/infrastructure" {
 				return true
 			}
 		case "internal/admission/issuer/current_authority.go", "internal/admission/receiving/current_authority.go":
 			if local == "internal/network" {
 				return true
 			}
-		case "internal/release/infrastructure/command_linux.go":
+		case "internal/domain/release/infrastructure/command_linux.go":
 			if local == "internal/platform/artifacts" {
 				return true
 			}
@@ -2172,7 +2172,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "internal/platform/launch/native_linux.go":
-			if local == "internal/endpoint/launch" || local == "internal/platform/artifacts" || local == "internal/platform/systemd" || local == "internal/release" || local == "internal/release/infrastructure/launch" {
+			if local == "internal/endpoint/launch" || local == "internal/platform/artifacts" || local == "internal/platform/systemd" || local == "internal/domain/release" || local == "internal/domain/release/infrastructure/launch" {
 				return true
 			}
 		case "internal/endpoint/launch/platform_pin_linux_test.go":
@@ -2259,7 +2259,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/admission/issuance/result_declaration.go" || source == "internal/domain/hosting/command_declaration.go" || source == "internal/admission/issuer/profile_declaration.go") && dependency == modulePath+"/internal/platform/artifacts" {
 		return true
 	}
-	if source == "internal/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
+	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
 		return true
 	}
 	if dependency == modulePath+"/internal/domain/node/provisioning" {
@@ -2271,55 +2271,55 @@ func successorImportAllowed(source, dependency string) bool {
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
-		"internal/processresource":                   {},
-		"internal/canonicaldigest":                   {},
-		"internal/durablefile":                       {},
-		"internal/pathgrammar":                       {},
-		"internal/domain/node":                       {"admission", "admission/receiving", "durablefile", "domain/hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
-		"internal/network":                           {},
-		"internal/network/canonicalcursor":           {},
-		"internal/network/closedprofile":             {"network/canonicalcursor"},
-		"internal/network/duty":                      {"durablefile", "pathgrammar"},
-		"internal/network/epoch":                     {"network/canonicalcursor"},
-		"internal/network/source":                    {"network/canonicalcursor", "network/epoch"},
-		"internal/network/source/serving":            {"network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "processresource"},
-		"internal/network/source/servingdeclaration": {},
-		"internal/network/state":                     {"network/canonicalcursor", "canonicaldigest", "network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
-		"internal/network/state/durable":             {"durablefile", "pathgrammar"},
-		"internal/admission":                         {"admission/issuerprofile"},
-		"internal/admission/issuerprofile":           {},
-		"internal/admission/allocation":              {"admission"},
-		"internal/domain/custody":                    {"admission", "admission/allocation", "domain/publication"},
-		"internal/admission/attempts":                {"pathgrammar"},
-		"internal/admission/spending":                {"pathgrammar"},
-		"internal/admission/token":                   {"admission", "admission/issuerprofile"},
-		"internal/admission/receiving":               {"admission", "admission/token", "admission/spending", "platform/artifacts"},
-		"internal/admission/stock":                   {"admission", "admission/allocation", "admission/attempts", "admission/token"},
-		"internal/admission/quota":                   {"admission", "admission/issuerprofile", "pathgrammar"},
-		"internal/admission/issuance":                {"canonicaldigest", "admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
-		"internal/admission/operator":                {"admission", "admission/issuance", "admission/issuer", "admission/quota", "platform/artifacts"},
-		"internal/admission/issuer":                  {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing", "pathgrammar"},
-		"internal/admission/issuerprofile/signing":   {"admission/issuerprofile", "pathgrammar"},
-		"internal/domain/hosting":                    {"canonicaldigest", "pathgrammar"},
-		"internal/domain/publication":                {},
-		"internal/domain/publication/durable":        {"domain/publication"},
-		"internal/domain/publication/instance":       {"canonicaldigest", "domain/publication", "domain/publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "domain/execution/runtime"},
-		"internal/domain/publication/runtime":        {"connection", "domain/execution/runtime", "network", "domain/publication", "domain/publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
-		"internal/connection":                        {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "route/capsule", "route/join", "connection/wire"},
-		"internal/connection/wire":                   {},
-		"internal/reachability":                      {"domain/publication", "pathgrammar"},
-		"internal/domain/enrollment":                 {"canonicaldigest", "pathgrammar"},
-		"internal/release":                           {"canonicaldigest", "durablefile", "pathgrammar"},
-		"internal/domain/execution":                  {},
-		"internal/domain/execution/runtime":          {"domain/execution", "domain/execution/worker"},
-		"internal/domain/execution/worker":           {"platform/systemd", "endpoint/unit", "canonicaldigest", "pathgrammar"},
-		"internal/release/endpoint":                  {"domain/enrollment", "release"},
-		"internal/release/infrastructure":            {"canonicaldigest", "domain/enrollment", "release", "pathgrammar"},
-		"internal/release/infrastructure/launch":     {"admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "release", "release/infrastructure"},
-		"internal/endpoint/launch":                   {"release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
-		"internal/platform/cgroup":                   {"pathgrammar"},
-		"internal/platform/artifacts":                {"durablefile", "pathgrammar"},
-		"internal/endpoint/plan":                     {"canonicaldigest", "durablefile"},
+		"internal/processresource":                      {},
+		"internal/canonicaldigest":                      {},
+		"internal/durablefile":                          {},
+		"internal/pathgrammar":                          {},
+		"internal/domain/node":                          {"admission", "admission/receiving", "durablefile", "domain/hosting", "network", "network/duty", "pathgrammar", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/network":                              {},
+		"internal/network/canonicalcursor":              {},
+		"internal/network/closedprofile":                {"network/canonicalcursor"},
+		"internal/network/duty":                         {"durablefile", "pathgrammar"},
+		"internal/network/epoch":                        {"network/canonicalcursor"},
+		"internal/network/source":                       {"network/canonicalcursor", "network/epoch"},
+		"internal/network/source/serving":               {"network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "processresource"},
+		"internal/network/source/servingdeclaration":    {},
+		"internal/network/state":                        {"network/canonicalcursor", "canonicaldigest", "network/closedprofile", "network/duty", "network/epoch", "network/source", "network/source/servingdeclaration", "network/state/durable", "pathgrammar"},
+		"internal/network/state/durable":                {"durablefile", "pathgrammar"},
+		"internal/admission":                            {"admission/issuerprofile"},
+		"internal/admission/issuerprofile":              {},
+		"internal/admission/allocation":                 {"admission"},
+		"internal/domain/custody":                       {"admission", "admission/allocation", "domain/publication"},
+		"internal/admission/attempts":                   {"pathgrammar"},
+		"internal/admission/spending":                   {"pathgrammar"},
+		"internal/admission/token":                      {"admission", "admission/issuerprofile"},
+		"internal/admission/receiving":                  {"admission", "admission/token", "admission/spending", "platform/artifacts"},
+		"internal/admission/stock":                      {"admission", "admission/allocation", "admission/attempts", "admission/token"},
+		"internal/admission/quota":                      {"admission", "admission/issuerprofile", "pathgrammar"},
+		"internal/admission/issuance":                   {"canonicaldigest", "admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing", "pathgrammar"},
+		"internal/admission/operator":                   {"admission", "admission/issuance", "admission/issuer", "admission/quota", "platform/artifacts"},
+		"internal/admission/issuer":                     {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing", "pathgrammar"},
+		"internal/admission/issuerprofile/signing":      {"admission/issuerprofile", "pathgrammar"},
+		"internal/domain/hosting":                       {"canonicaldigest", "pathgrammar"},
+		"internal/domain/publication":                   {},
+		"internal/domain/publication/durable":           {"domain/publication"},
+		"internal/domain/publication/instance":          {"canonicaldigest", "domain/publication", "domain/publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "domain/execution/runtime"},
+		"internal/domain/publication/runtime":           {"connection", "domain/execution/runtime", "network", "domain/publication", "domain/publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
+		"internal/connection":                           {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "route/capsule", "route/join", "connection/wire"},
+		"internal/connection/wire":                      {},
+		"internal/reachability":                         {"domain/publication", "pathgrammar"},
+		"internal/domain/enrollment":                    {"canonicaldigest", "pathgrammar"},
+		"internal/domain/release":                       {"canonicaldigest", "durablefile", "pathgrammar"},
+		"internal/domain/execution":                     {},
+		"internal/domain/execution/runtime":             {"domain/execution", "domain/execution/worker"},
+		"internal/domain/execution/worker":              {"platform/systemd", "endpoint/unit", "canonicaldigest", "pathgrammar"},
+		"internal/domain/release/endpoint":              {"domain/enrollment", "domain/release"},
+		"internal/domain/release/infrastructure":        {"canonicaldigest", "domain/enrollment", "domain/release", "pathgrammar"},
+		"internal/domain/release/infrastructure/launch": {"admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "network/source/serving", "network/source/servingdeclaration", "network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
+		"internal/endpoint/launch":                      {"domain/release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "domain/release", "platform/cgroup", "platform/systemd", "platform/process", "endpoint/generation", "endpoint/unit", "endpoint/plan"},
+		"internal/platform/cgroup":                      {"pathgrammar"},
+		"internal/platform/artifacts":                   {"durablefile", "pathgrammar"},
+		"internal/endpoint/plan":                        {"canonicaldigest", "durablefile"},
 
 		"internal/platform/systemd":    {},
 		"internal/platform/process":    {"canonicaldigest", "pathgrammar"},
@@ -2451,7 +2451,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 
 		if source == "cmd/ardents-next/infrastructure_linux.go" {
-			return dependency == modulePath+"/internal/release/infrastructure" || dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/platform/artifacts"
+			return dependency == modulePath+"/internal/domain/release/infrastructure" || dependency == modulePath+"/internal/domain/release" || dependency == modulePath+"/internal/platform/artifacts"
 		}
 		if dependency == modulePath+"/internal/domain/enrollment" && source == "cmd/ardents-next/enrollment.go" {
 			return true
@@ -2494,37 +2494,37 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
-		if source == "internal/release/infrastructure/source_plan_linux.go" && dependency == modulePath+"/internal/network/source" {
+		if source == "internal/domain/release/infrastructure/source_plan_linux.go" && dependency == modulePath+"/internal/network/source" {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_startup_linux.go" && (dependency == modulePath+"/internal/platform/process" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_startup_linux.go" && (dependency == modulePath+"/internal/platform/process" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_start_linux.go" && (dependency == modulePath+"/internal/platform/process" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_start_linux.go" && (dependency == modulePath+"/internal/platform/process" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_replace_linux.go" && (dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_replace_linux.go" && (dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if (source == "internal/release/infrastructure/source_recover_linux.go" || source == "internal/release/infrastructure/source_initial_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
+		if (source == "internal/domain/release/infrastructure/source_recover_linux.go" || source == "internal/domain/release/infrastructure/source_initial_linux.go") && dependency == modulePath+"/internal/platform/systemd" {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_recover_linux.go" && dependency == modulePath+"/internal/network/state" {
+		if source == "internal/domain/release/infrastructure/source_recover_linux.go" && dependency == modulePath+"/internal/network/state" {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_recover_replacement_linux.go" && (dependency == modulePath+"/internal/release" || dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_recover_replacement_linux.go" && (dependency == modulePath+"/internal/domain/release" || dependency == modulePath+"/internal/network/state" || dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_recovery_completed_linux.go" && (dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_recovery_completed_linux.go" && (dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_retirement_history_linux.go" && (dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_retirement_history_linux.go" && (dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if source == "internal/release/infrastructure/source_stop_linux.go" && (dependency == modulePath+"/internal/platform/process" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
+		if source == "internal/domain/release/infrastructure/source_stop_linux.go" && (dependency == modulePath+"/internal/platform/process" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/systemd") {
 			return true
 		}
-		if (source == "internal/release/infrastructure/source_observation_linux.go" || source == "internal/release/infrastructure/source_install_linux.go" || source == "internal/release/infrastructure/source_loaded_linux.go" || source == "internal/release/infrastructure/source_policy_linux_test.go" || source == "internal/release/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
+		if (source == "internal/domain/release/infrastructure/source_observation_linux.go" || source == "internal/domain/release/infrastructure/source_install_linux.go" || source == "internal/domain/release/infrastructure/source_loaded_linux.go" || source == "internal/domain/release/infrastructure/source_policy_linux_test.go" || source == "internal/domain/release/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 			return true
 		}
 		if dependency == modulePath+"/internal/network/source/servingdeclaration" &&
@@ -2666,26 +2666,26 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/publication/durable/lease_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	if source == "internal/release/history_native_windows.go" && dependency == "golang.org/x/sys/windows" {
+	if source == "internal/domain/release/history_native_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	if owner == "internal/release" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+	if owner == "internal/domain/release" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 		switch source {
-		case "internal/release/metadata_authentication.go", "internal/release/target_identity.go", "internal/release/safety_policy.go", "internal/release/floor_encoding.go":
+		case "internal/domain/release/metadata_authentication.go", "internal/domain/release/target_identity.go", "internal/domain/release/safety_policy.go", "internal/domain/release/floor_encoding.go":
 			return true
 		}
 	}
-	if source == "internal/release/metadata_authentication.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata/trustedmetadata" {
+	if source == "internal/domain/release/metadata_authentication.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata/trustedmetadata" {
 		return true
 	}
 	if strings.HasSuffix(source, "_test.go") {
-		if source == "internal/release/generation_authorization_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+		if source == "internal/domain/release/generation_authorization_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		if source == "internal/release/rotation_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if source == "internal/domain/release/rotation_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "internal/release/infrastructure/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+		if source == "internal/domain/release/infrastructure/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
 		if (owner == "internal/network/epoch" || owner == "internal/network/state" || owner == "cmd/ardents-next" || source == "internal/endpoint/history_preparation_linux_test.go" || source == "internal/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
@@ -2696,7 +2696,7 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 
-	if source == "internal/release/infrastructure/source_transition_scope_linux.go" && dependency == "golang.org/x/sys/unix" {
+	if source == "internal/domain/release/infrastructure/source_transition_scope_linux.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
 	if source == "internal/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
@@ -2751,7 +2751,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"public issuer inspection excludes Route", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/route/role", false},
 		{"adjacent Control has no inherited codec access", "internal/domain/node/provisioning/unregistered.go", modulePath + "/internal/admission/issuerprofile", false},
 		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/domain/enrollment", true},
-		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/release", true},
+		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/domain/release", true},
 		{"Endpoint release producer excludes retired Enrollment path", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/enrollment", false},
 		{"Endpoint release producer excludes retired Release path", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/release", false},
 		{"Endpoint release producer has no Network authority", "scripts/sign-qualification-release.go", modulePath + "/internal/network", false},
@@ -2766,13 +2766,13 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment.go", modulePath + "/internal/domain/enrollment", true},
 		{"packaging commands exclude retired Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/successor/enrollment", false},
 		{"standalone packaging helpers cannot consume Enrollment", "scripts/packaging-check.go", modulePath + "/internal/domain/enrollment", false},
-		{"packaging commands exclude Release authority", "cmd/ardents-next/enrollment.go", modulePath + "/internal/release", false},
+		{"packaging commands exclude Release authority", "cmd/ardents-next/enrollment.go", modulePath + "/internal/domain/release", false},
 		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/domain/enrollment", false},
-		{"Fixed Node Release signing uses exact artifact resources", "internal/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/release/infrastructure", true},
-		{"Fixed Node Release predecessor verifies genuine Release", "internal/release/infrastructure/signing/node_release_predecessor_linux.go", modulePath + "/internal/release", true},
-		{"JOIN key birth grants no Release observation", "internal/release/infrastructure/signing/join_release_keys_linux.go", modulePath + "/internal/release", false},
-		{"Fixed Node Release signing grants no Route consumer", "internal/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/route/role", false},
-		{"Fixed Node Release plan grants no State owner", "internal/release/infrastructure/signing/node_release_plan_linux.go", modulePath + "/internal/network/state", false},
+		{"Fixed Node Release signing uses exact artifact resources", "internal/domain/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/domain/release/infrastructure", true},
+		{"Fixed Node Release predecessor verifies genuine Release", "internal/domain/release/infrastructure/signing/node_release_predecessor_linux.go", modulePath + "/internal/domain/release", true},
+		{"JOIN key birth grants no Release observation", "internal/domain/release/infrastructure/signing/join_release_keys_linux.go", modulePath + "/internal/domain/release", false},
+		{"Fixed Node Release signing grants no Route consumer", "internal/domain/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/route/role", false},
+		{"Fixed Node Release plan grants no State owner", "internal/domain/release/infrastructure/signing/node_release_plan_linux.go", modulePath + "/internal/network/state", false},
 		{"delayed ACK fixture retains genuine installed operation", "internal/endpoint/publication_ack_installed_linux_test.go", modulePath + "/internal/domain/execution/runtime", true},
 		{"receiving Network fixture opens genuine State", "tests/networkfixture/independent_state.go", modulePath + "/internal/network/state", true},
 		{"receiving Network fixture has no Carrier dependency", "tests/networkfixture/independent_state.go", modulePath + "/internal/route/transport", false},
@@ -2842,14 +2842,14 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"native original manager reference owns bus client", "internal/platform/systemd/endpoint_reference_linux.go", "github.com/godbus/dbus/v5", true},
 		{"fresh Startup manager observation owns bus client", "internal/platform/systemd/startup_observation_linux.go", "github.com/godbus/dbus/v5", true},
 		{"read-only Node slot observer consumes physical D-Bus", "internal/platform/systemd/node_slots_linux.go", "github.com/godbus/dbus/v5", true},
-		{"read-only Node slot observer cannot authorize Release", "internal/platform/systemd/node_slots_linux.go", modulePath + "/internal/release", false},
+		{"read-only Node slot observer cannot authorize Release", "internal/platform/systemd/node_slots_linux.go", modulePath + "/internal/domain/release", false},
 		{"native Source reference regression checks genuine bus refusal", "internal/platform/systemd/source_reference_native_linux_test.go", "github.com/godbus/dbus/v5", true},
 		{"manager value validation excludes bus client", "internal/platform/systemd/manager_values_linux.go", "github.com/godbus/dbus/v5", false},
 		{"manager transport excludes bus client", "internal/platform/systemd/reference_transport_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Installation decisions exclude bus client", "internal/endpoint/launch/predecessor_linux.go", "github.com/godbus/dbus/v5", false},
-		{"portable authorization cannot own installed Endpoint", "internal/release/endpoint/generation_authentication.go", modulePath + "/internal/endpoint/launch", false},
-		{"portable authorization cannot own physical root", "internal/release/endpoint/generation_authentication.go", modulePath + "/internal/platform/cgroup", false},
-		{"installed Endpoint consumes opaque authorization", "internal/endpoint/launch/generation_authorization.go", modulePath + "/internal/release/endpoint", true},
+		{"portable authorization cannot own installed Endpoint", "internal/domain/release/endpoint/generation_authentication.go", modulePath + "/internal/endpoint/launch", false},
+		{"portable authorization cannot own physical root", "internal/domain/release/endpoint/generation_authentication.go", modulePath + "/internal/platform/cgroup", false},
+		{"installed Endpoint consumes opaque authorization", "internal/endpoint/launch/generation_authorization.go", modulePath + "/internal/domain/release/endpoint", true},
 		{"unregistered manager file excludes bus client", "internal/platform/systemd/other_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Reachability verifies public delegation", "internal/reachability/descriptor.go", modulePath + "/internal/domain/publication", true},
 		{"Prefix completes genuine private lookup", "internal/route/prefix/descriptor_exchange.go", modulePath + "/internal/reachability", true},
@@ -3064,19 +3064,19 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"prefix collision", "internal/admission/check.go", modulePath + "/internal/successorold", false},
 		{"unrelated", "internal/endpoint/runtime.go", "context", true},
 		{"relative", "internal/admission/check.go", "../admission", false},
-		{"Source publication control excludes State authority", "internal/release/infrastructure/source_canonical_publication_profile_native_linux_test.go", modulePath + "/internal/network/state", false},
-		{"Source startup native prefix excludes State authority", "internal/release/infrastructure/source_startup_physical_prefix_profile_native_linux_test.go", modulePath + "/internal/network/state", false},
-		{"Source startup observer excludes State authority", "internal/release/infrastructure/source_startup_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
-		{"Source retirement observer excludes State authority", "internal/release/infrastructure/source_retirement_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
+		{"Source publication control excludes State authority", "internal/domain/release/infrastructure/source_canonical_publication_profile_native_linux_test.go", modulePath + "/internal/network/state", false},
+		{"Source startup native prefix excludes State authority", "internal/domain/release/infrastructure/source_startup_physical_prefix_profile_native_linux_test.go", modulePath + "/internal/network/state", false},
+		{"Source startup observer excludes State authority", "internal/domain/release/infrastructure/source_startup_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
+		{"Source retirement observer excludes State authority", "internal/domain/release/infrastructure/source_retirement_physical_observer_native_linux_test.go", modulePath + "/internal/network/state", false},
 		{"Endpoint platform native qualification uses new Enrollment", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/enrollment", true},
-		{"Endpoint platform native qualification uses fresh Release", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/release", true},
-		{"Endpoint platform native qualification uses generation authorization", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/release/endpoint", true},
+		{"Endpoint platform native qualification uses fresh Release", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/release", true},
+		{"Endpoint platform native qualification uses generation authorization", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/release/endpoint", true},
 		{"Endpoint platform native qualification uses request grammar", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/plan", true},
 		{"Endpoint platform native qualification uses unit contract", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint/unit", true},
 		{"Endpoint platform native qualification excludes old Endpoint", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint platform native qualification excludes retired Release path", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
 		{"Endpoint platform native qualification has no Node runtime", "tests/e2e/endpoint/endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/node", false},
-		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/release", false},
+		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/domain/release", false},
 		{"Endpoint launch delegates Enrollment to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/domain/enrollment", false},
 		{"Endpoint launch delegates unit rendering to platform CLI", "tests/e2e/endpoint/launch_replacement_native_linux_test.go", modulePath + "/internal/endpoint/unit", false},
 		{"Endpoint launch roots use the Source bundle codec", "tests/e2e/endpoint/launch_roots_linux.go", modulePath + "/internal/network/source", true},

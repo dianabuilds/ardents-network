@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/release"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/domain/release/endpoint"
 )
 
 // Failure-only public-boundary checks provide no successful authority fixture.

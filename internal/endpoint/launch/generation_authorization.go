@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/domain/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/plan"
-	"github.com/dianabuilds/ardents-network/internal/release"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 // Authorization is the separately owned opaque pair consumed by installation.
