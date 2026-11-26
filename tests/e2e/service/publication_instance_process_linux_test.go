@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,7 +22,18 @@ func TestPublicationCompiledInstancePublicExchange(t *testing.T) {
 	command := buildProductCommand(t, "ardents-next")
 	run := func(success bool, args ...string) []byte {
 		t.Helper()
-		out, err := exec.CommandContext(t.Context(), command, append([]string{"publication"}, args...)...).CombinedOutput()
+		cmd := exec.CommandContext(t.Context(), command, append([]string{"publication"}, args...)...)
+		var diagnostic bytes.Buffer
+		cmd.Stderr = &diagnostic
+		out, err := cmd.Output()
+		outcome := "completed"
+		if !success {
+			outcome = "failed"
+		}
+		wantDiagnostic := fmt.Sprintf("{\"operation\":%q,\"phase\":\"command\",\"outcome\":%q}\n", "publication."+args[0], outcome)
+		if diagnostic.String() != wantDiagnostic {
+			t.Fatalf("instance observation: %q", &diagnostic)
+		}
 		if (err == nil) != success {
 			t.Fatalf("public exchange exit: %v", err)
 		}

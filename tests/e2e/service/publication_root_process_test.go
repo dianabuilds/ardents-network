@@ -10,6 +10,7 @@ package service_test
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +28,18 @@ func TestPublicationCompiledRootPreparation(t *testing.T) {
 	command := buildProductCommand(t, "ardents-next")
 	run := func(expected string, success bool) {
 		t.Helper()
-		out, err := exec.CommandContext(t.Context(), command, "publication", "prepare-root", root, target, network).CombinedOutput()
+		cmd := exec.CommandContext(t.Context(), command, "publication", "prepare-root", root, target, network)
+		var diagnostic bytes.Buffer
+		cmd.Stderr = &diagnostic
+		out, err := cmd.Output()
+		outcome := "completed"
+		if !success {
+			outcome = "failed"
+		}
+		wantDiagnostic := fmt.Sprintf("{\"operation\":\"publication.prepare-root\",\"phase\":\"command\",\"outcome\":%q}\n", outcome)
+		if diagnostic.String() != wantDiagnostic {
+			t.Fatalf("preparation observation: %q", &diagnostic)
+		}
 		if (err == nil) != success || string(out) != expected {
 			t.Fatalf("consumer: %s, %v", out, err)
 		}

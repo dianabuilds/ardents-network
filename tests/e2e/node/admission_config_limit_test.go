@@ -3,6 +3,7 @@ package node_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,8 +37,13 @@ func TestAdmissionAllocationConfigBound(t *testing.T) {
 			command := exec.CommandContext(t.Context(), binary, "admission", "allocate", "--config", scenario.path)
 			var output, diagnostic bytes.Buffer
 			command.Stdout, command.Stderr = &output, &diagnostic
+			outcome := "failed"
+			if scenario.code == 2 {
+				outcome = "usage-or-output-failure"
+			}
+			wantDiagnostic := fmt.Sprintf("{\"operation\":\"admission.allocate\",\"phase\":\"command\",\"outcome\":%q}\n", outcome)
 			var exit *exec.ExitError
-			if err := command.Run(); !errors.As(err, &exit) || exit.ExitCode() != scenario.code || output.Len() != 0 || diagnostic.Len() != 0 {
+			if err := command.Run(); !errors.As(err, &exit) || exit.ExitCode() != scenario.code || output.Len() != 0 || diagnostic.String() != wantDiagnostic {
 				t.Fatalf("config boundary: error=%v stdout=%q stderr=%q", err, output.String(), diagnostic.String())
 			}
 		})
