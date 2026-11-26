@@ -40,6 +40,8 @@ func TestNativePressureAndUnavailableIntervalDenyAdmission(t *testing.T) {
 		func(o *Observation) { o.MemoryBytes = 768 << 20 },
 		func(o *Observation) { o.RSSBytes = 768 << 20 },
 		func(o *Observation) { o.GoMemoryBytes = 512 << 20 },
+		func(o *Observation) { o.FDs = 1024 },
+		func(o *Observation) { o.Threads = 256 },
 		func(o *Observation) { o.CPUPressure = 1 },
 		func(o *Observation) { o.MemoryPressure = 0.01 },
 		func(o *Observation) { o.IOPressure = 1 },

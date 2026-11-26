@@ -141,14 +141,20 @@ func (pin *nativePin) placement() error {
 	if _, err := pin.group.Seek(0, 0); err != nil {
 		return err
 	}
-	for name, want := range map[string]string{"cpu.max": "100000 100000", "memory.high": "805306368", "memory.max": "1073741824", "pids.max": "256", "cgroup.procs": strconv.Itoa(pin.pid)} {
+	for name, want := range map[string]string{
+		"cpu.max":      "100000 100000",
+		"memory.high":  strconv.Itoa(memoryHighBytes),
+		"memory.max":   "1073741824",
+		"pids.max":     strconv.Itoa(threadLimit),
+		"cgroup.procs": strconv.Itoa(pin.pid),
+	} {
 		raw, err := pin.groupFile(name)
 		if err != nil || strings.TrimSpace(raw) != want {
 			return errors.Join(errors.New("original process profile placement differs"), err)
 		}
 	}
 	var limit syscall.Rlimit
-	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil || limit.Cur != 1024 || limit.Max != 1024 {
+	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil || limit.Cur != fileDescriptorLimit || limit.Max != fileDescriptorLimit {
 		return errors.Join(errors.New("original process file limit differs"), err)
 	}
 	if runtime.GOMAXPROCS(0) != 1 {
@@ -156,7 +162,7 @@ func (pin *nativePin) placement() error {
 	}
 	samples := []metrics.Sample{{Name: "/gc/gomemlimit:bytes"}}
 	metrics.Read(samples)
-	if samples[0].Value.Kind() != metrics.KindUint64 || samples[0].Value.Uint64() != 512<<20 {
+	if samples[0].Value.Kind() != metrics.KindUint64 || samples[0].Value.Uint64() != goMemoryLimitBytes {
 		return errors.New("original Go memory limit differs")
 	}
 	return nil
@@ -211,11 +217,11 @@ func (pin *nativePin) observe() (Observation, error) {
 	if err != nil {
 		return observation, err
 	}
-	observation.FDs, err = nativeCount(pin.procPath("fd"), 1024)
+	observation.FDs, err = nativeCount(pin.procPath("fd"), fileDescriptorLimit)
 	if err != nil {
 		return observation, err
 	}
-	observation.Threads, err = nativeCount(pin.procPath("task"), 256)
+	observation.Threads, err = nativeCount(pin.procPath("task"), threadLimit)
 	if err != nil {
 		return observation, err
 	}
