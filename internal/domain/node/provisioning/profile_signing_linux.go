@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 )
 
 // Only this fixed profile purpose may use the original matching State key.

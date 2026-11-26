@@ -20,14 +20,14 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
-	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 
-	sourceowner "github.com/dianabuilds/ardents-network/internal/network/source/serving"
+	sourceowner "github.com/dianabuilds/ardents-network/internal/domain/network/source/serving"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )

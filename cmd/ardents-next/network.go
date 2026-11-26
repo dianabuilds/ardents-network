@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 // Each operation owns its root lease. Epoch intake and profile acceptance are

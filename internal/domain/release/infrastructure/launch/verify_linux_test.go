@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 

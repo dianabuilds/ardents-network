@@ -14,8 +14,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 

@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 func TestAdmissionAuthorityDoesNotInitializeMissingHistory(t *testing.T) {

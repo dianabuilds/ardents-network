@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/network"
 )
 
 // VerifyInstalledConnectionReopen checks the original durable roots after joined retirement.

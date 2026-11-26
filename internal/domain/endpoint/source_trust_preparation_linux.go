@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/source"
-	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/processresource"

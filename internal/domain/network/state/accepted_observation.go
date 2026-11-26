@@ -1,0 +1,59 @@
+package state
+
+import (
+	"errors"
+
+	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+)
+
+// closedRuntimeAvailableLocked requires s.mu and performs no time observation.
+func (s *State) closedRuntimeAvailableLocked() error {
+	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.conflicting {
+		return errors.New("closed profile is unavailable")
+	}
+	if err := errors.Join(s.automaticErr, s.terminalErr); err != nil {
+		return err
+	}
+	if s.config.observe == nil {
+		return errClockUncertain
+	}
+	return nil
+}
+
+// currentMembershipLocked requires s.mu. Loading is explicit so failure and
+// expiry at the durable read boundary can be tested without clock-call counts.
+// It returns the observed view so the caller reuses a single observation rather
+// than observing the same immutable state twice (audit NW-2).
+func (s *State) currentMembershipLocked(load func([32]byte) (durable.ClosedProfileState, []byte, error)) (membership, networkdomain.TrustedTime, networkdomain.RuntimeView, error) {
+	if err := s.closedRuntimeAvailableLocked(); err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
+	}
+	generation, err := closedProfileGeneration(s.current.Snapshot.Generation)
+	if err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
+	}
+	stored, raw, err := load(generation)
+	if err != nil || stored == (durable.ClosedProfileState{}) || stored.Conflict != [32]byte{} || stored.Epoch != s.current.Snapshot.Epoch {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, errors.New("closed profile is unavailable")
+	}
+	// Observe once after durable I/O, so a slow read cannot extend validity.
+	observed, err := trustedObservation(s.config, s.distribution)
+	if err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
+	}
+	now := observed.Instant()
+	profile, err := s.verifyClosedProfileLocked(raw, generation, now)
+	if err != nil || profile.Digest != stored.Accepted {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, errors.New("closed profile is unavailable")
+	}
+	bound, err := s.bindCurrentMembership(profile)
+	if err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
+	}
+	view, err := bound.accepted.Observe(observed)
+	if err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
+	}
+	return bound, observed, view, nil
+}

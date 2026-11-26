@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 )
 
 func TestOfflineProfileInspectionUsesIndependentPublicPins(t *testing.T) {

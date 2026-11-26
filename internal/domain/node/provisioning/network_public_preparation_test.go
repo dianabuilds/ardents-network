@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

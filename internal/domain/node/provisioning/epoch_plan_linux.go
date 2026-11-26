@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 )
 
 const maximumNodeEpochPlan = 8 << 20

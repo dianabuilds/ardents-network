@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
+	sourcecommand "github.com/dianabuilds/ardents-network/internal/domain/network/source/command"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
-	sourcecommand "github.com/dianabuilds/ardents-network/internal/network/source/command"
 )
 
 func runSourceCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {

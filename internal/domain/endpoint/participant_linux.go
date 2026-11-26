@@ -20,8 +20,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 // ErrUnavailable retains an unsuccessful participant operation separately from

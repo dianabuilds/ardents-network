@@ -2,7 +2,7 @@ package node
 
 import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // Project one coherent public Network observation. This constructs no authority;

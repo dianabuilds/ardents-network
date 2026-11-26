@@ -114,8 +114,8 @@
     },
     {
       "symbols": [
-        "internal/network/duty.Open",
-        "internal/network/duty.ReadConflict"
+        "internal/domain/network/duty.Open",
+        "internal/domain/network/duty.ReadConflict"
       ],
       "classification": "accepted new Network local participation diagnostics with pending production composition",
       "rationale": "Local participation diagnostic contracts have genuine domain tests but no maintained production caller. CurrentRuntime supplies live authority. Public provisioning preparation now has a genuine new command consumer and its exact allowances are removed; Source genuinely consumes State.Current.",
@@ -524,16 +524,16 @@
       },
       {
         "symbols": [
-          "internal/network/state.OpenNodeInspection",
-          "internal/network/state.openNodeInspection",
-          "internal/network/state.nodeInspection.inspect",
-          "internal/network/state.NodeInspection.Check",
-          "internal/network/state.NodeInspection.Close",
-          "internal/network/state.nodeInspection.close",
-          "internal/network/duty.OpenNodeInspection",
-          "internal/network/duty.nodeInspectionRecords",
-          "internal/network/duty.NodeInspection.Check",
-          "internal/network/duty.NodeInspection.Close",
+          "internal/domain/network/state.OpenNodeInspection",
+          "internal/domain/network/state.openNodeInspection",
+          "internal/domain/network/state.nodeInspection.inspect",
+          "internal/domain/network/state.NodeInspection.Check",
+          "internal/domain/network/state.NodeInspection.Close",
+          "internal/domain/network/state.nodeInspection.close",
+          "internal/domain/network/duty.OpenNodeInspection",
+          "internal/domain/network/duty.nodeInspectionRecords",
+          "internal/domain/network/duty.NodeInspection.Check",
+          "internal/domain/network/duty.NodeInspection.Close",
           "internal/domain/reachability.OpenStoreInspection",
           "internal/domain/reachability.openStoreInspection",
           "internal/domain/reachability.storeInspectionAccess",
@@ -686,13 +686,13 @@
       },
       {
         "symbols": [
-          "internal/network/closedprofile.Prepare",
-          "internal/network/epoch.PrepareInitialClosedEpoch",
-          "internal/network/epoch.PrepareInitialClosedRecord",
-          "internal/network/epoch.appendInitialPreparationText",
-          "internal/network/epoch.candidateCarrierEligible",
-          "internal/network/epoch.encodeInitialClosedEpoch",
-          "internal/network/epoch.initialPreparationInterval",
+          "internal/domain/network/closedprofile.Prepare",
+          "internal/domain/network/epoch.PrepareInitialClosedEpoch",
+          "internal/domain/network/epoch.PrepareInitialClosedRecord",
+          "internal/domain/network/epoch.appendInitialPreparationText",
+          "internal/domain/network/epoch.candidateCarrierEligible",
+          "internal/domain/network/epoch.encodeInitialClosedEpoch",
+          "internal/domain/network/epoch.initialPreparationInterval",
           "internal/domain/node/provisioning.PrepareClosedNetworkProfile",
           "internal/domain/node/provisioning.PrepareInitialEpoch",
           "internal/domain/node/provisioning.PrepareInitialNodeRecord",
@@ -749,9 +749,9 @@
           "internal/domain/hosting.Reservation.DetachTermination",
           "internal/domain/hosting.Reservation.Release",
           "internal/domain/hosting.boundedFile",
-          "internal/network/source.ObservePublicTrust",
-          "internal/network/source.observeChain",
-          "internal/network/source.publicCertificates",
+          "internal/domain/network/source.ObservePublicTrust",
+          "internal/domain/network/source.observeChain",
+          "internal/domain/network/source.publicCertificates",
           "internal/domain/release.StaticMetadataFiles"
         ],
         "classification": "P1-B batch 1 de-tagged pure leaf production files with Linux-native genuine consumers (#781, #691)",
@@ -825,7 +825,7 @@
       },
       {
         "symbols": [
-          "internal/network/source.InspectLatest"
+          "internal/domain/network/source.InspectLatest"
         ],
         "classification": "Linux native Source inspection composition with portable protocol tests",
         "rationale": "Canonical ardents-next source inspect-latest genuinely consumes this exact one-contact mTLS operation on Linux. The Windows command refuses before native input effects; portable Source inspection tests exercise its protocol and physical completion rules. No Linux production exception is granted.",
@@ -834,18 +834,18 @@
       },
       {
         "symbols": [
-          "internal/network.NodeParticipationFacts.OriginalNodeRestriction",
-          "internal/network.NodeParticipationFacts.Restriction",
-          "internal/network/duty.NodeProducer.Check",
-          "internal/network/duty.NodeProducer.Close",
-          "internal/network/duty.NodeProducer.Live",
-          "internal/network/duty.OpenNodeProducer",
-          "internal/network/duty.nodeParticipationRestriction",
-          "internal/network/duty.nodeProducer.match",
-          "internal/network/duty.nodeProducer.permit",
-          "internal/network/duty.originalNodeRestriction",
-          "internal/network/duty.Store.RetainNode",
-          "internal/network/duty.Store.retainOriginalNode",
+          "internal/domain/network.NodeParticipationFacts.OriginalNodeRestriction",
+          "internal/domain/network.NodeParticipationFacts.Restriction",
+          "internal/domain/network/duty.NodeProducer.Check",
+          "internal/domain/network/duty.NodeProducer.Close",
+          "internal/domain/network/duty.NodeProducer.Live",
+          "internal/domain/network/duty.OpenNodeProducer",
+          "internal/domain/network/duty.nodeParticipationRestriction",
+          "internal/domain/network/duty.nodeProducer.match",
+          "internal/domain/network/duty.nodeProducer.permit",
+          "internal/domain/network/duty.originalNodeRestriction",
+          "internal/domain/network/duty.Store.RetainNode",
+          "internal/domain/network/duty.Store.retainOriginalNode",
           "internal/processresource.nativeCounter",
           "internal/processresource.nativeMemoryEvents",
           "internal/processresource.nativePressure"
@@ -997,7 +997,7 @@
       },
       {
         "symbols": [
-          "internal/network/state.State.Wait"
+          "internal/domain/network/state.State.Wait"
         ],
         "classification": "existing accepted Network supervision contract without a Windows production consumer",
         "rationale": "The former common Wait allowance is narrowed to Windows: the genuine installed Source consumer now reaches Wait on Linux, while Windows installed startup explicitly refuses before participant effects. No native Windows acceptance or substitute caller is introduced.",
@@ -1714,8 +1714,8 @@
           "internal/domain/execution/runtime.AdministrationRequest.Context",
           "internal/domain/execution/runtime.Owner.AdmitAdministration",
           "internal/domain/execution/runtime.Owner.LaunchReader",
-          "internal/network/state.RuntimeWitness.CheckCommit",
-          "internal/network/state.RuntimeWitness.SameOriginal",
+          "internal/domain/network/state.RuntimeWitness.CheckCommit",
+          "internal/domain/network/state.RuntimeWitness.SameOriginal",
           "internal/domain/publication.ParseTargetLink",
           "internal/domain/publication/durable.Generation.CheckCommit",
           "internal/domain/publication/instance.Binding.checkLocal",
@@ -1902,7 +1902,7 @@
       },
       {
         "symbols": [
-          "internal/network/state.State.Current"
+          "internal/domain/network/state.State.Current"
         ],
         "classification": "State diagnostic contract without a supported Windows serving consumer",
         "rationale": "Source serving is Linux-only and refuses Windows before plan effects; the new original Source consumer reaches Current only in the Linux production build. Windows domain tests still exercise the contract.",
@@ -2017,66 +2017,66 @@
       },
       {
         "symbols": [
-          "internal/network/duty.Initialize",
-          "internal/network/duty.OpenRetainedOperation",
-          "internal/network/duty.Store.CheckNodeProducer",
-          "internal/network/duty.Store.CheckSourceProducer"
+          "internal/domain/network/duty.Initialize",
+          "internal/domain/network/duty.OpenRetainedOperation",
+          "internal/domain/network/duty.Store.CheckNodeProducer",
+          "internal/domain/network/duty.Store.CheckSourceProducer"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/network/duty)",
-        "rationale": "These exact internal/network/duty functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/network/duty)",
+        "rationale": "These exact internal/domain/network/duty functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
       {
         "symbols": [
-          "internal/network/epoch.VerifyInitialClosedRecord"
+          "internal/domain/network/epoch.VerifyInitialClosedRecord"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/network/epoch)",
-        "rationale": "These exact internal/network/epoch functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/network/epoch)",
+        "rationale": "These exact internal/domain/network/epoch functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
       {
         "symbols": [
-          "internal/network/source/servingdeclaration.DecodeServingDeclaration",
-          "internal/network/source/servingdeclaration.servingObject"
+          "internal/domain/network/source/servingdeclaration.DecodeServingDeclaration",
+          "internal/domain/network/source/servingdeclaration.servingObject"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/network/source/servingdeclaration)",
-        "rationale": "These exact internal/network/source/servingdeclaration functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/network/source/servingdeclaration)",
+        "rationale": "These exact internal/domain/network/source/servingdeclaration functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
       {
         "symbols": [
-          "internal/network/state.OpenFresh",
-          "internal/network/state.SourceCompletion.Finish",
-          "internal/network/state.State.RetainSourceCompletion",
-          "internal/network/state.nodeDutyMember",
-          "internal/network/state.nodeDutyRepair.checkHistory",
-          "internal/network/state.nodeDutyRepair.close",
-          "internal/network/state.openNodeDutyRepair",
-          "internal/network/state.openSourceRepair",
-          "internal/network/state.readRetainedHistory",
-          "internal/network/state.sourceRepair.checkHistory",
-          "internal/network/state.sourceRepair.close"
+          "internal/domain/network/state.OpenFresh",
+          "internal/domain/network/state.SourceCompletion.Finish",
+          "internal/domain/network/state.State.RetainSourceCompletion",
+          "internal/domain/network/state.nodeDutyMember",
+          "internal/domain/network/state.nodeDutyRepair.checkHistory",
+          "internal/domain/network/state.nodeDutyRepair.close",
+          "internal/domain/network/state.openNodeDutyRepair",
+          "internal/domain/network/state.openSourceRepair",
+          "internal/domain/network/state.readRetainedHistory",
+          "internal/domain/network/state.sourceRepair.checkHistory",
+          "internal/domain/network/state.sourceRepair.close"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/network/state)",
-        "rationale": "These exact internal/network/state functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/network/state)",
+        "rationale": "These exact internal/domain/network/state functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
       {
         "symbols": [
-          "internal/network/state/durable.OpenFresh",
-          "internal/network/state/durable.OpenRetainedReader",
-          "internal/network/state/durable.RetainedReader.Close",
-          "internal/network/state/durable.RetainedReader.ReadControl",
-          "internal/network/state/durable.RetainedReader.ReadState",
-          "internal/network/state/durable.retainedLayoutEntry",
-          "internal/network/state/durable.verifyRetainedLayout"
+          "internal/domain/network/state/durable.OpenFresh",
+          "internal/domain/network/state/durable.OpenRetainedReader",
+          "internal/domain/network/state/durable.RetainedReader.Close",
+          "internal/domain/network/state/durable.RetainedReader.ReadControl",
+          "internal/domain/network/state/durable.RetainedReader.ReadState",
+          "internal/domain/network/state/durable.retainedLayoutEntry",
+          "internal/domain/network/state/durable.verifyRetainedLayout"
         ],
-        "classification": "Linux-native successor composition, no Windows production path (internal/network/state/durable)",
-        "rationale": "These exact internal/network/state/durable functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "classification": "Linux-native successor composition, no Windows production path (internal/domain/network/state/durable)",
+        "rationale": "These exact internal/domain/network/state/durable functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -2276,13 +2276,13 @@
       },
       {
         "symbols": [
-          "internal/network/source/inspection.InspectLatest",
-          "internal/network/source/serving.DescribeFailure",
-          "internal/network/source/serving.Run",
-          "internal/network/source/serving.Terminal.Error",
-          "internal/network/source/serving.Terminal.Unwrap",
-          "internal/network/source/serving.ValidDeclaration",
-          "internal/network/source/serving.WriteFailureReport"
+          "internal/domain/network/source/inspection.InspectLatest",
+          "internal/domain/network/source/serving.DescribeFailure",
+          "internal/domain/network/source/serving.Run",
+          "internal/domain/network/source/serving.Terminal.Error",
+          "internal/domain/network/source/serving.Terminal.Unwrap",
+          "internal/domain/network/source/serving.ValidDeclaration",
+          "internal/domain/network/source/serving.WriteFailureReport"
         ],
         "classification": "Source serving Unix-family and inspection Linux platform refusal (ADR-0129)",
         "rationale": "Cohort 2a (#856) de-tagged the Direct-Origin Source serving operation to the Unix family (Linux and macOS) on the cleared Cohort 0/1 seams; Windows receives the serving_other.go typed refusal. Source inspection composes the Linux-only state.SourcePreparationConfig and stays Linux; inspection_other.go gives every non-Linux platform the same explicit unavailable contact result. These exact stub functions are the typed refusal boundary and have no Windows production consumer; they admit no input, process guard, State or live authority.",
@@ -2375,40 +2375,40 @@
       },
       {
         "symbols": [
-          "internal/network/duty.OpenRetainedOperation"
+          "internal/domain/network/duty.OpenRetainedOperation"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/duty)",
-        "rationale": "These exact internal/network/duty functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/network/duty)",
+        "rationale": "These exact internal/domain/network/duty functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [
-          "internal/network/state.nodeDutyMember",
-          "internal/network/state.nodeDutyRepair.checkHistory",
-          "internal/network/state.nodeDutyRepair.close",
-          "internal/network/state.openNodeDutyRepair",
-          "internal/network/state.openSourceRepair",
-          "internal/network/state.readRetainedHistory",
-          "internal/network/state.sourceRepair.checkHistory",
-          "internal/network/state.sourceRepair.close"
+          "internal/domain/network/state.nodeDutyMember",
+          "internal/domain/network/state.nodeDutyRepair.checkHistory",
+          "internal/domain/network/state.nodeDutyRepair.close",
+          "internal/domain/network/state.openNodeDutyRepair",
+          "internal/domain/network/state.openSourceRepair",
+          "internal/domain/network/state.readRetainedHistory",
+          "internal/domain/network/state.sourceRepair.checkHistory",
+          "internal/domain/network/state.sourceRepair.close"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/state)",
-        "rationale": "These exact internal/network/state functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/network/state)",
+        "rationale": "These exact internal/domain/network/state functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [
-          "internal/network/state/durable.OpenRetainedReader",
-          "internal/network/state/durable.RetainedReader.Close",
-          "internal/network/state/durable.RetainedReader.ReadControl",
-          "internal/network/state/durable.RetainedReader.ReadState",
-          "internal/network/state/durable.retainedLayoutEntry",
-          "internal/network/state/durable.verifyRetainedLayout"
+          "internal/domain/network/state/durable.OpenRetainedReader",
+          "internal/domain/network/state/durable.RetainedReader.Close",
+          "internal/domain/network/state/durable.RetainedReader.ReadControl",
+          "internal/domain/network/state/durable.RetainedReader.ReadState",
+          "internal/domain/network/state/durable.retainedLayoutEntry",
+          "internal/domain/network/state/durable.verifyRetainedLayout"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/network/state/durable)",
-        "rationale": "These exact internal/network/state/durable functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/network/state/durable)",
+        "rationale": "These exact internal/domain/network/state/durable functions are covered by native-tagged Linux tests (network_signing_native/installation_native/document_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },

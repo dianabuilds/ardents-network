@@ -67,7 +67,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 		if !routeDependency {
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/admission/spending",
-				"internal/durablefile", "internal/domain/hosting", "internal/network", "internal/network/state", "internal/pathgrammar", "internal/domain/reachability":
+				"internal/durablefile", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state", "internal/pathgrammar", "internal/domain/reachability":
 			default:
 				return false
 			}
@@ -119,7 +119,7 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"retired canonical installed Descriptor role denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route/role", false},
 		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route", false},
 		{"new Admission boundary", "internal/route/receiver/admission.go", modulePath + "/internal/admission/receiving", true},
-		{"new Network boundary", "internal/route/prefix/prefix.go", modulePath + "/internal/network/state", true},
+		{"new Network boundary", "internal/route/prefix/prefix.go", modulePath + "/internal/domain/network/state", true},
 		{"new Hosting boundary", "internal/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
 		{"migrated Endpoint consumer", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
 		{"unregistered Endpoint subpackage", "internal/domain/endpoint/old/source_linux_test.go", modulePath + "/internal/route/selection", false},
@@ -127,7 +127,7 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"retired Route package", "internal/route/prefix/prefix.go", modulePath + "/internal/successor/route", false},
 		{"retired Route source", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/route", false},
 		{"Route external test", "internal/route/path_test.go", modulePath + "/internal/route", true},
-		{"unrelated Network migration", "internal/domain/endpoint/source.go", modulePath + "/internal/network/state", true},
+		{"unrelated Network migration", "internal/domain/endpoint/source.go", modulePath + "/internal/domain/network/state", true},
 		{"prefix is not a Route package", "internal/domain/endpoint/source.go", modulePath + "/internal/routeproposal", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

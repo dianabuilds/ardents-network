@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	epochfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )

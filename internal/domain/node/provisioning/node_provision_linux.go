@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 )
 
 func runNodeProvision(role nodeProvisioningRole, args []string, out io.Writer) error {

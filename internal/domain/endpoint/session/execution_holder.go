@@ -9,7 +9,7 @@ import (
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 // LocalHolderPlan binds the original local authority, role, and operation options.

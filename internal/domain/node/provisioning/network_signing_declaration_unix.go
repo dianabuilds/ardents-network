@@ -13,8 +13,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 )
 
 // The declaration embeds the exact public preparation plan, not arbitrary

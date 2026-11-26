@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // SourceJoinBorrow transfers one exact acquired generation to JOIN. Its
