@@ -14,8 +14,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"

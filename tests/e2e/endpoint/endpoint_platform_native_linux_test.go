@@ -19,11 +19,11 @@ import (
 	"testing"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/domain/endpoint/plan"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/domain/release"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
-	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"

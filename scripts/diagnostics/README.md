@@ -272,11 +272,11 @@ Linux environment with a new private output directory outside the source tree:
 umask 077
 mkdir /private/reader-cancel-a
 # Real Open admission/activation, cancellation while actual launch gate is held.
-go test ./internal/endpoint -run '^TestTextConnectionObservationsJoinRealCancelledLaunch$' \
+go test ./internal/domain/endpoint -run '^TestTextConnectionObservationsJoinRealCancelledLaunch$' \
   -count=1 -timeout=30s -trace=/private/reader-cancel-a/runtime.trace
 # Real Service authentication/request/cleanup; only launch qualification is fixture supplied.
 mkdir /private/reader-service-cancel-a
-go test ./internal/endpoint \
+go test ./internal/domain/endpoint \
   -run '^TestTextConnectionObservationsThroughRealServiceAndCleanup$/^cancel-before-request$' \
   -count=1 -timeout=30s -trace=/private/reader-service-cancel-a/runtime.trace
 ```
@@ -493,7 +493,7 @@ run unprivileged product tests with `setpriv --reuid=10001 --regid=10001 --clear
 
 ```sh
 diag run -raw -out /evidence/endpoint-timing-a -timeout 20m -- \
-  go test -json ./internal/endpoint -short -shuffle=on -count=1 -timeout=15m
+  go test -json ./internal/domain/endpoint -short -shuffle=on -count=1 -timeout=15m
 diag timings -input /evidence/endpoint-timing-a/stdout.log
 ```
 

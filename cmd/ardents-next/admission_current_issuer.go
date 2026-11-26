@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 )
 
 func runAdmissionCurrentIssuer(ctx context.Context, args []string, out io.Writer) int {

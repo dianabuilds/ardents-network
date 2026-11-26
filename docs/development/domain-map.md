@@ -203,7 +203,7 @@ authority or lifecycle, and each consumer keeps its distinct refusal prose and
 any additional root/NUL-rune/length bounds it genuinely needs. Admission,
 Endpoint, Enrollment, Execution worker, Hosting, Network State/duty, Node,
 Platform Artifacts/cgroup/process, Reachability, Release and Route Introduction
-consume it; the POSIX declaration wire grammar in `internal/endpoint/plan`, the
+consume it; the POSIX declaration wire grammar in `internal/domain/endpoint/plan`, the
 pure Application zone and configured-root resolution operations stay separate.
 Network State configuration validation refuses relative and non-clean paths
 instead of silently absolutizing them (the one deliberate tightening; every
@@ -389,7 +389,7 @@ installed use and operator cutover remain distinct boundaries.
 Enrollment retains inventory and initial-pin provenance. Release authenticates
 each exact program and generation pair. Endpoint owns the conditions for its
 staging, replacement and startup. Native adapters retain physical observations
-through their original lifetimes. The [Endpoint launch owner](../../internal/endpoint/launch/README.md)
+through their original lifetimes. The [Endpoint launch owner](../../internal/domain/endpoint/launch/README.md)
 and [Release/Custody](../technical/release-update-custody.md) describe these contracts.
 The transitional Source orchestration (initial stopped installation, first
 start, stop/restart, stopped replacement and original-cut recovery) is retired
@@ -794,7 +794,7 @@ bounds and terminal result; no late completion can act on a replacement.
 
 ### Endpoint application composition
 
-`internal/endpoint/funding` coordinates original Source Stock
+`internal/domain/endpoint/funding` coordinates original Source Stock
 preparation/issuance/presentation and retains shared Entry/Hosting parents.
 `endpoint/reader` owns the qualified request's Source, lookup history, selected
 roles, stream handoff and joined local result. Its one qualified Operation

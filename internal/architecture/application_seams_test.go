@@ -230,7 +230,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 		t.Error("./cmd/ardents-next does not use the selected protected Application Connection Module")
 	}
 	worker := listedDependencies(t, root, "./internal/application/document/worker")
-	if worker[administration] || worker[ardentsModulePath+"/internal/endpoint"] {
+	if worker[administration] || worker[ardentsModulePath+"/internal/domain/endpoint"] {
 		t.Error("the fixed text worker reaches trusted administration or Endpoint composition")
 	}
 	if !listedDependencies(t, root, "./cmd/ardents-next")[administration] {
@@ -241,7 +241,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	t.Setenv("GOOS", "linux")
 	t.Setenv("GOARCH", "amd64")
 	t.Setenv("CGO_ENABLED", "0")
-	const endpoint = "./internal/endpoint"
+	const endpoint = "./internal/domain/endpoint"
 	dependencies := listedDependencies(t, root, endpoint)
 	for _, seam := range []string{connection, administration} {
 		if !dependencies[seam] {

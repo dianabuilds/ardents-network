@@ -43,7 +43,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 	}
 	// These predecessor files occupied directories now owned by migrated code.
 	// Reusing the directory cannot re-admit the predecessor.
-	if (routeSource || routeDependency) && (source == "internal/endpoint/source.go" || source == "internal/route/closed_join_test.go") {
+	if (routeSource || routeDependency) && (source == "internal/domain/endpoint/source.go" || source == "internal/route/closed_join_test.go") {
 		return false
 	}
 	if routeDependency {
@@ -52,8 +52,8 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 		}
 		if !slices.Contains(currentRoutePackages, owner) {
 			switch owner {
-			case "cmd/ardents-next", "internal/connection", "internal/endpoint", "internal/endpoint/funding",
-				"internal/endpoint/publisher", "internal/endpoint/reader", "internal/endpoint/session",
+			case "cmd/ardents-next", "internal/connection", "internal/domain/endpoint", "internal/domain/endpoint/funding",
+				"internal/domain/endpoint/publisher", "internal/domain/endpoint/reader", "internal/domain/endpoint/session",
 				"internal/domain/node", "internal/domain/publication/instance", "internal/domain/publication/runtime":
 			default:
 				return false
@@ -104,7 +104,7 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
-		{"old Endpoint consumer", "internal/endpoint/source.go", modulePath + "/internal/route", false},
+		{"old Endpoint consumer", "internal/domain/endpoint/source.go", modulePath + "/internal/route", false},
 		{"old Node adapter", "internal/domain/node/authority/token.go", modulePath + "/internal/route/receiver", false},
 		{"old Route test consumer", "internal/route/closed_join_test.go", modulePath + "/internal/route", false},
 		{"old command consumer", "cmd/ardents/route.go", modulePath + "/internal/route", false},
@@ -121,14 +121,14 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"new Admission boundary", "internal/route/receiver/admission.go", modulePath + "/internal/admission/receiving", true},
 		{"new Network boundary", "internal/route/prefix/prefix.go", modulePath + "/internal/network/state", true},
 		{"new Hosting boundary", "internal/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
-		{"migrated Endpoint consumer", "internal/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
-		{"unregistered Endpoint subpackage", "internal/endpoint/old/source_linux_test.go", modulePath + "/internal/route/selection", false},
+		{"migrated Endpoint consumer", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
+		{"unregistered Endpoint subpackage", "internal/domain/endpoint/old/source_linux_test.go", modulePath + "/internal/route/selection", false},
 		{"unregistered Admission subpackage", "internal/route/receiver/admission.go", modulePath + "/internal/admission/legacy", false},
 		{"retired Route package", "internal/route/prefix/prefix.go", modulePath + "/internal/successor/route", false},
 		{"retired Route source", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/route", false},
 		{"Route external test", "internal/route/path_test.go", modulePath + "/internal/route", true},
-		{"unrelated Network migration", "internal/endpoint/source.go", modulePath + "/internal/network/state", true},
-		{"prefix is not a Route package", "internal/endpoint/source.go", modulePath + "/internal/routeproposal", true},
+		{"unrelated Network migration", "internal/domain/endpoint/source.go", modulePath + "/internal/network/state", true},
+		{"prefix is not a Route package", "internal/domain/endpoint/source.go", modulePath + "/internal/routeproposal", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := routeMigrationBoundaryPermits(test.source, test.dependency); got != test.allowed {
