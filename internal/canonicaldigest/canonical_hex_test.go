@@ -74,3 +74,16 @@ func TestValidMatchesDecodeAdmission(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeRefusesOversizedInputWithoutAllocating(t *testing.T) {
+	oversized := strings.Repeat("a", 1<<20)
+	allocations := testing.AllocsPerRun(10, func() {
+		value, ok := Decode(oversized)
+		if ok || value != [32]byte{} {
+			t.Fatal("oversized digest was accepted")
+		}
+	})
+	if allocations != 0 {
+		t.Fatalf("oversized digest allocated %.0f times per call", allocations)
+	}
+}

@@ -7,8 +7,11 @@ import "encoding/hex"
 // caller owns its error classification and zero-value policy.
 func Decode(value string) ([32]byte, bool) {
 	var digest [32]byte
+	if len(value) != hex.EncodedLen(len(digest)) {
+		return digest, false
+	}
 	raw, err := hex.DecodeString(value)
-	if err != nil || len(raw) != len(digest) || hex.EncodeToString(raw) != value {
+	if err != nil || hex.EncodeToString(raw) != value {
 		return digest, false
 	}
 	copy(digest[:], raw)
