@@ -1399,6 +1399,7 @@
           "internal/route/selection.validClosedSetMember",
           "internal/route/selection.validClosedSetView",
           "internal/route/transport.ClassifySharedTLS",
+          "internal/route/transport.ClosedProfileKeyExchangeGroups",
           "internal/route/transport.ClosedRoleTLSExporter",
           "internal/route/transport.ExactPeer",
           "internal/route/transport.IsClosedSharedPeerFailure",

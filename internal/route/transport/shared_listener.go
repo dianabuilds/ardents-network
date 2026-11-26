@@ -104,7 +104,7 @@ func ValidateSharedAcceptance(ctx context.Context, handshakeTimeout time.Duratio
 func SharedServerTLS(certificate tls.Certificate) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
 		ClientAuth: tls.RequestClientCert, SessionTicketsDisabled: true, DynamicRecordSizingDisabled: true, NextProtos: []string{ClosedRouteProfile},
-		CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519}, VerifyConnection: func(state tls.ConnectionState) error {
+		CurvePreferences: ClosedProfileKeyExchangeGroups(), VerifyConnection: func(state tls.ConnectionState) error {
 			if state.Version != tls.VersionTLS13 || state.NegotiatedProtocol != ClosedRouteProfile || len(state.PeerCertificates) > 1 {
 				return errors.New("closed shared carrier TLS state is invalid")
 			}

@@ -37,7 +37,7 @@ func ValidateNodeRequest(ctx context.Context, input ClosedNodeCarrierRequest) er
 func NodeClientTLS(certificate tls.Certificate, expected [32]byte) *tls.Config {
 	return &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, Certificates: []tls.Certificate{certificate},
 		InsecureSkipVerify: true, SessionTicketsDisabled: true, ClientSessionCache: nil, NextProtos: []string{ClosedRouteProfile},
-		CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519}, VerifyConnection: ExactPeer(expected)}
+		CurvePreferences: ClosedProfileKeyExchangeGroups(), VerifyConnection: ExactPeer(expected)}
 }
 
 // ValidateNodeTLS checks one negotiated Node state. A zero expected key is only
