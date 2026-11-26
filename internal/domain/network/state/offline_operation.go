@@ -28,6 +28,10 @@ func RunOffline(ctx context.Context, operation string, config Config, epoch []by
 	if operation == "inspect" {
 		openState = OpenRetained
 	}
+	// The original caller must still be live before Open can create history.
+	if ctx.Err() != nil {
+		return OfflineResult{Outcome: "canceled"}
+	}
 	owner, err := openState(config)
 	if err != nil {
 		return OfflineResult{Outcome: "owner-unavailable"}
