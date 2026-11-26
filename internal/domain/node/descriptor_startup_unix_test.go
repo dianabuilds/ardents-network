@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 )
 
 // This refusal test supplies no successful State, Store, process or Grant.

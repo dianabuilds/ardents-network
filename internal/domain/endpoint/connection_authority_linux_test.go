@@ -6,7 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 func TestInstalledConnectionAuthorityTCP(t *testing.T) {

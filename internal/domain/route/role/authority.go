@@ -1,0 +1,95 @@
+package role
+
+import (
+	"crypto/rand"
+	"errors"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/route"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+)
+
+// Authority retains an exact duty from one coherent observation. Current is
+// invoked outside transport locks; an observation never becomes a live lease.
+type Authority struct {
+	Current func() (network.RuntimeView, error)
+	Duty    network.RetainedDuty
+	Profile network.ProfileBinding
+}
+
+// FreshHello creates a fresh channel nonce from the retained original recipient
+// and bounds. Those facts grant no authority: the fresh observation after nonce
+// creation validates the complete HELLO before handoff. Callers still check
+// around I/O.
+func (a Authority) FreshHello(end time.Time, purpose ardp.Purpose, outer bool) (ardp.Hello, error) {
+	p := a.Profile
+	h := ardp.Hello{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest,
+		RecipientNodeID: a.Duty.NodeID, RecipientDutyGeneration: a.Duty.RecordGeneration, Purpose: purpose, Deadline: end}
+	if _, err := rand.Read(h.ChannelNonce[:]); err != nil {
+		return ardp.Hello{}, err
+	}
+	if _, err := a.Hello(h, outer); err != nil {
+		return ardp.Hello{}, err
+	}
+	return h, nil
+}
+
+// Member reobserves the original exact duty and profile; it never rebinds them.
+func (a Authority) Member() (network.Member, error) {
+	_, member, err := a.observeMember()
+	return member, err
+}
+
+// observeMember performs one actual fresh owner observation. The immutable
+// projection is usable only at this operation's current effect boundary.
+func (a Authority) observeMember() (network.RuntimeView, network.Member, error) {
+	if a.Current == nil {
+		return network.RuntimeView{}, network.Member{}, errors.New("route observer absent")
+	}
+	v, err := a.Current()
+	if err != nil {
+		return network.RuntimeView{}, network.Member{}, err
+	}
+	if v.ProfileBinding() != a.Profile {
+		return network.RuntimeView{}, network.Member{}, errors.New("route profile changed")
+	}
+	if err = v.MatchDuty(a.Duty, time.Now()); err != nil {
+		return network.RuntimeView{}, network.Member{}, err
+	}
+	member, err := v.Member(a.Duty.NodeID, time.Now())
+	if err != nil {
+		return network.RuntimeView{}, network.Member{}, err
+	}
+	if !route.CarrierPermitted(member.CarrierProfile) {
+		return network.RuntimeView{}, network.Member{}, errors.New("route Carrier profile is unsupported")
+	}
+	return v, member, nil
+}
+
+// Hello checks this channel against the original duty, purpose and bounds.
+func (a Authority) Hello(h ardp.Hello, outer bool) (network.Member, error) {
+	_, member, err := a.ObserveHello(h, outer)
+	return member, err
+}
+
+// ObserveHello retains one coherent fresh State projection for the receiving
+// operation's HELLO and adjacent-peer checks. It supplies no reusable permit:
+// callers repeat the entire observation across I/O/effect boundaries. A failure
+// returns neither partial facts nor a previous accepting projection.
+func (a Authority) ObserveHello(h ardp.Hello, outer bool) (network.RuntimeView, network.Member, error) {
+	v, m, err := a.observeMember()
+	if err != nil {
+		return network.RuntimeView{}, m, err
+	}
+	p := a.Profile
+	if h.NetworkID != p.Network || h.StateGeneration != p.Generation || h.StateDigest != p.EpochDigest || h.ProfileDigest != p.Digest || h.RecipientNodeID != m.NodeID || h.RecipientDutyGeneration != m.DutyGeneration || !time.Now().Before(h.Deadline) || h.Deadline.After(m.NotAfter()) || h.Deadline.After(p.NotAfter) || (outer && h.Purpose != ardp.PurposeForwarding) || (!outer && !route.PurposePermitsDuty(uint8(h.Purpose), m.RoleDomain, m.Subrole)) {
+		return network.RuntimeView{}, network.Member{}, errors.New("route HELLO binding unavailable")
+	}
+	return v, m, nil
+}
+
+// Conflicting applies Route's participant exclusion to Network member facts.
+func Conflicting(a, b network.Member) bool {
+	return route.Conflict(route.Member{NodeID: a.NodeID, PublicKey: a.PublicKey, FamilyID: a.FamilyID}, route.Member{NodeID: b.NodeID, PublicKey: b.PublicKey, FamilyID: b.FamilyID})
+}

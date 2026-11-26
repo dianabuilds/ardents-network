@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	closedTLSKeyExchangeOwner  = "internal/route/transport/key_exchange.go"
+	closedTLSKeyExchangeOwner  = "internal/domain/route/transport/key_exchange.go"
 	closedTLSKeyExchangeGroups = "ClosedProfileKeyExchangeGroups"
 )
 

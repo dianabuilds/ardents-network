@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 

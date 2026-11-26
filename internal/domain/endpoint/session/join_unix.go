@@ -12,10 +12,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	routejoin "github.com/dianabuilds/ardents-network/internal/domain/route/join"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
 // One holder console retains one fixed local Route context independently of

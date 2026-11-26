@@ -20,7 +20,7 @@ func TestClosedReleaseExcludesQUICImplementation(t *testing.T) {
 	}
 	root := t.TempDir()
 	path := filepath.Join(root, "consumer.go")
-	for _, dependency := range []string{"github.com/quic-go/quic-go", "github.com/quic-go/quic-go/http3", modulePath + "/internal/route/transport/quic"} {
+	for _, dependency := range []string{"github.com/quic-go/quic-go", "github.com/quic-go/quic-go/http3", modulePath + "/internal/domain/route/transport/quic"} {
 		if err := os.WriteFile(path, []byte("package fixture\nimport _ "+strconv.Quote(dependency)+"\n"), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +53,7 @@ func rejectQUICImports(root string) error {
 			if err != nil {
 				return err
 			}
-			for _, forbidden := range []string{"github.com/quic-go/quic-go", modulePath + "/internal/route/transport/quic"} {
+			for _, forbidden := range []string{"github.com/quic-go/quic-go", modulePath + "/internal/domain/route/transport/quic"} {
 				if dependency == forbidden || strings.HasPrefix(dependency, forbidden+"/") {
 					return fmt.Errorf("deferred QUIC import in %s: %s", path, dependency)
 				}

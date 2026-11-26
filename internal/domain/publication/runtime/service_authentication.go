@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 )
 
 // NextAuthentication consumes a genuinely completed initial delivery and opens

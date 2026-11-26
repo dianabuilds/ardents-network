@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 // One finite original-key proposal owns all new physical resources until its

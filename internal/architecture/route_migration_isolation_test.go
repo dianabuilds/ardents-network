@@ -14,26 +14,26 @@ import (
 // These exact package identities come from the migrated Route and its current
 // owners. Package-map registration alone never grants access to Route.
 var currentRoutePackages = []string{
-	"internal/route",
-	"internal/route/ardp",
-	"internal/route/bootstrap",
-	"internal/route/capsule",
-	"internal/route/channel",
-	"internal/route/introduction",
-	"internal/route/issuer",
-	"internal/route/join",
-	"internal/route/join/pairing",
-	"internal/route/prefix",
-	"internal/route/receiver",
-	"internal/route/role",
-	"internal/route/selection",
-	"internal/route/transport",
-	"internal/route/transport/tls",
+	"internal/domain/route",
+	"internal/domain/route/ardp",
+	"internal/domain/route/bootstrap",
+	"internal/domain/route/capsule",
+	"internal/domain/route/channel",
+	"internal/domain/route/introduction",
+	"internal/domain/route/issuer",
+	"internal/domain/route/join",
+	"internal/domain/route/join/pairing",
+	"internal/domain/route/prefix",
+	"internal/domain/route/receiver",
+	"internal/domain/route/role",
+	"internal/domain/route/selection",
+	"internal/domain/route/transport",
+	"internal/domain/route/transport/tls",
 }
 
 func routeMigrationBoundaryPermits(source, dependency string) bool {
 	const retired = "internal/successor/route"
-	const directory = "internal/route"
+	const directory = "internal/domain/route"
 	owner := path.Dir(source)
 	local, localDependency := strings.CutPrefix(dependency, modulePath+"/")
 	routeSource := owner == directory || strings.HasPrefix(owner, directory+"/")
@@ -43,7 +43,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 	}
 	// These predecessor files occupied directories now owned by migrated code.
 	// Reusing the directory cannot re-admit the predecessor.
-	if (routeSource || routeDependency) && (source == "internal/domain/endpoint/source.go" || source == "internal/route/closed_join_test.go") {
+	if (routeSource || routeDependency) && (source == "internal/domain/endpoint/source.go" || source == "internal/domain/route/closed_join_test.go") {
 		return false
 	}
 	if routeDependency {
@@ -104,29 +104,29 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
-		{"old Endpoint consumer", "internal/domain/endpoint/source.go", modulePath + "/internal/route", false},
-		{"old Node adapter", "internal/domain/node/authority/token.go", modulePath + "/internal/route/receiver", false},
-		{"old Route test consumer", "internal/route/closed_join_test.go", modulePath + "/internal/route", false},
-		{"old command consumer", "cmd/ardents/route.go", modulePath + "/internal/route", false},
-		{"e2e bridge", "tests/e2e/route/scenario_test.go", modulePath + "/internal/route/receiver", false},
-		{"script bridge", "scripts/route_probe.go", modulePath + "/internal/route", false},
-		{"old Carrier dependency", "internal/route/channel/frame_schedule.go", modulePath + "/internal/route/carrier", false},
-		{"old Admission dependency", "internal/route/receiving/admission.go", modulePath + "/internal/domain/admission/receiving", false},
-		{"old Entry dependency", "internal/route/selection.go", modulePath + "/internal/entry", false},
-		{"old Node dependency in test", "internal/route/role_test.go", modulePath + "/internal/domain/node/outer", false},
-		{"external fixture dependency", "internal/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
-		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/route", true},
-		{"retired canonical installed Descriptor role denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route/role", false},
-		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route", false},
-		{"new Admission boundary", "internal/route/receiver/admission.go", modulePath + "/internal/domain/admission/receiving", true},
-		{"new Network boundary", "internal/route/prefix/prefix.go", modulePath + "/internal/domain/network/state", true},
-		{"new Hosting boundary", "internal/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
-		{"migrated Endpoint consumer", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
-		{"unregistered Endpoint subpackage", "internal/domain/endpoint/old/source_linux_test.go", modulePath + "/internal/route/selection", false},
-		{"unregistered Admission subpackage", "internal/route/receiver/admission.go", modulePath + "/internal/domain/admission/legacy", false},
-		{"retired Route package", "internal/route/prefix/prefix.go", modulePath + "/internal/successor/route", false},
-		{"retired Route source", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/route", false},
-		{"Route external test", "internal/route/path_test.go", modulePath + "/internal/route", true},
+		{"old Endpoint consumer", "internal/domain/endpoint/source.go", modulePath + "/internal/domain/route", false},
+		{"old Node adapter", "internal/domain/node/authority/token.go", modulePath + "/internal/domain/route/receiver", false},
+		{"old Route test consumer", "internal/domain/route/closed_join_test.go", modulePath + "/internal/domain/route", false},
+		{"old command consumer", "cmd/ardents/route.go", modulePath + "/internal/domain/route", false},
+		{"e2e bridge", "tests/e2e/route/scenario_test.go", modulePath + "/internal/domain/route/receiver", false},
+		{"script bridge", "scripts/route_probe.go", modulePath + "/internal/domain/route", false},
+		{"old Carrier dependency", "internal/domain/route/channel/frame_schedule.go", modulePath + "/internal/domain/route/carrier", false},
+		{"old Admission dependency", "internal/domain/route/receiving/admission.go", modulePath + "/internal/domain/admission/receiving", false},
+		{"old Entry dependency", "internal/domain/route/selection.go", modulePath + "/internal/entry", false},
+		{"old Node dependency in test", "internal/domain/route/role_test.go", modulePath + "/internal/domain/node/outer", false},
+		{"external fixture dependency", "internal/domain/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
+		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/domain/route", true},
+		{"retired canonical installed Descriptor role denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/domain/route/role", false},
+		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/domain/route", false},
+		{"new Admission boundary", "internal/domain/route/receiver/admission.go", modulePath + "/internal/domain/admission/receiving", true},
+		{"new Network boundary", "internal/domain/route/prefix/prefix.go", modulePath + "/internal/domain/network/state", true},
+		{"new Hosting boundary", "internal/domain/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
+		{"migrated Endpoint consumer", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/domain/route/selection", true},
+		{"unregistered Endpoint subpackage", "internal/domain/endpoint/old/source_linux_test.go", modulePath + "/internal/domain/route/selection", false},
+		{"unregistered Admission subpackage", "internal/domain/route/receiver/admission.go", modulePath + "/internal/domain/admission/legacy", false},
+		{"retired Route package", "internal/domain/route/prefix/prefix.go", modulePath + "/internal/successor/route", false},
+		{"retired Route source", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/domain/route", false},
+		{"Route external test", "internal/domain/route/path_test.go", modulePath + "/internal/domain/route", true},
 		{"unrelated Network migration", "internal/domain/endpoint/source.go", modulePath + "/internal/domain/network/state", true},
 		{"prefix is not a Route package", "internal/domain/endpoint/source.go", modulePath + "/internal/routeproposal", true},
 	} {

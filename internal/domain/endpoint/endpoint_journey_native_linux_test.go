@@ -21,7 +21,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 // This native qualification proves the two-Endpoint platform-led document journey

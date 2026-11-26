@@ -9,8 +9,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 )
 
 // Both the initial physical Source and an acquired generation implement this

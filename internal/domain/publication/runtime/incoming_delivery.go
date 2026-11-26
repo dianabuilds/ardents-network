@@ -1,6 +1,6 @@
 package runtime
 
-import "github.com/dianabuilds/ardents-network/internal/route/introduction"
+import "github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 
 // receiveIntroductions consumes actual typed children from this original
 // Registration. Initial binding/replay/Responder/state checks decide success;

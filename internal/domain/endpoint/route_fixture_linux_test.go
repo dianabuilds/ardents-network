@@ -4,7 +4,7 @@ package endpoint_test
 
 import (
 	"crypto/tls"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"testing"
 	"time"
 

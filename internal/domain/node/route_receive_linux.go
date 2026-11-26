@@ -17,13 +17,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 
 func issueRouteBatch(ctx context.Context, authority routeAdmissionAuthority, plan issuer.Plan, batch []byte, bootstrap bool) ([]byte, error) {

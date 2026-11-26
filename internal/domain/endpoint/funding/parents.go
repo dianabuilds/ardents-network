@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
 // Parents retains one installation-wide Entry history and one
