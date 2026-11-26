@@ -1954,7 +1954,7 @@ These reservations do not qualify installed networking or systemd/cgroup use.
   fixtures inside the checked profile without inheriting Go's shorter default;
   exceeding the bound remains a failure with the runtime's goroutine dump.
 - `make heapdump-capture` and `make heapdump-role-map` read existing
-  receipt-bound files through the process diagnostics package. For a receipt
+  receipt-bound files through the `tests/diagnostics/heapdump` harness. For a receipt
   bound to a retired source revision, give `ARDENTS_HEAPDUMP_SOURCE_ROOT` the
   absolute directory of an independently retained source archive. The verifiers
   still compare every recorded source digest and keep the report formats tied
@@ -3316,7 +3316,7 @@ source identity, failure/loss and privilege limits. `make diagnostics-build`
 is explicit setup; `make diagnostics-check` exercises the Linux collector.
 The Linux architecture deterministic profile runs that collector's meaningful
 negative/terminal evidence tests without Docker. Heap dump verification
-belongs to `internal/diagnostics/process`. Standalone collector tests read
+belongs to `tests/diagnostics/heapdump`. Standalone collector tests read
 independent Unix-socket fixtures for the historical Reader snapshot schema.
 
 Forwarding's fresh named metadata controls exercise actual no-follow parent

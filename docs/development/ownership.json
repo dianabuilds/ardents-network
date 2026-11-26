@@ -115,7 +115,7 @@
       "race": true,
       "owners": [
         { "package": "internal/architecture", "test_pattern": "^TestLocalDiagnosticsCollector$" },
-        { "package": "internal/diagnostics/process", "test_pattern": "^Test" }
+        { "package": "tests/diagnostics/heapdump", "test_pattern": "^Test" }
       ]
     },
     {

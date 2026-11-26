@@ -1,6 +1,6 @@
 //go:build heapdumpcapture
 
-package process
+package heapdump
 
 import (
 	"crypto/sha256"
@@ -16,8 +16,8 @@ import (
 
 func TestHeapDumpObservation(t *testing.T) {
 	root, output := os.Getenv("ARDENTS_HEAPDUMP_INPUT_ROOT"), os.Getenv("ARDENTS_HEAPDUMP_REPORT")
-	if root == "" && output == "" {
-		return
+	if root == "" || output == "" {
+		t.Fatal("ARDENTS_HEAPDUMP_INPUT_ROOT and ARDENTS_HEAPDUMP_REPORT are required")
 	}
 	if !filepath.IsAbs(root) || !filepath.IsAbs(output) {
 		t.Fatal("heap dump input root and report path must be absolute")

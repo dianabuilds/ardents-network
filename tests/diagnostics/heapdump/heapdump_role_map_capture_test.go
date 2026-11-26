@@ -1,6 +1,6 @@
 //go:build heapdumpcapture
 
-package process
+package heapdump
 
 import (
 	"crypto/sha256"
@@ -72,8 +72,8 @@ type heapMapMarker struct {
 
 func TestHeapDumpRoleMapObservation(t *testing.T) {
 	root, output := os.Getenv("ARDENTS_HEAPDUMP_INPUT_ROOT"), os.Getenv("ARDENTS_HEAPDUMP_ROLE_MAP")
-	if root == "" && output == "" {
-		return
+	if root == "" || output == "" {
+		t.Fatal("ARDENTS_HEAPDUMP_INPUT_ROOT and ARDENTS_HEAPDUMP_ROLE_MAP are required")
 	}
 	if !filepath.IsAbs(root) || !filepath.IsAbs(output) {
 		t.Fatal("heap dump input root and role-map path must be absolute")

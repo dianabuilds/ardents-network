@@ -34,6 +34,27 @@ reports observations from its selected local sources. Offline
 connection. A signed artifact, command result or explicit engineering capture
 retains its own contract and access boundary.
 
+## Retained diagnostic readers
+
+`internal/diagnostics/timeline` reads the recorded Node, Source and headless
+Endpoint event schemas, including journal envelopes. Their original schema and
+category spellings remain input compatibility; the reader does not establish
+that current runtimes produce those events. Unknown schemas and event kinds
+are filtered; malformed fields in known schemas are refused without raw echoes.
+
+`tests/diagnostics/heapdump` is a test-driven engineering harness, not a runtime
+process module. Its parser tests exercise the harness itself. The explicit
+`heapdump-capture` and `heapdump-role-map` targets verify existing receipt-bound
+captures and their original source digests, including separately retained source
+archives. Neither ordinary parser tests nor a historical capture qualifies the
+current runtime. The harness retains its historical report and capture profiles.
+
+The OTLP exporter uses the existing per-command bounds: 250 ms per export,
+750 ms total shutdown context, 32 KiB request bodies, 4 KiB response bodies and
+headers, one connection per collector host, one queued span, one span per batch,
+and metric cardinality 16. Retries, redirects, keep-alives and metric exemplars
+remain disabled. These are local diagnostic limits, not runtime admission rules.
+
 ## Continuous monitoring and explicit debug mode
 
 The selected engineering direction is continuous local Node monitoring with

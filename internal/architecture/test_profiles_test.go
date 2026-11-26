@@ -27,7 +27,7 @@ const streamWorkerFixture = "./tests/qualification/worker-lifecycle/stream-worke
 
 func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", streamWorkerFixture)
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/diagnostics/...", streamWorkerFixture)
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
 	if runtime.GOOS == "linux" {
 		for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
@@ -63,7 +63,7 @@ func TestProcessProfileSerializesPackagesSharingLoopbackResources(t *testing.T) 
 
 func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", streamWorkerFixture)
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/diagnostics/...", streamWorkerFixture)
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",

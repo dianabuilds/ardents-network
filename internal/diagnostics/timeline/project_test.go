@@ -212,3 +212,35 @@ func TestDiagnosticTimelinePreservesOptionalAbsenceAndFiltering(t *testing.T) {
 		}
 	}
 }
+
+func TestDiagnosticTimelineSourceKindAndReasonContract(t *testing.T) {
+	for _, tc := range []struct {
+		kind      string
+		reason    string
+		wantRow   bool
+		wantError bool
+	}{
+		{"source-ready", "", true, false},
+		{"source-wave-accepted", "", true, false},
+		{"source-failed", "background-work", true, false},
+		{"source-failed", "cleanup", true, false},
+		{"source-failed", "", false, true},
+		{"source-ready", "cleanup", false, true},
+		{"source-wave-accepted", "background-work", false, true},
+		{"unknown-kind", "private-detail", false, false},
+	} {
+		t.Run(tc.kind+"/"+tc.reason, func(t *testing.T) {
+			input := diagnosticTestJSON(t, map[string]any{
+				"schema": "ardents-source-event-v1",
+				"kind":   tc.kind,
+				"reason": tc.reason,
+				"at":     "2026-09-25T12:30:00Z",
+			})
+			var output bytes.Buffer
+			err := Project(t.Context(), io.NopCloser(strings.NewReader(input)), &output)
+			if (err != nil) != tc.wantError || (output.Len() > 0) != tc.wantRow {
+				t.Fatalf("output=%q err=%v; want row=%t error=%t", output.String(), err, tc.wantRow, tc.wantError)
+			}
+		})
+	}
+}

@@ -1987,12 +1987,12 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	switch source {
-	case "internal/diagnostics/process/heapdump_role_map_capture_test.go":
+	case "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go":
 		if dependency == modulePath+"/internal/admission" {
 			return true
 		}
 		fallthrough
-	case "internal/diagnostics/process/heapdump_parser_test.go", "internal/diagnostics/process/heapdump_capture_test.go":
+	case "tests/diagnostics/heapdump/heapdump_parser_test.go", "tests/diagnostics/heapdump/heapdump_capture_test.go":
 		first, _, _ := strings.Cut(dependency, "/")
 		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 	}
@@ -2758,9 +2758,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint release producer has no Route runtime", "scripts/sign-qualification-release.go", modulePath + "/internal/route/role", false},
 		{"Endpoint release producer retains TUF mechanism", "scripts/sign-qualification-release.go", "github.com/theupdateframework/go-tuf/v2/metadata", true},
 		{"Endpoint release producer retains signing mechanism", "scripts/sign-qualification-release.go", "github.com/sigstore/sigstore/pkg/signature", true},
-		{"retained heap map validates the public Permission framing", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/admission", true},
-		{"retained heap map cannot open a spending root", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/admission/spending", false},
-		{"retained heap map does not import predecessor Endpoint", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/endpoint", false},
+		{"retained heap map validates the public Permission framing", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/admission", true},
+		{"retained heap map cannot open a spending root", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/admission/spending", false},
+		{"retained heap map does not import predecessor Endpoint", "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
 		{"packaging uses new Enrollment through the product command", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
