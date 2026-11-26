@@ -18,7 +18,7 @@ func TestClosedProfileProjectionStopsWithStateOwner(t *testing.T) {
 		"stale time observation": func(s *State) {
 			s.config.observe = func() time.Time { return s.config.clock().Add(-3 * time.Second) }
 		},
-		"rollback behind retained floor": func(s *State) { s.distribution.trustedTimeFloor = s.config.clock().Add(3 * time.Second).Unix() },
+		"rollback behind retained floor": func(s *State) { s.distribution.TrustedTimeFloor = s.config.clock().Add(3 * time.Second).Unix() },
 	} {
 		t.Run(name, func(t *testing.T) {
 			store, raw := closedProfileStoreFixture(t)

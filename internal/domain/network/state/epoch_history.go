@@ -22,7 +22,7 @@ func (s *State) selectEpochHistory(candidates []*epoch.Decision) (*epoch.Decisio
 		return networkdomain.EpochFacts{Network: header.NetworkID, Number: header.Number, Digest: header.Digest,
 			Previous: header.Previous, ValidFrom: header.ValidFrom, ValidUntil: header.ValidUntil}
 	}
-	history, err := networkdomain.RestoreEpochHistory(facts(s.current), facts(s.pendingDecision), s.distribution.conflicting)
+	history, err := networkdomain.RestoreEpochHistory(facts(s.current), facts(s.pendingDecision), s.distribution.Conflicting)
 	if err != nil {
 		return nil, networkdomain.EpochSelection{}, err
 	}

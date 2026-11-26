@@ -9,13 +9,11 @@ history, conflicts and durable floors remain intact; no automatic migration is
 authorized. Earlier dual-Carrier evidence below retains its original scope.
 
 Network owns which authenticated network generations, profiles and assignments
-may be treated as current. Its domain model is `internal/successor/network`.
-Its application owner is `internal/successor/network/state`. The new application
-uses its own authentication, Source and journal adapters and does not import the
-old `internal/domain/network` implementation. Retained byte mechanisms preserve named
-wire and recovery obligations. The old tree and its consumers remain until a
-separately selected final cutover; their integration is outside this work's
-regression scope. Execution status and verification receipts belong to issue #493.
+may be treated as current. Its model lives at `internal/domain/network`.
+The `internal/domain/network/state` application selects, commits and observes
+accepted state through its authentication, Source and journal adapters.
+The retained byte mechanisms preserve wire and recovery obligations.
+Original transition receipts are recorded in issue #493.
 
 Offline Epoch and profile intake and retained inspection use
 `internal/domain/network/state/command`. It admits the bounded declaration,
@@ -304,7 +302,8 @@ The State application cannot import token debit, private signing or Hosting.
 The adapters have independent reasons to change: `epoch` owns authenticated
 Epoch/View grammar and proofs, `closedprofile` the signed role profile grammar,
 `source` the finite TLS protocol, `state/durable` the global root transaction
-mechanics, and `duty` the distinct local restriction journal. The two physical
+mechanics, `state/internal/distribution` the canonical ARDS1D4 distribution
+journal bytes, and `duty` the distinct local restriction journal. The two physical
 roots cannot be collapsed into one lifetime or transaction. Keeping these
 byte mechanisms preserves recovery obligations; it does not preserve their
 former ownership of Network policy. New command composition exercises the new

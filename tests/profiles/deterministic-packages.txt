@@ -50,6 +50,7 @@ github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdec
 github.com/dianabuilds/ardents-network/internal/domain/network/state
 github.com/dianabuilds/ardents-network/internal/domain/network/state/command
 github.com/dianabuilds/ardents-network/internal/domain/network/state/durable
+github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution
 github.com/dianabuilds/ardents-network/internal/domain/route
 github.com/dianabuilds/ardents-network/internal/domain/route/selection
 github.com/dianabuilds/ardents-network/internal/domain/route/ardp

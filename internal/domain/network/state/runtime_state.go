@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 // State owns verified-decision admission, finite Source work, and publication order.
@@ -23,7 +24,7 @@ type State struct {
 	config              config
 	current             *epoch.Decision
 	pendingDecision     *epoch.Decision
-	distribution        distributionState
+	distribution        distribution.Record
 	storage             *durable.Root
 	serverDone          chan struct{}
 	automaticDone       chan struct{}

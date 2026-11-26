@@ -8,6 +8,7 @@ import (
 	"time"
 
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 func TestMalformedBundleLengthPersistsFramingOutcome(t *testing.T) {
@@ -24,12 +25,12 @@ func TestMalformedBundleLengthPersistsFramingOutcome(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stored, err := decodeDistributionState(raw)
+	stored, err := distribution.Decode(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stored.outcomes[0] != sourceOutcomeFraming {
-		t.Fatalf("persisted malformed bundle outcome=%s; want framing-failed", sourceOutcomeName(stored.outcomes[0]))
+	if stored.Outcomes[0] != distribution.OutcomeFraming {
+		t.Fatalf("persisted malformed bundle outcome=%s; want framing-failed", sourceOutcomeName(stored.Outcomes[0]))
 	}
 	snapshot, err := s.Current()
 	if err != nil {
@@ -44,14 +45,14 @@ func TestByDigestResponseRejectsDifferentObject(t *testing.T) {
 	t.Parallel()
 	requested, returned := [32]byte{1}, [32]byte{2}
 	err := validateByDigestResponse(requested, returned)
-	if got := classifySourceOutcome(err); got != sourceOutcomeFraming {
+	if got := classifySourceOutcome(err); got != distribution.OutcomeFraming {
 		t.Fatalf("BY_DIGEST object mismatch outcome=%s; want framing-failed", sourceOutcomeName(got))
 	}
 }
 
 func TestProtocolStatusesKeepDistinctTerminalOutcomes(t *testing.T) {
 	t.Parallel()
-	want := [...]byte{sourceOutcomeNotFound, sourceOutcomeBusy, sourceOutcomeBadRequest, sourceOutcomeInternal}
+	want := [...]byte{distribution.OutcomeNotFound, distribution.OutcomeBusy, distribution.OutcomeBadRequest, distribution.OutcomeInternal}
 	for status := byte(1); status < byte(len(sourceStatusErrors)); status++ {
 		if got := classifySourceOutcome(sourceStatusErrors[status]); got != want[status-1] {
 			t.Fatalf("status %d outcome=%d want=%d", status, got, want[status-1])
@@ -76,7 +77,7 @@ func TestUnknownSourceStatusIsRefused(t *testing.T) {
 	if err == nil {
 		t.Fatal("unknown source status returned nil (fail-open)")
 	}
-	if got := classifySourceOutcome(err); got != sourceOutcomeInvalidState {
+	if got := classifySourceOutcome(err); got != distribution.OutcomeInvalidState {
 		t.Fatalf("unknown status outcome=%s want=invalid-state", sourceOutcomeName(got))
 	}
 }
@@ -88,12 +89,12 @@ func TestSourceOutcomeUsesCauseNotDiagnosticText(t *testing.T) {
 		err  error
 		want byte
 	}{
-		{"unavailable with framing words", fmt.Errorf("bundle length invalid: %w", source2.ErrUnavailable), sourceOutcomeUnavailable},
-		{"authentication with resource words", fmt.Errorf("bound exceeded: %w", source2.ErrAuthentication), sourceOutcomeAuthentication},
-		{"framing with authentication words", fmt.Errorf("certificate failed: %w", source2.ErrFraming), sourceOutcomeFraming},
-		{"unknown words do not invent resource failure", errors.New("bundle length exceeded"), sourceOutcomeInvalidState},
-		{"canceled before transport cause", errors.Join(context.Canceled, source2.ErrUnavailable), sourceOutcomeCanceled},
-		{"deadline before transport cause", errors.Join(context.DeadlineExceeded, source2.ErrUnavailable), sourceOutcomeTimeout},
+		{"unavailable with framing words", fmt.Errorf("bundle length invalid: %w", source2.ErrUnavailable), distribution.OutcomeUnavailable},
+		{"authentication with resource words", fmt.Errorf("bound exceeded: %w", source2.ErrAuthentication), distribution.OutcomeAuthentication},
+		{"framing with authentication words", fmt.Errorf("certificate failed: %w", source2.ErrFraming), distribution.OutcomeFraming},
+		{"unknown words do not invent resource failure", errors.New("bundle length exceeded"), distribution.OutcomeInvalidState},
+		{"canceled before transport cause", errors.Join(context.Canceled, source2.ErrUnavailable), distribution.OutcomeCanceled},
+		{"deadline before transport cause", errors.Join(context.DeadlineExceeded, source2.ErrUnavailable), distribution.OutcomeTimeout},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
@@ -107,9 +108,9 @@ func TestSourceOutcomeUsesCauseNotDiagnosticText(t *testing.T) {
 func TestLegacyResourceOutcomeRemainsReadable(t *testing.T) {
 	s, _ := newControlCommitFixture(t, false)
 	next := s.distribution
-	next.sequence++
-	next.attempts[0] = sourceAttemptFailed
-	next.outcomes[0] = sourceOutcomeResource
+	next.Sequence++
+	next.Attempts[0] = distribution.AttemptFailed
+	next.Outcomes[0] = distribution.OutcomeResource
 	if err := s.commitDistribution(next); err != nil {
 		t.Fatal(err)
 	}
@@ -117,12 +118,12 @@ func TestLegacyResourceOutcomeRemainsReadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stored, err := decodeDistributionState(raw)
+	stored, err := distribution.Decode(raw)
 	if err != nil {
 		t.Fatalf("legacy resource outcome was not readable: %v", err)
 	}
-	if stored.outcomes[0] != sourceOutcomeResource {
-		t.Fatalf("legacy resource outcome was not readable: outcome=%d", stored.outcomes[0])
+	if stored.Outcomes[0] != distribution.OutcomeResource {
+		t.Fatalf("legacy resource outcome was not readable: outcome=%d", stored.Outcomes[0])
 	}
 	snapshot, err := s.Current()
 	if err != nil {
@@ -136,11 +137,11 @@ func TestLegacyResourceOutcomeRemainsReadable(t *testing.T) {
 func TestSourceOutcomeJournalByteAssignments(t *testing.T) {
 	// ARDS1D4 stores these values, including the retained resource category.
 	got := [...]byte{
-		sourceOutcomeValid, sourceOutcomeUnavailable, sourceOutcomeAuthentication,
-		sourceOutcomeTimeout, sourceOutcomeFraming, sourceOutcomeResource,
-		sourceOutcomeCanceled, sourceOutcomeInvalidState, sourceOutcomeInterrupted,
-		sourceOutcomeNotFound, sourceOutcomeBusy, sourceOutcomeBadRequest,
-		sourceOutcomeInternal,
+		distribution.OutcomeValid, distribution.OutcomeUnavailable, distribution.OutcomeAuthentication,
+		distribution.OutcomeTimeout, distribution.OutcomeFraming, distribution.OutcomeResource,
+		distribution.OutcomeCanceled, distribution.OutcomeInvalidState, distribution.OutcomeInterrupted,
+		distribution.OutcomeNotFound, distribution.OutcomeBusy, distribution.OutcomeBadRequest,
+		distribution.OutcomeInternal,
 	}
 	want := [...]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}
 	if got != want {

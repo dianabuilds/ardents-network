@@ -86,7 +86,7 @@ func (s *State) replaceSourceExposures(notAfter time.Time, state string) error {
 // terminal wave state has been committed. The current and pending generations
 // may outlive the journal deadline, so their exposure bound takes precedence.
 func (s *State) releaseSourceWave() error {
-	if !s.config.sourceInfo.Configured || s.distribution.cycleActive {
+	if !s.config.sourceInfo.Configured || s.distribution.CycleActive {
 		return nil
 	}
 	return s.releaseJoinedSourceWave()
@@ -103,10 +103,10 @@ func (s *State) releaseSourceWaveLocked() error {
 }
 
 func (s *State) releaseJoinedSourceWave() error {
-	if !s.config.sourceInfo.Configured || s.distribution.cycleID == 0 {
+	if !s.config.sourceInfo.Configured || s.distribution.CycleID == 0 {
 		return nil
 	}
-	bound := time.Unix(s.distribution.cycleDeadline, 0)
+	bound := time.Unix(s.distribution.CycleDeadline, 0)
 	for _, decision := range []*epoch.Decision{s.current, s.pendingDecision} {
 		if decision != nil && decision.Header.ValidUntil.After(bound) {
 			bound = decision.Header.ValidUntil
@@ -126,18 +126,18 @@ func (s *State) releaseJoinedSourceWave() error {
 // tie a previous wave to the configured Source pair; if it disagrees, keep the
 // old producer guard intact until the operator restores that plan.
 func (s *State) recoverSourceWaveGuard() error {
-	if !s.distribution.cycleActive && len(s.distribution.history) == 0 {
+	if !s.distribution.CycleActive && len(s.distribution.History) == 0 {
 		return nil
 	}
 	if !s.config.sourceInfo.Configured {
-		if s.distribution.cycleActive {
+		if s.distribution.CycleActive {
 			return &RecoveryRequiredError{Reason: "active Source journal has no configured Source plan"}
 		}
 		// A terminal journal has no contact to resume. Offline readers leave
 		// its previously committed Duty producer intact without reclaiming it.
 		return nil
 	}
-	for _, exposure := range s.distribution.history {
+	for _, exposure := range s.distribution.History {
 		if exposure != s.config.sourceInfo.Exposures[0] && exposure != s.config.sourceInfo.Exposures[1] {
 			return &RecoveryRequiredError{Reason: "Source exposure history does not match the configured Source plan"}
 		}

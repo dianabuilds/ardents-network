@@ -8,15 +8,16 @@ import (
 	duty2 "github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 // commitActiveDecision coordinates the serving Source duty, immutable Epoch,
 // distribution floor, in-memory decision, and active pointer in that order.
-func (s *State) commitActiveDecision(decision *epoch.Decision, state distributionState) error {
+func (s *State) commitActiveDecision(decision *epoch.Decision, state distribution.Record) error {
 	return s.commitActiveDecisionWithControl(decision, state, s.storage.CommitControl)
 }
 
-func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state distributionState, commit func(string, []byte) error) (result error) {
+func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state distribution.Record, commit func(string, []byte) error) (result error) {
 	if decision == nil {
 		// Preserve the historical zero-value path: an unverified decision
 		// reaches the same durable refusal without a nil dereference.
@@ -68,9 +69,9 @@ func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state 
 	if err := persistDecision(s.storage, decision, false); err != nil {
 		return err
 	}
-	state.epochFloor, state.epochDigest = decision.Header.Number, decision.Header.Digest
-	if state.pendingDigest == decision.Header.Digest {
-		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
+	state.EpochFloor, state.EpochDigest = decision.Header.Number, decision.Header.Digest
+	if state.PendingDigest == decision.Header.Digest {
+		state.PendingDigest, state.PendingValidFrom = [32]byte{}, 0
 	}
 	if err := s.commitDistributionWithControl(state, commit); err != nil {
 		if errors.Is(err, durable.ErrPointerSyncUncertain) {

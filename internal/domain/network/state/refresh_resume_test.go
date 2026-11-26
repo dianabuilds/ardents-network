@@ -8,6 +8,7 @@ import (
 	"time"
 
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
@@ -16,11 +17,11 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 		status, outcome byte
 		elapsed         bool
 	}{
-		{"completed-unverified", sourceAttemptCompleted, 0, false},
-		{"in-flight", sourceAttemptInFlight, 0, false},
-		{"failed-recorded", sourceAttemptFailed, sourceOutcomeAuthentication, false},
-		{"completed-recorded", sourceAttemptCompleted, sourceOutcomeValid, false},
-		{"completed-recorded-elapsed", sourceAttemptCompleted, sourceOutcomeValid, true},
+		{"completed-unverified", distribution.AttemptCompleted, 0, false},
+		{"in-flight", distribution.AttemptInFlight, 0, false},
+		{"failed-recorded", distribution.AttemptFailed, distribution.OutcomeAuthentication, false},
+		{"completed-recorded", distribution.AttemptCompleted, distribution.OutcomeValid, false},
+		{"completed-recorded-elapsed", distribution.AttemptCompleted, distribution.OutcomeValid, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			initial, decision := newControlCommitFixture(t, false)
@@ -37,21 +38,21 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			if started, _, err := initial.beginLatestAttempt(order[0]); err != nil || !started {
 				t.Fatalf("first latest: %t %v", started, err)
 			}
-			digestSlot := digestAttemptSlot(order[1])
+			digestSlot := distribution.ByDigestSlot(order[1])
 			requested := [32]byte{9}
 			if err := initial.beginDigestAttempt(order[1], requested); err != nil {
 				t.Fatal(err)
 			}
-			if test.status == sourceAttemptCompleted {
+			if test.status == distribution.AttemptCompleted {
 				if err := initial.finishDigestAttempt(order[1], true); err != nil {
 					t.Fatal(err)
 				}
 			}
 			if test.outcome != 0 {
 				recorded := initial.distribution
-				recorded.sequence++
-				recorded.attempts[digestSlot], recorded.outcomes[digestSlot] = test.status, test.outcome
-				recorded.observedEpochs[digestSlot], recorded.observedDigests[digestSlot] = 7, requested
+				recorded.Sequence++
+				recorded.Attempts[digestSlot], recorded.Outcomes[digestSlot] = test.status, test.outcome
+				recorded.ObservedEpochs[digestSlot], recorded.ObservedDigests[digestSlot] = 7, requested
 				if err := initial.commitDistribution(recorded); err != nil {
 					t.Fatal(err)
 				}
@@ -112,37 +113,37 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			if err != nil || completionMinimum.IsZero() {
 				t.Fatal("completion observation unavailable", err)
 			}
-			retainedNext := resumed.distribution.nextAutomatic
+			retainedNext := resumed.distribution.NextAutomatic
 			want := test.outcome
 			if want == 0 {
-				want = sourceOutcomeInterrupted
+				want = distribution.OutcomeInterrupted
 			}
 			check := func(s *State) {
 				t.Helper()
 				d := s.distribution
-				if d.outcomes[digestSlot] != want {
-					t.Errorf("digest outcome=%s; want %s", sourceOutcomeName(d.outcomes[digestSlot]), sourceOutcomeName(want))
+				if d.Outcomes[digestSlot] != want {
+					t.Errorf("digest outcome=%s; want %s", sourceOutcomeName(d.Outcomes[digestSlot]), sourceOutcomeName(want))
 				}
-				if d.outcomes[order[0]] != sourceOutcomeInterrupted || d.outcomes[order[1]] != sourceOutcomeBusy {
-					t.Errorf("LATEST outcomes=%v", d.outcomes)
+				if d.Outcomes[order[0]] != distribution.OutcomeInterrupted || d.Outcomes[order[1]] != distribution.OutcomeBusy {
+					t.Errorf("LATEST outcomes=%v", d.Outcomes)
 				}
-				if d.cycleActive || d.sourceOrder != [2]byte{byte(order[0]), byte(order[1])} || d.cycleDeadline != deadline.Unix() {
+				if d.CycleActive || d.SourceOrder != [2]byte{byte(order[0]), byte(order[1])} || d.CycleDeadline != deadline.Unix() {
 					t.Errorf("cycle identity changed at completion: %+v", d)
 				}
-				if d.requestedDigests[order[1]] != requested || d.attempts[digestSlot] == sourceAttemptNotStarted {
+				if d.RequestedDigests[order[1]] != requested || d.Attempts[digestSlot] == distribution.AttemptNotStarted {
 					t.Error("consumed digest selector lost")
 				}
-				if test.outcome != 0 && (d.observedEpochs[digestSlot] != 7 || d.observedDigests[digestSlot] != requested) {
+				if test.outcome != 0 && (d.ObservedEpochs[digestSlot] != 7 || d.ObservedDigests[digestSlot] != requested) {
 					t.Error("recorded evidence lost")
 				}
 				// Jitter is independent of the transition. Its time origin is
 				// completion, bracketed by actual observations before the final
 				// response returns and after Refresh joins; reopen must retain
 				// the exact result rather than selecting a new deadline.
-				delay := int64(30) + int64(d.cycleSeed[1])*31/256
-				if d.consecutiveFailures != 1 || d.backoffLevel != 0 || d.nextAutomatic != retainedNext ||
-					d.nextAutomatic < completionMinimum.Unix()+delay || d.nextAutomatic > completionMaximum.Unix()+delay {
-					t.Errorf("failure backoff changed: next=%d retained=%d completion=[%d,%d] delay=%d", d.nextAutomatic, retainedNext, completionMinimum.Unix(), completionMaximum.Unix(), delay)
+				delay := int64(30) + int64(d.CycleSeed[1])*31/256
+				if d.ConsecutiveFailures != 1 || d.BackoffLevel != 0 || d.NextAutomatic != retainedNext ||
+					d.NextAutomatic < completionMinimum.Unix()+delay || d.NextAutomatic > completionMaximum.Unix()+delay {
+					t.Errorf("failure backoff changed: next=%d retained=%d completion=[%d,%d] delay=%d", d.NextAutomatic, retainedNext, completionMinimum.Unix(), completionMaximum.Unix(), delay)
 				}
 				snapshot, err := s.Current()
 				if err != nil || snapshot.SourceOutcomes[digestSlot] != sourceOutcomeName(want) {
@@ -169,14 +170,14 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			if _, err := reopened.Refresh(context.Background()); !errors.Is(err, errRefreshUnavailable) || calls != 1 {
 				t.Fatalf("durable backoff allowed contact: %v calls=%d", err, calls)
 			}
-			now = time.Unix(reopened.distribution.nextAutomatic, 0)
+			now = time.Unix(reopened.distribution.NextAutomatic, 0)
 			clock = resumeObservationClock(now)
 			reopened.config.clock, reopened.config.observe = clock, clock
 			reopened.config.anchorWall, reopened.config.anchorMono = now, time.Now()
 			if _, _, err := reopened.startSourceWave(now); err != nil {
 				t.Fatal(err)
 			}
-			if reopened.distribution.outcomes != [4]byte{} || reopened.distribution.attempts != [4]byte{} || reopened.distribution.requestedDigests != [2][32]byte{} || reopened.distribution.observedEpochs != [4]uint64{} || reopened.distribution.observedDigests != [4][32]byte{} {
+			if reopened.distribution.Outcomes != [4]byte{} || reopened.distribution.Attempts != [4]byte{} || reopened.distribution.RequestedDigests != [2][32]byte{} || reopened.distribution.ObservedEpochs != [4]uint64{} || reopened.distribution.ObservedDigests != [4][32]byte{} {
 				t.Fatal("new cycle retained old observations or selectors")
 			}
 		})

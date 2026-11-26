@@ -70,7 +70,7 @@ func (r *sourceRepair) checkHistory() (*epoch.Decision, error) {
 		return nil, errors.Join(ErrSourceRepairUnavailable, err)
 	}
 	// Serving-only repair cannot resolve outstanding acquisition/exposure work.
-	if journal.cycleActive || journal.pendingDigest != ([32]byte{}) || len(journal.history) != 0 {
+	if journal.CycleActive || journal.PendingDigest != ([32]byte{}) || len(journal.History) != 0 {
 		return nil, ErrSourceRepairUnavailable
 	}
 	return current, nil
