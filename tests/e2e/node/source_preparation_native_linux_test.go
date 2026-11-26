@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 )
 

@@ -29,7 +29,7 @@ unselected. The [scope](product/scope.md) owns these boundaries.
 | Protected physical transport | [Protocol](technical/protected-route-protocol.md), [Prefix/channel](technical/successor-route-prefix.md), [Introduction](technical/successor-route-introduction.md), [JOIN](technical/successor-route-join.md), [integration boundaries](development/route-delivery-join-boundary.md) |
 | Local permission, original Job and worker cleanup | [Execution](technical/application-execution.md), [confinement](technical/application-confinement.md) |
 | Publication, exact-Target proofs and logical Connection | [Service lifecycle](technical/endpoint-service-runtime.md), [Reachability](technical/private-reachability.md), [domain map](development/domain-map.md) |
-| First trust, Release, Endpoint launch and Custody | [Enrollment](technical/enrollment-verification.md), [Release/update/Custody](technical/release-update-custody.md), [Endpoint launch](../internal/endpoint/launch/README.md) |
+| First trust, Release, Endpoint launch and Custody | [Enrollment](technical/enrollment-verification.md), [Release/update/Custody](technical/release-update-custody.md), [Endpoint launch](../internal/domain/endpoint/launch/README.md) |
 | Disclosure, commands and operator procedure | [Alpha-control retirement](technical/alpha-control-transition.md), [commands](reference/commands.md), [Portable enrollment](reference/portable-enrollment.md), [qualification Release procedure](operations/qualification-release.md) |
 | Engineering, dependencies and evidence profiles | [Development](development/README.md), [dependencies](development/dependencies.md), [testing](development/testing.md), [privacy acceptance](development/privacy-qualification.md) |
 

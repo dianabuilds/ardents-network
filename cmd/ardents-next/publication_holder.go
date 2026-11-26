@@ -1,6 +1,6 @@
 package main
 
-import endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
+import endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 
 type publicationPlan struct {
 	InstanceRoot string `json:"instance_root"`

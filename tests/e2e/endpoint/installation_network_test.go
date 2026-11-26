@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/plan"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/plan"
 )
 
 func TestInstallationNetworkKeepsPinsAndPathsAsLiteralInputs(t *testing.T) {

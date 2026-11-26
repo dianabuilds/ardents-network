@@ -29,7 +29,7 @@ func InstallLatencyParticipant(t *testing.T) string {
 			repoRoot = RepositoryRoot(t)
 		}
 		out := filepath.Join(t.TempDir(), "latency-participant.test")
-		cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_launch_native", "-trimpath", "-buildvcs=false", "-o", out, "./internal/endpoint")
+		cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_launch_native", "-trimpath", "-buildvcs=false", "-o", out, "./internal/domain/endpoint")
 		cmd.Dir = repoRoot
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		if output, err := cmd.CombinedOutput(); err != nil {

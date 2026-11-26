@@ -64,12 +64,12 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 	tests += "func TestTextPublicationIsolatedRoleObservations(t *testing.T){if ReadValue()==0 {t.Fatal(\"zero\")}}\n"
 	tests += "func TestUnrelated(t *testing.T){if ReadStable()!=42 {t.Fatal(\"stable\")}}\n"
 	write("internal/consumer/read_test.go", tests)
-	write("internal/endpoint/read.go", "package endpoint\nimport \"example.com/selection/internal/source\"\nfunc ReadValue() int {return source.Value()}\n")
+	write("internal/domain/endpoint/read.go", "package endpoint\nimport \"example.com/selection/internal/source\"\nfunc ReadValue() int {return source.Value()}\n")
 	endpointTests := "package endpoint\nimport \"testing\"\n"
 	for i := range 5 {
 		endpointTests += fmt.Sprintf("func TestTextPublicationFixture%02d(t *testing.T){if ReadValue()==0 {t.Fatal(\"zero\")}}\n", i)
 	}
-	write("internal/endpoint/read_test.go", endpointTests)
+	write("internal/domain/endpoint/read_test.go", endpointTests)
 	write("internal/architecture/architecture_test.go", "package architecture\nimport \"testing\"\nfunc TestRepositoryArchitecture(t *testing.T){}\nfunc TestPRSelectionSelf(t *testing.T){}\nfunc TestArchitectureUnrelated(t *testing.T){}\n")
 	write("scripts/select-pr-checks.go", "package main\n")
 	write("tests/e2e/probe/probe_test.go", "package probe\nimport \"testing\"\nfunc TestIndependent(t *testing.T){}\n")
@@ -176,11 +176,11 @@ func TestPRSelectionMapsQualificationFixturesToBoundedOwners(t *testing.T) {
 		return output
 	}
 	writeFile("go.mod", "module example.com/qualification-selection\n\ngo 1.26.8\n")
-	writeFile("docs/development/ownership.json", "{\"pr_check_mappings\":[{\"path_prefix\":\"tests/qualification/stream-network-two-host/\",\"race\":true,\"owners\":[{\"package\":\"cmd/ardents-qualification\",\"test_pattern\":\"^Test(?:Qualification|ResourceVerdict|FailedNET14V)\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-relay\",\"test_pattern\":\"^TestRelayConfiguration\"},{\"package\":\"tests/epochfixture/network\",\"test_pattern\":\"^TestCanonicalNetworkFixture\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-network\",\"test_pattern\":\"^TestRunCreatesCompleteBoundedNetworkFixture\"},{\"package\":\"internal/endpoint\",\"test_pattern\":\"^TestQualificationStream\"},{\"package\":\"internal/domain/node\",\"test_pattern\":\"^TestClosedHosting\"}]}]}\n")
+	writeFile("docs/development/ownership.json", "{\"pr_check_mappings\":[{\"path_prefix\":\"tests/qualification/stream-network-two-host/\",\"race\":true,\"owners\":[{\"package\":\"cmd/ardents-qualification\",\"test_pattern\":\"^Test(?:Qualification|ResourceVerdict|FailedNET14V)\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-relay\",\"test_pattern\":\"^TestRelayConfiguration\"},{\"package\":\"tests/epochfixture/network\",\"test_pattern\":\"^TestCanonicalNetworkFixture\"},{\"package\":\"tests/qualification/stream-network-two-host/fixturecommand/qualification-network\",\"test_pattern\":\"^TestRunCreatesCompleteBoundedNetworkFixture\"},{\"package\":\"internal/domain/endpoint\",\"test_pattern\":\"^TestQualificationStream\"},{\"package\":\"internal/domain/node\",\"test_pattern\":\"^TestClosedHosting\"}]}]}\n")
 	for _, owner := range []struct{ directory, packageName, selected, unrelated string }{
 		{"cmd/ardents-qualification", "main", "TestQualificationEvidence", "TestCommandUnrelated"},
 		{"cmd/ardents-node", "main", "TestNodePlan", "TestNodeUnrelated"},
-		{"internal/endpoint", "endpoint", "TestQualificationStream", "TestEndpointUnrelated"},
+		{"internal/domain/endpoint", "endpoint", "TestQualificationStream", "TestEndpointUnrelated"},
 		{"internal/domain/node", "node", "TestClosedHosting", "TestNodeUnrelated"},
 		{"internal/architecture", "architecture", "TestRepositoryArchitecture", "TestArchitectureUnrelated"},
 		{"tests/qualification/stream-network-two-host/fixturecommand/qualification-relay", "main", "TestRelayConfiguration", "TestRelayUnrelated"},

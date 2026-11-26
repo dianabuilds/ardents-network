@@ -75,7 +75,7 @@ Descriptor Store, восстановление Connection, изменение Jo
 корневые полномочия; runtime-ключ Instance не превращается в корневую власть.
 
 **Где искать обязанности:** `internal/service/instance`, `service/publication`,
-регистрация и Introduction в `internal/endpoint`. Переносить только обязанности
+регистрация и Introduction в `internal/domain/endpoint`. Переносить только обязанности
 публикации: принимающие слоты и их история принадлежат Route.
 
 **Основа:** [Service](../../../docs/technical/endpoint-service-runtime.md),

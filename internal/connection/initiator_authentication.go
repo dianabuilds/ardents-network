@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // AuthenticateInitiator requires an actual retained JOIN and independently
@@ -28,7 +29,7 @@ func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physi
 	attachment := &initiatorAttachment{binding: binding, physical: physical, ctx: child, cancel: cancel, watcherDone: make(chan struct{})}
 	attachment.self = attachment
 	attachment.connection = tls.Client(initiatorTLSBorrow{attachment: attachment}, &tls.Config{
-		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519},
+		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, CurvePreferences: transport.ClosedProfileKeyExchangeGroups(),
 		InsecureSkipVerify: true, // The independently bound Instance is the sole verifier.
 		VerifyConnection: func(state tls.ConnectionState) error {
 			return verifyInstanceCertificate(state, binding.identity.Instance)

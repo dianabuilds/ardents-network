@@ -17,7 +17,7 @@ func offlineOperatorFile(source string) bool {
 		"internal/admission/issuance/artifact_export_unix.go",
 		"internal/domain/release/infrastructure/preparation_linux.go",
 		"internal/domain/release/infrastructure/preparation_native_linux_test.go",
-		"internal/endpoint/source_trust_preparation_linux.go",
+		"internal/domain/endpoint/source_trust_preparation_linux.go",
 		"internal/network/state/source_state_files_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "tests/e2e/source/inspection_linux_test.go",
 		"cmd/ardents-next/offline_profile_inspection.go", "tests/e2e/node/offline_profile_inspection_test.go":
@@ -41,7 +41,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/process", modulePath + "/internal/processresource":
 			return true
 		}
-	case "internal/endpoint/source_trust_preparation_linux.go":
+	case "internal/domain/endpoint/source_trust_preparation_linux.go":
 		switch dependency {
 		case modulePath + "/internal/network/source", modulePath + "/internal/network/source/servingdeclaration", modulePath + "/internal/platform/artifacts", modulePath + "/internal/pathgrammar", modulePath + "/internal/processresource":
 			return true

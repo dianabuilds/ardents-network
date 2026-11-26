@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"

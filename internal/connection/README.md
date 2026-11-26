@@ -178,7 +178,7 @@ Execution — worker; эти обязанности не переходят к C
 проверяемую перед эффектами и окончательной передачей результата.
 
 **Где искать обязанности:** `internal/service/connection`, Service binding
-и восстановление в `internal/endpoint`, `internal/endpoint/service`.
+и восстановление в `internal/domain/endpoint`, `internal/domain/endpoint/service`.
 Механизмы и полномочия разбираются отдельно; старые callbacks не переносятся
 как междоменный контракт.
 

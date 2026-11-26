@@ -5,9 +5,9 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 )
 
 type holderPlan struct {

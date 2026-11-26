@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint/unit"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 

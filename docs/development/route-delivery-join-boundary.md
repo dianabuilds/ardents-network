@@ -117,7 +117,7 @@ live root with old code or another domain. Preserve retained bytes, expiry,
 conflict and uncertain-write behavior; no new selection or resampling policy.
 
 A Source lifecycle may exist before opening a physical prefix, but is then
-unready. In inspected `internal/endpoint/source/lifecycle.go`,
+unready. In inspected `internal/domain/endpoint/source/lifecycle.go`,
 `AcquireJoinLocked` requires a live handle with non-nil prefix, and
 `CurrentLocked` checks that exact published handle. The contract likewise
 binds consumers to the exact published Source opening. Do not turn a newly

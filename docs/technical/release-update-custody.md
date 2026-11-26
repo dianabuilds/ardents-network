@@ -248,7 +248,7 @@ not borrow the predecessor runtime or Release history.
 Portable `internal/domain/release/endpoint` binds the exact program and protected
 generation using fresh coherent Release proofs and original Enrollment
 provenance. It also owns verification of the running program against an
-independently pinned bundle and joined Release history. `internal/endpoint/launch` consumes those proofs to stage the
+independently pinned bundle and joined Release history. `internal/domain/endpoint/launch` consumes those proofs to stage the
 generation and independently checks installed binding and startup. Native
 observations supply physical facts while Release retains trust floors.
 Portable metadata/target/safety rules remain

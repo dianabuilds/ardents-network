@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"

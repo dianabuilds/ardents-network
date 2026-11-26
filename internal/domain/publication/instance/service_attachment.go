@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // ServiceAttachment confines TLS key use to one original admitted JOIN. The
@@ -154,7 +155,7 @@ func (service *ServiceAttachment) configureTLSLocked() error {
 	}
 	service.transport = &serviceTLSBorrow{service: service}
 	service.connection = tls.Server(service.transport, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
-		CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519}, Certificates: []tls.Certificate{certificate}, SessionTicketsDisabled: true})
+		CurvePreferences: transport.ClosedProfileKeyExchangeGroups(), Certificates: []tls.Certificate{certificate}, SessionTicketsDisabled: true})
 	return nil
 }
 
