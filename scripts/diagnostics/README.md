@@ -193,7 +193,7 @@ diag static -out /evidence/static-a -timeout 15m
 docker compose -f scripts/diagnostics/compose.yaml --profile online run --rm online \
   run -raw -out /evidence/vulnerability-a -timeout 15m -- govulncheck ./...
 
-diag test -package ./internal/diagnostics/process -run '^Test' \
+diag test -package ./tests/diagnostics/heapdump -run '^Test' \
   -race -out /evidence/process-race-a -timeout 2m
 # One package, explicit pattern; performance profiling is separate from race.
 diag test -package ./internal/platform/systemd -run '^$' -bench '^BenchmarkManagerPropertyMatch$' \

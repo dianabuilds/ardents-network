@@ -65,53 +65,54 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		}
 		fields = event
 	}
-	schema := diagnosticString(fields, "schema")
-	var stringFields []string
-	switch schema {
-	case "ardents-node-event-v1":
-		stringFields = []string{"kind", "at", "assignment", "carrier_profile", "state", "reason"}
-	case "ardents-source-event-v1":
-		stringFields = []string{"kind", "at", "reason"}
-	case "ardents-headless-runtime-event-v1":
-		stringFields = []string{"kind", "at", "surface", "failure"}
-	default:
-		return "", false, nil
-	}
-	for _, name := range stringFields {
-		if raw, present := fields[name]; present {
-			var value *string
-			if json.Unmarshal(raw, &value) != nil || value == nil {
-				return "", false, errors.New("runtime diagnostic contains an invalid field type")
-			}
-		}
-	}
 	kind := diagnosticString(fields, "kind")
 	owner, role, carrier, state, reason := "", "", "", "", ""
-	switch schema {
-	case "ardents-node-event-v1":
-		if kind != "lifecycle" && kind != "resource" && kind != "resource-sample" {
-			return "", false, nil
+	switch diagnosticString(fields, "schema") {
+	case nodeEventSchema:
+		if err := validateStringFields(fields, "kind", "at", "assignment", "carrier_profile", "state", "reason"); err != nil {
+			return "", false, err
 		}
-		owner, role, carrier, state, reason = "node", diagnosticString(fields, "assignment"),
-			diagnosticString(fields, "carrier_profile"), diagnosticString(fields, "state"), diagnosticString(fields, "reason")
-	case "ardents-source-event-v1":
-		if kind != "source-ready" && kind != "source-wave-accepted" && kind != "source-failed" {
-			return "", false, nil
-		}
-		owner, reason = "source", diagnosticString(fields, "reason")
-		if (kind == "source-failed" && reason != "background-work" && reason != "cleanup") ||
-			(kind != "source-failed" && reason != "") {
-			return "", false, errors.New("source diagnostic has an invalid reason category")
-		}
-	case "ardents-headless-runtime-event-v1":
 		switch kind {
-		case "headless-runtime-ready", "headless-runtime-permission-required", "headless-runtime-failed",
-			"headless-runtime-publication-refresh-failed", "headless-runtime-publication-withdrawal-failed",
-			"headless-runtime-connection-operation-failed":
+		case nodeLifecycle, nodeResource, nodeResourceSample:
 		default:
 			return "", false, nil
 		}
-		owner, role, reason = "endpoint", diagnosticString(fields, "surface"), diagnosticString(fields, "failure")
+		owner = "node"
+		role = diagnosticString(fields, "assignment")
+		carrier = diagnosticString(fields, "carrier_profile")
+		state = diagnosticString(fields, "state")
+		reason = diagnosticString(fields, "reason")
+	case sourceEventSchema:
+		if err := validateStringFields(fields, "kind", "at", "reason"); err != nil {
+			return "", false, err
+		}
+		owner, reason = "source", diagnosticString(fields, "reason")
+		switch kind {
+		case sourceFailed:
+			if reason != sourceBackgroundWork && reason != sourceCleanup {
+				return "", false, errors.New("source diagnostic has an invalid reason category")
+			}
+		case sourceReady, sourceWaveAccepted:
+			if reason != "" {
+				return "", false, errors.New("source diagnostic has an invalid reason category")
+			}
+		default:
+			return "", false, nil
+		}
+	case endpointEventSchema:
+		if err := validateStringFields(fields, "kind", "at", "surface", "failure"); err != nil {
+			return "", false, err
+		}
+		switch kind {
+		case endpointReady, endpointPermissionRequired, endpointFailed,
+			endpointPublicationRefreshFailed, endpointPublicationWithdrawalFailed,
+			endpointConnectionOperationFailed:
+		default:
+			return "", false, nil
+		}
+		owner = "endpoint"
+		role = diagnosticString(fields, "surface")
+		reason = diagnosticString(fields, "failure")
 	default:
 		return "", false, nil
 	}
@@ -146,6 +147,18 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 	}
 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%q\n",
 		at.UTC().Format(time.RFC3339Nano), clock, owner, pid, role, carrier, kind, state, reason), true, nil
+}
+
+func validateStringFields(fields map[string]json.RawMessage, names ...string) error {
+	for _, name := range names {
+		if raw, present := fields[name]; present {
+			var value *string
+			if json.Unmarshal(raw, &value) != nil || value == nil {
+				return errors.New("runtime diagnostic contains an invalid field type")
+			}
+		}
+	}
+	return nil
 }
 
 func diagnosticString(fields map[string]json.RawMessage, name string) string {

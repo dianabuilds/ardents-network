@@ -22,6 +22,19 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
+// Export bounds apply to each command invocation, independently of collector
+// availability. Trace buffering holds at most one queued span and one-span batches.
+const (
+	exportTimeout           = 250 * time.Millisecond
+	shutdownTimeout         = 750 * time.Millisecond
+	maxRequestBytes         = 32 * 1024
+	maxResponseBytes        = 4 * 1024
+	maxCollectorConnections = 1
+	maxQueuedSpans          = 1
+	maxBatchSpans           = 1
+	maxMetricCardinality    = 16
+)
+
 // Observation owns the exporters for one command invocation.
 type Observation struct {
 	traces    *sdktrace.TracerProvider
@@ -38,12 +51,21 @@ func ValidateCollector(value string) error {
 		return nil
 	}
 	u, err := url.Parse(value)
-	if err != nil || u.Scheme != "http" || u.User != nil || u.ForceQuery || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+	if err != nil {
+		return errors.New("invalid collector")
+	}
+	if u.Scheme != "http" || u.User != nil {
+		return errors.New("invalid collector")
+	}
+	if u.ForceQuery || u.RawQuery != "" || u.Fragment != "" {
+		return errors.New("invalid collector")
+	}
+	if (u.Path != "" && u.Path != "/") || u.RawPath != "" {
 		return errors.New("invalid collector")
 	}
 	ip := net.ParseIP(u.Hostname())
 	port, portError := strconv.ParseUint(u.Port(), 10, 16)
-	if ip == nil || !ip.IsLoopback() || portError != nil || port == 0 || u.RawPath != "" {
+	if ip == nil || !ip.IsLoopback() || portError != nil || port == 0 {
 		return errors.New("invalid collector")
 	}
 	return nil
@@ -54,26 +76,71 @@ func Open(endpoint string) (*Observation, error) {
 	if err := ValidateCollector(endpoint); err != nil || endpoint == "" {
 		return nil, err
 	}
-	o := &Observation{}
-	r := resource.NewSchemaless(attribute.String("service.name", "ardents-next"))
-	options := []sdktrace.TracerProviderOption{sdktrace.WithResource(r), sdktrace.WithSampler(sdktrace.AlwaysSample()), sdktrace.WithoutPanicRecording()}
 	endpoint = strings.TrimSuffix(endpoint, "/")
-	o.transport = &http.Transport{Proxy: nil, DisableKeepAlives: true, MaxConnsPerHost: 1, MaxResponseHeaderBytes: 4096, ResponseHeaderTimeout: 250 * time.Millisecond}
-	client := &http.Client{Transport: o.transport, Timeout: 250 * time.Millisecond, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	e, err := otlptracehttp.New(context.Background(), otlptracehttp.WithEndpointURL(endpoint+"/v1/traces"), otlptracehttp.WithHTTPClient(client), otlptracehttp.WithEncoding(otlptracehttp.EncodingProtobuf), otlptracehttp.WithMaxRequestSize(32768), otlptracehttp.WithMaxResponseSize(4096), otlptracehttp.WithHeaders(map[string]string{}), otlptracehttp.WithCompression(otlptracehttp.NoCompression), otlptracehttp.WithRetry(otlptracehttp.RetryConfig{Enabled: false}), otlptracehttp.WithTimeout(250*time.Millisecond))
+	o := &Observation{
+		transport: &http.Transport{
+			Proxy:                  nil,
+			DisableKeepAlives:      true,
+			MaxConnsPerHost:        maxCollectorConnections,
+			MaxResponseHeaderBytes: maxResponseBytes,
+			ResponseHeaderTimeout:  exportTimeout,
+		},
+	}
+	client := &http.Client{
+		Transport: o.transport,
+		Timeout:   exportTimeout,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	traceExporter, err := otlptracehttp.New(context.Background(),
+		otlptracehttp.WithEndpointURL(endpoint+"/v1/traces"),
+		otlptracehttp.WithHTTPClient(client),
+		otlptracehttp.WithEncoding(otlptracehttp.EncodingProtobuf),
+		otlptracehttp.WithMaxRequestSize(maxRequestBytes),
+		otlptracehttp.WithMaxResponseSize(maxResponseBytes),
+		otlptracehttp.WithHeaders(map[string]string{}),
+		otlptracehttp.WithCompression(otlptracehttp.NoCompression),
+		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{Enabled: false}),
+		otlptracehttp.WithTimeout(exportTimeout),
+	)
 	if err != nil {
 		return nil, errors.New("telemetry unavailable")
 	}
-	options = append(options, sdktrace.WithBatcher(&quietTraceExporter{SpanExporter: e, failure: &o.failure}, sdktrace.WithMaxQueueSize(1), sdktrace.WithMaxExportBatchSize(1), sdktrace.WithExportTimeout(250*time.Millisecond)))
-	m, err := otlpmetrichttp.New(context.Background(), otlpmetrichttp.WithEndpointURL(endpoint+"/v1/metrics"), otlpmetrichttp.WithHTTPClient(client), otlpmetrichttp.WithMaxRequestSize(32768), otlpmetrichttp.WithMaxResponseSize(4096), otlpmetrichttp.WithHeaders(map[string]string{}), otlpmetrichttp.WithCompression(otlpmetrichttp.NoCompression), otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{Enabled: false}), otlpmetrichttp.WithTimeout(250*time.Millisecond))
+	metricExporter, err := otlpmetrichttp.New(context.Background(),
+		otlpmetrichttp.WithEndpointURL(endpoint+"/v1/metrics"),
+		otlpmetrichttp.WithHTTPClient(client),
+		otlpmetrichttp.WithMaxRequestSize(maxRequestBytes),
+		otlpmetrichttp.WithMaxResponseSize(maxResponseBytes),
+		otlpmetrichttp.WithHeaders(map[string]string{}),
+		otlpmetrichttp.WithCompression(otlpmetrichttp.NoCompression),
+		otlpmetrichttp.WithRetry(otlpmetrichttp.RetryConfig{Enabled: false}),
+		otlpmetrichttp.WithTimeout(exportTimeout),
+	)
 	if err != nil {
-		_ = e.Shutdown(context.Background())
+		_ = traceExporter.Shutdown(context.Background())
 		return nil, errors.New("telemetry unavailable")
 	}
-	o.exporter = m
-	o.traces = sdktrace.NewTracerProvider(options...)
+	r := resource.NewSchemaless(attribute.String("service.name", "ardents-next"))
+	o.traces = sdktrace.NewTracerProvider(
+		sdktrace.WithResource(r),
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithoutPanicRecording(),
+		sdktrace.WithBatcher(
+			&quietTraceExporter{SpanExporter: traceExporter, failure: &o.failure},
+			sdktrace.WithMaxQueueSize(maxQueuedSpans),
+			sdktrace.WithMaxExportBatchSize(maxBatchSpans),
+			sdktrace.WithExportTimeout(exportTimeout),
+		),
+	)
+	o.exporter = metricExporter
 	o.reader = sdkmetric.NewManualReader()
-	o.meters = sdkmetric.NewMeterProvider(sdkmetric.WithResource(r), sdkmetric.WithReader(o.reader), sdkmetric.WithExemplarFilter(exemplar.AlwaysOffFilter), sdkmetric.WithCardinalityLimit(16))
+	o.meters = sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(r),
+		sdkmetric.WithReader(o.reader),
+		sdkmetric.WithExemplarFilter(exemplar.AlwaysOffFilter),
+		sdkmetric.WithCardinalityLimit(maxMetricCardinality),
+	)
 	return o, nil
 }
 
@@ -96,7 +163,7 @@ func (o *Observation) Close() bool {
 	if o == nil {
 		return false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 750*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if o.exporter != nil {
 		var data metricdata.ResourceMetrics
@@ -127,7 +194,11 @@ func (o *Observation) Begin(scope, operation string) func(string, string) {
 	ctx, span := o.traces.Tracer(scope).Start(context.Background(), operation)
 	start := time.Now()
 	return func(phase, outcome string) {
-		attrs := []attribute.KeyValue{attribute.String("operation", operation), attribute.String("phase", phase), attribute.String("outcome", outcome)}
+		attrs := []attribute.KeyValue{
+			attribute.String("operation", operation),
+			attribute.String("phase", phase),
+			attribute.String("outcome", outcome),
+		}
 		span.SetAttributes(attrs...)
 		span.End()
 		meter := o.meters.Meter(scope)
