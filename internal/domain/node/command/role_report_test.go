@@ -1,15 +1,16 @@
-package node
+package command
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node"
 	"testing"
 )
 
 func TestForwardingStartupReportsNetworkCleanupFailure(t *testing.T) {
 	var out bytes.Buffer
-	if code := StartupRefusal(&out, ForwardingOperation, errors.New("private startup error"), errors.New("private cleanup error")); code != 1 {
+	if code := startupRefusal(&out, forwardingOperation, errors.New("private startup error"), errors.New("private cleanup error")); code != 1 {
 		t.Fatal("startup refusal returned wrong result", code)
 	}
 	var event map[string]string
@@ -23,19 +24,19 @@ func TestForwardingStartupReportsNetworkCleanupFailure(t *testing.T) {
 
 func TestForwardingWaitExpiryKeepsJoinedOutcome(t *testing.T) {
 	var out bytes.Buffer
-	firstFailure := func() *FailureDiagnostic { return nil }
-	ReportWaitExpired(&out, ForwardingOperation, firstFailure)
+	firstFailure := func() *node.FailureDiagnostic { return nil }
+	reportWaitExpired(&out, forwardingOperation, firstFailure)
 	var event map[string]string
 	if err := json.Unmarshal(out.Bytes(), &event); err != nil || event["phase"] != "retiring" || event["outcome"] != "completion-unavailable" {
 		t.Fatalf("invalid wait expiry report: %v, %v", event, err)
 	}
 
 	out.Reset()
-	result := InvocationCompletion{Outcome: "canceled", TimedOut: true}
-	if code := ReportCompletion(&out, ForwardingOperation, result, firstFailure); code != 1 || out.Len() != 0 {
+	result := node.InvocationCompletion{Outcome: "canceled", TimedOut: true}
+	if code := reportCompletion(&out, forwardingOperation, result, firstFailure); code != 1 || out.Len() != 0 {
 		t.Fatalf("timed-out Forwarding projected another report: %d, %q", code, out.String())
 	}
-	if code := ReportCompletion(&out, "node.join", result, firstFailure); code != 1 || !bytes.Contains(out.Bytes(), []byte(`"phase":"joined"`)) {
+	if code := reportCompletion(&out, "node.join", result, firstFailure); code != 1 || !bytes.Contains(out.Bytes(), []byte(`"phase":"joined"`)) {
 		t.Fatalf("timed-out JOIN lost the joined report: %d, %q", code, out.String())
 	}
 }

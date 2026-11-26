@@ -1490,11 +1490,19 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if strings.HasPrefix(source, "internal/domain/node/command/") && localImport {
 		switch source {
+		case "internal/domain/node/command/role_command.go":
+			switch local {
+			case "internal/domain/node", "internal/domain/admission/issuer", "internal/domain/admission/issuance",
+				"internal/domain/network/state":
+				return true
+			}
+			return false
 		case "internal/domain/node/command/process.go":
 			return local == "internal/platform/processguard"
-		case "internal/domain/node/command/input.go":
+		case "internal/domain/node/command/input.go", "internal/domain/node/command/role_input.go":
 			return local == "internal/platform/artifacts"
-		case "internal/domain/node/command/report.go", "internal/domain/node/command/report_test.go":
+		case "internal/domain/node/command/report.go", "internal/domain/node/command/report_test.go",
+			"internal/domain/node/command/role_report.go", "internal/domain/node/command/role_report_test.go":
 			return local == "internal/domain/node"
 		default:
 			return false
@@ -2171,10 +2179,6 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/domain/node" || local == "internal/domain/endpoint" || local == "internal/platform/launch" {
 				return true
 			}
-		case "cmd/ardents-next/node.go":
-			if local == "internal/domain/node" {
-				return true
-			}
 		case "cmd/ardents-next/infrastructure_operator.go":
 			if local == "internal/domain/release/infrastructure" {
 				return true
@@ -2199,16 +2203,12 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/platform/artifacts" {
 				return true
 			}
+		case "internal/domain/node/role_authority.go":
+			if local == "internal/domain/network/state" || local == "internal/domain/admission/issuer" {
+				return true
+			}
 		case "internal/domain/node/route_admission_linux.go":
 			if local == "internal/domain/admission/issuer" {
-				return true
-			}
-		case "internal/domain/node/role_command.go":
-			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/issuance" || local == "internal/domain/network/state" {
-				return true
-			}
-		case "internal/domain/node/role_input.go":
-			if local == "internal/platform/artifacts" {
 				return true
 			}
 		case "internal/domain/node/route_receive_linux.go":

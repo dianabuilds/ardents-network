@@ -25,8 +25,8 @@
 //     plan_declaration.go, repair_declaration.go, root_paths.go
 //     (plan_declaration_test.go, repair_declaration_test.go,
 //     root_paths_test.go)
-//   - role command composition: role_command.go, role_input.go,
-//     role_report.go (role_input_test.go, role_report_test.go)
+//   - role command composition: command.RunRole reads the plan, owns State
+//     and renders the outcome. The Plan Start methods open the role runtime.
 //   - runtime credential custody: internal/credential owns loading, JOIN
 //     file pins and erasure. Each role owns the membership comparison and
 //     joins TLS users before returning its material.
