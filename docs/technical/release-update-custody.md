@@ -16,7 +16,7 @@ continues to describe the currently implemented ownership and authority floors.
 authorizes one operator-prepared isolated qualification release. Codex owns
 its technical preparation and the Product Owner accepts the completed public
 bootstrap receipt before installed execution. This does not add a Release
-signing interface to `internal/release`, revive retired seed ceremonies, or
+signing interface to `internal/domain/release`, revive retired seed ceremonies, or
 establish independent initial distribution. Participant enrollment retains
 its independent first-pin contract; existing roots and floors are preserved.
 The [qualification release operation](../operations/qualification-release.md)
@@ -216,7 +216,7 @@ projection. Platform pre-start repeats the full comparison on fresh proofs.
 The initial pin never authorizes successors; changed resources require a newer
 generation even when executable bytes are unchanged.
 
-`internal/release` is the sole owner of release trust roots and non-decreasing
+`internal/domain/release` is the sole owner of release trust roots and non-decreasing
 release floors. It verifies the selected TUF-compatible metadata profile,
 consecutive root rotation, exact target identity, protocol/build state, and
 the captured reference time. Its output is a bounded public Decision and
@@ -224,7 +224,7 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
-The isolated new-domain composition uses `internal/release` with
+The isolated new-domain composition uses `internal/domain/release` with
 its own history and the genuine `ardents-next release verify-initial` consumer.
 It consumes new Enrollment's authenticated facts and frozen bytes, not the
 predecessor verifier or installed roots. The new owner serializes evaluations,
@@ -245,7 +245,7 @@ external trials retain the deliberately killed Root's failure and do not qualify
 the installed Service. The
 complete interruption matrix and installed Service acceptance remain unproven; these consumers do
 not borrow the predecessor runtime or Release history.
-Portable `internal/release/endpoint` binds the exact program and protected
+Portable `internal/domain/release/endpoint` binds the exact program and protected
 generation using fresh coherent Release proofs and original Enrollment
 provenance. It also owns verification of the running program against an
 independently pinned bundle and joined Release history. `internal/endpoint/launch` consumes those proofs to stage the
@@ -253,7 +253,7 @@ generation and independently checks installed binding and startup. Native
 observations supply physical facts while Release retains trust floors.
 Portable metadata/target/safety rules remain
 distinct from native history mechanisms. The new-domain
-[design](../../internal/release/README.md) preserves the accepted
+[design](../../internal/domain/release/README.md) preserves the accepted
 metadata and durable identities; source presence and component checks do not
 establish complete Release acceptance, installed replacement or qualification.
 Existing predecessor Release roots remain independent retained evidence.

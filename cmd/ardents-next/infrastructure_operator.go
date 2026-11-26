@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/signing"
+	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing"
 )
 
 func runInfrastructureCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {

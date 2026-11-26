@@ -4125,7 +4125,7 @@ These are offline signing controls, not installed or independent-builder claims.
 ### Executed offline Release-signing chain and Source initial preparation (#773)
 
 `make network-signing-check` executes the previously compile-only initial/forward
-Release-signing chain in `internal/release/infrastructure/signing` as selected
+Release-signing chain in `internal/domain/release/infrastructure/signing` as selected
 legs (proof-integrity #773, D6 pattern): the Forwarding and JOIN
 `InitialReleasePurposeAndKeyCustody` and `ForwardReleasePreservesRootAndRaisesFloors`
 controls, and the Descriptor and Source `InitialReleasePurposeAndKeyCustody`

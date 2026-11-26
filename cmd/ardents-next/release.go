@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/domain/release/endpoint"
 )
 
 // verify-initial requires independently pinned bytes and keeps Release history

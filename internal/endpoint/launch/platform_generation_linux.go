@@ -3,8 +3,8 @@ package launch
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/generation"
-	"github.com/dianabuilds/ardents-network/internal/release"
 	"io"
 	"os"
 	"path/filepath"

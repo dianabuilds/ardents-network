@@ -1436,7 +1436,7 @@ capture formats and their handling.
 Under [ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md),
 `ardents-next platform` supplies a bounded Linux infrastructure launch path for
 the existing Source, Forwarding, Issuer, Descriptor, Introduction and JOIN
-runtimes. The `internal/release/infrastructure/launch` owner validates the declaration,
+runtimes. The `internal/domain/release/infrastructure/launch` owner validates the declaration,
 projects the exact inputs and write grants, and admits the native pre-start.
 The declaration and signed Linux unit rendering run as portable Go, including
 the Issuer plan's POSIX path and Admission binding projection. Enrollment,

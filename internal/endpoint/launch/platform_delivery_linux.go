@@ -12,13 +12,13 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/domain/release/endpoint"
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/release"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 var errPlatformInput = errors.New("invalid Endpoint platform input")

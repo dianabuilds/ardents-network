@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
+	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 	"net"
@@ -22,13 +22,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 
 	sourcefixture "github.com/dianabuilds/ardents-network/tests/e2e/source"

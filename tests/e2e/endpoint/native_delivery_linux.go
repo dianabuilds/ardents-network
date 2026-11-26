@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
-	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 )
 

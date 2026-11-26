@@ -9,11 +9,11 @@ import (
 	"io"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
+	infrastructurelaunch "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
 	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/release"
-	infrastructurelaunch "github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 )
 
 func RunNative(ctx context.Context, args []string, out io.Writer) int {

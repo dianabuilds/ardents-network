@@ -10,10 +10,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/release"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // StagePlatformSuccessor seals a different generation in a new immutable
