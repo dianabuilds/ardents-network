@@ -817,6 +817,17 @@ func testRouteRegistration(t *testing.T, registration, refill bool, special ...s
 					t.Fatal("registration withdraw", reply)
 				}
 			}
+			if mode == "restart-withdrawn" {
+				// Prove spent-right refusal while the original Publisher Prefix
+				// can still reach Introduction. Join that Prefix before the
+				// independent Source interrupts the receiving process.
+				if reply := send(holderCommand{Operation: "registration-open", Revision: 2}); reply.Outcome == "completed" {
+					t.Fatal("registration reused spent token")
+				}
+				if reply := send(holderCommand{Operation: "prefix-close"}); reply.Outcome != "completed" {
+					t.Fatal("Publisher Prefix did not join before restart", reply.Outcome, reply.Stage)
+				}
+			}
 			if mode == "restart-withdrawn" || mode == "withdraw-pending" {
 				historyPath := filepath.Join(introductionRoot, "closed-introduction-slots")
 				history, err := os.ReadFile(historyPath)
@@ -982,8 +993,10 @@ func testRouteRegistration(t *testing.T, registration, refill bool, special ...s
 					t.Fatal("Source holder terminal", err)
 				}
 			}
-			if reply := send(holderCommand{Operation: "registration-open", Revision: 2}); reply.Outcome == "completed" {
-				t.Fatal("registration reused spent token")
+			if mode != "restart-withdrawn" {
+				if reply := send(holderCommand{Operation: "registration-open", Revision: 2}); reply.Outcome == "completed" {
+					t.Fatal("registration reused spent token")
+				}
 			}
 		}
 	}
@@ -995,7 +1008,7 @@ func testRouteRegistration(t *testing.T, registration, refill bool, special ...s
 			t.Fatal("Prefix close erased registration failure", reply.Outcome)
 		}
 	}
-	if mode != "prefix-close" && mode != "clock-loss" && mode != "expiry" && mode != "interrupt" && mode != "withdraw-pending" {
+	if mode != "prefix-close" && mode != "clock-loss" && mode != "expiry" && mode != "interrupt" && mode != "withdraw-pending" && mode != "restart-withdrawn" {
 		if reply := send(holderCommand{Operation: "prefix-close"}); reply.Outcome != "completed" {
 			t.Fatal("prefix-close", reply.Outcome, reply.Stage)
 		}
