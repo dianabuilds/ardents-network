@@ -11,8 +11,8 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/connection"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
 
 // readerOperation retains one qualified Reader worker and its sole stream contract.

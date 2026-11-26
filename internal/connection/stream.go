@@ -9,7 +9,7 @@ import (
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/connection/wire"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 // Stream owns the logical byte and Terminal state of one authenticated

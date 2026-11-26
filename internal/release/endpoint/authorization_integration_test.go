@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	endpointrelease "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"

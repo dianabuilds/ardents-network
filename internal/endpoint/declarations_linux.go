@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/execution"
+	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"

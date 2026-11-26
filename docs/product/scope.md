@@ -254,7 +254,7 @@ The Network audit candidate is the headless maintained product surface:
 - Network State and Source, Admission, Hosting, Entry, Route and Carrier,
   Node duties, Endpoint, Service Publication, Connection, Instance and
   Reachability, Enrollment, Release, Custody and process resource protection;
-- the Local Grant and session lifecycle owned by `internal/execution`;
+- the Local Grant and session lifecycle owned by `internal/domain/execution`;
 - the typed local Connection Interface in `internal/application/connection`
   and separately authorized Administration Interface in
   `internal/application/administration`;

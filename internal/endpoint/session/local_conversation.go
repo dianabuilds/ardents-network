@@ -7,7 +7,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 

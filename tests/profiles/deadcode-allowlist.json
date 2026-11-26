@@ -577,7 +577,7 @@
       },
       {
         "symbols": [
-          "internal/enrollment.ValidateInfrastructureInventory"
+          "internal/domain/enrollment.ValidateInfrastructureInventory"
         ],
         "classification": "retired transitional role selected-generation validation; retained canonical inventory mechanism test coverage",
         "rationale": "ValidateInfrastructureInventory checks the closed seven-file infrastructure byte grammar against caller-supplied immutable images and returns copied declarations/digests. Its production consumers were the transitional JOIN/Descriptor selected-generation validation in the retired installation orchestration (#604 FJD stage D, ADR-0125); the retained prepare-inventory producers use PrepareInfrastructureInventory and the retained predecessor/candidate admission uses VerifyInfrastructure/ReadInfrastructureCandidate, so this validator has no remaining production caller. It is retained as reviewed mechanism code because genuine kept Linux tests exercise its exact canonical-byte equality, foreign-role and mutated-inventory refusal: enrollment/infrastructure_inventory_test.go and enrollment/descriptor_inventory_linux_test.go. The shared parseInfrastructureInventory/PrepareInfrastructureInventory helpers remain production-live and are not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
@@ -669,8 +669,8 @@
         "symbols": [
           "internal/connection.StreamFailureReason",
           "internal/connection.attachmentFailureReason",
-          "internal/execution/runtime.Owner.LaunchByteStreamPublisher",
-          "internal/execution/runtime.Owner.LaunchByteStreamReader"
+          "internal/domain/execution/runtime.Owner.LaunchByteStreamPublisher",
+          "internal/domain/execution/runtime.Owner.LaunchByteStreamReader"
         ],
         "classification": "portable Connection failure projection and byte-stream launch refusal stubs with Ubuntu-only protected composition (#866)",
         "rationale": "StreamFailureReason and attachmentFailureReason are pure portable failure-category projections whose only production consumers are the Linux endpoint reader/publisher byte-stream composition. LaunchByteStreamPublisher/LaunchByteStreamReader are the non-Linux refusal stubs that close the compile gap flagged by the Cohort 2b endpoint boundary review (PR #860); their only consumers are the same Linux endpoint byte-stream composition. The worker capability port (#866) de-tagged the projection and added the refusal stubs without moving the endpoint boundary, so Windows still refuses before any worker or stream effect.",
@@ -1006,10 +1006,10 @@
       },
       {
         "symbols": [
-          "internal/enrollment.Candidate.Facts",
-          "internal/enrollment.Candidate.File",
-          "internal/enrollment.Candidate.MetadataNames",
-          "internal/enrollment.Candidate.Names",
+          "internal/domain/enrollment.Candidate.Facts",
+          "internal/domain/enrollment.Candidate.File",
+          "internal/domain/enrollment.Candidate.MetadataNames",
+          "internal/domain/enrollment.Candidate.Names",
           "internal/release/endpoint.AuthenticateCandidate",
           "internal/release/endpoint.AuthenticateInitial",
           "internal/release/endpoint.Authorization.InitialFacts",
@@ -1708,11 +1708,11 @@
           "internal/connection/wire.recordKindSize",
           "internal/connection/wire.validRole",
           "internal/connection/wire.verifyInstanceProof",
-          "internal/execution/runtime.AdministrationRequest.Check",
-          "internal/execution/runtime.AdministrationRequest.Close",
-          "internal/execution/runtime.AdministrationRequest.Context",
-          "internal/execution/runtime.Owner.AdmitAdministration",
-          "internal/execution/runtime.Owner.LaunchReader",
+          "internal/domain/execution/runtime.AdministrationRequest.Check",
+          "internal/domain/execution/runtime.AdministrationRequest.Close",
+          "internal/domain/execution/runtime.AdministrationRequest.Context",
+          "internal/domain/execution/runtime.Owner.AdmitAdministration",
+          "internal/domain/execution/runtime.Owner.LaunchReader",
           "internal/network/state.RuntimeWitness.CheckCommit",
           "internal/network/state.RuntimeWitness.SameOriginal",
           "internal/publication.ParseTargetLink",
@@ -2175,9 +2175,9 @@
       },
       {
         "symbols": [
-          "internal/execution/runtime.Owner.LaunchStreamQualification",
-          "internal/execution/worker.ActivateStream",
-          "internal/execution/worker.ObserveInstanceStream"
+          "internal/domain/execution/runtime.Owner.LaunchStreamQualification",
+          "internal/domain/execution/worker.ActivateStream",
+          "internal/domain/execution/worker.ObserveInstanceStream"
         ],
         "classification": "Linux-native Stream qualification surface, no Windows production path (execution/worker + execution/runtime)",
         "rationale": "ActivateStream/ObserveInstanceStream and LaunchStreamQualification are reached on Linux by the trusted Stream qualification protocol and launch flow (the private worker-protocol parameterization of the one fixed launch path) and the native-tagged installed tests. Windows refuses native stream worker activation and qualification launch before opening these owners, and the Linux-only stream protocol/composition is absent, so the unsupported-platform adapters are production-dead on windows-amd64 only. Linux production reachability is unchanged and required; the architecture gate restricts the qualification seams to the trusted qualification composition. No Windows native/runtime support is granted.",
@@ -2425,29 +2425,29 @@
       },
       {
         "symbols": [
-          "internal/execution/worker.ActivateStream",
-          "internal/execution/worker.ObserveInstanceStream"
+          "internal/domain/execution/worker.ActivateStream",
+          "internal/domain/execution/worker.ObserveInstanceStream"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/execution/worker)",
-        "rationale": "These exact internal/execution/worker functions are covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification runner composition. Windows excludes the Linux-only native test executable and refuses native worker activation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/execution/worker)",
+        "rationale": "These exact internal/domain/execution/worker functions are covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification runner composition. Windows excludes the Linux-only native test executable and refuses native worker activation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [
-          "internal/execution/runtime.Owner.LaunchStreamQualification"
+          "internal/domain/execution/runtime.Owner.LaunchStreamQualification"
         ],
-        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/execution/runtime)",
-        "rationale": "This exact internal/execution/runtime function is covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification composition. Windows excludes the Linux-only native test executable and refuses native stream qualification launch, so the function is fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/domain/execution/runtime)",
+        "rationale": "This exact internal/domain/execution/runtime function is covered by the native-tagged Linux installed test (document_worker_installed) against the real qualification inventory and reached by the pending Linux qualification composition. Windows excludes the Linux-only native test executable and refuses native stream qualification launch, so the function is fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [
-          "internal/execution/runtime.Owner.LaunchByteStreamPublisher",
-          "internal/execution/runtime.Owner.LaunchByteStreamReader"
+          "internal/domain/execution/runtime.Owner.LaunchByteStreamPublisher",
+          "internal/domain/execution/runtime.Owner.LaunchByteStreamReader"
         ],
-        "classification": "Linux-native byte-stream launch covered by Linux tests, no Windows test path (internal/execution/runtime, #866)",
+        "classification": "Linux-native byte-stream launch covered by Linux tests, no Windows test path (internal/domain/execution/runtime, #866)",
         "rationale": "These non-Linux refusal stubs close the compile gap flagged by the Cohort 2b endpoint boundary review (PR #860). Their only consumers and tests are the Linux endpoint byte-stream composition; Windows excludes that Linux-only composition and refuses native byte-stream launch, so the stubs are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; Execution worker capability port (#866)",
         "retirement": "Remove each exact Windows entry when the endpoint byte-stream composition is de-tagged onto a selected genuine native test or production path, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."

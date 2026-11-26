@@ -1,7 +1,7 @@
 # Local Application Execution
 
 Status: **current implemented boundary and lifecycle contract** for new local
-Execution. `internal/successor/execution` owns authority/session/Job rules;
+Execution. `internal/domain/execution` owns authority/session/Job rules;
 `execution/runtime` owns launch and supervision; `execution/worker` owns fixed
 native mechanisms. Genuine permission preparation, Route holder, Publication
 and bounded installed bootstrap consume this boundary. Exact imports remain
@@ -210,7 +210,7 @@ authorize another Job or restore the canceled Reader.
 
 ## Implementation and evidence limits
 
-[Execution's source entry point](../../internal/successor/execution/README.md)
+[Execution's source entry point](../../internal/domain/execution/README.md)
 and [testing profiles](../development/testing.md) own real consumers and selected
 environments. Native hostile-tree, escape and Endpoint-death components retain
 their own artifact and observer contracts. Local worker restart does not prove

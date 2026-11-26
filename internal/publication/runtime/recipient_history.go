@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 // This registry identifies independent private histories; it shares neither

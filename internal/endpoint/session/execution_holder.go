@@ -5,10 +5,10 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/execution"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
-	"github.com/dianabuilds/ardents-network/internal/execution"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
