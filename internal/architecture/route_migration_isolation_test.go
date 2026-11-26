@@ -68,6 +68,12 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/spending",
 				"internal/durablefile", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state", "internal/pathcheck", "internal/domain/reachability":
+			case "internal/diagnostics/measurement", "internal/diagnostics/runtimeevent":
+				// Explicit Product Owner decision, 2026-11-27: only the
+				// registered numeric channel producers, never the SDK adapter.
+				if !domainMeasurementImportAllowed(source, dependency) {
+					return false
+				}
 			default:
 				return false
 			}
@@ -111,6 +117,15 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"e2e bridge", "tests/e2e/route/scenario_test.go", modulePath + "/internal/domain/route/receiver", false},
 		{"script bridge", "scripts/route_probe.go", modulePath + "/internal/domain/route", false},
 		{"old Carrier dependency", "internal/domain/route/channel/frame_schedule.go", modulePath + "/internal/domain/route/carrier", false},
+		{"registered channel measurement", "internal/domain/route/channel/frame_schedule.go", modulePath + "/internal/diagnostics/measurement", true},
+		{"registered channel catalogue", "internal/domain/route/channel/session.go", modulePath + "/internal/diagnostics/runtimeevent", true},
+		{"registered measurement test", "internal/domain/route/channel/measurement_test.go", modulePath + "/internal/diagnostics/measurement", true},
+		{"unregistered channel file", "internal/domain/route/channel/other.go", modulePath + "/internal/diagnostics/measurement", false},
+		{"unregistered catalogue edge", "internal/domain/route/channel/lane.go", modulePath + "/internal/diagnostics/runtimeevent", false},
+		{"other Route owner", "internal/domain/route/prefix/prefix.go", modulePath + "/internal/diagnostics/measurement", false},
+		{"channel SDK adapter denied", "internal/domain/route/channel/frame_schedule.go", modulePath + "/internal/diagnostics/telemetry", false},
+		{"channel future measurement subpackage denied", "internal/domain/route/channel/session.go", modulePath + "/internal/diagnostics/measurement/export", false},
+		{"measurement reverse Route import denied", "internal/diagnostics/measurement/capture.go", modulePath + "/internal/domain/route/channel", false},
 		{"old Admission dependency", "internal/domain/route/receiving/admission.go", modulePath + "/internal/domain/admission/receiving", false},
 		{"old Entry dependency", "internal/domain/route/selection.go", modulePath + "/internal/entry", false},
 		{"old Node dependency in test", "internal/domain/route/role_test.go", modulePath + "/internal/domain/node/outer", false},

@@ -1,5 +1,20 @@
 package architecture
 
+import "testing"
+
+func TestChannelMeasurementsCannotAdmitSDKOrForeignOwners(t *testing.T) {
+	for _, dependency := range []string{
+		"go.opentelemetry.io/otel/sdk/metric/metricdata",
+		modulePath + "/internal/diagnostics/telemetry",
+		modulePath + "/internal/domain/node",
+	} {
+		if domainMeasurementImportAllowed("internal/domain/route/channel/frame_schedule.go", dependency) ||
+			successorImportAllowed("internal/domain/route/channel/frame_schedule.go", dependency) {
+			t.Fatalf("channel measurement admitted foreign dependency %s", dependency)
+		}
+	}
+}
+
 // domainMeasurementImportAllowed registers the finite measurement producers,
 // capture composition and format adapters. It grants neither a domain import
 // nor SDK/network access to the measurement leaf or an offline Custody owner.
