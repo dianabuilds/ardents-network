@@ -62,3 +62,13 @@ func TestStrictNeverConvertsRelativePaths(t *testing.T) {
 		}
 	}
 }
+
+func TestDisjointRootsRejectsFilesystemRootAndDescendant(t *testing.T) {
+	descendant := t.TempDir()
+	root := filepath.VolumeName(descendant) + string(filepath.Separator)
+	for _, roots := range [][]string{{root, descendant}, {descendant, root}} {
+		if DisjointRoots(roots...) {
+			t.Errorf("nested roots accepted: %q", roots)
+		}
+	}
+}

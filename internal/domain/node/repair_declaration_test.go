@@ -35,4 +35,10 @@ func TestRepairDeclarationBindsRoleAndOrderedRoots(t *testing.T) {
 	if _, _, err := RepairDeclaration("descriptor", marshalTestPlan(t, plan)); err == nil {
 		t.Fatal("overlapping root supplied a repair declaration")
 	}
+	plan["descriptor_root"] = roots[4]
+	network.Root = filepath.VolumeName(base) + string(filepath.Separator)
+	plan["network"] = network
+	if _, _, err := RepairDeclaration("descriptor", marshalTestPlan(t, plan)); err == nil {
+		t.Fatal("filesystem root supplied a repair declaration with nested roots")
+	}
 }

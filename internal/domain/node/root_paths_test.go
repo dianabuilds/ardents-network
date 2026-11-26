@@ -18,4 +18,8 @@ func TestOriginalRoleRootsCannotShareOrRebindAPurpose(t *testing.T) {
 			t.Fatal("shared or undeclared purpose root accepted", roots)
 		}
 	}
+	filesystemRoot := filepath.VolumeName(parent) + string(filepath.Separator)
+	if pathgrammar.DisjointRoots(filesystemRoot, spend, budget) {
+		t.Fatal("filesystem root accepted alongside nested purpose roots")
+	}
 }

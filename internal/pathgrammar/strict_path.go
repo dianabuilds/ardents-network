@@ -24,10 +24,19 @@ func DisjointRoots(roots ...string) bool {
 			return false
 		}
 		for _, other := range roots[:i] {
-			if root == other || strings.HasPrefix(root, other+separator) || strings.HasPrefix(other, root+separator) {
+			if root == other || containsPath(root, other, separator) || containsPath(other, root, separator) {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+// containsPath reports whether parent is a lexical ancestor of child. A
+// filesystem root already ends in a separator, unlike other clean paths.
+func containsPath(parent, child, separator string) bool {
+	if !strings.HasSuffix(parent, separator) {
+		parent += separator
+	}
+	return strings.HasPrefix(child, parent)
 }
