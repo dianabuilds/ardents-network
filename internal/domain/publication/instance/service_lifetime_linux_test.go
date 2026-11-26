@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 )
 
 // Genuine native Instance custody/floor; the incomplete Service fixture below

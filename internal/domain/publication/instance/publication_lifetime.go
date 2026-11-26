@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 // PublicationLifetime retains the original private binding until the live

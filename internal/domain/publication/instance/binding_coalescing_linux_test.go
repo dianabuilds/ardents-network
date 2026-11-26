@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 )
 
 // waitQueued blocks until exactly n callers are waiting in the coalescing queue,

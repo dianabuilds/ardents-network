@@ -6,8 +6,8 @@ import (
 	"time"
 
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/publication/instance"
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 	"github.com/dianabuilds/ardents-network/internal/route/prefix"
 )
 

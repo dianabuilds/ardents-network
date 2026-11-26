@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 )
 
 func acceptedNativeRoot(t *testing.T) (*Root, durable.Config) {

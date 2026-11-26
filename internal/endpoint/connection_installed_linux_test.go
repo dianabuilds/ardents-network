@@ -5,7 +5,7 @@ package endpoint_test
 import (
 	"context"
 	"errors"
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 	"io"
 	"net"

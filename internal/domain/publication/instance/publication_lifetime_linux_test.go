@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 )
 
 func TestNativePublicationLifetimeDeniesBeforeOriginalBindingDrain(t *testing.T) {

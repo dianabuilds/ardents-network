@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
-	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 // AuthorityKind identifies the authority domain without revealing a Service
