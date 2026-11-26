@@ -60,6 +60,21 @@ func TestDomainCommandsUseSafeSharedObservationWithoutChangingReceipts(t *testin
 			}
 		})
 	}
+	// A catalogue entry is not a command dispatch permission. These names
+	// belong to other compositions and must not fabricate an operation here.
+	for _, args := range [][]string{{"application", "read"}, {"custody", "verify-record"}} {
+		command := exec.CommandContext(t.Context(), binary, args...)
+		var out, diagnostic bytes.Buffer
+		command.Stdout, command.Stderr = &out, &diagnostic
+		var exit *exec.ExitError
+		if err := command.Run(); !errors.As(err, &exit) || exit.ExitCode() != 2 || out.Len() != 0 {
+			t.Fatalf("foreign command dispatch changed: %v", err)
+		}
+		if bytes.Contains(diagnostic.Bytes(), []byte(`{"operation":`)) {
+			t.Fatalf("foreign command fabricated an operation: %q", &diagnostic)
+		}
+	}
+
 }
 
 func TestEndpointCommandIdentityReachesSharedTimeline(t *testing.T) {

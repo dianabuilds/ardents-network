@@ -15,8 +15,10 @@ import (
 
 func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) (code int) {
 	if len(arguments) >= 2 {
-		candidate := arguments[0] + "." + arguments[1]
+		candidate := ""
 		switch arguments[0] {
+		case "network", "enrollment", "release", "publication", "execution", "admission", "endpoint":
+			candidate = arguments[0] + "." + arguments[1]
 		case "read", "publish", "link":
 			candidate = "application." + arguments[0]
 		case "stream":
