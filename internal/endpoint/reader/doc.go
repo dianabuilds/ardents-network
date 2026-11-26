@@ -6,4 +6,10 @@
 // The participant supplies genuine retained owners and joins requests before
 // closing them. This package does not parse CLI input or own stdout, installation
 // transitions, Publication authority, Network acceptance or Admission policy.
+//
+// The coordinator composition is Unix-family (Linux and macOS, #885): it composes
+// the portable application/connection.Refuse constructor and portable or
+// Unix-family roots. On macOS beginRead reaches the typed !linux worker-launch
+// refusal before any Source or root state; the Linux participant is its sole
+// production consumer, so there is no Windows composition or refusal stub.
 package reader
