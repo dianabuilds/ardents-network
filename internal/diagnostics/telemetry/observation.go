@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -192,40 +194,41 @@ func (o *Observation) Close() bool {
 // Begin measures one command. Only a matching, classified completion creates
 // SDK data. Invalid or duplicate completion latches delivery failure; disabled
 // export remains a no-op. The original command result is independent of export.
-func (o *Observation) Begin(operation Operation) func(Completion) {
+func (o *Observation) Begin(operation runtimeevent.Operation) func(runtimeevent.Completion) {
 	if o == nil {
-		return func(Completion) {}
+		return func(runtimeevent.Completion) {}
 	}
-	spec, valid := operation.spec()
+	scope, name, valid := operation.ExportIdentity()
 	if !valid {
 		o.failure.Store(true)
-		return func(Completion) {}
+		return func(runtimeevent.Completion) {}
 	}
 	start := time.Now()
 	var finished atomic.Bool
-	return func(completion Completion) {
+	return func(completion runtimeevent.Completion) {
 		if finished.Swap(true) {
 			o.failure.Store(true)
 			return
 		}
-		if completion.operation != operation || completion.phase == "" || completion.outcome == "" {
+		phase, outcome, valid := completion.Labels(operation)
+		if !valid {
 			o.failure.Store(true)
 			return
 		}
 		end := time.Now()
 		attrs := []attribute.KeyValue{
-			attribute.String("operation", spec.name),
-			attribute.String("phase", completion.phase),
-			attribute.String("outcome", completion.outcome),
+			attribute.String("operation", name),
+			attribute.String("phase", phase),
+			attribute.String("outcome", outcome),
 		}
-		ctx, span := o.traces.Tracer(spec.scope).Start(context.Background(), spec.name,
+		ctx, span := o.traces.Tracer(scope).Start(context.Background(), name,
 			trace.WithTimestamp(start), trace.WithAttributes(attrs...))
 		span.End(trace.WithTimestamp(end))
-		meter := o.meters.Meter(spec.scope)
-		if count, err := meter.Int64Counter(spec.scope + ".operations"); err == nil {
+		meter := o.meters.Meter(scope)
+		if count, err := meter.Int64Counter(scope + ".operations"); err == nil {
 			count.Add(ctx, 1, metric.WithAttributes(attrs...))
 		}
-		if duration, err := meter.Float64Histogram(spec.scope+".duration", metric.WithUnit("s")); err == nil {
+		if duration, err := meter.Float64Histogram(scope+".duration", metric.WithUnit("s")); err == nil {
 			duration.Record(ctx, end.Sub(start).Seconds(), metric.WithAttributes(attrs...))
 		}
 	}

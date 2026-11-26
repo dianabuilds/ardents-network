@@ -73,11 +73,11 @@ func TestEndpointHistoryCommandPreparesGenuineStateOnce(t *testing.T) {
 		t.Fatalf("run Endpoint history preparation: %v", err)
 		return -1
 	}
-	if code := runCommand(); code != 0 || output.Len() != 0 || diagnostic.String() != "{\"outcome\":\"prepared\",\"phase\":\"history-preparation\"}\n" {
+	if code := runCommand(); code != 0 || output.Len() != 0 || diagnostic.String() != "{\"operation\":\"endpoint.prepare-history\",\"phase\":\"history-preparation\",\"outcome\":\"prepared\"}\n" {
 		t.Fatal("first preparation", code, output.String(), diagnostic.String())
 	}
 	diagnostic.Reset()
-	if code := runCommand(); code != 1 || diagnostic.String() != "{\"outcome\":\"unavailable\",\"phase\":\"history-preparation\"}\n" {
+	if code := runCommand(); code != 1 || diagnostic.String() != "{\"operation\":\"endpoint.prepare-history\",\"phase\":\"history-preparation\",\"outcome\":\"unavailable\"}\n" {
 		t.Fatal("repeat preparation", code, diagnostic.String())
 	}
 	// Duplicate spellings cannot select another root behind the operator's

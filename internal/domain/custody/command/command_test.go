@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -411,4 +412,34 @@ func commandAuthorityBinding() custody.AuthorityBinding {
 	}
 	binding.Kind = custody.AuthorityService
 	return binding
+}
+
+func TestPublicCommandFailureEmitsOnlyFiniteLocalObservation(t *testing.T) {
+	var output, prompts bytes.Buffer
+	err := Run(t.Context(), []string{"verify-record", "--vault-root", "PRIVATE-root"}, &output, &prompts, nil)
+	if err == nil {
+		t.Fatal("invalid custody command accepted")
+	}
+	var event map[string]string
+	if json.Unmarshal(prompts.Bytes(), &event) != nil || len(event) != 3 || event["operation"] != "custody.verify-record" || event["phase"] != "command" || event["outcome"] != "failed" {
+		t.Fatalf("local observation absent: %s", prompts.String())
+	}
+	if strings.Contains(prompts.String(), "PRIVATE") || output.Len() != 0 {
+		t.Fatal("private input or receipt leaked into diagnostics")
+	}
+}
+
+func TestPublicCommandFailureEmitsOnlySafeLocalCategories(t *testing.T) {
+	var output, prompts bytes.Buffer
+	err := Run(t.Context(), []string{"verify-record", "--vault-root", "PRIVATE-root"}, &output, &prompts, nil)
+	if err == nil {
+		t.Fatal("invalid command succeeded")
+	}
+	var event map[string]string
+	if json.Unmarshal(prompts.Bytes(), &event) != nil || len(event) != 3 || event["operation"] != "custody.verify-record" || event["phase"] != "command" || event["outcome"] != "failed" {
+		t.Fatalf("missing local command diagnostic: %s", prompts.String())
+	}
+	if bytes.Contains(prompts.Bytes(), []byte("PRIVATE")) || output.Len() != 0 {
+		t.Fatal("private command arguments entered diagnostic")
+	}
 }

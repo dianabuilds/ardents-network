@@ -412,6 +412,9 @@ func readReportEvents(root *os.Root, r *runReport, expected map[string]uint64) {
 			r.gap("collector-time-order-uncertain")
 		}
 		previous = e.ObservedAt
+		if e.Delivery == runtimeevent.ExportUnavailable {
+			r.gap("telemetry-export-unavailable")
+		}
 		if e.UnknownCategories > 0 || e.Failure == runtimeevent.Unclassified {
 			r.gap("owner-category-unclassified")
 			r.Complete = false
@@ -471,10 +474,11 @@ func safeReportEvent(e event) bool {
 	}
 	if e.Schema == runtimeevent.CommandReportSchema {
 		command, ok := runtimeevent.ClassifyCommand(e.Kind, e.Phase, e.Outcome)
-		return ok && e.Owner == command.Owner && e.Failure == command.Failure &&
+		deliveryValid := e.Delivery == "" || runtimeevent.LookupOperation(e.Kind) != 0 && runtimeevent.KnownExportDelivery(e.Delivery)
+		return ok && deliveryValid && e.Owner == command.Owner && e.Failure == command.Failure &&
 			e.At == "" && e.State == "" && e.Carrier == "" && len(e.Resource) == 0 && len(e.Hosting) == 0 && e.UnknownCategories == 0
 	}
-	if e.Owner != "" || e.Phase != "" || e.Outcome != "" {
+	if e.Owner != "" || e.Phase != "" || e.Outcome != "" || e.Delivery != "" {
 		return false
 	}
 	if e.State != "" && !runtimeevent.KnownState(e.State) {
@@ -880,6 +884,8 @@ func checkInvocation(id string) string {
 }
 func gapExplanation(code string) string {
 	switch code {
+	case "telemetry-export-unavailable":
+		return "Команда сообщила недоступность необязательного OTLP-экспорта; её собственный результат и локально сохранённые наблюдения остаются отдельными фактами."
 	case "evidence-unavailable":
 		return "Каталог наблюдений недоступен или не прошёл проверку."
 	case "evidence-close-failed":

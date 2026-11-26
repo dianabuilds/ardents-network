@@ -6,6 +6,8 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"io"
 )
 
@@ -32,11 +34,18 @@ func RunInstalledCommand(ctx context.Context, args []string, diagnostic io.Write
 		return 1
 	}
 	phase, err := Run(ctx, args[1], func(progress Progress) error {
-		return json.NewEncoder(diagnostic).Encode(map[string]string{"phase": progress.Phase, "role": progress.Role, "request_digest": hex.EncodeToString(progress.Digest[:])})
+		return reportInstalledProgress(diagnostic, progress)
 	})
 	code := installedEndpointFailure(ctx, err)
 	if code != 0 {
-		_ = json.NewEncoder(diagnostic).Encode(map[string]string{"phase": phase, "outcome": "unavailable"})
+		_ = runtimeevent.WriteCommand(diagnostic, "endpoint.start-installed", phase, "unavailable")
+	}
+	if code == 0 {
+		outcome := "completed"
+		if ctx.Err() == context.Canceled {
+			outcome = "canceled"
+		}
+		_ = runtimeevent.WriteCommand(diagnostic, "endpoint.start-installed", "joined", outcome)
 	}
 	return code
 }
@@ -75,4 +84,19 @@ func installedEndpointCanceledOnly(err error) bool {
 		return installedEndpointCanceledOnly(wrapped.Unwrap())
 	}
 	return false
+}
+
+func reportInstalledProgress(out io.Writer, progress Progress) error {
+	outcome := "pending"
+	if progress.Phase == "permission-accepted" {
+		outcome = "accepted"
+	}
+	observation, valid := runtimeevent.ClassifyCommand("endpoint.start-installed", progress.Phase, outcome)
+	if !valid {
+		return errors.New("command diagnostic unavailable")
+	}
+	return json.NewEncoder(out).Encode(map[string]string{
+		"operation": observation.Operation, "phase": observation.Phase, "outcome": observation.Outcome,
+		"role": progress.Role, "request_digest": hex.EncodeToString(progress.Digest[:]),
+	})
 }

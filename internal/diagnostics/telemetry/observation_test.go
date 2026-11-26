@@ -1,6 +1,9 @@
 package telemetry
 
-import "testing"
+import (
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"testing"
+)
 
 func TestCollectorEndpointValidation(t *testing.T) {
 	for _, endpoint := range []string{"http://127.0.0.1:0", "http://127.0.0.1:65536", "http://example.com:4318", "http://localhost:4318", "http://127.0.0.1:4318/?token=secret", "http://user:pass@127.0.0.1:4318", "https://127.0.0.1:4318"} {
@@ -18,5 +21,5 @@ func TestObservationWithoutCollectorNeedsNoExporter(t *testing.T) {
 	if err != nil || observer != nil {
 		t.Fatalf("local-only observation allocated an exporter: %v, %v", observer, err)
 	}
-	observer.Begin(HostingObserve)(HostingObserve.Classify("execute", "completed"))
+	observer.Begin(runtimeevent.HostingObserve)(runtimeevent.HostingObserve.Classify("execute", "completed"))
 }

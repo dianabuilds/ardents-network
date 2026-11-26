@@ -26,18 +26,19 @@ func RunLocalReceiver(ctx context.Context, root, profile string, network *state.
 		}
 	}
 	o := receiver.allowance
-	defer func() {
-		if receiver.closeAuthority() != nil {
-			code = 1
-		}
-	}()
-	defer func() {
-		if o.Close() != nil {
-			code = 1
-		}
-		_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.receiver", "phase": "closed", "exit_code": code})
-	}()
+	defer func() { code = receiver.finishConversation(code, diagnostic) }()
 	return admission.RunConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
 		return o.HandleLocalCommand(ctx, raw)
 	})
+}
+
+func (receiver *localReceiver) finishConversation(code int, diagnostic io.Writer) int {
+	if receiver.allowance != nil && receiver.allowance.Close() != nil {
+		code = 1
+	}
+	if receiver.closeAuthority() != nil {
+		code = 1
+	}
+	_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.receiver", "phase": "closed", "exit_code": code})
+	return code
 }

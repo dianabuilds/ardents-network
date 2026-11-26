@@ -23,26 +23,24 @@ func RunLocalHolder(ctx context.Context, root, profile string, network *state.Au
 			return 130
 		}
 		if holder != nil {
-			_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.holder", "phase": "closed", "exit_code": 1})
-			_ = holder.closeAuthority()
+			_ = holder.finishConversation(1, diagnostic)
 		}
 		return 1
 	}
 	conversation := holder.Session
-	defer func() {
-		if holder.closeAuthority() != nil {
-			code = 1
-		}
-	}()
-	defer func() {
-		_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.holder", "phase": "closed", "exit_code": code})
-	}()
-	defer func() {
-		if conversation.Close() != nil {
-			code = 1
-		}
-	}()
+	defer func() { code = holder.finishConversation(code, diagnostic) }()
 	return admission.RunConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
 		return conversation.HandleLocalCommand(ctx, raw, preparation != nil)
 	})
+}
+
+func (holder *localHolder) finishConversation(code int, diagnostic io.Writer) int {
+	if holder.Session != nil && holder.Session.Close() != nil {
+		code = 1
+	}
+	if holder.closeAuthority() != nil {
+		code = 1
+	}
+	_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.holder", "phase": "closed", "exit_code": code})
+	return code
 }

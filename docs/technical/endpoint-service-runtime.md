@@ -111,6 +111,17 @@ partial preparation preserves its files and refuses another initial attempt;
 it cannot clean, adopt or reset them. This operation is not an installer or
 recovery controller. Hosting and Service Instance preparation remain separate.
 
+Endpoint command diagnostics name `endpoint.start-installed`,
+`endpoint.prepare-history` and `endpoint.construct-plan` explicitly. Installed
+permission progress adds fixed pending/accepted categories while preserving the
+original local role/request-digest exchange; the shared diagnostic projection
+excludes those private fields. A successful joined command report follows all
+original cleanup. Holder and Receiver local conversation reports follow both
+child retirement and the original Network authority close, so their retained
+exit code includes either cleanup failure. Diagnostic delivery or a command exit
+cannot replace current authority, readiness or an original owner's outcome.
+See the [shared diagnostic contract](../development/local-diagnostics.md#domain-observation-boundaries).
+
 Status: **current maintained technical contract.** This document describes the
 local Endpoint, generic Broker, Service publication, and Service Connection
 Modules that exist in the repository. It does not select a supported desktop

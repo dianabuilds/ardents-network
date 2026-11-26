@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"io"
 	"os"
 
@@ -12,7 +13,21 @@ import (
 	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"
 )
 
-func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int {
+func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) (code int) {
+	if len(arguments) >= 2 {
+		candidate := arguments[0] + "." + arguments[1]
+		switch arguments[0] {
+		case "read", "publish", "link":
+			candidate = "application." + arguments[0]
+		case "stream":
+			candidate = "application.stream." + arguments[1]
+		}
+		if observation, valid := runtimeevent.ClassifyCommand(candidate, "command", "completed"); valid {
+			defer func() {
+				_ = runtimeevent.WriteCommand(diagnostic, observation.Operation, "command", runtimeevent.CommandExit(code))
+			}()
+		}
+	}
 	if len(arguments) == 0 {
 		fmt.Fprintln(diagnostic, participantUsage)
 		return 2
@@ -44,7 +59,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) int
 	case "diagnostics":
 		return runDiagnostics(ctx, args, os.Stdin, out, diagnostic)
 	case "execution":
-		return runExecution(ctx, args, out)
+		return runExecution(ctx, args, out, diagnostic)
 	case "release":
 		return runRelease(ctx, args, out)
 	case "enrollment":

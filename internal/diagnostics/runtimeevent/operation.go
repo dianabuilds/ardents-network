@@ -1,4 +1,4 @@
-package telemetry
+package runtimeevent
 
 // Operation identifies an existing instrumented command, not domain authority.
 // Its zero value and unregistered values cannot be exported.
@@ -27,7 +27,7 @@ type operationSpec struct {
 // classify their own results; this catalogue admits only reviewed export labels.
 var operationSpecs = [...]operationSpec{
 	{},
-	AdmissionInitialize: {admissionScope, "admission.initialize", []string{"execute"}, []string{
+	AdmissionInitialize: {admissionScope, "admission.initialize", []string{"input", "execute"}, []string{
 		"initialized-offline", "invalid-input", "canceled", "storage-uncertain",
 		"unsupported-platform", "busy", "storage-unavailable",
 	}},
@@ -50,7 +50,7 @@ const (
 )
 
 var (
-	hostingPhases   = []string{"execute", "close"}
+	hostingPhases   = []string{"input", "execute", "close"}
 	hostingOutcomes = []string{
 		"completed", "storage-uncertain", "unsupported-platform", "canceled",
 		"invalid-input", "budget-exhausted", "budget-unavailable",
@@ -123,7 +123,7 @@ func (operation Operation) Classify(phase, outcome string) Completion {
 	}
 	phase = canonicalLabel(spec.phases, phase)
 	outcome = canonicalLabel(spec.outcomes, outcome)
-	if phase == "" || outcome == "" {
+	if phase == "" || outcome == "" || !successfulCompletionPhase(phase, outcome) {
 		return Completion{}
 	}
 	return Completion{operation, phase, outcome}
@@ -136,4 +136,38 @@ func canonicalLabel(labels []string, value string) string {
 		}
 	}
 	return ""
+}
+
+// ExportIdentity returns the fixed scope/name selected for existing OTLP export.
+// An invalid operation cannot create an SDK tracer or meter.
+func (operation Operation) ExportIdentity() (scope, name string, valid bool) {
+	spec, valid := operation.spec()
+	return spec.scope, spec.name, valid
+}
+
+// Labels returns canonical labels only for this completion's original operation.
+func (completion Completion) Labels(operation Operation) (phase, outcome string, valid bool) {
+	if completion.operation != operation || operation == 0 || completion.phase == "" || completion.outcome == "" {
+		return "", "", false
+	}
+	return completion.phase, completion.outcome, true
+}
+
+// Successful labels describe the actual command projection, not any phase in
+// the owner. In particular, input refusal or cleanup cannot become readiness.
+func successfulCompletionPhase(phase, outcome string) bool {
+	switch outcome {
+	case "initialized-offline":
+		return phase == "execute"
+	case "completed":
+		return phase == "execute" || phase == "export"
+	case "initialized-results":
+		return phase == "open-results"
+	case "issued-offline", "already-issued", "profile-initialized", "profile-verified", "binding-prepared":
+		return phase == "export"
+	case "identity-imported":
+		return phase == "import"
+	default:
+		return true
+	}
 }

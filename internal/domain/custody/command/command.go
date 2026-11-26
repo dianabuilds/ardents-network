@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"io"
 	"os"
 
@@ -12,7 +13,18 @@ import (
 var errUsage = errors.New("usage: ardents-custody <create-service-authority|issue-service-credential|create-admission-authority|issue-admission-permission|verify-record|export-recovery-bundle|restore-recovery-bundle|purge-record> [flags]")
 
 // Run executes the custody command with the supplied terminal and output streams.
-func Run(ctx context.Context, arguments []string, output, prompts io.Writer, terminal *os.File) error {
+func Run(ctx context.Context, arguments []string, output, prompts io.Writer, terminal *os.File) (result error) {
+	if len(arguments) > 0 {
+		if observation, valid := runtimeevent.ClassifyCommand("custody."+arguments[0], "command", "completed"); valid {
+			defer func() {
+				outcome := "completed"
+				if result != nil {
+					outcome = "failed"
+				}
+				_ = runtimeevent.WriteCommand(prompts, observation.Operation, "command", outcome)
+			}()
+		}
+	}
 	return run(ctx, arguments, output, terminalSecretInput{terminal: terminal, prompts: prompts})
 }
 
