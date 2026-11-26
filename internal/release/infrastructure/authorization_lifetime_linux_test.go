@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"

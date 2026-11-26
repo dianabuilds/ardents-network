@@ -19,17 +19,17 @@
 **Соседи:** Release отдельно проверяет программную авторизацию; Installation
 потребляет точный проверенный комплект и разрешение, сохраняя свою транзакцию.
 
-**Где искать обязанности:** `internal/enrollment` и адаптеры загрузки комплекта.
+**Где искать обязанности:** `internal/domain/enrollment` и адаптеры загрузки комплекта.
 
-**Основа:** [Release и Custody](../../docs/technical/release-update-custody.md),
-[карта доменов](../../docs/development/domain-map.md).
+**Основа:** [Release и Custody](../../../docs/technical/release-update-custody.md),
+[карта доменов](../../../docs/development/domain-map.md).
 
 ## Контракт проверки
 
 Технический владелец —
-[Enrollment verification](../../docs/technical/enrollment-verification.md),
+[Enrollment verification](../../../docs/technical/enrollment-verification.md),
 а защищённый состав закреплён в
-[ADR-0119](../../docs/adr/0119-bind-protected-endpoint-generation-to-release.md).
+[ADR-0119](../../../docs/adr/0119-bind-protected-endpoint-generation-to-release.md).
 Этапы проверки ниже описывают действующий код. Исполнение и приёмка ведутся в
 [задаче Enrollment](https://github.com/dianabuilds/ardents-network/issues/504).
 
@@ -60,7 +60,7 @@ grammar identities. Настоящий `ardents-next` Release consumer испо�
 companion bytes. General, headless Linux/Windows и protected inventory имеют
 независимые portable проверки, включая копирование возвращённых имён.
 
-Для [Installation](../../docs/technical/release-update-custody.md#release-and-update-ownership) требуется отдельный
+Для [Installation](../../../docs/technical/release-update-custody.md#release-and-update-ownership) требуется отдельный
 successor candidate snapshot без primary pin provenance. `ReadCandidate`
 загружает distinct opaque `Candidate`: самосогласованные declarations и копии
 байтов, без independent pin и утверждения running-program identity. Его
@@ -96,7 +96,7 @@ authority или права перехода поколения.
    не является ограничителем чтения. Сохранить лимит 64 MiB на запись;
    учёт памяти включает весь удерживаемый комплект, а не только один файл.
 5. **Связность.** Проверить точную привязку текущей программы и наличие
-   отдельного артефакта Authority Custody по [ADR-0130](../../docs/adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
+   отдельного артефакта Authority Custody по [ADR-0130](../../../docs/adr/0130-retire-control-and-aca1-from-alpha-bundles.md).
    Если в комплекте есть protected group, он должен быть полным. Пятиполевой
    descriptor до 16 KiB связывает девять именованных файлов с их digest и
    заданными program/platform/release. Отсутствие группы никогда

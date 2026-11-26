@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 )
 
 func runEnrollmentCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {

@@ -138,7 +138,7 @@ headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEA
 headless-evidence: headless-build
 	@test "$(HEADLESS_GOOS)" = linux && test "$(HEADLESS_GOARCH)" = amd64 || (echo "headless-evidence requires Linux x86-64"; exit 2)
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))"
-	go test ./internal/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRefusesForeignCompanions|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
+	go test ./internal/domain/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRefusesForeignCompanions|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest)$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 
@@ -425,7 +425,7 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/enrollment/... ./internal/release/... ./internal/platform/... ./internal/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/domain/enrollment/... ./internal/release/... ./internal/platform/... ./internal/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 

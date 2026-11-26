@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )

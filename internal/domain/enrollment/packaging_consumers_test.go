@@ -15,7 +15,7 @@ import (
 // inert program/resource bytes and prove static inventory behavior, not initial
 // pin provenance, signed Release acceptance or installed platform support.
 func TestPackagingConsumersPreserveArtifactAndProtectedInventory(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
