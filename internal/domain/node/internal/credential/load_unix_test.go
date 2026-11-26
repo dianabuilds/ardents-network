@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package node
+package credential
 
 import (
 	"os"

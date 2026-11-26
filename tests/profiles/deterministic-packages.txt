@@ -87,6 +87,7 @@ github.com/dianabuilds/ardents-network/internal/canonicaldigest
 github.com/dianabuilds/ardents-network/internal/pathcheck
 github.com/dianabuilds/ardents-network/internal/domain/node
 github.com/dianabuilds/ardents-network/internal/domain/node/command
+github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential
 github.com/dianabuilds/ardents-network/internal/domain/connection/wire
 github.com/dianabuilds/ardents-network/internal/domain/endpoint/session
 github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure

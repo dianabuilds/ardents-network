@@ -27,9 +27,9 @@
 //     root_paths_test.go)
 //   - role command composition: role_command.go, role_input.go,
 //     role_report.go (role_input_test.go, role_report_test.go)
-//   - runtime credential custody: credential.go, credential_unix.go,
-//     join_credential_unix.go (credential_test.go,
-//     credential_unix_test.go, join_credential_unix_test.go; unix)
+//   - runtime credential custody: internal/credential owns loading, JOIN
+//     file pins and erasure. Each role owns the membership comparison and
+//     joins TLS users before returning its material.
 //   - role runtime lifetime and retirement: forwarding_unix.go,
 //     issuer_unix.go, descriptor_unix.go, introduction_unix.go,
 //     join_unix.go, lifetime_unix.go, runtime_unix.go, runtime_other.go

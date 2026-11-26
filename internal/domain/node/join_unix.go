@@ -4,7 +4,6 @@ package node
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
@@ -78,7 +78,7 @@ func (handle *Join) FirstFailure() *FailureDiagnostic {
 type joinInvocation struct {
 	nodeLifetime
 	config     JoinConfig
-	credential *joinCredential
+	credential *credential.Join
 }
 
 // ListenJoin joins every rejected original startup. It cannot adopt a
@@ -123,11 +123,11 @@ func listenJoin(ctx context.Context, config JoinConfig, retained bool) (_ *Join,
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.credential, err = loadJoinCredential(config.Certificate, config.PrivateKey)
+	f.credential, err = credential.OpenJoin(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	if string(f.credential.material.key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) {
+	if f.credential.PublicKey() != m.PublicKey {
 		return nil, errors.New("original Join TLS key differs")
 	}
 	if err := f.admission(); err != nil {
@@ -169,7 +169,7 @@ func (f *joinInvocation) current() (network.RuntimeView, error) {
 	if err != nil {
 		return network.RuntimeView{}, f.failedObservation(err, "process")
 	}
-	if err := f.credential.check(); err != nil {
+	if err := f.credential.Check(); err != nil {
 		return network.RuntimeView{}, f.failedObservation(err, "credential")
 	}
 	if err := f.producer.Check(); err != nil {
@@ -195,7 +195,7 @@ func (f *joinInvocation) current() (network.RuntimeView, error) {
 	if _, err := f.process.Check(); err != nil {
 		return network.RuntimeView{}, f.failedObservation(err, "process")
 	}
-	if err := f.credential.check(); err != nil {
+	if err := f.credential.Check(); err != nil {
 		return network.RuntimeView{}, f.failedObservation(err, "credential")
 	}
 	if err := f.producer.Check(); err != nil {
@@ -218,8 +218,8 @@ func (f *joinInvocation) denyOwner(error) {}
 func (f *joinInvocation) cleanupRole(roleResult error) (func(func(string, error)), error) {
 	return nil, roleResult
 }
-func (f *joinInvocation) credentialClose() error       { return f.credential.close() }
-func (f *joinInvocation) certificate() tls.Certificate { return f.credential.material.certificate }
+func (f *joinInvocation) credentialClose() error       { return f.credential.Close() }
+func (f *joinInvocation) certificate() tls.Certificate { return f.credential.TLSCertificate() }
 func (f *joinInvocation) listenerConfig() receiver.ReceiverConfig {
 	return receiver.ReceiverConfig{}
 }

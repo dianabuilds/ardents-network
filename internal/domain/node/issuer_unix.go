@@ -4,7 +4,6 @@ package node
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/bootstrap"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
@@ -82,7 +82,7 @@ func (handle *Issuer) FirstFailure() *FailureDiagnostic {
 type issuerInvocation struct {
 	nodeLifetime
 	config     IssuerConfig
-	credential *credential
+	credential *credential.Material
 	issuing    issuing.Owner
 }
 
@@ -129,11 +129,11 @@ func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *I
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.credential, err = loadCredential(config.Certificate, config.PrivateKey)
+	f.credential, err = credential.Load(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	if string(f.credential.key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) {
+	if f.credential.PublicKey() != m.PublicKey {
 		return nil, errors.New("original Issuer TLS key differs")
 	}
 	if err := f.admission(); err != nil {
@@ -211,8 +211,8 @@ func (f *issuerInvocation) cleanupRole(roleResult error) (func(func(string, erro
 	}, roleResult
 }
 
-func (f *issuerInvocation) credentialClose() error       { return f.credential.close() }
-func (f *issuerInvocation) certificate() tls.Certificate { return f.credential.certificate }
+func (f *issuerInvocation) credentialClose() error       { return f.credential.Close() }
+func (f *issuerInvocation) certificate() tls.Certificate { return f.credential.TLSCertificate() }
 func (f *issuerInvocation) listenerConfig() receiver.ReceiverConfig {
 	return receiver.ReceiverConfig{ReserveBootstrap: f.reserveBootstrap, Issue: f.issue}
 }

@@ -4,7 +4,6 @@ package node
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
@@ -78,7 +78,7 @@ func (handle *Descriptor) FirstFailure() *FailureDiagnostic {
 type descriptorInvocation struct {
 	nodeLifetime
 	config     DescriptorConfig
-	credential *credential
+	credential *credential.Material
 	store      *reachability.Store
 }
 
@@ -124,11 +124,11 @@ func listenDescriptor(ctx context.Context, config DescriptorConfig, retained boo
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.credential, err = loadCredential(config.Certificate, config.PrivateKey)
+	f.credential, err = credential.Load(config.Certificate, config.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
-	if string(f.credential.key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) {
+	if f.credential.PublicKey() != m.PublicKey {
 		return nil, errors.New("original Descriptor TLS key differs")
 	}
 	if err := f.admission(); err != nil {
@@ -222,8 +222,8 @@ func (f *descriptorInvocation) cleanupRole(roleResult error) (func(func(string, 
 	}, originalRetirementResult(roleResult, storeFailure)
 }
 
-func (f *descriptorInvocation) credentialClose() error       { return f.credential.close() }
-func (f *descriptorInvocation) certificate() tls.Certificate { return f.credential.certificate }
+func (f *descriptorInvocation) credentialClose() error       { return f.credential.Close() }
+func (f *descriptorInvocation) certificate() tls.Certificate { return f.credential.TLSCertificate() }
 func (f *descriptorInvocation) listenerConfig() receiver.ReceiverConfig {
 	return receiver.ReceiverConfig{DescriptorStore: f.store}
 }
