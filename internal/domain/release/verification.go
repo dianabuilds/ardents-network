@@ -14,6 +14,9 @@ var (
 	ErrClosed           = errors.New("release: verifier closed")
 	ErrIncompatible     = errors.New("release: incompatible local binding")
 	ErrTrustUnavailable = errors.New("release: established complete trust history unavailable")
+	// ErrHistoryCapacity reports that a new generation cannot fit the retained
+	// store. The current floors and the original verifier remain usable.
+	ErrHistoryCapacity = errors.New("release: retained generation capacity exhausted")
 )
 
 const h3EvidenceNotice = "threshold and rebuild identities are project-controlled; no independent custody or builder claim"
