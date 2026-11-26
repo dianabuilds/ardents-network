@@ -374,3 +374,31 @@ func TestCurrentCommandReportsReachSafeCollectorProjection(t *testing.T) {
 		t.Fatal("invalid transition hidden")
 	}
 }
+
+func TestStructuredStderrIsProjectedWithoutRawCapture(t *testing.T) {
+	p := newProjection(t)
+	stdout := "{\"operation\":\"source.serve\",\"phase\":\"listening\",\"outcome\":\"original-source\"}\n"
+	stderr := "{\"operation\":\"source.serve\",\"phase\":\"joined\",\"outcome\":\"failed\",\"first_owner\":\"SECRET\"}\n"
+	if err := drain(strings.NewReader(stdout), nil, p, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := drain(strings.NewReader(stderr), nil, p, false); err != nil {
+		t.Fatal(err)
+	}
+	if p.summary.StdoutBytes != int64(len(stdout)) || p.summary.StderrBytes != int64(len(stderr)) || p.summary.Counts["source.serve"] != 2 || len(p.summary.LastEvents) != 2 {
+		t.Fatalf("stderr event lost: %+v", p.summary)
+	}
+	if p.summary.LastEvents[0].Failure != "" || p.summary.LastEvents[1].Failure != "failed" {
+		t.Fatal("stream was treated as event severity")
+	}
+	body, _ := json.Marshal(p.summary)
+	if bytes.Contains(body, []byte("SECRET")) {
+		t.Fatal("stderr private detail retained")
+	}
+	if err := drain(strings.NewReader(strings.Repeat("SECRET", lineLimit)+"\n"+stderr), nil, p, false); err != nil {
+		t.Fatal(err)
+	}
+	if p.summary.OversizedLines != 1 || p.summary.Counts["source.serve"] != 3 {
+		t.Fatal("oversized stderr stopped later event projection")
+	}
+}

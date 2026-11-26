@@ -70,7 +70,9 @@ distinct facts. No decoder result grants readiness or proves physical join.
 `ardents-command-report-v1` names the collector's normalized projection, not a
 schema declared by these producers. Its kind is the fixed operation name; owner,
 phase, outcome and the derived failure category come from one finite catalogue.
-The collector, saved report/panel and live monitor use that same validation.
+The collector parses bounded structured records from both stdout and stderr;
+the stream does not define severity. The saved report/panel and live monitor use
+that same validation.
 Existing operation reports, first/cleanup owner fields and local nested failure
 facts retain their original command bytes. Private details, resource subobjects,
 request digests and supplied `at` fields are excluded from the projection.

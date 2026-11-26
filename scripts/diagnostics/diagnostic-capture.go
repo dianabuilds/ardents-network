@@ -235,25 +235,23 @@ func drain(reader io.Reader, raw *boundedFile, p *projection, stdout bool) error
 			p.summary.StderrBytes += int64(len(fragment))
 		}
 		p.mu.Unlock()
-		if stdout {
-			if len(line)+len(fragment) > lineLimit {
-				oversized = true
-				line = line[:0]
+		if len(line)+len(fragment) > lineLimit {
+			oversized = true
+			line = line[:0]
+		}
+		if !oversized {
+			line = append(line, fragment...)
+		}
+		if err != bufio.ErrBufferFull {
+			if oversized {
+				p.mu.Lock()
+				p.summary.OversizedLines++
+				p.mu.Unlock()
+			} else if len(bytes.TrimSpace(line)) > 0 {
+				p.line(bytes.TrimSpace(line))
 			}
-			if !oversized {
-				line = append(line, fragment...)
-			}
-			if err != bufio.ErrBufferFull {
-				if oversized {
-					p.mu.Lock()
-					p.summary.OversizedLines++
-					p.mu.Unlock()
-				} else if len(bytes.TrimSpace(line)) > 0 {
-					p.line(bytes.TrimSpace(line))
-				}
-				line = line[:0]
-				oversized = false
-			}
+			line = line[:0]
+			oversized = false
 		}
 		if errors.Is(err, io.EOF) {
 			return nil
