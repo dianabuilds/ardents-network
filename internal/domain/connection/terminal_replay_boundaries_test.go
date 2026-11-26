@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 // Two independent control ledgers exchange actual canonical records. These

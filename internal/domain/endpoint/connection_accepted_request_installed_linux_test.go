@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/connection"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution/worker"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"

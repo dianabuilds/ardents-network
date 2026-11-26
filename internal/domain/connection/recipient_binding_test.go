@@ -5,7 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"testing"
 	"time"
 

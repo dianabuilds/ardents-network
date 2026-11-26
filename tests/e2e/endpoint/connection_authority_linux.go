@@ -10,7 +10,7 @@ import (
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/connection"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 )
 
 // Actual checked bytes precede the fault. The second Read holds its completed

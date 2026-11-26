@@ -9,7 +9,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 func TestTailReaderDistinguishesPartialServiceRecordFromEmptyTLSTail(t *testing.T) {

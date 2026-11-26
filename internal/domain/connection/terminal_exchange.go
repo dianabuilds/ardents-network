@@ -3,7 +3,7 @@ package connection
 import (
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 var errIntegrity = errors.New("service Connection integrity contradiction")
