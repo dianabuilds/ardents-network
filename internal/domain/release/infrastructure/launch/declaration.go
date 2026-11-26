@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
@@ -34,7 +34,7 @@ type Declaration struct {
 var ErrInput = errors.New("platform launch refused")
 
 func below(parent, value string) bool {
-	return pathgrammar.LiteralPOSIXPath(value) && strings.HasPrefix(value, parent+"/")
+	return pathcheck.LiteralPOSIXPath(value) && strings.HasPrefix(value, parent+"/")
 }
 
 func independentRoots(roots ...string) bool {
@@ -58,7 +58,7 @@ func valid(p Declaration) bool {
 }
 
 func validInfrastructure(p Declaration) bool {
-	if !below("/usr/lib/ardents", p.Program) || !below("/etc/ardents", p.Configuration) || !pathgrammar.LiteralPOSIXPath(p.Distribution) || !pathgrammar.LiteralPOSIXPath(p.ReleaseRoot) || !independentRoots(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" {
+	if !below("/usr/lib/ardents", p.Program) || !below("/etc/ardents", p.Configuration) || !pathcheck.LiteralPOSIXPath(p.Distribution) || !pathcheck.LiteralPOSIXPath(p.ReleaseRoot) || !independentRoots(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" {
 		return false
 	}
 	if !canonicaldigest.Valid(p.ConfigSHA256) || len(p.WritableRoots) < 2 || len(p.WritableRoots) > 8 {

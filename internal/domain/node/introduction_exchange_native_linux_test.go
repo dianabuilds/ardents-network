@@ -26,7 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -117,7 +117,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			for _, id := range []byte{12, 13, 14, 15, 21, 22, 23, 24} {
 				nodeID := [32]byte{id}
 				cert, key := processfixture.WriteNativeCredential(t, certificates[nodeID])
-				plan := map[string]any{"network": seed(networkClock), "node_id": nodeID, "process_profile": processresource.Profile,
+				plan := map[string]any{"network": seed(networkClock), "node_id": nodeID, "process_profile": processguard.ForwardingProfile,
 					"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(),
 					"hosting_root": processfixture.ProcessBudget(t), "certificate": cert, "private_key": key,
 					"work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
@@ -131,7 +131,7 @@ func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 			if err := os.Chmod(historyRoot, 0700); err != nil {
 				t.Fatal(err)
 			}
-			nodePlan := map[string]any{"network": seed(clock), "node_id": [32]byte{25}, "process_profile": processresource.IntroductionProfile,
+			nodePlan := map[string]any{"network": seed(clock), "node_id": [32]byte{25}, "process_profile": processguard.IntroductionProfile,
 				"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spendRoot, "hosting_root": processfixture.ProcessBudget(t), "introduction_root": historyRoot,
 				"certificate": cert, "private_key": key, "work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			if mode == "undercoverage" {

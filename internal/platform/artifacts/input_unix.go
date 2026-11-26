@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // File retains the original descriptor and metadata of an input or directory.
@@ -48,7 +48,7 @@ func (f *File) Info() os.FileInfo { return f.info }
 func (f *File) Descriptor() *os.File { return f.file }
 
 func AbsolutePath(path string) bool {
-	return path != "/" && len(path) > 1 && len(path) <= 4096 && pathgrammar.Strict(path) && !strings.ContainsRune(path, 0)
+	return path != "/" && len(path) > 1 && len(path) <= 4096 && pathcheck.IsCleanAbsolute(path) && !strings.ContainsRune(path, 0)
 }
 
 func OpenChild(parent *File, name string, directory bool) (*os.File, error) {

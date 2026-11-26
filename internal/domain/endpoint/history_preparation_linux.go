@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // PrepareHistories explicitly prepares the first signed State, participation,
@@ -50,7 +50,7 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 	// They must not overlap one another or the declared independent clock file.
 	isolated := append(append([]string(nil), paths...), plan.TimeConfidenceFile)
 	for i, path := range isolated {
-		if !pathgrammar.Strict(path) || path == "/" {
+		if !pathcheck.IsCleanAbsolute(path) || path == "/" {
 			return errors.New("invalid participant history path")
 		}
 		for _, previous := range isolated[:i] {

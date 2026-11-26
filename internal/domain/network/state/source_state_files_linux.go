@@ -15,7 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // ErrSourcePreparationPrincipal identifies refusal before opening any input.
@@ -71,7 +71,7 @@ func readSourceStateInputs(originals *artifacts.Inputs, planPath, bundlePath str
 		return result, err
 	}
 	plan, err := servingdeclaration.DecodeServingDeclaration(planBytes)
-	if err != nil || plan.ProcessProfile != processresource.SourceProfile {
+	if err != nil || plan.ProcessProfile != processguard.SourceProfile {
 		return result, errors.Join(errSourcePreparation, err)
 	}
 	result.config, err = SourcePreparationConfig(plan)

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 func TestOriginalFirstFailureProjectionSurvivesCleanupAndCopies(t *testing.T) {
@@ -69,7 +69,7 @@ func TestOriginalFailureProjectionDistinguishesPhaseAndCaller(t *testing.T) {
 
 func TestAuthorityDelayRetainsOriginalProcessMeasurement(t *testing.T) {
 	now := time.Now()
-	observation := processresource.Observation{Started: now.Add(-2 * time.Second), Completed: now.Add(-2 * time.Second), CPUUsec: 123, CPUPressure: 0.54}
+	observation := processguard.Observation{Started: now.Add(-2 * time.Second), Completed: now.Add(-2 * time.Second), CPUUsec: 123, CPUPressure: 0.54}
 	cause := expiredMeasurement(observation)
 	record := failureRecord{started: now.Add(-3 * time.Second), serving: true}
 	record.retain(cause, context.Background(), "process")

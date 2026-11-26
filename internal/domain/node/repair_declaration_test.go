@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 func TestRepairDeclarationBindsRoleAndOrderedRoots(t *testing.T) {
@@ -20,7 +20,7 @@ func TestRepairDeclarationBindsRoleAndOrderedRoots(t *testing.T) {
 		roots = append(roots, path)
 		plan[name] = path
 	}
-	plan["process_profile"] = processresource.DescriptorProfile
+	plan["process_profile"] = processguard.DescriptorProfile
 	original := marshalTestPlan(t, plan)
 	pins, got, err := RepairDeclaration("descriptor", original)
 	if err != nil || pins.NetworkID != network.NetworkID || !slices.Equal(roots, got) {

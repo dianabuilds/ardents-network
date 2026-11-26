@@ -10,11 +10,11 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 func loadCredential(certPath, keyPath string) (_ *credential, result error) {
-	if !pathgrammar.Strict(certPath) || !pathgrammar.Strict(keyPath) {
+	if !pathcheck.IsCleanAbsolute(certPath) || !pathcheck.IsCleanAbsolute(keyPath) {
 		return nil, errors.New("invalid Node credential paths")
 	}
 	cert, err := readCredentialFile(certPath, false)
@@ -89,7 +89,7 @@ func protectedCredentialAccess(info os.FileInfo, uid, gid uint32) bool {
 }
 
 func protectedCredentialAncestors(path string) error {
-	if !pathgrammar.Strict(path) || path == "/" {
+	if !pathcheck.IsCleanAbsolute(path) || path == "/" {
 		return errors.New("protected Node credential path unavailable")
 	}
 	for directory := filepath.Dir(path); ; directory = filepath.Dir(directory) {

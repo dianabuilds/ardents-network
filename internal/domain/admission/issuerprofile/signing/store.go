@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var (
@@ -101,10 +101,10 @@ func Import(ctx context.Context, path, source string, b Binding) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	if !pathgrammar.Strict(source) {
+	if !pathcheck.IsCleanAbsolute(source) {
 		return ErrInvalid
 	}
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return ErrInvalid
 	}
 	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {

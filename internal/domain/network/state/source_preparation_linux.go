@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var errSourcePreparation = errors.New("invalid initial Source State preparation")
@@ -26,7 +26,7 @@ func SourcePreparationConfig(plan servingdeclaration.ServingDeclaration) (Config
 	}
 	paths := []string{n.Root, n.ClockObservationFile, plan.ParticipationRoot}
 	for i, path := range paths {
-		if path == "/" || len(path) > 4096 || !pathgrammar.Strict(path) || strings.ContainsRune(path, 0) {
+		if path == "/" || len(path) > 4096 || !pathcheck.IsCleanAbsolute(path) || strings.ContainsRune(path, 0) {
 			return Config{}, errSourcePreparation
 		}
 		for _, previous := range paths[:i] {

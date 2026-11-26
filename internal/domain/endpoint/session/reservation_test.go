@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // The route composition helpers are pure: root independence is a strict-path
@@ -17,22 +17,22 @@ func TestIndependentRouteRootsRequireStrictSeparatePaths(t *testing.T) {
 	base := t.TempDir()
 	entry := filepath.Join(base, "entry")
 	hosting := filepath.Join(base, "hosting")
-	if !pathgrammar.DisjointRoots(entry, hosting) {
+	if !pathcheck.DisjointRoots(entry, hosting) {
 		t.Fatal("independent strict roots refused")
 	}
-	if !pathgrammar.DisjointRoots(entry) {
+	if !pathcheck.DisjointRoots(entry) {
 		t.Fatal("single strict root refused")
 	}
-	if pathgrammar.DisjointRoots(entry, entry) {
+	if pathcheck.DisjointRoots(entry, entry) {
 		t.Fatal("duplicate root accepted")
 	}
-	if pathgrammar.DisjointRoots(entry, filepath.Join(entry, "child")) {
+	if pathcheck.DisjointRoots(entry, filepath.Join(entry, "child")) {
 		t.Fatal("nested root accepted")
 	}
-	if pathgrammar.DisjointRoots(filepath.Join(entry, "child"), entry) {
+	if pathcheck.DisjointRoots(filepath.Join(entry, "child"), entry) {
 		t.Fatal("nested root accepted in reverse order")
 	}
-	if pathgrammar.DisjointRoots("relative", hosting) {
+	if pathcheck.DisjointRoots("relative", hosting) {
 		t.Fatal("non-strict root accepted")
 	}
 }

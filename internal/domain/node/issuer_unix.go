@@ -19,8 +19,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/bootstrap"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // IssuerConfig declares one original authenticated duty and prepared issuing
@@ -100,7 +100,7 @@ func ListenIssuerRetained(ctx context.Context, config IssuerConfig) (*Issuer, er
 
 func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *Issuer, result error) {
 	p := config.Issuance
-	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, p.AdmissionRoot, p.KeyRoot, p.ResultRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathcheck.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, p.AdmissionRoot, p.KeyRoot, p.ResultRoot) {
 		return nil, errors.New("original Issuer configuration invalid")
 	}
 	if err := ctx.Err(); err != nil {
@@ -115,7 +115,7 @@ func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *I
 		}
 	}()
 	var err error
-	f.process, err = processresource.Open(f.ctx, processresource.IssuerProfile)
+	f.process, err = processguard.Open(f.ctx, processguard.IssuerProfile)
 	if err != nil {
 		return nil, err
 	}

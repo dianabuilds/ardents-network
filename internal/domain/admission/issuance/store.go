@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // Store copies share one lifecycle and exclusive lease.
@@ -38,7 +38,7 @@ func initialize(ctx context.Context, root string, b Binding, fault func(string) 
 	if err := platform(); err != nil {
 		return err
 	}
-	if ctx == nil || !b.valid() || !pathgrammar.Strict(root) {
+	if ctx == nil || !b.valid() || !pathcheck.IsCleanAbsolute(root) {
 		return ErrInvalid
 	}
 	if ctx.Err() != nil {

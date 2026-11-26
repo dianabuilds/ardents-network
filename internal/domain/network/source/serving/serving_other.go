@@ -8,7 +8,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // errServingPlatformUnavailable is the explicit typed unavailable outcome for
@@ -17,7 +17,7 @@ import (
 // required protection yields the same explicit refusal on every platform; it
 // never supplies a weaker accepting path. The Unix-family operation lives in
 // the _unix.go files; its native process guard refuses outside Linux through
-// processresource, and Windows admits no original Source lifetime here.
+// processguard, and Windows admits no original Source lifetime here.
 var errServingPlatformUnavailable = errors.New("source serving platform unavailable")
 
 // Outcome is the original attempt's process-independent terminal class.
@@ -58,7 +58,7 @@ func (result *Terminal) Unwrap() []error {
 type FailureDescription struct {
 	FirstOwner    string
 	CleanupOwners string
-	Resource      *processresource.FailureFacts
+	Resource      *processguard.FailureFacts
 }
 
 // DescribeFailure refuses to classify an original failure order on platforms

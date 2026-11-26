@@ -3,8 +3,8 @@ package node
 import (
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 var errRepairDeclaration = errors.New("invalid node repair declaration")
@@ -22,28 +22,28 @@ func RepairDeclaration(role string, raw []byte) (Network, []string, error) {
 		if err != nil {
 			return Network{}, nil, errRepairDeclaration
 		}
-		core, profile = plan.nodePlanCore, processresource.Profile
+		core, profile = plan.nodePlanCore, processguard.ForwardingProfile
 	case "join":
 		var plan JoinPlan
 		plan, err = DecodeJoinPlan(raw)
 		if err != nil {
 			return Network{}, nil, errRepairDeclaration
 		}
-		core, profile = plan.nodePlanCore, processresource.JoinProfile
+		core, profile = plan.nodePlanCore, processguard.JoinProfile
 	case "descriptor":
 		var plan DescriptorPlan
 		plan, err = DecodeDescriptorPlan(raw)
 		if err != nil {
 			return Network{}, nil, errRepairDeclaration
 		}
-		core, profile, extraRoot = plan.nodePlanCore, processresource.DescriptorProfile, plan.DescriptorRoot
+		core, profile, extraRoot = plan.nodePlanCore, processguard.DescriptorProfile, plan.DescriptorRoot
 	case "introduction":
 		var plan IntroductionPlan
 		plan, err = DecodeIntroductionPlan(raw)
 		if err != nil {
 			return Network{}, nil, errRepairDeclaration
 		}
-		core, profile, extraRoot = plan.nodePlanCore, processresource.IntroductionProfile, plan.IntroductionRoot
+		core, profile, extraRoot = plan.nodePlanCore, processguard.IntroductionProfile, plan.IntroductionRoot
 	default:
 		return Network{}, nil, errRepairDeclaration
 	}
@@ -54,7 +54,7 @@ func RepairDeclaration(role string, raw []byte) (Network, []string, error) {
 	if role == "descriptor" || role == "introduction" {
 		roots = append(roots, extraRoot)
 	}
-	if !pathgrammar.DisjointRoots(roots...) {
+	if !pathcheck.DisjointRoots(roots...) {
 		return Network{}, nil, errRepairDeclaration
 	}
 	return *core.Network, roots, nil

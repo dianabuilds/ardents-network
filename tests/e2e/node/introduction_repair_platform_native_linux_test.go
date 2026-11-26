@@ -24,8 +24,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -221,7 +221,7 @@ func prepareInstalledIntroductionRepair(t *testing.T, unitPath string) installed
 		t.Fatal(err)
 	}
 	plan, err := json.Marshal(map[string]any{
-		"network": network, "node_id": stand.nodeID, "process_profile": processresource.IntroductionProfile,
+		"network": network, "node_id": stand.nodeID, "process_profile": processguard.IntroductionProfile,
 		"participation_root": stand.participation, "spend_root": stand.spend, "hosting_root": stand.hosting, "introduction_root": stand.history,
 		"certificate": certPath, "private_key": keyPath,
 		"work": hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000,

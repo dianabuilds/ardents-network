@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // joinCredential retains original file custody as well as the exact in-memory
@@ -28,7 +28,7 @@ type joinCredential struct {
 }
 
 func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result error) {
-	if !pathgrammar.Strict(certPath) || !pathgrammar.Strict(keyPath) {
+	if !pathcheck.IsCleanAbsolute(certPath) || !pathcheck.IsCleanAbsolute(keyPath) {
 		return nil, errors.New("invalid original JOIN credential paths")
 	}
 	c := &joinCredential{}

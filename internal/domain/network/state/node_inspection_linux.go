@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // NodeHistory is copied public binding data from one checked retained signed
@@ -50,7 +50,7 @@ func OpenNodeInspection(parent context.Context, input Config, node [32]byte, uid
 }
 
 func openNodeInspection(parent context.Context, input Config, node [32]byte, uid, gid uint32) (result NodeInspection, returned error) {
-	if parent == nil || os.Geteuid() != 0 || node == [32]byte{} || !pathgrammar.Strict(input.Root) || !pathgrammar.Strict(input.LocalRoleStateRoot) || !pathgrammar.Strict(input.ClockObservationFile) || input.ObserveClock != nil || input.PermitWork != nil {
+	if parent == nil || os.Geteuid() != 0 || node == [32]byte{} || !pathcheck.IsCleanAbsolute(input.Root) || !pathcheck.IsCleanAbsolute(input.LocalRoleStateRoot) || !pathcheck.IsCleanAbsolute(input.ClockObservationFile) || input.ObserveClock != nil || input.PermitWork != nil {
 		return result, errors.New("invalid retained Node inspection")
 	}
 	if err := parent.Err(); err != nil {

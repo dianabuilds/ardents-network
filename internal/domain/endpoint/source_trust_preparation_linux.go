@@ -17,9 +17,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 var errSourceTrustPreparation = errors.New("source public trust preparation unavailable")
@@ -284,7 +284,7 @@ func PrepareSourceTrust(ctx context.Context, path, destination string, observe f
 		entry.LeafKeyDigest = hex.EncodeToString(member.Pin[:])
 		network := authority
 		network.Root = member.StateRoot
-		serving := servingdeclaration.ServingDeclaration{Network: &network, ProcessProfile: processresource.SourceProfile, ParticipationRoot: member.ParticipationRoot, Address: member.Address, Certificate: filepath.Join(destination, name+"-certificate.pem"), PrivateKey: member.PrivateKey, ClientRoot: filepath.Join(destination, "client-root.pem"), ClientPins: [][32]byte{p.ClientPin}}
+		serving := servingdeclaration.ServingDeclaration{Network: &network, ProcessProfile: processguard.SourceProfile, ParticipationRoot: member.ParticipationRoot, Address: member.Address, Certificate: filepath.Join(destination, name+"-certificate.pem"), PrivateKey: member.PrivateKey, ClientRoot: filepath.Join(destination, "client-root.pem"), ClientPins: [][32]byte{p.ClientPin}}
 		if member.Address == "" {
 			return nil, errSourceTrustPreparation
 		}
@@ -331,5 +331,5 @@ func independentSourcePreparationRoots(roots ...string) bool {
 }
 
 func absoluteSourcePreparationPath(path string) bool {
-	return pathgrammar.Strict(path)
+	return pathcheck.IsCleanAbsolute(path)
 }

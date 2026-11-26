@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 type Owner struct {
@@ -32,7 +32,7 @@ type Owner struct {
 func Create(ctx context.Context, parentPath string, expectedParent os.FileInfo, name string, gid uint32) (result *Owner, returnedErr error) {
 	_, digestOK := canonicaldigest.Decode(name)
 	if ctx == nil || os.Geteuid() != 0 || gid == 0 || gid == ^uint32(0) ||
-		!pathgrammar.Strict(parentPath) ||
+		!pathcheck.IsCleanAbsolute(parentPath) ||
 		filepath.Base(parentPath) != "generations" || expectedParent == nil ||
 		!digestOK {
 		return nil, ErrInput

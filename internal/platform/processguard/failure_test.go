@@ -1,4 +1,4 @@
-package processresource
+package processguard
 
 import (
 	"errors"

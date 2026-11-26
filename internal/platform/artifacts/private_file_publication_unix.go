@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // ErrOutputUncertain reports a failed publication after a possible effect.
@@ -37,7 +37,7 @@ func CheckPrivateFileDestination(ctx context.Context, path string) error {
 }
 
 func privateOutputParent(ctx context.Context, path string) (os.FileInfo, error) {
-	if ctx == nil || !pathgrammar.Strict(path) {
+	if ctx == nil || !pathcheck.IsCleanAbsolute(path) {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

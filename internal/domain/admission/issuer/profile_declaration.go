@@ -8,7 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile/signing"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -36,7 +36,7 @@ func declarationFields(raw []byte, names ...string) (map[string]json.RawMessage,
 
 func declarationPath(raw json.RawMessage) (string, error) {
 	var path string
-	if json.Unmarshal(raw, &path) != nil || !pathgrammar.Strict(path) {
+	if json.Unmarshal(raw, &path) != nil || !pathcheck.IsCleanAbsolute(path) {
 		return "", issuance.ErrInvalid
 	}
 	return path, nil

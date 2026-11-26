@@ -12,7 +12,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // Inspection retains one existing provider period read-only, under its own
@@ -54,7 +54,7 @@ func OpenInspection(ctx context.Context, path, policySHA256 string, uid, gid uin
 
 func openInspection(ctx context.Context, path, policy string, uid, gid uint32, observe func(string, *os.File)) (result Inspection, returned error) {
 	_, pinOK := canonicaldigest.Decode(policy)
-	if ctx == nil || os.Geteuid() != 0 || !pathgrammar.Strict(path) || path == "/" || !pinOK {
+	if ctx == nil || os.Geteuid() != 0 || !pathcheck.IsCleanAbsolute(path) || path == "/" || !pinOK {
 		return result, errors.New("invalid retained Hosting inspection")
 	}
 	if err := ctx.Err(); err != nil {

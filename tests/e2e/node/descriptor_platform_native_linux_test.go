@@ -26,8 +26,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -447,7 +447,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 		t.Fatal(err)
 	}
 
-	plan := map[string]any{"network": stand.networkPlan, "node_id": stand.nodeID, "process_profile": processresource.DescriptorProfile,
+	plan := map[string]any{"network": stand.networkPlan, "node_id": stand.nodeID, "process_profile": processguard.DescriptorProfile,
 		"participation_root": stand.participationRoot, "spend_root": stand.spendRoot, "hosting_root": stand.hostingRoot, "descriptor_root": stand.storeRoot,
 		"certificate": stand.certPath, "private_key": stand.keyPath,
 		"work": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}

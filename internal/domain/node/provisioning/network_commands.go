@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // RunNetworkArtifacts dispatches public preparation, signing and key creation.
@@ -32,7 +32,7 @@ func RunNetworkArtifacts(ctx context.Context, args []string, out io.Writer) int 
 }
 
 func runNetworkPreparation(ctx context.Context, args []string, out io.Writer) int {
-	if len(args) != 3 || !pathgrammar.Strict(args[1]) || !pathgrammar.Strict(args[2]) {
+	if len(args) != 3 || !pathcheck.IsCleanAbsolute(args[1]) || !pathcheck.IsCleanAbsolute(args[2]) {
 		return 2
 	}
 	if ctx.Err() != nil {
@@ -77,7 +77,7 @@ func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 		return 2
 	}
 	for _, i := range []int{1, 2, 4, 5} {
-		if !pathgrammar.Strict(args[i]) {
+		if !pathcheck.IsCleanAbsolute(args[i]) {
 			return 2
 		}
 	}
@@ -119,7 +119,7 @@ func runInitialKeys(ctx context.Context, args []string, out io.Writer) int {
 		return 2
 	}
 	for _, path := range args[1:] {
-		if !pathgrammar.Strict(path) || filepath.Dir(path) == path {
+		if !pathcheck.IsCleanAbsolute(path) || filepath.Dir(path) == path {
 			return 2
 		}
 	}

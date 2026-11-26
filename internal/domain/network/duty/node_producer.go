@@ -6,7 +6,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // NodeProducer retains one original local participation caller. Its private
@@ -33,7 +33,7 @@ type nodeProducer struct {
 // producer. Ambiguous failures retain durable conflict rather than inventing
 // successful removal; they grant no runtime admission.
 func OpenNodeProducer(ctx context.Context, config Config, participation NodeParticipation) (*NodeProducer, error) {
-	if ctx == nil || !pathgrammar.Strict(config.Root) {
+	if ctx == nil || !pathcheck.IsCleanAbsolute(config.Root) {
 		return nil, errors.New("original Node participation caller or root unavailable")
 	}
 	if err := ctx.Err(); err != nil {

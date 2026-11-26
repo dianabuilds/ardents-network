@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -32,23 +32,23 @@ type completionRole struct {
 }
 
 func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	testNativeUnavailableCompletion(t, completionRole{name: "forwarding", profile: processresource.Profile, id: 12, domain: 3, subrole: 1, work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}})
+	testNativeUnavailableCompletion(t, completionRole{name: "forwarding", profile: processguard.ForwardingProfile, id: 12, domain: 3, subrole: 1, work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}})
 }
 
 func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	testNativeUnavailableCompletion(t, completionRole{name: "descriptor", profile: processresource.DescriptorProfile, id: 17, domain: 2, subrole: 5, historyField: "descriptor_root", work: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}})
+	testNativeUnavailableCompletion(t, completionRole{name: "descriptor", profile: processguard.DescriptorProfile, id: 17, domain: 2, subrole: 5, historyField: "descriptor_root", work: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}})
 }
 
 func TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	testNativeUnavailableCompletion(t, completionRole{name: "introduction", profile: processresource.IntroductionProfile, id: 25, domain: 4, subrole: 3, historyField: "introduction_root", work: hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}})
+	testNativeUnavailableCompletion(t, completionRole{name: "introduction", profile: processguard.IntroductionProfile, id: 25, domain: 4, subrole: 3, historyField: "introduction_root", work: hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20}})
 }
 
 func TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	testNativeUnavailableCompletion(t, completionRole{name: "issuer", profile: processresource.IssuerProfile, id: 11, domain: 2, subrole: 6, work: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}})
+	testNativeUnavailableCompletion(t, completionRole{name: "issuer", profile: processguard.IssuerProfile, id: 11, domain: 2, subrole: 6, work: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}})
 }
 
 func TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
-	testNativeUnavailableCompletion(t, completionRole{name: "join", profile: processresource.JoinProfile, id: 20, domain: 2, subrole: 4, work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}})
+	testNativeUnavailableCompletion(t, completionRole{name: "join", profile: processguard.JoinProfile, id: 20, domain: 2, subrole: 4, work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}})
 }
 
 func testNativeUnavailableCompletion(t *testing.T, role completionRole) {

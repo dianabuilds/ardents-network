@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // CheckHistoryPath matches a composition's canonical history declaration to
@@ -20,7 +20,7 @@ func (v *Verifier) CheckHistoryPath(ctx context.Context, path string) error {
 		return err
 	}
 	defer leave()
-	if !pathgrammar.Strict(path) || path != v.store.path {
+	if !pathcheck.IsCleanAbsolute(path) || path != v.store.path {
 		return ErrTrustUnavailable
 	}
 	if err = v.store.checkHistoryIdentity(); err != nil {

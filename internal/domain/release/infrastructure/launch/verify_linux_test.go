@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 func TestPlatformSourceCompletionInspectionUsesExactRetainedPlan(t *testing.T) {
@@ -19,7 +19,7 @@ func TestPlatformSourceCompletionInspectionUsesExactRetainedPlan(t *testing.T) {
 		},
 		ParticipationRoot: filepath.Join(base, "participation"),
 		Certificate:       filepath.Join(base, "cert"), PrivateKey: filepath.Join(base, "key"),
-		ClientRoot: filepath.Join(base, "client"), ProcessProfile: processresource.SourceProfile,
+		ClientRoot: filepath.Join(base, "client"), ProcessProfile: processguard.SourceProfile,
 		ClientPins: [][32]byte{{4}}, Address: "127.0.0.1:4848",
 	}
 	raw, err := json.Marshal(plan)

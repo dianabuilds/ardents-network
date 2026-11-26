@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 func writePreparePlanNetwork(t *testing.T, base string) {
@@ -114,11 +114,11 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 
 func TestNodePreparePlanProducesRuntimeAdmissiblePlan(t *testing.T) {
 	roles := []struct{ name, profile string }{
-		{"forwarding", processresource.Profile},
-		{"join", processresource.JoinProfile},
-		{"descriptor", processresource.DescriptorProfile},
-		{"introduction", processresource.IntroductionProfile},
-		{"issuer", processresource.IssuerProfile},
+		{"forwarding", processguard.ForwardingProfile},
+		{"join", processguard.JoinProfile},
+		{"descriptor", processguard.DescriptorProfile},
+		{"introduction", processguard.IntroductionProfile},
+		{"issuer", processguard.IssuerProfile},
 	}
 	for _, role := range roles {
 		t.Run(role.name, func(t *testing.T) {

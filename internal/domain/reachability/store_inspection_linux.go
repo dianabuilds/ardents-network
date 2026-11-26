@@ -8,7 +8,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // StoreInspection independently retains stopped Store history. It exports no
@@ -49,7 +49,7 @@ func OpenStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint3
 }
 
 func openStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint32, observe func(string, *os.File)) (result StoreInspection, returned error) {
-	if ctx == nil || os.Geteuid() != 0 || uid < 100 || uid > 999 || gid != uid || config.Network == [32]byte{} || !pathgrammar.Strict(config.Root) || config.Root == "/" {
+	if ctx == nil || os.Geteuid() != 0 || uid < 100 || uid > 999 || gid != uid || config.Network == [32]byte{} || !pathcheck.IsCleanAbsolute(config.Root) || config.Root == "/" {
 		return result, errors.New("stopped Store inspection input invalid")
 	}
 	if _, finite := ctx.Deadline(); !finite {

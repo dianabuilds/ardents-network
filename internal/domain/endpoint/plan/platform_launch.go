@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var errPlatformLaunch = errors.New("invalid Endpoint platform launch")
@@ -31,8 +31,8 @@ func (p PlatformLaunch) Valid() bool {
 	if p.Role != "endpoint" {
 		return false
 	}
-	if !PlatformBelow("/etc/ardents", p.Configuration) || !pathgrammar.LiteralPOSIXPath(p.Distribution) ||
-		!pathgrammar.LiteralPOSIXPath(p.ReleaseRoot) || !pathgrammar.LiteralPOSIXPath(p.Program) ||
+	if !PlatformBelow("/etc/ardents", p.Configuration) || !pathcheck.LiteralPOSIXPath(p.Distribution) ||
+		!pathcheck.LiteralPOSIXPath(p.ReleaseRoot) || !pathcheck.LiteralPOSIXPath(p.Program) ||
 		pathsOverlap(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" || !canonicaldigest.Valid(p.ConfigSHA256) {
 		return false
 	}
@@ -51,7 +51,7 @@ func (p PlatformLaunch) Valid() bool {
 		}
 	}
 	for _, root := range p.WritableRoots {
-		if !pathgrammar.LiteralPOSIXPath(root) || pathsOverlap(root, p.Distribution) ||
+		if !pathcheck.LiteralPOSIXPath(root) || pathsOverlap(root, p.Distribution) ||
 			pathsOverlap(root, p.ReleaseRoot) || pathsOverlap(root, p.Program) {
 			return false
 		}
@@ -74,7 +74,7 @@ func PlatformWritableRoots(decl Declaration) ([]string, error) {
 		return nil, errPlatformLaunch
 	}
 	for _, writable := range paths {
-		if !pathgrammar.LiteralPOSIXPath(writable) {
+		if !pathcheck.LiteralPOSIXPath(writable) {
 			return nil, errPlatformLaunch
 		}
 	}
@@ -93,5 +93,5 @@ func PlatformSourceCredentials(decl Declaration) ([]string, error) {
 
 // PlatformBelow tests a literal, strict descendant of an operator path.
 func PlatformBelow(parent, value string) bool {
-	return pathgrammar.LiteralPOSIXPath(value) && strings.HasPrefix(value, parent+"/")
+	return pathcheck.LiteralPOSIXPath(value) && strings.HasPrefix(value, parent+"/")
 }

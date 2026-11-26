@@ -81,10 +81,10 @@ github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit
 github.com/dianabuilds/ardents-network/internal/domain/execution/worker
 github.com/dianabuilds/ardents-network/internal/domain/connection
 github.com/dianabuilds/ardents-network/internal/domain/custody
-github.com/dianabuilds/ardents-network/internal/processresource
+github.com/dianabuilds/ardents-network/internal/platform/processguard
 github.com/dianabuilds/ardents-network/internal/durablefile
 github.com/dianabuilds/ardents-network/internal/canonicaldigest
-github.com/dianabuilds/ardents-network/internal/pathgrammar
+github.com/dianabuilds/ardents-network/internal/pathcheck
 github.com/dianabuilds/ardents-network/internal/domain/node
 github.com/dianabuilds/ardents-network/internal/domain/node/command
 github.com/dianabuilds/ardents-network/internal/domain/connection/wire

@@ -15,7 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // Snapshot owns an independently opened read-only sealed generation. It takes
@@ -35,7 +35,7 @@ type Snapshot struct {
 
 func OpenSnapshot(ctx context.Context, parentPath string, expectedParent, expectedDirectory os.FileInfo, name string, gid uint32) (result *Snapshot, returnedErr error) {
 	_, digestOK := canonicaldigest.Decode(name)
-	if ctx == nil || gid == 0 || gid == ^uint32(0) || !pathgrammar.Strict(parentPath) || filepath.Base(parentPath) != "generations" || !digestOK || !sealedDirectory(expectedParent, gid) || !sealedDirectory(expectedDirectory, gid) {
+	if ctx == nil || gid == 0 || gid == ^uint32(0) || !pathcheck.IsCleanAbsolute(parentPath) || filepath.Base(parentPath) != "generations" || !digestOK || !sealedDirectory(expectedParent, gid) || !sealedDirectory(expectedDirectory, gid) {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

@@ -1,6 +1,6 @@
 //go:build linux
 
-package processresource
+package processguard
 
 import (
 	"errors"

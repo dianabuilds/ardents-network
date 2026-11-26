@@ -14,22 +14,22 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestNativeForwardingRetainedLifecycle(t *testing.T) {
-	testNativeRetainedLifecycle(t, "forwarding", processresource.Profile, 12, 3, 1, hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20})
+	testNativeRetainedLifecycle(t, "forwarding", processguard.ForwardingProfile, 12, 3, 1, hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20})
 }
 
 func TestNativeDescriptorRetainedLifecycle(t *testing.T) {
-	testNativeRetainedLifecycle(t, "descriptor", processresource.DescriptorProfile, 17, 2, 5, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10})
+	testNativeRetainedLifecycle(t, "descriptor", processguard.DescriptorProfile, 17, 2, 5, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10})
 }
 
 func TestNativeJoinRetainedLifecycle(t *testing.T) {
-	testNativeRetainedLifecycle(t, "join", processresource.JoinProfile, 20, 2, 4, hosting.Traffic{Tx: 32 << 20})
+	testNativeRetainedLifecycle(t, "join", processguard.JoinProfile, 20, 2, 4, hosting.Traffic{Tx: 32 << 20})
 }
 
 // The transient native process proves listening, joined cancellation and the

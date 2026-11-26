@@ -31,7 +31,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -940,7 +940,7 @@ func (f *operationNetwork) startForwarding(t *testing.T, capacity uint64, ids ..
 		nodeID := [32]byte{id}
 		cert, key := processfixture.WriteNativeCredential(t, f.certificates[nodeID])
 		plan := map[string]any{
-			"network": f.seed(t), "node_id": nodeID, "process_profile": processresource.Profile, "retirement_wait_ms": 5000,
+			"network": f.seed(t), "node_id": nodeID, "process_profile": processguard.ForwardingProfile, "retirement_wait_ms": 5000,
 			"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(),
 			"hosting_root": processfixture.ProcessBudgetWithCapacity(t, capacity), "certificate": cert, "private_key": key,
 			"work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10},

@@ -5,18 +5,18 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // FailureDiagnostic retains only original owner-local categories and numeric
 // context. It grants no authority and includes no identity, path or error text.
 type FailureDiagnostic struct {
-	Kind                string                        `json:"kind"`
-	Phase               string                        `json:"phase"`
-	Cause               string                        `json:"cause"`
-	ElapsedMS           int64                         `json:"elapsed_ms"`
-	DeadlineRemainingMS *int64                        `json:"deadline_remaining_ms,omitempty"`
-	Resource            *processresource.FailureFacts `json:"resource,omitempty"`
+	Kind                string                     `json:"kind"`
+	Phase               string                     `json:"phase"`
+	Cause               string                     `json:"cause"`
+	ElapsedMS           int64                      `json:"elapsed_ms"`
+	DeadlineRemainingMS *int64                     `json:"deadline_remaining_ms,omitempty"`
+	Resource            *processguard.FailureFacts `json:"resource,omitempty"`
 }
 
 type startupFailure struct {
@@ -24,18 +24,18 @@ type startupFailure struct {
 	fact  *FailureDiagnostic
 }
 
-type expiredProcessObservation struct{ observation processresource.Observation }
+type expiredProcessObservation struct{ observation processguard.Observation }
 
 func (failure *expiredProcessObservation) Error() string {
 	return "original process measurement expired during authority observation"
 }
 
-func expiredMeasurement(observation processresource.Observation) error {
+func expiredMeasurement(observation processguard.Observation) error {
 	return &expiredProcessObservation{observation: observation}
 }
 
-func resourceDiagnostic(cause error) *processresource.FailureFacts {
-	if fact := processresource.Failure(cause); fact != nil {
+func resourceDiagnostic(cause error) *processguard.FailureFacts {
+	if fact := processguard.Failure(cause); fact != nil {
 		return fact
 	}
 	var expired *expiredProcessObservation
@@ -43,7 +43,7 @@ func resourceDiagnostic(cause error) *processresource.FailureFacts {
 		return nil
 	}
 	observation := expired.observation
-	return &processresource.FailureFacts{Phase: "authority-observation", Cause: "observation-stale", Observation: &observation}
+	return &processguard.FailureFacts{Phase: "authority-observation", Cause: "observation-stale", Observation: &observation}
 }
 
 func (failure *startupFailure) Error() string { return "original Node startup failed" }

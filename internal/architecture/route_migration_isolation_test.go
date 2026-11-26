@@ -67,7 +67,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 		if !routeDependency {
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/spending",
-				"internal/durablefile", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state", "internal/pathgrammar", "internal/domain/reachability":
+				"internal/durablefile", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state", "internal/pathcheck", "internal/domain/reachability":
 			default:
 				return false
 			}
