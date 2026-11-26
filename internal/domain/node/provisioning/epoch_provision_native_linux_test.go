@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 )
 
 func TestRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *testing.T) {

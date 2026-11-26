@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"

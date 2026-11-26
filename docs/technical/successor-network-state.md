@@ -12,7 +12,7 @@ Network owns which authenticated network generations, profiles and assignments
 may be treated as current. Its domain model is `internal/successor/network`.
 Its application owner is `internal/successor/network/state`. The new application
 uses its own authentication, Source and journal adapters and does not import the
-old `internal/network` implementation. Retained byte mechanisms preserve named
+old `internal/domain/network` implementation. Retained byte mechanisms preserve named
 wire and recovery obligations. The old tree and its consumers remain until a
 separately selected final cutover; their integration is outside this work's
 regression scope. Execution status and verification receipts belong to issue #493.
@@ -550,7 +550,7 @@ before waiting, retains the original leases through actual reader/physical joins
 and preserves late failures and original caller cancellation. No recovery,
 pointer repair, pending activation, runtime or installed role is opened here.
 
-`ardents-next source inspect-latest` calls `internal/network/source/inspection`
+`ardents-next source inspect-latest` calls `internal/domain/network/source/inspection`
 for Source's finite `InspectLatest` contact. The inspection owner retains
 original local public inputs and its own
 protected client key, uses the shared complete declaration/key-separation/mTLS

@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 // RunLocalHolder retains and joins one local holder conversation.

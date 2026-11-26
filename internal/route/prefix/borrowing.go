@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // Borrow is one published physical borrower of this exact generation.

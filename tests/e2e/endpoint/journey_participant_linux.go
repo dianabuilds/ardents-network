@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 )
 

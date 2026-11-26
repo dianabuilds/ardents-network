@@ -2,8 +2,8 @@ package funding
 
 import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 // Authority borrows the original live Network observation and the caller's

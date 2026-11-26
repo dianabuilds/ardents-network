@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 

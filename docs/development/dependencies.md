@@ -1015,7 +1015,7 @@ is a capability port under ADR-0125/ADR-0129, not a new platform commitment.
 current process owner full control and nobody else. The owner-only store-root
 enforcement is the shared `internal/durablefile` mechanism
 (`owner_root_windows.go`, #793), consumed by `internal/route/selection` and
-`internal/network/duty`; the Windows lease owners keep their own lock handles.
+`internal/domain/network/duty`; the Windows lease owners keep their own lock handles.
 The module is a direct platform-specific product dependency. It avoids a child
 PowerShell process and avoids first-party `unsafe`. Unix builds retain the
 standard-library permission implementation.

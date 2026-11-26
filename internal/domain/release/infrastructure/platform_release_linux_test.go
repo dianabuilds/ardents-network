@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/release"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"

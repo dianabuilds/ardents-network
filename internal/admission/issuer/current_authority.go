@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // ValidateCurrentAuthority binds an Issuer signer to the observed Network duty.

@@ -14,7 +14,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 )
 
 // This fixed purpose borrows the original offline signing custody and output

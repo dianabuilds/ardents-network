@@ -21,11 +21,11 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"

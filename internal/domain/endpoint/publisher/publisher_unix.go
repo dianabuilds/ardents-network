@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // Publisher serializes local Administration handoffs. Publication

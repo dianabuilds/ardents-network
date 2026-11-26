@@ -6,7 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // NetworkFacts returns detached facts for one observation, never a live permit.

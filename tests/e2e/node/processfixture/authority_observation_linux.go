@@ -10,9 +10,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 )
 
 // OriginalListenerOccupied probes the signed endpoint with the same Carrier.

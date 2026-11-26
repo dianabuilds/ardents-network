@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 // Available reports whether a live observer was supplied; it grants no authority.

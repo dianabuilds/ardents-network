@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 type executionRefusalInput struct{ reads int }

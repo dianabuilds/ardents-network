@@ -1,0 +1,37 @@
+package state
+
+import networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
+
+// CurrentRuntime returns one authenticated, bounded Network observation.
+// The configured PermitWork runs before State locks and durable authority I/O.
+// Profile, generation, membership and trusted time share the same read lock;
+// trusted time is sampled after the durable profile read. It grants no lease
+// on future State, no token authority and no reservation. The caller reobserves
+// at its operation's admission points, outside every State lock.
+func (s *State) CurrentRuntime() (networkdomain.RuntimeView, error) {
+	witness, err := s.CurrentRuntimeWitness()
+	if err != nil {
+		return networkdomain.RuntimeView{}, err
+	}
+	return witness.View(), nil
+}
+
+// CurrentRuntimeWitness performs the same complete observation and additionally
+// retains its original local refusal projection for a later bounded handoff.
+// Fresh observations remain mandatory; this does not lend authority or storage.
+func (s *State) CurrentRuntimeWitness() (RuntimeWitness, error) {
+	if s.config.permitWork != nil {
+		if err := s.config.permitWork(); err != nil {
+			s.invalidateRuntime()
+			return RuntimeWitness{}, err
+		}
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, _, view, err := s.currentMembershipLocked(s.storage.LoadClosedProfile)
+	if err != nil {
+		s.invalidateRuntime()
+		return RuntimeWitness{}, err
+	}
+	return s.witnessLocked(view), nil
+}

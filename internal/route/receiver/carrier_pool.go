@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 )

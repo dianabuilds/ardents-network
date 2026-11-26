@@ -2,7 +2,7 @@ package processfixture
 
 import (
 	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

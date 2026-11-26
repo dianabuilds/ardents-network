@@ -17,8 +17,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
-	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 

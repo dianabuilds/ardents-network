@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 )
 
 func runClosedProfileInspection(ctx context.Context, args []string, out io.Writer) int {

@@ -22,12 +22,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
-	"github.com/dianabuilds/ardents-network/internal/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 

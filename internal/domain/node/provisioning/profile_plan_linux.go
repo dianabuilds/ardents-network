@@ -16,10 +16,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/network/source"
+	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 )
 
 const maximumNodeProfilePlan = 2 << 20

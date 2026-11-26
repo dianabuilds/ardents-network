@@ -96,13 +96,13 @@ platform-launch-unit:
 	go test ./internal/domain/release/infrastructure/launch -run '^Test(Platform|IssuerProjectionRetainsKeyLeaseOnly$$)' -count=1 -timeout=3m
 	go test ./internal/domain/release/infrastructure -run '^TestPlatform(RuntimeRelease|SourceForwardProgram)' -count=1 -timeout=3m
 	go test ./tests/e2e/node -run '^TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing$$' -count=1 -timeout=3m
-	go test ./internal/network/source/command -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$$' -count=1 -timeout=3m
-	go test ./internal/network/source/serving -run '^TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion$$' -count=1 -timeout=3m
+	go test ./internal/domain/network/source/command -run '^TestSourcePreparationRefusesOtherPrincipalBeforeInputEffects$$' -count=1 -timeout=3m
+	go test ./internal/domain/network/source/serving -run '^TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion$$' -count=1 -timeout=3m
 	go test ./internal/domain/node/provisioning -run '^TestSourceInitialNetworkPlanKeepsDistinctPurposeAndPublicPins$$' -count=1 -timeout=3m
 	go test ./internal/platform/artifacts -run '^TestArtifactInputs' -count=1 -timeout=3m
 	go test ./internal/platform/process -run '^TestDedicatedAccountID$$' -count=1 -timeout=3m
-	go test ./internal/network/state -run '^Test(Source(Participation|Completion|InitialPreparation|PreparationConfig).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
-	go test ./internal/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
+	go test ./internal/domain/network/state -run '^Test(Source(Participation|Completion|InitialPreparation|PreparationConfig).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
+	go test ./internal/domain/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
 	go test ./internal/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
 	go test ./internal/platform/systemd -run '^TestPlatform(SiblingVocabularyPreservesFixedNodeExclusion|PrestartRejectsDifferentLoadedInvocationAndPolicy)$$' -count=1 -timeout=3m
 
@@ -425,7 +425,7 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
@@ -492,9 +492,9 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/endpoint -run '^TestSourcePreparationNative(CommitmentsAndCustody|OriginalProcessCuts|PartialWrite|ReferenceExpiry|Child)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./tests/e2e/node -run '^Test(NetworkSigning(NodeCertificate(Command|Receipt)|StaticNativeRefusals|CommandsGenuineStateChain|Infrastructure(Preparation|RoleInventories)|InitialKeys(Command|StateChain|ReceiptFailure|BlockedReceipt|StaticRefusals))|SourcePreparationNative(PublicOnlyCommand|ReceiptFailure))$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestSource(InspectionNative|PreparationNativeStateCommand)' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/duty ./internal/network/state -run '^TestNodeInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/state -run '^TestSource(InspectionNative|PreparationNativeStateCommand)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/duty ./internal/domain/network/state -run '^TestNodeInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/admission/spending -run '^TestSpendInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
@@ -516,7 +516,7 @@ network-signing-compile-check:
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/ardents-infrastructure" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/domain/release/infrastructure
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/domain/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-trust-owner.test" ./internal/domain/endpoint
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-public-preparation.test" ./tests/e2e/node
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/domain/reachability

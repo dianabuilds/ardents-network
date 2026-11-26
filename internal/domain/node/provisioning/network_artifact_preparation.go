@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
