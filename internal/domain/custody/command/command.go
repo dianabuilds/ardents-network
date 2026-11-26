@@ -21,7 +21,12 @@ func Run(ctx context.Context, arguments []string, output, prompts io.Writer, ter
 				if result != nil {
 					outcome = "failed"
 				}
-				_ = runtimeevent.WriteCommand(prompts, observation.Operation, "command", outcome)
+				if prompts != nil {
+					// Terminal prompts need not end with a newline; observations must be
+					// standalone records and must never absorb the preceding private text.
+					_, _ = io.WriteString(prompts, "\n")
+					_ = runtimeevent.WriteCommand(prompts, observation.Operation, "command", outcome)
+				}
 			}()
 		}
 	}

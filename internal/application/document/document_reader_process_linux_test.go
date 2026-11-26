@@ -66,7 +66,7 @@ func TestDocumentReadCancellationDuringSetupAndTerminalWait(t *testing.T) {
 			select {
 			case err := <-done:
 				joined = true
-				if err == nil || output.Len() != 0 || diagnostic.String() != "read cancelled\n" {
+				if err == nil || output.Len() != 0 || diagnostic.String() != "read cancelled\n"+`{"operation":"application.read","phase":"command","outcome":"usage-or-output-failure"}`+"\n" {
 					t.Fatalf("cancellation: error=%v, output=%q, diagnostic=%q", err, &output, &diagnostic)
 				}
 			case <-time.After(3 * time.Second):
@@ -135,7 +135,7 @@ func TestTrustedDocumentProcessCancellationInterruptsInheritedPipes(t *testing.T
 			select {
 			case err := <-done:
 				joined = true
-				if err == nil || diagnostic.String() != "read cancelled\n" {
+				if err == nil || diagnostic.String() != "read cancelled\n"+`{"operation":"application.read","phase":"command","outcome":"usage-or-output-failure"}`+"\n" {
 					t.Fatalf("terminal result=%v, diagnostic=%q", err, diagnostic.String())
 				}
 			case <-time.After(2 * time.Second):

@@ -41,7 +41,7 @@ func TestInstalledCancellationAtParticipantEntryIsNotSuccessfulStartup(t *testin
 		t.Fatal("canceled entry touched installation", err)
 	}
 	var event map[string]string
-	if err := json.Unmarshal(diagnostic.Bytes(), &event); err != nil || event["phase"] != "installed-startup" || event["outcome"] != "unavailable" || len(event) != 2 {
+	if err := json.Unmarshal(diagnostic.Bytes(), &event); err != nil || event["phase"] != "installed-startup" || event["outcome"] != "unavailable" || event["operation"] != "endpoint.start-installed" || len(event) != 3 {
 		t.Fatal("pre-start refusal projection", event, err)
 	}
 }

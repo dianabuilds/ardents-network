@@ -443,3 +443,19 @@ func TestPublicCommandFailureEmitsOnlySafeLocalCategories(t *testing.T) {
 		t.Fatal("private command arguments entered diagnostic")
 	}
 }
+
+func TestLocalObservationStartsAfterUnterminatedPrompt(t *testing.T) {
+	var output, prompts bytes.Buffer
+	prompts.WriteString("private-sentinel prompt: ")
+	if err := Run(t.Context(), []string{"verify-record", "--vault-root", "unused"}, &output, &prompts, nil); err == nil {
+		t.Fatal("invalid command succeeded")
+	}
+	lines := bytes.Split(bytes.TrimSpace(prompts.Bytes()), []byte("\n"))
+	var report map[string]string
+	if len(lines) != 2 || json.Unmarshal(lines[1], &report) != nil || report["operation"] != "custody.verify-record" {
+		t.Fatalf("observation merged with a private prompt: %q", prompts.Bytes())
+	}
+	if bytes.Contains(lines[1], []byte("private-sentinel")) {
+		t.Fatal("prompt copied into structured record")
+	}
+}

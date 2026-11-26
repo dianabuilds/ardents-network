@@ -55,7 +55,7 @@ func TestStreamConnectRefusesUnsafePrivateLinkBeforeDial(t *testing.T) {
 			command.Stdout, command.Stderr = &output, &diagnostic
 			err := command.Run()
 			if ctx.Err() != nil || err == nil || output.Len() != 0 ||
-				diagnostic.String() != "Application stream failed: "+scenario.want+"\n" ||
+				diagnostic.String() != "Application stream failed: "+scenario.want+"\n"+`{"operation":"application.stream.connect","phase":"command","outcome":"failed"}`+"\n" ||
 				strings.Contains(diagnostic.String(), scenario.path) {
 				t.Fatalf("error=%v, context=%v, stdout=%q, stderr=%q", err, ctx.Err(), &output, &diagnostic)
 			}

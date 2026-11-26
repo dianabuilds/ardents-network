@@ -26,7 +26,7 @@ func TestDocumentReadUsesOneAAI3ConnectionAndSafePresentation(t *testing.T) {
 		command.Stdin = strings.NewReader("fixture-link\n")
 		command.Stdout, command.Stderr = &output, &diagnostic
 		if err := command.Run(); err != nil || !bytes.Equal(output.Bytes(), want.Bytes()) ||
-			diagnostic.Len() != 0 || peer.opens.Load() != 1 || peer.requestBytes.Load() != 512 {
+			diagnostic.String() != `{"operation":"application.read","phase":"command","outcome":"completed"}`+"\n" || peer.opens.Load() != 1 || peer.requestBytes.Load() != 512 {
 			t.Fatalf("document read: %v, output=%q, diagnostic=%q, opens=%d, request=%d",
 				err, &output, &diagnostic, peer.opens.Load(), peer.requestBytes.Load())
 		}
@@ -84,7 +84,7 @@ func TestDocumentReadPreservesRefusedSetupClassWithoutPresentingItsReason(t *tes
 			err := command.Run()
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != 2 || output.Len() != 0 ||
-				diagnostic.String() != scenario.want+"\n" || peer.opens.Load() != 1 {
+				diagnostic.String() != scenario.want+"\n"+`{"operation":"application.read","phase":"command","outcome":"usage-or-output-failure"}`+"\n" || peer.opens.Load() != 1 {
 				t.Fatalf("refused setup: error=%v, output=%q, diagnostic=%q, opens=%d", err, &output, &diagnostic, peer.opens.Load())
 			}
 		})
@@ -108,7 +108,7 @@ func TestDocumentDestinationIsBoundedAndNeverRewritten(t *testing.T) {
 			command.Stdin = strings.NewReader(scenario.input)
 			var output, diagnostic bytes.Buffer
 			command.Stdout, command.Stderr = &output, &diagnostic
-			if err := command.Run(); err != nil || output.String() != "ok" || diagnostic.Len() != 0 || peer.opens.Load() != 1 {
+			if err := command.Run(); err != nil || output.String() != "ok" || diagnostic.String() != `{"operation":"application.read","phase":"command","outcome":"completed"}`+"\n" || peer.opens.Load() != 1 {
 				t.Fatalf("input %q: error=%v, output=%q, diagnostic=%q, opens=%d", scenario.name, err, &output, &diagnostic, peer.opens.Load())
 			}
 		})
@@ -122,7 +122,7 @@ func TestDocumentDestinationIsBoundedAndNeverRewritten(t *testing.T) {
 		err := command.Run()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) || exit.ExitCode() != 2 || output.Len() != 0 ||
-			diagnostic.String() != "document destination or local input is invalid\n" || peer.opens.Load() != 0 {
+			diagnostic.String() != "document destination or local input is invalid\n"+`{"operation":"application.read","phase":"command","outcome":"usage-or-output-failure"}`+"\n" || peer.opens.Load() != 0 {
 			t.Fatalf("invalid input length %d: error=%v, output=%q, diagnostic=%q, opens=%d", len(input), err, &output, &diagnostic, peer.opens.Load())
 		}
 	}
