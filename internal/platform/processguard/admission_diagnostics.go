@@ -20,12 +20,6 @@ type observedFailure struct {
 	facts FailureFacts
 }
 
-type admissionFailure struct{ reason string }
-
-func (failure *admissionFailure) Error() string {
-	return "original process admission refused: " + failure.reason
-}
-
 func (failure *observedFailure) Error() string { return "original process admission failed" }
 func (failure *observedFailure) Unwrap() error { return failure.cause }
 

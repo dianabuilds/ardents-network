@@ -3104,8 +3104,8 @@ read-only (`document.ReadSnapshotFile` opens `O_RDONLY`/`O_NOFOLLOW` into a
 caller-owned buffer and creates no filesystem state or authority) before the same
 typed launch refusal, so the snapshot-read-before-launch ordering no longer blocks
 the port — reading caller input is not state creation. The byte-stream adapter
-composes only the portable `application/connection` contract (`contract.go`), not
-the Linux-only `Refuse`/`setupCleanupError` projection (which remains the Reader's
+composes only the portable `application/connection` stream interface and terminal
+outcomes, not the Linux-only `Refuse`/`setupCleanupError` projection (which remains the Reader's
 blocker at `reader_linux.go`). macOS worker launch stays a typed refusal
 (`execution/runtime` `!linux` stubs); no unconfined worker is spawned and Linux
 behavior is byte-identical. A new macOS refusal test (`snapshot_darwin_test.go`)

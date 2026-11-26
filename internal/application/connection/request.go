@@ -6,6 +6,9 @@ import (
 	"unicode/utf8"
 )
 
+// PublishByteStreamRequest is the exact Administration upgrade request.
+const PublishByteStreamRequest = "stream!!\n"
+
 const (
 	localMagic    = "AAI3"
 	streamMagic   = "AAI4"

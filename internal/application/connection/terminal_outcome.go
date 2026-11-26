@@ -1,22 +1,9 @@
 package connection
 
 import (
-	"context"
 	"errors"
-	"io"
-	"time"
 	"unicode/utf8"
 )
-
-// PublishByteStreamRequest is the exact Administration upgrade request.
-const PublishByteStreamRequest = "stream!!\n"
-
-// ReaderTimeout bounds one local Reader setup and exchange. It is measured
-// once before dialing or at server acceptance, never renewed between phases.
-const ReaderTimeout = 60 * time.Second
-
-// ByteStreamDirectionalLimit is the total bytes admitted per direction.
-const ByteStreamDirectionalLimit uint64 = 4 << 20
 
 const (
 	maximumOutcomeClassBytes  = 128
@@ -60,30 +47,6 @@ func (failure SetupRefusalError) Error() string {
 
 // Outcome returns the bounded class and diagnostic carried by this refusal.
 func (failure SetupRefusalError) Outcome() Outcome { return failure.outcome }
-
-// Stream is one authenticated opaque Application byte stream. Read and Write
-// may proceed concurrently; the transport splits writes into frames of at
-// most 16 KiB. CloseInput delivers EOF to the Service while preserving Read
-// for its response. The implementation must close the read direction and
-// publish exactly one non-empty Done result when the Service Connection
-// terminates. Write and CloseInput preserve their frame order, while Close may
-// run concurrently to interrupt either operation, joins the attachment's owned
-// work, and is safe to repeat after Done. The first terminal outcome is final.
-// Callers must not interpret EOF without the Done result as semantic success.
-type Stream interface {
-	io.ReadWriteCloser
-	CloseInput() error
-	Done() <-chan Outcome
-}
-
-// Interface opens one Target Link without accepting Network or Route facts.
-// The link is non-empty and at most 512 bytes. The context governs both setup
-// and the returned Stream lifetime. An implementation may return Refuse for a
-// classified denial; every other error is exposed as ServiceUnavailable by
-// the server Adapter. No operation retries or opens an alternate Target Link.
-type Interface interface {
-	Open(context.Context, Request) (Stream, error)
-}
 
 func validOutcome(outcome Outcome) error {
 	if len(outcome.Class) == 0 || len(outcome.Class) > maximumOutcomeClassBytes ||

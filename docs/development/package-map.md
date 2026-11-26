@@ -605,7 +605,7 @@ stays Linux (`failure_projection_linux_test.go`). The Linux-only
 batch 2 (it composes only portable `admission`/`network` facts) with a new
 portable behavior test. Process-resource failure facts retain original numeric
 measurements separately from Node's physical cleanup causes.
-`processguard/failure.go` owns the copied failure projection portably: P1-B
+`processguard/admission_diagnostics.go` owns the copied failure projection portably: P1-B
 batch 1 (#781, #691) merged the former `failure_linux.go` `Failure` projection
 into the already-portable fact representation after verifying it is pure
 (`errors` only, no native mechanism). Its portable behavior test executes on the
