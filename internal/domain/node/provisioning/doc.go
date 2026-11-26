@@ -1,6 +1,7 @@
 // Package provisioning composes the offline production of signed infrastructure
 // State inputs from protected operator files and independent public commitments.
-// It owns no installed Node lifetime or Network State acceptance.
+// It owns no installed Node lifetime or Network State acceptance. Runtime
+// declaration output belongs to the separate runtimeplan command package.
 //
 // Run in command_linux.go dispatches the offline role operations below;
 // node_provisioning_role_unix.go owns their role schemas, operation names and
@@ -63,8 +64,6 @@
 //     reader uses the Unix-family durablefile inspection port (#850), but the
 //     operation keeps its Linux boundary because publication composes the
 //     Linux ext4 output floor.
-//   - runtime plan preparation: runtime_plan.go, runtime_plan_command.go
-//     (runtime_plan_command_test.go)
 //
 // network_receipt_fixture_test.go carries the shared portable preparation
 // fixtures, network_signing_fixture_unix_test.go the shared Unix-family signing

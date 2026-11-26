@@ -1,4 +1,4 @@
-package provisioning
+package runtimeplan
 
 import (
 	"context"
@@ -8,13 +8,9 @@ import (
 	"strings"
 )
 
-// RunPreparePlan codifies the platform-led node-role provisioning recipe: it
-// writes the role's exact runtime invocation declaration from operator inputs.
-// It is pure configuration preparation (ADR-0125 decision 6 keeps validation with
-// the owner). It performs no State acceptance, no hosting initialization and no
-// root creation; those stay with network accept-*, hosting initialize and the
-// runtime. Every refusal precedes the single output write.
-func RunPreparePlan(ctx context.Context, args []string, out io.Writer) int {
+// Run validates the selected role declaration before creating a new output
+// file. It reports write failures separately from declaration refusals.
+func Run(ctx context.Context, args []string, out io.Writer) int {
 	if ctx == nil || len(args) == 0 {
 		return 2
 	}
@@ -26,9 +22,9 @@ func RunPreparePlan(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	if err := PrepareRuntimePlan(ctx, role, flags); err != nil {
+	if err := prepare(ctx, role, flags); err != nil {
 		switch {
-		case errors.Is(err, ErrRuntimePlanWrite):
+		case errors.Is(err, errRuntimePlanWrite):
 			return 1
 		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 			return 130
