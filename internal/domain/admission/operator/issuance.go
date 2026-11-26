@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
@@ -52,7 +53,7 @@ func RunIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		return write()
 	}
 	o, exportErr := telemetry.Open(endpoint)
-	observedOperation := telemetry.LookupOperation(r.Operation)
+	observedOperation := runtimeevent.LookupOperation(r.Operation)
 	finish := o.Begin(observedOperation)
 	r.Phase, err = issuance.DeliverInventory(ctx, p.Root, p.Binding, p.InventoryFile, args[0] == "initialize")
 	r.Outcome = issuer.ErrorOutcome(err)
@@ -89,7 +90,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 		return write()
 	}
 	o, exportErr := telemetry.Open(endpoint)
-	observedOperation := telemetry.LookupOperation(r.Operation)
+	observedOperation := runtimeevent.LookupOperation(r.Operation)
 	finish := o.Begin(observedOperation)
 	result := prepared.Execute(ctx)
 	r.Phase, r.Outcome = result.Phase, result.Outcome
@@ -119,7 +120,7 @@ func RunIssuerProfile(ctx context.Context, operation string, args []string, out,
 	}
 	defer clear(raw)
 	observation, exportErr := telemetry.Open(collector)
-	observedOperation := telemetry.LookupOperation(operation)
+	observedOperation := runtimeevent.LookupOperation(operation)
 	finish := observation.Begin(observedOperation)
 	result := issuer.ProfileOperation(ctx, operation, raw)
 	r.Phase, r.Outcome = result.Phase, result.Outcome

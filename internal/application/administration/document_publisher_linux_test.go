@@ -57,8 +57,10 @@ func TestPublishCommandImportsThenTransfersSnapshotWithoutPath(t *testing.T) {
 		}
 	}()
 	command := exec.CommandContext(t.Context(), binary, "publish", socket, path)
-	if output, err := command.CombinedOutput(); err != nil || len(output) != 0 {
-		t.Fatalf("publish: %v, output %q", err, output)
+	var output, diagnostic bytes.Buffer
+	command.Stdout, command.Stderr = &output, &diagnostic
+	if err := command.Run(); err != nil || output.Len() != 0 || diagnostic.String() != `{"operation":"application.publish","phase":"command","outcome":"completed"}`+"\n" {
+		t.Fatalf("publish: %v, output %q, diagnostic %q", err, &output, &diagnostic)
 	}
 	if calls, received := peer.observed(); calls != 1 || !bytes.Equal(received, body) {
 		t.Fatal("command did not transfer exact document once")

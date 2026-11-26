@@ -23,7 +23,7 @@ const (
 // and must not be copied into exported labels or safe monitoring output.
 type Record struct {
 	Schema, Kind, Owner, Role, Carrier, State, Reason string
-	Phase, Outcome                                    string
+	Phase, Outcome, Delivery                          string
 	At, JournalAt                                     time.Time
 	PID                                               string
 	Resource, Hosting                                 map[string]float64

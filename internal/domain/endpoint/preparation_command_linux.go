@@ -2,9 +2,10 @@ package endpoint
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 func runEndpointPlanConstruction(ctx context.Context, args []string, diagnostic io.Writer) int {
@@ -16,9 +17,10 @@ func runEndpointPlanConstruction(ctx context.Context, args []string, diagnostic 
 		return 2
 	}
 	if err != nil {
+		_ = runtimeevent.WriteCommand(diagnostic, "endpoint.construct-plan", "plan-construction", "unavailable")
 		return 1
 	}
-	if json.NewEncoder(diagnostic).Encode(map[string]string{"phase": "plan-construction", "outcome": "constructed"}) != nil {
+	if runtimeevent.WriteCommand(diagnostic, "endpoint.construct-plan", "plan-construction", "constructed") != nil {
 		return 1
 	}
 	return 0
@@ -36,7 +38,7 @@ func runEndpointHistoryPreparation(ctx context.Context, paths []string, diagnost
 	if err != nil {
 		outcome, code = "unavailable", 1
 	}
-	if json.NewEncoder(diagnostic).Encode(map[string]string{"phase": "history-preparation", "outcome": outcome}) != nil {
+	if runtimeevent.WriteCommand(diagnostic, "endpoint.prepare-history", "history-preparation", outcome) != nil {
 		return 1
 	}
 	return code

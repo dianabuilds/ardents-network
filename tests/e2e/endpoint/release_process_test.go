@@ -1,15 +1,17 @@
 package endpoint_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
-	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 )
 
 func TestReleaseSyntaxRefusesBeforeHistoryEffects(t *testing.T) {
@@ -79,7 +81,12 @@ func verifyCompiledReleaseProfile(t *testing.T, protected bool) {
 	history := filepath.Join(t.TempDir(), "release-history")
 	for _, wanted := range []string{"release-accepted", "no-update"} {
 		cmd := exec.CommandContext(t.Context(), program, "release", "verify-initial", directory, pin, history, "2030-01-02T03:04:05Z")
-		out, err := cmd.CombinedOutput()
+		var diagnostic bytes.Buffer
+		cmd.Stderr = &diagnostic
+		out, err := cmd.Output()
+		if diagnostic.String() != `{"operation":"release.verify-initial","phase":"command","outcome":"completed"}`+"\n" {
+			t.Fatalf("release observation: %q", &diagnostic)
+		}
 		if err != nil {
 			t.Fatalf("compiled consumer refused %v: %s", err, out)
 		}

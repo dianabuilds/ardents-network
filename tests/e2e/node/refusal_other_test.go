@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -53,15 +54,19 @@ func TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput(t *testing.T) 
 	}
 }
 
-func TestHostingUnsupportedDoesNotReadInput(t *testing.T) {
+func TestHostingMissingInputHasPlatformSpecificRefusal(t *testing.T) {
 	input := filepath.Join(t.TempDir(), "missing")
 	command := exec.CommandContext(t.Context(), buildNodeCommand(t), "hosting", "observe", "--config", input)
 	var output, diagnostic bytes.Buffer
 	command.Stdout, command.Stderr = &output, &diagnostic
 	err := command.Run()
 	var exit *exec.ExitError
-	if !errors.As(err, &exit) || exit.ExitCode() != 1 ||
-		!bytes.Contains(output.Bytes(), []byte("unsupported-platform")) || diagnostic.Len() != 0 {
+	wantCode, wantOutcome := 1, "unsupported-platform"
+	if runtime.GOOS == "darwin" {
+		wantCode, wantOutcome = 2, "invalid-input"
+	}
+	if !errors.As(err, &exit) || exit.ExitCode() != wantCode ||
+		!bytes.Contains(output.Bytes(), []byte(wantOutcome)) || diagnostic.Len() != 0 {
 		t.Fatalf("hosting refusal: %v, stdout %q, stderr %q", err, &output, &diagnostic)
 	}
 	if _, err := os.Stat(input); !os.IsNotExist(err) {
@@ -83,7 +88,7 @@ func TestStreamCommandRefusesUnsupportedHostBeforeOpeningInputs(t *testing.T) {
 		err := command.Run()
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) || exit.ExitCode() != 1 || output.Len() != 0 ||
-			diagnostic.String() != "Application stream failed: application stream requires the selected Linux host\n" {
+			diagnostic.String() != "Application stream failed: application stream requires the selected Linux host\n"+`{"operation":"application.stream.`+args[1]+`","phase":"command","outcome":"failed"}`+"\n" {
 			t.Fatalf("%v: error %v, stdout %q, stderr %q", args, err, &output, &diagnostic)
 		}
 	}
@@ -116,8 +121,8 @@ func TestCompiledCommandsRefuseUnsupportedPlatformExplicitly(t *testing.T) {
 		{"platform", []string{"platform", "check", "/etc/ardents/unit"}, "platform", false},
 		{"infrastructure", []string{"infrastructure", "prepare-runtime-inventory", "source", "/nonexistent-input", "/nonexistent-output"}, "infrastructure", false},
 		{"route", []string{"route", "receive"}, "route", false},
-		{"endpoint-start-installed", []string{"endpoint", "start-installed", "/nonexistent-socket"}, "endpoint", true},
-		{"endpoint-prepare-history", []string{"endpoint", "prepare-history", "a", "b", "c"}, "endpoint", true},
+		{"endpoint-start-installed", []string{"endpoint", "start-installed", "/nonexistent-socket"}, "endpoint.start-installed", true},
+		{"endpoint-prepare-history", []string{"endpoint", "prepare-history", "a", "b", "c"}, "endpoint.prepare-history", true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

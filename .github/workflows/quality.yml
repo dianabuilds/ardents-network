@@ -267,7 +267,7 @@ jobs:
       - name: Check portable Enrollment against the compiled command
         run: go test ./tests/e2e/endpoint -run '^TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest$' -count=1
       - name: Check portable Node dispatch, refusal, and spend evidence
-        run: go test ./tests/e2e/node -run '^Test(CompiledNode(DispatchRequiresExactOperation|UnsupportedPlatformRefusesBeforePrivateInput)|InfrastructureCompiledRejectsRetiredSourceOperations|RouteSpendEvidenceRequiresOneCompleteCommittedRecord|CurrentSourceCommandReachesCompiledDiagnosticTimeline|DiagnosticTimelineCommandProjectsStdin)$' -count=1
+        run: go test ./tests/e2e/node -run '^Test(CompiledNode(DispatchRequiresExactOperation|UnsupportedPlatformRefusesBeforePrivateInput)|InfrastructureCompiledRejectsRetiredSourceOperations|RouteSpendEvidenceRequiresOneCompleteCommittedRecord|CurrentSourceCommandReachesCompiledDiagnosticTimeline|DiagnosticTimelineCommandProjectsStdin|DomainCommandsUseSafeSharedObservationWithoutChangingReceipts|EndpointCommandIdentityReachesSharedTimeline|ApplicationCommandObservationExcludesPrivateArguments)$' -count=1
       - name: Check macOS Network and Admission process scenarios
         if: runner.os == 'macOS'
         run: go test ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict|NetworkCommandsAndAdmissionUseAuthenticatedRoots)' -count=1 -timeout=3m

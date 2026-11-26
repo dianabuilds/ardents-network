@@ -41,7 +41,7 @@ func TestExecutionRouteHolderRefusesRetiredTargetLinkBeforeOpeningRoots(t *testi
 		return out.String(), diagnostic.String(), err
 	}
 	var exit *exec.ExitError
-	if out, diagnostic, err := run(); !errors.As(err, &exit) || exit.ExitCode() != 1 || out != "" || diagnostic != "" {
+	if out, diagnostic, err := run(); !errors.As(err, &exit) || exit.ExitCode() != 1 || out != "" || diagnostic != `{"operation":"execution.route-holder","phase":"command","outcome":"failed"}`+"\n" {
 		t.Fatalf("valid declaration did not reach host refusal: error=%v, stdout=%q, stderr=%q", err, out, diagnostic)
 	}
 	config["target_link"] = "retired-reader-input"
@@ -52,7 +52,7 @@ func TestExecutionRouteHolderRefusesRetiredTargetLinkBeforeOpeningRoots(t *testi
 	if err := os.WriteFile(path, raw, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if out, diagnostic, err := run(); !errors.As(err, &exit) || exit.ExitCode() != 2 || out != "" || diagnostic != "" {
+	if out, diagnostic, err := run(); !errors.As(err, &exit) || exit.ExitCode() != 2 || out != "" || diagnostic != `{"operation":"execution.route-holder","phase":"command","outcome":"usage-or-output-failure"}`+"\n" {
 		t.Fatalf("retired input: error=%v, stdout=%q, stderr=%q", err, out, diagnostic)
 	}
 	for _, path := range []string{stock, network, entry, interior, hosting} {

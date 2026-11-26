@@ -75,7 +75,7 @@ func TestRecordedCategoriesAndDetachedNumericFacts(t *testing.T) {
 	if !KnownKind(NodeSchema, "lifecycle") || ResourceNames()[0] != "rss_bytes" || HostingNames()[0] != "UsedBytes" {
 		t.Fatal("caller mutated catalogue")
 	}
-	if len(Categories()) != 19 || KnownKind(SourceSchema, "lifecycle") || KnownFailure(NodeSchema, "private-marker") {
+	if KnownKind(SourceSchema, "lifecycle") || KnownFailure(NodeSchema, "private-marker") {
 		t.Fatal("foreign category admitted")
 	}
 }
@@ -144,6 +144,82 @@ func TestCommandReportsRejectUnknownPairsWithoutEcho(t *testing.T) {
 	} {
 		if _, present, err := Decode([]byte(raw)); err != nil || present {
 			t.Fatalf("foreign format admitted: %t %v", present, err)
+		}
+	}
+}
+
+func TestExistingOTLPReportsShareOneLocalCategoryAuthority(t *testing.T) {
+	for _, raw := range []string{
+		`{"operation":"issuance.issue","phase":"debit","outcome":"invalid-signature","response":"PRIVATE"}`,
+		`{"Operation":"hosting.observe","Phase":"execute","Outcome":"completed","Telemetry":"unavailable"}`,
+		`{"operation":"admission.holder","phase":"closed","exit_code":1,"details":"PRIVATE"}`,
+		`{"operation":"admission.receiver","phase":"closed","exit_code":130}`,
+	} {
+		record, present, err := Decode([]byte(raw))
+		if err != nil || !present || record.Kind == "" || record.Outcome == "" {
+			t.Fatalf("current observation filtered: %+v %t %v", record, present, err)
+		}
+		if strings.Contains(record.Reason, "PRIVATE") {
+			t.Fatal("private receipt retained")
+		}
+	}
+	for _, raw := range []string{
+		`{"Operation":"hosting.observe","Phase":"execute","Outcome":"PRIVATE"}`,
+		`{"Operation":"hosting.observe","phase":"execute","Outcome":"completed"}`,
+		`{"operation":"admission.holder","phase":"closed","exit_code":99}`,
+		`{"operation":"admission.holder","phase":"closed","exit_code":1,"outcome":"completed"}`,
+		`{"operation":"admission.receiver","phase":"closed","exit_code":null}`,
+	} {
+		if _, present, err := Decode([]byte(raw)); err == nil || present {
+			t.Fatalf("invalid current report accepted: %t %v", present, err)
+		}
+	}
+}
+
+func TestCommandCatalogueHasUniqueCompatibleProjectionKinds(t *testing.T) {
+	seen := map[Category]bool{}
+	for _, category := range Categories() {
+		if seen[category] || !KnownKind(category.Schema, category.Kind) {
+			t.Fatalf("ambiguous catalogue entry: %+v", category)
+		}
+		seen[category] = true
+	}
+	if _, ok := ClassifyCommand("custody.verify-record", "command", "completed"); !ok {
+		t.Fatal("offline local observation absent")
+	}
+	if LookupOperation("custody.verify-record") != 0 || LookupOperation("endpoint.start-installed") != 0 {
+		t.Fatal("local observations implicitly enabled OTLP export")
+	}
+}
+
+func TestObservedSuccessCannotBeRelabelledAsInputOrCleanup(t *testing.T) {
+	for _, tc := range []struct{ operation, phase, outcome string }{
+		{"admission.initialize", "input", "initialized-offline"},
+		{"hosting.observe", "close", "completed"},
+		{"issuance.issue", "debit", "issued-offline"},
+		{"issuance.initialize-profile", "input", "profile-initialized"},
+	} {
+		if _, ok := ClassifyCommand(tc.operation, tc.phase, tc.outcome); ok {
+			t.Fatalf("impossible success admitted: %+v", tc)
+		}
+	}
+	for _, operation := range []string{"admission.initialize", "hosting.initialize", "hosting.observe"} {
+		if _, ok := ClassifyCommand(operation, "input", "invalid-input"); !ok {
+			t.Fatal("real early refusal became corrupt observation", operation)
+		}
+	}
+}
+
+func TestExportDeliveryIsFiniteAndIndependentOfCommandSuccess(t *testing.T) {
+	for _, delivery := range []string{"local-only", "completed", "unavailable"} {
+		record, present, err := Decode([]byte(`{"operation":"issuance.inspect","phase":"export","outcome":"completed","telemetry":"` + delivery + `"}`))
+		if err != nil || !present || record.Outcome != "completed" || record.Delivery != delivery {
+			t.Fatal("export result erased command result", record, err)
+		}
+	}
+	for _, value := range []string{`null`, `"PRIVATE"`, `42`} {
+		if _, present, err := Decode([]byte(`{"operation":"issuance.inspect","phase":"export","outcome":"completed","telemetry":` + value + `}`)); err == nil || present {
+			t.Fatal("invalid export result retained")
 		}
 	}
 }

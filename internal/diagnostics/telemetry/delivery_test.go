@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 func TestDisabledAndFailedOpeningHaveDifferentDeliveryStatus(t *testing.T) {
@@ -29,7 +31,7 @@ func TestDeliveryStatusRetainsCollectorRefusal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			observation.Begin(HostingObserve)(HostingObserve.Classify("execute", "completed"))
+			observation.Begin(runtimeevent.HostingObserve)(runtimeevent.HostingObserve.Classify("execute", "completed"))
 			if status := observation.CloseWithStatus(err); status != tc.want {
 				t.Fatalf("delivery=%s want=%s", status, tc.want)
 			}

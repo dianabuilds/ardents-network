@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
@@ -45,7 +46,7 @@ func RunAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	o, telemetryErr := telemetry.Open(endpoint)
-	observedOperation := telemetry.LookupOperation(r.Operation)
+	observedOperation := runtimeevent.LookupOperation(r.Operation)
 	finish := o.Begin(observedOperation)
 	r.Phase = "execute"
 	r.Outcome = quota.InitializeResult(ctx, p.Root, p.Binding)

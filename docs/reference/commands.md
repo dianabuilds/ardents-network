@@ -493,6 +493,14 @@ threshold, profile signer and an independent clock-observation file. Submit the
 profile after accepting the Epoch. The two operations have separate receipts
 and State transitions.
 
+Selected Network, Enrollment, Release, Publication, Execution and local
+Application commands also emit one finite local command-result observation on
+stderr. Their stdout receipts and actual effects remain separate. Exit 2 means
+usage or output failure, not a proven domain refusal. Custody uses the same safe
+local categories without adding a network/export capability. Endpoint installed
+and preparation reports identify their exact operation; permission metadata is
+excluded by the common projection.
+
 The diagnostic timeline accepts retained bounded runtime schemas from Node,
 Source and the headless Endpoint, plus current Node role and Source command
 reports through their finite operation/phase/outcome adapter. For a live local view, pipe an authorized

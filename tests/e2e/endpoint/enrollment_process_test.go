@@ -1,6 +1,7 @@
 package endpoint_test
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -24,9 +25,16 @@ func TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest(t 
 	check := func(pin, want string, success bool) {
 		t.Helper()
 		command := exec.CommandContext(t.Context(), enrolledCommand, "enrollment", "verify", bundle, pin)
-		output, err := command.CombinedOutput()
-		if (err == nil) != success || string(output) != want {
-			t.Fatalf("headless enrollment result: err=%v output=%q", err, output)
+		var output, diagnostic bytes.Buffer
+		command.Stdout, command.Stderr = &output, &diagnostic
+		err := command.Run()
+		outcome := "completed"
+		if !success {
+			outcome = "failed"
+		}
+		wantDiagnostic := fmt.Sprintf("{\"operation\":\"enrollment.verify\",\"phase\":\"command\",\"outcome\":%q}\n", outcome)
+		if (err == nil) != success || output.String() != want || diagnostic.String() != wantDiagnostic {
+			t.Fatalf("headless enrollment result: err=%v output=%q diagnostic=%q", err, &output, &diagnostic)
 		}
 	}
 	check(manifestPin, fmt.Sprintf("{\"outcome\":\"verified-initial-bundle\",\"files\":6,\"program_bytes\":%d}\n", artifact.Size()), true)

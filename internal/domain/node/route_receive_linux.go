@@ -201,7 +201,7 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 	if err != nil {
 		return 1
 	}
-	if json.NewEncoder(out).Encode(map[string]string{"operation": "route.receive", "phase": "listening"}) != nil {
+	if json.NewEncoder(out).Encode(map[string]string{"operation": "route.receive", "phase": "listening", "outcome": "original-duty"}) != nil {
 		_ = server.Close()
 		return 2
 	}

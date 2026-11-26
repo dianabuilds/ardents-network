@@ -99,7 +99,12 @@ func TestIssuerLostResultDoesNotReconstructHolder(t *testing.T) {
 	refuse := func(input map[string]any) localAdmissionReply {
 		t.Helper()
 		cmd := exec.CommandContext(t.Context(), binary, "admission", "issue-current", "--config", processfixture.WriteConfig(t, input))
-		output, err := cmd.CombinedOutput()
+		var diagnostic bytes.Buffer
+		cmd.Stderr = &diagnostic
+		output, err := cmd.Output()
+		if diagnostic.String() != `{"operation":"admission.issue-current","phase":"command","outcome":"failed"}`+"\n" {
+			t.Fatalf("issuer refusal observation: %q", &diagnostic)
+		}
 		var exit *exec.ExitError
 		if !errors.As(err, &exit) || exit.ExitCode() != 1 {
 			t.Fatal("issuer refusal did not execute", err, string(output))

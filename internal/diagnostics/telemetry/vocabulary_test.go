@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"bytes"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 // The collector is the oracle: rejection must happen before either SDK emits
@@ -20,17 +21,17 @@ func TestUnclassifiedObservationsNeverReachCollector(t *testing.T) {
 	const private = "/private/root/person-123"
 	for _, tc := range []struct {
 		name       string
-		operation  Operation
-		completion Completion
+		operation  runtimeevent.Operation
+		completion runtimeevent.Completion
 	}{
-		{"unknown operation", LookupOperation(private), Completion{}},
-		{"forged operation", Operation(255), Completion{}},
-		{"unknown phase", HostingObserve, HostingObserve.Classify(private, "completed")},
-		{"unknown outcome", HostingObserve, HostingObserve.Classify("execute", private)},
-		{"foreign completion", AdmissionInitialize, HostingObserve.Classify("execute", "completed")},
-		{"foreign success", AdmissionInitialize, AdmissionInitialize.Classify("execute", "completed")},
-		{"foreign phase", IdentityImport, IdentityImport.Classify("debit", "identity-imported")},
-		{"zero completion", HostingObserve, Completion{}},
+		{"unknown operation", runtimeevent.LookupOperation(private), runtimeevent.Completion{}},
+		{"forged operation", runtimeevent.Operation(255), runtimeevent.Completion{}},
+		{"unknown phase", runtimeevent.HostingObserve, runtimeevent.HostingObserve.Classify(private, "completed")},
+		{"unknown outcome", runtimeevent.HostingObserve, runtimeevent.HostingObserve.Classify("execute", private)},
+		{"foreign completion", runtimeevent.AdmissionInitialize, runtimeevent.HostingObserve.Classify("execute", "completed")},
+		{"foreign success", runtimeevent.AdmissionInitialize, runtimeevent.AdmissionInitialize.Classify("execute", "completed")},
+		{"foreign phase", runtimeevent.IdentityImport, runtimeevent.IdentityImport.Classify("debit", "identity-imported")},
+		{"zero completion", runtimeevent.HostingObserve, runtimeevent.Completion{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests int
@@ -92,10 +93,10 @@ func TestRegisteredCommandOTLPCompatibility(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			operation := LookupOperation(tc.name)
+			operation := runtimeevent.LookupOperation(tc.name)
 			finish := observation.Begin(operation)
 			started := time.Now()
-			// Completion remains single-use even if a caller accidentally reports twice.
+			// runtimeevent.Completion remains single-use even if a caller accidentally reports twice.
 			finish(operation.Classify(tc.phase, tc.outcome))
 			finish(operation.Classify(tc.phase, tc.outcome))
 			if status := observation.CloseWithStatus(nil); status != Unavailable {

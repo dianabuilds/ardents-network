@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -411,4 +412,50 @@ func commandAuthorityBinding() custody.AuthorityBinding {
 	}
 	binding.Kind = custody.AuthorityService
 	return binding
+}
+
+func TestPublicCommandFailureEmitsOnlyFiniteLocalObservation(t *testing.T) {
+	var output, prompts bytes.Buffer
+	err := Run(t.Context(), []string{"verify-record", "--vault-root", "PRIVATE-root"}, &output, &prompts, nil)
+	if err == nil {
+		t.Fatal("invalid custody command accepted")
+	}
+	var event map[string]string
+	if json.Unmarshal(prompts.Bytes(), &event) != nil || len(event) != 3 || event["operation"] != "custody.verify-record" || event["phase"] != "command" || event["outcome"] != "failed" {
+		t.Fatalf("local observation absent: %s", prompts.String())
+	}
+	if strings.Contains(prompts.String(), "PRIVATE") || output.Len() != 0 {
+		t.Fatal("private input or receipt leaked into diagnostics")
+	}
+}
+
+func TestPublicCommandFailureEmitsOnlySafeLocalCategories(t *testing.T) {
+	var output, prompts bytes.Buffer
+	err := Run(t.Context(), []string{"verify-record", "--vault-root", "PRIVATE-root"}, &output, &prompts, nil)
+	if err == nil {
+		t.Fatal("invalid command succeeded")
+	}
+	var event map[string]string
+	if json.Unmarshal(prompts.Bytes(), &event) != nil || len(event) != 3 || event["operation"] != "custody.verify-record" || event["phase"] != "command" || event["outcome"] != "failed" {
+		t.Fatalf("missing local command diagnostic: %s", prompts.String())
+	}
+	if bytes.Contains(prompts.Bytes(), []byte("PRIVATE")) || output.Len() != 0 {
+		t.Fatal("private command arguments entered diagnostic")
+	}
+}
+
+func TestLocalObservationStartsAfterUnterminatedPrompt(t *testing.T) {
+	var output, prompts bytes.Buffer
+	prompts.WriteString("private-sentinel prompt: ")
+	if err := Run(t.Context(), []string{"verify-record", "--vault-root", "unused"}, &output, &prompts, nil); err == nil {
+		t.Fatal("invalid command succeeded")
+	}
+	lines := bytes.Split(bytes.TrimSpace(prompts.Bytes()), []byte("\n"))
+	var report map[string]string
+	if len(lines) != 2 || json.Unmarshal(lines[1], &report) != nil || report["operation"] != "custody.verify-record" {
+		t.Fatalf("observation merged with a private prompt: %q", prompts.Bytes())
+	}
+	if bytes.Contains(lines[1], []byte("private-sentinel")) {
+		t.Fatal("prompt copied into structured record")
+	}
 }

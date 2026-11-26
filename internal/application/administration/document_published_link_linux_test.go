@@ -50,7 +50,7 @@ func TestPublishedLinkPresentationAndCancellation(t *testing.T) {
 			command.Stderr = &diagnostic
 			if !blocked {
 				output, err := command.Output()
-				if err != nil || string(output) != "ardents://test-public-link\n" || diagnostic.Len() != 0 {
+				if err != nil || string(output) != "ardents://test-public-link\n" || diagnostic.String() != `{"operation":"application.link","phase":"command","outcome":"completed"}`+"\n" {
 					t.Fatalf("link: error=%v, output=%q, diagnostic=%q", err, output, &diagnostic)
 				}
 			} else {
@@ -102,7 +102,7 @@ func TestPublishedLinkPresentationAndCancellation(t *testing.T) {
 				select {
 				case err := <-done:
 					joined = true
-					if err == nil || diagnostic.String() != "read cancelled\n" {
+					if err == nil || diagnostic.String() != "read cancelled\n"+`{"operation":"application.link","phase":"command","outcome":"usage-or-output-failure"}`+"\n" {
 						t.Fatalf("cancelled link: error=%v, diagnostic=%q", err, &diagnostic)
 					}
 				case <-time.After(3 * time.Second):

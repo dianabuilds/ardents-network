@@ -25,8 +25,11 @@ identities, addresses, paths, keys, credentials, application data or cross-role
 correlation identifiers into labels, events or trace context. See the
 [product diagnostic rules](../product/operating-model.md#diagnostics).
 
-`telemetry.Operation` selects one of the eleven existing command observations;
-its private catalogue fixes scope, operation, phase and outcome spellings.
+`runtimeevent.Operation` selects one of the eleven existing command observations;
+the shared `runtimeevent` catalogue fixes scope, operation, phase and outcome
+spellings for both local projections and OTLP. The exporter keeps no second
+vocabulary. Successful outcomes also require their actual command phase; input
+refusal and cleanup cannot be relabelled as successful completion.
 Adapters classify owner results into an opaque `Completion`. Unknown operations,
 foreign or unclassified completions and repeated completion make delivery
 `unavailable`; unclassified observations produce neither spans nor metrics.
@@ -41,9 +44,11 @@ The common contract applies across the project. Today the finite Admission,
 Issuance and Hosting command adapters use the shared OTLP exporter. Current
 Node, Endpoint and Source command reports are distinct local results; they do
 not match the retained schemas below. The shared decoder explicitly adapts
-current Node and Source reports; Endpoint progress remains outside that adapter.
-This does not establish
-common runtime instrumentation coverage. The monitor's resource exposition
+current Node, Source, Endpoint and existing instrumented command reports.
+Explicit finite command-boundary observations cover the other registered CLI
+operations. They describe command completion, not domain health, readiness or
+the absence of durable effects. This does not establish uniform internal runtime
+metric coverage. The monitor's resource exposition
 reports observations from its selected local sources. Offline
 `ardents-custody` emits command results and diagnostics without a collector
 connection. A signed artifact, command result or explicit engineering capture
@@ -54,33 +59,57 @@ disabled, `completed` after successful joined export, and `unavailable` after an
 opening, classification or export failure. Admission and Hosting retain their existing stderr
 field spelling; Issuance, results and issuer-profile stderr add `telemetry` next
 to operation/phase/outcome. Their stdout result fields, exit status and durable
-operation outcome remain separate. No raw collector error is printed. An early
+operation outcome remain separate. The common projection retains the finite
+delivery status independently and the saved report flags unavailable OTLP
+without turning a successful domain result into failure. No raw collector error is printed. An early
 input refusal before export opens still emits only its command result.
 
 ## Current command-report projection
 
-The shared decoder recognizes the five current Node role operations and Source
-serving reports by their exact operation/phase/outcome tuple, only when no schema
-is declared. The independent journal MESSAGE still supplies the report body.
+The shared decoder recognizes registered command reports by their exact
+operation/phase/outcome tuple, only when no schema is declared. Existing
+Admission/Hosting uppercase stderr fields are an explicit compatibility grammar;
+mixed spellings are refused. Holder/receiver `closed` reports retain their
+numeric `exit_code`, are projected through its finite command category, and are
+emitted only after the original authority cleanup contributes to that result. The independent journal MESSAGE still supplies the report body.
 Unknown operations remain unrecognized; wrong types, duplicate keys and invalid
 transitions in recognized reports make the observation invalid. Listening,
 retiring with completion unavailable, and joined cancellation/failure remain
-distinct facts. No decoder result grants readiness or proves physical join.
+distinct facts. No decoder result grants readiness or proves physical join. Counts measure
+projected records, not unique operations: a command can report the same result
+on stdout and stderr, and no correlation identifier or heuristic deduplication
+is introduced. Only the existing OTLP operation counter counts Begin/completion.
 
 `ardents-command-report-v1` names the collector's normalized projection, not a
 schema declared by these producers. Its kind is the fixed operation name; owner,
 phase, outcome and the derived failure category come from one finite catalogue.
+Counts describe projected records, not unique operation attempts: stdout receipts
+and stderr delivery reports can describe the same invocation. There is no
+heuristic deduplication or new correlation identity. Existing OTLP `.operations`
+retains its separate exactly-once completion measurement. Export delivery is
+preserved as a separate finite field; `unavailable` creates a delivery gap, not a
+false domain failure or a loss of the already captured local evidence.
 The collector parses bounded structured records from both stdout and stderr;
 the stream does not define severity. The saved report/panel and live monitor use
 that same validation.
-Existing operation reports, first/cleanup owner fields and local nested failure
-facts retain their original command bytes. Private details, resource subobjects,
+Existing stdout receipts, first/cleanup owner fields and local nested failure
+facts retain their own contracts. Endpoint progress adds explicit operation and
+outcome fields while retaining the original local role/request-digest exchange.
+Platform refusal names identify `endpoint.start-installed`, `prepare-history`
+or `construct-plan` explicitly. Generic phase strings without operation identity
+are never guessed to be Endpoint events. Private details, resource subobjects,
 request digests and supplied `at` fields are excluded from the projection.
 No command report declares an event timestamp. Timeline uses a genuine journal
 receipt time when present; otherwise it renders `-` with clock `unavailable`.
 Collector receipt time remains separate. These reports supply no resource
-measurements or new OTLP instrumentation. Endpoint progress without an operation
-identity is not inferred from generic phase strings.
+measurements or new OTLP instrumentation. Command-boundary observations use phase
+`command`: exit 0 is `completed`, exit 1 is `failed`, exit 2 is
+`usage-or-output-failure`, and exit 130 is `canceled`. Exit 2 cannot identify an
+input defect alone, and successful command completion cannot authorize a domain
+operation or prove current readiness. Custody emits only a local command result;
+it creates no exporter or network connection. Unknown selectors/arguments are
+never retained as labels. New observations do not parse stdout, Credentials,
+proofs or private artifact receipts to manufacture a domain result.
 
 ## Retained diagnostic readers
 
@@ -315,12 +344,36 @@ capture and check joined cleanup. Retained original failures must remain
 inspectable. A static dashboard or successful command report cannot substitute
 for these lifecycle checks.
 
+## Domain observation boundaries
+
+Domain libraries keep their authority and lifecycle results. Command/runtime
+composition observes genuine results through the shared catalogue; importing an
+SDK into each domain would not establish coverage. No per-Target or per-Route
+activity graph is introduced. The boundaries below distinguish observations from
+unmeasured internal activity, rather than claiming that every method is traced.
+
+| Domain | Shared observed boundary | Honest limit |
+|---|---|---|
+| Endpoint | Installed permission progress, preparation, unavailable startup and successful joined command completion; withdrawal command result | Permission acceptance is not participant readiness. Original role/request digest stays local; no endpoint-wide resource sampler is implied. |
+| Node | Five role lifecycle reports and their first/cleanup result; receiving Route composition | Original `listening`, bounded `retiring` and `joined` remain distinct. Resource details in failure reports do not become measurements. |
+| Network | Source serving lifecycle and finite Network intake/inspection/preparation/signing command results | Source survival or command exit does not establish current authenticated State; raw profiles/pins/materials are excluded. |
+| Admission | Existing quota/issuance/profile OTLP and local observations, holder/receiver completion after original authority close, allocation/current-issuer command results | No spend, token stock, permission identity or live receiving activity is inferred from a command status. |
+| Hosting | Existing finite initialize/observe OTLP/local command observation | Runtime reservations, return/saturation and resource quantities remain separate measured-owner work, not fabricated counters. |
+| Route | Genuine receiving `listening`/joined result and Node role composition | No per-leg or per-Route trace/history; these lifecycle facts do not prove another domain's readiness. |
+| Execution | Preparation/route-holder command result and actual holder completion; installed preparation refusal phase | Command completion is not a worker qualification or live Job permit. |
+| Publication | Preparation/Instance command result, Endpoint permission/startup result and local Application publication command result | No claim of refresh/withdrawal/ACK time-series coverage. Public response and Instance data remain separate receipts. |
+| Connection | Local Application document/stream command completion plus Endpoint startup/retirement composition | The command reports its own result, not transport health or one metric per Attachment. No Target, payload, continuity or cross-role trace identifier is exported. |
+| Reachability | Existing Descriptor-role lifecycle and the genuinely composed Application/Endpoint result | Pure proof/history/Store rules have no private logger or SDK. No lookup count, readiness or Target visibility is invented from outer command results. |
+| Enrollment | Verification/candidate/protected-generation and artifact-name command result | Artifact naming and command exit are not authorization or installed qualification; signed inventory remains a separate artifact. |
+| Release | Initial verification command result | The observation cannot replace the retained verifier's actual decision/floors/proof or qualify deployment. |
+| Custody | Local completion/failure of the eight explicit offline commands | No network/exporter, key/record/commitment/password metadata, or normal logging of Authority activity beyond the caller's local command result. |
+
 ## Existing observations and gaps
 
 | Owner | Available evidence | Gap / interpretation |
 |---|---|---|
 | Current Node role command and `inspect-process` | Bounded local operation/phase/outcome and first/cleanup owner reports; explicit process inspection | Adapted into timeline/collector as finite command reports; not the retained `ardents-node-event-v1` producer. No common runtime resource or OTLP coverage is established. |
-| Current Endpoint command | Local permission-exchange progress and command refusals; original completion stays with the owner | Not the retained headless runtime event producer. Request digests and private local workflow details must not be routed into telemetry. |
+| Current Endpoint command | Local permission-exchange progress and command refusals; original completion stays with the owner | Explicit installed/preparation operation identity and safe permission progress are projected; private role/request-digest details remain outside the common observation. Not the retained headless runtime event producer. |
 | Current Source command | Local serving/listening and joined failure-owner reports | Adapted into timeline/collector as finite command reports; not the retained `ardents-source-event-v1` producer. Process survival does not establish current State or Source readiness. |
 | `internal/diagnostics/timeline` | Existing safe streaming operator timeline, direct JSON/journal input | Human-readable projection; no resource/time series store. Continue using its existing command for exact timeline semantics. |
 | qualification command | Set-wide stream/latency/throughput/resource verdicts and invalidations | Purpose-selected installed environment; Docker fixture results cannot replace its verdicts. |

@@ -79,6 +79,7 @@ type event struct {
 	Kind              string             `json:"kind"`
 	Owner             string             `json:"owner,omitempty"`
 	Phase             string             `json:"phase,omitempty"`
+	Delivery          string             `json:"delivery,omitempty"`
 	Outcome           string             `json:"outcome,omitempty"`
 	State             string             `json:"state,omitempty"`
 	Carrier           string             `json:"carrier,omitempty"`
@@ -147,7 +148,7 @@ func project(body []byte) (event, string) {
 	if !present {
 		return event{}, "unknown"
 	}
-	e := event{ObservedAt: time.Now().UTC(), Schema: record.Schema, Kind: record.Kind, Phase: record.Phase, Outcome: record.Outcome,
+	e := event{ObservedAt: time.Now().UTC(), Schema: record.Schema, Kind: record.Kind, Phase: record.Phase, Outcome: record.Outcome, Delivery: record.Delivery,
 		Resource: record.Resource, Hosting: record.Hosting, UnknownCategories: record.UnknownCategories}
 	if !record.At.IsZero() {
 		e.At = record.At.UTC().Format(time.RFC3339Nano)

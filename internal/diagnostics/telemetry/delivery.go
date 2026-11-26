@@ -1,12 +1,14 @@
 package telemetry
 
+import "github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+
 // DeliveryStatus describes optional diagnostic delivery, never operation success.
 type DeliveryStatus string
 
 const (
-	LocalOnly   DeliveryStatus = "local-only"
-	Delivered   DeliveryStatus = "completed"
-	Unavailable DeliveryStatus = "unavailable"
+	LocalOnly   DeliveryStatus = runtimeevent.ExportLocalOnly
+	Delivered   DeliveryStatus = runtimeevent.ExportCompleted
+	Unavailable DeliveryStatus = runtimeevent.ExportUnavailable
 )
 
 // CloseWithStatus joins the exporters and classifies delivery separately from

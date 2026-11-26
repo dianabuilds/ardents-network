@@ -2723,7 +2723,14 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if dependency == modulePath+"/internal/diagnostics/runtimeevent" {
 		switch source {
-		case "internal/diagnostics/timeline/project.go", "scripts/diagnostics/diagnostic-capture.go",
+		case "cmd/ardents-next/command.go", "cmd/ardents-next/hosting.go",
+			"internal/diagnostics/telemetry/observation.go", "internal/diagnostics/telemetry/observation_test.go",
+			"internal/diagnostics/telemetry/delivery.go", "internal/diagnostics/telemetry/delivery_test.go", "internal/diagnostics/telemetry/vocabulary_test.go",
+			"internal/domain/admission/operator/admission.go", "internal/domain/admission/operator/issuance.go",
+			"internal/domain/custody/command/command.go", "internal/domain/endpoint/installed_command_linux.go",
+			"internal/domain/endpoint/installed_command_other.go", "internal/domain/endpoint/preparation_command_linux.go",
+			"internal/domain/endpoint/progress_report_linux_test.go",
+			"internal/diagnostics/timeline/project.go", "scripts/diagnostics/diagnostic-capture.go",
 			"scripts/diagnostics/diagnostic-report.go", "scripts/diagnostics/diagnostic-view.go",
 			"scripts/diagnostics/diagnostic-monitor.go", "scripts/diagnostics/diagnostic-monitor-view.go":
 			return true

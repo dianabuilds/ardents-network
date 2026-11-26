@@ -402,3 +402,14 @@ func TestStructuredStderrIsProjectedWithoutRawCapture(t *testing.T) {
 		t.Fatal("oversized stderr stopped later event projection")
 	}
 }
+
+func TestDomainAndExporterResultsRemainSeparateInProjection(t *testing.T) {
+	entry, reason := project([]byte(`{"Operation":"hosting.observe","Phase":"execute","Outcome":"completed","Telemetry":"unavailable"}`))
+	if reason != "" || entry.Delivery != "unavailable" || entry.Outcome != "completed" || entry.Failure != "" || !safeReportEvent(entry) {
+		t.Fatalf("delivery changed domain outcome: %+v %s", entry, reason)
+	}
+	entry.Delivery = "PRIVATE"
+	if safeReportEvent(entry) {
+		t.Fatal("arbitrary delivery label reached panel")
+	}
+}
