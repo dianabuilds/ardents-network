@@ -5,12 +5,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkpreparation"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networksigning"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
@@ -23,7 +25,7 @@ func RunNetworkArtifacts(ctx context.Context, args []string, out io.Writer) int 
 	switch operation := args[0]; {
 	case operation == "prepare-initial-keys":
 		return runInitialKeys(ctx, args, out)
-	case IsNetworkSigning(operation):
+	case networksigning.IsPurpose(operation):
 		return runNetworkSigning(ctx, args, out)
 	case networkdraft.IsPreparation(operation):
 		return runNetworkPreparation(ctx, args, out)
@@ -39,9 +41,9 @@ func runNetworkPreparation(ctx context.Context, args []string, out io.Writer) in
 	if ctx.Err() != nil {
 		return 130
 	}
-	prepared, err := PrepareNetworkArtifact(ctx, args[0], args[1], args[2])
+	prepared, err := networkpreparation.Prepare(ctx, args[0], args[1], args[2])
 	if err != nil {
-		if errors.Is(err, ErrNetworkPreparationOutput) {
+		if errors.Is(err, networkpreparation.ErrOutput) {
 			return 1
 		}
 		return 2
@@ -88,7 +90,7 @@ func runNetworkSigning(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	result, err := SignNetwork(ctx, args, nil)
+	result, err := networksigning.Sign(ctx, args, nil)
 	if err != nil {
 		return 1
 	}

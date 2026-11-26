@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package provisioning
+package networksigning
 
 import (
 	"bytes"
@@ -9,32 +9,30 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
+	provisionfixture "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
-func certificateDeclaration(t *testing.T, record any, reference time.Time) []byte {
-	t.Helper()
-	return preparationJSON(t, map[string]any{"schema": "ardents-node-certificate-plan-v1", "reference_time": reference.Format(time.RFC3339Nano), "record": record})
-}
-
 func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
-	p, key, _, _ := signingRecordFixture(t)
+	p, key, _, _ := provisionfixture.RecordSigningPlan(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
-	_, message, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := networkdraft.Prepare("prepare-initial-node-record", provisionfixture.PlanJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
 	signed := append(bytes.Clone(message), ed25519.Sign(key, message)...)
 	digest := sha256.Sum256(signed)
-	raw := certificateDeclaration(t, p, now)
-	s, err := admitNetworkSigning("prepare-node-certificate", raw, signed, preparationHex(digest[:]))
+	raw := provisionfixture.CertificateDeclaration(t, p, now)
+	s, err := admitNetworkSigning("prepare-node-certificate", raw, signed, hex.EncodeToString(digest[:]))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,24 +96,24 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	}
 	for _, fault := range []string{"signature", "bytes", "trailing-record", "pin", "purpose", "csr", "ca", "carrier", "declaration-key", "fraction", "duplicate", "trailing-plan"} {
 		t.Run(fault, func(t *testing.T) {
-			r, record, pin := bytes.Clone(raw), bytes.Clone(signed), preparationHex(digest[:])
+			r, record, pin := bytes.Clone(raw), bytes.Clone(signed), hex.EncodeToString(digest[:])
 			switch fault {
 			case "signature":
 				record[len(record)-1] ^= 1
 				d := sha256.Sum256(record)
-				pin = preparationHex(d[:])
+				pin = hex.EncodeToString(d[:])
 			case "bytes":
 				record[6] ^= 1
 				d := sha256.Sum256(record)
-				pin = preparationHex(d[:])
+				pin = hex.EncodeToString(d[:])
 			case "trailing-record":
 				record = append(record, 0)
 				d := sha256.Sum256(record)
-				pin = preparationHex(d[:])
+				pin = hex.EncodeToString(d[:])
 			case "pin":
-				pin = preparationIdentifier(99)
+				pin = provisionfixture.PlanIdentifier(99)
 			case "purpose":
-				r = signingDeclaration(t, "node-record", p, now)
+				r = provisionfixture.SigningDeclaration(t, "node-record", p, now)
 			case "csr":
 				r = bytes.Replace(r, []byte(`"record":`), []byte(`"csr":"request","record":`), 1)
 			case "ca":
@@ -123,9 +121,9 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 			case "carrier":
 				r = bytes.ReplaceAll(r, []byte("ardents-carrier-tcp-tls-v2"), []byte("ardents-carrier-quic-v2"))
 			case "declaration-key":
-				r = bytes.Replace(r, []byte(preparationHex(key[32:])), []byte(preparationHex(wrong[32:])), 1)
+				r = bytes.Replace(r, []byte(hex.EncodeToString(key[32:])), []byte(hex.EncodeToString(wrong[32:])), 1)
 			case "fraction":
-				r = certificateDeclaration(t, p, now.Add(time.Nanosecond))
+				r = provisionfixture.CertificateDeclaration(t, p, now.Add(time.Nanosecond))
 			case "duplicate":
 				r = bytes.Replace(r, []byte(`"schema":`), []byte(`"schema":"duplicate","schema":`), 1)
 			case "trailing-plan":
@@ -147,5 +145,5 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 }
 
 func verifyIssuedCertificate(s *networkSigning, der []byte) error {
-	return verifyNodeCertificate(der, epoch.InitialClosedRecord{PublicKey: s.public, ValidFrom: s.from, ValidUntil: s.until})
+	return VerifyNodeCertificate(der, epoch.InitialClosedRecord{PublicKey: s.public, ValidFrom: s.from, ValidUntil: s.until})
 }

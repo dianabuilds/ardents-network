@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networksigning"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
@@ -193,7 +194,7 @@ func prepareNodeSigned(ctx context.Context, role nodeProvisioningRole, args []st
 			return nil, err
 		}
 	} else {
-		artifact, err = createNodeCertificate(facts, key)
+		artifact, err = networksigning.CreateNodeCertificate(facts, key)
 		if err != nil {
 			return nil, err
 		}

@@ -1,16 +1,16 @@
 //go:build linux
 
-package provisioning
+package networksigning
 
 import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -22,10 +22,10 @@ func parseNetworkSigningKey(raw []byte) (ed25519.PrivateKey, error) {
 	return key, nil
 }
 
-// SignNetwork publishes the exact signed inventory after joined input checks.
+// Sign publishes the exact signed inventory after joined input checks.
 // Optional observation reports the original custody cuts to qualification.
-func SignNetwork(ctx context.Context, args []string, observe func(string, *os.File)) (result *NetworkSigningResult, err error) {
-	if ctx == nil || len(args) != 6 || !IsNetworkSigning(args[0]) {
+func Sign(ctx context.Context, args []string, observe func(string, *os.File)) (result *Result, err error) {
+	if ctx == nil || len(args) != 6 || !IsPurpose(args[0]) {
 		return nil, errNetworkSigning
 	}
 	if os.Geteuid() != 0 {
@@ -89,6 +89,6 @@ func SignNetwork(ctx context.Context, args []string, observe func(string, *os.Fi
 	for i, file := range artifacts {
 		files[i] = artifactio.Content{Name: file.name, Data: file.raw}
 	}
-	err = PublishNetworkInventory(ctx, args[5], files, false, check, observe)
-	return &NetworkSigningResult{Digest: sha256.Sum256(artifacts[0].raw), interval: operation.networkSigningInterval}, err
+	err = publishInventory(ctx, args[5], files, false, check, observe)
+	return &Result{Digest: sha256.Sum256(artifacts[0].raw), interval: operation.networkSigningInterval}, err
 }

@@ -11,12 +11,11 @@
 // Responsibility clusters and their tests:
 //   - networkdraft owns the public declaration grammar and unsigned bytes.
 //     network_public_preparation_test.go checks the prepared bytes against
-//     independent signing inputs; network_preparation_contract.go owns the
-//     completed artifact receipt.
+//     independent signing inputs.
 //   - shared public identifier grammar: public_identifier_unix.go
 //     (public_identifier_unix_test.go; unix)
-//   - Node transport certificate codec: node_certificate_unix.go
-//     (node_certificate_unix_test.go; unix)
+//   - Node transport certificate codec: networksigning/certificate_unix.go
+//     (networksigning/certificate_unix_test.go; unix)
 //   - role Node Record declaration, signing and certificate command:
 //     node_record_unix.go, node_provision_linux.go
 //     (forwarding_node_record_unix_test.go; unix,
@@ -44,31 +43,16 @@
 //   - initial Network key birth: initial_network_keys_linux.go
 //     (initial_network_keys_linux_test.go; linux,
 //     initial_network_keys_native_linux_test.go; native linux)
-//   - Network signing admission and fixed record/epoch/profile/certificate
-//     purpose declarations: network_signing_declaration_unix.go,
-//     network_signing_contract.go, network_profile_signing_unix.go,
-//     network_certificate_signing_unix.go, parseNetworkSigningKey in
-//     network_signing_linux.go (network_signing_test.go; linux,
-//     network_profile_signing_test.go,
-//     network_certificate_signing_unix_test.go; unix,
-//     network_profile_native_linux_test.go; native linux)
-//   - SignNetwork operation lifetime and original input custody: SignNetwork
-//     in network_signing_linux.go, network_signing_other.go
-//     (network_signing_custody_native_linux_test.go; native linux)
-//   - signed inventory publication durability: PublishNetworkInventory in
-//     network_output_linux.go (network_inventory_native_linux_test.go;
-//     native linux)
-//   - unsigned artifact preparation and publication durability:
-//     network_preparation_linux.go, network_preparation_other.go,
-//     PublishPreparedNetworkArtifact in network_output_linux.go
-//     (network_preparation_native_linux_test.go; native linux). The input
-//     reader uses the Unix-family durablefile inspection port (#850), but the
-//     operation keeps its Linux boundary because publication composes the
-//     Linux ext4 output floor.
+//   - networksigning owns the four fixed signing purposes, checks and protected
+//     file lifetime. This package dispatches arguments and writes its receipt.
+//     Linux custody and output tests exercise the signing package through the
+//     registered native profile.
+//   - networkpreparation owns original public file admission and exclusive
+//     unsigned output. Its Linux publication tests cover filesystem failures
+//     under the ext4 output floor; other platforms refuse before effects.
 //
-// network_receipt_fixture_test.go carries the shared portable preparation
-// fixtures, network_signing_fixture_unix_test.go the shared Unix-family signing
-// fixtures, native_fixture_linux_test.go the native protected-root and
+// The independent public and signing inputs are in tests/networkfixture.
+// native_fixture_linux_test.go retains the native protected-root and
 // pinned-program fixtures, and forwarding_state_preparation_native_linux_test.go
 // the full key/record/epoch/token/profile chain cohort consumed by
 // forwarding_token_authority_native_linux_test.go; none has behavior of its own.

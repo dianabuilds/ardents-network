@@ -7,9 +7,9 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"os"
 	"os/exec"
@@ -19,7 +19,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkpreparation"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networksigning"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+	provisionfixture "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // Keep the certificate control on actual key creation, public preparation and
@@ -51,21 +55,18 @@ func nativeCertificateArguments(t *testing.T) []string {
 		t.Fatal(err)
 	}
 	defer clear(key)
-	recordPlan := preparationRecordPlan(key.Public().(ed25519.PublicKey))
+	recordPlan := provisionfixture.RecordPlan(key.Public().(ed25519.PublicKey))
 	now := time.Now().UTC().Truncate(time.Second)
 	recordPlan["valid_from"], recordPlan["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
-	name, message, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, recordPlan))
+	publicPlan, prepared := filepath.Join(parent, "record-plan"), filepath.Join(parent, "prepared")
+	write(publicPlan, provisionfixture.PlanJSON(t, recordPlan))
+	artifact, err := networkpreparation.Prepare(t.Context(), "prepare-initial-node-record", publicPlan, prepared)
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared := filepath.Join(parent, "prepared")
-	if err := PublishPreparedNetworkArtifact(t.Context(), prepared, name, message, nil); err != nil {
-		t.Fatal(err)
-	}
 	declaration, signed := filepath.Join(parent, "signing-plan"), filepath.Join(parent, "signed")
-	write(declaration, signingDeclaration(t, "node-record", recordPlan, now))
-	digest := sha256.Sum256(message)
-	if _, err := SignNetwork(t.Context(), []string{"sign-initial-node-record", declaration, filepath.Join(prepared, name), preparationHex(digest[:]), keyPath, signed}, nil); err != nil {
+	write(declaration, provisionfixture.SigningDeclaration(t, "node-record", recordPlan, now))
+	if _, err := networksigning.Sign(t.Context(), []string{"sign-initial-node-record", declaration, filepath.Join(prepared, artifact.Name), hex.EncodeToString(artifact.Digest[:]), keyPath, signed}, nil); err != nil {
 		t.Fatal(err)
 	}
 	record := filepath.Join(signed, "node-record.bin")
@@ -73,10 +74,10 @@ func nativeCertificateArguments(t *testing.T) []string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	digest = sha256.Sum256(raw)
+	digest := sha256.Sum256(raw)
 	certificatePlan := filepath.Join(parent, "certificate-plan")
-	write(certificatePlan, certificateDeclaration(t, recordPlan, now))
-	return []string{"prepare-node-certificate", certificatePlan, record, preparationHex(digest[:]), keyPath, filepath.Join(parent, "certificate")}
+	write(certificatePlan, provisionfixture.CertificateDeclaration(t, recordPlan, now))
+	return []string{"prepare-node-certificate", certificatePlan, record, hex.EncodeToString(digest[:]), keyPath, filepath.Join(parent, "certificate")}
 }
 
 func nativeSigningArguments(t *testing.T) []string {
@@ -98,7 +99,7 @@ func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			observed := false
-			artifacts, err := SignNetwork(ctx, args, func(step string, _ *os.File) {
+			artifacts, err := networksigning.Sign(ctx, args, func(step string, _ *os.File) {
 				at := "inputs-read"
 				if fault == "late key replacement" {
 					at = "signed"
@@ -152,7 +153,7 @@ func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []
 				}
 			}
 			control := arguments(t)
-			if _, e := SignNetwork(t.Context(), control, nil); e != nil {
+			if _, e := networksigning.Sign(t.Context(), control, nil); e != nil {
 				t.Fatal("independent healthy control", e)
 			}
 		})
@@ -214,7 +215,7 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 		if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &syscall.Rlimit{Cur: 16, Max: 16}); err != nil {
 			t.Fatal(err)
 		}
-		_, err := SignNetwork(t.Context(), args, nil)
+		_, err := networksigning.Sign(t.Context(), args, nil)
 		if !errors.Is(err, syscall.EFBIG) {
 			t.Fatal("actual partial write cause lost", err)
 		}
@@ -239,7 +240,7 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 	}
 	defer r.Close()
 	defer w.Close()
-	_, err = SignNetwork(t.Context(), args, func(step string, _ *os.File) {
+	_, err = networksigning.Sign(t.Context(), args, func(step string, _ *os.File) {
 		if step == stage {
 			if _, e := os.Stdout.Write([]byte("held\n")); e != nil {
 				t.Fatal(e)
@@ -267,7 +268,7 @@ func testSigningActualPartialAndProcessCuts(t *testing.T, arguments func(*testin
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestNetworkSigningInterruptedChild$", "-test.count=1")
-			cmd.Env = append(os.Environ(), "ARDENTS_SIGNING_CHILD=1", "ARDENTS_SIGNING_ROOT="+root, "ARDENTS_SIGNING_STAGE="+stage, "ARDENTS_SIGNING_ARGS="+string(preparationJSON(t, args)))
+			cmd.Env = append(os.Environ(), "ARDENTS_SIGNING_CHILD=1", "ARDENTS_SIGNING_ROOT="+root, "ARDENTS_SIGNING_STAGE="+stage, "ARDENTS_SIGNING_ARGS="+string(provisionfixture.PlanJSON(t, args)))
 			if stage == "file-limit" {
 				if out, e := cmd.CombinedOutput(); e != nil {
 					t.Fatal(e, string(out))
@@ -299,7 +300,7 @@ func testSigningActualPartialAndProcessCuts(t *testing.T, arguments func(*testin
 			if _, e := os.Stat(root); e != nil {
 				t.Fatal("original prefix missing", e)
 			}
-			if e := PublishNetworkInventory(t.Context(), root, []artifactio.Content{{Name: "node-record.bin", Data: []byte("signed")}}, false, func() error { return nil }, nil); e == nil {
+			if _, e := networksigning.Sign(t.Context(), args, nil); e == nil {
 				t.Fatal("partial prefix adopted")
 			}
 		})
@@ -318,8 +319,8 @@ func changeCertificateTestTime(t *testing.T, args []string, from, until, referen
 		t.Fatal("test declaration")
 	}
 	record["valid_from"], record["valid_until"] = from.Format(time.RFC3339Nano), until.Format(time.RFC3339Nano)
-	plan["record"] = preparationJSON(t, record)
-	plan["reference_time"] = preparationJSON(t, reference.Format(time.RFC3339Nano))
+	plan["record"] = provisionfixture.PlanJSON(t, record)
+	plan["reference_time"] = provisionfixture.PlanJSON(t, reference.Format(time.RFC3339Nano))
 	_, message, err := networkdraft.Prepare("prepare-initial-node-record", plan["record"])
 	if err != nil {
 		t.Fatal(err)
@@ -336,11 +337,11 @@ func changeCertificateTestTime(t *testing.T, args []string, from, until, referen
 	message = append(message, ed25519.Sign(key, message)...)
 	clear(key)
 	digest := sha256.Sum256(message)
-	args[3] = preparationHex(digest[:])
+	args[3] = hex.EncodeToString(digest[:])
 	if err = os.WriteFile(args[2], message, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err = os.WriteFile(args[1], preparationJSON(t, plan), 0600); err != nil {
+	if err = os.WriteFile(args[1], provisionfixture.PlanJSON(t, plan), 0600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -353,7 +354,7 @@ func TestNetworkSigningNodeCertificateLateTime(t *testing.T) {
 			until := now.Add(3 * time.Second)
 			changeCertificateTestTime(t, args, now.Add(-time.Minute), until, now)
 			acted := false
-			_, err := SignNetwork(t.Context(), args, func(step string, _ *os.File) {
+			_, err := networksigning.Sign(t.Context(), args, func(step string, _ *os.File) {
 				if step == stage {
 					acted = true
 					if delay := time.Until(until); delay > 0 {
@@ -380,7 +381,7 @@ func TestNetworkSigningNodeCertificateFinalOutputAndPhysicalFailure(t *testing.T
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			acted := false
-			_, err := SignNetwork(ctx, args, func(step string, f *os.File) {
+			_, err := networksigning.Sign(ctx, args, func(step string, f *os.File) {
 				if fault == "canceled-close" && step == "signed" {
 					acted = true
 					if e := f.Close(); e != nil {
@@ -415,7 +416,7 @@ func TestNetworkSigningNodeCertificateContention(t *testing.T) {
 	results := make(chan error, 2)
 	var wg sync.WaitGroup
 	for range 2 {
-		wg.Go(func() { <-start; _, err := SignNetwork(t.Context(), args, nil); results <- err })
+		wg.Go(func() { <-start; _, err := networksigning.Sign(t.Context(), args, nil); results <- err })
 	}
 	close(start)
 	wg.Wait()
@@ -440,7 +441,7 @@ func TestNetworkSigningOriginalCancellationBeforeEffects(t *testing.T) {
 			args := arguments(t)
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
-			if _, err := SignNetwork(ctx, args, nil); !errors.Is(err, context.Canceled) {
+			if _, err := networksigning.Sign(ctx, args, nil); !errors.Is(err, context.Canceled) {
 				t.Fatalf("canceled signer: %v", err)
 			}
 			if _, err := os.Lstat(args[5]); !os.IsNotExist(err) {

@@ -1,6 +1,6 @@
 //go:build linux && network_preparation_native
 
-package provisioning
+package networkpreparation
 
 import (
 	"bytes"
@@ -99,7 +99,7 @@ func TestNetworkPreparationNativeCustody(t *testing.T) {
 					t.Fatal(step, err)
 				}
 			}
-			err := PublishPreparedNetworkArtifact(t.Context(), root, name, message, observe)
+			err := publish(t.Context(), root, name, message, observe)
 			if fault == "healthy" {
 				if err != nil {
 					t.Fatal(err)
@@ -134,13 +134,13 @@ func TestNetworkPreparationPublicationKeepsProtectedAccessSeparate(t *testing.T)
 	}
 	payload := []byte("canonical unsigned bytes")
 	unsigned := filepath.Join(parent, "unsigned")
-	if err := PublishPreparedNetworkArtifact(t.Context(), unsigned, "epoch.unsigned", payload, nil); err != nil {
+	if err := publish(t.Context(), unsigned, "epoch.unsigned", payload, nil); err != nil {
 		t.Fatal("caller-owned preparation refused", err)
 	}
 	for _, sensitive := range []bool{false, true} {
 		protected := filepath.Join(parent, "protected")
 		files := []artifacts.Content{{Name: "artifact", Data: payload}}
-		if err := PublishNetworkInventory(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
+		if err := artifacts.PublishInventory(t.Context(), protected, files, sensitive, t.Context().Err, nil); err == nil {
 			t.Fatal("protected inventory admitted outside its root-controlled ancestors", sensitive)
 		}
 		if _, err := os.Lstat(protected); !errors.Is(err, os.ErrNotExist) {
@@ -159,7 +159,7 @@ func TestNetworkPreparationCancellationRetainsIncompletePrefix(t *testing.T) {
 			if stage == "before" {
 				cancel()
 			}
-			err := PublishPreparedNetworkArtifact(ctx, root, "profile.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
+			err := publish(ctx, root, "profile.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
 				if step == stage {
 					cancel()
 				}
@@ -177,7 +177,7 @@ func TestNetworkPreparationCancellationRetainsIncompletePrefix(t *testing.T) {
 			if stat != nil {
 				t.Fatal("uncertain prefix cleaned up", stat)
 			}
-			if err := PublishPreparedNetworkArtifact(t.Context(), root, "profile.unsigned", []byte("public unsigned"), nil); err == nil {
+			if err := publish(t.Context(), root, "profile.unsigned", []byte("public unsigned"), nil); err == nil {
 				t.Fatal("incomplete prefix adopted")
 			}
 		})
@@ -194,7 +194,7 @@ func TestNetworkPreparationInterruptedWriterChild(t *testing.T) {
 			t.Fatal(err)
 		}
 		root := os.Getenv("ARDENTS_PREPARATION_ROOT")
-		err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096), nil)
+		err := publish(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096), nil)
 		if !errors.Is(err, syscall.EFBIG) {
 			t.Fatal("actual partial write cause lost", err)
 		}
@@ -204,7 +204,7 @@ func TestNetworkPreparationInterruptedWriterChild(t *testing.T) {
 		}
 		return
 	}
-	err := PublishPreparedNetworkArtifact(context.Background(), os.Getenv("ARDENTS_PREPARATION_ROOT"), "epoch.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
+	err := publish(context.Background(), os.Getenv("ARDENTS_PREPARATION_ROOT"), "epoch.unsigned", []byte("public unsigned"), func(step string, _ *os.File) {
 		if step == os.Getenv("ARDENTS_PREPARATION_STAGE") {
 			_, _ = os.Stdout.Write([]byte("held\n"))
 			time.Sleep(time.Minute)
@@ -223,7 +223,7 @@ func TestNetworkPreparationActualPartialWrite(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatal("finite partial-write child", err, string(out))
 	}
-	if err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096), nil); err == nil {
+	if err := publish(t.Context(), root, "epoch.unsigned", bytes.Repeat([]byte{1}, 4096), nil); err == nil {
 		t.Fatal("partial native output adopted")
 	}
 }
@@ -239,7 +239,7 @@ func TestNetworkPreparationUnsupportedMountRefusesBeforeBirth(t *testing.T) {
 		}
 	})
 	root := filepath.Join(parent, "prepared")
-	if err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", []byte("public"), nil); err == nil {
+	if err := publish(t.Context(), root, "epoch.unsigned", []byte("public"), nil); err == nil {
 		t.Fatal("unsupported tmpfs durability admitted")
 	}
 	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
@@ -275,7 +275,7 @@ func TestNetworkPreparationActualProcessInterruption(t *testing.T) {
 			if _, err := os.Stat(root); err != nil {
 				t.Fatal("prefix missing", err)
 			}
-			if err := PublishPreparedNetworkArtifact(t.Context(), root, "epoch.unsigned", []byte("public unsigned"), nil); err == nil {
+			if err := publish(t.Context(), root, "epoch.unsigned", []byte("public unsigned"), nil); err == nil {
 				t.Fatal("process prefix adopted as success")
 			}
 		})

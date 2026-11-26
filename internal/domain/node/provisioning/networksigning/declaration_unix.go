@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package provisioning
+package networksigning
 
 import (
 	"bytes"
@@ -9,13 +9,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // The declaration embeds the exact public preparation plan, not arbitrary
@@ -51,7 +50,7 @@ func preparationObject(raw []byte, value any, keys ...string) error {
 }
 
 func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*networkSigning, error) {
-	if !IsNetworkSigning(operation) || len(raw) > networkdraft.MaximumPlanBytes {
+	if !IsPurpose(operation) || len(raw) > networkdraft.MaximumPlanBytes {
 		return nil, errNetworkSigning
 	}
 	if operation == "sign-closed-profile" {

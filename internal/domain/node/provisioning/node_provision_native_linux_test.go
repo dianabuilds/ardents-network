@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networksigning"
 	"os"
 	"path/filepath"
 	"strings"
@@ -79,7 +80,7 @@ func testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T, r
 		t.Fatal(err)
 	}
 	block, rest := pem.Decode(certificate)
-	if block == nil || len(rest) != 0 || verifyNodeCertificate(block.Bytes, facts) != nil {
+	if block == nil || len(rest) != 0 || networksigning.VerifyNodeCertificate(block.Bytes, facts) != nil {
 		t.Fatal("actual canonical certificate profile differs")
 	}
 	for _, op := range []string{"sign-node-record", "prepare-node-certificate"} {

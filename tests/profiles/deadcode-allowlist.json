@@ -1,6 +1,23 @@
 {
   "common": [
     {
+      "symbols": [
+        "tests/networkfixture.CertificateDeclaration",
+        "tests/networkfixture.EpochPlan",
+        "tests/networkfixture.PlanIdentifier",
+        "tests/networkfixture.PlanJSON",
+        "tests/networkfixture.ProfilePlan",
+        "tests/networkfixture.ProfileSigningDeclaration",
+        "tests/networkfixture.RecordPlan",
+        "tests/networkfixture.RecordSigningPlan",
+        "tests/networkfixture.SigningDeclaration"
+      ],
+      "classification": "Network public preparation and signing fixtures",
+      "rationale": "The offline test owners share deterministic declarations and independently generated signed Record, Epoch and profile byte vectors. No maintained command imports this fixture.",
+      "owner": "Offline Network preparation and signing tests",
+      "retirement": "Remove each fixture when its last offline test consumer retires."
+    },
+    {
       "symbols": ["tests/e2e/endpoint.hasPermissionEvent"],
       "classification": "Endpoint permission journal fixture",
       "rationale": "Native Endpoint scenarios check role-specific permission events, with a portable fixture test for the evidence parser.",
@@ -157,6 +174,13 @@
   ],
   "production": {
     "linux-amd64": [
+      {
+        "symbols": ["tests/networkfixture.ProtectedExt4Parent"],
+        "classification": "Offline Linux signing test fixture",
+        "rationale": "The native signing tests share one root and ext4 prerequisite check. Only the Linux native signing test profile reaches it.",
+        "owner": "Offline Network signing tests",
+        "retirement": "Remove with the last native signing fixture consumer."
+      },
       {
         "symbols": [
           "tests/e2e/node.AdmissionCommandFixture",
@@ -2294,6 +2318,18 @@
   "test_dead": {
     "linux-amd64": [],
     "windows-amd64": [
+      {
+        "symbols": [
+          "tests/networkfixture.CertificateDeclaration",
+          "tests/networkfixture.ProfileSigningDeclaration",
+          "tests/networkfixture.RecordSigningPlan",
+          "tests/networkfixture.SigningDeclaration"
+        ],
+        "classification": "Unix signing fixture consumers",
+        "rationale": "The fixture declarations are portable data. Their only consumers exercise the Unix signing rules or native Linux signing custody, which are unavailable in this Windows test profile.",
+        "owner": "Offline Network signing tests",
+        "retirement": "Remove each fixture when its last signing test retires or a Windows signing test consumes it."
+      },
       {
         "symbols": [
           "internal/domain/hosting.Inspection.Check",

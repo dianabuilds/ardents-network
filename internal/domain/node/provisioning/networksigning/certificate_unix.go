@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package provisioning
+package networksigning
 
 import (
 	"bytes"
@@ -8,18 +8,18 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"math/big"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // Exact Node transport leaf profile from the current TLS material owner. This
 // self-signature is not Network membership, State trust or process admission.
 // Forwarding, JOIN and Descriptor share this pure codec; each role command
 // supplies its own prepared Record facts and freshly born Node key.
-func createNodeCertificate(facts epoch.InitialClosedRecord, key ed25519.PrivateKey) ([]byte, error) {
+func CreateNodeCertificate(facts epoch.InitialClosedRecord, key ed25519.PrivateKey) ([]byte, error) {
 	serial, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
 	if err != nil {
 		return nil, err
@@ -36,13 +36,13 @@ func createNodeCertificateWithSerial(facts epoch.InitialClosedRecord, key ed2551
 	if err != nil {
 		return nil, err
 	}
-	if err := verifyNodeCertificate(der, facts); err != nil {
+	if err := VerifyNodeCertificate(der, facts); err != nil {
 		return nil, err
 	}
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), nil
 }
 
-func verifyNodeCertificate(der []byte, facts epoch.InitialClosedRecord) error {
+func VerifyNodeCertificate(der []byte, facts epoch.InitialClosedRecord) error {
 	c, err := x509.ParseCertificate(der)
 	if err != nil {
 		return artifacts.ErrInput

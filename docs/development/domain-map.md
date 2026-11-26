@@ -377,6 +377,12 @@ No private authority crosses into Network, Node
 runtime or Custody, and no generic signer, encrypted Vault, signing-history or
 bootstrap acceptance is supplied. Provisioning also admits the exact public Record, Epoch and profile declarations
 and returns the same typed public facts used for their canonical unsigned bytes.
+Within Node Provisioning, `networkdraft` owns the pure public declaration
+grammar and unsigned bytes; `networkpreparation` admits the original public
+file and publishes the exclusive unsigned artifact. `networksigning` owns the
+original protected inputs, fixed-purpose signing and exclusive signed output
+through join.
+Provisioning's command adapter retains dispatch and the public receipt.
 Provisioning owns fresh standard-library generation of one State and 1..64
 distinct Node keys, with Platform Artifacts supplying canonical Ed25519 PKCS#8
 encoding and exact admission. Provisioning retains original root-protected native
@@ -507,8 +513,9 @@ runtime commands share that composition and bounded outcome projection in
 constructor and role roots. Introduction retained repair now consumes the
 same full Introduction declaration grammar as its runtime (the former six-field
 repair subset is normalized). `node prepare-plan` delegates exclusive production of the role plan JSON to
-`internal/domain/node/provisioning` with before-effect typed refusals; it codifies the
-native installed provisioning recipe without acquiring any provisioning effect.
+`internal/domain/node/provisioning/runtimeplan` with before-effect typed refusals.
+The command writes the new declaration exclusively; the runtime owner retains
+the codec and all live authority checks.
 Source's separate serving declaration grammar is unchanged. The operator
 procedure is recorded in `docs/operations/node-role-platform-lifecycle.md`.
 
