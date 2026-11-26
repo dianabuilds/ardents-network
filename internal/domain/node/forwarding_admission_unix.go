@@ -10,9 +10,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 )
 
 // Forwarding admission retains actual work and refill reservations until the

@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 )
 
 var errNativeRuntimeUnavailable = errors.New("native Node runtime unavailable")

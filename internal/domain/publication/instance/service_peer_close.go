@@ -1,6 +1,6 @@
 package instance
 
-import "github.com/dianabuilds/ardents-network/internal/route/join"
+import "github.com/dianabuilds/ardents-network/internal/domain/route/join"
 
 // DecodedPeerClose projects the exact admitted JOIN's terminal evidence.
 // Connection still checks its original logical authority and Terminal ledger;

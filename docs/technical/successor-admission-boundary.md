@@ -117,10 +117,10 @@ initialization cannot replace its restart or recovery.
 | internal/domain/endpoint/participant_linux.go and the retired runtime plan | Aggregate role maxima represented by allocation.ValidateMaxima | Selecting the user's context/role and configuring file paths |
 | internal/domain/endpoint/permission.go; internal/domain/endpoint/issuance.go | Holder request, accepted permission, pending batch and stock | Context authorization, choosing an exchange, joining network work |
 | internal/domain/node/authority/token.go; internal/domain/node/admission.go | Receiver token verification and spend scenario represented by receiving | Current authority observation, host reservation and actual channel ownership |
-| internal/route/closed_admission_channel.go | Class allowance and deadline bound represented by receiving.Allowance | Channel handshake and delivery of the accepted allowance |
-| internal/route/closed_forwarding_channel.go | Refill replaces remaining allowance without extending its original deadline | Route decides forwarding-parent eligibility, counts bytes and owns the ADMIT/ACCEPT exchange; Admission component tests do not prove that transport |
-| internal/route/closed_join_replenishment.go | No accepted JOIN refill right: this predecessor path contradicts ADR-0085 and is source evidence only | New Route rejects later JOIN ADMIT before another Hosting reservation or irreversible spend; class-2 allowance alone cannot authorize refill |
-| internal/route/closed_duty_limits.go | Verification admission bound represented by receiving.VerificationGate | Other transport/role counters and scheduling |
+| internal/domain/route/closed_admission_channel.go | Class allowance and deadline bound represented by receiving.Allowance | Channel handshake and delivery of the accepted allowance |
+| internal/domain/route/closed_forwarding_channel.go | Refill replaces remaining allowance without extending its original deadline | Route decides forwarding-parent eligibility, counts bytes and owns the ADMIT/ACCEPT exchange; Admission component tests do not prove that transport |
+| internal/domain/route/closed_join_replenishment.go | No accepted JOIN refill right: this predecessor path contradicts ADR-0085 and is source evidence only | New Route rejects later JOIN ADMIT before another Hosting reservation or irreversible spend; class-2 allowance alone cannot authorize refill |
+| internal/domain/route/closed_duty_limits.go | Verification admission bound represented by receiving.VerificationGate | Other transport/role counters and scheduling |
 | internal/successor/network/closedprofile/token_spki.go and profile key fields | Canonical token key grammar represented by issuerprofile | Signed profile acceptance, membership and currentness |
 | internal/domain/admission/spending/introduction_slots.go | None: slot replay belongs to Route's receiving Introduction owner | Whole slot history and registration lifetime |
 

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
+	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 type LocalCommand struct {

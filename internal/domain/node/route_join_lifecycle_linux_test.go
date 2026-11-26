@@ -9,9 +9,9 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
-	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	routejoin "github.com/dianabuilds/ardents-network/internal/domain/route/join"
+	routeprefix "github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,9 +26,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 )
 
 // One permission supplies two genuine tokens per receiver: a replacement Source

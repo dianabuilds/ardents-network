@@ -14,8 +14,8 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 )
 
 // Histories, selection and shared Hosting remain Reader-owned through the

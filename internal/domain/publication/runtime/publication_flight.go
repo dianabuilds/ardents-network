@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 )
 
 var errFlight = errors.New("publisher flight unavailable")

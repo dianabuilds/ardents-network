@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 )
 
 // maximumInitialDeliveries bounds retained initial deliveries and the ready

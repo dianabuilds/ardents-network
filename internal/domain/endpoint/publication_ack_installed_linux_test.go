@@ -26,9 +26,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 
@@ -105,7 +105,7 @@ func (g *publicationDeliveryCloseGate) observe(current func() (network.RuntimeVi
 	frames := goruntime.CallersFrames(callers[:goruntime.Callers(2, callers[:])])
 	for {
 		frame, more := frames.Next()
-		if frame.Function == "github.com/dianabuilds/ardents-network/internal/route/introduction.(*registrationDispatch).write" {
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/route/introduction.(*registrationDispatch).write" {
 			g.mu.Lock()
 			var resume <-chan struct{}
 			if g.armed {
@@ -219,7 +219,7 @@ func (g *publicationACKGate) observeResult(current func() (network.RuntimeView, 
 	decoded := false
 	for {
 		frame, more := frames.Next()
-		if frame.Function == "github.com/dianabuilds/ardents-network/internal/route/prefix.finishDescriptorResponse" {
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/route/prefix.finishDescriptorResponse" {
 			decoded = true
 			break
 		}

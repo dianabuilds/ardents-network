@@ -88,7 +88,7 @@ func collect(mode string, args []string) error {
 	out := flags.String("out", "", "new absolute evidence directory outside source")
 	timeout := flags.Duration("timeout", 2*time.Minute, "whole command time, including compilation")
 	raw := flags.Bool("raw", false, "retain sensitive stdout/stderr (16 MiB each)")
-	pkg := flags.String("package", "./internal/route", "one Go package for test/profile")
+	pkg := flags.String("package", "./internal/domain/route", "one Go package for test/profile")
 	pattern := flags.String("run", "", "explicit test regexp")
 	bench := flags.String("bench", "", "explicit benchmark regexp")
 	race := flags.Bool("race", false, "race detector; separate from profiling")

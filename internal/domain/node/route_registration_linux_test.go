@@ -5,7 +5,7 @@ package node_test
 import (
 	"context"
 	"errors"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -15,13 +15,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

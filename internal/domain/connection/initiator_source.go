@@ -14,12 +14,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/route"
-	"github.com/dianabuilds/ardents-network/internal/route/capsule"
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
-	"github.com/dianabuilds/ardents-network/internal/route/join"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/domain/route"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 )
 
 // attachmentSetupDeadline selects the original absolute setup bound once.

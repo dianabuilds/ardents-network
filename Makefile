@@ -103,7 +103,7 @@ platform-launch-unit:
 	go test ./internal/platform/process -run '^TestDedicatedAccountID$$' -count=1 -timeout=3m
 	go test ./internal/domain/network/state -run '^Test(Source(Participation|Completion|InitialPreparation|PreparationConfig).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
 	go test ./internal/domain/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
-	go test ./internal/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
+	go test ./internal/domain/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
 	go test ./internal/platform/systemd -run '^TestPlatform(SiblingVocabularyPreservesFixedNodeExclusion|PrestartRejectsDifferentLoadedInvocationAndPolicy)$$' -count=1 -timeout=3m
 
 heapdump-capture:
@@ -425,7 +425,7 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/domain/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 

@@ -15,10 +15,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

@@ -8,7 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
-	"github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/capsule"
 )
 
 // BindPublisherRecipient checks a fresh private recipient against this SAME

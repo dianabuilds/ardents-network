@@ -108,7 +108,7 @@ for the real accepted boundary. Summaries do not override the contract.
 
 ### R01: Isolate both directions
 
-New Route belongs in the new-domain tree at `internal/route`.
+New Route belongs in the new-domain tree at `internal/domain/route`.
 Its development composition consumer belongs in `cmd/ardents-next`. The narrow
 canonical installed Forwarding exception (Product Owner authorization
 2026-10-27, recorded in [#542](https://github.com/dianabuilds/ardents-network/issues/542#issuecomment-6436276753))
@@ -145,12 +145,12 @@ installed exceptions. All other R01 restrictions remain. Bootstrap acceptance
 remains separately required by ADR-0123 Decision 6. Exact packages require normal
 complete registration.
 
-The current Route implementation lives at `internal/route`. Its local imports
+The current Route implementation lives at `internal/domain/route`. Its local imports
 are restricted to the current registered owners and exact package-map edges.
-`internal/route/selection` additionally consumes the shared durable filesystem
+`internal/domain/route/selection` additionally consumes the shared durable filesystem
 mechanism `internal/durablefile` (R1, #764), a new foundation mechanism with
 no old-runtime lineage; this is a registered package-map edge, not a predecessor
-import. `internal/route/introduction` likewise consumes the shared pure
+import. `internal/domain/route/introduction` likewise consumes the shared pure
 path-validation grammar leaf `internal/pathgrammar` (G7, #772), another new
 foundation mechanism with no old-runtime lineage and a registered package-map
 edge. It must never import or execute a predecessor implementation, including code

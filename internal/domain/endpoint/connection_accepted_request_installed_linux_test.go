@@ -22,9 +22,9 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution/worker"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
 

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 )
 
 // holdIssuerReservation transfers the original work and termination budget to

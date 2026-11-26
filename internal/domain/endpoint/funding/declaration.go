@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route"
+	"github.com/dianabuilds/ardents-network/internal/domain/route"
 )
 
 // Declaration is the local holder's Route configuration, not a permission.

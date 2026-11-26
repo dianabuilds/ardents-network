@@ -16,12 +16,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+	roletls "github.com/dianabuilds/ardents-network/internal/domain/route/transport/tls"
 )
 
 func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *testing.T) {

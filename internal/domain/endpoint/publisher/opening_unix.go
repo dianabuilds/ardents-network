@@ -15,9 +15,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/route/selection"
 )
 
 func Open(ctx context.Context, plan Plan, routePlan funding.Plan, authority funding.Authority, holder *stock.Owner, operation *executionruntime.Operation, shared ...*funding.Parents) (Publication, error) {

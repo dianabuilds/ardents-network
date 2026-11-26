@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 )
 
 func (s *Session) OpenPrefix(ctx context.Context) error { return s.openPrefix(ctx, actionPrefixOpen) }
