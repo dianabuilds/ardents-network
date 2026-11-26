@@ -882,7 +882,7 @@ one-use Connection claim and original-caller cancellation through physical
 descendant join. Setup-only invocations must refuse Reader authority. The
 driver requires the exact ordinary Reader subcase to have executed and passed;
 these local operations grant no Service Connection or readiness. Build its test binary
-with `document_worker_installed` from `internal/execution/runtime` and
+with `document_worker_installed` from `internal/domain/execution/runtime` and
 install it at `/usr/lib/ardents/qualification/execution-runtime.test` in the
 dedicated manager. The driver requires independent binary/unit digests through
 the existing `ARDENTS_TEXT_LIFECYCLE_SHA256` and

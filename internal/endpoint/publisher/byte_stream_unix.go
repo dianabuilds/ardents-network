@@ -10,7 +10,7 @@ import (
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
 )
 

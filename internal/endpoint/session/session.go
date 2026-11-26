@@ -7,9 +7,9 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 )
 

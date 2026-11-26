@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/connection/wire"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 // ServiceLease retains the original Instance for one immutable logical

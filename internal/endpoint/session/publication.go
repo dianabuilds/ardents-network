@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
 
 func (s *Session) OpenPublication(ctx context.Context) (err error) {

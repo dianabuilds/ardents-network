@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/execution"
+	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 )
 
 func TestCanceledParticipantDoesNotReadStartupOrReportProgress(t *testing.T) {

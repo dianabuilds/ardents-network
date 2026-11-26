@@ -69,14 +69,14 @@ github.com/dianabuilds/ardents-network/internal/release
 github.com/dianabuilds/ardents-network/internal/release/endpoint
 github.com/dianabuilds/ardents-network/internal/endpoint/launch
 github.com/dianabuilds/ardents-network/internal/endpoint/plan
-github.com/dianabuilds/ardents-network/internal/execution
-github.com/dianabuilds/ardents-network/internal/execution/runtime
+github.com/dianabuilds/ardents-network/internal/domain/execution
+github.com/dianabuilds/ardents-network/internal/domain/execution/runtime
 github.com/dianabuilds/ardents-network/internal/platform/cgroup
 github.com/dianabuilds/ardents-network/internal/platform/systemd
 github.com/dianabuilds/ardents-network/internal/platform/process
 github.com/dianabuilds/ardents-network/internal/endpoint/generation
 github.com/dianabuilds/ardents-network/internal/endpoint/unit
-github.com/dianabuilds/ardents-network/internal/execution/worker
+github.com/dianabuilds/ardents-network/internal/domain/execution/worker
 github.com/dianabuilds/ardents-network/internal/connection
 github.com/dianabuilds/ardents-network/internal/domain/custody
 github.com/dianabuilds/ardents-network/internal/processresource

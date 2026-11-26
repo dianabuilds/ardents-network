@@ -6,8 +6,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )

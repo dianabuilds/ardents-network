@@ -9,8 +9,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 	"github.com/dianabuilds/ardents-network/internal/publication/durable"

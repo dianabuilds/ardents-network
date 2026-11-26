@@ -2,7 +2,7 @@ package publisher
 
 import (
 	"github.com/dianabuilds/ardents-network/internal/application/document"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 // DocumentContract binds the fixed snapshot response to its original live operation.

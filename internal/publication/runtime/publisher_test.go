@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/publication/instance"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
 	"github.com/dianabuilds/ardents-network/internal/route/prefix"
