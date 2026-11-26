@@ -1,6 +1,9 @@
 package channel
 
-import "github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+import (
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+)
 
 const (
 	workChildren    = uint32(256)
@@ -60,6 +63,10 @@ func (s *Session) finishChildLocked(l *Lane) {
 		return
 	}
 	l.finished = true
+	l.sendCreditMetric.Decrease(uint64(l.credit))
+	l.receiveCreditMetric.Decrease(uint64(l.receive))
+	l.sendCreditMetric = measurement.Gauge{}
+	l.receiveCreditMetric = measurement.Gauge{}
 	s.live--
 	if l.reservedControl {
 		s.reservedControls--

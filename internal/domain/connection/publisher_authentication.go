@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
@@ -16,6 +18,8 @@ import (
 // detached at accepted transfer; the original operation and bounds remain.
 func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Operation, binding *RecipientBinding,
 	lifetime *instance.PublicationLifetime, opening *instance.Opening, physical *join.Joined) (_ *AuthenticatedAttachment, result error) {
+	defer measurement.Begin(runtimeevent.ConnectionAuthenticate).End()
+
 	if binding == nil || ctx == nil || operation == nil {
 		return nil, errIntegrity
 	}

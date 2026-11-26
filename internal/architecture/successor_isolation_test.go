@@ -1041,6 +1041,9 @@ func isMigratedDomain(name string) bool {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if domainMeasurementImportAllowed(source, dependency) {
+		return true
+	}
 	if offlineOperatorFile(source) {
 		return offlineOperatorImportAllowed(source, dependency)
 	}

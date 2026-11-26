@@ -1257,3 +1257,20 @@ fixed-purpose input/output custody; signatures and accepted State are distinct
 from installed duty or bootstrap acceptance. The former `prepare-hosting` and
 `prepare-state` producers retired with the transitional orchestration; the
 platform-led Descriptor lifecycle owns Hosting allowance and State preparation.
+
+## Explicit internal measurement capture
+
+`ARDENTS_LOCAL_METRICS=1 ardents-next <existing command>` enables capture-local
+internal stage/queue/resource aggregates. The command and original cleanup run
+normally. The last 32 one-second snapshots and final snapshot are emitted as
+safe JSON on stderr after work returns; overwritten history is counted.
+`ARDENTS_METRICS_OTLP_ENDPOINT=http://127.0.0.1:<port>` additionally selects live
+bounded OTLP delivery in `ardents-next`. Unset is no export. Collector admission
+and request bounds are the common telemetry owner's contract.
+
+`ARDENTS_LOCAL_METRICS=1 ardents-custody <existing command>` enables the same
+local numeric capture with no exporter/network capability. Password prompts and
+artifact stdout retain their contracts. No arguments, keys, record identities,
+Targets or Route/Job correlation labels enter the measurement catalogue.
+See [internal measurements](../development/local-diagnostics.md#internal-domain-measurements)
+for units, availability, retention, reset and interpretation limits.

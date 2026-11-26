@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
 )
@@ -23,6 +25,8 @@ var errSourceObjectMismatch = errors.New("source response object identity mismat
 
 // Refresh waits for the complete two-source wave and accepts its highest valid state.
 func (s *State) Refresh(ctx context.Context) (Snapshot, error) {
+	defer measurement.Begin(runtimeevent.NetworkRefresh).End()
+
 	if s.config.permitWork != nil {
 		if err := s.config.permitWork(); err != nil {
 			return Snapshot{}, err
@@ -103,6 +107,8 @@ func (s *State) Refresh(ctx context.Context) (Snapshot, error) {
 }
 
 func (s *State) fetchAndVerify(ctx context.Context, index int, current *epoch.Decision) sourceResult {
+	defer measurement.Begin(runtimeevent.NetworkFetch).End()
+
 	observations := [4]byte{}
 	resultIndex, outcomeIndex := index, index
 	response, err := s.fetchSource(ctx, index, source2.Message{

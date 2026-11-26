@@ -5,6 +5,9 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 var (
@@ -129,6 +132,8 @@ func (v *Verifier) CurrentFloors(ctx context.Context) (FloorSet, error) {
 // The caller must not mutate input during its initial bounded copy. A caller's
 // cancellation after commit retains floors but refuses the final handoff.
 func (v *Verifier) Evaluate(ctx context.Context, in Inputs) Decision {
+	defer measurement.Begin(runtimeevent.ReleaseEvaluate).End()
+
 	work, leave, err := v.enter(ctx)
 	if err != nil {
 		return reject(outcomeReleaseUnavailable, "evaluation unavailable", err)

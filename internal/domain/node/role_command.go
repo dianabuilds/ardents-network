@@ -5,6 +5,8 @@ import (
 	"io"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
@@ -119,6 +121,8 @@ func nodeStateConfig(network *Network, participationRoot string) (state.Config, 
 // The command owns the original State and closes it after the Node's joined
 // completion, even when the bounded wait has already reported unavailability.
 func runNodeWithState(ctx context.Context, out, diagnostic io.Writer, operation string, config state.Config, nodeID [32]byte, waitMS uint32, listen func(role.Authority) (RuntimeInvocation, error)) int {
+	defer measurement.Begin(runtimeevent.NodeLifetime).End()
+
 	owner, err := state.OpenRetained(config)
 	if err != nil {
 		if err := WriteEvent(out, operation, "refused", "state-unavailable", "", "", ""); err != nil {

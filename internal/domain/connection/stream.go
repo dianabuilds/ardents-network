@@ -8,6 +8,8 @@ import (
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
@@ -249,6 +251,8 @@ func (stream *Stream) waitChange(changed <-chan struct{}) {
 }
 
 func (stream *Stream) Read(destination []byte) (int, error) {
+	defer measurement.Begin(runtimeevent.ConnectionRead).End()
+
 	if stream == nil || stream.self != stream {
 		return 0, errIntegrity
 	}
@@ -298,6 +302,8 @@ func deliverRead(destination, staged []byte, n int, readErr, handoffErr error) (
 }
 
 func (stream *Stream) Write(body []byte) (int, error) {
+	defer measurement.Begin(runtimeevent.ConnectionWrite).End()
+
 	if stream == nil || stream.self != stream {
 		return 0, errIntegrity
 	}
@@ -478,6 +484,10 @@ func (stream *Stream) retire() {
 		// Physical failures are retained by the exact lower cleanup owners.
 		_ = stream.records.join()
 		stream.mu.Lock()
+		stream.send.queueMetric.Decrease(stream.send.end - stream.send.base)
+		stream.receive.queueMetric.Decrease(stream.receive.next - stream.receive.readAt)
+		stream.send.queueMetric = measurement.Gauge{}
+		stream.receive.queueMetric = measurement.Gauge{}
 		stream.cleanupErr = errors.Join(physical, stream.recoveryCleanup)
 		stream.closeErr = errors.Join(stream.failure, stream.cleanupErr)
 		clear(stream.key[:])

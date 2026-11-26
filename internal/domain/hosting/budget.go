@@ -5,6 +5,9 @@ import (
 	"errors"
 	"os"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 // Budget owns access to one shared durable host budget. All local owners must
@@ -96,7 +99,16 @@ func (owner *Budget) Close() error {
 }
 
 func (owner *Budget) transact(ctx context.Context, maximumAge time.Duration,
-	change func(*hostingState, time.Time) error) (hostingState, Observation, error) {
+	change func(*hostingState, time.Time) error) (returnedState hostingState, returnedObservation Observation, returnedErr error) {
+	defer measurement.Begin(runtimeevent.HostingTransaction).End()
+	defer func() {
+		if returnedErr != nil {
+			measurement.Unavailable(runtimeevent.HostingObservedUsed)
+			measurement.Unavailable(runtimeevent.HostingObservedReserved)
+			measurement.Unavailable(runtimeevent.HostingObservedRemaining)
+		}
+	}()
+
 	var empty hostingState
 	unavailable := Observation{Protect: true, Drain: true}
 	if owner == nil || owner.budgetState == nil || ctx == nil || ctx.Err() != nil {
@@ -158,10 +170,27 @@ func (owner *Budget) transact(ctx context.Context, maximumAge time.Duration,
 	if err := lease.close(); err != nil {
 		return empty, unavailable, errors.Join(ErrUncertain, refusal, err)
 	}
-	return state, state.observation(owner.now()), refusal
+	observation := state.observation(owner.now())
+	measurement.ObserveLast(runtimeevent.HostingObservedUsed, observation.UsedBytes)
+	measurement.ObserveLast(runtimeevent.HostingObservedReserved, observation.ReservedBytes)
+	measurement.ObserveLast(runtimeevent.HostingObservedRemaining, observation.RemainingBytes)
+	return state, observation, refusal
 }
 
 func (owner *Budget) enter(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-owner.gate:
+		return nil
+	default:
+	}
+
+	defer measurement.Begin(runtimeevent.HostingWait).End()
+	waiters := measurement.Track(runtimeevent.HostingWaiters)
+	waiters.Add(1)
+	defer waiters.Add(-1)
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

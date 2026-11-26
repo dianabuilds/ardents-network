@@ -10,18 +10,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 )
 
 // Lane fields belong to the session lock; outbound serialization has a separate
 // lock so credit waiters never hold the physical writer or a sibling lane.
 type Lane struct {
-	s                                  *Session
-	id                                 uint32
-	end, readEnd, writeEnd, cleanupEnd time.Time
-	openEnd                            time.Time
-	buffer                             []byte
-	credit, receive                    uint32
+	sendCreditMetric, receiveCreditMetric measurement.Gauge
+	s                                     *Session
+	id                                    uint32
+	end, readEnd, writeEnd, cleanupEnd    time.Time
+	openEnd                               time.Time
+	buffer                                []byte
+	credit, receive                       uint32
 	// Consumed bytes remain unavailable to the peer until their CREDIT starts
 	// physical output. Pending and queued credit are distinct for concurrent reads.
 	pendingCredit, queuedCredit       uint32
@@ -188,6 +190,7 @@ func (l *Lane) Read(p []byte) (int, error) {
 			// Retained payload is released only by consumption or joined owner
 			// cleanup. CLOSE and outbound CREDIT never refund its reservation.
 			l.receive += uint32(n)
+			l.receiveCreditMetric.Increase(uint64(n))
 			closed := l.closed || l.handshake
 			credited := uint32(n)
 			if credited <= l.uncredited {

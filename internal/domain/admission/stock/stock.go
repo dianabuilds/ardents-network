@@ -2,12 +2,13 @@ package stock
 
 import (
 	"errors"
-
-	"github.com/dianabuilds/ardents-network/internal/domain/admission"
-	admissiontoken "github.com/dianabuilds/ardents-network/internal/domain/admission/token"
-
 	"slices"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 )
 
 type stockEntry struct {
@@ -89,6 +90,8 @@ func (perm *permission) discardPendingBatch(batch *batch) {
 // acceptIssuedBatch finalizes the exact retained batch and deposits its tokens
 // in the permission-owned stock. A failed finalization consumes the batch.
 func (perm *permission) acceptIssuedBatch(batch *batch, body []byte, check func() error) error {
+	defer measurement.Begin(runtimeevent.AdmissionImport).End()
+
 	if perm == nil || batch == nil || perm.pending != batch {
 		return errors.New("admission issuance batch owner changed")
 	}
@@ -108,6 +111,7 @@ func (perm *permission) acceptIssuedBatch(batch *batch, body []byte, check func(
 	if perm.stock == nil {
 		perm.stock = make(map[admissiontoken.ClosedTokenContext]*stockEntry)
 	}
+	perm.stockMetric.Increase(uint64(len(tokens)))
 	for index, token := range tokens {
 		challenge := batch.Challenges[index]
 		if entry := perm.stock[challenge]; entry != nil {
@@ -123,6 +127,8 @@ func (perm *permission) acceptIssuedBatch(batch *batch, body []byte, check func(
 // before verifying its signature. An invalid token is never returned or
 // restored.
 func (perm *permission) consumeToken(profile admission.AuthorityFacts, now time.Time, hello Presentation, class uint8) ([]byte, error) {
+	defer measurement.Begin(runtimeevent.AdmissionPresent).End()
+
 	if !perm.CurrentFor(profile, now) {
 		return nil, TransferFailureAt("permission", errors.New("admission permission is no longer current"))
 	}
@@ -144,6 +150,7 @@ func (perm *permission) consumeToken(profile admission.AuthorityFacts, now time.
 		token := stock.Tokens[0]
 		stock.Tokens[0] = nil
 		stock.Tokens = stock.Tokens[1:]
+		perm.stockMetric.Add(-1)
 		if err := admissiontoken.VerifyClosedToken(challenge, spki, token); err != nil {
 			clear(token)
 			return nil, TransferFailureAt("verification", err)

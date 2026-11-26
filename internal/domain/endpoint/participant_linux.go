@@ -11,6 +11,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
@@ -39,6 +41,9 @@ type Progress struct {
 // root borrower joins. report renders public progress only; it supplies no
 // authority. The returned phase contains no paths, keys or remote identities.
 func Run(ctx context.Context, root string, report func(Progress) error) (phase string, result error) {
+	startupMeasurement := measurement.Begin(runtimeevent.EndpointStartup)
+	defer startupMeasurement.End()
+
 	if ctx == nil || report == nil {
 		return "", errors.New("invalid participant input")
 	}
@@ -311,6 +316,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			return phase, errors.Join(ErrUnavailable, err)
 		}
 	}
+	startupMeasurement.End()
 	phase = "running"
 	if err := network.Wait(ctx); err != nil {
 		return phase, errors.Join(ErrUnavailable, err)

@@ -334,6 +334,36 @@ limited to one profile request, 64 MiB and 30 seconds. Block/mutex sampling
 changes scheduling; reproduce latency again without profiling before drawing
 performance conclusions. `/runtime` is process observation, not readiness.
 
+## Internal domain measurements
+
+Rebuild both the selected command and the diagnostic helper from the current
+source. Enable the finite internal catalogue explicitly for the supervised
+command; use a fresh private output directory:
+
+```sh
+diag run -out /evidence/domain-run-a -timeout 5m -- \
+  env ARDENTS_LOCAL_METRICS=1 \
+  /evidence/bin/ardents-next node forwarding --config /evidence/node-config.json
+diag report -dir /evidence/domain-run-a -json
+```
+
+Supply the genuine configuration and state for the selected operation. This
+enables numeric owner measurements without enabling raw output retention.
+The saved capture's `/metrics` projection exposes the latest validated snapshot
+as `ardents_domain_*` series. The report lists instruments that were never
+observed; those are unavailable rather than measured zero. Process RSS and CPU
+remain separate process observations.
+
+The command samples once per second, retains at most 32 snapshots and emits
+them after its original work and cleanup return. Overwritten history is counted.
+A crash or forced kill can lose this window. For live delivery, `ardents-next`
+also accepts an explicit loopback OTLP HTTP endpoint through
+`ARDENTS_METRICS_OTLP_ENDPOINT` when local measurements are enabled. This uses
+the existing bounded telemetry transport. `ardents-custody` supports local
+measurement capture only and never uses that exporter setting. Names, types,
+units, domain coverage and interpretation limits belong to the
+[measurement owner](../../docs/development/local-diagnostics.md#internal-domain-measurements).
+
 ## Live panel and metrics
 
 ```sh

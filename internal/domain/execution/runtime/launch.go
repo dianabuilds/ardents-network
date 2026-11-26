@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution/worker"
 )
@@ -87,6 +89,8 @@ func (owner *Owner) launchJob(job *execution.Job, surface execution.Surface) (_ 
 }
 
 func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, protocol workerProtocol, publisher bool, readerCaller context.Context) (_ *Invocation, result error) {
+	defer measurement.Begin(runtimeevent.ExecutionLaunch).End()
+
 	bounded, cancel := context.WithTimeout(job.Context(), 15*time.Second)
 	defer cancel()
 	var activation *worker.Activation

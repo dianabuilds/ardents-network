@@ -7,8 +7,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
-
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/allocation"
 	admissiontoken "github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 )
@@ -16,16 +17,17 @@ import (
 // permission keeps exactly one holder/hour until its Owner revokes it.
 // The caller never receives the holder key or mutable retained state.
 type permission struct {
-	batches  uint8
-	reserved [3]uint32
-	pending  *batch
-	stock    map[admissiontoken.ClosedTokenContext]*stockEntry
-	profile  admission.AuthorityFacts
-	request  admission.PermissionRequest
-	public   []byte
-	digest   [32]byte
-	holder   ed25519.PrivateKey
-	accepted admission.Permission
+	stockMetric measurement.Gauge
+	batches     uint8
+	reserved    [3]uint32
+	pending     *batch
+	stock       map[admissiontoken.ClosedTokenContext]*stockEntry
+	profile     admission.AuthorityFacts
+	request     admission.PermissionRequest
+	public      []byte
+	digest      [32]byte
+	holder      ed25519.PrivateKey
+	accepted    admission.Permission
 }
 
 // BootstrapAllowance is the number of fresh bootstrap batches left for this
@@ -103,7 +105,7 @@ func preparePermission(scope requestScope) (*permission, []byte, [32]byte, error
 		clear(holder)
 		return nil, nil, [32]byte{}, err
 	}
-	permission := &permission{profile: scope.profile, request: request, public: public,
+	permission := &permission{stockMetric: measurement.Track(runtimeevent.AdmissionStockTokens), profile: scope.profile, request: request, public: public,
 		digest: sha256.Sum256(public), holder: holder}
 	return permission, bytes.Clone(public), permission.digest, nil
 }
@@ -133,6 +135,7 @@ func clearPermission(target *permission) {
 		target.pending.Pending.Discard()
 	}
 	for _, stock := range target.stock {
+		target.stockMetric.Decrease(uint64(len(stock.Tokens)))
 		for _, token := range stock.Tokens {
 			clear(token)
 		}

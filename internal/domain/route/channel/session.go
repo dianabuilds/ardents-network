@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
@@ -425,6 +427,7 @@ func (s *Session) read() {
 				err = errors.New("route receive credit exhausted")
 			} else {
 				l.receive -= uint32(len(f.Body))
+				l.receiveCreditMetric.Decrease(uint64(len(f.Body)))
 				if l.handshake {
 					l.handshakeBytes += uint32(len(f.Body))
 				}
@@ -438,6 +441,7 @@ func (s *Session) read() {
 				err = errors.New("route credit overflow")
 			} else {
 				l.credit += n
+				l.sendCreditMetric.Increase(uint64(n))
 				l.signalLocked()
 			}
 		case ardp.KindEOF:
@@ -570,6 +574,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	}
 	if f.Kind == ardp.KindBytes {
 		l.credit -= uint32(len(f.Body))
+		l.sendCreditMetric.Decrease(uint64(len(f.Body)))
 		if l.handshake {
 			l.handshakeOutput += uint32(len(f.Body))
 		}
@@ -669,7 +674,9 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 }
 
 func (s *Session) newLaneLocked(id uint32) *Lane {
-	l := &Lane{s: s, id: id, end: s.end, readEnd: s.end, writeEnd: s.end, credit: Window, receive: Window}
+	l := &Lane{sendCreditMetric: measurement.Track(runtimeevent.RouteSendCredit), receiveCreditMetric: measurement.Track(runtimeevent.RouteReceiveCredit), s: s, id: id, end: s.end, readEnd: s.end, writeEnd: s.end, credit: Window, receive: Window}
+	l.sendCreditMetric.Increase(uint64(Window))
+	l.receiveCreditMetric.Increase(uint64(Window))
 	l.ctx, l.cancel = context.WithCancelCause(s.ctx)
 	l.hardEnd = s.end
 	l.handshake = s.pending

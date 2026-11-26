@@ -148,8 +148,34 @@ func metricText(s summary) string {
 		kind := category.Kind
 		fmt.Fprintf(&b, "ardents_diagnostic_events_total{kind=%q} %d\n", kind, s.Counts[kind])
 	}
+	for i := len(s.LastEvents) - 1; i >= 0; i-- {
+		if point := s.LastEvents[i].Measurements; point != nil && runtimeevent.ValidMeasurementSnapshot(*point) {
+			_ = writeMeasurementMetrics(&b, *point)
+			break
+		}
+	}
 	return b.String()
 }
+
+// writeMeasurementMetrics renders catalogue series only. Capture start and
+// sample time remain explicit; historical capture data is not live readiness.
+func writeMeasurementMetrics(output io.Writer, point runtimeevent.MeasurementSnapshot) error {
+	series, err := runtimeevent.MeasurementSeriesFor(point)
+	if err != nil {
+		return err
+	}
+	for _, value := range series {
+		name := strings.ReplaceAll(runtimeevent.MeasurementScope, ".", "_") + "_" + strings.ReplaceAll(value.Name, ".", "_")
+		if value.Kind == runtimeevent.CounterSeries {
+			name += "_total"
+		}
+		if _, err = fmt.Fprintf(output, "# HELP %s Capture-local %s; unit %s.\n# TYPE %s %s\n%s %g\n", name, value.Name, value.Unit, name, value.Kind, name, value.Value); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func boolNumber(value bool) int {
 	if value {
 		return 1

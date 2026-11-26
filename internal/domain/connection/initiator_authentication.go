@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
@@ -19,6 +21,8 @@ import (
 // bound Reader destination. Exact certificate, protocol proof and coalesced
 // zero-offset Continuity all precede accepted initial state.
 func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physical *join.Joined) (_ *AuthenticatedAttachment, result error) {
+	defer measurement.Begin(runtimeevent.ConnectionAuthenticate).End()
+
 	if ctx == nil || binding == nil || binding.source == nil || physical == nil {
 		return nil, errIntegrity
 	}

@@ -42,6 +42,7 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 			candidate := p.readyInitial[0]
 			p.readyInitial[0] = nil
 			p.readyInitial = p.readyInitial[1:]
+			p.readyMetric.Add(-1)
 			if p.initialDeliveries[candidate.nonce] == candidate && candidate.wireJoined && !candidate.serviceClaimed && candidate.opening.stream == nil && candidate.ctx.Err() == nil {
 				candidate.serviceClaimed = true
 				state = candidate

@@ -73,20 +73,21 @@ func openBounded(dir, name string, limit int64) (*boundedFile, error) {
 }
 
 type event struct {
-	ObservedAt        time.Time          `json:"observed_at"`
-	At                string             `json:"at,omitempty"`
-	Schema            string             `json:"schema"`
-	Kind              string             `json:"kind"`
-	Owner             string             `json:"owner,omitempty"`
-	Phase             string             `json:"phase,omitempty"`
-	Delivery          string             `json:"delivery,omitempty"`
-	Outcome           string             `json:"outcome,omitempty"`
-	State             string             `json:"state,omitempty"`
-	Carrier           string             `json:"carrier,omitempty"`
-	Failure           string             `json:"failure,omitempty"`
-	UnknownCategories uint64             `json:"unknown_categories,omitempty"`
-	Resource          map[string]float64 `json:"resource,omitempty"`
-	Hosting           map[string]float64 `json:"hosting,omitempty"`
+	Measurements      *runtimeevent.MeasurementSnapshot `json:"measurements,omitempty"`
+	ObservedAt        time.Time                         `json:"observed_at"`
+	At                string                            `json:"at,omitempty"`
+	Schema            string                            `json:"schema"`
+	Kind              string                            `json:"kind"`
+	Owner             string                            `json:"owner,omitempty"`
+	Phase             string                            `json:"phase,omitempty"`
+	Delivery          string                            `json:"delivery,omitempty"`
+	Outcome           string                            `json:"outcome,omitempty"`
+	State             string                            `json:"state,omitempty"`
+	Carrier           string                            `json:"carrier,omitempty"`
+	Failure           string                            `json:"failure,omitempty"`
+	UnknownCategories uint64                            `json:"unknown_categories,omitempty"`
+	Resource          map[string]float64                `json:"resource,omitempty"`
+	Hosting           map[string]float64                `json:"hosting,omitempty"`
 }
 
 type summary struct {
@@ -149,7 +150,7 @@ func project(body []byte) (event, string) {
 		return event{}, "unknown"
 	}
 	e := event{ObservedAt: time.Now().UTC(), Schema: record.Schema, Kind: record.Kind, Phase: record.Phase, Outcome: record.Outcome, Delivery: record.Delivery,
-		Resource: record.Resource, Hosting: record.Hosting, UnknownCategories: record.UnknownCategories}
+		Measurements: record.Measurements, Resource: record.Resource, Hosting: record.Hosting, UnknownCategories: record.UnknownCategories}
 	if !record.At.IsZero() {
 		e.At = record.At.UTC().Format(time.RFC3339Nano)
 	}

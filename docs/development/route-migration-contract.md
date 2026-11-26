@@ -161,6 +161,19 @@ build-tagged code, external-package tests, transitive imports, alias imports,
 wrappers, callback adapters, plugins and local protocol bridges to old runtime.
 Renaming or moving an old bridge to another directory does not make it new.
 
+On 2026-11-27 the Product Owner explicitly authorized the bounded diagnostic
+measurement edges recorded in [the selected issue decision](https://github.com/dianabuilds/ardents-network/issues/913#issuecomment-7202407674).
+Only `internal/domain/route/channel/{child_capacity,frame_schedule,lane,queue_budget,session}.go`
+and its `measurement_test.go` may import `internal/diagnostics/measurement`;
+only `frame_schedule.go`, `queue_budget.go`, `session.go` and that test may
+import `internal/diagnostics/runtimeevent`. The exact source registration is
+enforced by the architecture guard and package map. These supporting leaves
+retain only finite numeric observations and depend on the standard library
+and the finite event catalogue; they hold no Route authority, root, private
+identity or domain object and perform no producer I/O or callbacks. This
+permission grants no SDK, network-client, old-runtime or additional Route-file
+dependency. All other R01–R08 restrictions and mandatory checks remain.
+
 No new/old owner may share a mutable runtime object, context lock, live ledger,
 root lease or reservation as a migration shortcut. Existing Network-specific
 exceptions confer no Route exception. Do not add one.

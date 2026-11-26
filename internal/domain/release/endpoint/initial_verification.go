@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/domain/release"
 )
@@ -23,6 +25,8 @@ type InitialVerification struct {
 // VerifyInitial verifies the running program and joins the Release verifier
 // before returning any result. It does not install or start an Endpoint.
 func VerifyInitial(ctx context.Context, bundleRoot, pin, history string, ref time.Time) InitialVerification {
+	defer measurement.Begin(runtimeevent.ReleaseVerify).End()
+
 	unavailable := InitialVerification{Outcome: "release-unavailable"}
 	if ctx == nil {
 		return unavailable
