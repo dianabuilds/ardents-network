@@ -177,7 +177,7 @@ Execution — worker; эти обязанности не переходят к C
 новую физическую попытку в исходных пределах; Execution — точную живую операцию,
 проверяемую перед эффектами и окончательной передачей результата.
 
-**Где искать обязанности:** `internal/service/connection`, Service binding
+**Где искать обязанности:** `internal/domain/connection`, Service binding
 и восстановление в `internal/domain/endpoint`, `internal/domain/endpoint/service`.
 Механизмы и полномочия разбираются отдельно; старые callbacks не переносятся
 как междоменный контракт.

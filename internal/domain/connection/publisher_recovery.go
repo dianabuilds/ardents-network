@@ -6,7 +6,7 @@ import (
 
 	"context"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/route/join"
 	"github.com/dianabuilds/ardents-network/internal/route/prefix"

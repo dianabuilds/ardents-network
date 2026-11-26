@@ -43,7 +43,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 		path, constant string
 		postRead       bool
 	}{
-		{"internal/connection/attachment_record_reader.go", "connectionControlFramingReadLine", false},
+		{"internal/domain/connection/attachment_record_reader.go", "connectionControlFramingReadLine", false},
 		{"internal/domain/publication/instance/service_attachment.go", "connectionControlReadRecheckLine", true},
 	} {
 		file := parse(site.path)
@@ -98,7 +98,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 	// The independent-progress control waits for a genuine received record's
 	// commit, then its next physical input. Moving either site must fail the
 	// profile rather than silently selecting a different progress boundary.
-	records := parse("internal/connection/stream_records.go")
+	records := parse("internal/domain/connection/stream_records.go")
 	for _, site := range []struct{ call, constant string }{
 		{"readRecord", "connectionProgressReadLine"},
 		{"commit", "connectionProgressCommitLine"},
@@ -158,8 +158,8 @@ func TestSuccessorConnectionControlProfileSelectsOriginalWriteSites(t *testing.T
 	}{
 		{"internal/domain/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteBeforeLine", "enter", false},
 		{"internal/domain/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteAfterLine", "recheck", true},
-		{"internal/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteBeforeLine", "enter", false},
-		{"internal/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteAfterLine", "check", true},
+		{"internal/domain/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteBeforeLine", "enter", false},
+		{"internal/domain/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteAfterLine", "check", true},
 	} {
 		file, err := parser.ParseFile(set, filepath.Join(root, site.path), nil, 0)
 		if err != nil {

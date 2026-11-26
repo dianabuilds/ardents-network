@@ -52,7 +52,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 		}
 		if !slices.Contains(currentRoutePackages, owner) {
 			switch owner {
-			case "cmd/ardents-next", "internal/connection", "internal/domain/endpoint", "internal/domain/endpoint/funding",
+			case "cmd/ardents-next", "internal/domain/connection", "internal/domain/endpoint", "internal/domain/endpoint/funding",
 				"internal/domain/endpoint/publisher", "internal/domain/endpoint/reader", "internal/domain/endpoint/session",
 				"internal/domain/node", "internal/domain/publication/instance", "internal/domain/publication/runtime":
 			default:

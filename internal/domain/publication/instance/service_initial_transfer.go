@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 // SendInitial writes the Connection-verified coalesced response on this exact

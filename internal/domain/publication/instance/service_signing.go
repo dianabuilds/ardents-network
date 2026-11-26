@@ -7,7 +7,7 @@ import (
 	"crypto/ed25519"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 // This private signer is confined inside TLS and accepts only TLS1.3 server

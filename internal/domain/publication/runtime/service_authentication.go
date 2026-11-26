@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/connection"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	"github.com/dianabuilds/ardents-network/internal/route/join"
 )
 
