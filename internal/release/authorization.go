@@ -148,6 +148,22 @@ type Decision struct {
 	EvidenceNotice string
 }
 
+// SameBuildPolicy compares the shared build and protocol facts of two full target decisions.
+// It does not authenticate either decision.
+func (p Decision) SameBuildPolicy(g Decision) bool {
+	return p.SourceRevision == g.SourceRevision &&
+		p.BuildInputCommitment == g.BuildInputCommitment &&
+		p.AttestationPolicy == g.AttestationPolicy &&
+		p.Qualification == g.Qualification &&
+		p.BuildState == g.BuildState &&
+		p.ProtocolPhase == g.ProtocolPhase &&
+		p.BuildSafety == g.BuildSafety &&
+		p.Protocol == g.Protocol &&
+		p.BuildSafetyNoNewWorkAfter.Equal(g.BuildSafetyNoNewWorkAfter) &&
+		p.BuildSafetyTerminateAfter.Equal(g.BuildSafetyTerminateAfter) &&
+		p.ProtocolTransitionDeadline.Equal(g.ProtocolTransitionDeadline)
+}
+
 type Authorization struct {
 	accepted *acceptedAuthorization
 }

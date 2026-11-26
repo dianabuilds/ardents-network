@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/release"
@@ -53,5 +54,37 @@ func TestDetachedInventoryCannotMutateOrMintPrivateProofs(t *testing.T) {
 	}
 	if _, ok := observed.InitialFacts(); ok {
 		t.Fatal("observed bytes became initial pin provenance")
+	}
+}
+
+func TestSharedPolicyRequiresEveryCommonFact(t *testing.T) {
+	at := time.Unix(1234, 0).UTC()
+	d := GenerationDeclaration{Platform: "linux-amd64", ReleaseIdentity: "release", ReleaseVersion: 1}
+	original := release.Decision{Path: ProgramTarget, Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, ProtocolTransitionDeadline: at}
+	same := original
+	same.Path = GenerationTarget
+	same.ProtocolTransitionDeadline = at.In(time.FixedZone("offset", 3600))
+	same.Outcome = release.OutcomeNoUpdate
+	if !coherentReleasePair(original, same, d) {
+		t.Fatal("equal instants and distinct overall outcomes must agree")
+	}
+	for field, change := range map[string]func(*release.Decision){
+		"SourceRevision":             func(d *release.Decision) { d.SourceRevision = "different" },
+		"BuildInputCommitment":       func(d *release.Decision) { d.BuildInputCommitment = "different" },
+		"AttestationPolicy":          func(d *release.Decision) { d.AttestationPolicy = "different" },
+		"Qualification":              func(d *release.Decision) { d.Qualification = "different" },
+		"BuildState":                 func(d *release.Decision) { d.BuildState = "different" },
+		"ProtocolPhase":              func(d *release.Decision) { d.ProtocolPhase = "different" },
+		"BuildSafety":                func(d *release.Decision) { d.BuildSafety = "different" },
+		"Protocol":                   func(d *release.Decision) { d.Protocol = "different" },
+		"BuildSafetyNoNewWorkAfter":  func(d *release.Decision) { d.BuildSafetyNoNewWorkAfter = at.Add(time.Hour) },
+		"BuildSafetyTerminateAfter":  func(d *release.Decision) { d.BuildSafetyTerminateAfter = at.Add(time.Hour) },
+		"ProtocolTransitionDeadline": func(d *release.Decision) { d.ProtocolTransitionDeadline = at.Add(time.Hour) },
+	} {
+		changed := same
+		change(&changed)
+		if coherentReleasePair(original, changed, d) {
+			t.Errorf("accepted different %s", field)
+		}
 	}
 }

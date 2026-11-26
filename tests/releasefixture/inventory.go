@@ -21,6 +21,21 @@ import (
 // supplied command. The resulting bundle can drive Enrollment and Release.
 func SignedRelease(t *testing.T, command string, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *ReleaseAuthority, metadataVersion, releaseVersion int64, legacyCustody ...[]byte) (string, string, string) {
 	t.Helper()
+	return signedRelease(t, command, platform, protected, generation, generationVersion, resources, authority, metadataVersion, releaseVersion, "", legacyCustody...)
+}
+
+// SignedPolicyMismatch creates a test-only Endpoint pair whose two targets are
+// individually valid under the fixture authority.
+func SignedPolicyMismatch(t *testing.T, command, field string, resources map[string][]byte, authority *ReleaseAuthority, metadataVersion int64) (string, string, string) {
+	t.Helper()
+	if field != "source_revision" && field != "build_safety_no_new_work_after" {
+		t.Fatal("unknown mismatch", field)
+	}
+	return signedRelease(t, command, "linux-amd64", true, true, 1, resources, authority, metadataVersion, 1, field)
+}
+
+func signedRelease(t *testing.T, command string, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *ReleaseAuthority, metadataVersion, releaseVersion int64, mismatch string, legacyCustody ...[]byte) (string, string, string) {
+	t.Helper()
 	_, architecture, validPlatform := strings.Cut(platform, "-")
 	if !validPlatform || architecture == "" {
 		t.Fatal("fixture requires an explicit target architecture")
@@ -99,6 +114,15 @@ func SignedRelease(t *testing.T, command string, platform string, protected, gen
 		var generationAttestations []map[string]string
 		for _, id := range []string{"test-builder-one", "test-builder-two"} {
 			generationAttestations = append(generationAttestations, map[string]string{"builder_identity": id, "build_identity": "test-build", "source_revision": "test-source", "build_input_commitment": "test-inputs", "target_sha256": hex.EncodeToString(generationDigest[:])})
+		}
+		switch mismatch {
+		case "source_revision":
+			generationFields[mismatch] = "fixture-generation-revision"
+			for _, record := range generationAttestations {
+				record[mismatch] = "fixture-generation-revision"
+			}
+		case "build_safety_no_new_work_after":
+			generationFields[mismatch] = ref.Add(31 * 24 * time.Hour)
 		}
 		generationFields["builder_attestations"] = generationAttestations
 		encoded, err := json.Marshal(generationFields)

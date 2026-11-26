@@ -19,9 +19,11 @@ import (
 	"testing"
 	"time"
 
+	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
@@ -62,6 +64,7 @@ type endpointPlatformNativeStand struct {
 	decl             requestinput.Declaration
 	pin              string
 	unit             []byte
+	authority        *releasefixture.ReleaseAuthority
 	accountUID       int
 }
 
@@ -254,6 +257,74 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 	if raw, err := os.ReadFile(selectedPath); err != nil || !bytes.Equal(raw, selectedBytes) {
 		t.Fatalf("repeat staging changed selection: %v", err)
 	}
+	bindingPath := filepath.Join(sealed, "binding.json")
+	binding, err := os.ReadFile(bindingPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var header struct{ Schema string }
+	if json.Unmarshal(binding, &header) != nil || header.Schema != "ardents-endpoint-installation-binding-v1" {
+		t.Fatal("expected staged binding v1")
+	}
+
+	stagedLaunch := endpointfixture.NativeLaunch(t, requestPath, decl.BundleRoot)
+	manifestBytes, err := json.Marshal(stagedLaunch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestBytes = append(manifestBytes, '\n')
+	if err := os.WriteFile(stand.manifest, manifestBytes, 0644); err != nil {
+		t.Fatal(err)
+	}
+	launchPin := releasefixture.FixtureDigest(manifestBytes)
+	unit, err := exec.Command(program, "platform", "unit", stand.manifest).Output()
+	if err != nil {
+		t.Fatal("render staged unit", err)
+	}
+	if err := os.WriteFile("/etc/systemd/system/ardents-endpoint.service", unit, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("systemctl", "daemon-reload").CombinedOutput(); err != nil {
+		t.Fatalf("reload: %v %s", err, out)
+	}
+	prestart := func() ([]byte, error) {
+		return exec.Command("systemd-run", "--quiet", "--wait", "--pipe", "--collect", program, "platform", "check", stand.manifest, launchPin).CombinedOutput()
+	}
+	if out, err := prestart(); err != nil {
+		t.Fatalf("binding v1 pre-start: %v %s", err, out)
+	}
+	inconsistent, _, _ := releasefixture.SignedPolicyMismatch(t, stand.binary, "build_safety_no_new_work_after", endpointfixture.NativeResources(), stand.authority, 2)
+	if err := os.Rename(decl.BundleRoot, decl.BundleRoot+"-coherent"); err != nil {
+		t.Fatal(err)
+	}
+	endpointfixture.CopyNativeDistribution(t, inconsistent, decl.BundleRoot)
+	out, refusal := prestart()
+	var exit *exec.ExitError
+	if !errors.As(refusal, &exit) || exit.ExitCode() != 1 || len(out) != 0 {
+		t.Fatalf("expected platform refusal: %v %s", refusal, out)
+	}
+	v, err := release.OpenRetained(decl.ReleaseFloorRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := v.CurrentFloors(t.Context())
+	if err = errors.Join(err, v.Close()); err != nil || after.TargetsVersion != 2 {
+		t.Fatalf("pre-start did not reach new signed metadata: %v %d", err, after.TargetsVersion)
+	}
+	// The CLI exposes a bounded exit status. Reobserve the same platform
+	// handoff to distinguish a policy refusal from a native prerequisite failure.
+	observations := &artifacts.PlatformInputs{}
+	_, cause := endpointlaunch.VerifyPlatform(t.Context(), observations, endpointlaunch.PlatformCheckStart, stand.manifest, launchPin, manifestBytes)
+	if closeErr := observations.Close(); closeErr != nil || !errors.Is(cause, endpointlaunch.ErrBinding) {
+		t.Fatalf("pre-start refusal: %v, close: %v", cause, closeErr)
+	}
+	for path, want := range map[string][]byte{selectedPath: selectedBytes, bindingPath: binding} {
+		got, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("changed staged file %s: %v", path, err)
+		}
+	}
+
 }
 
 // provisionEndpointPlatformNativeStand builds genuine platform delivery on the
@@ -276,7 +347,7 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	// initial-pin provenance and the actual two-target authorization.
 	firstDir, firstPin, firstProgram := releasefixture.SignedRelease(t, binary, "linux-amd64", true, true, 1, resources, authority, 1, 1)
 
-	stand := &endpointPlatformNativeStand{binary: binary, binaryBytes: binaryBytes}
+	stand := &endpointPlatformNativeStand{binary: binary, binaryBytes: binaryBytes, authority: authority}
 	stand.base = filepath.Join("/var/lib/ardents", fmt.Sprintf("ep-proof-%d-%d", os.Getpid(), time.Now().UnixNano()))
 	stand.installationRoot = filepath.Join(stand.base, "endpoint")
 	stand.releaseFloorRoot = filepath.Join(stand.base, "release-trust")

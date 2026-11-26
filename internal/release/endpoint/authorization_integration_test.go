@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -351,5 +352,95 @@ func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
 		if _, ok := input.Files["https://release.invalid/metadata/"+name]; !ok {
 			t.Fatalf("missing actual metadata %s", name)
 		}
+	}
+}
+
+func TestSignedPolicyMismatchRetainsFloors(t *testing.T) {
+	for _, field := range []string{"source_revision", "build_safety_no_new_work_after"} {
+		t.Run(field, func(t *testing.T) {
+			ctx := t.Context()
+			exe, err := os.Executable()
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir, pin, program := releasefixture.SignedPolicyMismatch(t, exe, field, nil, nil, 1)
+			bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: dir, ManifestSHA256: pin, ExecutablePath: program})
+			if err != nil {
+				t.Fatal(err)
+			}
+			input, ok := installationFixtureInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+			if !ok {
+				t.Fatal("missing input")
+			}
+			control, err := release.Open(filepath.Join(t.TempDir(), "control"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := control.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			other := input
+			other.TargetPath = endpointrelease.GenerationTarget
+			other.Artifact, ok = bundle.File("protected-endpoint.json")
+			if !ok {
+				t.Fatal("missing descriptor")
+			}
+			for _, target := range []release.Inputs{input, other} {
+				d := control.Evaluate(ctx, target)
+				if _, ok := d.Authorization(); !ok {
+					t.Fatalf("individual target %s refused: %v", target.TargetPath, d.Err())
+				}
+			}
+			expected, err := control.CurrentFloors(ctx)
+			if err != nil || !expected.Complete() {
+				t.Fatal("incomplete control floors", err)
+			}
+			history := filepath.Join(t.TempDir(), "history")
+			verifier, err := release.Open(history)
+			if err != nil {
+				t.Fatal(err)
+			}
+			pair, refusal := endpointrelease.AuthenticateInitial(ctx, verifier, bundle, input)
+			check := func(pair endpointrelease.Authorization, refusal error) {
+				t.Helper()
+				p, g := pair.Targets()
+				_, pok := p.AcceptedDecision()
+				_, gok := g.AcceptedDecision()
+				if !errors.Is(refusal, endpointrelease.ErrBinding) || pok || gok {
+					t.Fatalf("pair result: %v (%v,%v)", refusal, pok, gok)
+				}
+			}
+			if err := verifier.Close(); err != nil {
+				t.Fatal(err)
+			}
+			check(pair, refusal)
+			reopen := func() *release.Verifier {
+				t.Helper()
+				v, err := release.OpenRetained(history)
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := v.CurrentFloors(ctx)
+				if err != nil || !reflect.DeepEqual(got, expected) {
+					t.Fatal("reopened floors differ", err)
+				}
+				return v
+			}
+			candidate, err := enrollment.ReadCandidate(ctx, dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			verifier = reopen()
+			pair, refusal = endpointrelease.AuthenticateCandidate(ctx, verifier, candidate, input)
+			if err := verifier.Close(); err != nil {
+				t.Fatal(err)
+			}
+			check(pair, refusal)
+			if err := reopen().Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
