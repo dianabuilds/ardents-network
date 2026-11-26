@@ -14,7 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/introduction"

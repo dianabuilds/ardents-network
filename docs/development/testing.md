@@ -1591,7 +1591,7 @@ cgroup quiescence remains separate Linux/systemd evidence.
 
 `TestHostingInspectionNative*` is a separate owner selection in the same
 root/ext4 `network-signing-linux` profile:
-`go test -race -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`
+`go test -race -tags network_signing_native ./internal/domain/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`
 (also run by `make network-signing-check`; E1-2 executed proof restored).
 It uses actual Hosting initialization, kernel interface observations and durable
 reservations, then independently inspects original bytes/policy/principal under
@@ -3223,7 +3223,7 @@ durable behavior tests. The other 21 files keep their Linux constraint:
   `application/document/reader_connection_fixture_test.go` (serves only the Linux
   AAI3 listener control).
 - Tests that open Linux-only production seams and refuse at runtime on other
-  platforms: `internal/hosting/counter_linux_test.go` (Hosting platform lease
+  platforms: `internal/domain/hosting/counter_linux_test.go` (Hosting platform lease
   and `/sys` counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
   (the retained-opening test is Linux-selected),
   `admission/issuer/lifecycle_linux_test.go` (issuance `storage_linux.go`/

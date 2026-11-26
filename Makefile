@@ -425,12 +425,12 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/domain/enrollment/... ./internal/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/domain/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/domain/enrollment/... ./internal/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
 hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/hosting ./internal/admission/receiving ./internal/domain/node -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/hosting ./internal/admission/receiving ./internal/domain/node -count=1 -timeout=3m,$(error hosting-check requires Linux))
 	go test -race ./tests/e2e/node -run '^Test(AdmissionHostingReservationAndWork|HostingPlanExactFields|HostingCompiledCLIInitializationAndObservation|HostingOTLPContainsOnlyFiniteAttributes|HostingCollectorFailurePreservesCommittedResult|CanceledSocketChildRetainsReservationUntilJoined)' -count=1 -timeout=3m
 
 .PHONY: admission-check
@@ -496,7 +496,7 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/duty ./internal/network/state -run '^TestNodeInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/admission/spending -run '^TestSpendInspectionNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/hosting -run '^TestHostingInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/artifacts -run '^TestSourcePreparationNative(OutputSubstitutionRefuses|PublicMountRefusal)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/node/provisioning -run '^Test(NetworkSigning(InitialKeys|OriginalCancellationBeforeEffects|OriginalTimeAfterIO|DurableInventory|ConcurrentOutput|UnsupportedMount|OriginalInputCustody|OriginalRefusalCannotRevive|InterruptedChild|ActualPartialAndProcessCuts|Profile(NativeCommit|ActualExpiry|ReceiptExpiry|Contention)|NodeCertificate(LateTime|FinalOutputAndPhysicalFailure|Contention))|ControlProvisioningKeysNativeRoleAndPurpose|Role(NodeProvision|EpochProvision|Profile|TokenMaterial)Native|Forwarding(TokenAuthority|TokenMaterial)Native)' -count=1 -v -timeout=3m

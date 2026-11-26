@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 )
 
 type net32IdleSample struct {

@@ -67,7 +67,7 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 		if !routeDependency {
 			switch local {
 			case "internal/admission", "internal/admission/receiving", "internal/admission/spending",
-				"internal/durablefile", "internal/hosting", "internal/network", "internal/network/state", "internal/pathgrammar", "internal/reachability":
+				"internal/durablefile", "internal/domain/hosting", "internal/network", "internal/network/state", "internal/pathgrammar", "internal/reachability":
 			default:
 				return false
 			}
@@ -120,7 +120,7 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/route", false},
 		{"new Admission boundary", "internal/route/receiver/admission.go", modulePath + "/internal/admission/receiving", true},
 		{"new Network boundary", "internal/route/prefix/prefix.go", modulePath + "/internal/network/state", true},
-		{"new Hosting boundary", "internal/route/receiver/reservation.go", modulePath + "/internal/hosting", true},
+		{"new Hosting boundary", "internal/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
 		{"migrated Endpoint consumer", "internal/endpoint/history_preparation_linux.go", modulePath + "/internal/route/selection", true},
 		{"unregistered Endpoint subpackage", "internal/endpoint/old/source_linux_test.go", modulePath + "/internal/route/selection", false},
 		{"unregistered Admission subpackage", "internal/route/receiver/admission.go", modulePath + "/internal/admission/legacy", false},

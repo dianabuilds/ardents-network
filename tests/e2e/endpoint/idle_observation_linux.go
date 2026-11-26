@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 )
 
 // MeasureNET32Idle observes the installed Endpoint and evaluates one idle window.
