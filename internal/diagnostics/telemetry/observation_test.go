@@ -1,8 +1,9 @@
 package telemetry
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 func TestCollectorEndpointValidation(t *testing.T) {

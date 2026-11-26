@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"io"
 	"os"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/operator"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"

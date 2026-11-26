@@ -3,8 +3,9 @@ package endpoint
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 func runEndpointPlanConstruction(ctx context.Context, args []string, diagnostic io.Writer) int {

@@ -2,10 +2,11 @@ package telemetry
 
 import (
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 func TestDisabledAndFailedOpeningHaveDifferentDeliveryStatus(t *testing.T) {

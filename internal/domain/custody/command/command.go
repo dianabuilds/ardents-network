@@ -3,10 +3,10 @@ package command
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"io"
 	"os"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 )
 

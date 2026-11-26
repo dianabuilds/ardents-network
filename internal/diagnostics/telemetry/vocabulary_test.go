@@ -2,7 +2,7 @@ package telemetry
 
 import (
 	"bytes"
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	"google.golang.org/protobuf/proto"
 )
 
 // The collector is the oracle: rejection must happen before either SDK emits
