@@ -25,7 +25,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 
@@ -80,7 +80,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&networkPlan), ProcessProfile: processresource.SourceProfile,
+	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&networkPlan), ProcessProfile: processguard.SourceProfile,
 		ParticipationRoot: filepath.Join(t.TempDir(), "participation"), Address: address, Certificate: cert, PrivateKey: key, ClientRoot: rootPath, ClientPins: [][32]byte{clientPin}}
 	raw, err := json.Marshal(plan)
 	if err != nil {
@@ -326,7 +326,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	var terminal struct {
 		Phase, Outcome string
 		First          string `json:"first_owner"`
-		Resource       *processresource.FailureFacts
+		Resource       *processguard.FailureFacts
 	}
 	expectedCode, expectedOutcome := 130, "canceled"
 	if mode != "cancel" {

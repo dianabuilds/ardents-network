@@ -151,7 +151,7 @@ are restricted to the current registered owners and exact package-map edges.
 mechanism `internal/durablefile` (R1, #764), a new foundation mechanism with
 no old-runtime lineage; this is a registered package-map edge, not a predecessor
 import. `internal/domain/route/introduction` likewise consumes the shared pure
-path-validation grammar leaf `internal/pathgrammar` (G7, #772), another new
+path-validation grammar leaf `internal/pathcheck` (G7, #772), another new
 foundation mechanism with no old-runtime lineage and a registered package-map
 edge. It must never import or execute a predecessor implementation, including code
 formerly at these same canonical paths before legacy retirement. Old packages, commands and

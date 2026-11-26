@@ -3,7 +3,7 @@ package issuance
 import (
 	"encoding/json"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // InventoryPlan contains the local roots and binding for inventory delivery.
@@ -20,8 +20,8 @@ func DecodeInventoryPlan(raw []byte) (InventoryPlan, error) {
 	if err != nil {
 		return plan, err
 	}
-	if json.Unmarshal(fields["root"], &plan.Root) != nil || !pathgrammar.Strict(plan.Root) ||
-		json.Unmarshal(fields["inventory_file"], &plan.InventoryFile) != nil || !pathgrammar.Strict(plan.InventoryFile) ||
+	if json.Unmarshal(fields["root"], &plan.Root) != nil || !pathcheck.IsCleanAbsolute(plan.Root) ||
+		json.Unmarshal(fields["inventory_file"], &plan.InventoryFile) != nil || !pathcheck.IsCleanAbsolute(plan.InventoryFile) ||
 		!OutputOutsideRoots(plan.InventoryFile, plan.Root) {
 		return plan, ErrInvalid
 	}

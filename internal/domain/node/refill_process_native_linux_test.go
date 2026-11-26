@@ -29,7 +29,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 	roletls "github.com/dianabuilds/ardents-network/internal/domain/route/transport/tls"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -113,7 +113,7 @@ func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 					certPath, keyPath := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, key))
 					root, spend, budgetRoot := filepath.Join(t.TempDir(), "participation"), t.TempDir(), processfixture.ProcessBudget(t)
 					work, termination := hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
-					plan := map[string]any{"network": seed(), "node_id": id, "process_profile": processresource.Profile,
+					plan := map[string]any{"network": seed(), "node_id": id, "process_profile": processguard.ForwardingProfile,
 						"participation_root": root, "spend_root": spend, "hosting_root": budgetRoot, "certificate": certPath,
 						"private_key": keyPath, "work": work, "termination": termination, "retirement_wait_ms": 5000}
 					planBytes, err := json.Marshal(plan)

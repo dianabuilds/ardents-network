@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // Run serves one original Source invocation and waits for its physical join.
@@ -27,7 +27,7 @@ func Run(ctx context.Context, planPath string, retained bool, report func(contex
 		}
 		return Refused
 	}
-	var guard *processresource.Guard
+	var guard *processguard.Guard
 	var operation error
 	var config state.Config
 	var completion state.SourceCompletion
@@ -84,7 +84,7 @@ func Run(ctx context.Context, planPath string, retained bool, report func(contex
 	admissionCtx, cancelAdmission := context.WithCancel(inputs.Context())
 	deny := func() { inputs.Deny(); cancelAdmission() }
 	defer deny()
-	guard, err = processresource.Open(admissionCtx, processresource.SourceProfile)
+	guard, err = processguard.Open(admissionCtx, processguard.SourceProfile)
 	if err != nil {
 		operation = &Terminal{FirstOwner: "process", First: err}
 		return Refused

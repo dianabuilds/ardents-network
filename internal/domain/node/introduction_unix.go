@@ -16,8 +16,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // IntroductionConfig declares one original authenticated Introduction duty. State
@@ -95,7 +95,7 @@ func ListenIntroductionRetained(ctx context.Context, config IntroductionConfig) 
 }
 
 func listenIntroduction(ctx context.Context, config IntroductionConfig, retained bool) (_ *Introduction, result error) {
-	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.IntroductionRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathcheck.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.IntroductionRoot) {
 		return nil, errors.New("original Introduction configuration invalid")
 	}
 	if err := ctx.Err(); err != nil {
@@ -110,7 +110,7 @@ func listenIntroduction(ctx context.Context, config IntroductionConfig, retained
 		}
 	}()
 	var err error
-	f.process, err = processresource.Open(f.ctx, processresource.IntroductionProfile)
+	f.process, err = processguard.Open(f.ctx, processguard.IntroductionProfile)
 	if err != nil {
 		return nil, err
 	}

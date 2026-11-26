@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // InspectProcess drives the same genuine process owner as the original
 // Forwarding composition. It grants no duty or readiness and emits no native
 // path/error text. Queue and timer counts are explicitly unmeasured here.
 func InspectProcess(ctx context.Context, out io.Writer) int {
-	guard, err := processresource.Open(ctx, processresource.Profile)
+	guard, err := processguard.Open(ctx, processguard.ForwardingProfile)
 	if err != nil {
 		return writeNodeProcessResult(out, "unavailable", nil)
 	}
@@ -24,13 +24,13 @@ func InspectProcess(ctx context.Context, out io.Writer) int {
 	return writeNodeProcessResult(out, "observed", &observation)
 }
 
-func writeNodeProcessResult(out io.Writer, outcome string, observation *processresource.Observation) int {
+func writeNodeProcessResult(out io.Writer, outcome string, observation *processguard.Observation) int {
 	result := struct {
-		Operation   string                       `json:"operation"`
-		Outcome     string                       `json:"outcome"`
-		Queues      string                       `json:"queues"`
-		Timers      string                       `json:"timers"`
-		Observation *processresource.Observation `json:"observation,omitempty"`
+		Operation   string                    `json:"operation"`
+		Outcome     string                    `json:"outcome"`
+		Queues      string                    `json:"queues"`
+		Timers      string                    `json:"timers"`
+		Observation *processguard.Observation `json:"observation,omitempty"`
 	}{"node.inspect-process", outcome, "unmeasured", "unmeasured", observation}
 	if json.NewEncoder(out).Encode(result) != nil {
 		return 2

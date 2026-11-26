@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -31,7 +31,7 @@ type receivingStartupRole struct {
 
 func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 	testNativeReceivingStartup(t, receivingStartupRole{
-		name: "descriptor", profile: processresource.DescriptorProfile, id: 17, domain: 2, subrole: 5,
+		name: "descriptor", profile: processguard.DescriptorProfile, id: 17, domain: 2, subrole: 5,
 		historyField: "descriptor_root", historyMarker: ".ardents-reachability-store-v3", lateFault: "foreign-store",
 		work: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10},
 	})
@@ -39,7 +39,7 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 
 func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 	testNativeReceivingStartup(t, receivingStartupRole{
-		name: "introduction", profile: processresource.IntroductionProfile, id: 25, domain: 4, subrole: 3,
+		name: "introduction", profile: processguard.IntroductionProfile, id: 25, domain: 4, subrole: 3,
 		historyField: "introduction_root", historyMarker: "closed-introduction-slots", lateFault: "foreign-history",
 		work: hosting.Traffic{Tx: 1 << 20, Rx: 1 << 20},
 	})
@@ -47,7 +47,7 @@ func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 
 func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 	testNativeReceivingStartup(t, receivingStartupRole{
-		name: "join", profile: processresource.JoinProfile, id: 20, domain: 2, subrole: 4,
+		name: "join", profile: processguard.JoinProfile, id: 20, domain: 2, subrole: 4,
 		lateFault: "listener", work: hosting.Traffic{Tx: 32 << 20},
 	})
 }
@@ -105,7 +105,7 @@ func testReceivingStartupFault(t *testing.T, binary string, role receivingStartu
 	var foreign string
 	switch fault {
 	case "profile":
-		plan["process_profile"], expected = processresource.Profile, 2
+		plan["process_profile"], expected = processguard.ForwardingProfile, 2
 	case "unknown-field":
 		plan["accepting"], expected = true, 2
 	case "nested-roots":

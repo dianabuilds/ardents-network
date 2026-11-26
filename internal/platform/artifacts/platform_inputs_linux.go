@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // PlatformInputs retains native observations for one stopped or pre-start
@@ -34,7 +34,7 @@ type platformInputFile struct {
 // users and retains its original owner/inode/bytes. All ancestors are root-only
 // writable, and all these paths are outside the unit's runtime write grants.
 func (f *PlatformInputs) ReadRuntime(path string, maximum int64, private bool) ([]byte, error) {
-	if !pathgrammar.LiteralPOSIXPath(path) || !strings.HasPrefix(path, "/etc/ardents/") {
+	if !pathcheck.LiteralPOSIXPath(path) || !strings.HasPrefix(path, "/etc/ardents/") {
 		return nil, ErrInput
 	}
 	p, err := OpenDirectoryChain(context.Background(), filepath.Dir(path), nil)
@@ -66,7 +66,7 @@ func (f *PlatformInputs) ReadRuntime(path string, maximum int64, private bool) (
 }
 
 func (f *PlatformInputs) RetainDirectory(path string) error {
-	if !pathgrammar.LiteralPOSIXPath(path) {
+	if !pathcheck.LiteralPOSIXPath(path) {
 		return ErrInput
 	}
 	p, err := OpenDirectoryChain(context.Background(), path, nil)
@@ -78,7 +78,7 @@ func (f *PlatformInputs) RetainDirectory(path string) error {
 }
 
 func (f *PlatformInputs) Read(path string, maximum int64, executable bool) ([]byte, error) {
-	if !pathgrammar.LiteralPOSIXPath(path) {
+	if !pathcheck.LiteralPOSIXPath(path) {
 		return nil, ErrInput
 	}
 	input, err := OpenProtectedInput(context.Background(), path, maximum, false)
@@ -145,7 +145,7 @@ func (f *PlatformInputs) Close() error {
 // CheckRunningExecutable compares the actual mapped executable identity and
 // bytes with the original root-controlled enrolled artifact.
 func CheckRunningExecutable(path string, wanted []byte) (result error) {
-	if !pathgrammar.LiteralPOSIXPath(path) {
+	if !pathcheck.LiteralPOSIXPath(path) {
 		return ErrInput
 	}
 	self, err := os.Open("/proc/self/exe")

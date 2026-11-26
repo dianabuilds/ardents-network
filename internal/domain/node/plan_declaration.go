@@ -7,14 +7,14 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // This file owns the original node-role runtime invocation declaration grammar:
 // a pure closed byte codec mirroring network/source/servingdeclaration.ServingDeclaration. It is
 // configuration validation kept with the runtime owner (ADR-0125 decision 6).
 // It performs no State acceptance, no root creation, no hosting initialization
-// and no processresource policy; those stay with their separate owners. The
+// and no processguard policy; those stay with their separate owners. The
 // command composition converts these declarations into state.Config. Runtime invocation
 // validation checks the fixed role profile and separated roots. The codec returns
 // facts only and opens no resource.
@@ -111,23 +111,23 @@ func DecodeNodeNetwork(raw []byte) (Network, error) {
 
 // ValidInvocation checks the fixed role profile, retirement bound and distinct roots.
 func (plan ForwardingPlan) ValidInvocation() bool {
-	return plan.nodePlanCore.validInvocation(processresource.Profile)
+	return plan.nodePlanCore.validInvocation(processguard.ForwardingProfile)
 }
 
 func (plan JoinPlan) ValidInvocation() bool {
-	return plan.nodePlanCore.validInvocation(processresource.JoinProfile)
+	return plan.nodePlanCore.validInvocation(processguard.JoinProfile)
 }
 
 func (plan DescriptorPlan) ValidInvocation() bool {
-	return plan.nodePlanCore.validInvocation(processresource.DescriptorProfile, plan.DescriptorRoot)
+	return plan.nodePlanCore.validInvocation(processguard.DescriptorProfile, plan.DescriptorRoot)
 }
 
 func (plan IntroductionPlan) ValidInvocation() bool {
-	return plan.nodePlanCore.validInvocation(processresource.IntroductionProfile, plan.IntroductionRoot)
+	return plan.nodePlanCore.validInvocation(processguard.IntroductionProfile, plan.IntroductionRoot)
 }
 
 func (plan IssuerPlan) ValidInvocation(admissionRoot, keyRoot, resultRoot string) bool {
-	return plan.nodePlanCore.validInvocation(processresource.IssuerProfile, admissionRoot, keyRoot, resultRoot)
+	return plan.nodePlanCore.validInvocation(processguard.IssuerProfile, admissionRoot, keyRoot, resultRoot)
 }
 
 func (plan nodePlanCore) validInvocation(profile string, roleRoots ...string) bool {

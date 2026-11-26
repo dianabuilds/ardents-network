@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -138,7 +138,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 							t.Fatal(err)
 						}
 					}
-					plan := map[string]any{"network": networkPlan, "node_id": id, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": spend, "hosting_root": configuredBudget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+					plan := map[string]any{"network": networkPlan, "node_id": id, "process_profile": processguard.ForwardingProfile, "participation_root": participation, "spend_root": spend, "hosting_root": configuredBudget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 					invalidInput := fault == "shared-root" || fault == "wrong-profile"
 					if fault == "shared-root" {
 						plan["spend_root"] = participation
@@ -231,7 +231,7 @@ func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 				t.Fatal(err)
 			}
 			certPath, keyPath := processfixture.WriteNativeCredential(t, processfixture.RoleCertificate(t, member.PrivateKey))
-			plan := map[string]any{"network": networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), "node_id": member.NodeID, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+			plan := map[string]any{"network": networkinputs.SeedNetworkState(t, spec.NetworkID, [32]byte(spec.Authority[32:]), bundle, clock), "node_id": member.NodeID, "process_profile": processguard.ForwardingProfile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": processfixture.ProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
 			// Genuine restored-input control: this same signed member, Carrier and
 			// native envelope must start after removing the declared fault.
 			control := processfixture.StartFreshRole(t, "forwarding", binary, writeNodePlan(t, plan), 80)

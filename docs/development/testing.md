@@ -114,7 +114,7 @@ Traffic member shapes, and the embedded Network declaration grammar. The codec
 preserves the existing runtime byte grammar, including omitted zero-valued members
 (the partial-plan acceptance the runtime relied on before); it adds null refusal
 and opens no resource. It performs no State acceptance, root creation, Hosting
-initialization or processresource policy.
+initialization or processguard policy.
 
 `internal/domain/node/provisioning/runtime_plan_command_test.go` exercises the `node prepare-plan`
 operator command portably (host quick-check): positive plan production for all five
@@ -563,7 +563,7 @@ observation is never used as evidence of physical completion.
 
 `source-process-linux` additionally dispatches exactly
 `TestNativeSourcePreparedCohort`: the actual preparer outputs start two genuine
-Source processes under the unchanged Source processresource envelope. A real
+Source processes under the unchanged Source processguard envelope. A real
 client through the existing installed Network projection obtains both signed
 AREP-v3 bundles, with LATEST/BY_DIGEST checks and separate State/profile
 acceptance/refusal. An invalid external second key fails and physically joins
@@ -2933,14 +2933,14 @@ entrypoint and snapshot import refuse explicitly; portable codec success
 grants no installed-worker, confinement or publication authority.
 
 P1-B batch 1 (#781, #691) de-tagged verified pure leaf production files to
-portable: hosting reservation accounting and bounded read, the processresource
+portable: hosting reservation accounting and bounded read, the processguard
 copied failure projection, `network/source` public X.509 observation, and the
 release static-metadata projection. The source public-trust observation, the
-release static-metadata projection and a new portable processresource
+release static-metadata projection and a new portable processguard
 failure-projection behavior test execute in the portable deterministic inventory
 on Windows and macOS. The hosting reservation behavior tests stay Linux because
 they exercise the native flock lease and `/sys` interface counters; the native
-mechanism seams (hosting platform lease, processresource native pin) keep their
+mechanism seams (hosting platform lease, processguard native pin) keep their
 Linux tags and unchanged `!linux` typed refusals. De-tagged files add no native
 mechanism and no weaker accepting path; windows-production-dead symbols carry
 reviewed deadcode allowances. The enrollment infrastructure inventory and the
@@ -2981,7 +2981,7 @@ symbols are already portable: the Reader local Text result projection
 (`endpoint/publisher/contract.go`), and the Endpoint network presentation guard
 (`endpoint/authority.go`). Each file was re-verified pure at `origin/dev`: zero
 native mechanism and every composed symbol portable (`application/connection`
-and `application/document` projections, `pathgrammar.Strict`, the portable
+and `application/document` projections, `pathcheck.IsCleanAbsolute`, the portable
 `Operation.BindStreamContract`, and `stock`/`network`/`funding` facts). The Reader
 projection test was de-tagged (`result_test.go`) and a new portable root-isolation
 test (`roots_test.go`) added; both execute in the portable deterministic inventory
@@ -3546,7 +3546,7 @@ The `source_installed_native` build tag selects
 `tests/e2e/node/source_installed_native_linux_test.go`
 (`TestNativeSourceInstalledLifecycle`). It is a real-host qualification run
 under a root driver on an admitted Ubuntu/systemd manager (systemd 249/255,
-`/usr/bin/busctl --system`, cgroup v2, kernel supplying the processresource
+`/usr/bin/busctl --system`, cgroup v2, kernel supplying the processguard
 memory-event counters); missing privileges or manager are an invalid
 environment and fail, never a passing skip. It is not a `make quick-check`
 executed lane: the ordinary suite excludes the tag. It is compile-checked-only by

@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // PlanDeclaration carries one operator's local declarations for a future
@@ -166,7 +166,7 @@ func declaredLocalPaths(plan HeadlessPlan) error {
 	}
 	seen := make(map[string]bool, len(paths))
 	for _, path := range paths {
-		if path == "/" || !pathgrammar.Strict(path) || seen[path] {
+		if path == "/" || !pathcheck.IsCleanAbsolute(path) || seen[path] {
 			return errors.New("declared runtime paths must be distinct, absolute and canonical")
 		}
 		seen[path] = true
@@ -184,7 +184,7 @@ func declaredLocalPaths(plan HeadlessPlan) error {
 // mutable roots. Preparation refuses a plan that violates these boundaries
 // later; construction refuses it before rendering.
 func isolatedConstructionRoots(plan HeadlessPlan, reference string) error {
-	if !pathgrammar.Strict(reference) {
+	if !pathcheck.IsCleanAbsolute(reference) {
 		return errors.New("reference State root is not canonical")
 	}
 	isolated := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot, plan.TimeConfidenceFile}

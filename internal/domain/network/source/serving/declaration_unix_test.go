@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 func TestServingDeclarationSeparatesStateFromParticipation(t *testing.T) {
@@ -20,7 +20,7 @@ func TestServingDeclarationSeparatesStateFromParticipation(t *testing.T) {
 		},
 		ParticipationRoot: filepath.Join(root, "participation"),
 		Certificate:       filepath.Join(root, "cert"), PrivateKey: filepath.Join(root, "key"),
-		ClientRoot: filepath.Join(root, "client"), ProcessProfile: processresource.SourceProfile,
+		ClientRoot: filepath.Join(root, "client"), ProcessProfile: processguard.SourceProfile,
 		ClientPins: [][32]byte{{4}}, Address: "127.0.0.1:4848",
 	}
 	if !ValidDeclaration(plan) {

@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 type Artifact struct {
@@ -109,7 +109,7 @@ func (artifact *Artifact) Verify() error {
 // Every ancestor is root-controlled and has no symlink or writable untrusted
 // component. The final open additionally refuses symlinks and checks identity.
 func installedPath(path string, directory bool) (os.FileInfo, error) {
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return nil, errors.New("document worker installed path is invalid")
 	}
 	for current := path; ; current = filepath.Dir(current) {

@@ -15,8 +15,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // ForwardingConfig identifies exactly one authenticated original duty. Current
@@ -110,7 +110,7 @@ const (
 )
 
 func listenForwarding(ctx context.Context, config ForwardingConfig, opening forwardingOpening) (_ *Forwarding, result error) {
-	if ctx == nil || config.Authority.Current == nil || !pathgrammar.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
+	if ctx == nil || config.Authority.Current == nil || !pathcheck.DisjointRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
 		return nil, errors.New("original Node configuration invalid")
 	}
 	f := &forwarding{nodeLifetime: newNodeLifetime(ctx, config.Authority, "Node", config.ParticipationRoot, config.SpendRoot, config.HostingRoot), config: config, reservations: make(map[receiver.Channel]*hosting.Reservation)}
@@ -122,7 +122,7 @@ func listenForwarding(ctx context.Context, config ForwardingConfig, opening forw
 		}
 	}()
 	var err error
-	f.process, err = processresource.Open(f.ctx, processresource.Profile)
+	f.process, err = processguard.Open(f.ctx, processguard.ForwardingProfile)
 	if err != nil {
 		return nil, err
 	}

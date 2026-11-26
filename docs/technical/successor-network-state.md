@@ -561,7 +561,7 @@ ordinary acquisition rule still requires two fully declared distinct families;
 inspection creates no second Source or accepting fallback.
 
 `ardents-next source serve <plan>` consumes State's existing serving configuration,
-Current/Wait/Close and PermitWork with one original `processresource` Source guard.
+Current/Wait/Close and PermitWork with one original `processguard` Source guard.
 It opens independently prepared State, borrows no old runtime root, and supplies
 no new acquisition or refresh policy. State joins listener/handlers/background
 work and releases its own guards before composition releases process pins.

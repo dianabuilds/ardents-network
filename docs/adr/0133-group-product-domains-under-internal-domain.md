@@ -10,7 +10,7 @@ date: 2026-11-26
 The Product Owner requires the project to be human-readable first: agents write
 the code, but people read it. `internal/` is a developer's first map of the
 system. At roughly 106 packages the top level mixes product domains (`route`,
-`publication`, `network`) with technical mechanisms (`pathgrammar`,
+`publication`, `network`) with technical mechanisms (such as path validation,
 `canonicaldigest`, `durablefile`) and platform adapters, so a reader must know
 in advance which directories name Ardents concepts and which name technical
 operations.
@@ -20,8 +20,8 @@ number of domains that import it. A domain owns the rules and lifecycle of a
 specific Ardents concept; a shared mechanism serves many domains and owns no
 product authority. `internal/connection` is a domain (the Service Connection
 bounded context retains the identity of one authenticated logical stream, with
-explicit exclusions); `internal/processresource` keeps its fail-closed pressure
-admission and workload profiles rather than hiding them under a platform label.
+explicit exclusions). Process guarding is a platform adapter that owns workload
+profiles and refuses admission when resource limits or observation checks fail.
 
 ## Decision
 
@@ -32,9 +32,9 @@ Adopt a target tree that separates domains from technical groups by name:
   `release`, `hosting`, `reachability`, `execution`, `connection`. Opening
   `internal/domain/` shows every Ardents domain in one place.
 - Technical groups keep purpose names at `internal/` top level: `platform/`
-  (OS adapters, including `processresource`), `diagnostics/`, `architecture/`
+  (OS adapters, including `processguard`), `diagnostics/`, `architecture/`
   (engineering checks), `application/` (application-layer contracts), and the
-  self-documenting standalone mechanisms `durablefile`, `pathgrammar`,
+  self-documenting standalone mechanisms `durablefile`, `pathcheck`,
   `canonicaldigest`.
 
 The path distinguishes `domain/connection` (Service Connection protocol) from

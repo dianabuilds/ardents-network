@@ -10,7 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile/signing"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var profileFiles = []string{"profile.pin", "profile.bytes", "profile.lock"}
@@ -56,7 +56,7 @@ func InitializeProfile(ctx context.Context, path string, keys Store, identity si
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return ErrInvalid
 	}
 	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {

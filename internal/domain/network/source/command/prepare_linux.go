@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -20,7 +20,7 @@ func runSourcePreparation(ctx context.Context, args []string, out io.Writer) int
 		return 2
 	}
 	for _, path := range args[1:] {
-		if !pathgrammar.Strict(path) {
+		if !pathcheck.IsCleanAbsolute(path) {
 			return 2
 		}
 	}

@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // This component requires the real sole-process Node native envelope. Genuine
@@ -22,7 +22,7 @@ import (
 func TestForwardingNativeLocalProtectionDuringHeldAuthority(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	guard, err := processresource.Open(ctx, processresource.Profile)
+	guard, err := processguard.Open(ctx, processguard.ForwardingProfile)
 	if err != nil {
 		t.Fatal("selected native process environment unavailable", err)
 	}
@@ -74,7 +74,7 @@ func TestForwardingNativeLocalProtectionDuringHeldAuthority(t *testing.T) {
 	previous := runtime.GOMAXPROCS(2)
 	_, refusal := f.checkLocal()
 	runtime.GOMAXPROCS(previous)
-	if refusal == nil || processresource.Failure(refusal) == nil {
+	if refusal == nil || processguard.Failure(refusal) == nil {
 		t.Fatal("actual changed process placement escaped local protection", refusal)
 	}
 	if ctx.Err() == nil || f.first != refusal || f.firstOwner != "process" {

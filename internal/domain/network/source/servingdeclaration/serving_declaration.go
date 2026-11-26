@@ -9,7 +9,7 @@ import (
 
 // ServingDeclaration is the existing local Source command grammar. These are
 // declarations only: State retains all signed authority/time/root decisions
-// and processresource admits actual placement.
+// and processguard admits actual placement.
 type ServingDeclaration struct {
 	Network           *ServingNetwork `json:"network"`
 	ProcessProfile    string          `json:"process_profile"`

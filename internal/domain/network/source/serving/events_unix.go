@@ -5,7 +5,7 @@ package serving
 import (
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // Outcome is the original attempt's process-independent terminal class.
@@ -47,7 +47,7 @@ func (result *Terminal) Unwrap() []error {
 type FailureDescription struct {
 	FirstOwner    string
 	CleanupOwners string
-	Resource      *processresource.FailureFacts
+	Resource      *processguard.FailureFacts
 }
 
 // DescribeFailure derives the Source's failure order from the original joined
@@ -57,7 +57,7 @@ func DescribeFailure(operation, processClose error) FailureDescription {
 	var terminal *Terminal
 	if errors.As(operation, &terminal) {
 		first = terminal.FirstOwner
-		if processresource.Failure(terminal.First) != nil {
+		if processguard.Failure(terminal.First) != nil {
 			first = "process"
 		}
 		if terminal.Wait != nil || terminal.StateClose != nil {
@@ -76,5 +76,5 @@ func DescribeFailure(operation, processClose error) FailureDescription {
 		}
 		cleanup += "process"
 	}
-	return FailureDescription{FirstOwner: first, CleanupOwners: cleanup, Resource: processresource.Failure(operation)}
+	return FailureDescription{FirstOwner: first, CleanupOwners: cleanup, Resource: processguard.Failure(operation)}
 }

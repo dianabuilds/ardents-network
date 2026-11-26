@@ -19,14 +19,14 @@ import (
 	routeprefix "github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 func OpenPrefix(ctx context.Context, plan funding.Plan, authority funding.Authority, holder *stock.Owner) (_ Prefix, result error) {
 	if !authority.Available() {
 		return Prefix{}, errors.New("route requires opened Network")
 	}
-	if !pathgrammar.DisjointRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
+	if !pathcheck.DisjointRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
 		return Prefix{}, errors.New("route roots invalid")
 	}
 	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: plan.Domain, Current: authority.Current, Exclusions: plan.Exclusions})

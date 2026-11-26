@@ -20,7 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -92,7 +92,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 					networkPlan.ClockObservationFile = issuerClock
 					plan["network"] = networkPlan
 					plan["issuance"] = IssuerDeclaration(issuerPlan)
-					plan["process_profile"], plan["participation_root"], plan["retirement_wait_ms"] = processresource.IssuerProfile, filepath.Join(t.TempDir(), "participation"), 5000
+					plan["process_profile"], plan["participation_root"], plan["retirement_wait_ms"] = processguard.IssuerProfile, filepath.Join(t.TempDir(), "participation"), 5000
 					plan["work"], plan["bootstrap_work"] = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, hosting.Traffic{Tx: 128 << 10, Rx: 128 << 10}
 					original = processfixture.StartFreshRole(t, "issuer", binary, writeNodePlan(t, plan), 0)
 					continue
@@ -163,7 +163,7 @@ func testNativeIssuerWorkload(t *testing.T, fault string) {
 				}
 			}
 			for _, prepared := range peerPlans {
-				prepared.plan["process_profile"], prepared.plan["participation_root"], prepared.plan["retirement_wait_ms"] = processresource.Profile, filepath.Join(t.TempDir(), "participation"), 5000
+				prepared.plan["process_profile"], prepared.plan["participation_root"], prepared.plan["retirement_wait_ms"] = processguard.ForwardingProfile, filepath.Join(t.TempDir(), "participation"), 5000
 				prepared.plan["work"] = hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
 				peers = append(peers, processfixture.StartFreshRole(t, "forwarding", binary, writeNodePlan(t, prepared.plan), prepared.index))
 			}
