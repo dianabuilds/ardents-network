@@ -35,24 +35,57 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		!strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/") {
 		return true
 	}
-	if dependency == modulePath+"/internal/domain/node/provisioning/networkdraft" {
+	if dependency == modulePath+"/internal/domain/node/provisioning/networkpreparation" {
+		return source == "internal/domain/node/provisioning/network_commands.go" ||
+			source == "internal/domain/node/provisioning/network_signing_custody_native_linux_test.go"
+	}
+	if dependency == modulePath+"/internal/domain/node/provisioning/networksigning" {
 		switch source {
-		case "internal/domain/node/provisioning/network_certificate_signing_unix.go",
-			"internal/domain/node/provisioning/network_certificate_signing_unix_test.go",
-			"internal/domain/node/provisioning/network_commands.go",
+		case "internal/domain/node/provisioning/network_commands.go",
 			"internal/domain/node/provisioning/network_inventory_native_linux_test.go",
-			"internal/domain/node/provisioning/network_output_linux.go",
-			"internal/domain/node/provisioning/network_preparation_linux.go",
-			"internal/domain/node/provisioning/network_preparation_other.go",
 			"internal/domain/node/provisioning/network_profile_native_linux_test.go",
-			"internal/domain/node/provisioning/network_profile_signing_unix.go",
+			"internal/domain/node/provisioning/network_signing_custody_native_linux_test.go",
+			"internal/domain/node/provisioning/node_provision_linux.go",
+			"internal/domain/node/provisioning/node_provision_native_linux_test.go":
+			return true
+		}
+		return false
+	}
+	if dependency == modulePath+"/tests/networkfixture" {
+		switch source {
+		case "internal/domain/node/provisioning/network_inventory_native_linux_test.go",
+			"internal/domain/node/provisioning/native_fixture_linux_test.go",
+			"internal/domain/node/provisioning/networksigning/inventory_native_linux_test.go",
+			"internal/domain/node/provisioning/network_profile_native_linux_test.go",
 			"internal/domain/node/provisioning/network_public_preparation_test.go",
 			"internal/domain/node/provisioning/network_record_preparation_test.go",
 			"internal/domain/node/provisioning/network_signing_custody_native_linux_test.go",
-			"internal/domain/node/provisioning/network_signing_declaration_unix.go",
+			"internal/domain/node/provisioning/networksigning/certificate_operation_unix_test.go",
+			"internal/domain/node/provisioning/networksigning/declaration_linux_test.go",
+			"internal/domain/node/provisioning/networksigning/profile_unix_test.go":
+			return true
+		}
+		return false
+	}
+	if dependency == modulePath+"/internal/domain/node/provisioning/networkdraft" {
+		switch source {
+		case "internal/domain/node/provisioning/networksigning/inventory_linux.go",
+			"internal/domain/node/provisioning/networksigning/certificate_operation_unix.go",
+			"internal/domain/node/provisioning/networksigning/certificate_operation_unix_test.go",
+			"internal/domain/node/provisioning/network_commands.go",
+			"internal/domain/node/provisioning/network_inventory_native_linux_test.go",
+			"internal/domain/node/provisioning/network_signing_custody_native_linux_test.go",
+			"internal/domain/node/provisioning/networkpreparation/output_linux.go",
+			"internal/domain/node/provisioning/networkpreparation/prepare_linux.go",
+			"internal/domain/node/provisioning/networkpreparation/prepare_other.go",
+			"internal/domain/node/provisioning/network_profile_native_linux_test.go",
+			"internal/domain/node/provisioning/networksigning/profile_unix.go",
+			"internal/domain/node/provisioning/network_public_preparation_test.go",
+			"internal/domain/node/provisioning/network_record_preparation_test.go",
+			"internal/domain/node/provisioning/networksigning/declaration_unix.go",
 			"internal/domain/node/provisioning/network_signing_fixture_unix_test.go",
-			"internal/domain/node/provisioning/network_signing_linux.go",
-			"internal/domain/node/provisioning/network_signing_test.go":
+			"internal/domain/node/provisioning/networksigning/protected_linux.go",
+			"internal/domain/node/provisioning/networksigning/declaration_linux_test.go":
 			return true
 		}
 		return false
@@ -118,7 +151,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "internal/domain/node/provisioning/epoch_plan_linux.go",
-		"internal/domain/node/provisioning/node_certificate_unix.go",
+		"internal/domain/node/provisioning/networksigning/certificate_unix.go",
 		"internal/domain/node/provisioning/node_provision_linux.go",
 		"internal/domain/node/provisioning/node_record_unix.go":
 		switch dependency {
@@ -164,7 +197,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/domain/admission", modulePath + "/internal/domain/admission/issuer", modulePath + "/internal/domain/admission/quota", modulePath + "/internal/domain/admission/receiving", modulePath + "/internal/domain/admission/stock", modulePath + "/internal/domain/admission/token", modulePath + "/internal/domain/custody", modulePath + "/internal/domain/network", modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/state":
 			return true
 		}
-	case "internal/domain/node/provisioning/node_certificate_unix_test.go",
+	case "internal/domain/node/provisioning/networksigning/certificate_unix_test.go",
 		"internal/domain/node/provisioning/node_provision_native_linux_test.go":
 		switch dependency {
 		case modulePath + "/internal/domain/network/epoch":
@@ -243,27 +276,29 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts", modulePath + "/internal/domain/network/epoch", modulePath + "/internal/domain/network/closedprofile":
 			return true
 		}
-	case "internal/domain/node/provisioning/network_signing_declaration_unix.go":
+	case "internal/domain/node/provisioning/networksigning/declaration_unix.go":
 		switch dependency {
 		case modulePath + "/internal/domain/network/epoch", modulePath + "/internal/domain/network/closedprofile", modulePath + "/internal/platform/artifacts":
 			return true
 		}
-	case "internal/domain/node/provisioning/network_certificate_signing_unix.go",
-		"internal/domain/node/provisioning/network_certificate_signing_unix_test.go":
+	case "internal/domain/node/provisioning/networksigning/certificate_operation_unix.go",
+		"internal/domain/node/provisioning/networksigning/certificate_operation_unix_test.go":
 		return dependency == modulePath+"/internal/domain/network/epoch"
-	case "internal/domain/node/provisioning/network_profile_signing_unix.go":
+	case "internal/domain/node/provisioning/networksigning/profile_unix.go":
 		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/domain/network/closedprofile"
-	case "internal/domain/node/provisioning/network_output_linux.go", "internal/domain/node/provisioning/network_signing_linux.go",
+	case "internal/domain/node/provisioning/networkpreparation/output_linux.go", "internal/domain/node/provisioning/networksigning/protected_linux.go",
+		"internal/domain/node/provisioning/networksigning/inventory_linux.go",
 		"internal/domain/node/provisioning/network_inventory_native_linux_test.go",
 		"internal/domain/node/provisioning/network_profile_native_linux_test.go",
 		"internal/domain/node/provisioning/network_signing_custody_native_linux_test.go",
-		"internal/domain/node/provisioning/network_preparation_native_linux_test.go":
+		"internal/domain/node/provisioning/networkpreparation/publication_native_linux_test.go",
+		"internal/domain/node/provisioning/networksigning/inventory_native_linux_test.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
-	case "internal/domain/node/provisioning/network_preparation_linux.go":
+	case "internal/domain/node/provisioning/networkpreparation/prepare_linux.go":
 		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/durablefile"
-	case "internal/domain/node/provisioning/network_signing_test.go", "internal/domain/node/provisioning/network_record_preparation_test.go":
+	case "internal/domain/node/provisioning/networksigning/declaration_linux_test.go", "internal/domain/node/provisioning/network_record_preparation_test.go":
 		return dependency == modulePath+"/tests/epochfixture/network"
-	case "internal/domain/node/provisioning/network_profile_signing_test.go", "internal/domain/node/provisioning/network_public_preparation_test.go":
+	case "internal/domain/node/provisioning/networksigning/profile_unix_test.go", "internal/domain/node/provisioning/network_public_preparation_test.go":
 		return dependency == modulePath+"/internal/domain/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network"
 	case "internal/domain/node/provisioning/network_commands.go":
 		return dependency == modulePath+"/internal/canonicaldigest" || dependency == modulePath+"/internal/pathcheck"

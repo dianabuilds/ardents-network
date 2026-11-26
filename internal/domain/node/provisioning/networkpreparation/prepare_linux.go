@@ -1,45 +1,45 @@
 //go:build linux
 
-package provisioning
+package networkpreparation
 
 import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"os"
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-// PrepareNetworkArtifact writes one unsigned artifact from the original public
+// Prepare writes one unsigned artifact from the original public
 // plan. It creates no signed State or runtime authority. The input reader uses
 // the Unix-family inspection port, but publication composes the Linux ext4
 // output floor (artifacts.PublishUnsigned), so the operation keeps its Linux
 // boundary until a macOS storage floor is selected (portability audit #848).
-func PrepareNetworkArtifact(ctx context.Context, operation, input, output string) (PreparedNetworkArtifact, error) {
+func Prepare(ctx context.Context, operation, input, output string) (Artifact, error) {
 	if ctx == nil || !networkdraft.IsPreparation(operation) {
-		return PreparedNetworkArtifact{}, networkdraft.ErrUnavailable
+		return Artifact{}, networkdraft.ErrUnavailable
 	}
-	raw, err := readNetworkPreparation(ctx, input)
+	raw, err := readDeclaration(ctx, input)
 	if err != nil || len(raw) > networkdraft.MaximumPlanBytes {
-		return PreparedNetworkArtifact{}, errors.Join(networkdraft.ErrUnavailable, err)
+		return Artifact{}, errors.Join(networkdraft.ErrUnavailable, err)
 	}
 	name, message, err := networkdraft.Prepare(operation, raw)
 	if err != nil {
-		return PreparedNetworkArtifact{}, err
+		return Artifact{}, err
 	}
-	if err := PublishPreparedNetworkArtifact(ctx, output, name, message, nil); err != nil {
-		return PreparedNetworkArtifact{}, errors.Join(ErrNetworkPreparationOutput, err)
+	if err := publish(ctx, output, name, message, nil); err != nil {
+		return Artifact{}, errors.Join(ErrOutput, err)
 	}
-	return PreparedNetworkArtifact{Name: name, Digest: sha256.Sum256(message)}, nil
+	return Artifact{Name: name, Digest: sha256.Sum256(message)}, nil
 }
 
-func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err error) {
+func readDeclaration(ctx context.Context, path string) (raw []byte, err error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

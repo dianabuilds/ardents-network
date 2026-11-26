@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package provisioning
+package networksigning
 
 import (
 	"crypto/ed25519"
@@ -24,12 +24,12 @@ func TestNodeCertificateHasOnlyExactNodeTransportProfile(t *testing.T) {
 	defer clear(key)
 	now := time.Now().UTC().Truncate(time.Second)
 	facts := epoch.InitialClosedRecord{PublicKey: public, ValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour)}
-	raw, err := createNodeCertificate(facts, key)
+	raw, err := CreateNodeCertificate(facts, key)
 	if err != nil {
 		t.Fatal(err)
 	}
 	block, rest := pem.Decode(raw)
-	if block == nil || block.Type != "CERTIFICATE" || len(rest) != 0 || verifyNodeCertificate(block.Bytes, facts) != nil {
+	if block == nil || block.Type != "CERTIFICATE" || len(rest) != 0 || VerifyNodeCertificate(block.Bytes, facts) != nil {
 		t.Fatal("actual generated certificate violates closed profile")
 	}
 	for _, mode := range []string{"subject", "dns", "ip", "ca", "usage", "interval", "key", "corrupt"} {
@@ -64,7 +64,7 @@ func TestNodeCertificateHasOnlyExactNodeTransportProfile(t *testing.T) {
 			if mode == "corrupt" {
 				der[len(der)-1] ^= 1
 			}
-			if verifyNodeCertificate(der, facts) == nil {
+			if VerifyNodeCertificate(der, facts) == nil {
 				t.Fatal("foreign or extra certificate profile accepted", mode)
 			}
 		})

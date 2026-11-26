@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package provisioning
+package networksigning
 
 import (
 	"bytes"
@@ -10,12 +10,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"math/big"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 )
 
 // This fixed purpose borrows the original offline signing custody and output

@@ -193,7 +193,7 @@ All four roles refuse a wrong argument count with the bare shared input
 error; preparation failures keep their own role failure classification
 (audit E1-6, #718).
 
-Provisioning's `node_certificate_unix.go` owns the exact Node transport
+Provisioning's `networksigning/certificate_unix.go` owns the exact Node transport
 leaf profile and its strict verifier for Forwarding, JOIN and Descriptor
 (#718, audit E1-4). Each role command supplies its own prepared Record facts
 and freshly born Node key; the shared codec is pure X.509 preparation and
@@ -541,11 +541,11 @@ domain callback, policy, new clock or accepting transport substitute.
 Initial Network key preparation belongs to `internal/domain/node/provisioning`
 (`initial_network_keys_linux.go`), which admits the closed plan, creates the
 State key and distinct Node keys and returns the exact published public receipt.
-The CLI projects it through `network_preparation.go`. Provisioning tests
+The CLI projects it through `network_commands.go`. Provisioning tests
 exercise expiry after native I/O and durable signing inventory publication on
 ext4, including original Closed Profile commit and output contention, retained
-key custody, and physical child interruption for Record, Profile and Certificate. The same owner tests unsigned publication through original file faults,
-partial writes and child interruption. The CLI retains the genuine
+key custody, and physical child interruption for Record, Profile and Certificate. The separate `networkpreparation` owner tests unsigned publication
+through original file faults, partial writes and child interruption. The CLI retains the genuine
 command-to-State chain and receipt probes.
 Both offline generation and the
 purpose-specific signers use Platform Artifacts' canonical Ed25519 PKCS#8 codec.
@@ -568,9 +568,9 @@ protected key and purpose-specific Record, Epoch, Profile or certificate output.
 The private key stays with the signing owner. The command checks the retained
 interval around the public signing receipt.
 
-`network_signing_declaration_unix.go` consumes Epoch, Closed Profile and
-Platform Artifacts. `network_profile_signing_unix.go` uses Closed Profile.
-`network_certificate_signing_unix.go` uses Epoch and the shared certificate
+`networksigning/declaration_unix.go` consumes Epoch, Closed Profile and
+Platform Artifacts. `networksigning/profile_unix.go` uses Closed Profile.
+`networksigning/certificate_operation_unix.go` uses Epoch and the shared certificate
 codec. The native input and output files use Platform Artifacts. Owner tests
 check exact signatures and certificates, while command tests retain the original
 process, physical refusal and signed State chain controls. Unsupported platforms
@@ -584,7 +584,7 @@ release-key receipt, plus the pure `artifacts/flag_options_unix.go` option
 grammar and `closedprofile/signing_transcript_unix.go` verification leaf they
 compose. The genuine Linux boundaries stay Linux with the same typed refusal
 elsewhere: the ext4 storage floor and protected input/output composition
-(`network_preparation_linux.go`, `artifacts/output_linux.go`,
+(`networkpreparation/prepare_linux.go`, `artifacts/output_linux.go`,
 `artifacts/protected_input_linux.go`, `artifacts/protected_storage_linux.go`),
 the Enrollment infrastructure inventory and its `/proc/self/exe` running-program
 proof, and the systemd Release plans. A macOS storage floor and a
@@ -878,7 +878,9 @@ Git history; no current package may import or start a lab Module.
 | `cmd/ardents-custody` | `package main` | Class: composition. Start the separate custody process with its signal context and original terminal streams. | `internal/domain/custody/command`, standard library ; `internal/diagnostics/measurement` for the registered finite measurement producers/consumers |
 | `internal/domain/custody/command` | `package command` | Class: domain. Run the separate custody-process adapter. `create-service-authority` generates a Service Authority inside one encrypted active record; `issue-service-credential` requires the exact independently transferred host request digest before Vault/password access, advances only a bounded request, and renders its receipt only after same-directory staged no-replace publication or exact reopen of the public response. `create-admission-authority` creates the separate closed admission root; `issue-admission-permission` independently confirms the holder request digest, writes its 228-byte permission only to an owner-only no-replace destination, and emits only a digest receipt. `verify-record` consumes a password only through an interactive no-echo terminal; `export-recovery-bundle` and `restore-recovery-bundle` expose respectively a distinctly passworded test-restored Bundle and an authority-locked quarantine restore; `purge-record` deletes one exact verified encrypted record only after terminal confirmation while retaining its Authority floor. It never accepts Authority material, permission body, or a password through arguments, environment, configuration, or shared application stdin; it does not activate a recovered Authority. | `internal/domain/custody` for the command adapters and their tests; `internal/domain/admission` and `internal/domain/publication` in behavior tests; `github.com/aymanbagabas/go-pty` only in `terminal_secret_linux_test.go`; `golang.org/x/term`; `golang.org/x/sys/windows` only in `terminal_line_windows.go`; `golang.org/x/sys/unix` only in `terminal_line_linux.go`, standard library ; `internal/diagnostics/runtimeevent` for the finite local observation catalogue and classification |
 | `internal/platform/artifacts` | `package artifacts` | Class: platform adapter. Read bounded standalone files through nonblocking native opens. Retain original Unix-family descriptors and custody of one bounded offline input and output lifetime; the observed-input and bounded-report seams are Unix-generic (Linux and macOS), while the ext4 storage floor, namespace output and protected-input policy stay Linux. Own exact path identity, root-controlled input and secret buffer retirement, directory reobservation, publication, exact private-file retries and checked readback, and the original configuration inputs and executable identity used by Endpoint and infrastructure delivery. Portable typed declaration decoding checks exact field spellings, duplicates and fixed-array lengths. The package also owns operator artifact codecs, canonical Ed25519 PKCS#8 encoding and admission, and bounded native report writes. Consumers choose the private key and signing policy. | `internal/durablefile`, `internal/pathcheck`, Standard library |
-| `internal/domain/node/provisioning` | `package provisioning` | Class: domain. Produce the offline Node and Source genesis inputs, Epoch, token inventory and Closed Profile from independently admitted material. Own the Network artifact command arguments and bounded public receipts. Fixed-role operations select a Source or Node role. Initial Network key preparation produces one State key and the exact declared number of distinct Node keys under exclusive protected output. | `internal/domain/admission/issuance`; `internal/domain/admission/issuerprofile`; `internal/durablefile`; `internal/domain/network`; `internal/domain/network/closedprofile`; `internal/domain/network/epoch`; `internal/domain/network/source`; `internal/platform/artifacts`; test-only: `internal/domain/admission`; `internal/domain/admission/issuer`; `internal/domain/admission/quota`; `internal/domain/admission/receiving`; `internal/domain/admission/stock`; `internal/domain/admission/token`; `internal/domain/custody`; `internal/domain/network/source/servingdeclaration`; `internal/domain/network/state`; stdlib and recorded dependencies. Exact file imports are enforced by the offline operator isolation check.; `internal/pathcheck` for canonical command paths; `internal/canonicaldigest` for the shared canonical hex-32 shape; test-only `tests/epochfixture/network` for independent signed Network preparation controls; `internal/domain/node/provisioning/networkdraft` only from registered preparation, signing and their tests. |
+| `internal/domain/node/provisioning` | `package provisioning` | Class: domain. Produce the offline Node and Source genesis inputs, Epoch, token inventory and Closed Profile from independently admitted material. Own the Network artifact command arguments and bounded public receipts. Fixed-role operations select a Source or Node role. Initial Network key preparation produces one State key and the exact declared number of distinct Node keys under exclusive protected output. | `internal/domain/admission/issuance`; `internal/domain/admission/issuerprofile`; `internal/domain/network`; `internal/domain/network/closedprofile`; `internal/domain/network/epoch`; `internal/domain/network/source`; `internal/platform/artifacts`; test-only: `internal/domain/admission`; `internal/domain/admission/issuer`; `internal/domain/admission/quota`; `internal/domain/admission/receiving`; `internal/domain/admission/stock`; `internal/domain/admission/token`; `internal/domain/custody`; `internal/domain/network/source/servingdeclaration`; `internal/domain/network/state`; stdlib and recorded dependencies. Exact file imports are enforced by the offline operator isolation check.; `internal/pathcheck` for canonical command paths; `internal/canonicaldigest` for the shared canonical hex-32 shape; test-only `tests/epochfixture/network` for independent signed Network preparation controls; `internal/domain/node/provisioning/networkdraft` only from registered preparation, signing and their tests.; `internal/domain/node/provisioning/networksigning` for fixed signing and legacy Node certificate production; `internal/domain/node/provisioning/networkpreparation` for unsigned publication; test-only `tests/networkfixture` for independent declarations. |
+| `internal/domain/node/provisioning/networkpreparation` | `package networkpreparation` | Class: composition. Admits the original public declaration and publishes one unsigned Network artifact through the Linux ext4 floor. The Network artifact command consumes the joined result. | `internal/domain/node/provisioning/networkdraft`, `internal/platform/artifacts`, `internal/durablefile`, standard library. |
+| `internal/domain/node/provisioning/networksigning` | `package networksigning` | Class: composition. Retains original protected inputs, a fixed-purpose Network signing key and exclusive output for offline Record, Epoch, profile and certificate signing. The Network command is its live consumer, and fixed-role certificate provisioning shares its exact certificate profile. | `internal/domain/node/provisioning/networkdraft`, `internal/domain/network/epoch`, `internal/domain/network/closedprofile`, `internal/platform/artifacts`, `internal/canonicaldigest`, standard library; tests only: `tests/networkfixture`, `tests/epochfixture/network`. |
 | `internal/domain/node/provisioning/networkdraft` | `package networkdraft` | Class: supporting mechanism. Parses public Record, Epoch and Closed Profile declarations into canonical unsigned bytes and typed public facts. The original preparation and signing operations verify and use them without moving private keys or output custody. | `internal/canonicaldigest`, `internal/domain/network/epoch`, `internal/domain/network/closedprofile`, `internal/platform/artifacts` for declaration validation, standard library. |
 | `internal/domain/node/provisioning/runtimeplan` | `package runtimeplan` | Class: composition. Prepares one exact offline Node role declaration. Caller: ardents-next node prepare-plan. The Node runtime owns the declaration codecs. The command writes a new output file and opens no live authority. | `internal/canonicaldigest`, `internal/domain/admission/issuance`, `internal/domain/hosting`, `internal/domain/network/state`, `internal/domain/node`, `internal/pathcheck`, `internal/platform/artifacts`, `internal/platform/processguard`, standard library. |
 | `internal/domain/release/infrastructure/signing` | `package signing` | Class: domain. Produce original initial/forward infrastructure Release artifacts and the separate Source Timestamp operation. Each closed role binds the original program, generation, template and protected key set. | `internal/domain/enrollment`; `internal/platform/artifacts`; `internal/platform/systemd`; `internal/domain/release`; `internal/domain/release/infrastructure`; stdlib and recorded dependencies. Exact file imports are enforced by the offline operator isolation check. |
@@ -890,7 +892,7 @@ Git history; no current package may import or start a lab Module.
 | `tests/e2e/service/fixturecommand/stream-app` | `package main` | Class: engineering check. E2E-only paired direct opaque-stream workload used by retained qualification evidence. It owns deterministic bounded bytes and receipts but no Endpoint-local transport grammar. | standard library |
 | `tests/epochfixture/assignment` | `package assignment` | Class: engineering check. Independently construct deterministic role-domain assignments for black-box Network State fixtures; never serve maintained product code. | standard library |
 | `tests/epochfixture/merkle` | `package merkle` | Class: engineering check. Independently construct canonical Epoch commitment roots and proofs for black-box Network State fixtures; never serve maintained product code. | standard library |
-| `tests/networkfixture` | `package networkfixture` | Class: engineering check. Prepare independent signed Network inputs, issued test-key inventory, clock observations and reopened State histories for owner and process tests; no runtime authority. | `internal/domain/admission/issuance`, `internal/domain/admission/issuer`, `internal/domain/admission/quota`, `internal/domain/network/epoch`, `internal/domain/network/state`, `tests/epochfixture/network`, standard library ; test-only `internal/domain/admission`, `internal/domain/admission/allocation`, and `internal/domain/admission/token` in `issuer_conflict_test.go` ; `internal/domain/network` in the signed Admission fixture |
+| `tests/networkfixture` | `package networkfixture` | Class: engineering check. Prepare independent signed Network inputs, issued test-key inventory, clock observations and reopened State histories for owner and process tests; no runtime authority. | `internal/domain/admission/issuance`, `internal/domain/admission/issuer`, `internal/domain/admission/quota`, `internal/domain/network/epoch`, `internal/domain/network/state`, `tests/epochfixture/network`, standard library ; test-only `internal/domain/admission`, `internal/domain/admission/allocation`, and `internal/domain/admission/token` in `issuer_conflict_test.go` ; `internal/domain/network` in the signed Admission fixture; `internal/domain/network/closedprofile` only from provisioning_plans.go to decode independently generated profile fixtures. |
 | `tests/releasefixture` | `package releasefixture` | Class: engineering check. Construct independent signed Release authority and inventory bytes for owner and process tests; no runtime authority. | `internal/domain/enrollment` and `internal/domain/release` only in the Linux infrastructure fixture, `github.com/sigstore/sigstore/pkg/signature`, `github.com/theupdateframework/go-tuf/v2/metadata`, standard library |
 | `tests/epochfixture/network` | `package network` | Class: engineering check. Construct canonical signed Node Record, Epoch and materialization bytes for black-box Network State and successor provisioning tests. It supplies deterministic test input bytes only and cannot accept State, choose a runtime Route or serve maintained product code. | `tests/epochfixture/assignment`, `tests/epochfixture/merkle`, standard library |
 
@@ -1022,7 +1024,7 @@ producers do not admit Node or Route runtime work.
 
 | Source under `internal/domain/node/provisioning` | Exact domain imports |
 |---|---|
-| `node_record_unix.go`, `node_provision_linux.go`, `epoch_plan_linux.go`, `node_certificate_unix.go` | `internal/domain/network/epoch` |
+| `node_record_unix.go`, `node_provision_linux.go`, `epoch_plan_linux.go`, `networksigning/certificate_unix.go` | `internal/domain/network/epoch` |
 | `epoch_signing_linux.go` | `internal/domain/network/epoch`, `internal/domain/network/source` |
 | `profile_plan_linux.go` | `internal/domain/admission/issuerprofile`, `internal/domain/network`, `internal/domain/network/closedprofile`, `internal/domain/network/epoch`, `internal/domain/network/source` |
 | `profile_signing_linux.go` | `internal/domain/network/closedprofile` |
@@ -1036,7 +1038,7 @@ platform-led JOIN lifecycle owns installed delivery. The retained offline JOIN
 producers keep their own fixed purpose and original input/output custody; the
 read-only repair runtime manager keeps its own godbus connection.
 
-- `internal/domain/node/provisioning/node_certificate_unix.go` (shared with Forwarding/Descriptor): `internal/domain/network/epoch`.
+- `internal/domain/node/provisioning/networksigning/certificate_unix.go` (shared with Forwarding/Descriptor): `internal/domain/network/epoch`.
 - `internal/platform/systemd/join_manager_linux.go`: `github.com/godbus/dbus/v5`.
 
 The former JOIN replacement exact-import inventory
@@ -1073,7 +1075,7 @@ own godbus connection. Descriptor Release signing is preserved and bound to the
 static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
 former initial admission entry point and detached inventory accessors retired.
 
-- `internal/domain/node/provisioning/node_certificate_unix.go` (shared with Forwarding/JOIN): `internal/domain/network/epoch`.
+- `internal/domain/node/provisioning/networksigning/certificate_unix.go` (shared with Forwarding/JOIN): `internal/domain/network/epoch`.
 - `internal/domain/release/infrastructure/signing/descriptor_release_native_linux_test.go`: `internal/domain/release/infrastructure`, `internal/platform/systemd`, `github.com/theupdateframework/go-tuf/v2/metadata`.
 - `internal/domain/release/infrastructure/signing/descriptor_forward_release_native_linux_test.go`: `internal/domain/release/infrastructure`, `internal/platform/systemd`.
 - `internal/domain/release/infrastructure/descriptor_admission.go`: `internal/domain/enrollment`, `internal/domain/release`.

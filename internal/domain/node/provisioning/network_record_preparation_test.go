@@ -4,21 +4,23 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
+	"encoding/hex"
 	"io"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	provisionfixture "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestNetworkPreparationRecordIndependentBytesAndStrictInputs(t *testing.T) {
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, 32))
 	public := key.Public().(ed25519.PublicKey)
-	p := preparationRecordPlan(public)
-	name, got, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, p))
+	p := provisionfixture.RecordPlan(public)
+	name, got, err := networkdraft.Prepare("prepare-initial-node-record", provisionfixture.PlanJSON(t, p))
 	if err != nil || name != "node-record.signing-input" {
 		t.Fatal(name, err)
 	}
@@ -33,20 +35,20 @@ func TestNetworkPreparationRecordIndependentBytesAndStrictInputs(t *testing.T) {
 		value any
 	}{
 		{"network_id", []byte{1}}, {"network_id", make([]int, 33)}, {"node_id", "00"}, {"public_key", strings.Repeat("a", 66)},
-		{"public_key", strings.ToUpper(preparationHex(public))}, {"capacity", 1.5}, {"capacity", 0}, {"capacity", 1025},
+		{"public_key", strings.ToUpper(hex.EncodeToString(public))}, {"capacity", 1.5}, {"capacity", 0}, {"capacity", 1025},
 		{"valid_from", "2033-05-22T05:20:00.1Z"}, {"valid_until", "2033-05-22T06:20:00+00:00"},
 		{"family", "has space"}, {"endpoint", "bad"}, {"carrier", "ardents-carrier-quic-v2"}, {"carrier", "ardents-carrier-tcp-tls-v1"}, {"schema", "ardents-qualification-node-record-plan-v1"},
-		{"private_key", "forbidden"}, {"epoch", 1}, {"Network_ID", preparationIdentifier(1)},
+		{"private_key", "forbidden"}, {"epoch", 1}, {"Network_ID", provisionfixture.PlanIdentifier(1)},
 	} {
-		t.Run(change.field+"-"+string(preparationJSON(t, change.value)), func(t *testing.T) {
-			q := preparationRecordPlan(public)
+		t.Run(change.field+"-"+string(provisionfixture.PlanJSON(t, change.value)), func(t *testing.T) {
+			q := provisionfixture.RecordPlan(public)
 			q[change.field] = change.value
-			if _, b, e := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, q)); e == nil || b != nil {
+			if _, b, e := networkdraft.Prepare("prepare-initial-node-record", provisionfixture.PlanJSON(t, q)); e == nil || b != nil {
 				t.Fatal("invalid public plan accepted")
 			}
 		})
 	}
-	raw := preparationJSON(t, p)
+	raw := provisionfixture.PlanJSON(t, p)
 	for _, bad := range [][]byte{append(bytes.Clone(raw), raw...), append(bytes.Clone(raw), []byte(" true")...), []byte("[]"), []byte("null"), bytes.Replace(raw, []byte(`"capacity":3`), []byte(`"capacity":3,"capacity":3`), 1), bytes.Replace(raw, []byte(`"capacity":3`), []byte(`"capacity":null`), 1)} {
 		if _, b, e := networkdraft.Prepare("prepare-initial-node-record", bad); e == nil || b != nil {
 			t.Fatal("duplicate/trailing/null plan accepted", string(bad))

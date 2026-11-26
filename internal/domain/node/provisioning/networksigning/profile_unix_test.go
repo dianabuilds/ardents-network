@@ -1,28 +1,26 @@
 //go:build linux || darwin
 
-package provisioning
+package networksigning
 
 import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"testing"
 	"time"
-)
 
-func profileSigningDeclaration(t *testing.T, plan any, public ed25519.PublicKey, reference time.Time) []byte {
-	t.Helper()
-	return preparationJSON(t, map[string]any{"schema": "ardents-closed-profile-signing-plan-v1", "reference_time": reference.Format(time.RFC3339), "state_authority_key": preparationHex(public), "profile": plan})
-}
+	provisionfixture "github.com/dianabuilds/ardents-network/tests/networkfixture"
+)
 
 func TestNetworkSigningIndependentProfileAndAuthority(t *testing.T) {
 	now := time.Unix(1800003600, 0).UTC().Add(time.Minute)
-	p, key, body, want := signingProfileFixture(t, now)
+	p, key, body, want := provisionfixture.ProfilePlan(t, now)
 	defer clear(key)
-	raw := profileSigningDeclaration(t, p, key.Public().(ed25519.PublicKey), now)
+	raw := provisionfixture.ProfileSigningDeclaration(t, p, key.Public().(ed25519.PublicKey), now)
 	digest := sha256.Sum256(body)
-	pin := preparationHex(digest[:])
+	pin := hex.EncodeToString(digest[:])
 	admit := func(raw, body []byte, pin string) *networkSigning {
 		t.Helper()
 		s, e := admitNetworkSigning("sign-closed-profile", raw, body, pin)
@@ -32,11 +30,11 @@ func TestNetworkSigningIndependentProfileAndAuthority(t *testing.T) {
 		return s
 	}
 	s := admit(raw, body, pin)
-	if _, e := admitNetworkSigning("sign-closed-profile", profileSigningDeclaration(t, p, ed25519.PublicKey(bytes.Repeat([]byte{0}, 32)), now), body, pin); e == nil {
+	if _, e := admitNetworkSigning("sign-closed-profile", provisionfixture.ProfileSigningDeclaration(t, p, ed25519.PublicKey(bytes.Repeat([]byte{0}, 32)), now), body, pin); e == nil {
 		t.Fatal("zero State pin accepted")
 	}
 	permission := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{83}, 32))
-	if _, e := admitNetworkSigning("sign-closed-profile", profileSigningDeclaration(t, p, permission.Public().(ed25519.PublicKey), now), body, pin); e == nil {
+	if _, e := admitNetworkSigning("sign-closed-profile", provisionfixture.ProfileSigningDeclaration(t, p, permission.Public().(ed25519.PublicKey), now), body, pin); e == nil {
 		t.Fatal("Admission authority aliased as State signer")
 	}
 	clear(permission)
@@ -53,37 +51,37 @@ func TestNetworkSigningIndependentProfileAndAuthority(t *testing.T) {
 			case "prepared":
 				b[0] ^= 1
 			case "pin":
-				pin = preparationIdentifier(99)
+				pin = provisionfixture.PlanIdentifier(99)
 			case "duplicate":
 				r = bytes.Replace(r, []byte(`"schema":`), []byte(`"schema":"x","schema":`), 1)
 			case "unknown":
 				q["private_key"] = true
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			case "mixed":
 				q["epoch"] = p
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			case "trailing":
 				r = append(r, []byte(" null")...)
 			case "wrong purpose":
 				q["schema"] = "ardents-initial-epoch-signing-plan-v1"
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			case "missing authority":
 				delete(q, "state_authority_key")
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			case "zero authority":
-				q["state_authority_key"] = preparationIdentifier(0)
-				r = preparationJSON(t, q)
+				q["state_authority_key"] = provisionfixture.PlanIdentifier(0)
+				r = provisionfixture.PlanJSON(t, q)
 			case "authority shape":
 				q["state_authority_key"] = []int{1}
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			case "fraction":
 				q["reference_time"] = now.Add(time.Nanosecond).Format(time.RFC3339Nano)
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			default:
 				profile := q["profile"].(map[string]any)
 				switch fault {
 				case "foreign context":
-					profile["network_id"] = preparationIdentifier(99)
+					profile["network_id"] = provisionfixture.PlanIdentifier(99)
 				case "bad spki":
 					profile["token_keys"].([]any)[0].(map[string]any)["spki"] = "00"
 				case "duplicate node":
@@ -92,12 +90,12 @@ func TestNetworkSigningIndependentProfileAndAuthority(t *testing.T) {
 				case "long interval":
 					profile["not_after"] = now.Add(7 * time.Hour).Format(time.RFC3339)
 				}
-				r = preparationJSON(t, q)
+				r = provisionfixture.PlanJSON(t, q)
 			}
 			if _, e := admitNetworkSigning("sign-closed-profile", r, b, pin); e == nil {
 				t.Fatal("invalid profile binding accepted")
 			}
-			if _, e := admit(raw, body, preparationHex(digest[:])).sign(key, now); e != nil {
+			if _, e := admit(raw, body, hex.EncodeToString(digest[:])).sign(key, now); e != nil {
 				t.Fatal("healthy control", e)
 			}
 		})
@@ -108,7 +106,7 @@ func TestNetworkSigningIndependentProfileAndAuthority(t *testing.T) {
 			t.Fatal("Node/Admission/foreign private key accepted")
 		}
 		if n != 83 {
-			wrong := admit(profileSigningDeclaration(t, p, foreign.Public().(ed25519.PublicKey), now), body, pin)
+			wrong := admit(provisionfixture.ProfileSigningDeclaration(t, p, foreign.Public().(ed25519.PublicKey), now), body, pin)
 			if _, e := wrong.sign(key, now); e == nil {
 				t.Fatal("independent State pin ignored")
 			}

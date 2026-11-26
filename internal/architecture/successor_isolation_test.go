@@ -262,7 +262,7 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 		for _, name := range []string{
 			"internal/durablefile/inode_times_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
-			"internal/domain/node/provisioning/network_preparation_linux.go",
+			"internal/domain/node/provisioning/networkpreparation/prepare_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -389,17 +389,16 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/domain/node/provisioning/node_provisioning_role_unix.go",
 			"internal/domain/node/provisioning/public_identifier_unix.go",
 			"internal/domain/node/provisioning/public_identifier_unix_test.go",
-			"internal/domain/node/provisioning/node_certificate_unix.go",
-			"internal/domain/node/provisioning/node_certificate_unix_test.go",
+			"internal/domain/node/provisioning/networksigning/certificate_unix.go",
+			"internal/domain/node/provisioning/networksigning/certificate_unix_test.go",
 			"internal/domain/node/provisioning/network_report_unix.go",
 			"internal/domain/node/provisioning/node_record_unix.go",
 			"internal/domain/node/provisioning/forwarding_node_record_unix_test.go",
-			"internal/domain/node/provisioning/network_signing_declaration_unix.go",
-			"internal/domain/node/provisioning/network_certificate_signing_unix.go",
-			"internal/domain/node/provisioning/network_certificate_signing_unix_test.go",
-			"internal/domain/node/provisioning/network_profile_signing_unix.go",
-			"internal/domain/node/provisioning/network_profile_signing_test.go",
-			"internal/domain/node/provisioning/network_signing_fixture_unix_test.go",
+			"internal/domain/node/provisioning/networksigning/declaration_unix.go",
+			"internal/domain/node/provisioning/networksigning/certificate_operation_unix.go",
+			"internal/domain/node/provisioning/networksigning/certificate_operation_unix_test.go",
+			"internal/domain/node/provisioning/networksigning/profile_unix.go",
+			"internal/domain/node/provisioning/networksigning/profile_unix_test.go",
 			"internal/domain/release/infrastructure/signing/release_key_receipt_unix.go",
 			"internal/platform/artifacts/flag_options_unix.go",
 			"internal/domain/network/closedprofile/signing_transcript_unix.go",
@@ -424,9 +423,9 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/domain/node/provisioning/network_preparation_linux.go",
+			"internal/domain/node/provisioning/networkpreparation/prepare_linux.go",
 			"internal/domain/node/provisioning/command_linux.go",
-			"internal/domain/node/provisioning/network_signing_linux.go",
+			"internal/domain/node/provisioning/networksigning/protected_linux.go",
 			"internal/domain/node/provisioning/initial_network_keys_linux.go",
 			"internal/platform/artifacts/output_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
@@ -1042,6 +1041,10 @@ func isMigratedDomain(name string) bool {
 
 func successorImportAllowed(source, dependency string) bool {
 	if domainMeasurementImportAllowed(source, dependency) {
+		return true
+	}
+	if source == "tests/networkfixture/provisioning_plans.go" &&
+		(dependency == modulePath+"/internal/domain/network/closedprofile" || dependency == modulePath+"/tests/epochfixture/network") {
 		return true
 	}
 	if offlineOperatorFile(source) {

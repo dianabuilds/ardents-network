@@ -1,25 +1,27 @@
 //go:build linux
 
-package provisioning
+package networksigning
 
 import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
+	provisionfixture "github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
-	p, key, message, reference := signingRecordFixture(t)
+	p, key, message, reference := provisionfixture.RecordSigningPlan(t)
 	digest := sha256.Sum256(message)
-	raw := signingDeclaration(t, "node-record", p, reference)
+	raw := provisionfixture.SigningDeclaration(t, "node-record", p, reference)
 	admit := func(raw, prepared []byte, pin string) *networkSigning {
 		t.Helper()
 		s, err := admitNetworkSigning("sign-initial-node-record", raw, prepared, pin)
@@ -28,7 +30,7 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 		}
 		return s
 	}
-	s := admit(raw, message, preparationHex(digest[:]))
+	s := admit(raw, message, hex.EncodeToString(digest[:]))
 	from, _ := networkdraft.ParseTime(p["valid_from"].(string))
 	until, _ := networkdraft.ParseTime(p["valid_until"].(string))
 	f, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: [32]byte{1}, NodeID: [32]byte{2}, Generation: 1, ValidFrom: from, ValidUntil: until, Family: "family-one", Endpoint: "127.0.0.1:4401", Carrier: p["carrier"].(string), Capability: 2, Capacity: 3, PrivateKey: key})
@@ -38,12 +40,12 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 	}
 	for _, fault := range []string{"prepared", "pin", "mixed", "duplicate", "trailing", "wrong-purpose", "fraction", "unknown", "quic"} {
 		t.Run(fault, func(t *testing.T) {
-			r, prepared, pin := bytes.Clone(raw), bytes.Clone(message), preparationHex(digest[:])
+			r, prepared, pin := bytes.Clone(raw), bytes.Clone(message), hex.EncodeToString(digest[:])
 			switch fault {
 			case "prepared":
 				prepared[0] ^= 1
 			case "pin":
-				pin = preparationIdentifier(99)
+				pin = provisionfixture.PlanIdentifier(99)
 			case "mixed":
 				r = bytes.Replace(r, []byte(`"record":`), []byte(`"epoch":{},"record":`), 1)
 			case "duplicate":
@@ -51,7 +53,7 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 			case "trailing":
 				r = append(r, []byte(" null")...)
 			case "wrong-purpose":
-				r = signingDeclaration(t, "epoch", p, reference)
+				r = provisionfixture.SigningDeclaration(t, "epoch", p, reference)
 			case "fraction":
 				r = bytes.Replace(r, []byte("05:30:00Z"), []byte("05:30:00.1Z"), 1)
 			case "unknown":
@@ -62,7 +64,7 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 			if _, err := admitNetworkSigning("sign-initial-node-record", r, prepared, pin); err == nil {
 				t.Fatal("invalid binding accepted")
 			}
-			if _, err := admit(raw, message, preparationHex(digest[:])).sign(key, reference); err != nil {
+			if _, err := admit(raw, message, hex.EncodeToString(digest[:])).sign(key, reference); err != nil {
 				t.Fatal("healthy control", err)
 			}
 		})
@@ -88,7 +90,7 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 }
 
 func TestNetworkSigningPrivateEncoding(t *testing.T) {
-	_, key, _, _ := signingRecordFixture(t)
+	_, key, _, _ := provisionfixture.RecordSigningPlan(t)
 	der, err := x509.MarshalPKCS8PrivateKey(key)
 	if err != nil {
 		t.Fatal(err)
@@ -112,14 +114,14 @@ func TestNetworkSigningPrivateEncoding(t *testing.T) {
 }
 
 func TestNetworkSigningIndependentEpochOrdering(t *testing.T) {
-	plan, stateKey, inputs, f, reference := publicEpochFixture(t)
+	plan, stateKey, inputs, f, reference := provisionfixture.EpochPlan(t)
 	defer clear(stateKey)
-	_, message, err := networkdraft.Prepare("prepare-initial-epoch", preparationJSON(t, plan))
+	_, message, err := networkdraft.Prepare("prepare-initial-epoch", provisionfixture.PlanJSON(t, plan))
 	if err != nil {
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(message)
-	s, err := admitNetworkSigning("sign-initial-epoch", signingDeclaration(t, "epoch", plan, reference), message, preparationHex(digest[:]))
+	s, err := admitNetworkSigning("sign-initial-epoch", provisionfixture.SigningDeclaration(t, "epoch", plan, reference), message, hex.EncodeToString(digest[:]))
 	if err != nil {
 		t.Fatal(err)
 	}

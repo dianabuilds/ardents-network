@@ -1,4 +1,4 @@
-package provisioning
+package networksigning
 
 import (
 	"errors"
@@ -7,13 +7,13 @@ import (
 
 var errNetworkSigning = errors.New("offline Network signing unavailable")
 
-// IsNetworkSigning recognizes the four fixed offline signing purposes.
-func IsNetworkSigning(operation string) bool {
+// IsPurpose recognizes the four fixed offline signing purposes.
+func IsPurpose(operation string) bool {
 	return operation == "sign-initial-node-record" || operation == "sign-initial-epoch" || operation == "sign-closed-profile" || operation == "prepare-node-certificate"
 }
 
-// NetworkSigningResult retains the signed byte commitment and operation interval.
-type NetworkSigningResult struct {
+// Result retains the signed byte commitment and operation interval.
+type Result struct {
 	Digest   [32]byte
 	interval networkSigningInterval
 }
@@ -29,6 +29,6 @@ func (s networkSigningInterval) checkTime(now time.Time) error {
 }
 
 // CheckTime verifies that reporting uses the original signing interval.
-func (result NetworkSigningResult) CheckTime(now time.Time) error {
+func (result Result) CheckTime(now time.Time) error {
 	return result.interval.checkTime(now)
 }
