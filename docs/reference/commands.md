@@ -493,14 +493,19 @@ threshold, profile signer and an independent clock-observation file. Submit the
 profile after accepting the Epoch. The two operations have separate receipts
 and State transitions.
 
-The diagnostic timeline accepts the bounded runtime schemas from Node,
-Source, and the headless Endpoint. For a live local view, pipe an authorized
+The diagnostic timeline accepts retained bounded runtime schemas from Node,
+Source and the headless Endpoint, plus current Node role and Source command
+reports through their finite operation/phase/outcome adapter. For a live local view, pipe an authorized
 journal stream into it, for example:
 
     journalctl -f -o json | ardents-next diagnostics timeline
 
-Each tab-separated row is occurrence time (UTC), clock origin (event or journal),
+Each tab-separated row is occurrence time (UTC), clock origin (event, journal or unavailable),
 owner, journal process ID, role, Carrier, kind, state, and quoted bounded reason. It preserves input order.
+For current command reports, the last three fields are operation, phase and
+quoted outcome. A report without journal time shows `-` and `unavailable`;
+collector receipt time is never presented as producer time. No private command
+fields or resource details are projected from these reports.
 Old Source events without an occurrence time use the journal receipt time when
 available. For journal records, runtime event fields come exclusively from
 `MESSAGE`. The journal supplies the process ID and fallback receipt time.

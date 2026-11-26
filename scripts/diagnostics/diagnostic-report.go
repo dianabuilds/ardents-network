@@ -57,6 +57,8 @@ type reportFailure struct {
 	Owner      string    `json:"owner"`
 	Kind       string    `json:"kind"`
 	State      string    `json:"state,omitempty"`
+	Phase      string    `json:"phase,omitempty"`
+	Outcome    string    `json:"outcome,omitempty"`
 	Category   string    `json:"category,omitempty"`
 	ObservedAt time.Time `json:"observed_at"`
 	// Ordinal is local collector order, never a cross-role causal order.
@@ -422,7 +424,10 @@ func readReportEvents(root *os.Root, r *runReport, expected map[string]uint64) {
 			if e.Schema == runtimeevent.EndpointSchema {
 				owner = "Endpoint"
 			}
-			f := reportFailure{Owner: owner, Kind: e.Kind, State: e.State, Category: e.Failure, ObservedAt: e.ObservedAt, Record: record}
+			if e.Schema == runtimeevent.CommandReportSchema {
+				owner = e.Owner
+			}
+			f := reportFailure{Owner: owner, Kind: e.Kind, State: e.State, Phase: e.Phase, Outcome: e.Outcome, Category: e.Failure, ObservedAt: e.ObservedAt, Record: record}
 			if at, err := time.Parse(time.RFC3339Nano, e.At); err == nil {
 				f.OwnerAt = &at
 			}
@@ -462,6 +467,14 @@ func safeReportEvent(e event) bool {
 		return false
 	}
 	if !runtimeevent.KnownKind(e.Schema, e.Kind) {
+		return false
+	}
+	if e.Schema == runtimeevent.CommandReportSchema {
+		command, ok := runtimeevent.ClassifyCommand(e.Kind, e.Phase, e.Outcome)
+		return ok && e.Owner == command.Owner && e.Failure == command.Failure &&
+			e.At == "" && e.State == "" && e.Carrier == "" && len(e.Resource) == 0 && len(e.Hosting) == 0 && e.UnknownCategories == 0
+	}
+	if e.Owner != "" || e.Phase != "" || e.Outcome != "" {
 		return false
 	}
 	if e.State != "" && !runtimeevent.KnownState(e.State) {

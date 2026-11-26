@@ -647,3 +647,36 @@ func serveReaderFixture(t *testing.T, socket string, snapshot func() []byte) fun
 	t.Cleanup(closeSocket)
 	return closeSocket
 }
+
+func TestSavedCommandProjectionCannotInventReadinessOrHideFailure(t *testing.T) {
+	base := event{ObservedAt: time.Now(), Schema: "ardents-command-report-v1", Kind: "node.join", Owner: "node", Phase: "retiring", Outcome: "completion-unavailable", Failure: "completion-unavailable"}
+	if !safeReportEvent(base) {
+		t.Fatal("safe unavailable completion refused")
+	}
+	for _, mutate := range []func(*event){
+		func(e *event) { e.Phase = "listening" },
+		func(e *event) { e.Outcome = "PRIVATE" },
+		func(e *event) { e.Failure = "" },
+		func(e *event) { e.Owner = "source" },
+		func(e *event) { e.At = "2030-01-01T00:00:00Z" },
+		func(e *event) { e.Resource = map[string]float64{"fds": 99} },
+	} {
+		e := base
+		mutate(&e)
+		if safeReportEvent(e) {
+			t.Fatalf("invalid saved report admitted: %+v", e)
+		}
+	}
+	dir := reportFixture(t, 1)
+	reportRow(t, dir, "events.ndjson", base)
+	root, err := openEvidenceRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	report := runReport{Finished: true, Complete: true}
+	readReportEvents(root, &report, map[string]uint64{"node.join": 1})
+	if report.FirstObserved == nil || report.FirstObserved.Owner != "node" || report.FirstObserved.Phase != "retiring" || report.FirstObserved.Category != "completion-unavailable" {
+		t.Fatalf("current refusal not reported: %+v", report)
+	}
+}

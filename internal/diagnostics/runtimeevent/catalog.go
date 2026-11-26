@@ -52,6 +52,9 @@ func Categories() []Category {
 			result = append(result, Category{group.schema, kind})
 		}
 	}
+	for _, report := range commandReports {
+		result = append(result, Category{CommandReportSchema, report.operation})
+	}
 	return result
 }
 

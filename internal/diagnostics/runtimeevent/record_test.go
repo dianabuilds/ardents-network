@@ -75,7 +75,7 @@ func TestRecordedCategoriesAndDetachedNumericFacts(t *testing.T) {
 	if !KnownKind(NodeSchema, "lifecycle") || ResourceNames()[0] != "rss_bytes" || HostingNames()[0] != "UsedBytes" {
 		t.Fatal("caller mutated catalogue")
 	}
-	if len(Categories()) != 12 || KnownKind(SourceSchema, "lifecycle") || KnownFailure(NodeSchema, "private-marker") {
+	if len(Categories()) != 19 || KnownKind(SourceSchema, "lifecycle") || KnownFailure(NodeSchema, "private-marker") {
 		t.Fatal("foreign category admitted")
 	}
 }
@@ -87,6 +87,63 @@ func TestUnknownAndOversizedInput(t *testing.T) {
 	for _, raw := range []string{"null", "{", strings.Repeat("x", (1<<20)+1)} {
 		if _, _, err := Decode([]byte(raw)); err == nil {
 			t.Fatal("invalid input accepted")
+		}
+	}
+}
+
+func TestCurrentCommandReportTransitionAndPrivacyBoundary(t *testing.T) {
+	for _, tc := range []struct{ operation, phase, outcome, owner string }{
+		{"node.forwarding", "listening", "original-duty", "node"},
+		{"node.join", "retiring", "completion-unavailable", "node"},
+		{"node.issuer", "joined", "failed", "node"},
+		{"node.descriptor", "joined", "canceled", "node"},
+		{"node.introduction", "refused", "startup-unavailable", "node"},
+		{"source.serve", "listening", "original-source", "source"},
+		{"source.serve", "completion", "failed", "source"},
+		{"source.serve", "repair", "failed", "source"},
+		{"source", "refused", "unsupported-platform", "source"},
+	} {
+		raw, _ := json.Marshal(map[string]any{"operation": tc.operation, "phase": tc.phase, "outcome": tc.outcome,
+			"at": "2030-01-01T00:00:00Z", "first_failure": "PRIVATE", "first_owner": "PRIVATE", "cleanup_owner": "PRIVATE",
+			"resource": map[string]any{"fds": 77}, "request_digest": "PRIVATE", "address": "PRIVATE"})
+		record, present, err := Decode(raw)
+		if err != nil || !present || record.Schema != CommandReportSchema || record.Kind != tc.operation || record.Owner != tc.owner || record.Phase != tc.phase || record.Outcome != tc.outcome {
+			t.Fatalf("current command: %+v %t %v", record, present, err)
+		}
+		projection, _ := json.Marshal(record)
+		if strings.Contains(string(projection), "PRIVATE") || !record.At.IsZero() || len(record.Resource) != 0 || record.Reason != "" || record.Role != "" {
+			t.Fatal("private report detail or invented measurement retained")
+		}
+	}
+}
+
+func TestCommandReportsRejectUnknownPairsWithoutEcho(t *testing.T) {
+	for _, raw := range []string{
+		`{"operation":"node.forwarding","phase":"listening","outcome":"canceled"}`,
+		`{"operation":"node.join","phase":"joined","outcome":"original-duty"}`,
+		`{"operation":"source.serve","phase":"retiring","outcome":"canceled"}`,
+		`{"operation":"source","phase":"listening","outcome":"original-source"}`,
+		`{"operation":"node.issuer","phase":"PRIVATE","outcome":"failed"}`,
+		`{"operation":"source.serve","phase":"joined","outcome":"PRIVATE"}`,
+		`{"operation":"source.serve","phase":null,"outcome":"failed"}`,
+		`{"operation":"source.serve","phase":"joined"}`,
+		`{"operation":"source.serve","phase":"joined","outcome":7}`,
+		`{"operation":"node.join","phase":"joined","phase":"listening","outcome":"original-duty"}`,
+		`{"operation":"source.serve","phase":"joined","outcome":"failed","outcome":"canceled"}`,
+	} {
+		record, present, err := Decode([]byte(raw))
+		if err == nil || present || strings.Contains(err.Error(), "PRIVATE") || record.Kind != "" {
+			t.Fatalf("invalid command retained: %+v %t %v", record, present, err)
+		}
+	}
+	for _, raw := range []string{
+		`{"operation":"PRIVATE","phase":"joined","outcome":"failed"}`,
+		`{"schema":"foreign","operation":"node.join","phase":"joined","outcome":"failed"}`,
+		`{"schema":null,"operation":"node.join","phase":"joined","outcome":"failed"}`,
+		`{"operation":"node.join","phase":"joined","outcome":"failed","MESSAGE":"{}"}`,
+	} {
+		if _, present, err := Decode([]byte(raw)); err != nil || present {
+			t.Fatalf("foreign format admitted: %t %v", present, err)
 		}
 	}
 }

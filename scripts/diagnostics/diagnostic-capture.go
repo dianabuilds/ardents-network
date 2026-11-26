@@ -77,6 +77,9 @@ type event struct {
 	At                string             `json:"at,omitempty"`
 	Schema            string             `json:"schema"`
 	Kind              string             `json:"kind"`
+	Owner             string             `json:"owner,omitempty"`
+	Phase             string             `json:"phase,omitempty"`
+	Outcome           string             `json:"outcome,omitempty"`
 	State             string             `json:"state,omitempty"`
 	Carrier           string             `json:"carrier,omitempty"`
 	Failure           string             `json:"failure,omitempty"`
@@ -144,7 +147,7 @@ func project(body []byte) (event, string) {
 	if !present {
 		return event{}, "unknown"
 	}
-	e := event{ObservedAt: time.Now().UTC(), Schema: record.Schema, Kind: record.Kind,
+	e := event{ObservedAt: time.Now().UTC(), Schema: record.Schema, Kind: record.Kind, Phase: record.Phase, Outcome: record.Outcome,
 		Resource: record.Resource, Hosting: record.Hosting, UnknownCategories: record.UnknownCategories}
 	if !record.At.IsZero() {
 		e.At = record.At.UTC().Format(time.RFC3339Nano)
@@ -154,6 +157,9 @@ func project(body []byte) (event, string) {
 	}
 	if runtimeevent.KnownCarrier(record.Carrier) {
 		e.Carrier = record.Carrier
+	}
+	if command, ok := runtimeevent.ClassifyCommand(record.Kind, record.Phase, record.Outcome); ok && record.Schema == runtimeevent.CommandReportSchema {
+		e.Owner, e.Failure = command.Owner, command.Failure
 	}
 	if record.Schema != runtimeevent.NodeSchema && record.Reason != "" {
 		if runtimeevent.KnownFailure(record.Schema, record.Reason) {

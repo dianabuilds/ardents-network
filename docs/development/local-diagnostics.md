@@ -40,7 +40,9 @@ preparation; this adapter identity does not establish domain-wide coverage.
 The common contract applies across the project. Today the finite Admission,
 Issuance and Hosting command adapters use the shared OTLP exporter. Current
 Node, Endpoint and Source command reports are distinct local results; they do
-not match the retained schema/kind readers below. This does not establish
+not match the retained schemas below. The shared decoder explicitly adapts
+current Node and Source reports; Endpoint progress remains outside that adapter.
+This does not establish
 common runtime instrumentation coverage. The monitor's resource exposition
 reports observations from its selected local sources. Offline
 `ardents-custody` emits command results and diagnostics without a collector
@@ -54,6 +56,29 @@ field spelling; Issuance, results and issuer-profile stderr add `telemetry` next
 to operation/phase/outcome. Their stdout result fields, exit status and durable
 operation outcome remain separate. No raw collector error is printed. An early
 input refusal before export opens still emits only its command result.
+
+## Current command-report projection
+
+The shared decoder recognizes the five current Node role operations and Source
+serving reports by their exact operation/phase/outcome tuple, only when no schema
+is declared. The independent journal MESSAGE still supplies the report body.
+Unknown operations remain unrecognized; wrong types, duplicate keys and invalid
+transitions in recognized reports make the observation invalid. Listening,
+retiring with completion unavailable, and joined cancellation/failure remain
+distinct facts. No decoder result grants readiness or proves physical join.
+
+`ardents-command-report-v1` names the collector's normalized projection, not a
+schema declared by these producers. Its kind is the fixed operation name; owner,
+phase, outcome and the derived failure category come from one finite catalogue.
+The collector, saved report/panel and live monitor use that same validation.
+Existing operation reports, first/cleanup owner fields and local nested failure
+facts retain their original command bytes. Private details, resource subobjects,
+request digests and supplied `at` fields are excluded from the projection.
+No command report declares an event timestamp. Timeline uses a genuine journal
+receipt time when present; otherwise it renders `-` with clock `unavailable`.
+Collector receipt time remains separate. These reports supply no resource
+measurements or new OTLP instrumentation. Endpoint progress without an operation
+identity is not inferred from generic phase strings.
 
 ## Retained diagnostic readers
 
@@ -292,9 +317,9 @@ for these lifecycle checks.
 
 | Owner | Available evidence | Gap / interpretation |
 |---|---|---|
-| Current Node role command and `inspect-process` | Bounded local operation/phase/outcome and first/cleanup owner reports; explicit process inspection | These are not the retained `ardents-node-event-v1` producer. No common runtime metrics/event export is established. |
+| Current Node role command and `inspect-process` | Bounded local operation/phase/outcome and first/cleanup owner reports; explicit process inspection | Adapted into timeline/collector as finite command reports; not the retained `ardents-node-event-v1` producer. No common runtime resource or OTLP coverage is established. |
 | Current Endpoint command | Local permission-exchange progress and command refusals; original completion stays with the owner | Not the retained headless runtime event producer. Request digests and private local workflow details must not be routed into telemetry. |
-| Current Source command | Local serving/listening and joined failure-owner reports | Not the retained `ardents-source-event-v1` producer. Process survival does not establish current State or Source readiness. |
+| Current Source command | Local serving/listening and joined failure-owner reports | Adapted into timeline/collector as finite command reports; not the retained `ardents-source-event-v1` producer. Process survival does not establish current State or Source readiness. |
 | `internal/diagnostics/timeline` | Existing safe streaming operator timeline, direct JSON/journal input | Human-readable projection; no resource/time series store. Continue using its existing command for exact timeline semantics. |
 | qualification command | Set-wide stream/latency/throughput/resource verdicts and invalidations | Purpose-selected installed environment; Docker fixture results cannot replace its verdicts. |
 | Endpoint Role capture tests | Isolated role durable-state observations and Go heap collection | Secret-bearing inputs and outputs retained only in the selected capture profile. |

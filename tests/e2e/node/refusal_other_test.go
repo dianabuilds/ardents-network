@@ -38,6 +38,11 @@ func TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput(t *testing.T) 
 			if !errors.As(err, &exit) || exit.ExitCode() != 1 || out.String() != want {
 				t.Fatal("compiled Node read unavailable private input or lost native refusal", err, out.String())
 			}
+			projection := projectCommandTimeline(t, binary, out.Bytes())
+			wantTimeline := "-\tunavailable\tnode\t-\t-\t-\tnode." + route[1] + "\trefused\t\"unsupported-platform\"\n"
+			if string(projection) != wantTimeline {
+				t.Fatalf("current Node report disappeared from timeline: %q", projection)
+			}
 			if diagnostic.Len() != 0 {
 				t.Fatal("unsupported Node exposed private input or a native cause")
 			}

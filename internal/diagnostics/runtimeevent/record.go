@@ -23,6 +23,7 @@ const (
 // and must not be copied into exported labels or safe monitoring output.
 type Record struct {
 	Schema, Kind, Owner, Role, Carrier, State, Reason string
+	Phase, Outcome                                    string
 	At, JournalAt                                     time.Time
 	PID                                               string
 	Resource, Hosting                                 map[string]float64
@@ -53,7 +54,10 @@ func Decode(raw []byte) (record Record, present bool, err error) {
 		if json.Unmarshal([]byte(text), &event) != nil || event == nil {
 			return Record{}, false, nil
 		}
-		fields = event
+		raw, fields = []byte(text), event
+	}
+	if _, declared := fields["schema"]; !declared {
+		return decodeCommandReport(raw, fields, record)
 	}
 	record.Schema = stringValue(fields, "schema")
 	var names []string

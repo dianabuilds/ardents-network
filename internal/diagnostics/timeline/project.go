@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
-// Project renders the three bounded runtime event schemas from
+// Project renders retained runtime events and current command reports from
 // app JSON lines or journalctl JSON. It streams without retaining raw records.
 func Project(ctx context.Context, input io.ReadCloser, output io.Writer) error {
 	if ctx == nil || input == nil || output == nil {
@@ -50,8 +50,12 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 	if at.IsZero() {
 		at, clock = record.JournalAt, "journal"
 	}
+	stamp := at.UTC().Format(time.RFC3339Nano)
 	if at.IsZero() {
-		return "", false, errors.New("runtime diagnostic has no event or journal time")
+		if record.Schema != runtimeevent.CommandReportSchema {
+			return "", false, errors.New("runtime diagnostic has no event or journal time")
+		}
+		stamp, clock = "-", "unavailable"
 	}
 	pid, role, carrier, state := record.PID, record.Role, record.Carrier, record.State
 	if pid == "" {
@@ -66,6 +70,10 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 	if state == "" {
 		state = "-"
 	}
+	detail := record.Reason
+	if record.Schema == runtimeevent.CommandReportSchema {
+		state, detail = record.Phase, record.Outcome
+	}
 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%q\n",
-		at.UTC().Format(time.RFC3339Nano), clock, record.Owner, pid, role, carrier, record.Kind, state, record.Reason), true, nil
+		stamp, clock, record.Owner, pid, role, carrier, record.Kind, state, detail), true, nil
 }
