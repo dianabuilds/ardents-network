@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
@@ -37,6 +39,7 @@ type Config struct {
 }
 
 type Publisher struct {
+	initialMetric, readyMetric    measurement.Gauge
 	self                          *Publisher
 	mu                            sync.Mutex
 	config                        Config
@@ -134,6 +137,8 @@ func New(ctx context.Context, config Config) (*Publisher, error) {
 		config.Operation.RetainCleanup(errors.Join(responderCleanup, sourceCleanup, lifetimeErr))
 		return nil, errors.Join(err, responderErr, sourceErr, lifetimeErr)
 	}
+	p.initialMetric = measurement.Track(runtimeevent.PublicationInitialSlots)
+	p.readyMetric = measurement.Track(runtimeevent.PublicationReadyCandidates)
 	p.initialDeliveries = make(map[[32]byte]*initialDelivery)
 	p.initialWake = make(chan struct{}, 1)
 	p.connections = make(map[[32]byte]*connection.Stream)
@@ -210,11 +215,17 @@ func (p *Publisher) Link(ctx context.Context) (string, error) {
 
 // Publish retries one exact pending flight or returns the original current
 // Link; it does not create a replacement for an acknowledged pair.
-func (p *Publisher) Publish(ctx context.Context) (string, error) { return p.publish(ctx, false) }
+func (p *Publisher) Publish(ctx context.Context) (string, error) {
+	defer measurement.Begin(runtimeevent.PublicationPublish).End()
+	return p.publish(ctx, false)
+}
 
 // Refresh reserves a new real slot/key and higher revision. The previous pair
 // remains current until the exact replacement Store ACK passes final checks.
-func (p *Publisher) Refresh(ctx context.Context) (string, error) { return p.publish(ctx, true) }
+func (p *Publisher) Refresh(ctx context.Context) (string, error) {
+	defer measurement.Begin(runtimeevent.PublicationRefresh).End()
+	return p.publish(ctx, true)
+}
 
 func (p *Publisher) stop() {
 	p.mu.Lock()
@@ -307,6 +318,10 @@ func (p *Publisher) drain() {
 		}
 		p.cleanupErr = physical
 		p.config.Operation.RetainCleanup(physical)
+		p.mu.Lock()
+		p.readyMetric.Decrease(uint64(len(p.readyInitial)))
+		p.readyMetric = measurement.Gauge{}
+		p.mu.Unlock()
 		p.cleanupJoined.Store(true)
 	})
 }

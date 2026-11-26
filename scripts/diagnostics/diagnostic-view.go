@@ -148,6 +148,12 @@ func metricText(s summary) string {
 		kind := category.Kind
 		fmt.Fprintf(&b, "ardents_diagnostic_events_total{kind=%q} %d\n", kind, s.Counts[kind])
 	}
+	for i := len(s.LastEvents) - 1; i >= 0; i-- {
+		if point := s.LastEvents[i].Measurements; point != nil && runtimeevent.ValidMeasurementSnapshot(*point) {
+			_ = runtimeevent.WriteMeasurementMetrics(&b, *point)
+			break
+		}
+	}
 	return b.String()
 }
 func boolNumber(value bool) int {

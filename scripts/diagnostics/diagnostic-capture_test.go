@@ -413,3 +413,31 @@ func TestDomainAndExporterResultsRemainSeparateInProjection(t *testing.T) {
 		t.Fatal("arbitrary delivery label reached panel")
 	}
 }
+
+func TestInternalMeasurementsUseSharedSafeProjectionAndMetricKinds(t *testing.T) {
+	raw := []byte(`{"schema":"ardents-domain-measurements-v1","at":"2026-09-30T00:00:01Z","started_at":"2026-09-30T00:00:00Z","discarded_snapshots":0,"telemetry":"unavailable","target":"PRIVATE","measurements":[{"name":"route.queue_budget_claim_bytes","available":true,"current":7,"peak":9,"count":0,"seconds":0,"maximum_seconds":0,"credential":"PRIVATE"},{"name":"enrollment.verify","available":true,"current":0,"peak":1,"count":2,"seconds":0.015,"maximum_seconds":0.01}]}`)
+	projected, reason := project(raw)
+	if reason != "" || projected.Measurements == nil || projected.Failure != "" || !safeReportEvent(projected) {
+		t.Fatal("measurement projection", reason, projected)
+	}
+	body, err := json.Marshal(projected)
+	if err != nil || bytes.Contains(body, []byte("PRIVATE")) {
+		t.Fatal("private data retained", err)
+	}
+	text := metricText(summary{LastEvents: []event{projected}})
+	for _, want := range []string{"# TYPE ardents_domain_route_queue_budget_claim_bytes_current gauge\n", "ardents_domain_route_queue_budget_claim_bytes_current 7\n", "# TYPE ardents_domain_enrollment_verify_calls_total counter\n", "ardents_domain_enrollment_verify_calls_total 2\n"} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in %q", want, text)
+		}
+	}
+	dir := reportFixture(t, 0)
+	reportRow(t, dir, "events.ndjson", projected)
+	report := assessRun(dir, time.Now().UTC())
+	if report.DomainMeasurements == nil || len(report.DomainSeries) != 1 || report.FirstObserved != nil || len(report.UnobservedInstruments) == 0 || !strings.Contains(strings.Join(report.Gaps, " "), "telemetry-export-unavailable") {
+		t.Fatalf("measurement availability/result conflated: %+v", report)
+	}
+	malformed := bytes.Replace(raw, []byte(`"current":7`), []byte(`"current":null`), 1)
+	if _, reason := project(malformed); reason != "invalid" {
+		t.Fatal("null measurement admitted", reason)
+	}
+}

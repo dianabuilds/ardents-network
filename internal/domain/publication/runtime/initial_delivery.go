@@ -93,6 +93,7 @@ func (state *initialDelivery) retain() error {
 		}
 		state.nonce = nonce
 		p.initialDeliveries[nonce] = state
+		p.initialMetric.Add(1)
 		return nil
 	})
 }
@@ -117,6 +118,7 @@ func (state *initialDelivery) publishJoined() error {
 		}
 		state.wireJoined = true
 		p.readyInitial = append(p.readyInitial, state)
+		p.readyMetric.Add(1)
 		if len(p.readyInitial) > 2*maximumInitialDeliveries {
 			p.compactReadyInitial()
 		}
@@ -137,6 +139,7 @@ func (p *Publisher) compactReadyInitial() {
 			ready = append(ready, state)
 		}
 	}
+	p.readyMetric.Add(int64(len(ready)) - int64(len(p.readyInitial)))
 	p.readyInitial = ready
 }
 
@@ -184,6 +187,7 @@ func (state *initialDelivery) close() {
 		p.mu.Lock()
 		if p.initialDeliveries[state.nonce] == state {
 			delete(p.initialDeliveries, state.nonce)
+			p.initialMetric.Add(-1)
 		}
 		p.mu.Unlock()
 	})

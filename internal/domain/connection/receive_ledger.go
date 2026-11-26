@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
@@ -12,6 +14,7 @@ import (
 // consuming bytes moves the cursor without duplicating the retained payload.
 // The stream owns synchronization, authenticated generation and live authority.
 type receiveLedger struct {
+	queueMetric        measurement.Gauge
 	generation, limit  uint64
 	base, next, readAt uint64
 	data               []byte
@@ -22,7 +25,7 @@ func newReceiveLedger(generation, limit uint64) (*receiveLedger, error) {
 	if generation == 0 || limit == 0 {
 		return nil, errIntegrity
 	}
-	return &receiveLedger{generation: generation, limit: limit, data: make([]byte, 0, logicalQueueLimit)}, nil
+	return &receiveLedger{queueMetric: measurement.Track(runtimeevent.ConnectionReceiveBytes), generation: generation, limit: limit, data: make([]byte, 0, logicalQueueLimit)}, nil
 }
 
 // accept checks the complete duplicate prefix before admitting any fresh suffix.
@@ -64,6 +67,7 @@ func (ledger *receiveLedger) accept(value wire.Data) error {
 		ledger.base += uint64(trim)
 	}
 	ledger.data = append(ledger.data, fresh...)
+	ledger.queueMetric.Add(int64(len(fresh)))
 	ledger.next = end
 	return nil
 }
@@ -73,6 +77,7 @@ func (ledger *receiveLedger) accept(value wire.Data) error {
 func (ledger *receiveLedger) read(destination []byte) (int, error) {
 	n, err := ledger.peek(destination)
 	ledger.readAt += uint64(n)
+	ledger.queueMetric.Add(-int64(n))
 	return n, err
 }
 

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
@@ -57,6 +58,26 @@ func diagnosticTimelineRow(raw []byte) (string, bool, error) {
 		}
 		stamp, clock = "-", "unavailable"
 	}
+	if record.Measurements != nil {
+		var rows strings.Builder
+		pid := record.PID
+		if pid == "" {
+			pid = "-"
+		}
+		for _, value := range record.Measurements.Values {
+			spec, _ := runtimeevent.LookupInstrument(value.Name).Spec()
+			detail := "unavailable"
+			if value.Available {
+				detail = fmt.Sprintf("current=%d peak=%d", value.Current, value.Peak)
+				if spec.Kind == runtimeevent.StageInstrument {
+					detail += fmt.Sprintf(" calls=%d seconds=%g maximum_seconds=%g", value.Count, value.Seconds, value.MaximumSeconds)
+				}
+			}
+			fmt.Fprintf(&rows, "%s\tsample\t%s\t%s\t-\t-\t%s\t%s\t%q\n", stamp, spec.Owner, pid, spec.Name, spec.Unit, detail)
+		}
+		return rows.String(), true, nil
+	}
+
 	pid, role, carrier, state := record.PID, record.Role, record.Carrier, record.State
 	if pid == "" {
 		pid = "-"

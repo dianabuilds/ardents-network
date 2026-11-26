@@ -3302,6 +3302,18 @@ with them.
 
 ## Local diagnostic environment
 
+Internal domain capture is explicitly selected with `ARDENTS_LOCAL_METRICS=1`.
+`measurement` behavior/race tests cover active versus ended stages, real retained
+slots, exact integer bounds, bounded/overwritten history, stopped-capture
+isolation, output errors and blocked exporter independence. Runtimeevent checks
+strict schema/quantity grammar and one finite 13-domain instrument catalogue;
+telemetry's packet oracle verifies every instrument fits the original OTLP
+request bound, retains counter reset time/type/units and emits no private labels.
+Owner causal tests cover Route stale release, Execution revoke/join/failure,
+Admission token burn/erasure and Connection replay/duplicate queues. These are
+component and real-owner observations, not installed/privacy qualification.
+
+
 The explicit [protected installation capture driver](../../tests/qualification/protected-installation/README.md)
 invokes public provision and installation-check, then asks the admitted system
 manager to start the actual installed unit. It retains the first command failure

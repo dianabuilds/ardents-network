@@ -3,6 +3,8 @@ package connection
 import (
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
@@ -14,6 +16,7 @@ var errBackpressure = errors.New("service Connection send replay queue is full")
 // The surrounding stream serializes calls and checks original live authority
 // before admission and after physical I/O. This ledger grants no authority.
 type sendLedger struct {
+	queueMetric                 measurement.Gauge
 	generation, limit           uint64
 	base, end, next, exposedEnd uint64
 	head                        uint64 // index of base within data; lazy-compacted
@@ -34,7 +37,7 @@ func newSendLedger(generation, limit uint64) (*sendLedger, error) {
 	if generation == 0 || limit == 0 {
 		return nil, errIntegrity
 	}
-	return &sendLedger{generation: generation, limit: limit}, nil
+	return &sendLedger{queueMetric: measurement.Track(runtimeevent.ConnectionSendBytes), generation: generation, limit: limit}, nil
 }
 
 func (ledger *sendLedger) accept(payload []byte) error {
@@ -43,6 +46,7 @@ func (ledger *sendLedger) accept(payload []byte) error {
 	}
 	ledger.data = append(ledger.data, payload...)
 	ledger.end += uint64(len(payload))
+	ledger.queueMetric.Add(int64(len(payload)))
 	return nil
 }
 
@@ -119,6 +123,7 @@ func (ledger *sendLedger) acknowledge(generation, offset uint64) error {
 	// Advance a head cursor instead of memmoving the whole remaining queue on
 	// every ACK (audit SW-5). The trimmed prefix is reclaimed lazily once it
 	// dominates the buffer, bounding data to twice the logical queue limit.
+	ledger.queueMetric.Add(-int64(offset - ledger.base))
 	ledger.head += offset - ledger.base
 	ledger.base = offset
 	ledger.next = max(ledger.next, offset)

@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
 )
 
@@ -188,6 +190,8 @@ func infrastructureLimit(name string) int64 {
 // seven original bounded files and the actual executable of this process.
 // Self-verification does not establish trust in its first execution.
 func VerifyInfrastructure(ctx context.Context, root, pin string) (InfrastructureBundle, error) {
+	defer measurement.Begin(runtimeevent.EnrollmentVerify).End()
+
 	if !canonicaldigest.Valid(pin) {
 		return InfrastructureBundle{}, ErrInput
 	}

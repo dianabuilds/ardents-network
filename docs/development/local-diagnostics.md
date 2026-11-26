@@ -64,6 +64,79 @@ delivery status independently and the saved report flags unavailable OTLP
 without turning a successful domain result into failure. No raw collector error is printed. An early
 input refusal before export opens still emits only its command result.
 
+## Internal domain measurements
+
+`ARDENTS_LOCAL_METRICS=1` explicitly selects one process-local measurement
+capture in `ardents-next` or offline `ardents-custody`. Other nonempty values
+refuse before command execution. Unset means no recorder, clock reads or
+exporter from these producers. Existing command observations keep their contract.
+The capture collects numeric aggregates only; it never selects a Target,
+Permission, Job, Route, root, role identity or admission decision.
+
+`runtimeevent.Instrument` is the one finite catalogue for name, semantic owner,
+kind and unit. The `measurement` supporting leaf owns enabled recording and
+bounded sample retention; it imports only standard library and `runtimeevent`.
+Original owners record transitions through this leaf with no I/O, SDK call,
+foreign observer or new domain resource/authority borrow. Its lock never calls
+another owner, exports or writes. Original domain lock and join ordering stays
+unchanged. SDK ownership stays in `telemetry`.
+
+- A **stage** records active calls, observed peak concurrency, ended-call count,
+  cumulative monotonic elapsed seconds and maximum ended-call seconds. It counts
+  refusals/cancellation as calls, never successful domain effects. An active call
+  has no fabricated completed duration. Nested stage durations are not additive.
+- A **gauge** aggregates the actual retained quantity in owners created within
+  this capture. It records current and observed peak. Resource returns follow
+  the original owner transition: revoke cannot return cleanup slots; failed
+  cleanup retains them; stale/idempotent release cannot subtract a replacement.
+- A **sample** is the last confirmed owning transaction's quantity, with its
+  observed peak over this capture. Hosting used/reserved/remaining bytes are
+  samples, not sums across roots, handles or processes. A failed transaction
+  invalidates their availability until a new confirmed observation; missing or
+  unavailable values are never measured zero.
+
+Samples have schema `ardents-domain-measurements-v1`, explicit capture start,
+sampling time, export delivery and finite instrument values. Sampling time is
+not a domain-effect timestamp or proof that an old owner remains live. Capture
+start is the counter/reset boundary. Different instruments do not form an atomic
+domain snapshot; no policy invariant or cross-owner causality is inferred from
+their relative sample values. No record or correlation identity is added.
+Unknown names, malformed/null values, duplicate keys/quantities, impossible
+bounds and foreign units/types cannot create a series. Units/types come from
+the catalogue, not input. Integer quantities are exact through 2^53; overflow or
+underflow becomes unavailable rather than wrapping. Stage sums/maximum remain
+finite nonnegative seconds.
+
+The sampler takes one snapshot each second and after original command return,
+retains at most 32 snapshots and counts overwritten snapshots. Final local JSON
+is emitted only after original work and its cleanup return; no producer waits
+for its sink. This is a bounded engineering capture, not continuous durable
+logging. A crash/forced kill can lose the retained local window. Overwrite is an
+explicit history gap; counters and peaks retain their capture scope. A local
+sink failure preserves a failing command's original exit, and changes only the
+capture exit after an otherwise successful command.
+
+For live delivery, `ardents-next` additionally accepts an explicitly configured
+`ARDENTS_METRICS_OTLP_ENDPOINT` with the existing HTTP loopback-only admission.
+It exports the same catalogue quantities every second and at completion through
+`telemetry`'s bounded transport: 250 ms per export, one connection, 32 KiB bodies,
+4 KiB responses, no retries/redirects, no exemplars or dynamic attributes.
+Exporter unavailability cannot block owner transitions or change their result;
+the capture retains finite `unavailable` delivery. The sampler joins its last
+bounded export, sends the final snapshot and closes the exporter before local
+emission. Counter `StartTime` is capture start; no field/label is a trace identity.
+Offline Custody always supplies no exporter; its measurement path adds no SDK or network client,
+including when the OTLP environment variable is present.
+
+Timeline, collector, saved report and Prometheus text use the same validated
+snapshot and series catalogue. Saved reports retain the latest quantities and
+up to 32 samples, report overwrite/reset/order gaps, and list unobserved
+instruments separately. `ardents_domain_*` exposition includes capture/sample
+time, availability, gauge current/peak, stage calls/seconds totals and maximum;
+it is historical capture evidence, not live readiness. Absence is not zero and
+counter reset is not recovery. Existing OS/process-group/container counters keep
+their separate source scope and are never attributed to a domain from activity.
+
 ## Current command-report projection
 
 The shared decoder recognizes registered command reports by their exact
@@ -101,8 +174,8 @@ are never guessed to be Endpoint events. Private details, resource subobjects,
 request digests and supplied `at` fields are excluded from the projection.
 No command report declares an event timestamp. Timeline uses a genuine journal
 receipt time when present; otherwise it renders `-` with clock `unavailable`.
-Collector receipt time remains separate. These reports supply no resource
-measurements or new OTLP instrumentation. Command-boundary observations use phase
+Collector receipt time remains separate. These command reports supply no resource
+measurements; the explicitly selected internal measurement profile above is separate. Command-boundary observations use phase
 `command`: exit 0 is `completed`, exit 1 is `failed`, exit 2 is
 `usage-or-output-failure`, and exit 130 is `canceled`. Exit 2 cannot identify an
 input defect alone, and successful command completion cannot authorize a domain
@@ -352,27 +425,32 @@ SDK into each domain would not establish coverage. No per-Target or per-Route
 activity graph is introduced. The boundaries below distinguish observations from
 unmeasured internal activity, rather than claiming that every method is traced.
 
-| Domain | Shared observed boundary | Honest limit |
+| Domain | Internal measured boundary | Quantity and limit |
 |---|---|---|
-| Endpoint | Installed permission progress, preparation, unavailable startup and successful joined command completion; withdrawal command result | Permission acceptance is not participant readiness. Original role/request digest stays local; no endpoint-wide resource sampler is implied. |
-| Node | Five role lifecycle reports and their first/cleanup result; receiving Route composition | Original `listening`, bounded `retiring` and `joined` remain distinct. Resource details in failure reports do not become measurements. |
-| Network | Source serving lifecycle and finite Network intake/inspection/preparation/signing command results | Source survival or command exit does not establish current authenticated State; raw profiles/pins/materials are excluded. |
-| Admission | Existing quota/issuance/profile OTLP and local observations, holder/receiver completion after original authority close, allocation/current-issuer command results | No spend, token stock, permission identity or live receiving activity is inferred from a command status. |
-| Hosting | Existing finite initialize/observe OTLP/local command observation | Runtime reservations, return/saturation and resource quantities remain separate measured-owner work, not fabricated counters. |
-| Route | Genuine receiving `listening`/joined result and Node role composition | No per-leg or per-Route trace/history; these lifecycle facts do not prove another domain's readiness. |
-| Execution | Preparation/route-holder command result and actual holder completion; installed preparation refusal phase | Command completion is not a worker qualification or live Job permit. |
-| Publication | Preparation/Instance command result, Endpoint permission/startup result and local Application publication command result | No claim of refresh/withdrawal/ACK time-series coverage. Public response and Instance data remain separate receipts. |
-| Connection | Local Application document/stream command completion plus Endpoint startup/retirement composition | The command reports its own result, not transport health or one metric per Attachment. No Target, payload, continuity or cross-role trace identifier is exported. |
-| Reachability | Existing Descriptor-role lifecycle and the genuinely composed Application/Endpoint result | Pure proof/history/Store rules have no private logger or SDK. No lookup count, readiness or Target visibility is invented from outer command results. |
-| Enrollment | Verification/candidate/protected-generation and artifact-name command result | Artifact naming and command exit are not authorization or installed qualification; signed inventory remains a separate artifact. |
-| Release | Initial verification command result | The observation cannot replace the retained verifier's actual decision/floors/proof or qualify deployment. |
-| Custody | Local completion/failure of the eight explicit offline commands | No network/exporter, key/record/commitment/password metadata, or normal logging of Authority activity beyond the caller's local command result. |
+| Endpoint | Original installed startup through running handoff (or joined refusal) | Active/count/seconds; no invented Endpoint queue or sum of child resources. Permission progress remains a separate command fact. |
+| Node | Original role invocation through joined retirement | Active/count/seconds; process inspection keeps its process scope. No phase proves current role readiness. |
+| Network | State refresh/fetch verification and actual Source connection handling | Active/count/seconds; no Source identity, profile pin, response body or State readiness label. |
+| Admission | Batch import/finalization, token presentation and volatile token stock | Active/count/seconds and actual retained tokens; burn and permission erasure reduce stock. No Credential, recipient/class/hour series or receiving-spend inference. |
+| Hosting | Owning transaction, genuinely contended owner gate and confirmed allowance observation | Waiter gauge; transaction/wait seconds; last-confirmed used/reserved/remaining bytes. Not a cross-root/process sum or CPU/RAM attribution. |
+| Route | Actual channel queue reservation, frame admission/wait, queued versus outstanding output and active lane credit | Budget-claim bytes (overlapping principal/child claims, **not heap**), child/channel slots, queued/outstanding frames and credit bytes; final returns/Finish retain original semantics. No per-lane/leg/Route series. |
+| Execution | Actual worker launch and Supervisor cleanup reservations | Launch active/count/seconds and retained cleanup slots; failed cleanup cannot report released capacity. No Job/principal identity or worker qualification claim. |
+| Publication | Actual Publish/Refresh and initial-delivery retention/candidate queue | Active/count/seconds, retained initial slots and queued candidates including stale entries until original removal/compaction. Candidate count is not authenticated readiness. |
+| Connection | Actual authentication/read/write, unacknowledged replay and unread bytes | Active/count/seconds; active-stream queue bytes survive physical replacement and duplicate input. Joined stream retirement ends the active queue gauge, not proof of payload erasure or peer delivery. |
+| Reachability | Genuine Store Publish/Lookup operations | Active/count/seconds; no new waiting queue or private Target/lookup graph. Proof/history rules keep their authority. |
+| Enrollment | Core Endpoint and infrastructure bundle verification | Active/count/seconds; no invented resident queue/resource reservation. Artifact receipts remain separate. |
+| Release | Initial joined verification and actual Verifier evaluation | Active/count/seconds; no invented resident queue or authorization from a metric. Retained floors stay with Release. |
+| Custody | Actual envelope sealing/opening | Active/count/seconds only in the explicitly selected offline capture. No network exporter, password, record/key/commitment labels or implicit Authority activity log. |
+
+Queue-free verification/codec operations have no queue metric. This is
+non-applicability, not measured empty capacity. Actual unobserved instruments
+remain named unavailable in the selected run; this table does not claim that
+one command exercises all domains or every method is traced.
 
 ## Existing observations and gaps
 
 | Owner | Available evidence | Gap / interpretation |
 |---|---|---|
-| Current Node role command and `inspect-process` | Bounded local operation/phase/outcome and first/cleanup owner reports; explicit process inspection | Adapted into timeline/collector as finite command reports; not the retained `ardents-node-event-v1` producer. No common runtime resource or OTLP coverage is established. |
+| Current Node role command and `inspect-process` | Bounded local operation/phase/outcome and first/cleanup owner reports; explicit process inspection | Adapted into timeline/collector as finite command reports; not the retained `ardents-node-event-v1` producer. The explicit internal measurement profile supplies owner quantities separately; raw failure-resource fields are not measurements. |
 | Current Endpoint command | Local permission-exchange progress and command refusals; original completion stays with the owner | Explicit installed/preparation operation identity and safe permission progress are projected; private role/request-digest details remain outside the common observation. Not the retained headless runtime event producer. |
 | Current Source command | Local serving/listening and joined failure-owner reports | Adapted into timeline/collector as finite command reports; not the retained `ardents-source-event-v1` producer. Process survival does not establish current State or Source readiness. |
 | `internal/diagnostics/timeline` | Existing safe streaming operator timeline, direct JSON/journal input | Human-readable projection; no resource/time series store. Continue using its existing command for exact timeline semantics. |

@@ -11,6 +11,9 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 var (
@@ -209,6 +212,8 @@ func (c *sourceServerConnection) Close() error { return c.socket.Close() }
 
 func handleConnection(ctx context.Context, server server, active func(int), connection net.Conn,
 	resolve func(context.Context, Message) Message, protected func() bool) (result error) {
+	defer measurement.Begin(runtimeevent.NetworkSourceHandle).End()
+
 	// Cancellation interrupts the original socket, including a blocked TLS
 	// handshake or write. Join the callback before releasing the active user.
 	original := connection

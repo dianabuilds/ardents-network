@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 )
 
@@ -13,6 +15,7 @@ import (
 // writer. Data uses the principal budget; control uses the channel's separately
 // reserved 16 KiB. A lane contributes at most one serialized payload frame.
 type frameTurn struct {
+	queuedMetric      measurement.Gauge
 	lane              *Lane
 	control, selected bool
 	bounded           bool
@@ -74,6 +77,8 @@ func (s *Session) scheduleLocked() {
 	t := s.output[chosen]
 	s.output = append(s.output[:chosen], s.output[chosen+1:]...)
 	t.selected = true
+	t.queuedMetric.Add(-1)
+	t.queuedMetric = measurement.Gauge{}
 	s.lastControl = t.control
 	if !t.control {
 		s.lastData = t.lane.id
@@ -83,6 +88,8 @@ func (s *Session) scheduleLocked() {
 }
 
 func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func(), error) {
+	defer measurement.Begin(runtimeevent.RouteOutputWait).End()
+
 	t := &frameTurn{lane: l, control: f.Kind != ardp.KindBytes, ready: make(chan struct{})}
 	s.mu.Lock()
 	if s.stopped || s.finishingRole || l.peerClosed || (!terminal && l.closed) {
@@ -121,6 +128,10 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 		s.outbound += bytes
 	}
 	l.queuedOutput += bytes
+	frameMeasurement := measurement.Track(runtimeevent.RouteOutputFrames)
+	frameMeasurement.Add(1)
+	t.queuedMetric = measurement.Track(runtimeevent.RouteQueuedFrames)
+	t.queuedMetric.Add(1)
 	s.output = append(s.output, t)
 	s.writes.Add(1)
 	l.writes.Add(1)
@@ -129,6 +140,9 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 	finish := func() {
 		s.mu.Lock()
 		l.queuedOutput -= bytes
+		frameMeasurement.Add(-1)
+		t.queuedMetric.Add(-1)
+		t.queuedMetric = measurement.Gauge{}
 		if t.bounded {
 			l.queueBound.release(bytes)
 		}

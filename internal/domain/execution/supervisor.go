@@ -4,23 +4,27 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 // Supervisor keeps cleanup capacity independently of pending/active Grant
 // admission. A revoked lease cannot return a reservation whose Job is unjoined.
 type Supervisor struct {
-	mu        sync.Mutex
-	authority *Authority
-	sessions  map[*Session]struct{}
-	closed    bool
-	first     error
+	mu            sync.Mutex
+	authority     *Authority
+	sessions      map[*Session]struct{}
+	closed        bool
+	first         error
+	cleanupMetric measurement.Gauge
 }
 
 func NewSupervisor(authority *Authority) (*Supervisor, error) {
 	if authority == nil {
 		return nil, errors.New("local authority is absent")
 	}
-	return &Supervisor{authority: authority, sessions: make(map[*Session]struct{})}, nil
+	return &Supervisor{authority: authority, sessions: make(map[*Session]struct{}), cleanupMetric: measurement.Track(runtimeevent.ExecutionCleanupSlots)}, nil
 }
 
 // Activate consumes exact local authority before retaining the independent
@@ -50,6 +54,7 @@ func (supervisor *Supervisor) Activate(ctx context.Context, capability, principa
 	}
 	session := &Session{supervisor: supervisor, lease: lease, surface: surface, done: make(chan struct{})}
 	supervisor.sessions[session] = struct{}{}
+	supervisor.cleanupMetric.Add(1)
 	go func() { <-lease.Context().Done(); session.closeJoined() }()
 	return session, nil
 }
@@ -73,6 +78,9 @@ func (supervisor *Supervisor) release(session *Session, err error) {
 	supervisor.mu.Lock()
 	defer supervisor.mu.Unlock()
 	if err == nil {
+		if _, retained := supervisor.sessions[session]; retained {
+			supervisor.cleanupMetric.Add(-1)
+		}
 		delete(supervisor.sessions, session)
 	}
 }

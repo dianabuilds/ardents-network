@@ -11,6 +11,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+
 	"golang.org/x/crypto/argon2"
 )
 
@@ -58,6 +61,8 @@ type kdfProfile struct {
 }
 
 func sealEnvelope(purpose Purpose, plaintext, password []byte) ([]byte, error) {
+	defer measurement.Begin(runtimeevent.CustodyEncrypt).End()
+
 	if err := validatePassword(password); err != nil {
 		return nil, err
 	}
@@ -95,6 +100,8 @@ func sealEnvelope(purpose Purpose, plaintext, password []byte) ([]byte, error) {
 }
 
 func openEnvelope(raw, password []byte) (Purpose, []byte, EnvelopeInfo, error) {
+	defer measurement.Begin(runtimeevent.CustodyDecrypt).End()
+
 	parsed, info, salt, ciphertext, aad, err := parseEnvelope(raw)
 	if err != nil {
 		return "", nil, EnvelopeInfo{}, err

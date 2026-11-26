@@ -28,6 +28,7 @@ type Record struct {
 	PID                                               string
 	Resource, Hosting                                 map[string]float64
 	UnknownCategories                                 uint64
+	Measurements                                      *MeasurementSnapshot
 }
 
 // Decode accepts an event object or journal MESSAGE. Envelope keys never supply
@@ -60,6 +61,9 @@ func Decode(raw []byte) (record Record, present bool, err error) {
 		return decodeCommandReport(raw, fields, record)
 	}
 	record.Schema = stringValue(fields, "schema")
+	if record.Schema == MeasurementSchema {
+		return decodeMeasurements(raw, fields, record)
+	}
 	var names []string
 	switch record.Schema {
 	case NodeSchema:

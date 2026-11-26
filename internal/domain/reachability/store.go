@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 const MaximumTargets = 128
@@ -101,6 +104,8 @@ func openStore(config StoreConfig, retained bool) (*Store, error) {
 // custody without observer recursion; callbacks must not Publish or Close Store.
 // A post-write refusal keeps the committed floor and permits no accepting ACK.
 func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check func() error) (Outcome, error) {
+	defer measurement.Begin(runtimeevent.ReachabilityPublish).End()
+
 	if store == nil || check == nil {
 		return Invalid, errors.New("reachability publication composition unavailable")
 	}
@@ -162,6 +167,8 @@ func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check fu
 // Lookup rechecks the highest retained proof at the caller's actual profile/time.
 // Expiry or conflict never evicts its floor or reveals a predecessor.
 func (store *Store) Lookup(target, profile [32]byte, at time.Time) ([]byte, Outcome, error) {
+	defer measurement.Begin(runtimeevent.ReachabilityLookup).End()
+
 	if store == nil || target == [32]byte{} || profile == [32]byte{} || at.IsZero() {
 		return nil, Invalid, errors.New("reachability lookup input invalid")
 	}

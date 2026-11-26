@@ -41,7 +41,7 @@ type Category struct{ Schema, Kind string }
 
 // Categories returns a detached catalogue for decoding, summaries and series.
 func Categories() []Category {
-	var result []Category
+	result := []Category{{MeasurementSchema, MeasurementKind}}
 	for _, group := range []struct {
 		schema string
 		kinds  []string

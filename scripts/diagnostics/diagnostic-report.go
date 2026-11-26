@@ -24,22 +24,25 @@ import (
 // Reports are fixed-category projections of private evidence. Both CLI and HTTP
 // call assessRun; neither adapter interprets errors or executes suggestions.
 type runReport struct {
-	Status          string             `json:"status"`
-	Complete        bool               `json:"complete"`
-	Finished        bool               `json:"finished"`
-	ExitCode        int                `json:"exit_code"`
-	TimedOut        bool               `json:"timed_out"`
-	Interrupted     bool               `json:"interrupted"`
-	SourceChanged   bool               `json:"source_changed"`
-	DurationSeconds float64            `json:"duration_seconds"`
-	Conditions      reportConditions   `json:"conditions"`
-	FirstObserved   *reportFailure     `json:"first_observed_failure,omitempty"`
-	Failures        []reportFailure    `json:"failures"`
-	ResourceFacts   map[string]uint64  `json:"resource_facts"`
-	PressurePeaks   map[string]float64 `json:"container_pressure_peaks"`
-	Gaps            []string           `json:"gaps"`
-	GapDescriptions map[string]string  `json:"gap_descriptions"`
-	NextChecks      []reportCheck      `json:"next_checks"`
+	UnobservedInstruments []string                           `json:"unobserved_instruments,omitempty"`
+	DomainMeasurements    *runtimeevent.MeasurementSnapshot  `json:"domain_measurements,omitempty"`
+	DomainSeries          []runtimeevent.MeasurementSnapshot `json:"domain_series,omitempty"`
+	Status                string                             `json:"status"`
+	Complete              bool                               `json:"complete"`
+	Finished              bool                               `json:"finished"`
+	ExitCode              int                                `json:"exit_code"`
+	TimedOut              bool                               `json:"timed_out"`
+	Interrupted           bool                               `json:"interrupted"`
+	SourceChanged         bool                               `json:"source_changed"`
+	DurationSeconds       float64                            `json:"duration_seconds"`
+	Conditions            reportConditions                   `json:"conditions"`
+	FirstObserved         *reportFailure                     `json:"first_observed_failure,omitempty"`
+	Failures              []reportFailure                    `json:"failures"`
+	ResourceFacts         map[string]uint64                  `json:"resource_facts"`
+	PressurePeaks         map[string]float64                 `json:"container_pressure_peaks"`
+	Gaps                  []string                           `json:"gaps"`
+	GapDescriptions       map[string]string                  `json:"gap_descriptions"`
+	NextChecks            []reportCheck                      `json:"next_checks"`
 }
 type reportConditions struct {
 	Source        string  `json:"source_revision,omitempty"`
@@ -364,8 +367,27 @@ func assessRunRoot(root *os.Root, now time.Time) (result runReport) {
 		result.Status = "interrupted"
 	}
 	result.gap("current-capability-readiness-not-established")
-	result.gap("stage-durations-queues-credit-token-stock-unavailable")
+
 	readReportEvents(root, &result, s.Counts)
+	if result.DomainMeasurements == nil {
+		result.gap("stage-durations-queues-credit-token-stock-unavailable")
+	} else {
+		observed := map[string]bool{}
+		for _, v := range result.DomainMeasurements.Values {
+			if v.Available {
+				observed[v.Name] = true
+			}
+		}
+		for _, id := range runtimeevent.Instruments() {
+			spec, _ := id.Spec()
+			if !observed[spec.Name] {
+				result.UnobservedInstruments = append(result.UnobservedInstruments, spec.Name)
+			}
+		}
+		if len(result.UnobservedInstruments) > 0 {
+			result.gap("domain-instruments-unobserved")
+		}
+	}
 	readReportSamples(root, &result, s.Samples)
 	if result.FirstObserved == nil {
 		result.gap("first-owner-failure-not-observed")
@@ -412,6 +434,24 @@ func readReportEvents(root *os.Root, r *runReport, expected map[string]uint64) {
 			r.gap("collector-time-order-uncertain")
 		}
 		previous = e.ObservedAt
+		if e.Measurements != nil {
+			point := *e.Measurements
+			if point.Discarded > 0 {
+				r.gap("domain-measurement-history-overwritten")
+			}
+			if point.Delivery == runtimeevent.ExportUnavailable {
+				r.gap("telemetry-export-unavailable")
+			}
+			if r.DomainMeasurements != nil && (point.Started != r.DomainMeasurements.Started || point.At.Before(r.DomainMeasurements.At)) {
+				r.gap("domain-measurement-counter-reset-or-order")
+			}
+			r.DomainMeasurements = &point
+			if len(r.DomainSeries) == runtimeevent.MeasurementHistoryLimit {
+				r.DomainSeries = r.DomainSeries[1:]
+				r.gap("domain-measurement-history-truncated")
+			}
+			r.DomainSeries = append(r.DomainSeries, point)
+		}
 		if e.Delivery == runtimeevent.ExportUnavailable {
 			r.gap("telemetry-export-unavailable")
 		}
@@ -472,6 +512,12 @@ func safeReportEvent(e event) bool {
 	if !runtimeevent.KnownKind(e.Schema, e.Kind) {
 		return false
 	}
+	if e.Schema == runtimeevent.MeasurementSchema {
+		return safeMeasurementEvent(e)
+	}
+	if e.Measurements != nil {
+		return false
+	}
 	if e.Schema == runtimeevent.CommandReportSchema {
 		command, ok := runtimeevent.ClassifyCommand(e.Kind, e.Phase, e.Outcome)
 		deliveryValid := e.Delivery == "" || runtimeevent.LookupOperation(e.Kind) != 0 && runtimeevent.KnownExportDelivery(e.Delivery)
@@ -488,6 +534,20 @@ func safeReportEvent(e event) bool {
 		return false
 	}
 	return e.Failure == "" || runtimeevent.KnownFailure(e.Schema, e.Failure) || e.Failure == runtimeevent.Unclassified && e.Schema != runtimeevent.NodeSchema
+}
+
+func safeMeasurementEvent(e event) bool {
+	if e.Measurements == nil || !runtimeevent.ValidMeasurementSnapshot(*e.Measurements) {
+		return false
+	}
+	if e.At != e.Measurements.At.UTC().Format(time.RFC3339Nano) {
+		return false
+	}
+	// Measurement rows contain numeric catalogue quantities only; fields from
+	// command reports, lifecycle events and process samples cannot be mixed in.
+	return e.Owner == "" && e.Phase == "" && e.Outcome == "" && e.Delivery == "" &&
+		e.State == "" && e.Carrier == "" && e.Failure == "" &&
+		len(e.Resource) == 0 && len(e.Hosting) == 0 && e.UnknownCategories == 0
 }
 
 func readReportSamples(root *os.Root, r *runReport, expected uint64) {
@@ -670,6 +730,21 @@ func reportCommand(args []string) error {
 func writeAssistantText(w io.Writer, r assistantReport) error {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Ardents · помощник диагностики\nИтог: %s; exit=%d; полнота=%t; timeout=%t; interruption=%t\n", r.Run.Status, r.Run.ExitCode, r.Run.Complete, r.Run.TimedOut, r.Run.Interrupted)
+	if point := r.Run.DomainMeasurements; point != nil {
+		fmt.Fprintf(&b, "Domain metrics: capture=%s; sample=%s; overwritten=%d; export=%s\n", point.Started.Format(time.RFC3339Nano), point.At.Format(time.RFC3339Nano), point.Discarded, point.Delivery)
+		for _, value := range point.Values {
+			spec, _ := runtimeevent.LookupInstrument(value.Name).Spec()
+			if !value.Available {
+				fmt.Fprintf(&b, "  %s / %s [%s]: unavailable\n", spec.Owner, spec.Name, spec.Unit)
+				continue
+			}
+			fmt.Fprintf(&b, "  %s / %s [%s]: current=%d peak=%d", spec.Owner, spec.Name, spec.Unit, value.Current, value.Peak)
+			if spec.Kind == runtimeevent.StageInstrument {
+				fmt.Fprintf(&b, " calls=%d seconds=%g maximum_seconds=%g", value.Count, value.Seconds, value.MaximumSeconds)
+			}
+			b.WriteByte('\n')
+		}
+	}
 	if r.Run.FirstObserved != nil {
 		f := r.Run.FirstObserved
 		fmt.Fprintf(&b, "Первый доступный отказ: %s / %s / %s, запись events.ndjson #%d. Это наблюдение, не доказанная первопричина.\n", f.Owner, f.Kind, f.Category, f.Record)
@@ -928,6 +1003,14 @@ func gapExplanation(code string) string {
 		return "Исходники изменились во время прогона или итоговая проверка состава не удалась."
 	case "current-capability-readiness-not-established":
 		return "Текущая готовность функций не доказана; исторический READY и живой процесс недостаточны."
+	case "domain-measurement-history-overwritten":
+		return "Локальная история измерений достигла лимита; старые снимки перезаписаны. Итоговые counters и peaks сохраняют свой capture scope."
+	case "domain-measurement-history-truncated":
+		return "Отчёт оставляет только последние 32 снимка метрик."
+	case "domain-measurement-counter-reset-or-order":
+		return "Изменился capture start или нарушен порядок снимков; непрерывность counters не установлена."
+	case "domain-instruments-unobserved":
+		return "Не все catalogue instruments наблюдались в выбранном процессе; отсутствующие значения перечислены отдельно и не считаются нулём."
 	case "stage-durations-queues-credit-token-stock-unavailable":
 		return "В сохранённом прогоне нет наблюдений длительности этапов, очередей, credit и token stock."
 	case "event-history-count-mismatch":
