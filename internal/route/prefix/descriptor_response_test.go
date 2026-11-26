@@ -2,14 +2,10 @@ package prefix
 
 import (
 	"bytes"
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/binary"
 	"errors"
 	"io"
-	"math/big"
 	"net"
 	"testing"
 	"time"
@@ -64,17 +60,7 @@ func TestDescriptorActualTLSAndTruncatedResultRefuse(t *testing.T) {
 
 func descriptorResponseTLS(t *testing.T) (*tls.Conn, *tls.Conn, net.Conn) {
 	t.Helper()
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { clear(private) })
-	now := time.Now()
-	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Minute), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
-	certificate, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
-	if err != nil {
-		t.Fatal(err)
-	}
+	certificate, key := roleLaneCertificate(t)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -86,14 +72,14 @@ func descriptorResponseTLS(t *testing.T) (*tls.Conn, *tls.Conn, net.Conn) {
 		err     error
 	}
 	accepted := make(chan acceptedRole, 1)
-	end := now.Add(5 * time.Second)
+	end := time.Now().Add(5 * time.Second)
 	go func() {
 		raw, err := listener.Accept()
 		if err != nil {
 			accepted <- acceptedRole{err: err}
 			return
 		}
-		secured := tls.Server(raw, transport.RoleServerTLS(tls.Certificate{Certificate: [][]byte{certificate}, PrivateKey: private}))
+		secured := tls.Server(raw, transport.RoleServerTLS(certificate))
 		_ = secured.SetDeadline(end)
 		accepted <- acceptedRole{secured: secured, raw: raw, err: secured.HandshakeContext(t.Context())}
 	}()
@@ -102,8 +88,6 @@ func descriptorResponseTLS(t *testing.T) (*tls.Conn, *tls.Conn, net.Conn) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = raw.Close() })
-	var key [32]byte
-	copy(key[:], public)
 	client, err := roletls.OpenRole(t.Context(), raw, key, end)
 	if err != nil {
 		t.Fatal(err)

@@ -8,11 +8,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	issuertransport "github.com/dianabuilds/ardents-network/internal/route/issuer"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 )
 
 // IssuerBinding is private delivery provenance for the actual retained opening.
@@ -141,34 +138,22 @@ func (p *Prefix) Issue(caller context.Context, end time.Time, begin func(IssuerB
 		return err
 	}
 	defer release()
-	lane, err := p.interior.Open(ctx, caller, ardp.EncodeOpen(ardp.Open{RecipientNodeID: duty.NodeID, RecipientDutyGeneration: duty.RecordGeneration, Purpose: uint8(ardp.PurposeIssuer), Deadline: end}, false))
+	lane, interruption, err := p.openRoleLane(ctx, caller, duty, ardp.PurposeIssuer, end)
 	if err != nil {
 		return err
 	}
 	defer lane.Finish()
 	defer func() { result = errors.Join(result, lane.Close()) }()
-	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = lane.Close() })
-	interruption := prefixSetupInterruption{stop: stop, done: interrupted}
 	defer interruption.join()
 	member, err := authority.Member()
 	if err != nil {
 		return err
 	}
-	secured, err := roletls.OpenRole(ctx, lane, member.PublicKey, framing.MinDeadline(end, time.Now().Add(10*time.Second)))
+	conn, err := p.presentRoleLane(ctx, caller, lane, authority, member, ardp.PurposeIssuer, end, end, p.bootstrap)
+	if conn != nil {
+		defer func() { result = errors.Join(result, conn.Close()) }()
+	}
 	if err != nil {
-		return err
-	}
-	conn := transport.Retain(secured)
-	defer func() { result = errors.Join(result, conn.Close()) }()
-	if err := conn.SetDeadline(end); err != nil {
-		return err
-	}
-	hello, err := authority.FreshHello(end, ardp.PurposeIssuer, false)
-	if err != nil {
-		return err
-	}
-	if err := presentPrefixRole(ctx, caller, conn, authority, hello, p.config.Present, p.bootstrap); err != nil {
 		return err
 	}
 	if err := check(); err != nil {

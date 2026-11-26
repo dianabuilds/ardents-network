@@ -31,6 +31,9 @@
 //     (responder_scope_test.go)
 //   - recipient resolution and exact rendezvous verification: recipient.go
 //     (recipient_resolution_test.go)
+//   - role lane opening and presentation shared by the issuer, Descriptor,
+//     Introduction/Submission and JOIN terminals: role_lane.go
+//     (role_lane_test.go)
 //   - admitted terminal Introduction/Submission openings:
 //     introduction_channel.go (introduction_channel_test.go)
 //   - JOIN terminal channel setup and joined resource return: join_channel.go
@@ -45,5 +48,5 @@
 //     descriptor_exchange.go (descriptor_response_test.go)
 //
 // physical_fixture_test.go carries the shared lifecycleConn physical-output
-// fixture and no behavior of its own.
+// and role TLS certificate fixtures and no behavior of its own.
 package prefix

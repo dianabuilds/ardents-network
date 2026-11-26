@@ -13,8 +13,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 )
 
 // JoinChannel retains the exact original parent's physical setup and
@@ -52,25 +50,11 @@ func (p *Prefix) openJoinChannel(ctx, caller context.Context, duty network.Retai
 	if err != nil {
 		return t, err
 	}
-	t.parent, err = p.interior.Open(ctx, caller, ardp.EncodeOpen(ardp.Open{RecipientNodeID: member.NodeID, RecipientDutyGeneration: member.DutyGeneration, Purpose: uint8(ardp.PurposeDataJoin), Deadline: end}, false))
+	t.parent, t.interruption, err = p.openRoleLane(ctx, caller, duty, ardp.PurposeDataJoin, end)
 	if err != nil {
 		return t, err
 	}
-	done := make(chan struct{})
-	t.interruption.done = done
-	t.interruption.stop = context.AfterFunc(ctx, func() { defer close(done); _ = t.parent.Close() })
-	secured, err := roletls.OpenRole(ctx, t.parent, member.PublicKey, framing.MinDeadline(setup, time.Now().Add(10*time.Second)))
-	if err != nil {
-		return t, err
-	}
-	t.conn = transport.Retain(secured)
-	if err := t.conn.SetDeadline(setup); err != nil {
-		return t, err
-	}
-	hello, err := authority.FreshHello(end, ardp.PurposeDataJoin, false)
-	if err == nil {
-		err = role.Present(ctx, caller, t.conn, authority, hello, p.config.Present)
-	}
+	t.conn, err = p.presentRoleLane(ctx, caller, t.parent, authority, member, ardp.PurposeDataJoin, end, setup, false)
 	return t, err
 }
 

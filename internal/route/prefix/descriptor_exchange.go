@@ -13,10 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
-	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 )
 
 // DescriptorRefusal is the matching fixed-size terminal refusal. It retains no
@@ -190,34 +187,22 @@ func (p *Prefix) exchangeDescriptor(ctx, caller context.Context, end time.Time, 
 		return nil, err
 	}
 	defer releaseControl()
-	lane, err := p.interior.Open(ctx, caller, ardp.EncodeOpen(ardp.Open{RecipientNodeID: authority.Duty.NodeID, RecipientDutyGeneration: authority.Duty.RecordGeneration, Purpose: uint8(ardp.PurposeReachability), Deadline: end}, false))
+	lane, interruption, err := p.openRoleLane(ctx, caller, authority.Duty, ardp.PurposeReachability, end)
 	if err != nil {
 		return nil, err
 	}
 	defer lane.Finish()
 	defer func() { result = errors.Join(result, lane.Close()) }()
-	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { defer close(interrupted); _ = lane.Close() })
-	interruption := prefixSetupInterruption{stop: stop, done: interrupted}
 	defer interruption.join()
 	member, err := authority.Member()
 	if err != nil {
 		return nil, err
 	}
-	secured, err := roletls.OpenRole(ctx, lane, member.PublicKey, framing.MinDeadline(end, time.Now().Add(10*time.Second)))
+	conn, err := p.presentRoleLane(ctx, caller, lane, authority, member, ardp.PurposeReachability, end, end, false)
+	if conn != nil {
+		defer func() { result = errors.Join(result, conn.Close()) }()
+	}
 	if err != nil {
-		return nil, err
-	}
-	conn := transport.Retain(secured)
-	defer func() { result = errors.Join(result, conn.Close()) }()
-	if err := conn.SetDeadline(end); err != nil {
-		return nil, err
-	}
-	hello, err := authority.FreshHello(end, ardp.PurposeReachability, false)
-	if err != nil {
-		return nil, err
-	}
-	if err := presentPrefixRole(ctx, caller, conn, authority, hello, p.config.Present, false); err != nil {
 		return nil, err
 	}
 	if err := check(); err != nil {

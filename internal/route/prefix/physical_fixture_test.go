@@ -2,8 +2,14 @@ package prefix
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"math/big"
 	"net"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -73,4 +79,26 @@ func (c *lifecycleConn) SetWriteDeadline(t time.Time) error {
 	c.writeEnd = t
 	c.mu.Unlock()
 	return nil
+}
+
+// roleLaneCertificate supplies only the TLS mechanics of a role peer: an
+// Ed25519 server certificate with its expected key. It establishes no Network
+// observation, Admission right or successful authority.
+func roleLaneCertificate(t *testing.T) (tls.Certificate, [32]byte) {
+	t.Helper()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { clear(private) })
+	now := time.Now()
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour),
+		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	raw, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var key [32]byte
+	copy(key[:], public)
+	return tls.Certificate{Certificate: [][]byte{raw}, PrivateKey: private}, key
 }

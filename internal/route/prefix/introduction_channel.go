@@ -15,7 +15,6 @@ import (
 	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/route/role"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
-	roletls "github.com/dianabuilds/ardents-network/internal/route/transport/tls"
 )
 
 // ErrIntroductionExpired identifies the original terminal's elapsed bound.
@@ -140,25 +139,11 @@ func (p *Prefix) openIntroductionChannel(ctx context.Context, duty network.Retai
 	if err != nil {
 		return nil, err
 	}
-	t.lane, err = p.interior.Open(child, ctx, ardp.EncodeOpen(ardp.Open{RecipientNodeID: member.NodeID, RecipientDutyGeneration: member.DutyGeneration, Purpose: uint8(purpose), Deadline: end}, false))
+	t.lane, t.interruption, err = p.openRoleLane(child, ctx, duty, purpose, end)
 	if err != nil {
 		return nil, err
 	}
-	done := make(chan struct{})
-	t.interruption.done = done
-	t.interruption.stop = context.AfterFunc(child, func() { defer close(done); _ = t.lane.Close() })
-	secured, err := roletls.OpenRole(child, t.lane, member.PublicKey, framing.MinDeadline(end, time.Now().Add(10*time.Second)))
-	if err != nil {
-		return nil, err
-	}
-	t.conn = transport.Retain(secured)
-	if err := t.conn.SetDeadline(framing.MinDeadline(end, time.Now().Add(10*time.Second))); err != nil {
-		return nil, err
-	}
-	hello, err := a.FreshHello(end, purpose, false)
-	if err == nil {
-		err = role.Present(child, ctx, t.conn, a, hello, p.config.Present)
-	}
+	t.conn, err = p.presentRoleLane(child, ctx, t.lane, a, member, purpose, end, framing.MinDeadline(end, time.Now().Add(10*time.Second)), false)
 	if err != nil {
 		return nil, err
 	}
