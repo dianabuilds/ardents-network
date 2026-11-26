@@ -8,6 +8,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"os"
 	"path/filepath"
 	"sync"
@@ -39,7 +40,7 @@ func nativeProfileSigningArguments(t *testing.T) []string {
 
 func writeNativeProfileArguments(t *testing.T, parent string, p map[string]any, key ed25519.PrivateKey, reference time.Time) []string {
 	t.Helper()
-	_, body, e := PrepareNetworkPublic("prepare-closed-profile", preparationJSON(t, p))
+	_, body, e := networkdraft.Prepare("prepare-closed-profile", preparationJSON(t, p))
 	if e != nil {
 		t.Fatal(e)
 	}

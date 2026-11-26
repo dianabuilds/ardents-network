@@ -5,6 +5,7 @@ package provisioning
 import (
 	"bytes"
 	"crypto/ed25519"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"testing"
 	"time"
 )
@@ -18,11 +19,11 @@ func signingRecordFixture(t *testing.T) (map[string]any, ed25519.PrivateKey, []b
 	t.Helper()
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{71}, 32))
 	p := preparationRecordPlan(key.Public().(ed25519.PublicKey))
-	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	reference, _ := preparationTime("2033-05-22T05:30:00Z")
+	reference, _ := networkdraft.ParseTime("2033-05-22T05:30:00Z")
 	return p, key, message, reference
 }
 

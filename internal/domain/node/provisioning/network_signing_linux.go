@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"os"
 	"time"
 
@@ -37,12 +38,12 @@ func SignNetwork(ctx context.Context, args []string, observe func(string, *os.Fi
 			err = errors.Join(err, admitted.checkTime(time.Now()))
 		}
 	}()
-	plan, err := artifactio.OpenProtectedInput(ctx, args[1], MaximumNetworkPreparationPlan, false)
+	plan, err := artifactio.OpenProtectedInput(ctx, args[1], networkdraft.MaximumPlanBytes, false)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, plan.Close()) }()
-	prepared, err := artifactio.OpenProtectedInput(ctx, args[2], MaximumNetworkPreparationPlan, false)
+	prepared, err := artifactio.OpenProtectedInput(ctx, args[2], networkdraft.MaximumPlanBytes, false)
 	if err != nil {
 		return nil, err
 	}

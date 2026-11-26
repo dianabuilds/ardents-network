@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"os"
 	"os/exec"
@@ -53,7 +54,7 @@ func nativeCertificateArguments(t *testing.T) []string {
 	recordPlan := preparationRecordPlan(key.Public().(ed25519.PublicKey))
 	now := time.Now().UTC().Truncate(time.Second)
 	recordPlan["valid_from"], recordPlan["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
-	name, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, recordPlan))
+	name, message, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, recordPlan))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +320,7 @@ func changeCertificateTestTime(t *testing.T, args []string, from, until, referen
 	record["valid_from"], record["valid_until"] = from.Format(time.RFC3339Nano), until.Format(time.RFC3339Nano)
 	plan["record"] = preparationJSON(t, record)
 	plan["reference_time"] = preparationJSON(t, reference.Format(time.RFC3339Nano))
-	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", plan["record"])
+	_, message, err := networkdraft.Prepare("prepare-initial-node-record", plan["record"])
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"testing"
 	"time"
 
@@ -28,8 +29,8 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 		return s
 	}
 	s := admit(raw, message, preparationHex(digest[:]))
-	from, _ := preparationTime(p["valid_from"].(string))
-	until, _ := preparationTime(p["valid_until"].(string))
+	from, _ := networkdraft.ParseTime(p["valid_from"].(string))
+	until, _ := networkdraft.ParseTime(p["valid_until"].(string))
 	f, err := networkfixture.BuildRecord(networkfixture.RecordSpec{NetworkID: [32]byte{1}, NodeID: [32]byte{2}, Generation: 1, ValidFrom: from, ValidUntil: until, Family: "family-one", Endpoint: "127.0.0.1:4401", Carrier: p["carrier"].(string), Capability: 2, Capacity: 3, PrivateKey: key})
 	outputs, signErr := s.sign(key, reference)
 	if err != nil || signErr != nil || len(outputs) != 1 || outputs[0].name != "node-record.bin" || !bytes.Equal(outputs[0].raw, f.Raw) {
@@ -113,7 +114,7 @@ func TestNetworkSigningPrivateEncoding(t *testing.T) {
 func TestNetworkSigningIndependentEpochOrdering(t *testing.T) {
 	plan, stateKey, inputs, f, reference := publicEpochFixture(t)
 	defer clear(stateKey)
-	_, message, err := PrepareNetworkPublic("prepare-initial-epoch", preparationJSON(t, plan))
+	_, message, err := networkdraft.Prepare("prepare-initial-epoch", preparationJSON(t, plan))
 	if err != nil {
 		t.Fatal(err)
 	}
