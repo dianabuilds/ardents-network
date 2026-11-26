@@ -18,5 +18,5 @@ func TestObservationWithoutCollectorNeedsNoExporter(t *testing.T) {
 	if err != nil || observer != nil {
 		t.Fatalf("local-only observation allocated an exporter: %v, %v", observer, err)
 	}
-	observer.Begin("ardents.hosting", "hosting.observe")("execute", "completed")
+	observer.Begin(HostingObserve)(HostingObserve.Classify("execute", "completed"))
 }

@@ -29,7 +29,7 @@ func TestDeliveryStatusRetainsCollectorRefusal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			observation.Begin("ardents.hosting", "hosting.observe")("execute", "completed")
+			observation.Begin(HostingObserve)(HostingObserve.Classify("execute", "completed"))
 			if status := observation.CloseWithStatus(err); status != tc.want {
 				t.Fatalf("delivery=%s want=%s", status, tc.want)
 			}

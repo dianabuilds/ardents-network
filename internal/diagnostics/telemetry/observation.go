@@ -20,6 +20,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Export bounds apply to each command invocation, independently of collector
@@ -167,7 +168,9 @@ func (o *Observation) Close() bool {
 	defer cancel()
 	if o.exporter != nil {
 		var data metricdata.ResourceMetrics
-		if o.reader.Collect(ctx, &data) != nil || o.exporter.Export(ctx, &data) != nil {
+		if o.reader.Collect(ctx, &data) != nil {
+			o.failure.Store(true)
+		} else if len(data.ScopeMetrics) != 0 && o.exporter.Export(ctx, &data) != nil {
 			o.failure.Store(true)
 		}
 		if o.exporter.Shutdown(ctx) != nil {
@@ -186,27 +189,44 @@ func (o *Observation) Close() bool {
 	return !o.failure.Load()
 }
 
-// Begin starts an operation and returns the function that records its phase and outcome.
-func (o *Observation) Begin(scope, operation string) func(string, string) {
+// Begin measures one command. Only a matching, classified completion creates
+// SDK data. Invalid or duplicate completion latches delivery failure; disabled
+// export remains a no-op. The original command result is independent of export.
+func (o *Observation) Begin(operation Operation) func(Completion) {
 	if o == nil {
-		return func(string, string) {}
+		return func(Completion) {}
 	}
-	ctx, span := o.traces.Tracer(scope).Start(context.Background(), operation)
+	spec, valid := operation.spec()
+	if !valid {
+		o.failure.Store(true)
+		return func(Completion) {}
+	}
 	start := time.Now()
-	return func(phase, outcome string) {
-		attrs := []attribute.KeyValue{
-			attribute.String("operation", operation),
-			attribute.String("phase", phase),
-			attribute.String("outcome", outcome),
+	var finished atomic.Bool
+	return func(completion Completion) {
+		if finished.Swap(true) {
+			o.failure.Store(true)
+			return
 		}
-		span.SetAttributes(attrs...)
-		span.End()
-		meter := o.meters.Meter(scope)
-		if count, err := meter.Int64Counter(scope + ".operations"); err == nil {
+		if completion.operation != operation || completion.phase == "" || completion.outcome == "" {
+			o.failure.Store(true)
+			return
+		}
+		end := time.Now()
+		attrs := []attribute.KeyValue{
+			attribute.String("operation", spec.name),
+			attribute.String("phase", completion.phase),
+			attribute.String("outcome", completion.outcome),
+		}
+		ctx, span := o.traces.Tracer(spec.scope).Start(context.Background(), spec.name,
+			trace.WithTimestamp(start), trace.WithAttributes(attrs...))
+		span.End(trace.WithTimestamp(end))
+		meter := o.meters.Meter(spec.scope)
+		if count, err := meter.Int64Counter(spec.scope + ".operations"); err == nil {
 			count.Add(ctx, 1, metric.WithAttributes(attrs...))
 		}
-		if duration, err := meter.Float64Histogram(scope+".duration", metric.WithUnit("s")); err == nil {
-			duration.Record(ctx, time.Since(start).Seconds(), metric.WithAttributes(attrs...))
+		if duration, err := meter.Float64Histogram(spec.scope+".duration", metric.WithUnit("s")); err == nil {
+			duration.Record(ctx, end.Sub(start).Seconds(), metric.WithAttributes(attrs...))
 		}
 	}
 }

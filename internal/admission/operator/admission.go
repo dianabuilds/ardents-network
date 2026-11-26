@@ -45,10 +45,11 @@ func RunAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	o, telemetryErr := telemetry.Open(endpoint)
-	finish := o.Begin("ardents.admission", r.Operation)
+	observedOperation := telemetry.LookupOperation(r.Operation)
+	finish := o.Begin(observedOperation)
 	r.Phase = "execute"
 	r.Outcome = quota.InitializeResult(ctx, p.Root, p.Binding)
-	finish(r.Phase, string(r.Outcome))
+	finish(observedOperation.Classify(r.Phase, string(r.Outcome)))
 	delivery := o.CloseWithStatus(telemetryErr)
 	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome, Telemetry string }{r.Operation, r.Phase, string(r.Outcome), string(delivery)})
 	return write()

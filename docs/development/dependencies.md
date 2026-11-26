@@ -667,7 +667,7 @@ Selected module inventory (Go module sums are pinned in go.sum):
 |---|---|---|
 | `go.opentelemetry.io/otel` | v1.47.0 | Attribute API and API foundation |
 | `go.opentelemetry.io/otel/metric` | v1.47.0 | Counter and histogram API |
-| `go.opentelemetry.io/otel/trace` | v1.47.0 | Trace API closure |
+| `go.opentelemetry.io/otel/trace` | v1.47.0 | Trace timestamps for validated, completed observations (direct API import) |
 | `go.opentelemetry.io/otel/log` | v1.47.0 | API foundation closure; no log SDK or log exporter selected |
 | `go.opentelemetry.io/otel/sdk` | v1.47.0 | Explicit resource and trace provider |
 | `go.opentelemetry.io/otel/sdk/metric` | v1.47.0 | Manual metric collection |

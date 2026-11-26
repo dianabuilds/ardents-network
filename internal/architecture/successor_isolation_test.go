@@ -2736,10 +2736,17 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
+	if source == "internal/diagnostics/telemetry/vocabulary_test.go" {
+		switch dependency {
+		case "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto":
+			return true
+		}
+	}
 	if source == "internal/diagnostics/telemetry/observation.go" {
 		if slices.Contains([]string{
 			"go.opentelemetry.io/otel/attribute",
 			"go.opentelemetry.io/otel/metric",
+			"go.opentelemetry.io/otel/trace",
 			"go.opentelemetry.io/otel/sdk/metric",
 			"go.opentelemetry.io/otel/sdk/metric/exemplar",
 			"go.opentelemetry.io/otel/sdk/metric/metricdata",
