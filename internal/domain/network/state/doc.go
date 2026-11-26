@@ -31,7 +31,8 @@
 //
 // Navigation: one aggregate (State) owns every cluster below; each
 // cluster is a method or adapter family sharing its lock, commit boundary and
-// joined retirement. The durable subpackage owns the physical State root.
+// joined retirement. The durable subpackage owns the physical State root. The
+// command subpackage owns the offline CLI declaration and joined receipt.
 // Test naming follows docs/development/repository-layout.md; each test is
 // listed under its primary responsibility cluster.
 //

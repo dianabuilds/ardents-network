@@ -2152,7 +2152,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			case "internal/domain/network/epoch/candidate_evaluation.go", "internal/domain/network/epoch/assignment.go":
 				return true
-			case "internal/domain/network/state/offline_operation.go", "internal/domain/network/state/epoch_history.go", "internal/domain/network/state/membership.go", "internal/domain/network/state/closed_member.go", "internal/domain/network/state/closed_runtime_view.go", "internal/domain/network/state/runtime_observation.go", "internal/domain/network/state/runtime_witness.go", "internal/domain/network/state/clock_observation.go", "internal/domain/network/state/closed_profile_view.go", "internal/domain/network/state/closed_duty_binding.go", "internal/domain/network/state/closed_profile_accept.go":
+			case "internal/domain/network/state/command/operation.go", "internal/domain/network/state/epoch_history.go", "internal/domain/network/state/membership.go", "internal/domain/network/state/closed_member.go", "internal/domain/network/state/closed_runtime_view.go", "internal/domain/network/state/runtime_observation.go", "internal/domain/network/state/runtime_witness.go", "internal/domain/network/state/clock_observation.go", "internal/domain/network/state/closed_profile_view.go", "internal/domain/network/state/closed_duty_binding.go", "internal/domain/network/state/closed_profile_accept.go":
 				return true
 			}
 		}
@@ -2219,10 +2219,14 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/reachability" || local == "internal/domain/route/channel" || local == "internal/domain/route/introduction" {
 				return true
 			}
-		case "internal/domain/network/state/offline_declaration.go":
-			if local == "internal/platform/artifacts" {
+		case "internal/domain/network/state/command/declaration.go":
+			return local == "internal/platform/artifacts" || local == "internal/domain/network/state"
+		case "internal/domain/network/state/command/operation.go", "internal/domain/network/state/command/cancellation_test.go":
+			if local == "internal/domain/network/state" {
 				return true
 			}
+		case "internal/domain/network/state/command/command.go":
+			return local == "internal/platform/artifacts" || local == "internal/domain/network"
 		case "internal/domain/endpoint/session/local_holder.go":
 			if local == "internal/domain/network" || local == "internal/domain/network/state" {
 				return true
@@ -2285,6 +2289,9 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
+	}
+	if dependency == modulePath+"/internal/domain/network/state/command" {
+		return source == "cmd/ardents-next/network.go"
 	}
 	if dependency == modulePath+"/internal/domain/node/provisioning" {
 		switch source {
@@ -2722,7 +2729,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/domain/release/infrastructure/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
+		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || source == "internal/domain/network/state/command/cancellation_test.go" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
 			return true
 		}
 		if owner == "internal/domain/network/epoch" && dependency == modulePath+"/tests/epochfixture/assignment" {

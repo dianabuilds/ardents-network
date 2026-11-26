@@ -17,10 +17,12 @@ wire and recovery obligations. The old tree and its consumers remain until a
 separately selected final cutover; their integration is outside this work's
 regression scope. Execution status and verification receipts belong to issue #493.
 
-Offline Epoch and profile intake and retained inspection are operations of
-Network State. Each opens the appropriate original owner and joins its closure
-before returning a receipt. Cancellation or uncertain closure suppresses a
-successful receipt.
+Offline Epoch and profile intake and retained inspection use
+`internal/domain/network/state/command`. It admits the bounded declaration,
+selects the original State opening and joins it before publishing a detached
+receipt. A pre-canceled caller cannot open the root. Signed acceptance,
+retained floors and observations stay with State. Cancellation and uncertain
+closure suppress a successful receipt.
 
 Initial State/Node key preparation belongs to offline command composition,
 not Network. `ardents-next network prepare-initial-keys` admits one closed public
