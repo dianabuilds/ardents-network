@@ -9,9 +9,9 @@ import (
 	"io"
 	"time"
 
+	endpointlaunch "github.com/dianabuilds/ardents-network/internal/domain/endpoint/launch"
 	"github.com/dianabuilds/ardents-network/internal/domain/release"
 	infrastructurelaunch "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
-	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )

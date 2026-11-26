@@ -51,7 +51,7 @@ func TestCoverage(t *testing.T) {
 	directory := filepath.Join(root, "tests", "profiles")
 	if err := os.MkdirAll(directory, 0700); err != nil { t.Fatal(err) }
 	for name, body := range map[string]string{
-		"deterministic-packages.txt": "project/unit\nproject/internal/endpoint\n",
+		"deterministic-packages.txt": "project/unit\nproject/internal/domain/endpoint\n",
 		"deterministic-linux-packages.txt": "\n",
 		"process-packages.txt": "project/process\n",
 	} {
@@ -64,7 +64,7 @@ func TestCoverage(t *testing.T) {
 		{pkg:"project/process",run:"^(TestProcess)$"},
 		{pkg:"project/process",run:"^(TestProcess)$",race:true},
 		{pkg:"project/unlisted",run:"^(TestUnknown)$"},
-		{pkg:"project/internal/endpoint",run:"^(TestTextPublisherReady)$"},
+		{pkg:"project/internal/domain/endpoint",run:"^(TestTextPublisherReady)$"},
 		{pkg:"project/unit",run:"^(TestTextPublicationIsolatedRoleObservations)$"},
 	}
 	got, err := checksOutsideFullGate(root, input)

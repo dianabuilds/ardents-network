@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/processresource"

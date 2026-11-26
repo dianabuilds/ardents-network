@@ -114,8 +114,8 @@ initialization cannot replace its restart or recovery.
 | Source | Admission-owned part | What remains outside |
 | --- | --- | --- |
 | [Retired Custody source](https://github.com/dianabuilds/ardents-network/blob/e269c74744df91588f77c90b14d4e81b3908b472/internal/domain/custody/admission_authority.go) | Allocation decisions and permission grammar now owned by new Allocation and public Permission | New Custody owns durable encrypted commit, signing key and custody operation; the retired backend supplies no runtime authority |
-| internal/endpoint/participant_linux.go and the retired runtime plan | Aggregate role maxima represented by allocation.ValidateMaxima | Selecting the user's context/role and configuring file paths |
-| internal/endpoint/permission.go; internal/endpoint/issuance.go | Holder request, accepted permission, pending batch and stock | Context authorization, choosing an exchange, joining network work |
+| internal/domain/endpoint/participant_linux.go and the retired runtime plan | Aggregate role maxima represented by allocation.ValidateMaxima | Selecting the user's context/role and configuring file paths |
+| internal/domain/endpoint/permission.go; internal/domain/endpoint/issuance.go | Holder request, accepted permission, pending batch and stock | Context authorization, choosing an exchange, joining network work |
 | internal/domain/node/authority/token.go; internal/domain/node/admission.go | Receiver token verification and spend scenario represented by receiving | Current authority observation, host reservation and actual channel ownership |
 | internal/route/closed_admission_channel.go | Class allowance and deadline bound represented by receiving.Allowance | Channel handshake and delivery of the accepted allowance |
 | internal/route/closed_forwarding_channel.go | Refill replaces remaining allowance without extending its original deadline | Route decides forwarding-parent eligibility, counts bytes and owns the ADMIT/ACCEPT exchange; Admission component tests do not prove that transport |

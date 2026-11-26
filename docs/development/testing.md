@@ -1137,7 +1137,7 @@ establish the complete replay/Terminal/authority matrix or two independently
 installed Endpoint managers.
 
 `make execution-route-check` selects `TestInstalledExecutionRouteTCP`
-from the tagged `internal/endpoint` test binary installed at
+from the tagged `internal/domain/endpoint` test binary installed at
 `/usr/lib/ardents/qualification/execution-command.test`
 and requires `service-authentication` on each selected Carrier. The separate
 `service-setup-handoff` control cancels Publisher's individual setup caller after
@@ -3766,7 +3766,7 @@ dependency; its bounded use and patched-systemd applicability are recorded in
 ## Protected Endpoint platform-led text journey native qualification
 
 The `endpoint_pair_native` build tag additionally selects
-`internal/endpoint/endpoint_journey_native_linux_test.go` (compiled together with
+`internal/domain/endpoint/endpoint_journey_native_linux_test.go` (compiled together with
 `document_worker_installed`), the #391 S2.2 journey harness. It reuses one unchanged
 platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`) in
 `tests/e2e/endpoint/journey_participant_native_linux_test.go`:
@@ -4166,7 +4166,7 @@ covered by `TestManagerCgroupControlTargetPolicy`.
 ### Installed Endpoint latency qualification
 
 The cold/warm latency pair uses `TestNativeEndpointColdWarmLatency` in
-`internal/endpoint` alongside `TestNativeEndpointColdWarmLatencyParticipant`, selected by `endpoint_launch_native`. The driver requires
+`internal/domain/endpoint` alongside `TestNativeEndpointColdWarmLatencyParticipant`, selected by `endpoint_launch_native`. The driver requires
 a real Ubuntu/systemd host, `/usr/bin/busctl --system`, a loaded
 `ardents-endpoint.service` qualification unit and a platform-led installed root.
 `make platform-installed-compile-check` compiles the pair. An explicit native
@@ -4208,7 +4208,7 @@ evidence. These component/acceptance gates are not independent participants,
 whole-host privacy qualification or bootstrap acceptance.
 
 
-Installed participant composition tests live with `internal/endpoint`.
+Installed participant composition tests live with `internal/domain/endpoint`.
 The permission adapter tests exercise real exclusive creation, exact repeat,
 foreign bytes, parent substitution, cancellation and response-file custody.
 Participant controls refuse canceled startup before filesystem/progress effects,

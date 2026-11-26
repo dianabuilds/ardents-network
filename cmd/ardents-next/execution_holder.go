@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
 	"io"
 )
 

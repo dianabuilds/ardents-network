@@ -203,7 +203,7 @@ func selectChecks(base, head string) ([]check, bool, error) {
 			continue
 		}
 		if strings.HasPrefix(path, "packaging/") {
-			for _, directory := range []string{"internal/endpoint", "internal/architecture"} {
+			for _, directory := range []string{"internal/domain/endpoint", "internal/architecture"} {
 				current := directories[filepath.Join(root, filepath.FromSlash(directory))]
 				if current != nil {
 					for _, decl := range current.declarations {
@@ -579,7 +579,7 @@ func dedicatedPRCheck(name string) bool {
 // derivation under the race detector. Their measured cost is bounded in pairs;
 // ordinary unit families retain the wider default group.
 func expensiveEndpointPRCheck(pkg, name string) bool {
-	if !strings.HasSuffix(pkg, "/internal/endpoint") {
+	if !strings.HasSuffix(pkg, "/internal/domain/endpoint") {
 		return false
 	}
 	return strings.HasPrefix(name, "TestTextPublication") ||
