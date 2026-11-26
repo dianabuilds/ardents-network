@@ -691,54 +691,61 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 	}
 }
 
-// Cohort 2d (#877, #691) shifts the Endpoint boundary deliberately after the
-// prerequisite seams merged: Instance custody (#867), reachability Store (#870),
-// Hosting lease + IFMIB measurement (#871/#873) and the worker launch capability
-// port (#875). The session Open* compositions (prefix/bootstrap/join) compose only
-// selection (Unix-family roots), Hosting (Unix-family lease + Linux/macOS
-// measurement) and the portable Route core; they launch no native worker, so on
-// macOS they run the genuine composition and on Windows the shifted stub refuses
-// before any root state. They move to linux || darwin and their refusal narrows to
-// Windows (!linux && !darwin). The Publisher live Open/snapshot, Reader and
-// participant compositions STAY Linux. The durable lease seam port (#880, #691)
-// made publication/durable native on Linux and macOS (plus its existing Windows
-// lease), so it no longer blocks Publisher; the boundary now rests on the
-// remaining unported compositions: publisher/opening composes the Linux native
-// worker launch, publisher/snapshot reads the snapshot file before the native
-// launch refusal, the Reader coordinator composes the Linux-only
-// application/connection.Refuse projection, and the participant composes
-// endpoint/launch systemd delivery plus the declarations and permission Linux
-// projections. Their !linux typed refusals are unchanged. The
-// refusal-behavior tests pin that every unsupported host refuses before any state
-// or authority. A future port of the worker launch / Refuse seams must update
-// this assertion deliberately.
+// Cohort 2d (#877, #691) shifted the Endpoint session boundary to the Unix family
+// after the prerequisite seams merged: Instance custody (#867), reachability Store
+// (#870), Hosting lease + IFMIB measurement (#871/#873) and the worker launch
+// capability port (#875). The session Open* compositions (prefix/bootstrap/join)
+// compose only selection (Unix-family roots), Hosting (Unix-family lease +
+// Linux/macOS measurement) and the portable Route core; they launch no native
+// worker, so on macOS they run the genuine composition and on Windows the shifted
+// stub refuses before any root state. They are linux || darwin and their refusal
+// narrows to Windows (!linux && !darwin).
+//
+// The Publisher composition (#883, #691) now shifts the same way after the durable
+// lease seam port (#880/#882) made publication/durable native on Linux and macOS
+// (plus its existing Windows lease). opening composes the Unix-family
+// selection/Hosting/Instance/durable roots with the portable domain Publisher and
+// launches no native worker itself; publisher launches the native worker
+// (LaunchPublisher/LaunchByteStreamPublisher) BEFORE openPublication, so macOS
+// receives the typed worker refusal before any root state; snapshot imports the
+// caller input read-only (document.ReadSnapshotFile creates no filesystem state or
+// authority) before the same typed launch refusal; byte_stream composes only the
+// portable application/connection contract, not the Linux-only Refuse projection.
+// They move to linux || darwin and their opening/snapshot refusals narrow to
+// Windows (!linux && !darwin). macOS worker launch stays a typed refusal
+// (execution/runtime !linux stubs); no unconfined worker is spawned and Linux
+// behavior is byte-identical. The Reader coordinator and participant STAY Linux:
+// reader composes the Linux-only application/connection.Refuse projection
+// (setupCleanupError classification) and participant composes endpoint/launch
+// systemd delivery plus the declarations and permission Linux projections. Their
+// !linux typed refusals are unchanged. The refusal-behavior tests pin that every
+// unsupported host refuses before any state or authority. A future port of the
+// worker launch / Refuse seams must update this assertion deliberately.
 func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 	root := repositoryRoot(t)
 	unixComposition := []string{
 		"internal/endpoint/session/prefix_unix.go",
 		"internal/endpoint/session/bootstrap_unix.go",
 		"internal/endpoint/session/join_unix.go",
+		"internal/endpoint/publisher/opening_unix.go",
+		"internal/endpoint/publisher/publisher_unix.go",
+		"internal/endpoint/publisher/snapshot_unix.go",
+		"internal/endpoint/publisher/byte_stream_unix.go",
 	}
 	windowsRefusal := []string{
 		"internal/endpoint/session/route_other.go",
 		"internal/endpoint/session/route_other_test.go",
+		"internal/endpoint/publisher/opening_other.go",
+		"internal/endpoint/publisher/opening_other_test.go",
+		"internal/endpoint/publisher/snapshot_other.go",
+		"internal/endpoint/publisher/snapshot_other_test.go",
 	}
 	linuxOnly := []string{
-		"internal/endpoint/publisher/opening_linux.go",
-		"internal/endpoint/publisher/publisher_linux.go",
-		"internal/endpoint/publisher/snapshot_linux.go",
-		"internal/endpoint/publisher/byte_stream_linux.go",
 		"internal/endpoint/reader/reader_linux.go",
 		"internal/endpoint/reader/operation_linux.go",
 		"internal/endpoint/reader/source_linux.go",
 		"internal/endpoint/reader/byte_stream_linux.go",
 		"internal/endpoint/participant_linux.go",
-	}
-	linuxRefusal := []string{
-		"internal/endpoint/publisher/opening_other.go",
-		"internal/endpoint/publisher/opening_other_test.go",
-		"internal/endpoint/publisher/snapshot_other.go",
-		"internal/endpoint/publisher/snapshot_other_test.go",
 	}
 	for _, target := range []string{"linux", "windows", "darwin"} {
 		profile := build.Default
@@ -768,15 +775,6 @@ func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 			}
 			if want := target == "linux"; selected != want {
 				t.Errorf("native Endpoint composition %s on %s: %v, want %v", name, target, selected, want)
-			}
-		}
-		for _, name := range linuxRefusal {
-			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if want := target != "linux"; selected != want {
-				t.Errorf("Endpoint platform refusal %s on %s: %v, want %v", name, target, selected, want)
 			}
 		}
 	}
@@ -2618,7 +2616,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/endpoint/connection_response_loss_linux_test.go" || source == "internal/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if source == "internal/endpoint/publisher/snapshot_linux.go" && dependency == modulePath+"/internal/application/document" {
+	if source == "internal/endpoint/publisher/snapshot_unix.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
 	if (owner == "internal/admission/issuance" || owner == "internal/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
@@ -2695,10 +2693,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
 		return true
 	}
-	if (source == "internal/endpoint/publisher/publisher_linux.go" || source == "internal/endpoint/publisher/opening_linux.go" || source == "internal/endpoint/publisher/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
+	if (source == "internal/endpoint/publisher/publisher_unix.go" || source == "internal/endpoint/publisher/opening_unix.go" || source == "internal/endpoint/publisher/byte_stream_unix.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if source == "internal/endpoint/publisher/byte_stream_linux.go" && dependency == modulePath+"/internal/application/connection" {
+	if source == "internal/endpoint/publisher/byte_stream_unix.go" && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "internal/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {
@@ -2809,16 +2807,16 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed endpoint command uses endpoint owner", "cmd/ardents-next/command.go", modulePath + "/internal/endpoint", true},
 		{"plan constructor command has no direct Source codec", "internal/endpoint/preparation_command_linux.go", modulePath + "/internal/network/source", false},
 		{"installed participant owns Administration listener", "internal/endpoint/participant_linux.go", modulePath + "/internal/application/administration", true},
-		{"installed Publisher retains original worker", "internal/endpoint/publisher/publisher_linux.go", modulePath + "/internal/execution/runtime", true},
+		{"installed Publisher retains original worker", "internal/endpoint/publisher/publisher_unix.go", modulePath + "/internal/execution/runtime", true},
 		{"other installed adapter has no Publisher authority", "cmd/ardents-next/installed_other_linux.go", modulePath + "/internal/execution/runtime", false},
-		{"installed Publisher cannot use old Endpoint", "internal/endpoint/publisher/publisher_linux.go", modulePath + "/internal/endpoint", false},
+		{"installed Publisher cannot use old Endpoint", "internal/endpoint/publisher/publisher_unix.go", modulePath + "/internal/endpoint", false},
 		{"unregistered installed adapter has no local byte exception", "cmd/ardents-next/other_installed_linux.go", modulePath + "/internal/application/connection", false},
 		{"installed Reader cannot use old Connection", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/service/connection", false},
 		{"qualified Publisher uses only native Text protocol", "internal/execution/runtime/publisher_worker_linux.go", modulePath + "/internal/application/document", true},
 		{"qualified Reader uses only native Text protocol", "internal/execution/runtime/reader_worker_linux.go", modulePath + "/internal/application/document", true},
 		{"qualified Reader input uses only byte-stream boundary", "internal/execution/runtime/reader_stream.go", modulePath + "/internal/application/connection", true},
 		{"qualified Publisher uses Application stream grammar", "internal/execution/runtime/publisher_worker_linux.go", modulePath + "/internal/application/connection", true},
-		{"selected Publisher input uses Text import", "internal/endpoint/publisher/snapshot_linux.go", modulePath + "/internal/application/document", true},
+		{"selected Publisher input uses Text import", "internal/endpoint/publisher/snapshot_unix.go", modulePath + "/internal/application/document", true},
 		{"Execution launch borrows only Text INIT grammar", "internal/execution/runtime/initialization_linux.go", modulePath + "/internal/application/document", true},
 		{"Execution rules cannot borrow Text runtime", "internal/execution/job.go", modulePath + "/internal/application/document", false},
 		{"common Execution launch has no native Text exception", "internal/execution/runtime/launch.go", modulePath + "/internal/application/document", false},
@@ -2939,7 +2937,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"other binaries cannot acquire holder session", "cmd/ardents/main.go", modulePath + "/internal/endpoint/session", false},
 		{"funding cannot depend on Reader", "internal/endpoint/funding/source.go", modulePath + "/internal/endpoint/reader", false},
 		{"Reader cannot own Publication", "internal/endpoint/reader/reader_linux.go", modulePath + "/internal/publication/runtime", false},
-		{"Publisher cannot import command composition", "internal/endpoint/publisher/publisher_linux.go", modulePath + "/cmd/ardents-next", false},
+		{"Publisher cannot import command composition", "internal/endpoint/publisher/publisher_unix.go", modulePath + "/cmd/ardents-next", false},
 		{"other binaries cannot acquire new funding", "cmd/ardents/main.go", modulePath + "/internal/endpoint/funding", false},
 		{"enrollment verification uses Enrollment", "cmd/ardents-next/enrollment.go", modulePath + "/internal/enrollment", true},
 		{"diagnostics uses the local timeline projector", "cmd/ardents-next/diagnostic_timeline.go", modulePath + "/internal/diagnostics/timeline", true},

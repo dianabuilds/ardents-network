@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !darwin
 
 package publisher
 
@@ -10,9 +10,10 @@ import (
 )
 
 // LaunchSnapshotFile freezes a bounded document input before launching its
-// qualified worker. The native worker launch remains Linux-only (Cohort 2b,
-// #858); on every other host the native owner supplies the typed refusal before
-// any snapshot file I/O, so no temporary copy is created.
+// qualified worker. On Linux and macOS (#883) it imports the caller input
+// read-only and the native owner supplies the launch refusal (macOS workers are
+// typed-unavailable). Windows keeps the typed refusal before any snapshot file
+// I/O, so no temporary copy is created.
 func TestLaunchSnapshotFileRefusesWithoutStateOnUnsupportedHost(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "snapshot")
