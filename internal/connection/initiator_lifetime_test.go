@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 // An unusable Operation isolates refusal before any accepting owner check.

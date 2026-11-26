@@ -19,10 +19,10 @@ import (
 // routine edit.
 func TestStreamWorkerActivationHasOnlyTrustedCallers(t *testing.T) {
 	root := repositoryRoot(t)
-	workerPackage := modulePath + "/internal/execution/worker"
+	workerPackage := modulePath + "/internal/domain/execution/worker"
 	allowed := map[string]bool{
-		"internal/execution/worker/stream_activation_installed_linux_test.go": true,
-		"internal/execution/runtime/stream_qualification_linux.go":            true,
+		"internal/domain/execution/worker/stream_activation_installed_linux_test.go": true,
+		"internal/domain/execution/runtime/stream_qualification_linux.go":            true,
 	}
 	walk(t, root, func(filename string, entry os.DirEntry) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
@@ -36,7 +36,7 @@ func TestStreamWorkerActivationHasOnlyTrustedCallers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		inWorkerPackage := strings.HasPrefix(relative, "internal/execution/worker/")
+		inWorkerPackage := strings.HasPrefix(relative, "internal/domain/execution/worker/")
 		importsWorker := false
 		for _, imported := range file.Imports {
 			if dependency, err := strconv.Unquote(imported.Path.Value); err == nil && dependency == workerPackage {
@@ -83,9 +83,9 @@ func TestStreamWorkerActivationHasOnlyTrustedCallers(t *testing.T) {
 // lands; a new caller is a boundary change, not a routine edit.
 func TestStreamQualificationSeamHasOnlyTrustedCallers(t *testing.T) {
 	root := repositoryRoot(t)
-	runtimePackage := modulePath + "/internal/execution/runtime"
+	runtimePackage := modulePath + "/internal/domain/execution/runtime"
 	allowed := map[string]bool{
-		"internal/execution/runtime/stream_qualification_installed_linux_test.go": true,
+		"internal/domain/execution/runtime/stream_qualification_installed_linux_test.go": true,
 	}
 	walk(t, root, func(filename string, entry os.DirEntry) {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") {
@@ -99,7 +99,7 @@ func TestStreamQualificationSeamHasOnlyTrustedCallers(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		inRuntimePackage := strings.HasPrefix(relative, "internal/execution/runtime/")
+		inRuntimePackage := strings.HasPrefix(relative, "internal/domain/execution/runtime/")
 		importsRuntime := false
 		for _, imported := range file.Imports {
 			if dependency, err := strconv.Unquote(imported.Path.Value); err == nil && dependency == runtimePackage {

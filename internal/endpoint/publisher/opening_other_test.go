@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
 
 // Live Open composes the Unix-family selection, Hosting, Instance custody and

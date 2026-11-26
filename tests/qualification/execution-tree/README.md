@@ -9,7 +9,7 @@ authority. Local owner authorization is an explicit fixture.
 Build outside the repository with the selected Linux amd64 toolchain:
 
     go test -c -tags document_worker_hostile -trimpath -buildvcs=false -o HOSTILE ./internal/application/document
-    go test -c -tags document_worker_installed -trimpath -buildvcs=false -o RUNTIME ./internal/execution/runtime
+    go test -c -tags document_worker_installed -trimpath -buildvcs=false -o RUNTIME ./internal/domain/execution/runtime
 
 Use the admitted Ubuntu24.04/systemd255/cgroup-v2 environment and fixed units
 from the sibling lifecycle profile. Install RUNTIME root:root mode0555 at

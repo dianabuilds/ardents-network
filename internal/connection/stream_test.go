@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 func TestDetachedInitialStateCannotExposeApplicationStream(t *testing.T) {

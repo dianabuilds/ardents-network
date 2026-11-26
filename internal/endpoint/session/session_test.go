@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
 
 func TestPreparationAndLiveOperationKeepDifferentPurposes(t *testing.T) {

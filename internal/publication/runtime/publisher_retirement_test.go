@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
 // No successful authority or stream is supplied: only the already retired
