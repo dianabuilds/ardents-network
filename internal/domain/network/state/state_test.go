@@ -235,16 +235,20 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 	t.Parallel()
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
+	// This test checks persistence across restart. Keep both synthetic time
+	// observations current while real filesystem operations complete.
+	clock := advancingVerificationClock(time.Unix(genesis.now, 0))
 	config := state.Config{
 		Root: t.TempDir(), NetworkID: genesis.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
 		ClosedProfileAuthority: genesis.authorityPublic,
-		Threshold:              1, Now: time.Unix(genesis.now, 0), ClockObservation: time.Unix(genesis.now, 0),
+		Threshold:              1, Clock: clock, ObserveClock: clock,
 	}
 	store, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer store.Close()
 	if _, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations); err != nil {
 		t.Fatalf("accept genesis: %v", err)
 	}
@@ -263,6 +267,7 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reopen successor chain: %v", err)
 	}
+	defer restarted.Close()
 	got, err := restarted.Current()
 	if err != nil || got != want {
 		t.Fatalf("restarted snapshot=%+v err=%v, want %+v", got, err, want)
@@ -271,7 +276,8 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	laterConfig := config
-	laterConfig.Now = time.Unix(genesis.now+1900, 0)
+	laterClock := advancingVerificationClock(time.Unix(genesis.now+1900, 0))
+	laterConfig.Clock, laterConfig.ObserveClock = laterClock, laterClock
 	later, err := state.Open(laterConfig)
 	if err != nil {
 		t.Fatalf("reopen current successor after genesis expiry: %v", err)
