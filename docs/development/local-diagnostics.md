@@ -26,18 +26,41 @@ correlation identifiers into labels, events or trace context. See the
 [product diagnostic rules](../product/operating-model.md#diagnostics).
 
 The common contract applies across the project. Today the finite Admission,
-Issuance and Hosting command adapters use the shared OTLP exporter. Node,
-Endpoint and Source have structured local events consumed by the timeline or
-collector, with the coverage listed below. The monitor's resource exposition
+Issuance and Hosting command adapters use the shared OTLP exporter. Current
+Node, Endpoint and Source command reports are distinct local results; they do
+not match the retained schema/kind readers below. This does not establish
+common runtime instrumentation coverage. The monitor's resource exposition
 reports observations from its selected local sources. Offline
 `ardents-custody` emits command results and diagnostics without a collector
 connection. A signed artifact, command result or explicit engineering capture
 retains its own contract and access boundary.
 
+The exporter supplies one delivery classification: `local-only` when explicitly
+disabled, `completed` after successful joined export, and `unavailable` after an
+opening or export failure. Admission and Hosting retain their existing stderr
+field spelling; Issuance, results and issuer-profile stderr add `telemetry` next
+to operation/phase/outcome. Their stdout result fields, exit status and durable
+operation outcome remain separate. No raw collector error is printed. An early
+input refusal before export opens still emits only its command result.
+
 ## Retained diagnostic readers
 
-`internal/diagnostics/timeline` reads the recorded Node, Source and headless
-Endpoint event schemas, including journal envelopes. Their original schema and
+`internal/diagnostics/runtimeevent` decodes the recorded Node, Source and headless
+Endpoint event schemas for both timeline and engineering collector. The shared
+catalogue also supplies safe stored-report and metric filtering. Journal MESSAGE
+is decoded independently of its envelope, including when outer event keys are
+present. Known string fields reject null and other JSON types; invalid timestamps
+and Source kind/reason combinations are refused without echoing input. Missing
+optional fields remain unavailable. A recognized record is at most 1 MiB; the
+collector retains its stricter 16 KiB input-line bound.
+
+`internal/diagnostics/timeline` formats the decoded facts and requires an event
+or journal timestamp. The collector retains event time as unavailable when
+absent; collector receipt time never becomes producer time. Local timeline
+roles and bounded Node reasons are not safe export labels. Its collector
+projection drops those fields and projects unknown finite categories as
+unclassified/incomplete. Malformed records increment invalid-line accounting
+and make the saved capture incomplete. The original schema and
 category spellings remain input compatibility; the reader does not establish
 that current runtimes produce those events. Unknown schemas and event kinds
 are filtered; malformed fields in known schemas are refused without raw echoes.
@@ -151,8 +174,9 @@ session; receipt time cannot refresh an old producer observation. Missing fields
 remain absent, stopped/stale sources lose resource values, and invalid
 observations return503 without partial successful exposition.
 
-The fixed catalogue exports only cumulative cgroup CPU time and current cgroup
-memory, which both current Node measurement paths populate. CPU microseconds
+The retained input catalogue exports only cumulative cgroup CPU time and current
+cgroup memory from the recorded Node resource schema. Current Node inspection
+reports are not a producer for that stream. CPU microseconds
 become cumulative seconds; cgroup memory includes kernel and cache charges and
 is not process RSS. The resource event does not identify whether the extended
 process sampler or the closed owner-cgroup sampler supplied it. Consequently
@@ -255,9 +279,9 @@ for these lifecycle checks.
 
 | Owner | Available evidence | Gap / interpretation |
 |---|---|---|
-| Node `lifecycle_event.go` and `resource` | Bounded lifecycle transitions, pressure decisions, Go/process/cgroup/socket/queue/admission samples, Hosting used/reserved/remaining values | No global network health verdict; resource samples must not displace transitions. Assignment/generation/digests and free-form reasons are local sensitive observations. |
-| Endpoint `participant_observation_linux.go` | Readiness, permission-required, connection/refresh/withdrawal failure; observer failures retained in runtime terminal result | No per-operation latency histogram or runtime queue/token gauge; unavailable evidence cannot be invented from stderr or process existence. |
-| Source command events | Ready, wave accepted, terminal background/cleanup categories | Process survival does not establish current State or Source readiness. |
+| Current Node role command and `inspect-process` | Bounded local operation/phase/outcome and first/cleanup owner reports; explicit process inspection | These are not the retained `ardents-node-event-v1` producer. No common runtime metrics/event export is established. |
+| Current Endpoint command | Local permission-exchange progress and command refusals; original completion stays with the owner | Not the retained headless runtime event producer. Request digests and private local workflow details must not be routed into telemetry. |
+| Current Source command | Local serving/listening and joined failure-owner reports | Not the retained `ardents-source-event-v1` producer. Process survival does not establish current State or Source readiness. |
 | `internal/diagnostics/timeline` | Existing safe streaming operator timeline, direct JSON/journal input | Human-readable projection; no resource/time series store. Continue using its existing command for exact timeline semantics. |
 | qualification command | Set-wide stream/latency/throughput/resource verdicts and invalidations | Purpose-selected installed environment; Docker fixture results cannot replace its verdicts. |
 | Endpoint Role capture tests | Isolated role durable-state observations and Go heap collection | Secret-bearing inputs and outputs retained only in the selected capture profile. |
@@ -277,8 +301,9 @@ not create cross-role trace IDs or infer a failing role from network timing.
 The former commands exposed Go-runtime counters and profiles through a
 private `ARDENTS_DEBUG_SOCKET` listener. That listener retired with those
 entrypoints. The diagnostic tools still read captures and bounded Reader
-snapshots from the original builds. Current commands expose their bounded
-events through `ardents-next diagnostics timeline` and existing logs.
+snapshots from the original builds. The timeline currently reads the retained
+event formats; current command reports require their own explicit producer
+integration before they can be presented as that event stream.
 
 ## Diagnostic lifecycle and bounds
 

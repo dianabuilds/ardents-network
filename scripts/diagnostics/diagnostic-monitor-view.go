@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 type monitorView struct {
@@ -286,7 +288,7 @@ func monitorMetrics(state monitorState, now time.Time) ([]byte, error) {
 	available := false
 	row := state.LatestSample
 	if fresh && state.SourceAlive && state.MetricSampleMaxAge > 0 && row != nil &&
-		row.Entry.Schema == "ardents-node-event-v1" && row.Entry.Kind == "resource-sample" {
+		row.Entry.Schema == runtimeevent.NodeSchema && row.Entry.Kind == runtimeevent.ResourceSample {
 		producer, err := time.Parse(time.RFC3339Nano, row.Entry.At)
 		if err != nil || producer.After(now) || row.At.After(now) ||
 			producer.Before(state.Started) || row.At.Before(state.Started) {

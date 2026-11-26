@@ -13,6 +13,7 @@ COPY scripts/install-quality-analyzer.go ./scripts/install-quality-analyzer.go
 COPY scripts/check-tools.go ./scripts/check-tools.go
 RUN make tools-install DIAGNOSTIC_TOOLS=1
 RUN go mod download && go mod verify
+COPY internal/diagnostics/runtimeevent/ ./internal/diagnostics/runtimeevent/
 COPY scripts/diagnostics/diagnostic-command.go scripts/diagnostics/diagnostic-capture.go scripts/diagnostics/diagnostic-view.go scripts/diagnostics/diagnostic-report.go scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor-collector.go scripts/diagnostics/diagnostic-log-retention.go scripts/diagnostics/diagnostic-evidence.go ./
 RUN go build -trimpath -buildvcs=false -o /usr/local/bin/ardents-diagnostics diagnostic-command.go diagnostic-capture.go diagnostic-view.go diagnostic-report.go diagnostic-monitor.go diagnostic-monitor-view.go diagnostic-monitor-collector.go diagnostic-log-retention.go diagnostic-evidence.go \
     && mkdir -p /opt/ardents-diagnostics \

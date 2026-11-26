@@ -244,3 +244,11 @@ func TestDiagnosticTimelineSourceKindAndReasonContract(t *testing.T) {
 		})
 	}
 }
+
+func TestDiagnosticTimelineJournalMessageTakesPrecedenceOverOuterSchema(t *testing.T) {
+	input := `{"schema":"ardents-source-event-v1","kind":"source-ready","MESSAGE":"{}"}`
+	var output bytes.Buffer
+	if err := Project(t.Context(), io.NopCloser(strings.NewReader(input)), &output); err != nil || output.Len() != 0 {
+		t.Fatalf("envelope invented event: %q %v", output.String(), err)
+	}
+}

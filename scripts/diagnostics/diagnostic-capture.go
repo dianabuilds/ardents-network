@@ -20,6 +20,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
 const logLimit = 16 << 20
@@ -114,20 +116,9 @@ type projection struct {
 	events  *boundedFile
 }
 
-var resourceFields = strings.Fields("rss_bytes cpu_usage_usec memory_bytes go_memory_bytes socket_memory_bytes sockets fds goroutines threads timers queue_items queue_bytes storage_bytes storage_files cpu_pressure memory_pressure io_pressure high_events emergency_events admission_active admission_accepted admission_refused")
-var hostingFields = strings.Fields("UsedBytes ReservedBytes RemainingBytes")
+var resourceFields = runtimeevent.ResourceNames()
+var hostingFields = runtimeevent.HostingNames()
 
-func numbers(value any, fields []string) map[string]float64 {
-	object, _ := value.(map[string]any)
-	result := map[string]float64{}
-	for _, field := range fields {
-		n, ok := object[field].(float64)
-		if ok && n >= 0 && !math.IsNaN(n) && !math.IsInf(n, 0) {
-			result[field] = n
-		}
-	}
-	return result
-}
 func selected(value any, allowed string) string {
 	text, _ := value.(string)
 	for _, item := range strings.Fields(allowed) {
@@ -138,70 +129,31 @@ func selected(value any, allowed string) string {
 	return ""
 }
 
-// eventCategories owns the fixed collector/stored-evidence category catalogue.
-func eventCategories(schema string) (kinds, failures string) {
-	switch schema {
-	case "ardents-node-event-v1":
-		return "lifecycle resource resource-sample", ""
-	case "ardents-source-event-v1":
-		return "source-ready source-wave-accepted source-failed", "background-work cleanup"
-	case "ardents-headless-runtime-event-v1":
-		return "headless-runtime-ready headless-runtime-failed headless-runtime-permission-required headless-runtime-publication-refresh-failed headless-runtime-publication-withdrawal-failed headless-runtime-connection-operation-failed", "startup running rotation authorization publication-state publication-handover caller-context publisher-ended publication-draining registration-absent publisher-not-live registration publisher-drain deadline admission activation worker-launch worker-operation introduction-preparation service-join post-join-lifetime service-result rotation-authority rotation-prefix rotation-recipient rotation-expired rotation-registration rotation-publication"
-	}
-	return "", ""
-}
 func project(body []byte) (event, string) {
-	var data map[string]any
-	if err := json.Unmarshal(body, &data); err != nil {
+	record, present, err := runtimeevent.Decode(body)
+	if err != nil {
 		return event{}, "invalid"
 	}
-	if message, ok := data["MESSAGE"].(string); ok {
-		if err := json.Unmarshal([]byte(message), &data); err != nil {
-			return event{}, "invalid"
-		}
-	}
-	schema := selected(data["schema"], "ardents-node-event-v1 ardents-headless-runtime-event-v1 ardents-source-event-v1")
-	if schema == "" {
+	if !present {
 		return event{}, "unknown"
 	}
-	kinds, failures := eventCategories(schema)
-	kind := selected(data["kind"], kinds)
-	if kind == "" {
-		return event{}, "unknown"
+	e := event{ObservedAt: time.Now().UTC(), Schema: record.Schema, Kind: record.Kind,
+		Resource: record.Resource, Hosting: record.Hosting, UnknownCategories: record.UnknownCategories}
+	if !record.At.IsZero() {
+		e.At = record.At.UTC().Format(time.RFC3339Nano)
 	}
-	at := ""
-	if text, ok := data["at"].(string); ok {
-		if parsed, err := time.Parse(time.RFC3339Nano, text); err == nil {
-			at = parsed.UTC().Format(time.RFC3339Nano)
+	if runtimeevent.KnownState(record.State) {
+		e.State = record.State
+	}
+	if runtimeevent.KnownCarrier(record.Carrier) {
+		e.Carrier = record.Carrier
+	}
+	if record.Schema != runtimeevent.NodeSchema && record.Reason != "" {
+		if runtimeevent.KnownFailure(record.Schema, record.Reason) {
+			e.Failure = record.Reason
+		} else {
+			e.Failure = runtimeevent.Unclassified
 		}
-	}
-	e := event{ObservedAt: time.Now().UTC(), At: at, Schema: schema, Kind: kind,
-		State:   selected(data["state"], "ABSENT PREPARED READY DRAINING WITHDRAWN FAILED OBSERVED NORMAL PROTECT DRAIN EXIT"),
-		Carrier: selected(data["carrier_profile"], "ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2"),
-		Failure: selected(data["failure"], failures), Resource: numbers(data["resource"], resourceFields)}
-	if schema == "ardents-source-event-v1" {
-		e.Failure = selected(data["reason"], failures)
-	}
-	if schema == "ardents-node-event-v1" {
-		e.Failure = ""
-	}
-	for key, value := range map[string]string{"state": e.State, "carrier_profile": e.Carrier} {
-		if raw, ok := data[key].(string); ok && raw != "" && value == "" {
-			e.UnknownCategories++
-		}
-	}
-	failureKey := "failure"
-	if schema == "ardents-source-event-v1" {
-		failureKey = "reason"
-	}
-	if schema != "ardents-node-event-v1" {
-		if raw, ok := data[failureKey].(string); ok && raw != "" && e.Failure == "" {
-			e.Failure = "unclassified"
-			e.UnknownCategories++
-		}
-	}
-	if hosting, ok := data["hosting"].(map[string]any); ok {
-		e.Hosting = numbers(hosting["Observation"], hostingFields)
 	}
 	return e, ""
 }
@@ -219,6 +171,7 @@ func (p *projection) line(body []byte) {
 	defer p.mu.Unlock()
 	if reason == "invalid" {
 		p.summary.InvalidLines++
+		p.summary.CaptureIncomplete = true
 		return
 	}
 	if reason != "" {
@@ -228,7 +181,7 @@ func (p *projection) line(body []byte) {
 	p.summary.Counts[e.Kind]++
 	p.summary.UnknownCategories += e.UnknownCategories
 	p.summary.CaptureIncomplete = p.summary.CaptureIncomplete || e.UnknownCategories > 0
-	if e.Kind == "resource-sample" {
+	if e.Kind == runtimeevent.ResourceSample {
 		p.summary.LastResource = &e
 	} else {
 		p.summary.LastEvents = append(p.summary.LastEvents, e)

@@ -43,6 +43,7 @@ func profileCommand(t *testing.T, operation string, plan map[string]any, collect
 			t.Fatal("path leaked")
 		}
 	}
+	assertIssuanceDelivery(t, log.Bytes(), collector, r.Phase)
 	return r, err
 }
 func TestIssuerProfileCLICompleteTokenCycle(t *testing.T) {

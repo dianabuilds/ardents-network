@@ -51,13 +51,13 @@ func RunIssuance(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		r.Outcome = issuer.ErrorOutcome(err)
 		return write()
 	}
-	o, _ := telemetry.Open(endpoint)
+	o, exportErr := telemetry.Open(endpoint)
 	finish := o.Begin("ardents.issuance", r.Operation)
 	r.Phase, err = issuance.DeliverInventory(ctx, p.Root, p.Binding, p.InventoryFile, args[0] == "initialize")
 	r.Outcome = issuer.ErrorOutcome(err)
 	finish(r.Phase, r.Outcome)
-	_ = o.Close()
-	_ = json.NewEncoder(diagnostic).Encode(r)
+	delivery := o.CloseWithStatus(exportErr)
+	writeIssuanceDiagnostic(diagnostic, r, delivery)
 	return write()
 }
 func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -87,13 +87,13 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 		r.Outcome = issuer.ErrorOutcome(err)
 		return write()
 	}
-	o, _ := telemetry.Open(endpoint)
+	o, exportErr := telemetry.Open(endpoint)
 	finish := o.Begin("ardents.issuance", r.Operation)
 	result := prepared.Execute(ctx)
 	r.Phase, r.Outcome = result.Phase, result.Outcome
 	finish(r.Phase, r.Outcome)
-	_ = o.Close()
-	_ = json.NewEncoder(diagnostic).Encode(r)
+	delivery := o.CloseWithStatus(exportErr)
+	writeIssuanceDiagnostic(diagnostic, r, delivery)
 	return write()
 }
 
@@ -116,12 +116,19 @@ func RunIssuerProfile(ctx context.Context, operation string, args []string, out,
 		return write()
 	}
 	defer clear(raw)
-	observation, _ := telemetry.Open(collector)
+	observation, exportErr := telemetry.Open(collector)
 	finish := observation.Begin("ardents.issuance", operation)
 	result := issuer.ProfileOperation(ctx, operation, raw)
 	r.Phase, r.Outcome = result.Phase, result.Outcome
 	finish(r.Phase, r.Outcome)
-	_ = observation.Close()
-	_ = json.NewEncoder(diagnostic).Encode(r)
+	delivery := observation.CloseWithStatus(exportErr)
+	writeIssuanceDiagnostic(diagnostic, r, delivery)
 	return write()
+}
+
+func writeIssuanceDiagnostic(out io.Writer, result issuanceResult, delivery telemetry.DeliveryStatus) {
+	_ = json.NewEncoder(out).Encode(struct {
+		issuanceResult
+		Telemetry telemetry.DeliveryStatus `json:"telemetry"`
+	}{result, delivery})
 }

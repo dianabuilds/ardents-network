@@ -2711,6 +2711,14 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
+	if dependency == modulePath+"/internal/diagnostics/runtimeevent" {
+		switch source {
+		case "internal/diagnostics/timeline/project.go", "scripts/diagnostics/diagnostic-capture.go",
+			"scripts/diagnostics/diagnostic-report.go", "scripts/diagnostics/diagnostic-view.go",
+			"scripts/diagnostics/diagnostic-monitor.go", "scripts/diagnostics/diagnostic-monitor-view.go":
+			return true
+		}
+	}
 	if dependency == modulePath+"/internal/diagnostics/telemetry" {
 		switch source {
 		case "cmd/ardents-next/hosting.go", "internal/admission/operator/admission.go", "internal/admission/operator/issuance.go",

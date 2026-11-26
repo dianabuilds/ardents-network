@@ -157,6 +157,7 @@ func resultCommand(t *testing.T, operation string, plan map[string]any, collecto
 	if bytes.Contains(log.Bytes(), []byte(plan["key_root"].(string))) {
 		t.Fatal("metadata leak")
 	}
+	assertIssuanceDelivery(t, log.Bytes(), collector, r.Phase)
 	return r, err
 }
 func TestConfirmedIssuanceCompiledCLI(t *testing.T) {
