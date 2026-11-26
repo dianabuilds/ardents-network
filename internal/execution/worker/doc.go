@@ -38,4 +38,26 @@
 // That refactor is deliberately deferred: it must preserve every Linux property
 // check and the cgroup ENODEV removal proof byte-identically, so this slice only
 // records the direction and leaves the Linux facts unchanged.
+//
+// Responsibility clusters and their tests:
+//   - portable activation orchestration and installed Stream qualification:
+//     activate.go, activation.go, artifact_linux.go
+//     (stream_activation_installed_linux_test.go; linux native profile
+//     "linux && amd64 && document_worker_installed")
+//   - Unix-family attachment transport and per-frame peer credentials:
+//     attachment_unix.go, peercred_linux.go, attachment_refusal_other.go
+//     (attachment_unix_test.go; unix, attachment_linux_test.go; linux)
+//   - macOS connect-time-only credential boundary: peercred_darwin.go
+//     (peercred_darwin_test.go; darwin)
+//   - cgroup cleanup ownership and removal proof: cleanup_linux.go,
+//     cgroup_linux.go (cleanup_linux_test.go, cleanup_query_linux_test.go,
+//     cleanup_stop_linux_test.go; linux)
+//   - instance and inventory observation: instance_linux.go,
+//     inventory_linux.go (instance_linux_test.go; linux)
+//   - systemd manager transport and executable observation: manager_linux.go,
+//     original_command_linux.go (manager_linux_test.go; linux)
+//   - unit binding and slice property facts: properties_linux.go
+//     (properties_linux_test.go; linux)
+//   - endpoint service facts and platform admission: service_linux.go
+//     (service_linux_test.go; linux)
 package worker
