@@ -3,12 +3,8 @@ package prefix
 import (
 	"bytes"
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/tls"
-	"crypto/x509"
 	"io"
-	"math/big"
 	"net"
 	"slices"
 	"sync/atomic"
@@ -58,19 +54,7 @@ func testNestedRecordPacking(t *testing.T, laneWrite bool) {
 		}
 	})
 	end := time.Now().Add(5 * time.Second)
-	public, private, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer clear(private)
-	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: time.Now().Add(-time.Minute), NotAfter: end.Add(time.Minute), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
-	der, err := x509.CreateCertificate(rand.Reader, template, template, public, private)
-	if err != nil {
-		t.Fatal(err)
-	}
-	certificate := tls.Certificate{Certificate: [][]byte{der}, PrivateKey: private}
-	var key [32]byte
-	copy(key[:], public)
+	certificate, key := roleLaneCertificate(t)
 	var counters []*recordPackingCounter
 	client, server := left, right
 	for layer := range 3 {

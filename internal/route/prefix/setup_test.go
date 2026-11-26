@@ -371,6 +371,14 @@ func TestPrefixSetupUnexpectedParentRetirementStillCancelsSibling(t *testing.T) 
 // readiness notification and is deliberately not this fixture's join oracle.
 func terminalSetupPhysicalPrefix(t *testing.T, original ...context.Context) (*Prefix, <-chan struct{}, *atomic.Int32, func()) {
 	t.Helper()
+	p, _, _, returns, cleanup := terminalPhysicalPrefix(t, original...)
+	return p, p.entry.Done(), returns, cleanup
+}
+
+// terminalPhysicalPrefix is the same physical Prefix with both actual pipe
+// peers, for tests that read a parent's physical output directly.
+func terminalPhysicalPrefix(t *testing.T, original ...context.Context) (*Prefix, net.Conn, net.Conn, *atomic.Int32, func()) {
+	t.Helper()
 	caller := t.Context()
 	if len(original) != 0 {
 		caller = original[0]
@@ -397,7 +405,7 @@ func terminalSetupPhysicalPrefix(t *testing.T, original ...context.Context) (*Pr
 	}
 	go p.watch(func() error { return nil }, make(chan time.Time))
 	cleanup := func() { _ = p.Close(); _ = entryPeer.Close(); _ = interiorPeer.Close(); cancel() }
-	return p, p.entry.Done(), returns, cleanup
+	return p, entryPeer, interiorPeer, returns, cleanup
 }
 
 // This caller has a real canceled Context. Only propagation of cancellation to
