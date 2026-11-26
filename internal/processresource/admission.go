@@ -7,6 +7,18 @@ import (
 	"time"
 )
 
+const (
+	minimumCPUInterval        = 100 * time.Millisecond
+	maximumObservationSpan    = time.Second
+	maximumObservationAge     = time.Second
+	memoryHighBytes           = 768 << 20
+	rssLimitBytes             = 768 << 20
+	goMemoryLimitBytes        = 512 << 20
+	fileDescriptorLimit       = 1024
+	threadLimit               = 256
+	trendPressureLimitPercent = 1
+)
+
 // Profile names the Forwarding local development envelope, not a wire profile.
 const Profile = "ardents-forwarding-process-v1"
 
@@ -76,7 +88,7 @@ func Open(ctx context.Context, profile string) (*Guard, error) {
 		err = pressure(original.baseline)
 	}
 	if err == nil {
-		timer := time.NewTimer(100 * time.Millisecond)
+		timer := time.NewTimer(minimumCPUInterval)
 		select {
 		case <-ctx.Done():
 			err = ctx.Err()
@@ -123,7 +135,7 @@ func (guard *Guard) Check() (Observation, error) {
 	observation, err := original.native.observe()
 	if err == nil {
 		elapsed := observation.Completed.Sub(original.baseline.Completed)
-		if elapsed < 100*time.Millisecond || observation.CPUUsec < original.baseline.CPUUsec || observation.CPUUsec < original.lastCPU {
+		if elapsed < minimumCPUInterval || observation.CPUUsec < original.baseline.CPUUsec || observation.CPUUsec < original.lastCPU {
 			err = &admissionFailure{reason: "cpu-interval"}
 		} else {
 			observation.CPUWindowStarted = original.baseline.Completed
@@ -154,7 +166,10 @@ func pressure(observation Observation) error {
 }
 
 func pressureAt(observation Observation, now time.Time) error {
-	if observation.Completed.IsZero() || observation.Started.IsZero() || observation.Completed.Before(observation.Started) || observation.Completed.Sub(observation.Started) > time.Second || now.Before(observation.Completed) || now.Sub(observation.Completed) > time.Second {
+	if observation.Completed.IsZero() || observation.Started.IsZero() ||
+		observation.Completed.Before(observation.Started) ||
+		observation.Completed.Sub(observation.Started) > maximumObservationSpan ||
+		now.Before(observation.Completed) || now.Sub(observation.Completed) > maximumObservationAge {
 		return &admissionFailure{reason: "observation-stale"}
 	}
 	// The owning development contract admits brief measured CPU/I/O stalls;
@@ -162,16 +177,18 @@ func pressureAt(observation Observation, now time.Time) error {
 	if observation.HighEvents != 0 || observation.EmergencyEvents != 0 || observation.PIDEvents != 0 {
 		return &admissionFailure{reason: "kernel-limit-event"}
 	}
-	if observation.MemoryBytes >= 768<<20 || observation.RSSBytes >= 768<<20 || observation.GoMemoryBytes >= 512<<20 || observation.FDs >= 1024 || observation.Threads >= 256 {
+	if observation.MemoryBytes >= memoryHighBytes || observation.RSSBytes >= rssLimitBytes ||
+		observation.GoMemoryBytes >= goMemoryLimitBytes || observation.FDs >= fileDescriptorLimit ||
+		observation.Threads >= threadLimit {
 		return &admissionFailure{reason: "resource-bound"}
 	}
 	if observation.MemoryPressure > 0 {
 		return &admissionFailure{reason: "memory-pressure"}
 	}
-	if observation.CPUPressure >= 1 {
+	if observation.CPUPressure >= trendPressureLimitPercent {
 		return &admissionFailure{reason: "cpu-pressure"}
 	}
-	if observation.IOPressure >= 1 {
+	if observation.IOPressure >= trendPressureLimitPercent {
 		return &admissionFailure{reason: "io-pressure"}
 	}
 	return nil
