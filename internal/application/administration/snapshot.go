@@ -36,7 +36,7 @@ func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome
 	}
 	ctx, cancel := context.WithTimeout(ctx, SnapshotTimeout)
 	defer cancel()
-	return request(ctx, path, func(output io.Writer) error {
+	return requestOperation(ctx, path, func(output io.Writer) error {
 		var header [len(snapshotRequest) + 4]byte
 		copy(header[:], snapshotRequest)
 		binary.BigEndian.PutUint32(header[len(snapshotRequest):], uint32(len(snapshot)))
@@ -88,14 +88,14 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 	// the remainder of the deadline established before reading the request.
 	ctx, cancel := context.WithDeadline(server.ctx, deadline)
 	defer cancel()
-	if err := requestError(ctx, nil); err != nil {
+	if err := localRequestError(ctx, nil); err != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
 	if err := connection.SetWriteDeadline(deadline); err != nil {
 		return
 	}
-	if err := owner.PublishSnapshot(ctx, body); err != nil || requestError(ctx, nil) != nil {
+	if err := owner.PublishSnapshot(ctx, body); err != nil || localRequestError(ctx, nil) != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}

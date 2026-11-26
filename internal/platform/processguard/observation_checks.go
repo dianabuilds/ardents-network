@@ -62,3 +62,9 @@ func (observation Observation) isCurrent(now time.Time) bool {
 	age := now.Sub(completed)
 	return duration <= maximumObservationSpan && age <= maximumObservationAge
 }
+
+type admissionFailure struct{ reason string }
+
+func (failure *admissionFailure) Error() string {
+	return "original process admission refused: " + failure.reason
+}

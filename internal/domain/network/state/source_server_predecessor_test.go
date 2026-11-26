@@ -8,10 +8,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	state2 "github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
@@ -26,6 +29,17 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 	config.Now = time.Time{}
 	config.Clock = advancingVerificationClock(time.Unix(genesis.now, 0).UTC())
 	config.ObserveClock = config.Clock
+	var holdNextRequest atomic.Bool
+	handlerEntered := make(chan struct{})
+	handlerRelease := make(chan struct{})
+	releaseHandler := sync.OnceFunc(func() { close(handlerRelease) })
+	config.PermitWork = func() error {
+		if holdNextRequest.Swap(false) {
+			close(handlerEntered)
+			<-handlerRelease
+		}
+		return nil
+	}
 	serving, err := state2.Open(config)
 	if err != nil {
 		t.Fatal(err)
@@ -35,6 +49,7 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+	defer releaseHandler()
 	firstView, err := serving.Current()
 	if err != nil {
 		t.Fatal(err)
@@ -51,6 +66,25 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
+
+	// Listener admission has completed by the time Dial returns. Background
+	// refresh is disabled, so the next work check belongs to request resolution.
+	// Hold that real handler after it reads the header, beyond the reach of the
+	// socket read deadline, while the test publishes and inspects successors.
+	holdNextRequest.Store(true)
+	var latestRequest [77]byte
+	copy(latestRequest[:], "ARDH3Q1\x00\x01")
+	networkDigest := source.NetworkDigest(genesis.networkID)
+	copy(latestRequest[9:], networkDigest[:])
+	if n, err := connection.Write(latestRequest[:]); err != nil || n != len(latestRequest) {
+		t.Fatalf("send Source request: wrote %d bytes, err=%v", n, err)
+	}
+	select {
+	case <-handlerEntered:
+	case <-time.After(10 * time.Second):
+		t.Fatal("Source handler did not enter request resolution")
+	}
+
 	secondViewReceipt, err := serving.AcceptEpoch(context.Background(), second.epoch, second.inputs, second.materializations)
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +122,8 @@ func TestServingSourceKeepsPredecessorsUntilAcceptedHandlerJoins(t *testing.T) {
 	if err := connection.Close(); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(2 * time.Second)
+	releaseHandler()
+	deadline := time.Now().Add(10 * time.Second)
 	for {
 		firstHeld, firstErr := duty.ReadConflict(config.LocalRoleStateRoot, func() time.Time { return time.Unix(genesis.now, 0).UTC() }, [32]byte{}, firstFamily)
 		secondHeld, secondErr := duty.ReadConflict(config.LocalRoleStateRoot, func() time.Time { return time.Unix(genesis.now, 0).UTC() }, secondView.SourceNodeID, [32]byte{})
