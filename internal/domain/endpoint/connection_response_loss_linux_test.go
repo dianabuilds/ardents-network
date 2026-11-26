@@ -14,7 +14,7 @@ import (
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/connection"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
@@ -287,7 +287,7 @@ func (gate *installedControlWriteGate) observeReceived() {
 	reader := false
 	for {
 		frame, more := frames.Next()
-		if frame.Function == "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).readRecords" {
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/connection.(*Stream).readRecords" {
 			reader = true
 		}
 		if !more {
@@ -350,10 +350,10 @@ func (gate *installedControlWriteGate) observe() {
 	for {
 		frame, more := frames.Next()
 		switch frame.Function {
-		case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).readRecords":
+		case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*Stream).readRecords":
 			progressRead = frame.Line == connectionProgressReadLine
 			progressCommit = frame.Line == connectionProgressCommitLine
-		case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).writeRecords":
+		case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*Stream).writeRecords":
 			actor = true
 		case "github.com/dianabuilds/ardents-network/internal/domain/publication/instance.(*ServiceAttachment).Write":
 			if gate.role == "publisher" {
@@ -364,7 +364,7 @@ func (gate *installedControlWriteGate) observe() {
 				boundary = frame.Line == line
 				before = frame.Line == connectionPublisherControlWriteBeforeLine
 			}
-		case "github.com/dianabuilds/ardents-network/internal/connection.(*initiatorAttachment).Write":
+		case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*initiatorAttachment).Write":
 			if gate.role == "initiator" {
 				line := connectionInitiatorControlWriteBeforeLine
 				if gate.after {
@@ -486,7 +486,7 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 		for {
 			frame, more := frames.Next()
 			switch frame.Function {
-			case "github.com/dianabuilds/ardents-network/internal/connection.(*attachmentRecordReader).Read":
+			case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*attachmentRecordReader).Read":
 				body = frame.Line == connectionControlFramingReadLine
 			case "github.com/dianabuilds/ardents-network/internal/domain/publication/instance.(*ServiceAttachment).Read":
 				post = frame.Line == connectionControlReadRecheckLine
@@ -498,7 +498,7 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 				physicalDepth++
 			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*SourceScope).Check":
 				source = true
-			case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).readRecords":
+			case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*Stream).readRecords":
 				actor = true
 			}
 			if !more {
@@ -582,7 +582,7 @@ func installedConnectionObservationDelay() (observe, arm, release func(), entere
 		applicationRead := false
 		for {
 			frame, more := frames.Next()
-			if frame.Function == "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).Read" {
+			if frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/connection.(*Stream).Read" {
 				applicationRead = true
 				break
 			}

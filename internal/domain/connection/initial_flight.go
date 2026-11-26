@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 // initialFlightReader coalesces only one fixed authentication flight. Its

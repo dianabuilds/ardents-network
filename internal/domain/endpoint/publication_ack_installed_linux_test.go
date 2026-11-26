@@ -80,7 +80,7 @@ func (g *publicationDeliveryCloseGate) observeTLSClientRead(current func() (netw
 	frames := goruntime.CallersFrames(callers[:goruntime.Callers(2, callers[:])])
 	for {
 		frame, more := frames.Next()
-		if frame.Function == "github.com/dianabuilds/ardents-network/internal/connection.initiatorTLSBorrow.Read" {
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/domain/connection.initiatorTLSBorrow.Read" {
 			g.mu.Lock()
 			var resume <-chan struct{}
 			if g.armed {

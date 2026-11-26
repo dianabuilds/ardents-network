@@ -24,7 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/admission/token"
-	"github.com/dianabuilds/ardents-network/internal/connection"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"

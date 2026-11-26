@@ -4,7 +4,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/connection/wire"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 // One reader actor owns this fixed framing scratch space. Prefetched bytes are
