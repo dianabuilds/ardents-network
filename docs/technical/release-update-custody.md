@@ -208,6 +208,11 @@ selects a protected Endpoint generation target in the same signed metadata set
 as the executable. The installation owner consumes two fresh coherent opaque
 authorizations, verifies their shared Targets floors and release/local facts,
 and binds all resource bytes through the authenticated generation descriptor.
+Endpoint compares the two fresh Decisions for source revision, build input
+commitment, attestation policy, qualification, build state, protocol phase,
+build and protocol classifications, both build safety deadlines and the
+protocol transition deadline. Installed binding v1 retains its original
+projection. Platform pre-start repeats the full comparison on fresh proofs.
 The initial pin never authorizes successors; changed resources require a newer
 generation even when executable bytes are unchanged.
 

@@ -176,7 +176,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	}
 	acceptedProgram, programOK := programProof.AcceptedDecision()
 	acceptedGeneration, generationOK := generationProof.AcceptedDecision()
-	if !programOK || !generationOK || !CoherentTargets(acceptedProgram, acceptedGeneration, declaration) {
+	if !programOK || !generationOK || !coherentReleasePair(acceptedProgram, acceptedGeneration, declaration) {
 		return Authorization{}, ErrBinding
 	}
 	programDigest, generationDigest := sha256.Sum256(program), sha256.Sum256(descriptor)
@@ -187,6 +187,10 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 		return Authorization{}, err
 	}
 	return Authorization{program: programProof, generation: generationProof, descriptor: descriptor, resources: resources}, nil
+}
+
+func coherentReleasePair(p, g release.Decision, d GenerationDeclaration) bool {
+	return CoherentTargets(p, g, d) && p.SameBuildPolicy(g)
 }
 
 // CoherentTargets checks agreement of detached target and descriptor facts.

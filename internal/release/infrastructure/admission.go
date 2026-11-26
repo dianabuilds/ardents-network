@@ -175,7 +175,6 @@ func authenticateBoundPair(ctx context.Context, v *release.Verifier, files inven
 func coherentTarget(p, g release.Decision, d Declaration, target string) bool {
 	return p.Path == ProgramTarget && g.Path == target && p.ReleaseIdentity == d.ReleaseIdentity && g.ReleaseIdentity == d.ReleaseIdentity && p.ReleaseVersion == d.ReleaseVersion && g.ReleaseVersion == d.ReleaseVersion &&
 		p.Platform == d.Platform && g.Platform == d.Platform && p.Architecture == g.Architecture && p.Environment == g.Environment && p.Network == g.Network && p.ReferenceTime.Equal(g.ReferenceTime) &&
-		p.SourceRevision == g.SourceRevision && p.BuildInputCommitment == g.BuildInputCommitment && p.AttestationPolicy == g.AttestationPolicy && p.Qualification == g.Qualification && p.BuildState == g.BuildState && p.ProtocolPhase == g.ProtocolPhase &&
-		p.BuildSafety == g.BuildSafety && p.Protocol == g.Protocol && p.BuildSafetyNoNewWorkAfter.Equal(g.BuildSafetyNoNewWorkAfter) && p.BuildSafetyTerminateAfter.Equal(g.BuildSafetyTerminateAfter) && p.ProtocolTransitionDeadline.Equal(g.ProtocolTransitionDeadline) &&
+		p.SameBuildPolicy(g) &&
 		p.Floors.TargetsVersion == g.Floors.TargetsVersion && bytes.Equal(p.Floors.TargetsDigest, g.Floors.TargetsDigest)
 }
