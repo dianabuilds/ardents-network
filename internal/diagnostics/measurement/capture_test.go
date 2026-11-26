@@ -42,11 +42,14 @@ func TestStageAndResourceRetainActualLifetimeAndPeak(t *testing.T) {
 	if active.Current != 1 || active.Count != 0 || active.Seconds != 0 {
 		t.Fatal("unfinished call fabricated duration", active)
 	}
+	// Preserve the monotonic component and supply a known elapsed interval.
+	// An immediate Begin/End may legitimately share one Windows clock tick.
+	stage.at = stage.at.Add(-time.Second)
 	stage.End()
 	stage.End()
 	ended := measured(t, c, runtimeevent.ExecutionLaunch)
 	held := measured(t, c, runtimeevent.ExecutionCleanupSlots)
-	if ended.Current != 0 || ended.Count != 1 || ended.Seconds <= 0 || held.Current != 1 {
+	if ended.Current != 0 || ended.Count != 1 || ended.Seconds < time.Second.Seconds() || ended.MaximumSeconds != ended.Seconds || held.Current != 1 {
 		t.Fatal("call completion returned physical cleanup capacity", ended, held)
 	}
 	gauge.Add(-1)

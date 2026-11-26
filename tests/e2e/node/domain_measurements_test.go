@@ -40,14 +40,14 @@ func TestDomainMeasurementsReachTimelineWithoutPrivateArguments(t *testing.T) {
 				Name           string
 				Available      bool
 				Current, Count uint64
-				Seconds        float64
+				Seconds        *float64
 			} `json:"measurements"`
 		}
 		if json.Unmarshal(line, &point) != nil || point.Schema != "ardents-domain-measurements-v1" {
 			continue
 		}
 		for _, value := range point.Values {
-			if value.Name == "enrollment.verify" && value.Available && value.Current == 0 && value.Count == 1 && value.Seconds > 0 {
+			if value.Name == "enrollment.verify" && value.Available && value.Current == 0 && value.Count == 1 && value.Seconds != nil && *value.Seconds >= 0 {
 				found = true
 			}
 		}
