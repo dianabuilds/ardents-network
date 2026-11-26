@@ -22,7 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -52,7 +52,7 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 		Issuer           *issuer.Plan                `json:"issuer,omitempty"`
 	}
 	if ctx == nil || len(args) < 1 || args[0] != "receive" || decodeRouteConfig(args[1:], &plan) != nil || plan.Network == nil ||
-		!plan.Network.ValidShape() || !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot) {
+		!plan.Network.ValidShape() || !pathcheck.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot) {
 		return 2
 	}
 	config, err := plan.Network.Config()
@@ -80,7 +80,7 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 	if err := routereceiver.ValidateCarrier(m.CarrierProfile); err != nil {
 		return 1
 	}
-	if plan.IntroductionRoot != "" && !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
+	if plan.IntroductionRoot != "" && !pathcheck.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
 		return 2
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
@@ -91,7 +91,7 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 		return 2
 	}
 	resolutionDuty := m.RoleDomain == 2 && m.Subrole == 5
-	if resolutionDuty != (plan.DescriptorRoot != "") || plan.DescriptorRoot != "" && !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
+	if resolutionDuty != (plan.DescriptorRoot != "") || plan.DescriptorRoot != "" && !pathcheck.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
 		return 2
 	}
 	issuerDuty := m.RoleDomain == 2 && m.Subrole == 6
@@ -100,14 +100,14 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 	}
 	var issue func(context.Context, []byte, bool) ([]byte, error)
 	if plan.Issuer != nil {
-		if plan.Issuer.KeyBinding.Issuer != m.NodeID || !pathgrammar.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.Issuer.AdmissionRoot, plan.Issuer.KeyRoot, plan.Issuer.ResultRoot) {
+		if plan.Issuer.KeyBinding.Issuer != m.NodeID || !pathcheck.DisjointRoots(plan.Network.Root, plan.SpendRoot, plan.HostingRoot, plan.Issuer.AdmissionRoot, plan.Issuer.KeyRoot, plan.Issuer.ResultRoot) {
 			return 2
 		}
 		issue = func(ctx context.Context, batch []byte, bootstrap bool) ([]byte, error) {
 			return issueRouteBatch(ctx, authority, *plan.Issuer, batch, bootstrap)
 		}
 	}
-	if !pathgrammar.Strict(plan.Certificate) || !pathgrammar.Strict(plan.PrivateKey) {
+	if !pathcheck.IsCleanAbsolute(plan.Certificate) || !pathcheck.IsCleanAbsolute(plan.PrivateKey) {
 		return 2
 	}
 	certificate, err := artifacts.ReadOwnerKeyPair(plan.Certificate, plan.PrivateKey)

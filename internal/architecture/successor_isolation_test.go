@@ -675,7 +675,7 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 		for _, name := range []string{
 			"internal/domain/endpoint/reader/result.go",
 			"internal/domain/endpoint/reader/result_test.go",
-			"internal/pathgrammar/strict_path.go",
+			"internal/pathcheck/absolute_path.go",
 			"internal/domain/endpoint/publisher/roots_test.go",
 			"internal/domain/endpoint/publisher/contract.go",
 			"internal/domain/endpoint/funding/intent.go",
@@ -1030,7 +1030,7 @@ func isMigratedDomain(name string) bool {
 	for _, root := range []string{
 		"internal/domain/admission", "internal/canonicaldigest", "internal/domain/connection", "internal/domain/custody", "internal/durablefile", "internal/domain/endpoint",
 		"internal/domain/enrollment", "internal/domain/execution", "internal/domain/hosting", "internal/domain/network", "internal/domain/node",
-		"internal/pathgrammar", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/processresource", "internal/domain/publication",
+		"internal/pathcheck", "internal/platform/artifacts", "internal/platform/cgroup", "internal/platform/process", "internal/platform/systemd", "internal/platform/processguard", "internal/domain/publication",
 		"internal/domain/reachability", "internal/domain/release", "internal/domain/route",
 	} {
 		if name == root || strings.HasPrefix(name, root+"/") {
@@ -1191,7 +1191,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && (source == "tests/e2e/node/descriptor_platform_native_linux_test.go" || source == "tests/e2e/node/forwarding_platform_native_linux_test.go" || source == "tests/e2e/node/join_platform_native_linux_test.go") {
 		switch local {
 		case "internal/domain/admission", "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
-			"internal/processresource", "internal/domain/reachability", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
+			"internal/platform/processguard", "internal/domain/reachability", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
 			"tests/e2e/node/processfixture", "tests/epochfixture/network", "tests/networkfixture", "tests/releasefixture":
 			return true
 		}
@@ -1199,7 +1199,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && source == "tests/e2e/node/introduction_repair_platform_native_linux_test.go" {
 		switch local {
 		case "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
-			"internal/processresource", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
+			"internal/platform/processguard", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
 			"tests/e2e/node/processfixture", "tests/epochfixture/network", "tests/networkfixture", "tests/releasefixture":
 			return true
 		default:
@@ -1471,7 +1471,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if strings.HasPrefix(source, "internal/domain/node/command/") && localImport {
 		switch source {
 		case "internal/domain/node/command/process.go":
-			return local == "internal/processresource"
+			return local == "internal/platform/processguard"
 		case "internal/domain/node/command/input.go":
 			return local == "internal/platform/artifacts"
 		case "internal/domain/node/command/report.go", "internal/domain/node/command/report_test.go":
@@ -1491,7 +1491,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if strings.HasPrefix(source, "internal/domain/network/source/command/") && localImport {
 		switch source {
 		case "internal/domain/network/source/command/prepare_linux.go":
-			return local == "internal/domain/endpoint" || local == "internal/domain/network/state" || local == "internal/pathgrammar" || local == "internal/platform/artifacts"
+			return local == "internal/domain/endpoint" || local == "internal/domain/network/state" || local == "internal/pathcheck" || local == "internal/platform/artifacts"
 		case "internal/domain/network/source/command/inspect_linux.go":
 			return local == "internal/domain/network/source/inspection" || local == "internal/platform/artifacts" || local == "internal/canonicaldigest"
 		case "internal/domain/network/source/command/serve_linux.go":
@@ -1524,7 +1524,7 @@ func successorImportAllowed(source, dependency string) bool {
 				dependency == "go.opentelemetry.io/proto/otlp/collector/metrics/v1" ||
 				dependency == "go.opentelemetry.io/proto/otlp/collector/trace/v1" || dependency == "google.golang.org/protobuf/proto"
 		case "tests/e2e/node/source_lifecycle_native_linux_test.go":
-			return dependency == "github.com/dianabuilds/ardents-network/internal/domain/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/processresource" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
+			return dependency == "github.com/dianabuilds/ardents-network/internal/domain/enrollment" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/duty" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/epoch" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/source" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/network/state" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/systemd" || dependency == "github.com/dianabuilds/ardents-network/internal/platform/processguard" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release" || dependency == "github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/node" || dependency == "github.com/dianabuilds/ardents-network/tests/e2e/source"
 		case "tests/e2e/node/network_commands_unix_test.go":
 			return dependency == modulePath+"/internal/domain/admission" || dependency == modulePath+"/internal/domain/admission/quota" ||
 				dependency == modulePath+"/internal/domain/admission/receiving" || dependency == modulePath+"/internal/domain/admission/stock" ||
@@ -1612,7 +1612,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return false
 			}
 		case "tests/e2e/node/source_native_linux_test.go":
-			return local == "internal/domain/network/epoch" || local == "internal/domain/network/source" || local == "internal/domain/network/source/servingdeclaration" || local == "internal/domain/network/state" || local == "internal/processresource" || local == "tests/epochfixture/network" || local == "tests/e2e/node" || local == "tests/e2e/source"
+			return local == "internal/domain/network/epoch" || local == "internal/domain/network/source" || local == "internal/domain/network/source/servingdeclaration" || local == "internal/domain/network/state" || local == "internal/platform/processguard" || local == "tests/epochfixture/network" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		case "tests/e2e/node/source_preparation_process_linux_test.go":
 			return local == "internal/domain/endpoint" || local == "internal/domain/network/source" || local == "internal/domain/network/source/servingdeclaration" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "tests/epochfixture/network" || local == "internal/domain/network/source/serving" || local == "tests/e2e/node" || local == "tests/e2e/source"
 		}
@@ -1625,7 +1625,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
 			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 			"internal/domain/hosting", "internal/domain/network", "internal/domain/network/epoch", "internal/domain/network/state",
-			"internal/processresource", "tests/epochfixture/network":
+			"internal/platform/processguard", "tests/epochfixture/network":
 			return true
 		default:
 			return false
@@ -1635,7 +1635,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch local {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
 			"internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting", "internal/domain/network/duty",
-			"internal/domain/network/epoch", "internal/domain/network/state", "internal/processresource", "internal/domain/reachability", "tests/epochfixture/network":
+			"internal/domain/network/epoch", "internal/domain/network/state", "internal/platform/processguard", "internal/domain/reachability", "tests/epochfixture/network":
 			return true
 		default:
 			return false
@@ -1646,7 +1646,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
 			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",
 			"internal/domain/network", "internal/domain/network/duty", "internal/domain/network/epoch", "internal/domain/network/state",
-			"internal/processresource", "tests/epochfixture/network":
+			"internal/platform/processguard", "tests/epochfixture/network":
 			return true
 		default:
 			return false
@@ -1675,27 +1675,27 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if localImport && source == "tests/e2e/node/receiving_startup_native_linux_test.go" {
 		return local == "internal/domain/hosting" || local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" ||
-			local == "internal/processresource" || local == "tests/epochfixture/network"
+			local == "internal/platform/processguard" || local == "tests/epochfixture/network"
 	}
 	if localImport && (source == "tests/e2e/node/forwarding_startup_native_linux_test.go" || source == "tests/e2e/node/completion_native_linux_test.go") {
 		return local == "internal/domain/hosting" || local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" ||
-			local == "internal/domain/network/state" || local == "internal/processresource" || local == "tests/epochfixture/network"
+			local == "internal/domain/network/state" || local == "internal/platform/processguard" || local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_exchange_native_linux_test.go" {
 		return local == "internal/domain/admission" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
-			local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "internal/processresource" ||
+			local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "internal/platform/processguard" ||
 			local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_startup_native_linux_test.go" {
 		return local == "internal/domain/admission/issuance" || local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/hosting" ||
-			local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" || local == "internal/processresource" || local == "tests/epochfixture/network"
+			local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" || local == "internal/platform/processguard" || local == "tests/epochfixture/network"
 	}
 	if localImport && source == "tests/e2e/node/issuer_inputs_linux.go" {
 		return local == "internal/domain/admission/issuance" || local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota"
 	}
 	if localImport && source == "tests/e2e/node/retained_lifecycle_native_linux_test.go" {
 		return local == "internal/domain/hosting" || local == "internal/domain/network/duty" ||
-			local == "internal/processresource" || local == "internal/domain/reachability" || local == "tests/epochfixture/network"
+			local == "internal/platform/processguard" || local == "internal/domain/reachability" || local == "tests/epochfixture/network"
 	}
 	if localImport && (source == "tests/e2e/node/processfixture/hosting_fixture_linux.go" || source == "tests/e2e/node/processfixture/hosting_return_linux.go") {
 		return local == "internal/domain/hosting"
@@ -1779,7 +1779,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if localImport && source == "internal/domain/node/introduction_exchange_native_linux_test.go" {
 		switch local {
 		case "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
-			"internal/domain/network/epoch", "internal/domain/network/state", "internal/processresource", "internal/domain/route/capsule",
+			"internal/domain/network/epoch", "internal/domain/network/state", "internal/platform/processguard", "internal/domain/route/capsule",
 			"internal/domain/route/introduction", "tests/epochfixture/network":
 			return true
 		}
@@ -1789,7 +1789,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
 			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding",
 			"internal/domain/endpoint/session", "internal/domain/hosting", "internal/domain/network/epoch",
-			"internal/domain/network/state", "internal/processresource", "internal/domain/reachability",
+			"internal/domain/network/state", "internal/platform/processguard", "internal/domain/reachability",
 			"internal/domain/route/introduction", "tests/epochfixture/network":
 			return true
 		}
@@ -1908,7 +1908,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch local {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
 			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",
-			"internal/domain/network/state", "internal/processresource", "internal/domain/route/ardp", "internal/domain/route/transport",
+			"internal/domain/network/state", "internal/platform/processguard", "internal/domain/route/ardp", "internal/domain/route/transport",
 			"internal/domain/route/transport/tls", "tests/e2e/node/processfixture", "tests/epochfixture/network":
 			return true
 		default:
@@ -2057,7 +2057,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "internal/domain/endpoint/plan/platform_launch.go", "internal/domain/endpoint/unit/platform_rendering.go":
-		if local == "internal/pathgrammar" {
+		if local == "internal/pathcheck" {
 			return true
 		}
 	}
@@ -2259,7 +2259,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/admission/issuance/result_declaration.go" || source == "internal/domain/hosting/command_declaration.go" || source == "internal/domain/admission/issuer/profile_declaration.go") && dependency == modulePath+"/internal/platform/artifacts" {
 		return true
 	}
-	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/processresource" {
+	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
 	}
 	if dependency == modulePath+"/internal/domain/node/provisioning" {
@@ -2271,59 +2271,59 @@ func successorImportAllowed(source, dependency string) bool {
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
-		"internal/processresource":                          {},
+		"internal/platform/processguard":                    {},
 		"internal/canonicaldigest":                          {},
 		"internal/durablefile":                              {},
-		"internal/pathgrammar":                              {},
-		"internal/domain/node":                              {"domain/admission", "domain/admission/receiving", "durablefile", "domain/hosting", "domain/network", "domain/network/duty", "pathgrammar", "processresource", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
+		"internal/pathcheck":                                {},
+		"internal/domain/node":                              {"domain/admission", "domain/admission/receiving", "durablefile", "domain/hosting", "domain/network", "domain/network/duty", "pathcheck", "platform/processguard", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
 		"internal/domain/network":                           {},
 		"internal/domain/network/canonicalcursor":           {},
 		"internal/domain/network/closedprofile":             {"domain/network/canonicalcursor"},
-		"internal/domain/network/duty":                      {"durablefile", "pathgrammar"},
+		"internal/domain/network/duty":                      {"durablefile", "pathcheck"},
 		"internal/domain/network/epoch":                     {"domain/network/canonicalcursor"},
 		"internal/domain/network/source":                    {"domain/network/canonicalcursor", "domain/network/epoch"},
-		"internal/domain/network/source/serving":            {"domain/network/source/servingdeclaration", "domain/network/state", "pathgrammar", "platform/artifacts", "processresource"},
+		"internal/domain/network/source/serving":            {"domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/processguard"},
 		"internal/domain/network/source/servingdeclaration": {},
-		"internal/domain/network/state":                     {"domain/network/canonicalcursor", "canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathgrammar"},
-		"internal/domain/network/state/durable":             {"durablefile", "pathgrammar"},
+		"internal/domain/network/state":                     {"domain/network/canonicalcursor", "canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathcheck"},
+		"internal/domain/network/state/durable":             {"durablefile", "pathcheck"},
 		"internal/domain/admission":                         {"domain/admission/issuerprofile"},
 		"internal/domain/admission/issuerprofile":           {},
 		"internal/domain/admission/allocation":              {"domain/admission"},
 		"internal/domain/custody":                           {"domain/admission", "domain/admission/allocation", "domain/publication"},
-		"internal/domain/admission/attempts":                {"pathgrammar"},
-		"internal/domain/admission/spending":                {"pathgrammar"},
+		"internal/domain/admission/attempts":                {"pathcheck"},
+		"internal/domain/admission/spending":                {"pathcheck"},
 		"internal/domain/admission/token":                   {"domain/admission", "domain/admission/issuerprofile"},
 		"internal/domain/admission/receiving":               {"domain/admission", "domain/admission/token", "domain/admission/spending", "platform/artifacts"},
 		"internal/domain/admission/stock":                   {"domain/admission", "domain/admission/allocation", "domain/admission/attempts", "domain/admission/token"},
-		"internal/domain/admission/quota":                   {"domain/admission", "domain/admission/issuerprofile", "pathgrammar"},
-		"internal/domain/admission/issuance":                {"canonicaldigest", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuerprofile/signing", "pathgrammar"},
+		"internal/domain/admission/quota":                   {"domain/admission", "domain/admission/issuerprofile", "pathcheck"},
+		"internal/domain/admission/issuance":                {"canonicaldigest", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuerprofile/signing", "pathcheck"},
 		"internal/domain/admission/operator":                {"domain/admission", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/quota", "platform/artifacts"},
-		"internal/domain/admission/issuer":                  {"domain/admission", "domain/admission/quota", "domain/admission/issuance", "domain/admission/issuerprofile/signing", "pathgrammar"},
-		"internal/domain/admission/issuerprofile/signing":   {"domain/admission/issuerprofile", "pathgrammar"},
-		"internal/domain/hosting":                           {"canonicaldigest", "pathgrammar"},
+		"internal/domain/admission/issuer":                  {"domain/admission", "domain/admission/quota", "domain/admission/issuance", "domain/admission/issuerprofile/signing", "pathcheck"},
+		"internal/domain/admission/issuerprofile/signing":   {"domain/admission/issuerprofile", "pathcheck"},
+		"internal/domain/hosting":                           {"canonicaldigest", "pathcheck"},
 		"internal/domain/publication":                       {},
 		"internal/domain/publication/durable":               {"domain/publication"},
 		"internal/domain/publication/instance":              {"canonicaldigest", "domain/publication", "domain/publication/durable", "domain/reachability", "domain/route/introduction", "domain/route/capsule", "domain/route/join", "domain/connection/wire", "domain/execution/runtime"},
 		"internal/domain/publication/runtime":               {"domain/connection", "domain/execution/runtime", "domain/network", "domain/publication", "domain/publication/instance", "domain/reachability", "domain/route", "domain/route/introduction", "domain/route/prefix", "domain/route/capsule", "domain/route/join"},
 		"internal/domain/connection":                        {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "domain/route/capsule", "domain/route/join", "domain/connection/wire"},
 		"internal/domain/connection/wire":                   {},
-		"internal/domain/reachability":                      {"domain/publication", "pathgrammar"},
-		"internal/domain/enrollment":                        {"canonicaldigest", "pathgrammar"},
-		"internal/domain/release":                           {"canonicaldigest", "durablefile", "pathgrammar"},
+		"internal/domain/reachability":                      {"domain/publication", "pathcheck"},
+		"internal/domain/enrollment":                        {"canonicaldigest", "pathcheck"},
+		"internal/domain/release":                           {"canonicaldigest", "durablefile", "pathcheck"},
 		"internal/domain/execution":                         {},
 		"internal/domain/execution/runtime":                 {"domain/execution", "domain/execution/worker"},
-		"internal/domain/execution/worker":                  {"platform/systemd", "domain/endpoint/unit", "canonicaldigest", "pathgrammar"},
+		"internal/domain/execution/worker":                  {"platform/systemd", "domain/endpoint/unit", "canonicaldigest", "pathcheck"},
 		"internal/domain/release/endpoint":                  {"domain/enrollment", "domain/release"},
-		"internal/domain/release/infrastructure":            {"canonicaldigest", "domain/enrollment", "domain/release", "pathgrammar"},
-		"internal/domain/release/infrastructure/launch":     {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathgrammar", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
+		"internal/domain/release/infrastructure":            {"canonicaldigest", "domain/enrollment", "domain/release", "pathcheck"},
+		"internal/domain/release/infrastructure/launch":     {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
 		"internal/domain/endpoint/launch":                   {"domain/release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "domain/release", "platform/cgroup", "platform/systemd", "platform/process", "domain/endpoint/generation", "domain/endpoint/unit", "domain/endpoint/plan"},
-		"internal/platform/cgroup":                          {"pathgrammar"},
-		"internal/platform/artifacts":                       {"durablefile", "pathgrammar"},
+		"internal/platform/cgroup":                          {"pathcheck"},
+		"internal/platform/artifacts":                       {"durablefile", "pathcheck"},
 		"internal/domain/endpoint/plan":                     {"canonicaldigest", "durablefile"},
 
 		"internal/platform/systemd":           {},
-		"internal/platform/process":           {"canonicaldigest", "pathgrammar"},
-		"internal/domain/endpoint/generation": {"canonicaldigest", "durablefile", "pathgrammar"},
+		"internal/platform/process":           {"canonicaldigest", "pathcheck"},
+		"internal/domain/endpoint/generation": {"canonicaldigest", "durablefile", "pathcheck"},
 		"internal/domain/endpoint/unit":       {"canonicaldigest", "platform/systemd"},
 		"internal/domain/route":               {},
 		"internal/domain/route/ardp":          {},
@@ -2333,7 +2333,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/route/bootstrap":     {"domain/route/ardp", "domain/route/channel"},
 		"internal/domain/route/transport/tls": {"domain/route/transport"},
 
-		"internal/domain/route/introduction": {"domain/admission/spending", "durablefile", "domain/route", "domain/route/ardp", "domain/route/role", "domain/route/prefix", "domain/route/capsule", "domain/network", "domain/admission", "pathgrammar"},
+		"internal/domain/route/introduction": {"domain/admission/spending", "durablefile", "domain/route", "domain/route/ardp", "domain/route/role", "domain/route/prefix", "domain/route/capsule", "domain/network", "domain/admission", "pathcheck"},
 		"internal/domain/route/capsule":      {},
 		"internal/domain/route/selection":    {"domain/route", "domain/network", "durablefile"},
 		"internal/domain/route/role":         {"domain/route", "domain/route/ardp", "domain/route/channel", "domain/route/transport", "domain/network", "domain/admission"},
@@ -2341,12 +2341,12 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/route/join/pairing": {"domain/route/ardp", "domain/route/channel", "domain/route/role"},
 		"internal/domain/route/prefix":       {"domain/route/issuer", "domain/route", "domain/route/selection", "domain/route/ardp", "domain/route/bootstrap", "domain/route/channel", "domain/route/role", "domain/route/transport", "domain/route/transport/tls", "domain/network", "domain/admission"},
 		"internal/domain/route/receiver":     {"domain/route/issuer", "domain/route/join/pairing", "domain/route", "domain/route/role", "domain/route/transport", "domain/route/transport/tls", "domain/route/channel", "domain/route/bootstrap", "domain/route/ardp", "domain/route/introduction", "domain/network", "domain/admission", "domain/admission/receiving"},
-		"internal/domain/endpoint/session":   {"domain/admission", "domain/admission/stock", "domain/endpoint/funding", "domain/endpoint/publisher", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/reachability", "domain/route/ardp", "domain/route/bootstrap", "domain/route/capsule", "domain/route/channel", "domain/route/introduction", "domain/route/join", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathgrammar", "platform/artifacts"},
-		"internal/domain/endpoint":           {"domain/endpoint/funding", "domain/endpoint/reader", "domain/endpoint/publisher", "domain/admission", "domain/admission/stock", "canonicaldigest", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/endpoint/launch", "domain/network", "domain/network/source", "domain/network/state", "pathgrammar"},
-		"internal/domain/endpoint/publisher": {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/publication/durable", "domain/publication/instance", "domain/publication/runtime", "domain/route/prefix", "domain/route/selection", "pathgrammar"},
+		"internal/domain/endpoint/session":   {"domain/admission", "domain/admission/stock", "domain/endpoint/funding", "domain/endpoint/publisher", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/reachability", "domain/route/ardp", "domain/route/bootstrap", "domain/route/capsule", "domain/route/channel", "domain/route/introduction", "domain/route/join", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathcheck", "platform/artifacts"},
+		"internal/domain/endpoint":           {"domain/endpoint/funding", "domain/endpoint/reader", "domain/endpoint/publisher", "domain/admission", "domain/admission/stock", "canonicaldigest", "domain/execution", "domain/execution/runtime", "domain/hosting", "domain/endpoint/launch", "domain/network", "domain/network/source", "domain/network/state", "pathcheck"},
+		"internal/domain/endpoint/publisher": {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/publication/durable", "domain/publication/instance", "domain/publication/runtime", "domain/route/prefix", "domain/route/selection", "pathcheck"},
 		"internal/domain/endpoint/reader":    {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/connection", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/reachability", "domain/route/prefix", "domain/route/selection"},
-		"internal/domain/endpoint/funding":   {"domain/admission", "domain/admission/stock", "domain/admission/token", "domain/hosting", "domain/network", "domain/network/state", "domain/route", "domain/route/ardp", "domain/route/bootstrap", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathgrammar"},
-		"cmd/ardents-next":                   {"canonicaldigest", "pathgrammar", "domain/endpoint/session", "domain/endpoint", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
+		"internal/domain/endpoint/funding":   {"domain/admission", "domain/admission/stock", "domain/admission/token", "domain/hosting", "domain/network", "domain/network/state", "domain/route", "domain/route/ardp", "domain/route/bootstrap", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathcheck"},
+		"cmd/ardents-next":                   {"canonicaldigest", "pathcheck", "domain/endpoint/session", "domain/endpoint", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
 	}
 	if zoneDependency {
 		if (source == "internal/domain/endpoint/history_preparation_linux.go" || source == "internal/domain/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/domain/route/selection" {
@@ -2362,7 +2362,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 
-		if source == "internal/domain/network/source/command/serve_linux.go" && dependency == modulePath+"/internal/processresource" {
+		if source == "internal/domain/network/source/command/serve_linux.go" && dependency == modulePath+"/internal/platform/processguard" {
 			return true
 		}
 		if dependency == modulePath+"/internal/platform/artifacts" {
@@ -2374,7 +2374,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 
-		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/processresource") {
+		if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/platform/processguard") {
 			return true
 		}
 		if (source == "internal/domain/node/runtime_unix.go" || source == "internal/domain/node/runtime_other.go") && dependency == modulePath+"/internal/domain/admission/issuer" {

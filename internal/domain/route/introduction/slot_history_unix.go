@@ -15,7 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/spending"
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 const (
@@ -89,7 +89,7 @@ func InitializeHistory(root string, binding Binding, fact *spending.FreshRoot) (
 }
 
 func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoot func(int) error) (_ *History, result error) {
-	if !pathgrammar.Strict(root) || binding.NetworkID == [32]byte{} || binding.ProfileDigest == [32]byte{} || binding.ReceiverNodeID == [32]byte{} || binding.ReceiverDutyGeneration == 0 {
+	if !pathcheck.IsCleanAbsolute(root) || binding.NetworkID == [32]byte{} || binding.ProfileDigest == [32]byte{} || binding.ReceiverNodeID == [32]byte{} || binding.ReceiverDutyGeneration == 0 {
 		return nil, errors.New("introduction history binding invalid")
 	}
 	info, err := os.Lstat(root)

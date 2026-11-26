@@ -13,9 +13,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 var errRuntimePlan = errors.New("invalid runtime plan input")
@@ -33,7 +33,7 @@ func PrepareRuntimePlan(ctx context.Context, role string, flags map[string]strin
 		return err
 	}
 	for _, name := range []string{"network", "participation-root", "spend-root", "hosting-root", "certificate", "private-key", "output"} {
-		if !pathgrammar.Strict(flags[name]) {
+		if !pathcheck.IsCleanAbsolute(flags[name]) {
 			return errRuntimePlan
 		}
 	}
@@ -110,26 +110,26 @@ func preparePlanRole(role string, flags map[string]string) (profile string, root
 	roots = []string{flags["participation-root"], flags["spend-root"], flags["hosting-root"]}
 	switch role {
 	case "forwarding":
-		profile = processresource.Profile
+		profile = processguard.ForwardingProfile
 	case "join":
-		profile = processresource.JoinProfile
+		profile = processguard.JoinProfile
 	case "descriptor":
-		if !pathgrammar.Strict(flags["descriptor-root"]) {
+		if !pathcheck.IsCleanAbsolute(flags["descriptor-root"]) {
 			return "", nil, nil, bootstrap, bad
 		}
-		profile = processresource.DescriptorProfile
+		profile = processguard.DescriptorProfile
 		roots = append(roots, flags["descriptor-root"])
 	case "introduction":
-		if !pathgrammar.Strict(flags["introduction-root"]) {
+		if !pathcheck.IsCleanAbsolute(flags["introduction-root"]) {
 			return "", nil, nil, bootstrap, bad
 		}
-		profile = processresource.IntroductionProfile
+		profile = processguard.IntroductionProfile
 		roots = append(roots, flags["introduction-root"])
 	case "issuer":
-		if !pathgrammar.Strict(flags["issuance"]) {
+		if !pathcheck.IsCleanAbsolute(flags["issuance"]) {
 			return "", nil, nil, bootstrap, bad
 		}
-		profile = processresource.IssuerProfile
+		profile = processguard.IssuerProfile
 		issuanceRaw, err = artifacts.ReadBoundedFile(flags["issuance"], 16<<10)
 		if err != nil {
 			return "", nil, nil, bootstrap, bad

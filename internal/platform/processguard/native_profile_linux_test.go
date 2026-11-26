@@ -1,6 +1,6 @@
 //go:build linux && node_process_native
 
-package processresource
+package processguard
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 // Missing placement is an invalid environment, never a successful skip. The
 // real kernel, proc, Go runtime and original descriptors supply every success.
 func TestOriginalNativeProcessProfile(t *testing.T) {
-	testOriginalNativeProcessProfile(t, Profile)
+	testOriginalNativeProcessProfile(t, ForwardingProfile)
 }
 
 func TestOriginalNativeSourceProcessProfile(t *testing.T) {
@@ -73,7 +73,7 @@ func testOriginalNativeProcessProfile(t *testing.T, profile string) {
 }
 
 func TestOriginalNativeEvidenceLossRetainsActualCloseFailure(t *testing.T) {
-	testOriginalNativeEvidenceLoss(t, Profile)
+	testOriginalNativeEvidenceLoss(t, ForwardingProfile)
 }
 
 func TestOriginalNativeIssuerEvidenceLossRetainsActualCloseFailure(t *testing.T) {
@@ -108,7 +108,7 @@ func testOriginalNativeEvidenceLoss(t *testing.T, profile string) {
 }
 
 func TestOriginalNativePlacementAndCallerRetire(t *testing.T) {
-	testOriginalNativePlacementAndCallerRetire(t, Profile)
+	testOriginalNativePlacementAndCallerRetire(t, ForwardingProfile)
 }
 
 func TestOriginalNativeSourcePlacementAndCallerRetire(t *testing.T) {
@@ -170,7 +170,7 @@ func testOriginalNativePlacementAndCallerRetire(t *testing.T, profile string) {
 }
 
 func TestOriginalNativeManagedMemoryPressureRetires(t *testing.T) {
-	testOriginalNativeManagedMemoryPressure(t, Profile)
+	testOriginalNativeManagedMemoryPressure(t, ForwardingProfile)
 }
 
 func TestOriginalNativeIssuerManagedMemoryPressureRetires(t *testing.T) {

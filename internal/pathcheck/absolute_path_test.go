@@ -1,4 +1,4 @@
-package pathgrammar
+package pathcheck
 
 import (
 	"path/filepath"
@@ -7,7 +7,7 @@ import (
 
 // The shared predicate must be exactly the formerly repeated inline grammar
 // on every host platform: absolute and already clean, with no conversion.
-func TestStrictMatchesTheFormerInlineGrammar(t *testing.T) {
+func TestIsCleanAbsoluteMatchesTheFormerInlineGrammar(t *testing.T) {
 	corpus := []string{
 		"", "relative", "relative/child", "..", "../escape", ".", "./child",
 		"/", "/clean/absolute", "/trailing/", "/dot/./segment", "/dot/../segment",
@@ -16,13 +16,13 @@ func TestStrictMatchesTheFormerInlineGrammar(t *testing.T) {
 	}
 	for _, path := range corpus {
 		inline := filepath.IsAbs(path) && filepath.Clean(path) == path
-		if Strict(path) != inline {
-			t.Errorf("Strict(%q) = %v, former inline grammar = %v", path, Strict(path), inline)
+		if IsCleanAbsolute(path) != inline {
+			t.Errorf("IsCleanAbsolute(%q) = %v, former inline grammar = %v", path, IsCleanAbsolute(path), inline)
 		}
 	}
 }
 
-func TestStrictAdmitsOnlyAbsoluteCleanHostPaths(t *testing.T) {
+func TestIsCleanAbsoluteAdmitsOnlyAbsoluteCleanHostPaths(t *testing.T) {
 	base := t.TempDir()
 	separator := string(filepath.Separator)
 	accepted := []string{
@@ -31,7 +31,7 @@ func TestStrictAdmitsOnlyAbsoluteCleanHostPaths(t *testing.T) {
 		filepath.Join(base, "nested", "leaf"),
 	}
 	for _, path := range accepted {
-		if !Strict(path) {
+		if !IsCleanAbsolute(path) {
 			t.Errorf("absolute clean path refused: %q", path)
 		}
 	}
@@ -47,7 +47,7 @@ func TestStrictAdmitsOnlyAbsoluteCleanHostPaths(t *testing.T) {
 		base + separator + "dot" + separator + ".." + separator + "child",
 	}
 	for _, path := range refused {
-		if Strict(path) {
+		if IsCleanAbsolute(path) {
 			t.Errorf("non-absolute or non-clean path admitted: %q", path)
 		}
 	}
@@ -55,9 +55,9 @@ func TestStrictAdmitsOnlyAbsoluteCleanHostPaths(t *testing.T) {
 
 // The predicate reports; it never absolutizes a relative path the way the
 // former Network State configuration validation did.
-func TestStrictNeverConvertsRelativePaths(t *testing.T) {
+func TestIsCleanAbsoluteNeverConvertsRelativePaths(t *testing.T) {
 	for _, path := range []string{"relative", "relative/child", "./child", "../sibling"} {
-		if Strict(path) {
+		if IsCleanAbsolute(path) {
 			t.Errorf("relative path admitted without conversion: %q", path)
 		}
 	}

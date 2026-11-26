@@ -26,8 +26,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/release"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
@@ -148,7 +148,7 @@ func TestNativeSourceRetainedLifecycle(t *testing.T) {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&networkPlan), ProcessProfile: processresource.SourceProfile,
+	plan := servingdeclaration.ServingDeclaration{Network: (*servingdeclaration.ServingNetwork)(&networkPlan), ProcessProfile: processguard.SourceProfile,
 		ParticipationRoot: participationRoot, Address: address, Certificate: certPath, PrivateKey: keyPath, ClientRoot: rootPath, ClientPins: [][32]byte{clientPin}}
 	raw, err := json.Marshal(plan)
 	if err != nil {

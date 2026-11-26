@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // AuthorityDeclaration names the local pins and storage needed to open State.
@@ -22,7 +22,7 @@ type AuthorityDeclaration struct {
 
 // ValidShape checks bounded local pins without opening State.
 func (plan *AuthorityDeclaration) ValidShape() bool {
-	return plan != nil && pathgrammar.Strict(plan.Root) && pathgrammar.Strict(plan.ClockObservationFile) &&
+	return plan != nil && pathcheck.IsCleanAbsolute(plan.Root) && pathcheck.IsCleanAbsolute(plan.ClockObservationFile) &&
 		plan.NetworkID != [32]byte{} && plan.ProfileAuthority != [32]byte{} &&
 		len(plan.Authorities) > 0 && len(plan.Authorities) <= 16
 }

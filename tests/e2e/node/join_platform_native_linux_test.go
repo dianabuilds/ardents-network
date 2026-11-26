@@ -24,8 +24,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -347,7 +347,7 @@ func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
 		t.Fatal(err)
 	}
 
-	plan := map[string]any{"network": stand.networkPlan, "node_id": stand.nodeID, "process_profile": processresource.JoinProfile,
+	plan := map[string]any{"network": stand.networkPlan, "node_id": stand.nodeID, "process_profile": processguard.JoinProfile,
 		"participation_root": stand.participationRoot, "spend_root": stand.spendRoot, "hosting_root": stand.hostingRoot,
 		"certificate": stand.certPath, "private_key": stand.keyPath,
 		"work": hosting.Traffic{Tx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}

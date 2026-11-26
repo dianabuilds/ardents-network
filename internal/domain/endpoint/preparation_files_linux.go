@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -22,7 +22,7 @@ var (
 // fresh Endpoint plan pair. State independently authenticates retained history.
 func PreparePlansFromFiles(ctx context.Context, networkFile, sourceFile, declarationFile, outputDirectory string) error {
 	for _, path := range []string{networkFile, sourceFile, declarationFile, outputDirectory} {
-		if !pathgrammar.Strict(path) {
+		if !pathcheck.IsCleanAbsolute(path) {
 			return ErrPreparationPath
 		}
 	}

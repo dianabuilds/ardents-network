@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // InfrastructureInventoryName is separate from the unchanged Endpoint manifest.
@@ -232,7 +232,7 @@ func checkInfrastructureDirectory(root *os.Root, invocation string) (err error) 
 }
 
 func loadInfrastructure(ctx context.Context, path, pin string) (result *infrastructureSnapshot, err error) {
-	if ctx == nil || !pathgrammar.Strict(path) {
+	if ctx == nil || !pathcheck.IsCleanAbsolute(path) {
 		return nil, ErrInput
 	}
 	if err := infrastructurePlatform(); err != nil {

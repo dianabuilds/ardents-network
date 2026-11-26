@@ -7,7 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var (
@@ -23,7 +23,7 @@ type localReceiver struct {
 
 // openLocalReceiver validates and opens the original authority and allowance.
 func openLocalReceiver(ctx context.Context, root, profile string, network *state.AuthorityDeclaration, receiver receiving.Receiver, end time.Time) (*localReceiver, error) {
-	if ctx == nil || !pathgrammar.Strict(root) || !ValidAdmissionAuthority(profile, network, root) {
+	if ctx == nil || !pathcheck.IsCleanAbsolute(root) || !ValidAdmissionAuthority(profile, network, root) {
 		return nil, errInvalidLocalReceiver
 	}
 	if err := ctx.Err(); err != nil {

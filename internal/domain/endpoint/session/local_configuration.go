@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var (
@@ -20,13 +20,13 @@ var (
 // ValidateLocalConfiguration checks the original roots and Publisher permission
 // before opening any local authority or retained Stock.
 func ValidateLocalConfiguration(ctx context.Context, root, profile string, network *state.AuthorityDeclaration, role admission.AllocationRole, config Config, permission executionruntime.Permission) error {
-	if ctx == nil || !pathgrammar.Strict(root) || !funding.ValidAdmissionAuthority(profile, network, root) {
+	if ctx == nil || !pathcheck.IsCleanAbsolute(root) || !funding.ValidAdmissionAuthority(profile, network, root) {
 		return ErrInvalidLocalConfiguration
 	}
-	if config.Route != nil && (network == nil || !pathgrammar.DisjointRoots(network.Root, root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
+	if config.Route != nil && (network == nil || !pathcheck.DisjointRoots(network.Root, root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
 		return ErrInvalidLocalConfiguration
 	}
-	if config.Route != nil && config.Route.SourceInteriorRoot != "" && !pathgrammar.DisjointRoots(network.Root, root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot, config.Route.SourceInteriorRoot) {
+	if config.Route != nil && config.Route.SourceInteriorRoot != "" && !pathcheck.DisjointRoots(network.Root, root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot, config.Route.SourceInteriorRoot) {
 		return ErrInvalidLocalConfiguration
 	}
 	if err := ctx.Err(); err != nil {
@@ -34,7 +34,7 @@ func ValidateLocalConfiguration(ctx context.Context, root, profile string, netwo
 	}
 	if config.Publication != nil {
 		operation, ok := permission.(*executionruntime.Operation)
-		if !ok || operation.CheckPublisher() != nil || role != admission.AllocationPublisher || config.Route == nil || config.Route.Domain != 4 || !pathgrammar.DisjointRoots(network.Root, root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.SourceInteriorRoot, config.Route.ResponderInteriorRoot, config.Route.HostingRoot, config.Publication.InstanceRoot, config.Publication.Root) {
+		if !ok || operation.CheckPublisher() != nil || role != admission.AllocationPublisher || config.Route == nil || config.Route.Domain != 4 || !pathcheck.DisjointRoots(network.Root, root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.SourceInteriorRoot, config.Route.ResponderInteriorRoot, config.Route.HostingRoot, config.Publication.InstanceRoot, config.Publication.Root) {
 			return ErrInvalidLocalConfiguration
 		}
 	}

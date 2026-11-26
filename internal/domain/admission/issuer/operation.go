@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile/signing"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // Plan fixes three independently owned non-nested roots and offline bindings.
@@ -83,7 +83,7 @@ func category(err error) string {
 func (p Plan) valid() bool {
 	roots := []string{p.AdmissionRoot, p.KeyRoot, p.ResultRoot}
 	for i, a := range roots {
-		if !pathgrammar.Strict(a) {
+		if !pathcheck.IsCleanAbsolute(a) {
 			return false
 		}
 		for j, b := range roots {

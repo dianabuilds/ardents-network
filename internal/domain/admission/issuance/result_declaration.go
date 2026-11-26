@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -60,7 +60,7 @@ func DecodeInstalledResultSetup(raw []byte) (ResultSetup, error) {
 
 // DecodeResultSetup reads bindings and roots from a validated local declaration.
 func DecodeResultSetup(fields map[string]json.RawMessage) (ResultSetup, error) {
-	setup, err := decodeResultSetup(fields, pathgrammar.Strict, string(filepath.Separator))
+	setup, err := decodeResultSetup(fields, pathcheck.IsCleanAbsolute, string(filepath.Separator))
 	if err != nil || !OutputOutsideRoots(setup.ResultRoot, setup.KeyRoot) {
 		return ResultSetup{}, ErrInvalid
 	}

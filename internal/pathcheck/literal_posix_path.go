@@ -1,4 +1,4 @@
-package pathgrammar
+package pathcheck
 
 import (
 	"path"

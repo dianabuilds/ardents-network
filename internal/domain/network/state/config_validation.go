@@ -8,14 +8,14 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 func validateConfig(input Config) (config, error) {
 	if input.Root == "" {
 		return config{}, errors.New("state root is required")
 	}
-	if !pathgrammar.Strict(input.Root) {
+	if !pathcheck.IsCleanAbsolute(input.Root) {
 		return config{}, errors.New("state root must be an absolute clean path")
 	}
 	root := input.Root
@@ -41,7 +41,7 @@ func validateConfig(input Config) (config, error) {
 		return config{}, errors.New("clock observation has multiple owners")
 	}
 	if input.ClockObservationFile != "" {
-		if !pathgrammar.Strict(input.ClockObservationFile) {
+		if !pathcheck.IsCleanAbsolute(input.ClockObservationFile) {
 			return config{}, errors.New("clock observation file must be an absolute clean path")
 		}
 		observe = fileClockObserver(input.ClockObservationFile)
@@ -74,7 +74,7 @@ func validateConfig(input Config) (config, error) {
 		return config{}, errors.New("direct Source work requires local role state")
 	}
 	localRoles := input.LocalRoleStateRoot
-	if localRoles != "" && !pathgrammar.Strict(localRoles) {
+	if localRoles != "" && !pathcheck.IsCleanAbsolute(localRoles) {
 		return config{}, errors.New("local role state root must be an absolute clean path")
 	}
 	acceptedProfile := input.AcceptedProfile

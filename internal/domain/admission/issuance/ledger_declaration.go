@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // LedgerDeclaration fixes the root and issuer binding of an offline ledger.
@@ -20,7 +20,7 @@ func DecodeLedgerDeclaration(raw []byte) (LedgerDeclaration, error) {
 	if err != nil {
 		return declaration, err
 	}
-	if json.Unmarshal(fields["root"], &declaration.Root) != nil || !pathgrammar.Strict(declaration.Root) {
+	if json.Unmarshal(fields["root"], &declaration.Root) != nil || !pathcheck.IsCleanAbsolute(declaration.Root) {
 		return declaration, ErrInvalid
 	}
 	declaration.Binding, err = DecodeSetupLedgerBinding(fields["binding"])

@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // Request selects one Source and the original files used to authenticate it.
@@ -65,7 +65,7 @@ func InspectLatest(ctx context.Context, request Request) (response source.Messag
 	if err != nil {
 		return response, err
 	}
-	if plan.ProcessProfile != processresource.SourceProfile {
+	if plan.ProcessProfile != processguard.SourceProfile {
 		return response, artifacts.ErrInput
 	}
 	config, err := state.SourcePreparationConfig(plan)

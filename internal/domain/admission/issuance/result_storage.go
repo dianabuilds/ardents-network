@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 const resultMarker = "ardents-issuer-results-v1\n"
@@ -70,7 +70,7 @@ func resultFloor(header [32]byte, n uint64) []byte {
 	return append(raw, digest[:]...)
 }
 func initializeResults(ctx context.Context, path string, b quota.LedgerBinding, digest [32]byte, fault func(string) error) (err error) {
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return ErrInvalid
 	}
 	pin, err := resultPin(b, digest)

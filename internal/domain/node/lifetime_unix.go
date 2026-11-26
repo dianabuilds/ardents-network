@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 // nodeLifetime is the one original role-lifetime mechanism shared by Forwarding,
@@ -41,7 +41,7 @@ type nodeLifetime struct {
 	retired                  error
 	firstOwner, cleanupOwner string
 	done                     chan struct{}
-	process                  *processresource.Guard
+	process                  *processguard.Guard
 	producer                 *duty.NodeProducer
 	budget                   *hosting.Budget
 	receiving                *receiving.Owner

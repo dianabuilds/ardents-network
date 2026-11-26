@@ -14,14 +14,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/bootstrap"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // This composition retains actual selection and Hosting roots until the finite
 // bootstrap transport joins. The subsequent admitted Prefix reopens those same
 // retained roots; issuance cannot relabel the bootstrap generation.
 func OpenBootstrap(ctx context.Context, plan funding.Plan, authority funding.Authority, holder *stock.Owner) (_ Prefix, result error) {
-	if ctx == nil || !authority.Available() || holder == nil || plan.Domain != 1 || !pathgrammar.DisjointRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
+	if ctx == nil || !authority.Available() || holder == nil || plan.Domain != 1 || !pathcheck.DisjointRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
 		return Prefix{}, errors.New("route bootstrap composition invalid")
 	}
 	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: authority.Current, Exclusions: plan.Exclusions})

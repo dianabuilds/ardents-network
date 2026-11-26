@@ -15,7 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	routejoin "github.com/dianabuilds/ardents-network/internal/domain/route/join"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // One holder console retains one fixed local Route context independently of
@@ -26,7 +26,7 @@ func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.A
 	if plan.Domain == 3 {
 		roots = append(roots, plan.SourceInteriorRoot)
 	}
-	if ctx == nil || !authority.Available() || !authority.HasPresentation() || holder == nil || plan.Domain != 1 && plan.Domain != 3 || !pathgrammar.DisjointRoots(roots...) {
+	if ctx == nil || !authority.Available() || !authority.HasPresentation() || holder == nil || plan.Domain != 1 && plan.Domain != 3 || !pathcheck.DisjointRoots(roots...) {
 		return JoinContext{}, errors.New("route JOIN context setup unavailable")
 	}
 	installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.Current, Exclusions: plan.Exclusions})

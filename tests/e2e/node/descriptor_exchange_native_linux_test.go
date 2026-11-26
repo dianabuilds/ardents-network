@@ -28,7 +28,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -128,10 +128,10 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				budget := processfixture.ProcessBudget(t)
 				participation := filepath.Join(t.TempDir(), "participation")
 				spend := t.TempDir()
-				profile := processresource.Profile
+				profile := processguard.ForwardingProfile
 				work := hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}
 				if id == [32]byte{17} {
-					profile = processresource.DescriptorProfile
+					profile = processguard.DescriptorProfile
 					work = hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}
 					if fault == "undercoverage" {
 						// The fixture provider counts tx+rx: the shared total,
@@ -245,7 +245,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 				ExerciseNativeCPUPressure(t, resolution)
 				resolution.FailedJoin(t, "process")
 				var event map[string]string
-				var first struct{ Resource *processresource.FailureFacts }
+				var first struct{ Resource *processguard.FailureFacts }
 				if err := json.Unmarshal([]byte(resolution.Diagnostic.String()), &event); err != nil {
 					t.Fatal("original CPU outcome framing unavailable", err)
 				}

@@ -11,13 +11,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 const hostingSchema = "ardents-hosting-budget-v1"
 
 func openHostingRoot(path string) (*os.Root, error) {
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return nil, errors.New("hosting root is invalid")
 	}
 	info, err := os.Lstat(path)
@@ -47,7 +47,7 @@ func initializeHosting(path string, policy Policy, reading hostingReading, now t
 			return errors.New("hosting initial interface is invalid")
 		}
 	}
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return errors.New("hosting root is invalid")
 	}
 	if err := os.Mkdir(path, 0700); err != nil {

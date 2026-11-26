@@ -8,13 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var retainedFiles = []string{"identity.pin", "identity.key", "identity.lock"}
 
 func ownedRoot(path string) (*os.Root, os.FileInfo, error) {
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return nil, nil, ErrInvalid
 	}
 	resolved, err := filepath.EvalSymlinks(path)
@@ -135,7 +135,7 @@ func (s *identityState) check() error {
 	return nil
 }
 func initialize(ctx context.Context, path string, b Binding, raw []byte, fault func(string) error) (err error) {
-	if !pathgrammar.Strict(path) {
+	if !pathcheck.IsCleanAbsolute(path) {
 		return ErrInvalid
 	}
 	parent, e := filepath.EvalSymlinks(filepath.Dir(path))

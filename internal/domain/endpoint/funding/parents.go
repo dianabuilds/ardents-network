@@ -6,7 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // Parents retains one installation-wide Entry history and one
@@ -21,7 +21,7 @@ type Parents struct {
 }
 
 func OpenParents(plan Plan, authority Authority) (*Parents, error) {
-	if authority.current == nil || !pathgrammar.DisjointRoots(plan.EntryRoot, plan.HostingRoot) {
+	if authority.current == nil || !pathcheck.DisjointRoots(plan.EntryRoot, plan.HostingRoot) {
 		return nil, errors.New("installed Route owners are unavailable")
 	}
 	entry, err := selection.OpenRetainedInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.current, Exclusions: plan.Exclusions})

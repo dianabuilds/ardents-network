@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -29,13 +29,13 @@ type AdmissionAuthority struct {
 // ValidAdmissionAuthority checks that detached authority inputs and roots do not overlap.
 func ValidAdmissionAuthority(profile string, plan *state.AuthorityDeclaration, roots ...string) bool {
 	if plan == nil {
-		return pathgrammar.Strict(profile)
+		return pathcheck.IsCleanAbsolute(profile)
 	}
 	if profile != "" || !plan.ValidShape() {
 		return false
 	}
 	for _, root := range roots {
-		if !pathgrammar.DisjointRoots(plan.Root, root) {
+		if !pathcheck.DisjointRoots(plan.Root, root) {
 			return false
 		}
 	}

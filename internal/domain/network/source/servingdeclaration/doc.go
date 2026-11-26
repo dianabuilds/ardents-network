@@ -2,7 +2,7 @@
 // byte grammar: exact field names, duplicate/null refusal, one complete object
 // and exact 32-byte array shapes, bounded to one finite input. It returns
 // declaration facts only and opens no resource. State retains all signed
-// authority/time/root decisions and processresource admits actual placement;
+// authority/time/root decisions and processguard admits actual placement;
 // this codec performs no State acceptance, root creation, signing or runtime
 // policy.
 //

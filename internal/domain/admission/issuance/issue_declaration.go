@@ -5,7 +5,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
-	"github.com/dianabuilds/ardents-network/internal/pathgrammar"
+	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 // IssueDeclaration binds a result store to its offline issuance input and output.
@@ -32,7 +32,7 @@ func DecodeIssueDeclaration(raw []byte, issue bool) (IssueDeclaration, error) {
 	if err != nil || !issue {
 		return plan, err
 	}
-	if json.Unmarshal(fields["batch_file"], &plan.BatchFile) != nil || !pathgrammar.Strict(plan.BatchFile) {
+	if json.Unmarshal(fields["batch_file"], &plan.BatchFile) != nil || !pathcheck.IsCleanAbsolute(plan.BatchFile) {
 		return plan, ErrInvalid
 	}
 	plan.Facts, err = DecodeBatchFacts(fields["facts"])
@@ -51,7 +51,7 @@ func DecodeIssueDeclaration(raw []byte, issue bool) (IssueDeclaration, error) {
 	default:
 		return plan, ErrInvalid
 	}
-	if json.Unmarshal(fields["response_file"], &plan.ResponseFile) != nil || !pathgrammar.Strict(plan.ResponseFile) ||
+	if json.Unmarshal(fields["response_file"], &plan.ResponseFile) != nil || !pathcheck.IsCleanAbsolute(plan.ResponseFile) ||
 		!OutputOutsideRoots(plan.ResponseFile, plan.Setup.ResultRoot, plan.Setup.AdmissionRoot, plan.Setup.KeyRoot) {
 		return plan, ErrInvalid
 	}
