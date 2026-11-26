@@ -1,4 +1,4 @@
-//go:build linux && (forwarding_platform_native || introduction_repair_native)
+//go:build linux && (descriptor_platform_native || forwarding_platform_native || introduction_repair_native || join_platform_native)
 
 package node_test
 

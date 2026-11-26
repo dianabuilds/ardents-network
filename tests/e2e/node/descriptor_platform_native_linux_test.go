@@ -120,12 +120,12 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	startDescriptorPlatformUnit(t)
 	waitDescriptorPlatformReady(t, stand, "first launch")
 	descriptorPlatformProducerPresent(t, stand, true, "first launch")
-	if out, err := runAsDescriptorNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath); err == nil {
+	if out, err := runAsInstalledNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a live invocation", string(out))
 	}
 	stopDescriptorPlatformUnit(t, "first launch")
 	descriptorPlatformProducerPresent(t, stand, false, "first completion")
-	if out, err := runAsDescriptorNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath); err == nil {
+	if out, err := runAsInstalledNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a clean root", string(out))
 	}
 
@@ -184,7 +184,7 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	_ = exec.CommandContext(t.Context(), "systemctl", "start", "ardents-descriptor.service").Run()
 	waitDescriptorPlatformFailed(t)
 	descriptorPlatformProducerPresent(t, stand, true, "after refused relaunch")
-	out, err := runAsDescriptorNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath)
+	out, err := runAsInstalledNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath)
 	if err != nil || !bytes.Contains(out, []byte("repaired")) {
 		t.Fatal("bounded repair against real manager facts", string(out), err)
 	}
@@ -229,7 +229,7 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	if after, err := os.ReadFile(stage); err != nil || !bytes.Equal(staged, after) {
 		t.Fatal("refused retained start repaired the uncertain stage", err)
 	}
-	out, err = runAsDescriptorNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath)
+	out, err = runAsInstalledNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath)
 	if err != nil || !bytes.Contains(out, []byte("repaired")) {
 		t.Fatal("bounded stage repair against real manager facts", string(out), err)
 	}
@@ -318,7 +318,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	stand.keyPath = filepath.Join(stand.etcDir, "node.key")
 	stand.nodeID = [32]byte{17}
 
-	stand.uid = descriptorPlatformAccount(t)
+	stand.uid = createInstalledNodeAccount(t)
 	t.Cleanup(func() { cleanupDescriptorPlatformStand(t, stand) })
 	for _, dir := range []string{stand.base, stand.releaseRoot, stand.programDir, stand.etcDir, stand.rolesBase} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -397,7 +397,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := chownTreeDescriptor(stand.stateRoot, stand.uid); err != nil {
+	if err := chownInstalledNodeTree(stand.stateRoot, stand.uid); err != nil {
 		t.Fatal(err)
 	}
 	member, err := view.Member(stand.nodeID, view.ObservedAt())
@@ -431,7 +431,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	if err := hosting.Initialize(stand.hostingRoot, hosting.Policy{Provider: "Descriptor installed test", Start: start, End: start.Add(2 * time.Hour), Unit: "MiB", Quantity: 100, Directions: "tx+rx", Interfaces: []string{"lo"}, LowWatermarkBytes: 1000}); err != nil {
 		t.Fatal(err)
 	}
-	if err := chownTreeDescriptor(stand.hostingRoot, stand.uid); err != nil {
+	if err := chownInstalledNodeTree(stand.hostingRoot, stand.uid); err != nil {
 		t.Fatal(err)
 	}
 	// Provision the fifth writable root through the genuine fresh Store opener,
@@ -443,7 +443,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	if err := provisioned.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := chownTreeDescriptor(stand.storeRoot, stand.uid); err != nil {
+	if err := chownInstalledNodeTree(stand.storeRoot, stand.uid); err != nil {
 		t.Fatal(err)
 	}
 
@@ -600,48 +600,6 @@ func compiledDescriptorPlatformCommand(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return raw
-}
-
-func chownTreeDescriptor(root string, uid int) error {
-	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		return os.Chown(path, uid, uid)
-	})
-}
-
-func descriptorPlatformAccount(t *testing.T) int {
-	t.Helper()
-	if exec.Command("getent", "passwd", "ardents-node").Run() == nil || exec.Command("getent", "group", "ardents-node").Run() == nil {
-		t.Fatal("ardents-node principal already present; invalid environment")
-	}
-	uid := 0
-	for candidate := 990; candidate >= 100; candidate-- {
-		name := fmt.Sprintf("%d", candidate)
-		if exec.Command("getent", "passwd", name).Run() != nil && exec.Command("getent", "group", name).Run() != nil {
-			uid = candidate
-			break
-		}
-	}
-	if uid == 0 {
-		t.Fatal("no free unprivileged system UID/GID available")
-	}
-	if err := exec.Command("groupadd", "-g", fmt.Sprintf("%d", uid), "ardents-node").Run(); err != nil {
-		t.Fatal("groupadd", err)
-	}
-	if err := exec.Command("useradd", "-u", fmt.Sprintf("%d", uid), "-g", fmt.Sprintf("%d", uid), "-d", "/nonexistent", "-s", "/usr/sbin/nologin", "-M", "ardents-node").Run(); err != nil {
-		t.Fatal("useradd", err)
-	}
-	return uid
-}
-
-func runAsDescriptorNode(t *testing.T, name string, args ...string) ([]byte, error) {
-	t.Helper()
-	full := append([]string{"-u", "ardents-node", "--", name}, args...)
-	cmd := exec.CommandContext(t.Context(), "runuser", full...)
-	cmd.Dir = "/"
-	return cmd.CombinedOutput()
 }
 
 func startDescriptorPlatformUnit(t *testing.T) {
