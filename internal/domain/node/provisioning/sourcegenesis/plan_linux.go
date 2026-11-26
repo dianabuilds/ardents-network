@@ -1,18 +1,19 @@
-package provisioning
+package sourcegenesis
 
 import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
-	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 // Public flags prepare the existing fixed genesis declaration. No JSON editing,

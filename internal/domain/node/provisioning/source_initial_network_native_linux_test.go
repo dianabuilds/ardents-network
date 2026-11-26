@@ -17,17 +17,18 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // The non-root child is an explicit numeric system-UID fixture, not an
 // installed ardents-source principal/unit. Actual signatures, State acceptance,
 // original files and CLI are genuine; no startup/Guard/serving is supplied.
 func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
-	parent := sourceArtifactNativeParent(t)
-	command, commandBytes := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	command, commandBytes := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	run := func(args ...string) []byte {
 		t.Helper()
-		child := provisionCommand(t, command, append([]string{"source"}, args...)...)
+		child := networkfixture.ProvisionCommand(t, command, append([]string{"source"}, args...)...)
 		raw, err := child.CombinedOutput()
 		if err != nil {
 			t.Fatal("actual initial preparation command", args[0], string(raw), err)
@@ -43,38 +44,38 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if json.Unmarshal(keyReceipt, &pins) != nil || len(pins.State) != 64 || len(pins.Node) != 64 || pins.State == pins.Node {
 		t.Fatal("distinct public key receipt", string(keyReceipt))
 	}
-	var p sourceInitialNetworkPlan
-	p.Schema = "ardents-source-initial-network-plan-v1"
-	p.Reference = time.Now().UTC().Truncate(time.Second)
-	p.From = p.Reference.Add(-time.Minute)
-	p.Until = p.Reference.Add(time.Hour)
-	for _, id := range []*sourceInitialID{&p.Network, &p.Node, &p.Seed} {
+	reference := time.Now().UTC().Truncate(time.Second)
+	from, until := reference.Add(-time.Minute), reference.Add(time.Hour)
+	var networkID, nodeID, assignmentSeed [32]byte
+	for _, id := range []*[32]byte{&networkID, &nodeID, &assignmentSeed} {
 		if _, err := rand.Read(id[:]); err != nil {
 			t.Fatal(err)
 		}
 	}
-	decode := func(text string, destination *sourceInitialID) {
-		raw, err := hex.DecodeString(text)
-		if err != nil || len(raw) != 32 {
-			t.Fatal(err)
-		}
-		copy(destination[:], raw)
+	stateKeyRaw, err := hex.DecodeString(pins.State)
+	if err != nil || len(stateKeyRaw) != 32 {
+		t.Fatal("invalid State public key receipt", err)
 	}
-	decode(pins.State, &p.StateKey)
-	decode(pins.Node, &p.NodeKey)
-	p.Family = "one-effective-controller"
-	p.Endpoint = "127.0.0.1:4100"
-	p.Domains = []string{"domain-a"}
+	var stateKey [32]byte
+	copy(stateKey[:], stateKeyRaw)
+	const endpoint = "127.0.0.1:4100"
+	idHex := func(id [32]byte) string { return hex.EncodeToString(id[:]) }
 	planDirectory := filepath.Join(parent, "public-plan")
-	idHex := func(id sourceInitialID) string { return hex.EncodeToString(id[:]) }
-	run("prepare-initial-plan", "--network", idHex(p.Network), "--node", idHex(p.Node), "--node-key", pins.Node, "--state-key", pins.State, "--family", p.Family, "--endpoint", p.Endpoint, "--valid-from", p.From.Format(time.RFC3339), "--valid-until", p.Until.Format(time.RFC3339), "--assignment-seed", idHex(p.Seed), "--domains", "domain-a", "--output", planDirectory)
+	run("prepare-initial-plan", "--network", idHex(networkID), "--node", idHex(nodeID), "--node-key", pins.Node, "--state-key", pins.State, "--family", "one-effective-controller", "--endpoint", endpoint, "--valid-from", from.Format(time.RFC3339), "--valid-until", until.Format(time.RFC3339), "--assignment-seed", idHex(assignmentSeed), "--domains", "domain-a", "--output", planDirectory)
 	plan := filepath.Join(planDirectory, "source-initial-network.json")
 	raw, err := os.ReadFile(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var prepared sourceInitialNetworkPlan
-	if json.Unmarshal(raw, &prepared) != nil || prepared.Network != p.Network || prepared.Node != p.Node || prepared.NodeKey != p.NodeKey || prepared.StateKey != p.StateKey || prepared.Seed != p.Seed || prepared.Reference.Before(p.Reference) || prepared.Reference.After(time.Now().UTC()) {
+	var prepared struct {
+		Network   string    `json:"network_id"`
+		Node      string    `json:"node_id"`
+		NodeKey   string    `json:"node_public_key"`
+		StateKey  string    `json:"state_public_key"`
+		Seed      string    `json:"assignment_seed"`
+		Reference time.Time `json:"reference_time"`
+	}
+	if json.Unmarshal(raw, &prepared) != nil || prepared.Network != idHex(networkID) || prepared.Node != idHex(nodeID) || prepared.NodeKey != pins.Node || prepared.StateKey != pins.State || prepared.Seed != idHex(assignmentSeed) || prepared.Reference.Before(reference) || prepared.Reference.After(time.Now().UTC()) {
 		t.Fatal("public flag preparation differs", err)
 	}
 	unsignedRecord := filepath.Join(parent, "unsigned-record")
@@ -105,9 +106,15 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if err != nil || len(bundle.Inputs) != 1 || len(bundle.Materials) != 1 {
 		t.Fatal("finite signed Source bundle", err)
 	}
-	// A different reviewed commitment cannot authorize private-key consumption.
-	if result, err := prepareSourceInitialNetwork(t.Context(), []string{"sign-initial-record", plan, preparedRecord, hex.EncodeToString(make([]byte, 32)), "/unopened-private-key", filepath.Join(parent, "bad-pin")}, nil); err == nil || result != nil {
-		t.Fatal("wrong reviewed prepared commitment admitted")
+	// Keep every other real input and the valid private-key path unchanged so
+	// a fresh output cannot be refused for a missing file instead of the pin.
+	badPin := filepath.Join(parent, "bad-pin")
+	child := networkfixture.ProvisionCommand(t, command, "source", "sign-initial-record", plan, preparedRecord, hex.EncodeToString(make([]byte, 32)), filepath.Join(keys, "source-node-key.pem"), badPin)
+	if out, err := child.CombinedOutput(); err == nil || bytes.Contains(out, []byte("artifact_sha256")) {
+		t.Fatal("wrong reviewed prepared commitment admitted", string(out), err)
+	}
+	if _, err := os.Lstat(badPin); !os.IsNotExist(err) {
+		t.Fatal("wrong reviewed commitment created an output directory", err)
 	}
 	publicParent := os.Getenv("ARDENTS_SOURCE_STATE_FIXTURE_PARENT")
 	info, err := os.Lstat(publicParent)
@@ -148,8 +155,8 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if err := os.Chown(participationRoot, 199, 199); err != nil {
 		t.Fatal(err)
 	}
-	serve := servingdeclaration.ServingDeclaration{Network: &servingdeclaration.ServingNetwork{Root: stateRoot, NetworkID: p.Network, Authorities: [][32]byte{p.StateKey}, Threshold: 1, ProfileAuthority: p.StateKey, ClockObservationFile: clock},
-		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: participationRoot, Address: p.Endpoint, Certificate: "/unopened-source-certificate", PrivateKey: "/unopened-source-private-key", ClientRoot: "/unopened-client-ca", ClientPins: [][32]byte{{1}}}
+	serve := servingdeclaration.ServingDeclaration{Network: &servingdeclaration.ServingNetwork{Root: stateRoot, NetworkID: networkID, Authorities: [][32]byte{stateKey}, Threshold: 1, ProfileAuthority: stateKey, ClockObservationFile: clock},
+		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: participationRoot, Address: endpoint, Certificate: "/unopened-source-certificate", PrivateKey: "/unopened-source-private-key", ClientRoot: "/unopened-client-ca", ClientPins: [][32]byte{{1}}}
 	serveRaw, err := json.Marshal(serve)
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +167,7 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	child := exec.CommandContext(t.Context(), client, "source", "prepare-state", servePath, bundlePath)
+	child = exec.CommandContext(t.Context(), client, "source", "prepare-state", servePath, bundlePath)
 	child.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 199, Gid: 199, Groups: []uint32{}}, Pdeathsig: syscall.SIGKILL}
 	if out, err := child.CombinedOutput(); err != nil || !bytes.Contains(out, []byte(`"outcome":"state-prepared"`)) {
 		t.Fatal("actual non-root State producer", string(out), err)

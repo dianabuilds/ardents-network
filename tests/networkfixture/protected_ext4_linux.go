@@ -3,7 +3,10 @@
 package networkfixture
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -33,4 +36,21 @@ func ProtectedExt4Parent(t *testing.T) string {
 		}
 	}
 	return parent
+}
+
+// PinnedProvisionProgram reads the original independently pinned test program.
+func PinnedProvisionProgram(t *testing.T, variable string) (string, []byte) {
+	t.Helper()
+	path, pin := os.Getenv(variable), os.Getenv(variable+"_SHA256")
+	raw, err := os.ReadFile(path)
+	digest := sha256.Sum256(raw)
+	if err != nil || !filepath.IsAbs(path) || len(pin) != 64 || hex.EncodeToString(digest[:]) != pin {
+		t.Fatal("invalid environment: original independently pinned program required", variable, err)
+	}
+	return path, raw
+}
+
+// ProvisionCommand drives the real offline infrastructure command.
+func ProvisionCommand(t *testing.T, program string, args ...string) *exec.Cmd {
+	return exec.CommandContext(t.Context(), program, append([]string{"infrastructure", "provision"}, args...)...)
 }

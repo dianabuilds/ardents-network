@@ -23,7 +23,7 @@ import (
 
 func nativeProfileSigningArguments(t *testing.T) []string {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
+	parent := provisionfixture.ProtectedExt4Parent(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	p, key, _, _ := provisionfixture.ProfilePlan(t, now.Add(-time.Hour))
 	defer clear(key)
@@ -145,7 +145,7 @@ func TestNetworkSigningProfileActualExpiry(t *testing.T) {
 			p["token_keys"] = retained
 			until := time.Now().UTC().Truncate(time.Second).Add(3 * time.Second)
 			p["not_after"] = until.Format(time.RFC3339)
-			args := writeNativeProfileArguments(t, sourceArtifactNativeParent(t), p, key, now)
+			args := writeNativeProfileArguments(t, provisionfixture.ProtectedExt4Parent(t), p, key, now)
 			observed := false
 			_, err := networksigning.Sign(t.Context(), args, func(step string, _ *os.File) {
 				if step == barrier {
@@ -225,7 +225,7 @@ func TestNetworkSigningProfileReceiptExpiry(t *testing.T) {
 	p["token_keys"] = retained
 	until := time.Now().UTC().Truncate(time.Second).Add(3 * time.Second)
 	p["not_after"] = until.Format(time.RFC3339)
-	args := writeNativeProfileArguments(t, sourceArtifactNativeParent(t), p, key, now)
+	args := writeNativeProfileArguments(t, provisionfixture.ProtectedExt4Parent(t), p, key, now)
 	w := delayedProfileReceipt{until: until}
 	if code := RunNetworkArtifacts(t.Context(), args, &w); code != 1 || !w.entered {
 		t.Fatal("late acknowledgement accepted or delay unexercised", code)

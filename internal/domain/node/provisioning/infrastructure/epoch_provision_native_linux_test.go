@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *testing.T) {
@@ -27,11 +28,11 @@ func TestRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *te
 
 func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *testing.T, role nodeProvisioningRole) {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
-	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	command, _ := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		output, err := provisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
+		output, err := networkfixture.ProvisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Epoch preparation refused", args[0], err, string(output))
 		}
@@ -113,7 +114,7 @@ func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *te
 	if material, err := os.ReadFile(filepath.Join(signedRoot, "material.bin")); err != nil || !bytes.Equal(material, bundle.Materials[0]) {
 		t.Fatal("public proof output differs", err)
 	}
-	if output, err := provisionCommand(t, command, string(role), "sign-epoch", planPath, preparedPath, digest(prepared), nodeKey, filepath.Join(parent, "wrong-key")).CombinedOutput(); err == nil || bytes.Contains(output, []byte(`"runtime_authority"`)) {
+	if output, err := networkfixture.ProvisionCommand(t, command, string(role), "sign-epoch", planPath, preparedPath, digest(prepared), nodeKey, filepath.Join(parent, "wrong-key")).CombinedOutput(); err == nil || bytes.Contains(output, []byte(`"runtime_authority"`)) {
 		t.Fatal("Node key admitted as State signer", err)
 	}
 	if _, err := os.Lstat(filepath.Join(parent, "wrong-key")); !errors.Is(err, os.ErrNotExist) {
@@ -141,7 +142,7 @@ func testRoleEpochProvisionNativeCanonicalRecordsSignatureAndSelectedProof(t *te
 	if after, err := os.Lstat(statePrivate); err != nil || !os.SameFile(before, after) || after.Mode() != before.Mode() || after.ModTime() != before.ModTime() {
 		t.Fatal("State key replaced", err)
 	}
-	if _, err := provisionCommand(t, command, string(role), "prepare-state-key", stateRoot).CombinedOutput(); err == nil {
+	if _, err := networkfixture.ProvisionCommand(t, command, string(role), "prepare-state-key", stateRoot).CombinedOutput(); err == nil {
 		t.Fatal("existing State key output adopted")
 	}
 }

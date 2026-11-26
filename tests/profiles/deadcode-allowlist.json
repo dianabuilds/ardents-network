@@ -175,9 +175,13 @@
   "production": {
     "linux-amd64": [
       {
-        "symbols": ["tests/networkfixture.ProtectedExt4Parent"],
+        "symbols": [
+          "tests/networkfixture.PinnedProvisionProgram",
+          "tests/networkfixture.ProtectedExt4Parent",
+          "tests/networkfixture.ProvisionCommand"
+        ],
         "classification": "Offline Linux signing test fixture",
-        "rationale": "The native signing tests share one root and ext4 prerequisite check. Only the Linux native signing test profile reaches it.",
+        "rationale": "The native signing tests share the root, ext4 and independently pinned program prerequisites. Only the Linux native signing test profile reaches it.",
         "owner": "Offline Network signing tests",
         "retirement": "Remove with the last native signing fixture consumer."
       },

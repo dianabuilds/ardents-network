@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"
@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestRoleProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T) {
@@ -29,11 +30,11 @@ func TestRoleProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T) {
 
 func testRoleProfileNativeCanonicalEpochInventoryAndSignature(t *testing.T, role nodeProvisioningRole) {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
-	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	command, _ := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := provisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
+		raw, err := networkfixture.ProvisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical public profile flow refused", args[0], err, string(raw))
 		}

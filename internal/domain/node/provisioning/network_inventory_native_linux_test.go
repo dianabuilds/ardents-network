@@ -18,7 +18,7 @@ import (
 
 func timedNetworkSigningArguments(t *testing.T, now, until time.Time) []string {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
+	parent := provisionfixture.ProtectedExt4Parent(t)
 	p, key, _, _ := provisionfixture.RecordSigningPlan(t)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), until.Format(time.RFC3339)
 	_, message, err := networkdraft.Prepare("prepare-initial-node-record", provisionfixture.PlanJSON(t, p))

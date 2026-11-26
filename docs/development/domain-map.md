@@ -383,6 +383,10 @@ file and publishes the exclusive unsigned artifact. `networksigning` owns the
 original protected inputs, fixed-purpose signing and exclusive signed output
 through join.
 Provisioning's command adapter retains dispatch and the public receipt.
+The separate `provisioning/infrastructure` owner runs fixed-role offline
+Node generation and delegates the one-Record Source cohort to `sourcegenesis`.
+Each role retains its own signing purpose and custody. These operations do not
+open State; actual acceptance stays in Network State.
 Provisioning owns fresh standard-library generation of one State and 1..64
 distinct Node keys, with Platform Artifacts supplying canonical Ed25519 PKCS#8
 encoding and exact admission. Provisioning retains original root-protected native
