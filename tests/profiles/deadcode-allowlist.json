@@ -89,6 +89,8 @@
       "symbols": [
         "tests/releasefixture.FixtureDigest",
         "tests/releasefixture.SignedRelease",
+        "tests/releasefixture.SignedPolicyMismatch",
+        "tests/releasefixture.signedRelease",
         "tests/releasefixture.NewReleaseAuthority",
         "tests/releasefixture.ReleaseAuthority.RootBytes",
         "tests/releasefixture.ReleaseAuthority.Sign"
@@ -1013,6 +1015,8 @@
           "internal/release/endpoint.Authorization.InitialFacts",
           "internal/release/endpoint.CandidateInputs",
           "internal/release/endpoint.Authorization.Resources",
+          "internal/release.Decision.SameBuildPolicy",
+          "internal/release/endpoint.coherentReleasePair",
           "internal/release/endpoint.CoherentTargets",
           "internal/release/endpoint.authenticate",
           "internal/platform/cgroup.parseEvents",
