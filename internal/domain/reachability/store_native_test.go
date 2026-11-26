@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 // These tests require the actual Unix-family/Windows lease and directory-sync adapter.

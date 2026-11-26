@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 // InstalledPairStoredProof verifies the authenticated receiver Store entry for an installed Link.

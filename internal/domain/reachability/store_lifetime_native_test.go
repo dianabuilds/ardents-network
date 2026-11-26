@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 // Delaying a foreign observation must not hold the Store state lock. Close,

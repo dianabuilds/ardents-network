@@ -21,7 +21,7 @@ github.com/dianabuilds/ardents-network/internal/domain/publication
 github.com/dianabuilds/ardents-network/internal/domain/publication/durable
 github.com/dianabuilds/ardents-network/internal/domain/publication/instance
 github.com/dianabuilds/ardents-network/internal/domain/publication/runtime
-github.com/dianabuilds/ardents-network/internal/reachability
+github.com/dianabuilds/ardents-network/internal/domain/reachability
 github.com/dianabuilds/ardents-network/internal/domain/enrollment
 github.com/dianabuilds/ardents-network/internal/admission/issuance
 github.com/dianabuilds/ardents-network/internal/admission/operator

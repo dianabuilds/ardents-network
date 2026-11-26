@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 // The separate child changes only its own native file-size limit. No write,

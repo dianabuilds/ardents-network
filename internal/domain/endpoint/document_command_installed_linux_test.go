@@ -21,7 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )

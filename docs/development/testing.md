@@ -2101,7 +2101,7 @@ experiment.
 
 ## Reachability audit
 
-Receiving Store native tests in `internal/reachability` exercise actual
+Receiving Store native tests in `internal/domain/reachability` exercise actual
 Unix-family/Windows roots and lease/directory sync, independent signed Descriptor
 inputs, full retained conflict/capacity/reopen cases and original operation join.
 The Store lease mechanism is the shared `linux || darwin` flock adapter

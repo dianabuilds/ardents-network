@@ -425,7 +425,7 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/connection/... ./internal/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
@@ -519,12 +519,12 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-trust-owner.test" ./internal/domain/endpoint
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-public-preparation.test" ./tests/e2e/node
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/reachability
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/domain/reachability
 
 .PHONY: descriptor-store-inspection-check
 descriptor-store-inspection-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-store-inspection-check requires explicit Linux root/ext4 stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/reachability -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/reachability -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-forward-release-check
 descriptor-forward-release-check:

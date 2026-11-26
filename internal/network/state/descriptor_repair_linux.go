@@ -5,10 +5,10 @@ package state
 import (
 	"context"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/reachability"
 )
 
 // RepairRetainedDescriptorProducer explicitly abandons a dead platform
