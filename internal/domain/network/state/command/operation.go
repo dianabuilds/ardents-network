@@ -1,4 +1,4 @@
-package state
+package command
 
 import (
 	"context"
@@ -6,41 +6,42 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
-// OfflineResult is a detached receipt from a joined Network State operation.
-type OfflineResult struct {
+// offlineResult is a detached receipt from a joined Network State operation.
+type offlineResult struct {
 	Outcome    string
 	Profile    *network.ProfileFacts
 	ObservedAt time.Time
 }
 
-// RunOffline opens the appropriate State, performs one offline intake or
+// runOffline opens the appropriate State, performs one offline intake or
 // observation and joins the original owner before publishing its receipt.
-func RunOffline(ctx context.Context, operation string, config Config, epoch []byte, inputs, materials [][]byte, profile []byte) OfflineResult {
+func runOffline(ctx context.Context, operation string, input offlineDeclaration) offlineResult {
 	if ctx == nil {
-		return OfflineResult{Outcome: "unavailable"}
+		return offlineResult{Outcome: "unavailable"}
 	}
 	if operation != "accept-epoch" && operation != "accept-profile" && operation != "inspect" {
-		return OfflineResult{Outcome: "unavailable"}
+		return offlineResult{Outcome: "unavailable"}
 	}
-	openState := Open
+	openState := state.Open
 	if operation == "inspect" {
-		openState = OpenRetained
+		openState = state.OpenRetained
 	}
 	// The original caller must still be live before Open can create history.
 	if ctx.Err() != nil {
-		return OfflineResult{Outcome: "canceled"}
+		return offlineResult{Outcome: "canceled"}
 	}
-	owner, err := openState(config)
+	owner, err := openState(input.Config)
 	if err != nil {
-		return OfflineResult{Outcome: "owner-unavailable"}
+		return offlineResult{Outcome: "owner-unavailable"}
 	}
-	result := OfflineResult{Outcome: "unavailable"}
+	result := offlineResult{Outcome: "unavailable"}
 	switch operation {
 	case "accept-epoch":
-		var accepted OfflineAcceptance
-		accepted, err = owner.AcceptEpoch(ctx, epoch, inputs, materials)
+		var accepted state.OfflineAcceptance
+		accepted, err = owner.AcceptEpoch(ctx, input.Epoch, input.Inputs, input.Materials)
 		if err == nil {
 			result.Outcome = "accepted-epoch"
 			if accepted.Pending {
@@ -49,7 +50,7 @@ func RunOffline(ctx context.Context, operation string, config Config, epoch []by
 		}
 	case "accept-profile":
 		if ctx.Err() == nil {
-			_, err = owner.AcceptClosedProfile(profile)
+			_, err = owner.AcceptClosedProfile(input.Profile)
 		} else {
 			err = ctx.Err()
 		}
@@ -65,7 +66,7 @@ func RunOffline(ctx context.Context, operation string, config Config, epoch []by
 		}
 	}
 	if errors.Join(err, ctx.Err(), owner.Close()) != nil {
-		result = OfflineResult{Outcome: "unavailable"}
+		result = offlineResult{Outcome: "unavailable"}
 		if ctx.Err() != nil {
 			result.Outcome = "canceled"
 		}

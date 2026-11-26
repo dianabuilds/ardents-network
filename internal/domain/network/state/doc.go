@@ -29,17 +29,23 @@
 // public binding facts grant no RuntimeView, producer or Installation right;
 // original reader and descriptor joins precede returning its existing leases.
 //
-// Navigation: one aggregate (State) owns every cluster below; each
-// cluster is a method or adapter family sharing its lock, commit boundary and
-// joined retirement. The durable subpackage owns the physical State root.
-// Test naming follows docs/development/repository-layout.md; each test is
-// listed under its primary responsibility cluster.
+// Start with the operation being traced:
+//   - signed intake: command decodes the operator declaration; Open verifies
+//     retained history; AcceptEpoch and AcceptClosedProfile authenticate and
+//     publish through durable. Internal distribution owns ARDS1D4 bytes.
+//   - runtime observation: CurrentRuntimeWitness reads the exact durable
+//     profile under the State lock and samples trusted time afterward.
+//   - Source: source/serving retains original process and input custody.
+//     State admits Refresh, orders the finite wave and joins its handlers.
+//
+// One State lock owns current, pending and distribution facts. The durable
+// subpackage owns the physical root; it does not decide which bytes are current.
 //
 // Responsibility clusters and their tests:
 //   - contract and config validation: contract.go, config_validation.go,
 //     runtime_state.go, authority_declaration.go (validation_test.go,
 //     config_validation_test.go)
-//   - open and lifecycle: open.go, retained_open.go, lifecycle.go,
+//   - open and lifecycle: open.go, lifecycle.go,
 //     scheduler.go (retained_open_test.go, lifecycle_close_test.go,
 //     scheduler_test.go, automatic_refresh_test.go, work_admission_test.go,
 //     state_test.go)
@@ -57,9 +63,9 @@
 //     materialization_index_test.go, source_bootstrap_test.go,
 //     acquisition_closure_test.go, outcomes_test.go, source_wave_guard_test.go,
 //     source_wave_guard_failure_test.go, pending_completion_time_test.go)
-//   - distribution journal: control_state.go, control_decoding.go,
-//     control_encoding.go (private ARDS1D4 grammar) (control_commit_test.go,
-//     control_cycle_test.go, truncation_refusal_test.go)
+//   - distribution admission and commit: control_state.go
+//     (control_commit_test.go); internal/distribution owns the canonical bytes,
+//     independent golden-record digest and truncation refusals
 //   - history and recovery: storage.go, recovery.go, retained_history.go;
 //     readRetainedHistory is the shared read seam of repair and inspection
 //     (verified by state_test.go, retained_open_test.go and validation_test.go
@@ -71,7 +77,7 @@
 //     source_close_custody_test.go, source_completion_test.go,
 //     source_exposure_capacity_test.go, local_roles_concurrency_test.go)
 //   - runtime observation: runtime_observation.go, runtime_witness.go,
-//     accepted_observation.go, membership.go, snapshot_access.go
+//     membership.go, snapshot_access.go
 //     (runtime_witness_test.go, closed_runtime_view_test.go,
 //     membership_transition_test.go, selected_profile_test.go)
 //   - clock and time observation: clock_observation.go

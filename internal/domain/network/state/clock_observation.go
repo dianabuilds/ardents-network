@@ -5,6 +5,7 @@ import (
 	"time"
 
 	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 func fileClockObserver(path string) func() time.Time {
@@ -17,7 +18,7 @@ func fileClockObserver(path string) func() time.Time {
 	}
 }
 
-func trustedNow(config config, state distributionState) (time.Time, error) {
+func trustedNow(config config, state distribution.Record) (time.Time, error) {
 	observation, err := trustedObservation(config, state)
 	if err != nil {
 		return time.Time{}, err
@@ -25,7 +26,7 @@ func trustedNow(config config, state distributionState) (time.Time, error) {
 	return observation.Instant(), nil
 }
 
-func trustedObservation(config config, state distributionState) (networkdomain.TrustedTime, error) {
+func trustedObservation(config config, state distribution.Record) (networkdomain.TrustedTime, error) {
 	if config.clock == nil || config.observe == nil {
 		return networkdomain.TrustedTime{}, errClockUncertain
 	}
@@ -36,8 +37,8 @@ func sampleClockEvidence(config config) networkdomain.ClockEvidence {
 	return networkdomain.ClockEvidence{Wall: config.clock(), Monotonic: config.anchorWall.Add(time.Since(config.anchorMono)), Independent: config.observe()}
 }
 
-func confirmClockEvidence(evidence networkdomain.ClockEvidence, state distributionState) (networkdomain.TrustedTime, error) {
-	observation, err := networkdomain.ConfirmTime(evidence, state.trustedTimeFloor)
+func confirmClockEvidence(evidence networkdomain.ClockEvidence, state distribution.Record) (networkdomain.TrustedTime, error) {
+	observation, err := networkdomain.ConfirmTime(evidence, state.TrustedTimeFloor)
 	if err != nil {
 		return networkdomain.TrustedTime{}, errClockUncertain
 	}

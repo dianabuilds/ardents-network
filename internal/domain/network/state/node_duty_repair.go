@@ -109,7 +109,7 @@ func (r *nodeDutyRepair) checkHistory() (*epoch.Decision, error) {
 	}
 	// Participation-only repair cannot resolve outstanding acquisition/exposure
 	// work; slot claims and spend obligations are never repairable here.
-	if journal.cycleActive || journal.pendingDigest != ([32]byte{}) || len(journal.history) != 0 {
+	if journal.CycleActive || journal.PendingDigest != ([32]byte{}) || len(journal.History) != 0 {
 		return nil, r.role.unavailable
 	}
 	return current, nil

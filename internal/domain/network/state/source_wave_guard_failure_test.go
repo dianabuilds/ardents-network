@@ -12,6 +12,7 @@ import (
 	duty2 "github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 func TestFailedSourceGuardReleaseRetiresState(t *testing.T) {
@@ -23,8 +24,8 @@ func TestFailedSourceGuardReleaseRetiresState(t *testing.T) {
 		root: t.TempDir(), localRoles: blockedRoot, clock: time.Now,
 		sourceInfo: source.Details{Configured: true, Identities: [2][32]byte{{1}, {2}}, Families: [2]string{"first", "second"}},
 	}}
-	state.distribution.cycleID = 1
-	state.distribution.cycleDeadline = time.Now().Add(time.Hour).Unix()
+	state.distribution.CycleID = 1
+	state.distribution.CycleDeadline = time.Now().Add(time.Hour).Unix()
 	if err := state.releaseSourceWaveLocked(); err == nil || !strings.Contains(err.Error(), "release direct Source contact guard") {
 		t.Fatalf("failed guard release returned %v", err)
 	}
@@ -52,8 +53,8 @@ func TestUncertainSourceWaveCommitKeepsLiveGuard(t *testing.T) {
 	first := completionEpoch(1, 1, now)
 	second := completionEpoch(1, 2, now)
 	_, err = state.completeSourceWaveWithConflictCommit(now, nil, []sourceResult{
-		{slot: 0, decision: first, observations: [4]byte{sourceOutcomeValid}},
-		{slot: 1, decision: second, observations: [4]byte{0, sourceOutcomeValid}},
+		{slot: 0, decision: first, observations: [4]byte{distribution.OutcomeValid}},
+		{slot: 1, decision: second, observations: [4]byte{0, distribution.OutcomeValid}},
 	}, func(string, []byte) error { return failure })
 	if !errors.Is(err, durable.ErrPointerSyncUncertain) || !state.closed {
 		t.Fatalf("uncertain Source commit did not retire State: closed=%t err=%v", state.closed, err)

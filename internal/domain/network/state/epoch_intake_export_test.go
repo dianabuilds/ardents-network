@@ -3,6 +3,7 @@ package state
 import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 // CommitRetainedGenerationForTest writes one durable generation exactly as a
@@ -26,10 +27,10 @@ func CommitRetainedControlForTest(root string, epochFloor uint64, epochDigest, p
 		return err
 	}
 	defer storage.Close()
-	state := distributionState{sequence: 1, epochFloor: epochFloor, epochDigest: epochDigest,
-		trustedTimeFloor: pendingValidFrom, pendingDigest: pendingDigest, pendingValidFrom: pendingValidFrom}
-	raw := encodeDistributionState(state)
-	return storage.CommitControl(distributionDigest(raw), raw)
+	state := distribution.Record{Sequence: 1, EpochFloor: epochFloor, EpochDigest: epochDigest,
+		TrustedTimeFloor: pendingValidFrom, PendingDigest: pendingDigest, PendingValidFrom: pendingValidFrom}
+	raw := distribution.Encode(state)
+	return storage.CommitControl(distribution.Digest(raw), raw)
 }
 
 // VerifySourceCandidateForTest drives one Source bundle through the exact

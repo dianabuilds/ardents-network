@@ -40,7 +40,7 @@ func (s *State) acceptWithConflictCommit(ctx context.Context, epoch []byte, inpu
 	if s.refreshing {
 		return OfflineAcceptance{}, errors.New("network state refresh owns the active transition")
 	}
-	if s.distribution.conflicting {
+	if s.distribution.Conflicting {
 		return OfflineAcceptance{}, errPersistentStateConflict
 	}
 	now, err := trustedNow(s.config, s.distribution)
@@ -73,8 +73,8 @@ func (s *State) acceptWithConflictCommit(ctx context.Context, epoch []byte, inpu
 	if err != nil {
 		if isEpochHistoryConflict(err) {
 			state := s.distribution
-			state.sequence++
-			state.conflicting = true
+			state.Sequence++
+			state.Conflicting = true
 			if commitErr := s.commitDistributionWithControl(state, commit); commitErr != nil {
 				return OfflineAcceptance{}, commitErr
 			}
@@ -113,7 +113,7 @@ func (s *State) acceptWithConflictCommit(ctx context.Context, epoch []byte, inpu
 
 	// Offline acceptance changes Epoch history, never the trusted time floor.
 	state := s.distribution
-	state.sequence++
+	state.Sequence++
 	if pending {
 		if err := s.commitPendingDecision(&decision, state); err != nil {
 			return OfflineAcceptance{}, err

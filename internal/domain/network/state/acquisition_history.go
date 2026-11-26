@@ -5,28 +5,29 @@ import (
 	"time"
 
 	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 // Acquisition and Epoch/profile floors share this application's commit. These
 // translations publish no independent authority and retain the journal bytes.
-func acquisitionHistory(state distributionState) (networkdomain.Acquisition, error) {
-	return networkdomain.RestoreAcquisition(networkdomain.AcquisitionFacts{Cycle: state.cycleID, Active: state.cycleActive,
-		Purpose: state.cyclePurpose, Started: state.cycleStarted, Deadline: state.cycleDeadline, Seed: state.cycleSeed, Order: state.sourceOrder,
-		Attempts: state.attempts, Outcomes: state.outcomes, RequestedDigests: state.requestedDigests,
-		ObservedEpochs: state.observedEpochs, ObservedDigests: state.observedDigests, Exposures: state.history,
-		Failures: state.consecutiveFailures, Backoff: state.backoffLevel, NextAttempt: state.nextAutomatic})
+func acquisitionHistory(state distribution.Record) (networkdomain.Acquisition, error) {
+	return networkdomain.RestoreAcquisition(networkdomain.AcquisitionFacts{Cycle: state.CycleID, Active: state.CycleActive,
+		Purpose: state.CyclePurpose, Started: state.CycleStarted, Deadline: state.CycleDeadline, Seed: state.CycleSeed, Order: state.SourceOrder,
+		Attempts: state.Attempts, Outcomes: state.Outcomes, RequestedDigests: state.RequestedDigests,
+		ObservedEpochs: state.ObservedEpochs, ObservedDigests: state.ObservedDigests, Exposures: state.History,
+		Failures: state.ConsecutiveFailures, Backoff: state.BackoffLevel, NextAttempt: state.NextAutomatic})
 }
 
-func applyAcquisition(state *distributionState, acquisition networkdomain.Acquisition) {
+func applyAcquisition(state *distribution.Record, acquisition networkdomain.Acquisition) {
 	facts := acquisition.Facts()
-	state.cycleID, state.cycleActive, state.cyclePurpose = facts.Cycle, facts.Active, facts.Purpose
-	state.cycleStarted, state.cycleDeadline, state.cycleSeed, state.sourceOrder = facts.Started, facts.Deadline, facts.Seed, facts.Order
-	state.attempts, state.outcomes, state.requestedDigests = facts.Attempts, facts.Outcomes, facts.RequestedDigests
-	state.observedEpochs, state.observedDigests, state.history = facts.ObservedEpochs, facts.ObservedDigests, facts.Exposures
-	state.consecutiveFailures, state.backoffLevel, state.nextAutomatic = facts.Failures, facts.Backoff, facts.NextAttempt
+	state.CycleID, state.CycleActive, state.CyclePurpose = facts.Cycle, facts.Active, facts.Purpose
+	state.CycleStarted, state.CycleDeadline, state.CycleSeed, state.SourceOrder = facts.Started, facts.Deadline, facts.Seed, facts.Order
+	state.Attempts, state.Outcomes, state.RequestedDigests = facts.Attempts, facts.Outcomes, facts.RequestedDigests
+	state.ObservedEpochs, state.ObservedDigests, state.History = facts.ObservedEpochs, facts.ObservedDigests, facts.Exposures
+	state.ConsecutiveFailures, state.BackoffLevel, state.NextAutomatic = facts.Failures, facts.Backoff, facts.NextAttempt
 }
 
-func sourceExposureCapacity(state distributionState, exposures [2][32]byte) error {
+func sourceExposureCapacity(state distribution.Record, exposures [2][32]byte) error {
 	history, err := acquisitionHistory(state)
 	if err != nil {
 		return err
@@ -34,67 +35,67 @@ func sourceExposureCapacity(state distributionState, exposures [2][32]byte) erro
 	return history.CheckExposures(exposures)
 }
 
-func proposeLatestAttempt(state distributionState, source int, exposure [32]byte) (distributionState, bool, byte, error) {
+func proposeLatestAttempt(state distribution.Record, source int, exposure [32]byte) (distribution.Record, bool, byte, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distributionState{}, false, 0, err
+		return distribution.Record{}, false, 0, err
 	}
 	next, disposition, err := history.BeginLatest(source, exposure)
 	if err != nil {
-		return distributionState{}, false, 0, err
+		return distribution.Record{}, false, 0, err
 	}
 	if disposition.Changed {
 		applyAcquisition(&state, next)
-		state.sequence++
+		state.Sequence++
 	}
 	return state, disposition.Contact, disposition.Outcome, nil
 }
 
-func proposeDigestAttempt(state distributionState, source int, digest, exposure [32]byte) (distributionState, error) {
+func proposeDigestAttempt(state distribution.Record, source int, digest, exposure [32]byte) (distribution.Record, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distributionState{}, err
+		return distribution.Record{}, err
 	}
 	next, err := history.BeginDigest(source, digest, exposure)
 	if err != nil {
-		return distributionState{}, err
+		return distribution.Record{}, err
 	}
 	applyAcquisition(&state, next)
-	state.sequence++
+	state.Sequence++
 	return state, nil
 }
 
-func proposeDigestCompletion(state distributionState, source int, responseCompleted bool) (distributionState, error) {
+func proposeDigestCompletion(state distribution.Record, source int, responseCompleted bool) (distribution.Record, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distributionState{}, err
+		return distribution.Record{}, err
 	}
 	next, err := history.CompleteDigest(source, responseCompleted)
 	if err != nil {
-		return distributionState{}, err
+		return distribution.Record{}, err
 	}
 	applyAcquisition(&state, next)
-	state.sequence++
+	state.Sequence++
 	return state, nil
 }
 
-func proposeSourceCycle(state distributionState, now time.Time, seed [32]byte) (distributionState, bool, error) {
+func proposeSourceCycle(state distribution.Record, now time.Time, seed [32]byte) (distribution.Record, bool, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distributionState{}, false, err
+		return distribution.Record{}, false, err
 	}
 	next, changed, expired, err := history.Start(now, seed)
 	if err != nil {
 		if errors.Is(err, networkdomain.ErrAcquisitionBackoff) {
-			return distributionState{}, false, errors.Join(errRefreshUnavailable, err)
+			return distribution.Record{}, false, errors.Join(errRefreshUnavailable, err)
 		}
-		return distributionState{}, false, err
+		return distribution.Record{}, false, err
 	}
 	if changed {
 		applyAcquisition(&state, next)
-		state.sequence++
+		state.Sequence++
 		if !expired && !history.Facts().Active {
-			state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
+			state.TrustedTimeFloor = max(state.TrustedTimeFloor, now.Unix())
 		}
 	}
 	return state, expired, nil

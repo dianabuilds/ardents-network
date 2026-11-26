@@ -15,7 +15,7 @@ func (s *State) serveSource(ctx context.Context, ready chan<- error) error {
 			}
 			s.mu.RLock()
 			defer s.mu.RUnlock()
-			return s.closed || s.distribution.conflicting || s.terminalErr != nil
+			return s.closed || s.distribution.Conflicting || s.terminalErr != nil
 		},
 		s.sourceConnectionActive,
 		s.resolveDistributionRequest)
@@ -50,7 +50,7 @@ func (s *State) resolveDistributionRequest(_ context.Context, request source2.Me
 		return source2.Message{Status: "bad-request"}
 	}
 	s.mu.RLock()
-	if s.closed || s.current == nil || s.distribution.conflicting || s.automaticErr != nil || s.terminalErr != nil {
+	if s.closed || s.current == nil || s.distribution.Conflicting || s.automaticErr != nil || s.terminalErr != nil {
 		s.mu.RUnlock()
 		return source2.Message{Status: "busy"}
 	}

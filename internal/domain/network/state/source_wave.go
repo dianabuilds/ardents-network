@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 func (s *State) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	seed := s.config.sourceInfo.OrderSeed
-	if !s.distribution.cycleActive && seed == [32]byte{} {
+	if !s.distribution.CycleActive && seed == [32]byte{} {
 		if _, err := rand.Read(seed[:]); err != nil {
 			return [2]int{}, time.Time{}, fmt.Errorf("draw source order: %w", err)
 		}
@@ -20,8 +21,8 @@ func (s *State) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	if err != nil {
 		return [2]int{}, time.Time{}, err
 	}
-	order := [2]int{int(state.sourceOrder[0]), int(state.sourceOrder[1])}
-	if state.sequence != s.distribution.sequence {
+	order := [2]int{int(state.SourceOrder[0]), int(state.SourceOrder[1])}
+	if state.Sequence != s.distribution.Sequence {
 		if err := s.commitDistribution(state); err != nil {
 			return order, time.Time{}, err
 		}
@@ -29,7 +30,7 @@ func (s *State) startSourceWave(now time.Time) ([2]int, time.Time, error) {
 	if expired {
 		return [2]int{}, time.Time{}, fmt.Errorf("%w: durable source cycle reached its recorded deadline", errRefreshUnavailable)
 	}
-	deadline := time.Unix(state.cycleDeadline, 0)
+	deadline := time.Unix(state.CycleDeadline, 0)
 	if err := s.holdSourceExposures(deadline); err != nil {
 		return order, time.Time{}, err
 	}
@@ -45,7 +46,7 @@ func (s *State) completeSourceWaveWithConflictCommit(started time.Time, base *ep
 	defer func() {
 		// Keep refresh ownership until the live contact guard has been demoted.
 		// Failed or uncertain terminal writes leave the guard live.
-		if !s.closed && !s.distribution.cycleActive {
+		if !s.closed && !s.distribution.CycleActive {
 			resultErr = errors.Join(resultErr, s.releaseSourceWaveLocked())
 		}
 		s.refreshing = false
@@ -93,11 +94,11 @@ func (s *State) completeSourceWaveWithConflictCommit(started time.Time, base *ep
 
 func (s *State) recordSourceConflictWithControl(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte, commit func(string, []byte) error) error {
 	state := s.distribution
-	state.observedEpochs, state.observedDigests = epochs, digests
+	state.ObservedEpochs, state.ObservedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
 		return err
 	}
-	state.conflicting = true
+	state.Conflicting = true
 	return s.commitDistributionWithControl(state, commit)
 }
 
@@ -110,7 +111,7 @@ func sameGeneration(current, base *epoch.Decision) bool {
 
 func (s *State) commitSourceFailure(now time.Time, outcomes [4]byte, epochs [4]uint64, digests [4][32]byte) error {
 	state := s.distribution
-	state.observedEpochs, state.observedDigests = epochs, digests
+	state.ObservedEpochs, state.ObservedDigests = epochs, digests
 	if err := finishWaveState(&state, now, outcomes); err != nil {
 		return err
 	}
@@ -125,11 +126,11 @@ type sourceWaveSummary struct {
 	collisionErr    error
 }
 
-func summarizeSourceWave(state distributionState, results []sourceResult) sourceWaveSummary {
+func summarizeSourceWave(state distribution.Record, results []sourceResult) sourceWaveSummary {
 	// Start from the same durable cycle: a consumed selector has no new result
 	// on resume, but its recorded outcome and evidence still belong to this wave.
-	summary := sourceWaveSummary{valid: make([]*epoch.Decision, 0, 2), outcomes: state.outcomes,
-		observedEpochs: state.observedEpochs, observedDigests: state.observedDigests}
+	summary := sourceWaveSummary{valid: make([]*epoch.Decision, 0, 2), outcomes: state.Outcomes,
+		observedEpochs: state.ObservedEpochs, observedDigests: state.ObservedDigests}
 	for index := range results {
 		// The wave owns its results until completion; valid decisions pass by
 		// pointer into selection and commit without copying the 9.5KiB value.
@@ -159,11 +160,11 @@ func (s *State) commitDeferredSourceWave(now time.Time, selected *epoch.Decision
 	// A pending generation requires an active predecessor on reopen. Keep
 	// authenticated Source observations, but do not stage a future genesis.
 	state := s.distribution
-	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+	state.ObservedEpochs, state.ObservedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
 		return Snapshot{}, err
 	}
-	state.nextAutomatic = max(state.nextAutomatic, selected.Header.ValidFrom.Unix())
+	state.NextAutomatic = max(state.NextAutomatic, selected.Header.ValidFrom.Unix())
 	if err := s.commitDistribution(state); err != nil {
 		return Snapshot{}, err
 	}
@@ -173,7 +174,7 @@ func (s *State) commitDeferredSourceWave(now time.Time, selected *epoch.Decision
 
 func (s *State) commitPendingSourceWave(now time.Time, selected *epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	state := s.distribution
-	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+	state.ObservedEpochs, state.ObservedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
 		return Snapshot{}, err
 	}
@@ -189,14 +190,14 @@ func (s *State) commitActiveSourceWave(now time.Time, selected *epoch.Decision, 
 		selected = &epoch.Decision{}
 	}
 	state := s.distribution
-	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
+	state.ObservedEpochs, state.ObservedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
 		return Snapshot{}, err
 	}
-	state.epochFloor, state.epochDigest = selected.Header.Number, selected.Header.Digest
-	state.trustedTimeFloor = max(state.trustedTimeFloor, now.Unix())
-	if state.pendingDigest == selected.Header.Digest {
-		state.pendingDigest, state.pendingValidFrom = [32]byte{}, 0
+	state.EpochFloor, state.EpochDigest = selected.Header.Number, selected.Header.Digest
+	state.TrustedTimeFloor = max(state.TrustedTimeFloor, now.Unix())
+	if state.PendingDigest == selected.Header.Digest {
+		state.PendingDigest, state.PendingValidFrom = [32]byte{}, 0
 	}
 	if s.current == nil || selected.Header.Digest != s.current.Snapshot.Digest {
 		if err := s.commitActiveDecision(selected, state); err != nil {

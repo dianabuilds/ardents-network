@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 // These units prove the NW-7 pointer wave path preserves the historical
@@ -172,7 +173,7 @@ func TestSelectEpochHistoryPointerPreservesFacts(t *testing.T) {
 	predecessor := completionEpoch(1, 1, now)
 	successor := completionEpoch(2, 2, now)
 	s := &State{current: &predecessor,
-		distribution: distributionState{epochFloor: 1, epochDigest: predecessor.Header.Digest}}
+		distribution: distribution.Record{EpochFloor: 1, EpochDigest: predecessor.Header.Digest}}
 	candidates := []*epoch.Decision{&successor}
 	selected, selection, err := s.selectEpochHistory(candidates)
 	if err != nil {
@@ -246,7 +247,7 @@ func TestCommitActiveDecisionPointerBytesAndIsolation(t *testing.T) {
 			successor := nw7Successor(t, current, "nw7-active-successor")
 			before := cloneDecisionForOracle(successor)
 			next := s.distribution
-			next.sequence++
+			next.Sequence++
 			if err := s.commitActiveDecision(&successor, next); err != nil {
 				t.Fatalf("commitActiveDecision: %v", err)
 			}
@@ -261,7 +262,7 @@ func TestCommitActiveDecisionPointerBytesAndIsolation(t *testing.T) {
 				t.Fatal("commit mutated the caller's decision")
 			}
 			assertPublishedDecisionBytes(t, s, before)
-			if s.distribution.epochFloor != successor.Header.Number || s.distribution.epochDigest != successor.Header.Digest {
+			if s.distribution.EpochFloor != successor.Header.Number || s.distribution.EpochDigest != successor.Header.Digest {
 				t.Fatal("distribution floor does not match the committed decision")
 			}
 			if serving {
@@ -284,7 +285,7 @@ func TestCommitPendingDecisionPointerBytesAndIsolation(t *testing.T) {
 	pending.Header.ValidFrom = s.config.clock().Add(20 * time.Second)
 	before := cloneDecisionForOracle(pending)
 	next := s.distribution
-	next.sequence++
+	next.Sequence++
 	if err := s.commitPendingDecision(&pending, next); err != nil {
 		t.Fatalf("commitPendingDecision: %v", err)
 	}
@@ -298,7 +299,7 @@ func TestCommitPendingDecisionPointerBytesAndIsolation(t *testing.T) {
 		t.Fatal("staging mutated the caller's decision")
 	}
 	assertPublishedDecisionBytes(t, s, before)
-	if s.distribution.pendingDigest != pending.Header.Digest || s.distribution.pendingValidFrom != pending.Header.ValidFrom.Unix() {
+	if s.distribution.PendingDigest != pending.Header.Digest || s.distribution.PendingValidFrom != pending.Header.ValidFrom.Unix() {
 		t.Fatal("distribution pending marker does not match the staged decision")
 	}
 }
@@ -309,22 +310,22 @@ func TestCompleteSourceWavePointerPathPreservesResultFacts(t *testing.T) {
 			s, current := newControlCommitFixture(t, serving)
 			now := s.config.clock()
 			wave := s.distribution
-			wave.sequence++
-			wave.cycleID++
-			wave.cycleActive = true
-			wave.cyclePurpose = sourceCyclePurposeRefresh
-			wave.cycleStarted = now.Unix()
-			wave.cycleDeadline = now.Add(15 * time.Second).Unix()
-			wave.cycleSeed = sha256.Sum256([]byte("nw7 pointer wave cycle"))
-			wave.sourceOrder = [2]byte{0, 1}
-			wave.attempts[0], wave.attempts[1] = sourceAttemptInFlight, sourceAttemptInFlight
+			wave.Sequence++
+			wave.CycleID++
+			wave.CycleActive = true
+			wave.CyclePurpose = distribution.Refresh
+			wave.CycleStarted = now.Unix()
+			wave.CycleDeadline = now.Add(15 * time.Second).Unix()
+			wave.CycleSeed = sha256.Sum256([]byte("nw7 pointer wave cycle"))
+			wave.SourceOrder = [2]byte{0, 1}
+			wave.Attempts[0], wave.Attempts[1] = distribution.AttemptInFlight, distribution.AttemptInFlight
 			if err := s.commitDistribution(wave); err != nil {
 				t.Fatal(err)
 			}
 			successor := nw7Successor(t, current, "nw7-wave-successor")
 			results := []sourceResult{
-				{index: 0, slot: 0, decision: successor, observations: [4]byte{sourceOutcomeValid}},
-				{index: 1, slot: 1, decision: successor, observations: [4]byte{0, sourceOutcomeValid}},
+				{index: 0, slot: 0, decision: successor, observations: [4]byte{distribution.OutcomeValid}},
+				{index: 1, slot: 1, decision: successor, observations: [4]byte{0, distribution.OutcomeValid}},
 			}
 			beforeFirst := cloneDecisionForOracle(results[0].decision)
 			beforeSecond := cloneDecisionForOracle(results[1].decision)
@@ -346,8 +347,8 @@ func TestCompleteSourceWavePointerPathPreservesResultFacts(t *testing.T) {
 				t.Fatal("wave completion mutated the caller's results")
 			}
 			assertPublishedDecisionBytes(t, s, beforeFirst)
-			if s.distribution.observedEpochs[0] != successor.Header.Number || s.distribution.observedDigests[0] != successor.Header.Digest ||
-				s.distribution.observedEpochs[1] != successor.Header.Number || s.distribution.observedDigests[1] != successor.Header.Digest {
+			if s.distribution.ObservedEpochs[0] != successor.Header.Number || s.distribution.ObservedDigests[0] != successor.Header.Digest ||
+				s.distribution.ObservedEpochs[1] != successor.Header.Number || s.distribution.ObservedDigests[1] != successor.Header.Digest {
 				t.Fatal("wave observations do not match the selected decision")
 			}
 			if serving {
@@ -365,26 +366,26 @@ func TestNilDecisionCommitHelpersMatchZeroValue(t *testing.T) {
 		t.Helper()
 		now := s.config.clock()
 		wave := s.distribution
-		wave.sequence++
-		wave.cycleID++
-		wave.cycleActive = true
-		wave.cyclePurpose = sourceCyclePurposeRefresh
-		wave.cycleStarted = now.Unix()
-		wave.cycleDeadline = now.Add(15 * time.Second).Unix()
-		wave.cycleSeed = sha256.Sum256([]byte("nw7 nil equivalence cycle"))
-		wave.sourceOrder = [2]byte{0, 1}
-		wave.attempts[0], wave.attempts[1] = sourceAttemptInFlight, sourceAttemptInFlight
+		wave.Sequence++
+		wave.CycleID++
+		wave.CycleActive = true
+		wave.CyclePurpose = distribution.Refresh
+		wave.CycleStarted = now.Unix()
+		wave.CycleDeadline = now.Add(15 * time.Second).Unix()
+		wave.CycleSeed = sha256.Sum256([]byte("nw7 nil equivalence cycle"))
+		wave.SourceOrder = [2]byte{0, 1}
+		wave.Attempts[0], wave.Attempts[1] = distribution.AttemptInFlight, distribution.AttemptInFlight
 		if err := s.commitDistribution(wave); err != nil {
 			t.Fatal(err)
 		}
 	}
-	summary := sourceWaveSummary{outcomes: [4]byte{sourceOutcomeValid, sourceOutcomeValid}}
+	summary := sourceWaveSummary{outcomes: [4]byte{distribution.OutcomeValid, distribution.OutcomeValid}}
 
 	t.Run("active commit", func(t *testing.T) {
 		nilState, _ := newControlCommitFixture(t, false)
 		zeroState, _ := newControlCommitFixture(t, false)
 		next := nilState.distribution
-		next.sequence++
+		next.Sequence++
 		nilErr := nilState.commitActiveDecision(nil, next)
 		zeroErr := zeroState.commitActiveDecision(&epoch.Decision{}, next)
 		if nilErr == nil || zeroErr == nil || nilErr.Error() != zeroErr.Error() {
@@ -395,7 +396,7 @@ func TestNilDecisionCommitHelpersMatchZeroValue(t *testing.T) {
 		nilState, _ := newControlCommitFixture(t, false)
 		zeroState, _ := newControlCommitFixture(t, false)
 		next := nilState.distribution
-		next.sequence++
+		next.Sequence++
 		nilErr := nilState.commitPendingDecision(nil, next)
 		zeroErr := zeroState.commitPendingDecision(&epoch.Decision{}, next)
 		if nilErr == nil || zeroErr == nil || nilErr.Error() != zeroErr.Error() {
@@ -422,8 +423,8 @@ func TestNilDecisionCommitHelpersMatchZeroValue(t *testing.T) {
 		if nilErr == nil || zeroErr == nil || nilErr.Error() != zeroErr.Error() {
 			t.Fatalf("nil/zero deferred wave differs: nil=%v zero=%v", nilErr, zeroErr)
 		}
-		if !errors.Is(nilErr, errRefreshUnavailable) || nilState.distribution.nextAutomatic != 0 {
-			t.Fatalf("zero ValidFrom moved the automatic bound: %v", nilState.distribution.nextAutomatic)
+		if !errors.Is(nilErr, errRefreshUnavailable) || nilState.distribution.NextAutomatic != 0 {
+			t.Fatalf("zero ValidFrom moved the automatic bound: %v", nilState.distribution.NextAutomatic)
 		}
 	})
 	t.Run("active wave", func(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 type sourceResult struct {
@@ -45,7 +46,7 @@ func (s *State) Refresh(ctx context.Context) (Snapshot, error) {
 		s.mu.Unlock()
 		return Snapshot{}, errors.New("finite source plan is not configured")
 	}
-	if s.distribution.conflicting {
+	if s.distribution.Conflicting {
 		s.mu.Unlock()
 		return Snapshot{}, errors.New("network state has a persistent source conflict")
 	}
@@ -54,7 +55,7 @@ func (s *State) Refresh(ctx context.Context) (Snapshot, error) {
 		s.mu.Unlock()
 		return Snapshot{}, err
 	}
-	if s.distribution.nextAutomatic > now.Unix() {
+	if s.distribution.NextAutomatic > now.Unix() {
 		s.mu.Unlock()
 		return Snapshot{}, fmt.Errorf("%w: retry is in durable backoff", errRefreshUnavailable)
 	}
@@ -122,7 +123,7 @@ func (s *State) fetchAndVerify(ctx context.Context, index int, current *epoch.De
 			return failedSourceResult(index, outcomeIndex, observations, startErr)
 		}
 		requestedDigest := response.ObjectDigest
-		resultIndex, outcomeIndex = fallback, digestAttemptSlot(fallback)
+		resultIndex, outcomeIndex = fallback, distribution.ByDigestSlot(fallback)
 		response, err = s.fetchSource(ctx, fallback, source2.Message{
 			Operation: "by-digest", NetworkDigest: source2.NetworkDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
 			MaterialIndex: s.config.sourceInfo.MaterialIndex,
@@ -152,7 +153,7 @@ func (s *State) fetchAndVerify(ctx context.Context, index int, current *epoch.De
 		return failedSourceResult(resultIndex, outcomeIndex, observations,
 			fmt.Errorf("%w: source header digest disagrees with its authenticated Epoch", errSourceObjectMismatch))
 	}
-	observations[outcomeIndex] = sourceOutcomeValid
+	observations[outcomeIndex] = distribution.OutcomeValid
 	return sourceResult{index: resultIndex, slot: outcomeIndex, decision: decision, observations: observations}
 }
 

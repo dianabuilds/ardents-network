@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -25,8 +26,8 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 	s.workCancel = func() { canceled = true }
 	before := s.distribution
 	next := before
-	next.sequence++
-	next.trustedTimeFloor++
+	next.Sequence++
+	next.TrustedTimeFloor++
 	failure := fmt.Errorf("%w: injected after control pointer replacement", durable.ErrPointerSyncUncertain)
 	err := s.commitDistributionWithControl(next, func(name string, raw []byte) error {
 		if err := s.storage.CommitControl(name, raw); err != nil {
@@ -34,8 +35,8 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 		}
 		return failure
 	})
-	if !errors.Is(err, durable.ErrPointerSyncUncertain) || !s.closed || !canceled || s.distribution.sequence != before.sequence {
-		t.Fatalf("uncertain control commit: err=%v closed=%t canceled=%t in-memory sequence=%d", err, s.closed, canceled, s.distribution.sequence)
+	if !errors.Is(err, durable.ErrPointerSyncUncertain) || !s.closed || !canceled || s.distribution.Sequence != before.Sequence {
+		t.Fatalf("uncertain control commit: err=%v closed=%t canceled=%t in-memory sequence=%d", err, s.closed, canceled, s.distribution.Sequence)
 	}
 	if _, err := s.Current(); err == nil {
 		t.Fatal("Current served a predecessor after uncertain control commit")
@@ -54,12 +55,12 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stored, err := decodeDistributionState(raw)
+	stored, err := distribution.Decode(raw)
 	if err != nil {
 		t.Fatal("decode visible durable floor:", err)
 	}
-	if stored.sequence != next.sequence || stored.trustedTimeFloor != next.trustedTimeFloor {
-		t.Fatalf("visible durable floor: sequence=%d trusted=%d", stored.sequence, stored.trustedTimeFloor)
+	if stored.Sequence != next.Sequence || stored.TrustedTimeFloor != next.TrustedTimeFloor {
+		t.Fatalf("visible durable floor: sequence=%d trusted=%d", stored.Sequence, stored.TrustedTimeFloor)
 	}
 	if err := s.Close(); !errors.Is(err, durable.ErrPointerSyncUncertain) {
 		t.Fatalf("Close lost terminal control failure: %v", err)
@@ -73,7 +74,7 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 	if err := reopened.loadDistributionState(); err != nil {
 		t.Fatal(err)
 	}
-	if reopened.distribution.sequence != next.sequence || reopened.distribution.trustedTimeFloor != next.trustedTimeFloor {
+	if reopened.distribution.Sequence != next.Sequence || reopened.distribution.TrustedTimeFloor != next.TrustedTimeFloor {
 		t.Fatal("reopen did not retain the visible control floor")
 	}
 }
@@ -88,12 +89,12 @@ func TestFailedNewConflictControlCommitRetiresPriorDecision(t *testing.T) {
 	canceled := false
 	s.workCancel = func() { canceled = true }
 	next := before
-	next.sequence++
-	next.conflicting = true
+	next.Sequence++
+	next.Conflicting = true
 	failure := errors.New("injected pre-pointer conflict commit failure")
 	err = s.commitDistributionWithControl(next, func(string, []byte) error { return failure })
 	if !errors.Is(err, failure) || !s.closed || !canceled ||
-		s.distribution.sequence != before.sequence || s.distribution.conflicting != before.conflicting {
+		s.distribution.Sequence != before.Sequence || s.distribution.Conflicting != before.Conflicting {
 		t.Fatalf("failed conflict commit: err=%v closed=%t canceled=%t state=%+v", err, s.closed, canceled, s.distribution)
 	}
 	if _, err := s.Current(); err == nil {
@@ -137,18 +138,18 @@ func TestFailedOrdinaryControlCommitRemainsRetryable(t *testing.T) {
 	s, current := newControlCommitFixture(t, false)
 	before := s.distribution
 	next := before
-	next.sequence++
+	next.Sequence++
 	failure := errors.New("injected ordinary pre-pointer failure")
 	if err := s.commitDistributionWithControl(next, func(string, []byte) error { return failure }); !errors.Is(err, failure) {
 		t.Fatalf("ordinary control failure = %v", err)
 	}
-	if s.closed || s.distribution.sequence != before.sequence {
+	if s.closed || s.distribution.Sequence != before.Sequence {
 		t.Fatalf("ordinary control failure retired owner: closed=%t state=%+v", s.closed, s.distribution)
 	}
 	if snapshot, err := s.Current(); err != nil || snapshot.Digest != current.Header.Digest {
 		t.Fatalf("ordinary control failure lost prior current: %+v, %v", snapshot, err)
 	}
-	if err := s.commitDistribution(next); err != nil || s.distribution.sequence != next.sequence {
+	if err := s.commitDistribution(next); err != nil || s.distribution.Sequence != next.Sequence {
 		t.Fatalf("ordinary control retry: state=%+v err=%v", s.distribution, err)
 	}
 }
@@ -163,7 +164,7 @@ func TestOfflineVerifiedPendingConflictCommitFailureRetiresOwner(t *testing.T) {
 	}
 	_, err = s.acceptWithConflictCommit(context.Background(), competing.Raw, competing.Inputs, competing.Materials[:1],
 		func(string, []byte) error { return failure })
-	if !errors.Is(err, failure) || !s.closed || s.distribution.sequence != before.sequence {
+	if !errors.Is(err, failure) || !s.closed || s.distribution.Sequence != before.Sequence {
 		t.Fatalf("verified offline conflict failure: err=%v closed=%t state=%+v", err, s.closed, s.distribution)
 	}
 	assertFailedVerifiedConflict(t, s, failure, name, raw)
@@ -179,7 +180,7 @@ func TestOfflineVerifiedCurrentConflictCommitFailureRetiresOwner(t *testing.T) {
 	}
 	_, err = s.acceptWithConflictCommit(context.Background(), competing.Raw, competing.Inputs, competing.Materials[:1],
 		func(string, []byte) error { return failure })
-	if !errors.Is(err, failure) || !s.closed || s.distribution.sequence != before.sequence {
+	if !errors.Is(err, failure) || !s.closed || s.distribution.Sequence != before.Sequence {
 		t.Fatalf("verified current conflict failure: err=%v closed=%t", err, s.closed)
 	}
 	assertFailedVerifiedConflict(t, s, failure, name, raw)
@@ -189,15 +190,15 @@ func TestManualSourceVerifiedPendingConflictCommitFailureRetiresOwner(t *testing
 	s, _, competing := newVerifiedPendingConflictFixture(t)
 	failure := errors.New("injected Source conflict pre-pointer failure")
 	wave := s.distribution
-	wave.sequence++
-	wave.cycleID++
-	wave.cycleActive = true
-	wave.cyclePurpose = sourceCyclePurposeRefresh
-	wave.cycleStarted = s.config.now.Unix()
-	wave.cycleDeadline = s.config.now.Add(15 * time.Second).Unix()
-	wave.cycleSeed = sha256.Sum256([]byte("manual Source conflict cycle"))
-	wave.sourceOrder = [2]byte{0, 1}
-	wave.attempts[0], wave.attempts[1] = sourceAttemptInFlight, sourceAttemptInFlight
+	wave.Sequence++
+	wave.CycleID++
+	wave.CycleActive = true
+	wave.CyclePurpose = distribution.Refresh
+	wave.CycleStarted = s.config.now.Unix()
+	wave.CycleDeadline = s.config.now.Add(15 * time.Second).Unix()
+	wave.CycleSeed = sha256.Sum256([]byte("manual Source conflict cycle"))
+	wave.SourceOrder = [2]byte{0, 1}
+	wave.Attempts[0], wave.Attempts[1] = distribution.AttemptInFlight, distribution.AttemptInFlight
 	if err := s.commitDistribution(wave); err != nil {
 		t.Fatal(err)
 	}
@@ -208,10 +209,10 @@ func TestManualSourceVerifiedPendingConflictCommitFailureRetiresOwner(t *testing
 	}
 	s.refreshing = true
 	_, err = s.completeSourceWaveWithConflictCommit(s.config.now, s.current, []sourceResult{
-		{slot: 0, decision: competing, observations: [4]byte{sourceOutcomeValid}},
-		{slot: 1, decision: competing, observations: [4]byte{0, sourceOutcomeValid}},
+		{slot: 0, decision: competing, observations: [4]byte{distribution.OutcomeValid}},
+		{slot: 1, decision: competing, observations: [4]byte{0, distribution.OutcomeValid}},
 	}, func(string, []byte) error { return failure })
-	if !errors.Is(err, failure) || !s.closed || s.refreshing || s.distribution.sequence != before.sequence {
+	if !errors.Is(err, failure) || !s.closed || s.refreshing || s.distribution.Sequence != before.Sequence {
 		t.Fatalf("verified Source conflict failure: err=%v closed=%t refreshing=%t state=%+v", err, s.closed, s.refreshing, s.distribution)
 	}
 	assertFailedVerifiedConflict(t, s, failure, name, raw)
@@ -316,8 +317,8 @@ func newVerifiedConflictFixture(t *testing.T, pending bool) (*State, networkfixt
 		t.Fatal(err)
 	}
 	state := s.distribution
-	state.sequence++
-	state.pendingDigest, state.pendingValidFrom = staged.Digest, pendingDecision.Header.ValidFrom.Unix()
+	state.Sequence++
+	state.PendingDigest, state.PendingValidFrom = staged.Digest, pendingDecision.Header.ValidFrom.Unix()
 	if err := s.commitDistribution(state); err != nil {
 		t.Fatal(err)
 	}
@@ -338,8 +339,8 @@ func TestPersistedConflictKeepsDiagnosticSnapshotButRefusesSource(t *testing.T) 
 		}
 	}
 	next := s.distribution
-	next.sequence++
-	next.conflicting = true
+	next.Sequence++
+	next.Conflicting = true
 	if err := s.commitDistribution(next); err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +402,7 @@ func TestActiveControlCommitFailureKeepsCorrectSourceDuty(t *testing.T) {
 			successor.Snapshot.DeclaredFamily = "new-serving-family"
 			successor.Snapshot.ValidUntil = current.Snapshot.ValidUntil.Add(time.Hour)
 			next := s.distribution
-			next.sequence++
+			next.Sequence++
 			failure := errors.New("injected before control pointer replacement")
 			commit := func(name string, raw []byte) error { return failure }
 			if test.uncertain {
@@ -483,7 +484,7 @@ func newControlCommitFixture(t *testing.T, serving bool) (*State, epoch.Decision
 		_ = storage.Close()
 		t.Fatal(err)
 	}
-	initial := distributionState{sequence: 1, epochFloor: decision.Header.Number, epochDigest: decision.Header.Digest}
+	initial := distribution.Record{Sequence: 1, EpochFloor: decision.Header.Number, EpochDigest: decision.Header.Digest}
 	if err := s.commitDistribution(initial); err != nil {
 		_ = storage.Close()
 		t.Fatal(err)

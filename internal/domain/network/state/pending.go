@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
 // commitPendingDecision writes the authenticated generation before the
 // control journal can name it. History reconciliation precedes this operation.
-func (s *State) commitPendingDecision(decision *epoch.Decision, next distributionState) error {
+func (s *State) commitPendingDecision(decision *epoch.Decision, next distribution.Record) error {
 	if decision == nil {
 		// Preserve the historical zero-value staging refusal.
 		decision = &epoch.Decision{}
@@ -20,7 +21,7 @@ func (s *State) commitPendingDecision(decision *epoch.Decision, next distributio
 			return err
 		}
 	}
-	next.pendingDigest, next.pendingValidFrom = decision.Header.Digest, decision.Header.ValidFrom.Unix()
+	next.PendingDigest, next.PendingValidFrom = decision.Header.Digest, decision.Header.ValidFrom.Unix()
 	if err := s.commitDistribution(next); err != nil {
 		return err
 	}
@@ -34,24 +35,24 @@ func (s *State) commitPendingDecision(decision *epoch.Decision, next distributio
 
 func (s *State) recoverPendingState() error {
 	state := s.distribution
-	if state.pendingDigest == [32]byte{} {
+	if state.PendingDigest == [32]byte{} {
 		return nil
 	}
 	if s.current == nil {
 		return errors.New("pending Epoch exists without an active predecessor")
 	}
-	if state.pendingDigest == s.current.Snapshot.Digest {
-		state.pendingDigest = [32]byte{}
-		state.pendingValidFrom = 0
-		state.sequence++
+	if state.PendingDigest == s.current.Snapshot.Digest {
+		state.PendingDigest = [32]byte{}
+		state.PendingValidFrom = 0
+		state.Sequence++
 		return s.commitDistribution(state)
 	}
-	name := fmt.Sprintf("%x", state.pendingDigest)
+	name := fmt.Sprintf("%x", state.PendingDigest)
 	decision, err := loadNamedGeneration(s.config, s.storage, name, epochPredecessor(s.current))
 	if err != nil {
 		return fmt.Errorf("load pending Epoch: %w", err)
 	}
-	if decision.Header.ValidFrom.Unix() != state.pendingValidFrom {
+	if decision.Header.ValidFrom.Unix() != state.PendingValidFrom {
 		return errors.New("pending Epoch activation time disagrees with durable state")
 	}
 	// A retained old-schema pending generation must never become promotable

@@ -13,6 +13,27 @@ func Open(input Config) (*State, error) {
 	return open(input, nil, nil)
 }
 
+// OpenRetained opens already-initialized State history.
+// It cannot initialize missing State/participation histories. Signed acceptance,
+// conflict, time, serving and joined failure rules remain identical to Open.
+func OpenRetained(input Config) (*State, error) {
+	resolved, err := validateConfig(input)
+	if err != nil {
+		return nil, err
+	}
+	resolved.retainedHistory = true
+	if resolved.permitWork != nil {
+		if err = resolved.permitWork(); err != nil {
+			return nil, err
+		}
+	}
+	storage, err := durable.OpenRetained(resolved.root, storageLimits())
+	if err != nil {
+		return nil, err
+	}
+	return activateState(resolved, storage, nil, nil)
+}
+
 // OpenFresh is explicit initial preparation, never a recovery or retained
 // runtime opening. It requires a vacant existing root and refuses every prior
 // attempt. Ordinary signed acceptance and joined Close remain State-owned.

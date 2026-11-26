@@ -55,7 +55,7 @@ func TestSuccessorStateRetainedOpeningRunsPortableRules(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/domain/network/state/retained_open.go",
+			"internal/domain/network/state/open.go",
 			"internal/domain/network/state/retained_open_test.go",
 			"internal/domain/network/state/durable/retained_open.go",
 			"internal/domain/network/state/durable/retained_open_test.go",
@@ -2144,15 +2144,13 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if dependency == modulePath+"/internal/domain/network" {
 			switch sourceAdapter {
-			case "internal/domain/network/state/accepted_observation.go":
-				return inZone
 			case "internal/domain/network/state/closed_profile_role_join_test.go", "internal/domain/network/state/closed_runtime_view_test.go":
 				return inZone
 			case "internal/domain/network/state/acquisition_history.go":
 				return true
 			case "internal/domain/network/epoch/candidate_evaluation.go", "internal/domain/network/epoch/assignment.go":
 				return true
-			case "internal/domain/network/state/offline_operation.go", "internal/domain/network/state/epoch_history.go", "internal/domain/network/state/membership.go", "internal/domain/network/state/closed_member.go", "internal/domain/network/state/closed_runtime_view.go", "internal/domain/network/state/runtime_observation.go", "internal/domain/network/state/runtime_witness.go", "internal/domain/network/state/clock_observation.go", "internal/domain/network/state/closed_profile_view.go", "internal/domain/network/state/closed_duty_binding.go", "internal/domain/network/state/closed_profile_accept.go":
+			case "internal/domain/network/state/command/operation.go", "internal/domain/network/state/epoch_history.go", "internal/domain/network/state/membership.go", "internal/domain/network/state/closed_member.go", "internal/domain/network/state/closed_runtime_view.go", "internal/domain/network/state/runtime_observation.go", "internal/domain/network/state/runtime_witness.go", "internal/domain/network/state/clock_observation.go", "internal/domain/network/state/closed_profile_view.go", "internal/domain/network/state/closed_duty_binding.go", "internal/domain/network/state/closed_profile_accept.go":
 				return true
 			}
 		}
@@ -2219,10 +2217,14 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/reachability" || local == "internal/domain/route/channel" || local == "internal/domain/route/introduction" {
 				return true
 			}
-		case "internal/domain/network/state/offline_declaration.go":
-			if local == "internal/platform/artifacts" {
+		case "internal/domain/network/state/command/declaration.go":
+			return local == "internal/platform/artifacts" || local == "internal/domain/network/state"
+		case "internal/domain/network/state/command/operation.go", "internal/domain/network/state/command/cancellation_test.go":
+			if local == "internal/domain/network/state" {
 				return true
 			}
+		case "internal/domain/network/state/command/command.go":
+			return local == "internal/platform/artifacts" || local == "internal/domain/network"
 		case "internal/domain/endpoint/session/local_holder.go":
 			if local == "internal/domain/network" || local == "internal/domain/network/state" {
 				return true
@@ -2286,6 +2288,12 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
 	}
+	if dependency == modulePath+"/internal/domain/network/state/internal/distribution" {
+		return path.Dir(source) == "internal/domain/network/state"
+	}
+	if dependency == modulePath+"/internal/domain/network/state/command" {
+		return source == "cmd/ardents-next/network.go"
+	}
 	if dependency == modulePath+"/internal/domain/node/provisioning" {
 		switch source {
 		case "cmd/ardents-next/network.go":
@@ -2295,55 +2303,56 @@ func successorImportAllowed(source, dependency string) bool {
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
-		"internal/platform/processguard":                    {},
-		"internal/canonicaldigest":                          {},
-		"internal/durablefile":                              {},
-		"internal/pathcheck":                                {},
-		"internal/domain/node":                              {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/duty", "pathcheck", "platform/processguard", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
-		"internal/domain/network":                           {},
-		"internal/domain/network/canonicalcursor":           {},
-		"internal/domain/network/closedprofile":             {"domain/network/canonicalcursor"},
-		"internal/domain/network/duty":                      {"durablefile", "pathcheck"},
-		"internal/domain/network/epoch":                     {"domain/network/canonicalcursor"},
-		"internal/domain/network/source":                    {"domain/network/canonicalcursor", "domain/network/epoch"},
-		"internal/domain/network/source/serving":            {"domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/processguard"},
-		"internal/domain/network/source/servingdeclaration": {},
-		"internal/domain/network/state":                     {"domain/network/canonicalcursor", "canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathcheck"},
-		"internal/domain/network/state/durable":             {"durablefile", "pathcheck"},
-		"internal/domain/admission":                         {"domain/admission/issuerprofile"},
-		"internal/domain/admission/issuerprofile":           {},
-		"internal/domain/admission/allocation":              {"domain/admission"},
-		"internal/domain/custody":                           {"domain/admission", "domain/admission/allocation", "domain/publication"},
-		"internal/domain/admission/attempts":                {"pathcheck"},
-		"internal/domain/admission/spending":                {"pathcheck"},
-		"internal/domain/admission/token":                   {"domain/admission", "domain/admission/issuerprofile"},
-		"internal/domain/admission/receiving":               {"domain/admission", "domain/admission/token", "domain/admission/spending", "platform/artifacts"},
-		"internal/domain/admission/stock":                   {"domain/admission", "domain/admission/allocation", "domain/admission/attempts", "domain/admission/token"},
-		"internal/domain/admission/quota":                   {"domain/admission", "domain/admission/issuerprofile", "pathcheck"},
-		"internal/domain/admission/issuance":                {"canonicaldigest", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuerprofile/signing", "pathcheck"},
-		"internal/domain/admission/operator":                {"domain/admission", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/quota", "platform/artifacts"},
-		"internal/domain/admission/issuer":                  {"domain/admission", "domain/admission/quota", "domain/admission/issuance", "domain/admission/issuerprofile/signing", "pathcheck"},
-		"internal/domain/admission/issuerprofile/signing":   {"domain/admission/issuerprofile", "pathcheck"},
-		"internal/domain/hosting":                           {"canonicaldigest", "pathcheck"},
-		"internal/domain/publication":                       {},
-		"internal/domain/publication/durable":               {"domain/publication"},
-		"internal/domain/publication/instance":              {"canonicaldigest", "domain/publication", "domain/publication/durable", "domain/reachability", "domain/route/introduction", "domain/route/capsule", "domain/route/join", "domain/connection/wire", "domain/execution/runtime"},
-		"internal/domain/publication/runtime":               {"domain/connection", "domain/execution/runtime", "domain/network", "domain/publication", "domain/publication/instance", "domain/reachability", "domain/route", "domain/route/introduction", "domain/route/prefix", "domain/route/capsule", "domain/route/join"},
-		"internal/domain/connection":                        {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "domain/route/capsule", "domain/route/join", "domain/connection/wire"},
-		"internal/domain/connection/wire":                   {},
-		"internal/domain/reachability":                      {"domain/publication", "pathcheck"},
-		"internal/domain/enrollment":                        {"canonicaldigest", "pathcheck"},
-		"internal/domain/release":                           {"canonicaldigest", "durablefile", "pathcheck"},
-		"internal/domain/execution":                         {},
-		"internal/domain/execution/runtime":                 {"domain/execution", "domain/execution/worker"},
-		"internal/domain/execution/worker":                  {"platform/systemd", "domain/endpoint/unit", "canonicaldigest", "pathcheck"},
-		"internal/domain/release/endpoint":                  {"domain/enrollment", "domain/release"},
-		"internal/domain/release/infrastructure":            {"canonicaldigest", "domain/enrollment", "domain/release", "pathcheck"},
-		"internal/domain/release/infrastructure/launch":     {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
-		"internal/domain/endpoint/launch":                   {"domain/release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "domain/release", "platform/cgroup", "platform/systemd", "platform/process", "domain/endpoint/generation", "domain/endpoint/unit", "domain/endpoint/plan"},
-		"internal/platform/cgroup":                          {"pathcheck"},
-		"internal/platform/artifacts":                       {"durablefile", "pathcheck"},
-		"internal/domain/endpoint/plan":                     {"canonicaldigest", "durablefile"},
+		"internal/platform/processguard":                      {},
+		"internal/canonicaldigest":                            {},
+		"internal/durablefile":                                {},
+		"internal/pathcheck":                                  {},
+		"internal/domain/node":                                {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/duty", "pathcheck", "platform/processguard", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
+		"internal/domain/network":                             {},
+		"internal/domain/network/canonicalcursor":             {},
+		"internal/domain/network/closedprofile":               {"domain/network/canonicalcursor"},
+		"internal/domain/network/duty":                        {"durablefile", "pathcheck"},
+		"internal/domain/network/epoch":                       {"domain/network/canonicalcursor"},
+		"internal/domain/network/source":                      {"domain/network/canonicalcursor", "domain/network/epoch"},
+		"internal/domain/network/source/serving":              {"domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/processguard"},
+		"internal/domain/network/source/servingdeclaration":   {},
+		"internal/domain/network/state":                       {"canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathcheck"},
+		"internal/domain/network/state/internal/distribution": {"domain/network/canonicalcursor"},
+		"internal/domain/network/state/durable":               {"durablefile", "pathcheck"},
+		"internal/domain/admission":                           {"domain/admission/issuerprofile"},
+		"internal/domain/admission/issuerprofile":             {},
+		"internal/domain/admission/allocation":                {"domain/admission"},
+		"internal/domain/custody":                             {"domain/admission", "domain/admission/allocation", "domain/publication"},
+		"internal/domain/admission/attempts":                  {"pathcheck"},
+		"internal/domain/admission/spending":                  {"pathcheck"},
+		"internal/domain/admission/token":                     {"domain/admission", "domain/admission/issuerprofile"},
+		"internal/domain/admission/receiving":                 {"domain/admission", "domain/admission/token", "domain/admission/spending", "platform/artifacts"},
+		"internal/domain/admission/stock":                     {"domain/admission", "domain/admission/allocation", "domain/admission/attempts", "domain/admission/token"},
+		"internal/domain/admission/quota":                     {"domain/admission", "domain/admission/issuerprofile", "pathcheck"},
+		"internal/domain/admission/issuance":                  {"canonicaldigest", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuerprofile/signing", "pathcheck"},
+		"internal/domain/admission/operator":                  {"domain/admission", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/quota", "platform/artifacts"},
+		"internal/domain/admission/issuer":                    {"domain/admission", "domain/admission/quota", "domain/admission/issuance", "domain/admission/issuerprofile/signing", "pathcheck"},
+		"internal/domain/admission/issuerprofile/signing":     {"domain/admission/issuerprofile", "pathcheck"},
+		"internal/domain/hosting":                             {"canonicaldigest", "pathcheck"},
+		"internal/domain/publication":                         {},
+		"internal/domain/publication/durable":                 {"domain/publication"},
+		"internal/domain/publication/instance":                {"canonicaldigest", "domain/publication", "domain/publication/durable", "domain/reachability", "domain/route/introduction", "domain/route/capsule", "domain/route/join", "domain/connection/wire", "domain/execution/runtime"},
+		"internal/domain/publication/runtime":                 {"domain/connection", "domain/execution/runtime", "domain/network", "domain/publication", "domain/publication/instance", "domain/reachability", "domain/route", "domain/route/introduction", "domain/route/prefix", "domain/route/capsule", "domain/route/join"},
+		"internal/domain/connection":                          {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "domain/route/capsule", "domain/route/join", "domain/connection/wire"},
+		"internal/domain/connection/wire":                     {},
+		"internal/domain/reachability":                        {"domain/publication", "pathcheck"},
+		"internal/domain/enrollment":                          {"canonicaldigest", "pathcheck"},
+		"internal/domain/release":                             {"canonicaldigest", "durablefile", "pathcheck"},
+		"internal/domain/execution":                           {},
+		"internal/domain/execution/runtime":                   {"domain/execution", "domain/execution/worker"},
+		"internal/domain/execution/worker":                    {"platform/systemd", "domain/endpoint/unit", "canonicaldigest", "pathcheck"},
+		"internal/domain/release/endpoint":                    {"domain/enrollment", "domain/release"},
+		"internal/domain/release/infrastructure":              {"canonicaldigest", "domain/enrollment", "domain/release", "pathcheck"},
+		"internal/domain/release/infrastructure/launch":       {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
+		"internal/domain/endpoint/launch":                     {"domain/release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "domain/release", "platform/cgroup", "platform/systemd", "platform/process", "domain/endpoint/generation", "domain/endpoint/unit", "domain/endpoint/plan"},
+		"internal/platform/cgroup":                            {"pathcheck"},
+		"internal/platform/artifacts":                         {"durablefile", "pathcheck"},
+		"internal/domain/endpoint/plan":                       {"canonicaldigest", "durablefile"},
 
 		"internal/platform/systemd":           {},
 		"internal/platform/process":           {"canonicaldigest", "pathcheck"},
@@ -2722,7 +2731,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/domain/release/infrastructure/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
+		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || source == "internal/domain/network/state/command/cancellation_test.go" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
 			return true
 		}
 		if owner == "internal/domain/network/epoch" && dependency == modulePath+"/tests/epochfixture/assignment" {

@@ -142,7 +142,7 @@ func TestClosedRuntimeZeroAndCopiedFacts(t *testing.T) {
 		t.Fatal("expired member accepted")
 	}
 	owner.mu.Lock()
-	owner.distribution.conflicting = true
+	owner.distribution.Conflicting = true
 	owner.mu.Unlock()
 	if _, err := owner.CurrentRuntime(); err == nil {
 		t.Fatal("conflicting State exposed runtime facts")

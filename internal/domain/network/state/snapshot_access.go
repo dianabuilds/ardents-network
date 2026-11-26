@@ -49,19 +49,19 @@ func (s *State) snapshotWithDistribution(now time.Time) Snapshot {
 		return Snapshot{}
 	}
 	snapshot := snapshotFromEpoch(&s.current.Snapshot)
-	snapshot.Conflicting = s.distribution.conflicting
-	snapshot.SourceAttempts = uint16(len(s.distribution.history))
+	snapshot.Conflicting = s.distribution.Conflicting
+	snapshot.SourceAttempts = uint16(len(s.distribution.History))
 	snapshot.LatestCompleteness = "latest completeness unproven"
-	snapshot.ObservedEpochs = s.distribution.observedEpochs
-	snapshot.ObservedDigests = s.distribution.observedDigests
-	for index, outcome := range s.distribution.outcomes {
+	snapshot.ObservedEpochs = s.distribution.ObservedEpochs
+	snapshot.ObservedDigests = s.distribution.ObservedDigests
+	for index, outcome := range s.distribution.Outcomes {
 		snapshot.SourceOutcomes[index] = sourceOutcomeName(outcome)
 	}
-	if s.distribution.trustedTimeFloor != 0 {
-		snapshot.TrustedTime = time.Unix(s.distribution.trustedTimeFloor, 0).UTC()
+	if s.distribution.TrustedTimeFloor != 0 {
+		snapshot.TrustedTime = time.Unix(s.distribution.TrustedTimeFloor, 0).UTC()
 	}
-	if s.distribution.nextAutomatic != 0 {
-		snapshot.NextAutomatic = time.Unix(s.distribution.nextAutomatic, 0).UTC()
+	if s.distribution.NextAutomatic != 0 {
+		snapshot.NextAutomatic = time.Unix(s.distribution.NextAutomatic, 0).UTC()
 	}
 	if s.pendingDecision != nil {
 		snapshot.PendingEpoch = s.pendingDecision.Header.Number

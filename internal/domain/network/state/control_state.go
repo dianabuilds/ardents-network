@@ -5,52 +5,8 @@ import (
 	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
-
-const maximumSourceExposureHistory = 2
-
-// These values are persisted in the ARDS1D4 distribution journal. Renaming
-// in-memory states must never renumber an existing byte.
-// Zero is the unset purpose in a fresh root.
-const sourceCyclePurposeRefresh byte = 1
-
-const (
-	sourceAttemptNotStarted byte = iota
-	sourceAttemptInFlight
-	sourceAttemptCompleted
-	sourceAttemptFailed // includes a persisted interrupted attempt
-)
-
-const sourceDigestSlotOffset = 2
-
-// LATEST uses slots 0 and 1; BY_DIGEST uses slots 2 and 3.
-func digestAttemptSlot(sourceIndex int) int { return sourceDigestSlotOffset + sourceIndex }
-
-type distributionState struct {
-	sequence            uint64
-	epochFloor          uint64
-	epochDigest         [32]byte
-	trustedTimeFloor    int64
-	conflicting         bool
-	consecutiveFailures uint64
-	backoffLevel        byte
-	nextAutomatic       int64
-	history             [][32]byte
-	cycleID             uint64
-	cycleActive         bool
-	cyclePurpose        byte
-	cycleStarted        int64
-	cycleDeadline       int64
-	attempts            [4]byte
-	outcomes            [4]byte
-	requestedDigests    [2][32]byte
-	observedEpochs      [4]uint64
-	observedDigests     [4][32]byte
-	pendingDigest       [32]byte
-	pendingValidFrom    int64
-	cycleSeed           [32]byte
-	sourceOrder         [2]byte
-}
 
 func (s *State) loadDistributionState() error {
 	name, raw, err := s.storage.LoadControl()
@@ -63,30 +19,30 @@ func (s *State) loadDistributionState() error {
 		}
 		return nil
 	}
-	state, err := decodeDistributionState(raw)
-	if err != nil || distributionDigest(raw) != name {
+	state, err := distribution.Decode(raw)
+	if err != nil || distribution.Digest(raw) != name {
 		return errors.New("distribution generation is invalid")
 	}
-	if state.epochFloor != 0 && (s.current == nil || state.epochFloor > s.current.Snapshot.Epoch ||
-		state.epochFloor == s.current.Snapshot.Epoch && state.epochDigest != s.current.Snapshot.Digest) {
+	if state.EpochFloor != 0 && (s.current == nil || state.EpochFloor > s.current.Snapshot.Epoch ||
+		state.EpochFloor == s.current.Snapshot.Epoch && state.EpochDigest != s.current.Snapshot.Digest) {
 		if err := s.recoverDistributionActive(state); err != nil {
 			return err
 		}
 	}
-	if s.current != nil && state.epochFloor < s.current.Snapshot.Epoch {
+	if s.current != nil && state.EpochFloor < s.current.Snapshot.Epoch {
 		return errors.New("distribution security state is older than the active generation")
 	}
 	s.distribution = state
 	return s.recoverPendingState()
 }
 
-func (s *State) recoverDistributionActive(state distributionState) error {
-	name := fmt.Sprintf("%x", state.epochDigest)
+func (s *State) recoverDistributionActive(state distribution.Record) error {
+	name := fmt.Sprintf("%x", state.EpochDigest)
 	decision, err := loadStoredChain(s.config, s.storage, name)
 	if err != nil {
 		return fmt.Errorf("recover distribution active generation: %w", err)
 	}
-	if decision.Header.Number != state.epochFloor || decision.Header.Digest != state.epochDigest {
+	if decision.Header.Number != state.EpochFloor || decision.Header.Digest != state.EpochDigest {
 		return errors.New("distribution active identity disagrees with its generation")
 	}
 	// The floor repair must not activate a retired-schema generation (F-50).
@@ -100,24 +56,24 @@ func (s *State) recoverDistributionActive(state distributionState) error {
 	return nil
 }
 
-func (s *State) commitDistribution(state distributionState) error {
+func (s *State) commitDistribution(state distribution.Record) error {
 	return s.commitDistributionWithControl(state, s.storage.CommitControl)
 }
 
-func (s *State) commitDistributionWithControl(state distributionState, commit func(string, []byte) error) error {
+func (s *State) commitDistributionWithControl(state distribution.Record, commit func(string, []byte) error) error {
 	if s.closed {
 		return errors.New("network state is closed")
 	}
-	raw := encodeDistributionState(state)
-	if state.conflicting && !s.distribution.conflicting {
+	raw := distribution.Encode(state)
+	if state.Conflicting && !s.distribution.Conflicting {
 		s.invalidateRuntime()
 	}
-	name := distributionDigest(raw)
+	name := distribution.Digest(raw)
 	if err := commit(name, raw); err != nil {
 		if errors.Is(err, durable.ErrPointerSyncUncertain) {
 			s.terminalErr = fmt.Errorf("distribution control commit is uncertain: %w", err)
 			s.retireStateLocked()
-		} else if state.conflicting && !s.distribution.conflicting {
+		} else if state.Conflicting && !s.distribution.Conflicting {
 			// The conflict has already been verified. An ordinary
 			// pre-pointer failure cannot make the prior decision safe to serve.
 			s.terminalErr = fmt.Errorf("persist verified network state conflict: %w", err)

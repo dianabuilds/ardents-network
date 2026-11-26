@@ -190,7 +190,7 @@ network package, so the cursor lives inside the Network domain rather than as a
 top-level leaf (Phase 4, #834); it holds no root, marker, schema, authority or
 lifecycle, reads alias the caller's bytes, and each consumer keeps its distinct
 magic, field order, validation bounds and refusal prose. `internal/domain/network/epoch`,
-`internal/domain/network/closedprofile`, `internal/domain/network/state` (distribution
+`internal/domain/network/closedprofile`, `internal/domain/network/state/internal/distribution` (distribution
 journal) and `internal/domain/network/source` (bundle framing) consume it; Epoch's
 canonical text grammar stays in Epoch over the shared cursor. A shared technical
 mechanism does not merge grammars, authorities or lifecycle owners.

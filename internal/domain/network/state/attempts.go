@@ -19,7 +19,7 @@ func (s *State) beginLatestAttempt(index int) (bool, byte, error) {
 	if err != nil {
 		return false, 0, err
 	}
-	if state.sequence != s.distribution.sequence {
+	if state.Sequence != s.distribution.Sequence {
 		if err := s.commitDistribution(state); err != nil {
 			return false, 0, err
 		}

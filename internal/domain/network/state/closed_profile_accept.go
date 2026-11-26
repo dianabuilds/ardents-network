@@ -44,7 +44,7 @@ func (s *State) acceptClosedProfileWithCommit(raw []byte, commit func(durable.Cl
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.conflicting {
+	if s.closed || s.current == nil || s.current.Snapshot.Profile != closedRouteProfile || s.distribution.Conflicting {
 		return ProfileReceipt{}, errors.New("closed profile is unavailable")
 	}
 	generation, err := closedProfileGeneration(s.current.Snapshot.Generation)

@@ -5,9 +5,10 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
-func readRetainedInspection(cfg config, storage *durable.Inspection) (*epoch.Decision, distributionState, error) {
+func readRetainedInspection(cfg config, storage *durable.Inspection) (*epoch.Decision, distribution.Record, error) {
 	return readRetainedHistory(cfg, storage)
 }
 
