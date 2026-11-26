@@ -202,7 +202,7 @@ is never refunded. Wire debit and token spend remain outside Hosting.
 | internal/hosting sampler/shared observation | Budget.Sample; shared persisted measurement under lease, no copied global cache | TestSharedSnapshotFreshnessAndReservationVisibility; TestSampleDoesNotRenewExpiredPeriod |
 | internal/hosting storage and counters | Hosting root/transaction/counter implementation; fail closed on unknown continuity, no history reset | TestHostingLostCounterContinuityRefuses; TestForeignAndPendingStateRefusedWithoutMutation; TestHostingCorruptStateIsNeverInitializedAgain |
 | Existing work/termination reservation lifecycle | Hosting owns atomic capacity and one refund; consumer owns stop/join | TestCompletionCoverageDoesNotRenewWork; TestCopiedReservationCannotRefundAnotherHandle; TestHostingReleaseAfterPersistenceFailureStaysUnresolved |
-| internal/node/hosting control/join/admission/lifetime | Remain role consumers: role envelope construction and child lifetime do not belong in budget | Test-only composition demonstrates reservation ownership without role rules in Hosting |
+| internal/domain/node/hosting control/join/admission/lifetime | Remain role consumers: role envelope construction and child lifetime do not belong in budget | Test-only composition demonstrates reservation ownership without role rules in Hosting |
 | Admission token/quota/spending | Remain Admission; budget grants no token authority | TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen: actual issuance, durable spending, local transfer, release and replay refusal |
 | Network assignment/currentness | Remain Network; supplied facts are not authenticated by Hosting | Standalone command explicitly supplies operator assertions; no Network qualification |
 

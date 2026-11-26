@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/node"
-	nodecommand "github.com/dianabuilds/ardents-network/internal/node/command"
-	"github.com/dianabuilds/ardents-network/internal/node/provisioning"
+	"github.com/dianabuilds/ardents-network/internal/domain/node"
+	nodecommand "github.com/dianabuilds/ardents-network/internal/domain/node/command"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 )
 

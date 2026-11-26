@@ -54,7 +54,7 @@ purpose-3 Control: lookup (операция 2) и publish (операция 6). 
 история и долговечный Store ACK остаются здесь. Заглушка ACK не заменяет Store.
 
 **Где искать обязанности:** `internal/service/reachability`,
-`internal/endpoint/descriptorhistory`, resolution в `internal/node`.
+`internal/endpoint/descriptorhistory`, resolution в `internal/domain/node`.
 Старые владельцы не становятся runtime-зависимостями нового домена.
 
 **Основа:** [контракт](../../../docs/technical/private-reachability.md),
