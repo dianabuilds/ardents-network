@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
@@ -34,11 +35,11 @@ func admitClosedProfileSigning(raw, prepared []byte, pin string) (*networkSignin
 		return nil, errNetworkSigning
 	}
 	authority := authorityPin[:]
-	reference, err := preparationTime(plan.Reference)
+	reference, err := networkdraft.ParseTime(plan.Reference)
 	if err != nil {
 		return nil, errNetworkSigning
 	}
-	input, body, err := PrepareClosedNetworkProfile(plan.Profile)
+	input, body, err := networkdraft.ClosedProfile(plan.Profile)
 	digest := sha256.Sum256(body)
 	if err != nil || pin != hex.EncodeToString(digest[:]) || !bytes.Equal(body, prepared) {
 		return nil, errNetworkSigning

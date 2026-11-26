@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"os"
 	"path/filepath"
 	"sync"
@@ -21,7 +22,7 @@ func timedNetworkSigningArguments(t *testing.T, now, until time.Time) []string {
 	parent := sourceArtifactNativeParent(t)
 	p, key, _, _ := signingRecordFixture(t)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), until.Format(time.RFC3339)
-	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}

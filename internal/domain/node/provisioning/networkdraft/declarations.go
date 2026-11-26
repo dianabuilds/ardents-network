@@ -1,4 +1,4 @@
-package provisioning
+package networkdraft
 
 import (
 	"crypto/ed25519"
@@ -13,7 +13,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-var errNetworkPreparation = errors.New("network public preparation unavailable")
+// ErrUnavailable is the refusal for an unavailable public preparation.
+var ErrUnavailable = errors.New("network public preparation unavailable")
 
 // Public plans use exact lowercase hex, never Go's truncating fixed-array JSON
 // decoder. No private key, root, authority selection or signing input is read.
@@ -22,11 +23,11 @@ type preparationID [32]byte
 func (v *preparationID) UnmarshalJSON(raw []byte) error {
 	var text string
 	if json.Unmarshal(raw, &text) != nil {
-		return errNetworkPreparation
+		return ErrUnavailable
 	}
 	id, ok := canonicaldigest.Decode(text)
 	if !ok {
-		return errNetworkPreparation
+		return ErrUnavailable
 	}
 	*v = id
 	return nil
@@ -37,11 +38,11 @@ type preparationBytes []byte
 func (v *preparationBytes) UnmarshalJSON(raw []byte) error {
 	var text string
 	if json.Unmarshal(raw, &text) != nil || len(text) == 0 || len(text) > 2*epoch.MaxRecordBytes {
-		return errNetworkPreparation
+		return ErrUnavailable
 	}
 	b, err := hex.DecodeString(text)
 	if err != nil || hex.EncodeToString(b) != text {
-		return errNetworkPreparation
+		return ErrUnavailable
 	}
 	*v = b
 	return nil
@@ -109,45 +110,46 @@ func (p *profilePreparationKey) UnmarshalJSON(raw []byte) error {
 	return artifacts.DecodeDeclaration(raw, (*fields)(p), "window_start", "class", "spki")
 }
 
-func preparationTime(value string) (time.Time, error) {
+// ParseTime reads the canonical UTC seconds used by preparation and signing plans.
+func ParseTime(value string) (time.Time, error) {
 	t, ok := artifacts.ParseUTCSecond(value)
 	if !ok {
-		return time.Time{}, errNetworkPreparation
+		return time.Time{}, ErrUnavailable
 	}
 	return t, nil
 }
 
-// PrepareInitialNodeRecord returns the validated public facts and exact unsigned Record.
-func PrepareInitialNodeRecord(raw []byte) (epoch.InitialClosedRecord, []byte, error) {
+// NodeRecord returns the validated public facts and exact unsigned Record.
+func NodeRecord(raw []byte) (epoch.InitialClosedRecord, []byte, error) {
 	var p recordPreparationPlan
 	if artifacts.DecodeDeclaration(raw, &p, "schema", "network_id", "node_id", "valid_from", "valid_until", "family", "endpoint", "carrier", "capacity", "public_key") != nil || p.Schema != "ardents-initial-node-record-plan-v1" || p.Carrier != epoch.CarrierClosedTCP {
-		return epoch.InitialClosedRecord{}, nil, errNetworkPreparation
+		return epoch.InitialClosedRecord{}, nil, ErrUnavailable
 	}
-	from, e1 := preparationTime(p.From)
-	until, e2 := preparationTime(p.Until)
+	from, e1 := ParseTime(p.From)
+	until, e2 := ParseTime(p.Until)
 	if errors.Join(e1, e2) != nil {
-		return epoch.InitialClosedRecord{}, nil, errNetworkPreparation
+		return epoch.InitialClosedRecord{}, nil, ErrUnavailable
 	}
 	input := epoch.InitialClosedRecord{NetworkID: p.Network, NodeID: p.Node, ValidFrom: from, ValidUntil: until, Family: p.Family, Endpoint: p.Endpoint, Carrier: p.Carrier, Capacity: p.Capacity, PublicKey: append(ed25519.PublicKey(nil), p.PublicKey[:]...)}
 	message, err := epoch.PrepareInitialClosedRecord(input)
 	return input, message, err
 }
 
-// PrepareInitialEpoch returns the validated public facts and exact unsigned Epoch.
-func PrepareInitialEpoch(raw []byte) (epoch.InitialClosedEpoch, []byte, error) {
+// Epoch returns the validated public facts and exact unsigned Epoch.
+func Epoch(raw []byte) (epoch.InitialClosedEpoch, []byte, error) {
 	var p epochPreparationPlan
 	if artifacts.DecodeDeclaration(raw, &p, "schema", "network_id", "assignment_seed", "valid_from", "valid_until", "domains", "records", "authority_keys") != nil || p.Schema != "ardents-initial-epoch-plan-v1" || len(p.Records) == 0 || len(p.Records) > 64 || len(p.Authorities) == 0 || len(p.Authorities) > 16 || len(p.Domains) == 0 || len(p.Domains) > 16 {
-		return epoch.InitialClosedEpoch{}, nil, errNetworkPreparation
+		return epoch.InitialClosedEpoch{}, nil, ErrUnavailable
 	}
-	from, e1 := preparationTime(p.From)
-	until, e2 := preparationTime(p.Until)
+	from, e1 := ParseTime(p.From)
+	until, e2 := ParseTime(p.Until)
 	if errors.Join(e1, e2) != nil {
-		return epoch.InitialClosedEpoch{}, nil, errNetworkPreparation
+		return epoch.InitialClosedEpoch{}, nil, ErrUnavailable
 	}
 	input := epoch.InitialClosedEpoch{NetworkID: p.Network, AssignmentSeed: p.Seed, ValidFrom: from, ValidUntil: until, Carrier: epoch.CarrierClosedTCP}
 	for _, domain := range p.Domains {
 		if domain == nil {
-			return epoch.InitialClosedEpoch{}, nil, errNetworkPreparation
+			return epoch.InitialClosedEpoch{}, nil, ErrUnavailable
 		}
 		input.Domains = append(input.Domains, *domain)
 	}
@@ -161,25 +163,25 @@ func PrepareInitialEpoch(raw []byte) (epoch.InitialClosedEpoch, []byte, error) {
 	return input, message, err
 }
 
-// PrepareClosedNetworkProfile returns the validated public facts and exact unsigned profile.
-func PrepareClosedNetworkProfile(raw []byte) (closedprofile.Input, []byte, error) {
+// ClosedProfile returns the validated public facts and exact unsigned profile.
+func ClosedProfile(raw []byte) (closedprofile.Input, []byte, error) {
 	var p profilePreparationPlan
 	if artifacts.DecodeDeclaration(raw, &p, "schema", "network_id", "state_generation", "epoch_digest", "issuer_node_id", "issuance_authority_key", "epoch", "not_before", "not_after", "nodes", "token_keys") != nil || p.Schema != "ardents-closed-profile-plan-v1" || len(p.Nodes) == 0 || len(p.Nodes) > closedprofile.MaxNodes || len(p.Keys) == 0 || len(p.Keys) > closedprofile.MaxKeys {
-		return closedprofile.Input{}, nil, errNetworkPreparation
+		return closedprofile.Input{}, nil, ErrUnavailable
 	}
-	from, e1 := preparationTime(p.From)
-	until, e2 := preparationTime(p.Until)
+	from, e1 := ParseTime(p.From)
+	until, e2 := ParseTime(p.Until)
 	if errors.Join(e1, e2) != nil {
-		return closedprofile.Input{}, nil, errNetworkPreparation
+		return closedprofile.Input{}, nil, ErrUnavailable
 	}
 	input := closedprofile.Input{NetworkID: p.Network, StateGeneration: p.Generation, EpochDigest: p.Digest, IssuerNodeID: p.Issuer, IssuanceAuthorityKey: p.Authority, Epoch: p.Epoch, NotBefore: from, NotAfter: until}
 	for _, n := range p.Nodes {
 		input.Nodes = append(input.Nodes, closedprofile.NodeInput{NodeID: n.Node, RecordDigest: n.Record, RoleDomain: n.Domain, Subrole: n.Subrole, DutyGeneration: n.Duty})
 	}
 	for _, k := range p.Keys {
-		window, e := preparationTime(k.Window)
+		window, e := ParseTime(k.Window)
 		if e != nil {
-			return closedprofile.Input{}, nil, errNetworkPreparation
+			return closedprofile.Input{}, nil, ErrUnavailable
 		}
 		input.TokenKeys = append(input.TokenKeys, closedprofile.TokenKeyInput{WindowStart: window, Class: k.Class, SPKI: k.SPKI})
 	}

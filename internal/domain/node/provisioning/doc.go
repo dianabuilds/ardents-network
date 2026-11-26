@@ -9,9 +9,10 @@
 // native role tests exercise this entry composition through pinned programs.
 //
 // Responsibility clusters and their tests:
-//   - portable public preparation of detached unsigned bytes:
-//     network_artifact_preparation.go, network_preparation_contract.go
-//     (network_public_preparation_test.go)
+//   - networkdraft owns the public declaration grammar and unsigned bytes.
+//     network_public_preparation_test.go checks the prepared bytes against
+//     independent signing inputs; network_preparation_contract.go owns the
+//     completed artifact receipt.
 //   - shared public identifier grammar: public_identifier_unix.go
 //     (public_identifier_unix_test.go; unix)
 //   - Node transport certificate codec: node_certificate_unix.go

@@ -35,6 +35,29 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		!strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/") {
 		return true
 	}
+	if dependency == modulePath+"/internal/domain/node/provisioning/networkdraft" {
+		switch source {
+		case "internal/domain/node/provisioning/network_certificate_signing_unix.go",
+			"internal/domain/node/provisioning/network_certificate_signing_unix_test.go",
+			"internal/domain/node/provisioning/network_commands.go",
+			"internal/domain/node/provisioning/network_inventory_native_linux_test.go",
+			"internal/domain/node/provisioning/network_output_linux.go",
+			"internal/domain/node/provisioning/network_preparation_linux.go",
+			"internal/domain/node/provisioning/network_preparation_other.go",
+			"internal/domain/node/provisioning/network_profile_native_linux_test.go",
+			"internal/domain/node/provisioning/network_profile_signing_unix.go",
+			"internal/domain/node/provisioning/network_public_preparation_test.go",
+			"internal/domain/node/provisioning/network_record_preparation_test.go",
+			"internal/domain/node/provisioning/network_signing_custody_native_linux_test.go",
+			"internal/domain/node/provisioning/network_signing_declaration_unix.go",
+			"internal/domain/node/provisioning/network_signing_fixture_unix_test.go",
+			"internal/domain/node/provisioning/network_signing_linux.go",
+			"internal/domain/node/provisioning/network_signing_test.go":
+			return true
+		}
+		return false
+	}
+
 	switch source {
 	case "internal/domain/network/state/source_state_files_linux.go":
 		switch dependency {
@@ -215,7 +238,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		case modulePath + "/internal/domain/release", modulePath + "/internal/domain/release/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/domain/node/provisioning/network_artifact_preparation.go":
+	case "internal/domain/node/provisioning/networkdraft/declarations.go":
 		switch dependency {
 		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts", modulePath + "/internal/domain/network/epoch", modulePath + "/internal/domain/network/closedprofile":
 			return true

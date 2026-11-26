@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 
 func publicEpochFixture(t *testing.T) (map[string]any, ed25519.PrivateKey, [][]byte, networkfixture.Epoch, time.Time) {
 	t.Helper()
-	from, _ := preparationTime("2033-05-22T05:20:00Z")
+	from, _ := networkdraft.ParseTime("2033-05-22T05:20:00Z")
 	until := from.Add(time.Hour)
 	reference := from.Add(time.Minute)
 	stateKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{74}, 32))
@@ -73,20 +74,20 @@ func TestPublicNetworkPreparationPortable(t *testing.T) {
 	recordKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{71}, 32))
 	defer clear(recordKey)
 	recordPlan := preparationRecordPlan(recordKey.Public().(ed25519.PublicKey))
-	name, unsigned, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, recordPlan))
+	name, unsigned, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, recordPlan))
 	if err != nil || name != "node-record.signing-input" || len(unsigned) == 0 {
 		t.Fatalf("portable Record preparation failed: %q: %v", name, err)
 	}
 	epochPlan, epochKey, _, signedEpoch, _ := publicEpochFixture(t)
 	defer clear(epochKey)
-	name, unsigned, err = PrepareNetworkPublic("prepare-initial-epoch", preparationJSON(t, epochPlan))
+	name, unsigned, err = networkdraft.Prepare("prepare-initial-epoch", preparationJSON(t, epochPlan))
 	if err != nil || name != "epoch.unsigned" || len(unsigned) >= len(signedEpoch.Raw) ||
 		!bytes.Equal(unsigned, signedEpoch.Raw[:len(unsigned)]) {
 		t.Fatalf("portable Epoch does not match the signed fixture prefix: %q: %v", name, err)
 	}
 	profilePlan, profileKey, body, _ := signingProfileFixture(t, time.Unix(1800003600, 0).UTC().Add(time.Minute))
 	defer clear(profileKey)
-	name, unsigned, err = PrepareNetworkPublic("prepare-closed-profile", preparationJSON(t, profilePlan))
+	name, unsigned, err = networkdraft.Prepare("prepare-closed-profile", preparationJSON(t, profilePlan))
 	if err != nil || name != "profile.unsigned" || !bytes.Equal(unsigned, body) {
 		t.Fatalf("portable profile differs from the independent body: %q: %v", name, err)
 	}

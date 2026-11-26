@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ func TestNetworkPreparationRecordIndependentBytesAndStrictInputs(t *testing.T) {
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, 32))
 	public := key.Public().(ed25519.PublicKey)
 	p := preparationRecordPlan(public)
-	name, got, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	name, got, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil || name != "node-record.signing-input" {
 		t.Fatal(name, err)
 	}
@@ -40,14 +41,14 @@ func TestNetworkPreparationRecordIndependentBytesAndStrictInputs(t *testing.T) {
 		t.Run(change.field+"-"+string(preparationJSON(t, change.value)), func(t *testing.T) {
 			q := preparationRecordPlan(public)
 			q[change.field] = change.value
-			if _, b, e := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, q)); e == nil || b != nil {
+			if _, b, e := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, q)); e == nil || b != nil {
 				t.Fatal("invalid public plan accepted")
 			}
 		})
 	}
 	raw := preparationJSON(t, p)
 	for _, bad := range [][]byte{append(bytes.Clone(raw), raw...), append(bytes.Clone(raw), []byte(" true")...), []byte("[]"), []byte("null"), bytes.Replace(raw, []byte(`"capacity":3`), []byte(`"capacity":3,"capacity":3`), 1), bytes.Replace(raw, []byte(`"capacity":3`), []byte(`"capacity":null`), 1)} {
-		if _, b, e := PrepareNetworkPublic("prepare-initial-node-record", bad); e == nil || b != nil {
+		if _, b, e := networkdraft.Prepare("prepare-initial-node-record", bad); e == nil || b != nil {
 			t.Fatal("duplicate/trailing/null plan accepted", string(bad))
 		}
 	}

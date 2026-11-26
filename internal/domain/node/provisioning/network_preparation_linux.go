@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,14 +22,14 @@ import (
 // output floor (artifacts.PublishUnsigned), so the operation keeps its Linux
 // boundary until a macOS storage floor is selected (portability audit #848).
 func PrepareNetworkArtifact(ctx context.Context, operation, input, output string) (PreparedNetworkArtifact, error) {
-	if ctx == nil || !IsNetworkPreparation(operation) {
-		return PreparedNetworkArtifact{}, errNetworkPreparation
+	if ctx == nil || !networkdraft.IsPreparation(operation) {
+		return PreparedNetworkArtifact{}, networkdraft.ErrUnavailable
 	}
 	raw, err := readNetworkPreparation(ctx, input)
-	if err != nil || len(raw) > MaximumNetworkPreparationPlan {
-		return PreparedNetworkArtifact{}, errors.Join(errNetworkPreparation, err)
+	if err != nil || len(raw) > networkdraft.MaximumPlanBytes {
+		return PreparedNetworkArtifact{}, errors.Join(networkdraft.ErrUnavailable, err)
 	}
-	name, message, err := PrepareNetworkPublic(operation, raw)
+	name, message, err := networkdraft.Prepare(operation, raw)
 	if err != nil {
 		return PreparedNetworkArtifact{}, err
 	}
@@ -53,29 +54,29 @@ func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err e
 	}
 	defer func() { err = errors.Join(err, f.Close()) }()
 	before, err := f.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Size() > MaximumNetworkPreparationPlan {
-		return nil, errors.Join(errNetworkPreparation, err)
+	if err != nil || !before.Mode().IsRegular() || before.Size() > networkdraft.MaximumPlanBytes {
+		return nil, errors.Join(networkdraft.ErrUnavailable, err)
 	}
 	initial, ok := before.Sys().(*syscall.Stat_t)
 	if !ok || initial.Nlink != 1 {
-		return nil, errNetworkPreparation
+		return nil, networkdraft.ErrUnavailable
 	}
-	raw, err = io.ReadAll(io.LimitReader(f, MaximumNetworkPreparationPlan+1))
-	if err != nil || len(raw) > MaximumNetworkPreparationPlan {
-		return nil, errors.Join(errNetworkPreparation, err)
+	raw, err = io.ReadAll(io.LimitReader(f, networkdraft.MaximumPlanBytes+1))
+	if err != nil || len(raw) > networkdraft.MaximumPlanBytes {
+		return nil, errors.Join(networkdraft.ErrUnavailable, err)
 	}
 	after, e := f.Stat()
 	if e != nil || !os.SameFile(before, after) || before.Size() != after.Size() || before.ModTime() != after.ModTime() {
-		return nil, errors.Join(errNetworkPreparation, e)
+		return nil, errors.Join(networkdraft.ErrUnavailable, e)
 	}
 	final, ok := after.Sys().(*syscall.Stat_t)
 	if !ok || final.Nlink != 1 {
-		return nil, errNetworkPreparation
+		return nil, networkdraft.ErrUnavailable
 	}
 	initialCtime, initialOK := durablefile.InodeChangeTime(before)
 	finalCtime, finalOK := durablefile.InodeChangeTime(after)
 	if !initialOK || !finalOK || finalCtime != initialCtime {
-		return nil, errNetworkPreparation
+		return nil, networkdraft.ErrUnavailable
 	}
 	linked, e := p.OpenFile(filepath.Base(path))
 	if e != nil {
@@ -84,7 +85,7 @@ func readNetworkPreparation(ctx context.Context, path string) (raw []byte, err e
 	observed, e := linked.Stat()
 	e = errors.Join(e, linked.Close(), p.Check(), ctx.Err())
 	if e != nil || !os.SameFile(before, observed) {
-		return nil, errors.Join(errNetworkPreparation, e)
+		return nil, errors.Join(networkdraft.ErrUnavailable, e)
 	}
 	return raw, nil
 }

@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"math/big"
 	"time"
@@ -28,11 +29,11 @@ func admitNodeCertificate(raw, signed []byte, pin string) (*networkSigning, erro
 	if preparationObject(raw, &plan, "schema", "reference_time", "record") != nil || plan.Schema != "ardents-node-certificate-plan-v1" {
 		return nil, errNetworkSigning
 	}
-	reference, err := preparationTime(plan.Reference)
+	reference, err := networkdraft.ParseTime(plan.Reference)
 	if err != nil {
 		return nil, errNetworkSigning
 	}
-	_, prepared, err := PrepareInitialNodeRecord(plan.Record)
+	_, prepared, err := networkdraft.NodeRecord(plan.Record)
 	digest := sha256.Sum256(signed)
 	if err != nil || pin != hex.EncodeToString(digest[:]) {
 		return nil, errNetworkSigning

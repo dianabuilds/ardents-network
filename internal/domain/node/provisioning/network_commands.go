@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"path/filepath"
 	"time"
@@ -24,7 +25,7 @@ func RunNetworkArtifacts(ctx context.Context, args []string, out io.Writer) int 
 		return runInitialKeys(ctx, args, out)
 	case IsNetworkSigning(operation):
 		return runNetworkSigning(ctx, args, out)
-	case IsNetworkPreparation(operation):
+	case networkdraft.IsPreparation(operation):
 		return runNetworkPreparation(ctx, args, out)
 	default:
 		return 2

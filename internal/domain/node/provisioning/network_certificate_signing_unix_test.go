@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"io"
 	"testing"
 	"time"
@@ -26,7 +27,7 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	p, key, _, _ := signingRecordFixture(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
-	_, message, err := PrepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
+	_, message, err := networkdraft.Prepare("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,8 +53,8 @@ func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	from, _ := preparationTime(p["valid_from"].(string))
-	until, _ := preparationTime(p["valid_until"].(string))
+	from, _ := networkdraft.ParseTime(p["valid_from"].(string))
+	until, _ := networkdraft.ParseTime(p["valid_until"].(string))
 	// Independent oracle consumes actual DER, not the generator template or its
 	// verifier. No deterministic serial/DER expectation is imposed.
 	if !bytes.Equal(c.PublicKey.(ed25519.PublicKey), key.Public().(ed25519.PublicKey)) ||

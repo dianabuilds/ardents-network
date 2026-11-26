@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/networkdraft"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
@@ -44,13 +45,13 @@ type networkSignedArtifact struct {
 func preparationObject(raw []byte, value any, keys ...string) error {
 	var fields map[string]json.RawMessage
 	if artifacts.DecodeDeclaration(raw, &fields, keys...) != nil || artifacts.DecodeObject(raw, value) != nil {
-		return errNetworkPreparation
+		return networkdraft.ErrUnavailable
 	}
 	return nil
 }
 
 func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*networkSigning, error) {
-	if !IsNetworkSigning(operation) || len(raw) > MaximumNetworkPreparationPlan {
+	if !IsNetworkSigning(operation) || len(raw) > networkdraft.MaximumPlanBytes {
 		return nil, errNetworkSigning
 	}
 	if operation == "sign-closed-profile" {
@@ -71,20 +72,20 @@ func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*n
 	if preparationObject(raw, &plan, "schema", "reference_time", field) != nil || plan.Schema != "ardents-initial-"+schemaPurpose+"-signing-plan-v1" {
 		return nil, errNetworkSigning
 	}
-	reference, err := preparationTime(plan.Reference)
+	reference, err := networkdraft.ParseTime(plan.Reference)
 	if err != nil {
 		return nil, errNetworkSigning
 	}
 	s := &networkSigning{operation: operation, networkSigningInterval: networkSigningInterval{reference: reference}}
 	if field == "record" {
-		input, message, err := PrepareInitialNodeRecord(plan.Record)
+		input, message, err := networkdraft.NodeRecord(plan.Record)
 		if err != nil {
 			return nil, errNetworkSigning
 		}
 		s.from, s.until = input.ValidFrom, input.ValidUntil
 		s.message, s.public, s.network = message, input.PublicKey, input.NetworkID
 	} else {
-		input, message, err := PrepareInitialEpoch(plan.Epoch)
+		input, message, err := networkdraft.Epoch(plan.Epoch)
 		if err != nil || len(input.AuthorityKeys) != 1 {
 			return nil, errNetworkSigning
 		}
