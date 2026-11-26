@@ -71,7 +71,8 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		return write()
 	}
 	o, telemetryErr := telemetry.Open(endpoint)
-	finish := o.Begin("ardents.hosting", r.Operation)
+	observedOperation := telemetry.LookupOperation(r.Operation)
+	finish := o.Begin(observedOperation)
 	r.Phase = "execute"
 	result, err := hosting.ExecuteLocal(ctx, args[0], p)
 	if result.Sampled {
@@ -82,7 +83,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		r.Phase = "close"
 	}
 	r.Outcome = hosting.Outcome(err)
-	finish(r.Phase, r.Outcome)
+	finish(observedOperation.Classify(r.Phase, r.Outcome))
 	delivery := o.CloseWithStatus(telemetryErr)
 	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome, Telemetry string }{r.Operation, r.Phase, string(r.Outcome), string(delivery)})
 	return write()

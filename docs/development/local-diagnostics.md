@@ -25,6 +25,18 @@ identities, addresses, paths, keys, credentials, application data or cross-role
 correlation identifiers into labels, events or trace context. See the
 [product diagnostic rules](../product/operating-model.md#diagnostics).
 
+`telemetry.Operation` selects one of the eleven existing command observations;
+its private catalogue fixes scope, operation, phase and outcome spellings.
+Adapters classify owner results into an opaque `Completion`. Unknown operations,
+foreign or unclassified completions and repeated completion make delivery
+`unavailable`; unclassified observations produce neither spans nor metrics.
+Validation happens before SDK data is constructed. Span timestamps and duration
+still measure the original Begin-to-completion interval. A catalogue entry admits
+an export label; it neither defines domain policy nor grants operation authority.
+Add a producer only with its owning categories and real consumer verification.
+The existing `ardents.issuance` scope also covers identity import and binding
+preparation; this adapter identity does not establish domain-wide coverage.
+
 The common contract applies across the project. Today the finite Admission,
 Issuance and Hosting command adapters use the shared OTLP exporter. Current
 Node, Endpoint and Source command reports are distinct local results; they do
@@ -37,7 +49,7 @@ retains its own contract and access boundary.
 
 The exporter supplies one delivery classification: `local-only` when explicitly
 disabled, `completed` after successful joined export, and `unavailable` after an
-opening or export failure. Admission and Hosting retain their existing stderr
+opening, classification or export failure. Admission and Hosting retain their existing stderr
 field spelling; Issuance, results and issuer-profile stderr add `telemetry` next
 to operation/phase/outcome. Their stdout result fields, exit status and durable
 operation outcome remain separate. No raw collector error is printed. An early
