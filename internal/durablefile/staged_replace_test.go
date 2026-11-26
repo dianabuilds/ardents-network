@@ -54,6 +54,12 @@ func TestCleanupGenerationsKeepsCurrentAndPrevious(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "watermark"), []byte("keep"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "state-not-a-digest"), []byte("prune"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "state-directory"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := CleanupGenerations(root, current, previous); err != nil {
 		t.Fatal(err)
 	}
@@ -67,5 +73,11 @@ func TestCleanupGenerationsKeepsCurrentAndPrevious(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "watermark")); err != nil {
 		t.Fatalf("non-generation entry removed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "state-not-a-digest")); !os.IsNotExist(err) {
+		t.Fatalf("unretained state entry remains: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "state-directory")); err != nil {
+		t.Fatalf("directory removed: %v", err)
 	}
 }

@@ -7,10 +7,11 @@ import (
 	"strings"
 )
 
-// CleanupGenerations removes every content-addressed generation other than the
-// retained current and previous names, then syncs the directory. Directories and
-// non-generation entries are left untouched; a concurrently removed generation
-// is not an error.
+// CleanupGenerations removes non-directory entries in the caller-owned state-
+// namespace, except the current and previous names, then syncs the directory.
+// The suffix need not be a canonical generation digest. Entries outside that
+// namespace and directories are left untouched; a concurrently removed entry
+// is not an error. The caller must supply an exclusively owned root.
 func CleanupGenerations(root, current, previous string) error {
 	entries, err := os.ReadDir(root)
 	if err != nil {
