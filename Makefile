@@ -167,7 +167,7 @@ test-race:
 race-shard-packages:
 	@set -eu; \
 	case "$(RACE_SHARD)" in 0|1|2|3) ;; *) echo "RACE_SHARD must be 0, 1, 2 or 3" >&2; exit 2;; esac; \
-	printf '%s\n' $(UNIT_PACKAGES) | awk -v shard="$(RACE_SHARD)" '{ assigned = ($$0 ~ /\/internal\/custody$$/) ? 3 : (NR-1)%4; if (assigned == shard) print }'
+	printf '%s\n' $(UNIT_PACKAGES) | awk -v shard="$(RACE_SHARD)" '{ assigned = ($$0 ~ /\/internal\/domain\/custody$$/) ? 3 : (NR-1)%4; if (assigned == shard) print }'
 
 test-race-shard:
 	@set -eu; \
@@ -461,7 +461,7 @@ issuer-profile-check:
 
 .PHONY: custody-check
 custody-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/custody ./internal/custody/command ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/custody ./internal/domain/custody/command ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
 	go test golang.org/x/crypto/argon2 -run '^(TestArgon2|TestVectors)$$' -count=1
 
 .PHONY: source-process-check

@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 	"golang.org/x/term"
 )
 

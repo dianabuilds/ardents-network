@@ -138,7 +138,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		}
 	case "internal/domain/node/provisioning/forwarding_token_authority_native_linux_test.go":
 		switch dependency {
-		case modulePath + "/internal/admission", modulePath + "/internal/admission/issuer", modulePath + "/internal/admission/quota", modulePath + "/internal/admission/receiving", modulePath + "/internal/admission/stock", modulePath + "/internal/admission/token", modulePath + "/internal/custody", modulePath + "/internal/network", modulePath + "/internal/network/source", modulePath + "/internal/network/state":
+		case modulePath + "/internal/admission", modulePath + "/internal/admission/issuer", modulePath + "/internal/admission/quota", modulePath + "/internal/admission/receiving", modulePath + "/internal/admission/stock", modulePath + "/internal/admission/token", modulePath + "/internal/domain/custody", modulePath + "/internal/network", modulePath + "/internal/network/source", modulePath + "/internal/network/state":
 			return true
 		}
 	case "internal/domain/node/provisioning/node_certificate_unix_test.go",

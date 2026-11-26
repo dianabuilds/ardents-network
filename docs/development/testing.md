@@ -3207,7 +3207,7 @@ before `provisioning.PrepareInitialNetworkKeys`), the issuance owned-destination
 inventory refusal (`internal/admission/issuance/inventory_delivery_test.go`,
 refused before the platform seam), and the custody symlinked-record-directory
 authority-birth refusal (merged into
-`internal/custody/independent_root_refusal_test.go`, portable `os.ReadDir`
+`internal/domain/custody/independent_root_refusal_test.go`, portable `os.ReadDir`
 symlink typing and the shared Windows/non-Windows durability). The compiled
 publication root-preparation control
 (`tests/e2e/service/publication_root_process_test.go`) is Linux+Windows only,

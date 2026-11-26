@@ -1,5 +1,5 @@
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
-github.com/dianabuilds/ardents-network/internal/custody/command
+github.com/dianabuilds/ardents-network/internal/domain/custody/command
 github.com/dianabuilds/ardents-network/internal/application/administration
 github.com/dianabuilds/ardents-network/internal/diagnostics/process
 github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry
@@ -78,7 +78,7 @@ github.com/dianabuilds/ardents-network/internal/endpoint/generation
 github.com/dianabuilds/ardents-network/internal/endpoint/unit
 github.com/dianabuilds/ardents-network/internal/execution/worker
 github.com/dianabuilds/ardents-network/internal/connection
-github.com/dianabuilds/ardents-network/internal/custody
+github.com/dianabuilds/ardents-network/internal/domain/custody
 github.com/dianabuilds/ardents-network/internal/processresource
 github.com/dianabuilds/ardents-network/internal/durablefile
 github.com/dianabuilds/ardents-network/internal/canonicaldigest
