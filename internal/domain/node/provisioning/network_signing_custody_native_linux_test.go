@@ -31,7 +31,7 @@ import (
 // through the compiled command.
 func nativeCertificateArguments(t *testing.T) []string {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
+	parent := provisionfixture.ProtectedExt4Parent(t)
 	keyPlan := filepath.Join(parent, "initial-keys")
 	keyRoot := filepath.Join(parent, "keys")
 	write := func(path string, payload []byte) {

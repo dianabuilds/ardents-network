@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"

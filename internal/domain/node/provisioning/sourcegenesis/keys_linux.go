@@ -1,4 +1,4 @@
-package provisioning
+package sourcegenesis
 
 import (
 	"bytes"
@@ -10,12 +10,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func runSourceInitialKeys(args []string, out io.Writer) error {

@@ -17,11 +17,12 @@ import (
 	"time"
 
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func initialKeyArguments(t *testing.T, count int) (string, string) {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
+	parent := networkfixture.ProtectedExt4Parent(t)
 	plan, root := filepath.Join(parent, "plan.json"), filepath.Join(parent, "keys")
 	raw := fmt.Sprintf(`{"schema":"ardents-initial-keys-plan-v1","operation":"prepare-initial-keys","node_count":%d}`, count)
 	if e := os.WriteFile(plan, []byte(raw), 0600); e != nil {
@@ -343,7 +344,7 @@ func TestNetworkSigningInitialKeysNonrootChild(t *testing.T) {
 }
 
 func TestNetworkSigningInitialKeysNonroot(t *testing.T) {
-	sourceArtifactNativeParent(t)
+	networkfixture.ProtectedExt4Parent(t)
 	// The Go driver may keep the original image below a root-only build
 	// directory. Re-execute its exact bytes under a traversable fixture root so
 	// credential admission is exercised even with a private driver TMPDIR.

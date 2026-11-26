@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"
@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func TestRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T) {
@@ -28,11 +29,11 @@ func TestRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T) {
 
 func testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T, role nodeProvisioningRole) {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
-	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	command, _ := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
-		output, err := provisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
+		output, err := networkfixture.ProvisionCommand(t, command, append([]string{string(role)}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("canonical Node preparation refused", args[0], err, string(output))
 		}
@@ -126,14 +127,14 @@ func testRoleNodeProvisionNativeCanonicalKeyRecordAndCertificate(t *testing.T, r
 			input, raw = recordPath, record
 		}
 		output := filepath.Join(parent, "wrong-key-"+op)
-		if out, err := provisionCommand(t, command, string(role), op, planPath, input, pin(raw), filepath.Join(otherDir, "node-key.pem"), output).CombinedOutput(); err == nil || bytes.Contains(out, []byte(`"runtime_authority"`)) {
+		if out, err := networkfixture.ProvisionCommand(t, command, string(role), op, planPath, input, pin(raw), filepath.Join(otherDir, "node-key.pem"), output).CombinedOutput(); err == nil || bytes.Contains(out, []byte(`"runtime_authority"`)) {
 			t.Fatal("wrong original key accepted", op, err)
 		}
 		if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {
 			t.Fatal("wrong key created output", op, err)
 		}
 	}
-	if _, err := provisionCommand(t, command, string(role), "prepare-node-key", keyDir).CombinedOutput(); err == nil {
+	if _, err := networkfixture.ProvisionCommand(t, command, string(role), "prepare-node-key", keyDir).CombinedOutput(); err == nil {
 		t.Fatal("existing private key output adopted")
 	}
 	if after, err := os.Lstat(privatePath); err != nil || !os.SameFile(privateInfo, after) || after.Mode() != privateInfo.Mode() || after.ModTime() != privateInfo.ModTime() {

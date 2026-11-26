@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"
@@ -26,6 +26,7 @@ import (
 	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 // Only the test front-end supplies this fresh in-memory password. Production
@@ -48,8 +49,8 @@ func (forwardingTokenTestSecrets) Confirm(context.Context, custody.ConfirmationP
 }
 
 func TestForwardingTokenAuthorityNativeGenuineCustodyStateAndStock(t *testing.T) {
-	parent := sourceArtifactNativeParent(t)
-	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	command, _ := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	secret := make([]byte, 32)
 	if _, err := rand.Read(secret); err != nil {
 		t.Fatal(err)

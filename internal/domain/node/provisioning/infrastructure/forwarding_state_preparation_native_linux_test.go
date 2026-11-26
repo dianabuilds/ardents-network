@@ -1,11 +1,12 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,7 +35,7 @@ func prepareForwardingStateNativeCohort(t *testing.T, command, parent string, pe
 	}
 	call := func(args ...string) []byte {
 		t.Helper()
-		raw, err := provisionCommand(t, command, append([]string{"forwarding"}, args...)...).CombinedOutput()
+		raw, err := networkfixture.ProvisionCommand(t, command, append([]string{"forwarding"}, args...)...).CombinedOutput()
 		if err != nil {
 			t.Fatal("actual canonical State preparation input", args[0], err, string(raw))
 		}

@@ -348,8 +348,11 @@ Source, Forwarding, JOIN and Descriptor. It derives the public keys from
 each role's generated fixture files and compares the exact receipt bytes,
 including the operation, threshold and digests. It checks that an occupied
 output produces no second receipt.
+The fixed-role tests live in `internal/domain/node/provisioning/infrastructure`.
 The same selection executes the affected Forwarding Node, Epoch, profile,
-token-material and token-authority chains.
+token-material and token-authority chains. The Source cohort shares the
+independently pinned command, with pure plan tests in `sourcegenesis` and the
+non-root State acceptance control in the provisioning integration tests.
 
 The shared Control mechanisms deduplicated in #718 (audit E1-4 candidates 2-3,
 E1-3) keep executed portable coverage: `TestNodeCertificateHasOnlyExactNodeTransportProfile`

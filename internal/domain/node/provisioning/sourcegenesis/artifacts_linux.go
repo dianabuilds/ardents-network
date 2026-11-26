@@ -1,4 +1,4 @@
-package provisioning
+package sourcegenesis
 
 import (
 	"bytes"
@@ -8,8 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"net"
 	"os"
@@ -17,8 +15,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 type sourceInitialID [32]byte

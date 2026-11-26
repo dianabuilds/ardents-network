@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"
@@ -18,6 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 )
 
 func forwardingTokenNativeArgs(output, signer string) []string {
@@ -33,10 +34,10 @@ func TestRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T) 
 
 func testRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T, role nodeProvisioningRole) {
 	t.Helper()
-	parent := sourceArtifactNativeParent(t)
-	command, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	command, _ := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	keyRoot := filepath.Join(parent, "node-key")
-	keyReceipt, err := provisionCommand(t, command, string(role), "prepare-node-key", keyRoot).CombinedOutput()
+	keyReceipt, err := networkfixture.ProvisionCommand(t, command, string(role), "prepare-node-key", keyRoot).CombinedOutput()
 	var key struct {
 		Public string `json:"node_public_key"`
 	}
@@ -49,7 +50,7 @@ func testRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt, err := provisionCommand(t, command, append([]string{string(role), "prepare-token-keys"}, args...)...).CombinedOutput()
+	receipt, err := networkfixture.ProvisionCommand(t, command, append([]string{string(role), "prepare-token-keys"}, args...)...).CombinedOutput()
 	if err != nil {
 		t.Fatal("canonical finite material producer", err, string(receipt))
 	}
@@ -98,7 +99,7 @@ func testRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T, 
 	if err != nil || before.Mode() != 0600 {
 		t.Fatal("private Admission material custody unavailable", err)
 	}
-	if _, err := provisionCommand(t, command, append([]string{string(role), "prepare-token-keys"}, args...)...).CombinedOutput(); err == nil {
+	if _, err := networkfixture.ProvisionCommand(t, command, append([]string{string(role), "prepare-token-keys"}, args...)...).CombinedOutput(); err == nil {
 		t.Fatal("existing material root was adopted")
 	}
 	after, err := os.Lstat(filepath.Join(material, "issuer.keys"))
@@ -111,7 +112,7 @@ func testRoleTokenMaterialNativeCanonicalInventoryAndRetainedRoot(t *testing.T, 
 }
 
 func TestForwardingTokenMaterialNativeCancellationRetainsLeaseAndCloseFailure(t *testing.T) {
-	parent := sourceArtifactNativeParent(t)
+	parent := networkfixture.ProtectedExt4Parent(t)
 	output := filepath.Join(parent, "held-material")
 	args := forwardingTokenNativeArgs(output, strings.Repeat("03", 32))
 	_, binding, _, err := nodeTokenMaterialArguments(forwardingProvisioningRole, args)

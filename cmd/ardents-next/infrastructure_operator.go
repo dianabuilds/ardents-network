@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning"
+	provisioning "github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing"
 )

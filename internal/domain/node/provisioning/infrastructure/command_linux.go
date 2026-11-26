@@ -1,8 +1,10 @@
-package provisioning
+package infrastructure
 
 import (
 	"errors"
 	"io"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/sourcegenesis"
 )
 
 // Run selects one fixed offline role and performs one provisioning operation.
@@ -12,14 +14,7 @@ func Run(args []string, out io.Writer) error {
 	}
 	role, operation, operationArgs := nodeProvisioningRole(args[0]), args[1], args[2:]
 	if role == "source" {
-		switch operation {
-		case "prepare-initial-plan":
-			return runSourceInitialPlan(operationArgs, out)
-		case "prepare-initial-record", "prepare-initial-epoch", "sign-initial-record", "sign-initial-epoch":
-			return runSourceInitialNetwork(args[1:], out)
-		case "prepare-initial-keys":
-			return runSourceInitialKeys(operationArgs, out)
-		}
+		return sourcegenesis.Run(args[1:], out)
 	}
 	if role.valid() {
 		switch operation {

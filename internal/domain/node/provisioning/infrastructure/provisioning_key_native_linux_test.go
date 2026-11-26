@@ -1,20 +1,21 @@
 //go:build linux && network_signing_native
 
-package provisioning
+package infrastructure
 
 import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/tests/networkfixture"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestControlProvisioningKeysNativeRoleAndPurpose(t *testing.T) {
-	parent := sourceArtifactNativeParent(t)
-	program, _ := sourceNativePinnedProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
+	parent := networkfixture.ProtectedExt4Parent(t)
+	program, _ := networkfixture.PinnedProvisionProgram(t, "ARDENTS_INFRASTRUCTURE_PROVISION_PROGRAM")
 	seen := make(map[string]bool)
 	for _, role := range []string{"forwarding", "join", "descriptor"} {
 		for _, purpose := range []string{"node", "state"} {
@@ -24,7 +25,7 @@ func TestControlProvisioningKeysNativeRoleAndPurpose(t *testing.T) {
 				name := purpose + "-key.pem"
 				output := filepath.Join(parent, role+"-"+purpose)
 				run := func(role, operation string) ([]byte, error) {
-					return provisionCommand(t, program, role, operation, output).CombinedOutput()
+					return networkfixture.ProvisionCommand(t, program, role, operation, output).CombinedOutput()
 				}
 				raw, err := run(role, operation)
 				if err != nil {
