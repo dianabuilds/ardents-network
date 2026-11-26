@@ -6,6 +6,8 @@
 // Responsibility clusters and their tests:
 //   - bounded client document read: exchange.go (exchange_test.go)
 //   - safe UTF-8 presentation: presentation.go (presentation_test.go)
+//   - safe read failure messages: read_failure_message.go
+//     (read_failure_message_test.go, read_failure_message_linux_test.go)
 //   - immutable snapshot publication exchange: snapshot_exchange.go
 //     (snapshot_exchange_test.go)
 //   - trusted local snapshot file import: snapshot_file_unix.go (Linux and
