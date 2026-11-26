@@ -10,4 +10,28 @@
 // The pure typed refusal constructor Refuse (server_refusal.go) is portable;
 // the refusal setupCleanupError classifier and the server admission stay with
 // the protected Linux Endpoint (#885).
+//
+// Responsibility clusters and their tests:
+//   - contract and request grammar: contract.go, request.go,
+//     request_decode_linux.go (request_test.go; decoding is Linux)
+//   - Target Link input reading: target_link_input.go, private_link.go,
+//     private_link_unix.go, private_link_other.go
+//     (stream_private_link_linux_test.go; linux, exercised through the real
+//     CLI binary built by command_binary_linux_test.go)
+//   - client dial, setup cancellation and close: client.go
+//     (client_setup_cancellation_test.go, client_close_test.go; the portable
+//     wire-peer harness client_unix_peer_test.go lets these run without the
+//     Linux Endpoint server)
+//   - server transport and lifecycle: transport.go, transport_frames.go,
+//     server_admission.go (transport_test.go, server_lifecycle_test.go,
+//     server_cleanup_test.go, server_setup_cleanup_test.go,
+//     transport_binary_conformance_test.go)
+//   - typed refusal: server_refusal.go (portable Refuse),
+//     server_refusal_linux.go (setupCleanupError classifier; linux)
+//     (server_refusal_test.go, server_refusal_linux_test.go)
+//   - application stream exchange and byte-stream host: stream_exchange.go,
+//     stream_host_linux.go, stream_host_other.go (stream_exchange_test.go,
+//     response_eof_linux_test.go; linux)
+//   - local console access: local_console_linux.go, local_console_other.go,
+//     local_stream.go (local_console_linux_test.go; linux)
 package connection

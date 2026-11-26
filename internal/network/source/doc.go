@@ -18,4 +18,18 @@
 // no transport and grants neither the two-source acquisition Plan nor
 // State/bootstrap authority. The transitional ObservePublicContact installation
 // input observation is retired (ADR-0125, #604).
+//
+// Responsibility clusters and their tests:
+//   - private bundle codec and truncation refusals: bundle.go
+//     (bundle_test.go, truncation_refusal_test.go)
+//   - request and response protocol grammar: protocol.go (protocol_test.go)
+//   - plan and mutual-TLS trust configuration: plan.go, credentials.go
+//     (plan_test.go, credentials_test.go, source_tls_verification_test.go)
+//   - diagnostic and public-trust observation: inspection.go,
+//     public_trust.go, the observation mode in credentials.go
+//     (inspection_test.go, public_trust_test.go, source_observation_test.go)
+//   - fetch and serve transport lifecycle: transport.go,
+//     connection_cancellation.go (transport_test.go,
+//     transport_cancellation_test.go, transport_close_test.go,
+//     connection_cancellation_test.go, serving_cancel_test.go)
 package source

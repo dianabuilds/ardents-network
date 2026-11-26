@@ -9,4 +9,46 @@
 // declarations; it creates no State, permission or runtime authority.
 // The only command consumer is ardents-next; schemas are bound Installation input,
 // while arguments, diagnostics and process exits remain with that command.
+//
+// Responsibility clusters and their tests:
+//   - declaration binding: declarations.go (declarations_test.go; portable);
+//     the installed identity and network/configuration binding in
+//     declarations_linux.go is exercised through the Linux suites below
+//   - installed command, cancellation and shutdown: installed_command_linux.go,
+//     installed_command_other.go, preparation_command_linux.go
+//     (installed_endpoint_command_test.go; portable,
+//     installed_cancellation_linux_test.go, installed_shutdown_linux_test.go;
+//     linux)
+//   - participant execution and stock: participant_linux.go
+//     (participant_linux_test.go, participant_stock_linux_test.go; linux)
+//   - permission exchange: permission_linux.go (permission_linux_test.go; linux)
+//   - explicit first history preparation: history_preparation_linux.go
+//     (history_preparation_linux_test.go; linux)
+//   - authenticated plan construction and file entries:
+//     plan_construction_linux.go, preparation_files_linux.go
+//     (plan_construction_linux_test.go; linux)
+//   - source trust preparation: source_trust_preparation_linux.go
+//     (source_trust_preparation_linux_test.go; linux,
+//     source_trust_native_linux_test.go; native)
+//   - installed connection over the joined network, served through the
+//     session and publisher children by participant_linux.go
+//     (connection_accepted_request_installed_linux_test.go,
+//     connection_authority_linux_test.go, connection_installed_linux_test.go,
+//     connection_response_loss_linux_test.go; linux)
+//   - installed document, execution and publication flows:
+//     document_command_installed_linux_test.go,
+//     execution_installed_linux_test.go,
+//     publication_ack_installed_linux_test.go,
+//     publication_receiving_network_linux_test.go; linux
+//   - native journey, latency and worker replacement:
+//     endpoint_journey_native_linux_test.go,
+//     endpoint_latency_native_linux_test.go, latency_native_linux_test.go,
+//     endpoint_replacement_worker_native_linux_test.go; native
+//   - Linux installed-suite fixtures carry harnesses and TestMain, not
+//     behavior of their own: network_admission_fixture_linux_test.go (the
+//     admission-network base), route_fixture_linux_test.go,
+//     route_issuer_fixture_linux_test.go, installed_route_fixture_linux_test.go
+//     (budget and permission-stock base), installed_service_linux_test.go,
+//     publication_installed_linux_test.go (the publisher harness) and
+//     endpoint_launch_fixture_linux_test.go
 package endpoint
