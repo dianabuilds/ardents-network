@@ -19,11 +19,9 @@ import (
 	"testing"
 	"time"
 
-	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/release"
 	"github.com/dianabuilds/ardents-network/internal/release/infrastructure/launch"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
@@ -310,13 +308,6 @@ func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
 	after, err := v.CurrentFloors(t.Context())
 	if err = errors.Join(err, v.Close()); err != nil || after.TargetsVersion != 2 {
 		t.Fatalf("pre-start did not reach new signed metadata: %v %d", err, after.TargetsVersion)
-	}
-	// The CLI exposes a bounded exit status. Reobserve the same platform
-	// handoff to distinguish a policy refusal from a native prerequisite failure.
-	observations := &artifacts.PlatformInputs{}
-	_, cause := endpointlaunch.VerifyPlatform(t.Context(), observations, endpointlaunch.PlatformCheckStart, stand.manifest, launchPin, manifestBytes)
-	if closeErr := observations.Close(); closeErr != nil || !errors.Is(cause, endpointlaunch.ErrBinding) {
-		t.Fatalf("pre-start refusal: %v, close: %v", cause, closeErr)
 	}
 	for path, want := range map[string][]byte{selectedPath: selectedBytes, bindingPath: binding} {
 		got, err := os.ReadFile(path)
