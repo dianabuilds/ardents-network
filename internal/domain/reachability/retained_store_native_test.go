@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {

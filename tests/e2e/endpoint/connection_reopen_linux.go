@@ -10,8 +10,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/network"
-	"github.com/dianabuilds/ardents-network/internal/reachability"
 )
 
 // VerifyInstalledConnectionReopen checks the original durable roots after joined retirement.

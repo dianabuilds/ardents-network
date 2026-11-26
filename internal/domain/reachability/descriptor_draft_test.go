@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 func TestDescriptorDraftMatchesIndependentCanonicalVector(t *testing.T) {

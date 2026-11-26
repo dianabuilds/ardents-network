@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 func descriptorInspectionFixture(t *testing.T) (reachability.StoreConfig, []byte, [32]byte, [32]byte, time.Time) {

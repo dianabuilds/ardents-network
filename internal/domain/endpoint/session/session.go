@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 // ErrPermission means the original Execution lifetime is unavailable. No result
