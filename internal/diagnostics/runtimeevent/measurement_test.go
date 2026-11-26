@@ -37,9 +37,18 @@ func TestMeasurementsShareStrictSafeProjectionAndMetricSemantics(t *testing.T) {
 	if err != nil || !present || record.Measurements == nil || record.Measurements.Values[0].Current != 3 {
 		t.Fatal(present, err)
 	}
-	var text bytes.Buffer
-	if WriteMeasurementMetrics(&text, point) != nil || !strings.Contains(text.String(), "_current 3\n") || !strings.Contains(text.String(), "# TYPE") {
-		t.Fatal(text.String())
+	series, err := MeasurementSeriesFor(point)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, value := range series {
+		if value.Name == spec.Name+".current" {
+			found = value.Kind == GaugeSeries && value.Unit == BytesUnit && value.Value == 3
+		}
+	}
+	if !found {
+		t.Fatal("shared series lost gauge type, unit or value", series)
 	}
 	for _, bad := range [][]byte{
 		bytes.Replace(raw, []byte(`"available":true`), []byte(`"Available":false,"available":true`), 1),

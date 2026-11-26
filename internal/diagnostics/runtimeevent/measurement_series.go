@@ -2,9 +2,6 @@ package runtimeevent
 
 import (
 	"errors"
-	"fmt"
-	"io"
-	"strings"
 	"time"
 )
 
@@ -59,25 +56,6 @@ func MeasurementSeriesFor(point MeasurementSnapshot) ([]MeasurementSeries, error
 		}
 	}
 	return result, nil
-}
-
-// WriteMeasurementMetrics renders catalogue series only. Capture start and
-// sample time remain explicit; historical capture data is not live readiness.
-func WriteMeasurementMetrics(output io.Writer, point MeasurementSnapshot) error {
-	series, err := MeasurementSeriesFor(point)
-	if err != nil {
-		return err
-	}
-	for _, value := range series {
-		name := strings.ReplaceAll(MeasurementScope, ".", "_") + "_" + strings.ReplaceAll(value.Name, ".", "_")
-		if value.Kind == CounterSeries {
-			name += "_total"
-		}
-		if _, err = fmt.Fprintf(output, "# HELP %s Capture-local %s; unit %s.\n# TYPE %s %s\n%s %g\n", name, value.Name, value.Unit, name, value.Kind, name, value.Value); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func measurementUnixSeconds(at time.Time) float64 {
