@@ -236,9 +236,9 @@ func TestInstalledConnectionControlDeliveryTCP(t *testing.T) {
 
 // These source sites are checked by the architecture profile: a moved call
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
-const connectionControlFramingReadLine = 36
-const connectionProgressReadLine = 43
-const connectionProgressCommitLine = 56
+const connectionControlFramingReadLine = 42
+const connectionProgressReadLine = 44
+const connectionProgressCommitLine = 57
 const connectionControlReadRecheckLine = 389
 
 const connectionPublisherControlWriteBeforeLine = 393
@@ -486,7 +486,7 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 		for {
 			frame, more := frames.Next()
 			switch frame.Function {
-			case "github.com/dianabuilds/ardents-network/internal/domain/connection.(*attachmentRecordReader).Read":
+			case "github.com/dianabuilds/ardents-network/internal/domain/connection/recordio.(*StreamReader).Read":
 				body = frame.Line == connectionControlFramingReadLine
 			case "github.com/dianabuilds/ardents-network/internal/domain/publication/instance.(*ServiceAttachment).Read":
 				post = frame.Line == connectionControlReadRecheckLine

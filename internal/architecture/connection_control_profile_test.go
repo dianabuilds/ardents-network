@@ -43,7 +43,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 		path, constant string
 		postRead       bool
 	}{
-		{"internal/domain/connection/attachment_record_reader.go", "connectionControlFramingReadLine", false},
+		{"internal/domain/connection/recordio/stream_read.go", "connectionControlFramingReadLine", false},
 		{"internal/domain/publication/instance/service_attachment.go", "connectionControlReadRecheckLine", true},
 	} {
 		file := parse(site.path)
@@ -100,7 +100,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 	// profile rather than silently selecting a different progress boundary.
 	records := parse("internal/domain/connection/stream_records.go")
 	for _, site := range []struct{ call, constant string }{
-		{"readRecord", "connectionProgressReadLine"},
+		{"ReadRecord", "connectionProgressReadLine"},
 		{"commit", "connectionProgressCommitLine"},
 	} {
 		matches := 0

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/recordio"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
@@ -37,10 +38,10 @@ func (records *attachmentRecords) join() error {
 func (stream *Stream) readRecords(records *attachmentRecords) {
 	var result error
 	defer func() { records.readerResult = result; close(records.readerDone) }()
-	input := &attachmentRecordReader{reader: records.physical}
-	defer input.discard()
+	input := recordio.NewStreamReader(records.physical)
+	defer input.Discard()
 	for {
-		decoded, received, readErr := input.readRecord()
+		decoded, received, readErr := input.ReadRecord()
 		record := wire.Record{Data: decoded.Data, Acknowledgement: decoded.Acknowledgement, Terminal: decoded.Terminal}
 		result = readErr
 		// The decoded clean CLOSE is an immutable fact of this exact child,

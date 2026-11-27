@@ -4,25 +4,11 @@ import (
 	"io"
 )
 
-// Record parsing must observe no additional plaintext for a TLS-tail
-// truncation exception. A partially received Service record is not an empty
-// TLS tail, even when its final physical error is EOF.
-type observedRecordRead struct {
-	reader   io.Reader
-	received int
-}
-
 // Application settlement survives replacement, but the new Attachment must
 // renew every Terminal proof before its clean Route close can retire the tail.
 // The caller separately checks live authority and that exact child's witness.
 func (stream *Stream) terminalTailCompleteLocked() bool {
 	return stream.settled && stream.transfer.TerminalComplete()
-}
-
-func (read *observedRecordRead) Read(body []byte) (int, error) {
-	n, err := read.reader.Read(body)
-	read.received += n
-	return n, err
 }
 
 // A clean Route terminal permits only TLS truncation after the authenticated

@@ -75,6 +75,19 @@ func successorImportAllowed(source, dependency string) bool {
 	if local == "internal/domain/connection/internal/instancetls" {
 		return false
 	}
+	if local == "internal/domain/connection/recordio" {
+		switch source {
+		case "internal/domain/connection/initiator_authentication.go", "internal/domain/connection/initiator_response_read_test.go",
+			"internal/domain/connection/publisher_authentication.go", "internal/domain/connection/stream_records.go",
+			"internal/domain/connection/terminal_tail_test.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if path.Dir(source) == "internal/domain/connection/recordio" {
+		return allowedStandardImport(dependency) || local == "internal/domain/connection/wire"
+	}
 	if local == "internal/domain/connection/transfer" {
 		switch source {
 		case "internal/domain/connection/stream.go", "internal/domain/connection/stream_failure.go",

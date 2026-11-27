@@ -121,9 +121,9 @@ Integrity violation завершает логический поток, а не 
 Неудачный JOIN также расходует предложение и физически завершается до возврата
 ticket. Close ждёт окончательного опубликования подготовки перед join callbacks,
 включая callback, установленный после начала отмены.
-`publisher_recovery.go` удерживает исходный Source и opaque ResponderScope до запуска stream,
-начинает конечный отсчёт при физической потере и дожидается обоих старых record
-actors. `publisher_replacement_commit.go` передаёт новый Attachment после этого
+`publisher_recovery.go` удерживает исходный Source и opaque ResponderScope до запуска stream.
+`stream_recovery.go` начинает конечный отсчёт при физической потере с любой
+стороны и дожидается обоих прежних обработчиков записей. `replacement_commit.go` передаёт новый Attachment после этого
 join, проверки прежнего caller и живых владельцев, атомарно меняет три ledgers
 и запускает writer для retained suffix. Отсоединение setup callbacks не снимает
 проверку исходного caller до commit. Instance отдельно проверяет прежний private
@@ -153,7 +153,7 @@ continuity key, counters или Work Safety. Фактический отказ c
 `BindRecipient` требует исходную живую Publisher operation и sealed Publication
 proof. `RecipientBinding.Check` проверяет ту же operation и исходный capsule
 deadline перед первой передачей результата; `Contexts` возвращает только копии
-transcript commitments. `recipient_binding.go` хранит эти неизменяемые факты
+transcript commitments. `publisher_binding.go` хранит эти неизменяемые факты
 без сетевых эффектов, приватного ключа или отдельного cleanup ресурса.
 Поведение проверяется независимыми signed-input/transcript fixtures и отказами
 при подмене, расширении пределов и отсутствии исходной operation. Эти fixtures

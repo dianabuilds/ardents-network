@@ -1,4 +1,4 @@
-package connection
+package recordio
 
 import (
 	"bytes"
@@ -45,20 +45,20 @@ func TestAttachmentRecordReaderRetainsSeparateRecordsAndPartialTail(t *testing.T
 			tail = terminal[:15]
 		}
 		transport := &recordInputTransport{Reader: bytes.NewReader(append(append([]byte(nil), data...), tail...))}
-		input := &attachmentRecordReader{reader: transport}
-		got, received, err := input.readRecord()
+		input := NewStreamReader(transport)
+		got, received, err := input.ReadRecord()
 		if err != nil || got.Data == nil || received != len(data) || transport.reads != 1 {
 			t.Fatal("buffered first record differs", err, received, transport.reads)
 		}
-		got, received, err = input.readRecord()
+		got, received, err = input.ReadRecord()
 		if partial {
-			if !errors.Is(err, io.ErrUnexpectedEOF) || received != 15 || terminalTruncation(err, received) {
+			if !errors.Is(err, io.ErrUnexpectedEOF) || received != 15 {
 				t.Fatal("partial buffered successor became an empty terminal tail", err, received)
 			}
 		} else if err != nil || got.Terminal == nil || received != len(terminal) || transport.reads != 1 {
 			t.Fatal("buffered successor lost its own boundary", err, received, transport.reads)
 		}
-		input.discard()
+		input.Discard()
 		if input.buffer != [512]byte{} || input.reader != nil || input.start != 0 || input.end != 0 {
 			t.Fatal("retired reader retained prefetched bytes or transport")
 		}
@@ -74,15 +74,15 @@ func TestAttachmentRecordReaderRejectsBytesAccompaniedByOriginalFailure(t *testi
 			failAt = 2 // Direct body read after the fixed framing scratch.
 		}
 		transport := &recordInputTransport{Reader: bytes.NewReader(data), failAt: failAt, failure: cause}
-		input := &attachmentRecordReader{reader: transport}
-		got, received, err := input.readRecord()
+		input := NewStreamReader(transport)
+		got, received, err := input.ReadRecord()
 		if !errors.Is(err, cause) || got.Data != nil || received == 0 {
 			t.Fatal("buffered or direct read hid original failure", size, err, received)
 		}
 		calls := transport.reads
-		if _, _, err := input.readRecord(); !errors.Is(err, cause) || transport.reads != calls {
+		if _, _, err := input.ReadRecord(); !errors.Is(err, cause) || transport.reads != calls {
 			t.Fatal("failed reader resumed physical input", size, err)
 		}
-		input.discard()
+		input.Discard()
 	}
 }
