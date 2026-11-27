@@ -108,7 +108,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/network/duty/source_inspection_linux.go",
 			"internal/domain/network/duty/inspection_linux.go",
 			"internal/domain/network/duty/node_inspection_linux.go",
-			"internal/domain/admission/spending/inspection_linux.go",
 			"internal/domain/hosting/retained_inspection_linux.go",
 			"internal/domain/node/provisioning/infrastructure/command_linux.go",
 			"internal/domain/network/source/command/prepare_linux.go",
