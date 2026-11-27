@@ -29,7 +29,10 @@ func TestForwardingCandidateRequiresPrivateExecutableDelivery(t *testing.T) {
 			for _, name := range []string{"ardents-node-linux-amd64", "ardents-forwarding.service", "infrastructure-forwarding.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
 				files[name] = []byte("opaque public candidate input: " + name)
 			}
-			inventory, err := infrastructureinventory.Prepare(infrastructureinventory.Facts{"linux-amd64", "candidate-access", 2, "forwarding"}, files)
+			inventory, err := infrastructureinventory.Prepare(infrastructureinventory.Facts{
+				Platform: "linux-amd64", ReleaseIdentity: "candidate-access",
+				ReleaseVersion: 2, Invocation: "forwarding",
+			}, files)
 			if err != nil {
 				t.Fatal(err)
 			}
