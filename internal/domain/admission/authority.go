@@ -25,7 +25,7 @@ type AuthorityFacts struct {
 type TokenKey struct {
 	WindowStart time.Time
 	Class       uint8
-	SPKI        [346]byte
+	SPKI        [issuerprofile.TokenSPKISize]byte
 }
 
 // ValidateAt checks consistency of supplied facts, never their authenticity.

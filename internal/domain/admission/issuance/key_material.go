@@ -76,7 +76,7 @@ func decodeMaterial(raw []byte, b Binding) (Inventory, error) {
 			return Inventory{}, ErrUnavailable
 		}
 		spki, err := issuerprofile.EncodeKey(&key.PublicKey)
-		if err != nil || len(spki) != 346 {
+		if err != nil || len(spki) != issuerprofile.TokenSPKISize {
 			return Inventory{}, ErrUnavailable
 		}
 		if _, err := issuerprofile.ParseKey(spki); err != nil {

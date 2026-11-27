@@ -236,6 +236,29 @@ The [official Go layout guidance](https://go.dev/doc/modules/layout) and
 [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments) supply the
 starting conventions. Automated analysis augments design review.
 
+## Portability, outcomes, and format constants
+
+Place portable rules, byte grammars, and lifecycle checks in untagged files
+when they do not depend on a host-only component. Use a Unix-family file only
+for a mechanism shared by the named supported hosts; its build constraint and
+package documentation must say which hosts and mechanism apply. Put a
+host-specific effect beside its implementation, with native test prerequisites
+stated in the selected test profile. When required protection is unavailable,
+return the owning operation's typed refusal; if absence is known before the
+operation, refuse before its protected effect. Never accept with weaker protection.
+
+Keep stable refusal categories with the behavior owner. Preserve private causes
+inside the process and report joined completion after owned resources close.
+Command diagnostics project registered `runtimeevent` operation, phase and
+outcome values rather than arbitrary error prose. This does not create a new
+public error grammar or disclose private causes.
+
+Name a format or policy constant for its meaning and unit at the owner that
+establishes it. Reuse it only where the existing dependency is justified; keep
+independent test vectors independent of the production constant. For example,
+`issuerprofile.TokenSPKISize` owns the canonical token public-key byte width;
+Admission's `PermissionSize` owns the signed permission width.
+
 ## Go file ownership and size
 
 A Go file is an implementation navigation unit, not a Module. Its name states
@@ -247,8 +270,10 @@ independent test responsibilities, each gets `foo_<behavior>_test.go`. A
 package-level behavior test that spans several source files carries an
 explicit behavior name instead of a source mirror, and the package `doc.go`
 records which responsibility cluster it verifies; a test may be listed under
-every cluster it verifies. Flat packages with many files keep a cluster
-navigation index (responsibility, files, tests) in `doc.go` so an operation
+every cluster it verifies. Name a test for the refusal, preserved relationship,
+ordering, or observable effect it proves. Check an independently stated outcome
+or invariant rather than repeating the implementation's expression. Flat
+packages with many files keep a cluster navigation index (responsibility, files, tests) in `doc.go` so an operation
 can be found without scanning every file. `doc.go` contains only the package
 comment.
 

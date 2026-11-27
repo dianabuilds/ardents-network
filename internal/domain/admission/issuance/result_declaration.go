@@ -217,7 +217,7 @@ func DecodeLedgerBinding(raw []byte, fields map[string]json.RawMessage) (quota.L
 		if e != nil {
 			return binding, bad
 		}
-		spki, e := admissionHex(key.SPKI, 346)
+		spki, e := admissionHex(key.SPKI, issuerprofile.TokenSPKISize)
 		if e != nil {
 			return binding, bad
 		}
