@@ -120,6 +120,15 @@ time must still meet the ten-minute minimum, with the complete raw one-second
 resource series and interface/Hosting-ledger reconciliation; a wall-clock step
 cannot enlarge the denominator or replace missing observations.
 
+The resource sampler pins the original Endpoint and the confined worker cgroups
+at the start of the window. A change in the observed cohort or a replaced or reset
+cgroup invalidates the resource window. The receipt records an unavailable
+measurement when a required resource counter is missing, and accepts an explicitly
+reported zero as a counter reading. It retains earlier failed Hosting read attempts
+by stage, sample and attempt even when a subsequent read succeeds.
+See [native measurement](testing.md#protected-endpoint-net-32-user-idle-native-measurement)
+for the scope and units.
+
 User-idle measurement starts after explicit enrollment/bootstrap, with no
 Application job or publication active, and includes required State/time refresh,
 cleanup, failed refresh and any bounded preparation. Report startup separately.
