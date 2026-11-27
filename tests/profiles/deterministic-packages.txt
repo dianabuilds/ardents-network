@@ -99,6 +99,7 @@ github.com/dianabuilds/ardents-network/internal/domain/node/plan
 github.com/dianabuilds/ardents-network/internal/domain/node/receive
 github.com/dianabuilds/ardents-network/internal/domain/node/runtime
 github.com/dianabuilds/ardents-network/internal/domain/node/command
+github.com/dianabuilds/ardents-network/internal/domain/connection/recipient
 github.com/dianabuilds/ardents-network/internal/domain/connection/recordio
 github.com/dianabuilds/ardents-network/internal/domain/connection/transfer
 github.com/dianabuilds/ardents-network/internal/domain/connection/wire

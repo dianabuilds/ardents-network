@@ -59,6 +59,7 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/publication/runtime":                 {"domain/connection", "domain/execution/runtime", "domain/network", "domain/publication", "domain/publication/instance", "domain/reachability", "domain/route", "domain/route/introduction", "domain/route/prefix", "domain/route/capsule", "domain/route/join"},
 	"internal/domain/connection":                          {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "domain/route/capsule", "domain/route/join", "domain/connection/wire"},
 	"internal/domain/connection/recordio":                 {"domain/connection/wire"},
+	"internal/domain/connection/recipient":                {"domain/connection/wire", "domain/publication"},
 	"internal/domain/connection/transfer":                 {"domain/connection/wire"},
 	"internal/domain/connection/wire":                     {},
 	"internal/domain/reachability":                        {"domain/publication"},
@@ -240,18 +241,13 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 		return true
 	}
 	switch source {
-	case "internal/domain/connection/initiator_source.go":
+	case "internal/domain/connection/reader_source.go":
 		switch dependency {
 		case modulePath + "/internal/domain/network", modulePath + "/internal/domain/reachability", modulePath + "/internal/domain/route",
-			modulePath + "/internal/domain/route/prefix", modulePath + "/internal/domain/route/selection":
+			modulePath + "/internal/domain/route/introduction", modulePath + "/internal/domain/route/prefix", modulePath + "/internal/domain/route/selection":
 			return true
 		}
-	case "internal/domain/connection/initiator_initial.go":
-		switch dependency {
-		case modulePath + "/internal/domain/reachability", modulePath + "/internal/domain/route", modulePath + "/internal/domain/route/introduction":
-			return true
-		}
-	case "internal/domain/connection/initiator_replacement_route.go":
+	case "internal/domain/connection/reader_replacement.go":
 		switch dependency {
 		case modulePath + "/internal/domain/reachability", modulePath + "/internal/domain/route", modulePath + "/internal/domain/route/introduction", modulePath + "/internal/domain/route/prefix":
 			return true
@@ -262,7 +258,7 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 	// proof checks stay with each Service owner; no other file gains the edge.
 	if dependency == modulePath+"/internal/domain/route/transport" {
 		switch source {
-		case "internal/domain/connection/initiator_authentication.go", "internal/domain/publication/instance/service_attachment.go":
+		case "internal/domain/connection/reader_authentication.go", "internal/domain/publication/instance/service_attachment.go":
 			return true
 		}
 	}

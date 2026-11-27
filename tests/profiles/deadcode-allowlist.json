@@ -1699,6 +1699,7 @@
           "internal/domain/connection.attachmentSetupDeadline",
           "internal/domain/connection.deliverRead",
           "internal/domain/connection.deriveRecipientGeneration",
+          "internal/domain/connection/recipient.Derive",
           "internal/domain/connection/recordio.InitialReader.ReadRecord",
           "internal/domain/connection.readInitialResponseRecord",
           "internal/domain/connection/recordio.initialFlightInput.Read",

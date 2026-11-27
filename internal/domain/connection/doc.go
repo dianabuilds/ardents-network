@@ -2,14 +2,21 @@
 // original qualified Execution operation and verified Publication. The Target,
 // Instance and ordered byte contract stay fixed across physical Attachments.
 //
-// Initial connection. The Reader calls InitiatorSource.OpenStream from
-// endpoint/reader. initiator_source.go owns the retained Source and shared setup
-// bounds. initiator_initial.go verifies the Descriptor, submits the capsule,
-// opens the JOIN and hands off the initial authenticated Attachment.
-// Publication runtime enters through NextStream and NextAuthentication.
-// publisher_binding.go checks the recipient and publisher_authentication.go
-// authenticates the original Responder JOIN with the non-exporting Instance.
-// Both roles converge on the one-use openStream handoff in stream.go.
+// Reader. reader_source.go owns the retained Source, selects the Descriptor,
+// submits the capsule, opens the initial JOIN and hands off to Stream.
+// reader_authentication.go prepares the Reader binding and verifies the exact
+// Instance through TLS and the initial proof. reader_attachment.go retains the
+// physical JOIN and its TLS borrowers. reader_replacement.go owns one recovery
+// proposal from the fresh route acquisition through authenticated handoff.
+//
+// Publisher. recipient_binding.go binds the original qualified operation.
+// publisher_authentication.go authenticates the Responder JOIN. publisher_route.go
+// retains the exact Source and Responder scopes. publisher_replacement.go
+// verifies the candidate for the same stream and prepares its replacement.
+//
+// Both roles check the capsule in recipient_binding.go and derive their public
+// Publication and transcript commitments in recipient. Both converge on the
+// one-use openStream handoff in stream.go.
 //
 // Record exchange. recordio bounds the initial flights and the Stream actor's
 // physical reads. wire owns the canonical records and transcripts. transfer
@@ -17,15 +24,9 @@
 // matches each record effect to the exact Attachment's actors and generation.
 // stream_io.go owns Application buffer handoff.
 //
-// Replacement. The Reader prepares a fresh JOIN and authenticates it through
-// initiator_replacement_route.go and initiator_replacement.go. Publication
-// dispatches a private replacement to PreparePublisherReplacement in
-// publisher_replacement.go. publisher_route.go retains the exact Source and
-// Responder scopes. stream_replacement.go owns both roles' common transition
-// from failed actor pair to installed generation. Its commit checks the old
-// pair joined before changing the active Attachment and replay state under
-// Stream.mu. transfer/recovery_episode.go keeps the original deadline and
-// proposal limit while the Stream joins and installs the physical Attachment.
+// Replacement commit. stream_replacement.go joins the previous record pair
+// before installing the new Attachment and replay state under Stream.mu.
+// transfer/recovery_episode.go keeps the original deadline and proposal limit.
 //
 // Completion. Reader Source retirement and Publisher runtime retirement both
 // reach stream_retirement.go. Stop seals effects immediately. Close joins
