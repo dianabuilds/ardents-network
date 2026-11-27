@@ -3451,6 +3451,14 @@ terminal cannot accumulate another full burst, emission and joined disposal
 never refund its debit, fractional refill survives, and copied handles cannot
 multiply the actual adjacency or return another claim.
 
+Portable `channel/session_lifecycle_test.go` cancels the fixed holder JOIN
+request before output admission and while its exact physical write is held.
+The cases check zero pre-admission output, canonical request bytes, the earlier
+cleanup bound, joined retirement and continued sibling output. A partial
+physical write still retires the original parent and retains its failure.
+The native `TestRouteJoinCancellationAfterAdmission` independently retains the
+irreversible spend and original selected Prefix through real TCP/TLS.
+
 `internal/domain/node/route_bootstrap_linux_test.go` uses genuine signed Network,
 Stock, receiving spend and Hosting on TCP/TLS: four pending restricted
 children retain their actual Hosting work/termination and Route allocations,

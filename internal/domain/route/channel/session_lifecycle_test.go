@@ -103,6 +103,102 @@ func TestNestedCloseStartedPhysicalClosedErrorRetained(t *testing.T) {
 	}
 }
 
+func TestJoinRequestCancellationBeforePhysicalAdmissionEmitsNothing(t *testing.T) {
+	physical := newLifecycleConn(false)
+	end := time.Now().Add(5 * time.Second)
+	session := Prepare(t.Context(), physical, end, 1<<20, nil, false, &Budget{maximum: 2 << 20}, Handlers{})
+	defer session.Close()
+	lane := lifecycleLane(t, session, 1)
+	caller, cancel := context.WithCancel(t.Context())
+	lane.caller = caller
+	cancel()
+	request := ardp.JoinRequest{Nonce: [32]byte{1}, Secret: [32]byte{2}, Context: [32]byte{3}, Side: 1, Deadline: end.UTC().Truncate(time.Second)}
+	if err := WriteJoinRequest(lane, request); err == nil || !session.Live() || len(physical.writes) != 0 {
+		t.Fatal("canceled setup emitted or retired the parent", err)
+	}
+}
+
+func TestJoinRequestCancellationJoinsSelectedFrameWithoutRetiringSibling(t *testing.T) {
+	for _, physicalFailure := range []bool{false, true} {
+		name := "complete"
+		if physicalFailure {
+			name = "partial"
+		}
+		t.Run(name, func(t *testing.T) {
+			physical := newLifecycleConn(true)
+			originalFailure := errors.New("original partial JOIN framing write")
+			if physicalFailure {
+				physical.partial = originalFailure
+			}
+			end := time.Now().Add(5 * time.Second)
+			session := Prepare(t.Context(), physical, end, 1<<20, nil, false, &Budget{maximum: 2 << 20}, Handlers{})
+			var unblockOnce sync.Once
+			unblock := func() { unblockOnce.Do(func() { close(physical.writeGate) }) }
+			t.Cleanup(func() { unblock(); _ = session.Close() })
+			lane := lifecycleLane(t, session, 1)
+			lane.openEmitted = true
+			caller, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			lane.caller = caller
+			sibling := lifecycleLane(t, session, 3)
+			request := ardp.JoinRequest{Nonce: [32]byte{1}, Secret: [32]byte{2}, Context: [32]byte{3}, Side: 1, Deadline: end.UTC().Truncate(time.Second)}
+			written := make(chan error, 1)
+			go func() { written <- WriteJoinRequest(lane, request) }()
+			var raw []byte
+			select {
+			case raw = <-physical.writes:
+			case <-time.After(time.Second):
+				t.Fatal("JOIN frame did not reach the physical writer")
+			}
+			cancel()
+			closed := make(chan error, 1)
+			go func() { closed <- lane.Close() }()
+			waitFramingState(t, lane, func() bool { return lane.localClosed && !lane.cleanupEnd.IsZero() })
+			session.mu.Lock()
+			deadline := session.activeDeadline.end
+			cleanup := lane.cleanupEnd
+			session.mu.Unlock()
+			if !deadline.Equal(cleanup) || !time.Now().Before(deadline) || !deadline.Before(end) {
+				t.Fatal("selected JOIN write lost its original short cleanup bound", deadline, cleanup)
+			}
+			select {
+			case err := <-closed:
+				t.Fatal("retirement returned before the original writer joined", err)
+			default:
+			}
+			unblock()
+			if err := lifecycleResult(t, written); physicalFailure {
+				_ = lifecycleResult(t, closed)
+				if !errors.Is(err, originalFailure) || !errors.Is(session.Close(), originalFailure) ||
+					!errors.Is(session.PhysicalFailure(), originalFailure) || session.Live() {
+					t.Fatal("actual partial physical failure lost", err, session.PhysicalFailure())
+				}
+				return
+			} else if err != nil {
+				t.Fatal("selected request did not finish", err)
+			}
+			if err := lifecycleResult(t, closed); err != nil {
+				t.Fatal("original lane did not join", err)
+			}
+			outer, err := ardp.ReadFrame(bytes.NewReader(raw))
+			if err != nil || outer.Lane != 1 || outer.Kind != ardp.KindBytes {
+				t.Fatal("wrong outer frame", err, outer.Kind, outer.Lane)
+			}
+			inner, err := ardp.ReadFrame(bytes.NewReader(outer.Body))
+			if err != nil || inner.Lane != 1 || inner.Kind != ardp.KindOperation {
+				t.Fatal("wrong inner frame", err, inner.Kind, inner.Lane)
+			}
+			got, err := ardp.DecodeJoinRequest(inner.Body)
+			if err != nil || got != request {
+				t.Fatal("original JOIN request changed", err)
+			}
+			if n, err := sibling.Write([]byte("original sibling")); n != 16 || err != nil || !session.Live() {
+				t.Fatal("original sibling unable to continue", n, err)
+			}
+		})
+	}
+}
+
 // lifecycleConn gates actual physical output and completion independently.
 // It supplies no successful authority, Admission, or resource-transfer result.
 type lifecycleConn struct {

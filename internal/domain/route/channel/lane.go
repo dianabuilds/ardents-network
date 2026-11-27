@@ -55,6 +55,7 @@ type Lane struct {
 	physicalErr                       error
 	cleanupJoined                     bool
 	controlOutput                     uint32 // original selected nested control writers; guarded by s.mu
+	joinRequestOutput                 bool   // one unpublished holder JOIN request; guarded by s.mu
 	deadlines                         sync.WaitGroup
 	refill                            *parentExchange
 	ctx                               context.Context
