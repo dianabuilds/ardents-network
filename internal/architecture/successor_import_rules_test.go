@@ -559,7 +559,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/publication/durable/lease_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	if source == "internal/domain/release/history_native_windows.go" && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/domain/release/history_native_windows.go" || source == "internal/domain/release/history_security_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	if owner == "internal/domain/release" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {

@@ -9,9 +9,15 @@ import (
 
 const historyPlatformSupported = false
 
+type historyRoot struct{}
+
+func openHistoryRoot(string, bool) (*historyRoot, error) { return nil, ErrTrustUnavailable }
+func (*historyRoot) check(os.FileInfo) error             { return ErrTrustUnavailable }
+func (*historyRoot) release() error                      { return nil }
+func checkHistoryObject(*os.File, bool) error            { return ErrTrustUnavailable }
+
 type historyLease struct{}
 
-func checkHistoryRoot(os.FileInfo) error { return errors.New("release: unsupported history") }
 func acquireHistoryLease(string) (historyLease, error) {
 	return historyLease{}, errors.New("release: unsupported lease")
 }

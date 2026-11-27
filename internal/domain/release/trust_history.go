@@ -30,6 +30,7 @@ var stagedPointerName = regexp.MustCompile(`^\.current-[0-9]{1,10}$`)
 type floorStore struct {
 	path    string
 	lease   historyLease
+	root    *historyRoot
 	closed  bool
 	failure error
 	flush   func(string) error
@@ -47,11 +48,16 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	if err != nil {
 		return nil, err
 	}
-	if !retained {
-		if err = os.MkdirAll(root, 0700); err != nil {
-			return nil, err
-		}
+	pin, err := openHistoryRoot(root, retained)
+	if err != nil {
+		return nil, err
 	}
+	owned := true
+	defer func() {
+		if owned {
+			resultErr = errors.Join(resultErr, pin.release())
+		}
+	}()
 	info, err := os.Lstat(root)
 	if err != nil {
 		if retained && errors.Is(err, os.ErrNotExist) {
@@ -62,7 +68,7 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("release: invalid history root")
 	}
-	if err = checkHistoryRoot(info); err != nil {
+	if err = pin.check(info); err != nil {
 		return nil, err
 	}
 	entries, err := readFloorStoreDirectory(root, 70)
@@ -107,7 +113,8 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	if err != nil {
 		return nil, err
 	}
-	s := &floorStore{path: root, lease: lease, flush: syncDirectory}
+	s := &floorStore{path: root, lease: lease, root: pin, flush: syncDirectory}
+	owned = false
 	defer func() {
 		if resultErr != nil {
 			resultErr = errors.Join(resultErr, s.Close())
@@ -280,7 +287,10 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 		}
 		resultErr = errors.Join(resultErr, err)
 	}()
-	err = file.Chmod(0600)
+	err = checkHistoryObject(file, false)
+	if err == nil {
+		err = file.Chmod(0600)
+	}
 	if err == nil {
 		_, err = file.WriteString(name + "\n")
 	}
@@ -302,7 +312,7 @@ func (s *floorStore) Close() error {
 		return nil
 	}
 	s.closed = true
-	return errors.Join(s.failure, s.lease.release())
+	return errors.Join(s.failure, s.lease.release(), s.root.release())
 }
 
 func floorGenerationID(payload []byte, roots []rootArchiveEntry) string {

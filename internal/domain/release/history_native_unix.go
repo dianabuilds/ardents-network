@@ -11,6 +11,21 @@ import (
 
 const historyPlatformSupported = true
 
+type historyRoot struct{}
+
+func openHistoryRoot(path string, retained bool) (*historyRoot, error) {
+	if !retained {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			return nil, err
+		}
+	}
+	return &historyRoot{}, nil
+}
+
+func (*historyRoot) check(info os.FileInfo) error { return checkHistoryRoot(info) }
+func (*historyRoot) release() error               { return nil }
+func checkHistoryObject(*os.File, bool) error     { return nil }
+
 type historyLease struct {
 	file      *os.File
 	directory *os.File
