@@ -63,6 +63,7 @@ func openNodeInspection(parent context.Context, input Config, node [32]byte, uid
 	if err != nil {
 		return result, err
 	}
+	defer cfg.source.Close()
 	if cfg.sourceInfo.Configured || cfg.sourceInfo.Serving || cfg.automatic != 0 {
 		return result, errors.New("inspection of Node is retained-history only")
 	}

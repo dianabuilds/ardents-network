@@ -33,6 +33,7 @@ func RepairRetainedSourceProducer(ctx context.Context, input Config, original *s
 	if err != nil {
 		return err
 	}
+	defer resolved.source.Close()
 	// This is read-only Network configuration, not a serving constructor. No
 	// transport credential or private key is needed to abandon the exact guard.
 	if resolved.sourceInfo.Configured || resolved.sourceInfo.Serving || resolved.automatic != 0 {

@@ -112,7 +112,11 @@ func fetchFailure(ctx context.Context, response Message, err error) (Message, er
 // concurrently until Serve returns; resolve must return a bounded Message.
 func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() bool,
 	active func(int), resolve func(context.Context, Message) Message) error {
-	if p == nil || !p.details.Serving {
+	if !p.begin() {
+		return errors.New("source plan is closed")
+	}
+	defer p.users.Done()
+	if !p.details.Serving {
 		return errors.New("source server is not configured")
 	}
 	return serve(ctx, p.server, ready, protected, active, resolve)

@@ -49,7 +49,8 @@ func installedLocalConfig(plan HeadlessPlan) (execution.Config, error) {
 
 // NetworkConfig projects already-bound Installation declarations. Original
 // Startup/preparation checks surround every native input; State independently
-// authenticates signed current facts after opening.
+// authenticates signed current facts after opening. The caller owns the parsed
+// Ed25519 client key and clears it after the Source plan has copied it.
 func NetworkConfig(plan HeadlessPlan, declared SourcePlan, check func() error) (state.Config, error) {
 	if check == nil || len(declared.Sources) != 2 {
 		return state.Config{}, errors.New("invalid bound Source declaration")
@@ -95,7 +96,12 @@ func (plan HeadlessPlan) Network() (state.Config, error) {
 	return state.Config{Root: plan.NetworkStateRoot, NetworkID: id, Authorities: authorities, Threshold: plan.NetworkThreshold, ClosedProfileAuthority: append(ed25519.PublicKey(nil), profile[:]...), AcceptedProfile: "ardents-route-v3", Clock: time.Now, ClockObservationFile: plan.TimeConfidenceFile}, nil
 }
 
-func installedAcquisitionConfig(config state.Config, declared SourcePlan, check func() error) (state.Config, error) {
+func installedAcquisitionConfig(config state.Config, declared SourcePlan, check func() error) (result state.Config, returned error) {
+	defer func() {
+		if returned != nil {
+			clearSourceClientKey(config)
+		}
+	}()
 	var err error
 	config.Source.OrderSeed, err = installedIdentity(declared.OrderSeed)
 	if err != nil {
@@ -144,6 +150,14 @@ func installedAcquisitionConfig(config state.Config, declared SourcePlan, check 
 		config.Source.Sources[index] = source.Source{Address: member.Address, ServerName: member.ServerName, Identity: identity, Family: member.Family, EndpointHandle: member.EndpointHandle, RootPEM: root, LeafKeyDigest: leaf}
 	}
 	return config, check()
+}
+
+// NetworkConfig's caller owns this parsed key. State or an offline Source plan
+// makes its own copy before the caller clears the input.
+func clearSourceClientKey(config state.Config) {
+	if key, ok := config.Source.ClientCertificate.PrivateKey.(ed25519.PrivateKey); ok {
+		clear(key)
+	}
 }
 
 // This bounded reader observes the opened object, so a substituted FIFO cannot

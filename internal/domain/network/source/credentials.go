@@ -22,18 +22,18 @@ func configureClientTrust(plan *Plan, input Config, authorities map[[32]byte]ed2
 	if err := validateCredential(input.ClientCertificate, observation); err != nil {
 		return errors.New("source client certificate is required")
 	}
-	clientCertificate := cloneCertificate(input.ClientCertificate)
 	clientDigest, err := certificateDigest(input.ClientCertificate)
 	if err != nil || digestIsAuthority(clientDigest, authorities) {
 		return errors.New("source client transport key must be separate from Epoch signer keys")
 	}
-	for index := range plan.clients {
+	var clients [2]client
+	for index := range clients {
 		declared := input.Sources[index]
-		resolved, err := declaredClient(declared, clientCertificate, clientDigest, authorities, input.VerificationClock)
+		resolved, err := declaredClient(declared, input.ClientCertificate, clientDigest, authorities, input.VerificationClock)
 		if err != nil {
 			return err
 		}
-		plan.clients[index] = resolved
+		clients[index] = resolved
 		plan.details.Identities[index], plan.details.Families[index], plan.details.EndpointHandles[index] =
 			declared.Identity, declared.Family, declared.EndpointHandle
 		raw := append([]byte("ardents-h3-direct-source-exposure-v1\x00"), declared.Identity[:]...)
@@ -44,10 +44,15 @@ func configureClientTrust(plan *Plan, input Config, authorities map[[32]byte]ed2
 		plan.details.Exposures[index] = sha256.Sum256(raw)
 	}
 	if plan.details.Identities[0] == plan.details.Identities[1] || plan.details.Families[0] == plan.details.Families[1] ||
-		plan.details.EndpointHandles[0] == plan.details.EndpointHandles[1] || plan.clients[0].address == plan.clients[1].address ||
-		plan.clients[0].leafKeyDigest == plan.clients[1].leafKeyDigest {
+		plan.details.EndpointHandles[0] == plan.details.EndpointHandles[1] || clients[0].address == clients[1].address ||
+		clients[0].leafKeyDigest == clients[1].leafKeyDigest {
 		return errors.New("source identities, families, handles, addresses, and keys must be distinct")
 	}
+	clientCertificate := cloneCertificate(input.ClientCertificate)
+	for index := range clients {
+		clients[index].certificate = clientCertificate
+	}
+	plan.clients = clients
 	plan.details.Configured = true
 	return nil
 }

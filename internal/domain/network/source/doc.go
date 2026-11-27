@@ -18,6 +18,10 @@
 // no transport and grants neither the two-source acquisition Plan nor
 // State/bootstrap authority. The transitional ObservePublicContact installation
 // input observation is retired (ADR-0125, #604).
+// A Plan owns its copied client and server Ed25519 buffers. Close denies new
+// transport calls, joins admitted calls and clears those buffers. A caller
+// cancels a serving context before Close and separately owns its input key.
+// The guarantee concerns these buffers, not TLS internals or all process memory.
 //
 // Responsibility clusters and their tests:
 //   - private bundle codec and truncation refusals: bundle.go

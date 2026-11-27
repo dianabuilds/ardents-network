@@ -21,6 +21,12 @@ func OpenRetained(input Config) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			resolved.source.Close()
+		}
+	}()
 	resolved.retainedHistory = true
 	if resolved.permitWork != nil {
 		if err = resolved.permitWork(); err != nil {
@@ -31,7 +37,11 @@ func OpenRetained(input Config) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	return activateState(resolved, storage, nil, nil)
+	state, err := activateState(resolved, storage, nil, nil)
+	if err == nil {
+		transferred = true
+	}
+	return state, err
 }
 
 // OpenFresh is explicit initial preparation, never a recovery or retained
@@ -42,6 +52,12 @@ func OpenFresh(input Config) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			resolved.source.Close()
+		}
+	}()
 	if resolved.permitWork != nil {
 		if err := resolved.permitWork(); err != nil {
 			return nil, err
@@ -51,7 +67,11 @@ func OpenFresh(input Config) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	return activateState(resolved, storage, nil, nil)
+	state, err := activateState(resolved, storage, nil, nil)
+	if err == nil {
+		transferred = true
+	}
+	return state, err
 }
 
 func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *State, resultErr error) {
@@ -59,6 +79,12 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	if err != nil {
 		return nil, err
 	}
+	transferred := false
+	defer func() {
+		if !transferred {
+			resolved.source.Close()
+		}
+	}()
 	if resolved.permitWork != nil {
 		if err := resolved.permitWork(); err != nil {
 			return nil, err
@@ -68,7 +94,11 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	if err != nil {
 		return nil, err
 	}
-	return activateState(resolved, storage, automaticTicks, automaticResults)
+	state, err := activateState(resolved, storage, automaticTicks, automaticResults)
+	if err == nil {
+		transferred = true
+	}
+	return state, err
 }
 
 func activateState(resolved config, storage *durable.Root, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *State, resultErr error) {

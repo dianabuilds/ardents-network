@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
-func validateConfig(input Config) (config, error) {
+func validateConfig(input Config) (result config, returned error) {
 	if input.Root == "" {
 		return config{}, errors.New("state root is required")
 	}
@@ -70,6 +70,11 @@ func validateConfig(input Config) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	defer func() {
+		if returned != nil {
+			sourcePlan.Close()
+		}
+	}()
 	if (sourceInfo.Configured || sourceInfo.Serving) && input.LocalRoleStateRoot == "" {
 		return config{}, errors.New("direct Source work requires local role state")
 	}

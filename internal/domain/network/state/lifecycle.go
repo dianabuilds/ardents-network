@@ -61,6 +61,8 @@ func (s *State) closeOwned() error {
 	if done != nil {
 		<-done
 	}
+	// Source transport has joined; no borrower may retain this plan's keys.
+	s.config.source.Close()
 	s.mu.RLock()
 	serverErr, automaticErr, terminalErr := s.serverErr, s.automaticErr, s.terminalErr
 	s.mu.RUnlock()

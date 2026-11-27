@@ -90,15 +90,19 @@ func ConstructPlans(ctx context.Context, network state.Config, declaration PlanD
 	if err != nil {
 		return HeadlessPlan{}, nil, nil, err
 	}
+	defer clearSourceClientKey(config)
 	// The installation request grammar's finite refresh and seed bounds apply
 	// to constructed plans as well; State would refuse them at runtime open.
 	if config.Source.OrderSeed == [32]byte{} || declared.RefreshIntervalMS < 100 || declared.RefreshIntervalMS > 60000 {
 		return HeadlessPlan{}, nil, nil, errors.New("declared source refresh grammar is unavailable")
 	}
 	config.Source.VerificationClock = time.Now
-	if _, _, err := source.New(config.Source, config.Authorities); err != nil {
+	sourcePlan, _, err := source.New(config.Source, config.Authorities)
+	clearSourceClientKey(config)
+	if err != nil {
 		return HeadlessPlan{}, nil, nil, err
 	}
+	sourcePlan.Close()
 	headlessJSON, err := canonicalPlanJSON(plan)
 	if err != nil {
 		return HeadlessPlan{}, nil, nil, err
