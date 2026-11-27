@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -66,13 +65,31 @@ func TestPrivateLinkOwnerAndForeignUserBeforeDial(t *testing.T) {
 			defer cancel()
 			command := exec.CommandContext(ctx, binary, "stream", "connect", filepath.Join(directory, "missing.sock"), "--link-file", link)
 			command.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: scenario.uid, Gid: scenario.uid}}
-			command.Stdin = strings.NewReader("")
-			var output, diagnostic bytes.Buffer
-			command.Stdout, command.Stderr = &output, &diagnostic
-			err := command.Run()
+			input, inputWriter, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer input.Close()
+			defer inputWriter.Close()
+			output, outputWriter, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer output.Close()
+			defer outputWriter.Close()
+			// The CLI reopens its descriptors through procfs. They must be
+			// owned by the actual child UID, as in a user's own shell.
+			if err := errors.Join(input.Chown(int(scenario.uid), int(scenario.uid)), outputWriter.Chown(int(scenario.uid), int(scenario.uid)), inputWriter.Close()); err != nil {
+				t.Fatal(err)
+			}
+			var diagnostic bytes.Buffer
+			command.Stdin, command.Stdout, command.Stderr = input, outputWriter, &diagnostic
+			err = command.Run()
+			closeErr := outputWriter.Close()
+			stdout, readErr := io.ReadAll(output)
 			want := "Application stream failed: " + scenario.want + "\n" + `{"operation":"application.stream.connect","phase":"command","outcome":"failed"}` + "\n"
-			if ctx.Err() != nil || err == nil || output.Len() != 0 || diagnostic.String() != want {
-				t.Fatalf("error=%v, context=%v, stdout=%q, stderr=%q", err, ctx.Err(), &output, &diagnostic)
+			if ctx.Err() != nil || err == nil || closeErr != nil || readErr != nil || len(stdout) != 0 || diagnostic.String() != want {
+				t.Fatalf("error=%v, context=%v, stdout=%q, stderr=%q, close=%v, read=%v", err, ctx.Err(), stdout, &diagnostic, closeErr, readErr)
 			}
 		})
 	}
