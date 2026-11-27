@@ -1,38 +1,34 @@
-// Package connection owns immutable logical/Attachment bindings, initial
-// two-role Service authentication and logical byte/Terminal state under the
-// original qualified Execution operation and independently verified Publication.
-// A copied binding alone grants no authenticated stream or recovery.
-// Private protocol mechanisms validate the closed v3 grammar, exact Instance
-// certificate/proof and exporter transcripts, bounded send replay and ordered
-// receive/replay storage, finite recovery proposals and directional Terminal
-// receipt/confirmation ordering.
-// A completed control tail consumes only exact decoded JOIN CLOSE evidence
-// for an empty TLS truncation; it retains logical checks and physical joins.
-// Those mechanisms do not supply live authority or an authenticated stream.
-// Publisher authentication consumes purpose-specific non-exporting Instance
-// TLS/proof; Reader authentication independently verifies that exact Instance.
-// Their sealed initial state has one logical-stream consumer with an original
-// checked workload contract. Publication routes fresh private recipients to
-// the same Publisher Stream; InitiatorSource re-resolves the original Target
-// through its retained History and Rendezvous set. Both roles retain finite
-// original-key proposals and join old actors before atomic replay generations.
-// Protected Application command consumers use those sources before Application handoff;
-// complete native/installed acceptance remains a separate evidence boundary.
+// Package connection owns one authenticated Service Connection under the
+// original qualified Execution operation and verified Publication. The Target,
+// Instance and ordered byte contract stay fixed across physical Attachments.
 //
-// For the Reader, start at initiator_source.go. It binds the original Target
-// and retained Prefix. initiator_authentication.go checks the initial Proof and
-// Continuity and uses the same private exact-Instance TLS client for initial
-// and replacement Attachments. publisher_binding.go admits the recipient
-// before publisher_authentication.go checks its original JOIN. wire owns the record and transcript bytes.
+// For the Reader, endpoint/reader opens an InitiatorSource and calls OpenStream.
+// See initiator_source.go for the retained Source and initiator_initial.go for
+// Descriptor verification, capsule submission, JOIN and the one-use Stream
+// handoff. initiator_authentication.go authenticates the exact Instance over
+// the original JOIN. For the Publisher, publication/runtime.NextStream calls
+// NextAuthentication and then OpenPublisherStream. publisher_binding.go
+// binds the private recipient and publisher_authentication.go authenticates
+// the JOIN using the original non-exporting Instance lease.
 //
-// stream.go consumes the initial proof once and retains the logical owner.
-// stream_io.go owns caller-memory handoff and ordered writes. The transfer
-// package retains directional offsets, replay and current Terminal receipts. stream_records.go serves one exact physical Attachment generation.
+// See recordio for the bounded initial flights and physical Stream reads, wire
+// for the canonical records and transcripts, and transfer for ordered replay
+// and the current Terminal exchange. stream_records.go joins the exact reader
+// and writer for each Attachment and checks their generation before any
+// ledger effect. stream_io.go owns Application buffer handoff.
 //
-// recovery_episode.go retains the original recovery bound. The initiator and
-// Publisher prepare separate proposals. replacement_commit.go advances all
-// three ledgers only after the original physical actors and setup have joined.
-// stream_retirement.go preserves the original result through terminal_tail.go's
-// separate control tail and physical join. The stream, replacement and
-// terminal tests exercise original, foreign and late paths.
+// After physical loss, stream_recovery.go seals the original actors and starts
+// the deadline in recovery_episode.go. initiator_replacement.go authenticates
+// the Reader's replacement over the fresh JOIN from initiator_replacement_route.go.
+// Publication dispatches a private replacement to PreparePublisherReplacement
+// in publisher_replacement.go. replacement_commit.go handles both sides: the
+// old actors and the new setup must join before replay and Attachment generation
+// advance under Stream.mu. The same lock seals Stop and Close in
+// stream_retirement.go, so retirement and a late proposal cannot both commit.
+// terminal_tail.go checks the original decoded JOIN CLOSE and complete current
+// Terminal proofs before permitting an empty TLS truncation.
+//
+// Setup, recordio, replacement and retirement tests cover the independent
+// mechanics and causal refusals. The Endpoint Connection qualification
+// profiles exercise the actual Reader and Publisher paths over TCP/TLS.
 package connection

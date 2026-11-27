@@ -9,6 +9,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/recordio"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
@@ -16,10 +17,10 @@ import (
 func TestTailReaderDistinguishesPartialServiceRecordFromEmptyTLSTail(t *testing.T) {
 	prefix := []byte("ardents-service-connection-v3\x00")
 	for size := range prefix {
-		read := observedRecordRead{reader: bytes.NewReader(prefix[:size])}
-		_, err := wire.Read(&read)
-		if read.received != size || terminalTruncation(err, read.received) != (size == 0) {
-			t.Fatal("actual partial record lost plaintext/physical error", size, read.received, err)
+		read := recordio.NewStreamReader(bytes.NewReader(prefix[:size]))
+		_, received, err := read.ReadRecord()
+		if received != size || terminalTruncation(err, received) != (size == 0) {
+			t.Fatal("actual partial record lost plaintext/physical error", size, received, err)
 		}
 	}
 }
