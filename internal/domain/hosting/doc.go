@@ -3,9 +3,6 @@
 // Release refunds only reserved capacity after its consumer joins that work.
 // Sample shares bounded confirmed observations; it cannot authorize work.
 // Hosting grants no token permission, placement or network authority.
-// Linux Inspection separately retains complete existing period history and
-// zero-reservation provenance under its own original lease. It mutates nothing
-// and grants no current capacity; Close joins its original physical users.
 //
 // Follow the live path through allowance.go (directions and provider limit),
 // budget.go (owning transaction and counter continuity), period_storage.go
@@ -16,8 +13,6 @@
 // The accounting rules and command inputs are portable. The live budget uses
 // a Linux/macOS exclusive lease in period_lease_unix.go and native boot and
 // interface observations in counters. Other hosts receive a typed refusal.
-// retained_inspection_linux.go uses the separate Linux ext4 custody floor
-// and native tests. Other hosts refuse retained inspection explicitly.
 //
 // The ardents-next adapter owns flags, exact config JSON and finite outcomes.
 package hosting

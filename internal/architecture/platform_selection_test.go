@@ -108,7 +108,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/network/duty/source_inspection_linux.go",
 			"internal/domain/network/duty/inspection_linux.go",
 			"internal/domain/network/duty/node_inspection_linux.go",
-			"internal/domain/hosting/retained_inspection_linux.go",
 			"internal/domain/node/provisioning/infrastructure/command_linux.go",
 			"internal/domain/network/source/command/prepare_linux.go",
 			"internal/domain/network/source/command/command_linux_test.go",
@@ -203,7 +202,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 				"internal/domain/release/infrastructure/signing/join_forward_release_native_linux_test.go",
 				"internal/domain/network/state/node_inspection_native_linux_test.go",
 				"internal/domain/network/duty/inspection_native_linux_test.go",
-				"internal/domain/hosting/retained_inspection_native_linux_test.go",
 			} {
 				selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 				if err != nil {
@@ -345,7 +343,6 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 			"internal/domain/hosting/counters/read_linux.go",
 			"internal/domain/hosting/counters/read_linux_test.go",
 			"internal/domain/hosting/reservation_process_linux_test.go",
-			"internal/domain/hosting/retained_inspection_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -366,13 +363,6 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 			if want := target == "darwin"; selected != want {
 				t.Errorf("macOS hosting measure boundary %s on %s: %v, want %v", name, target, selected, want)
 			}
-		}
-		selected, err := profile.MatchFile(path.Join(root, "internal/domain/hosting"), "retained_inspection_unsupported.go")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if want := target != "linux"; selected != want {
-			t.Errorf("hosting inspection refusal on %s: %v, want %v", target, selected, want)
 		}
 	}
 }
