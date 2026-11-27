@@ -9,9 +9,12 @@
 !scripts/install-quality-analyzer.go
 !scripts/check-tools.go
 !scripts/diagnostics/
-!scripts/diagnostics/diagnostic-*.go
 !scripts/diagnostics/install-powershell.sh
 !internal/
 !internal/diagnostics/
+!internal/diagnostics/command/
+!internal/diagnostics/command/*.go
 !internal/diagnostics/runtimeevent/
 !internal/diagnostics/runtimeevent/*.go
+!internal/diagnostics/logstore/
+!internal/diagnostics/logstore/*.go

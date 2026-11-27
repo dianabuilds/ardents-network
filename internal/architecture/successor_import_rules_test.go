@@ -39,13 +39,20 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "internal/application/administration/server.go",
 			"internal/application/administration/server_retirement_test.go",
-			"internal/application/connection/transport.go":
+			"internal/application/connection/server_linux.go":
 			return true
 		default:
 			return false
 		}
 	}
 	if path.Dir(source) == socketFile {
+		return allowedStandardImport(dependency)
+	}
+	const logStore = "internal/diagnostics/logstore"
+	if local == logStore {
+		return source == "internal/diagnostics/command/monitor.go" || source == "internal/diagnostics/command/monitor_test.go"
+	}
+	if path.Dir(source) == logStore {
 		return allowedStandardImport(dependency)
 	}
 	if local == managerObservationPackage {
@@ -573,9 +580,9 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/domain/custody/command/command.go", "internal/domain/endpoint/command/installed_command_linux.go",
 			"internal/domain/endpoint/command/installed_command_other.go", "internal/domain/endpoint/command/preparation_command_linux.go",
 			"internal/domain/endpoint/command/progress_report_linux_test.go",
-			"internal/diagnostics/timeline/project.go", "scripts/diagnostics/diagnostic-capture.go",
-			"scripts/diagnostics/diagnostic-report.go", "scripts/diagnostics/diagnostic-view.go",
-			"scripts/diagnostics/diagnostic-monitor.go", "scripts/diagnostics/diagnostic-monitor-view.go":
+			"internal/diagnostics/timeline/project.go", "internal/diagnostics/command/capture.go",
+			"internal/diagnostics/command/report.go", "internal/diagnostics/command/view.go",
+			"internal/diagnostics/command/monitor.go", "internal/diagnostics/command/monitor_panel.go":
 			return true
 		}
 	}

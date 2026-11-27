@@ -5,6 +5,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"io"
 )
 
 // refusal stays with the protected Linux server admission: it classifies
@@ -27,4 +28,11 @@ func refusal(cause error) Outcome {
 		return classified.outcome
 	}
 	return Outcome{Class: ServiceUnavailable, Reason: "Endpoint could not open the selected Target Link"}
+}
+
+func WriteLocalStreamRefusal(writer io.Writer, cause error) error {
+	if _, err := writer.Write([]byte{0}); err != nil {
+		return err
+	}
+	return writeTerminal(writer, refusal(cause))
 }

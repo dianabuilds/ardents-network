@@ -26,13 +26,15 @@
 //     client_receive.go (client_close_test.go); client_unix_peer_test.go
 //     provides a wire peer for both client test groups
 //   - shared frame encoding and decoding: transport_frames.go
-//   - server transport and lifecycle: transport.go,
+//   - original listener and accepted clients: server_linux.go,
 //     server_admission.go (transport_test.go, server_lifecycle_test.go,
 //     server_cleanup_test.go, server_setup_cleanup_test.go,
 //     transport_binary_conformance_test.go)
 //   - typed refusal: server_refusal.go (portable Refuse),
-//     server_refusal_linux.go (setupCleanupError classifier; linux)
+//     server_refusal_linux.go (Linux setupCleanupError and refusal output)
 //     (server_refusal_test.go, server_refusal_linux_test.go)
+//   - established stream input, terminal output and joined retirement:
+//     server_stream_linux.go (response_eof_linux_test.go)
 //   - application stream exchange and byte-stream host: stream_exchange.go,
 //     stream_host_linux.go, stream_host_other.go (stream_exchange_test.go,
 //     response_eof_linux_test.go; linux)

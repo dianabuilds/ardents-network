@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 package main
 
@@ -183,13 +183,7 @@ func boolNumber(value bool) int {
 	return 0
 }
 
-func handler(dir string) http.Handler { return handlerWithComparison(dir, "") }
-
-func handlerWithComparison(dir, compare string) http.Handler {
-	return handlerWithConnection(dir, compare, "")
-}
-
-func handlerWithConnection(dir, compare, socket string) http.Handler {
+func captureViewHandler(dir, compare, socket string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -275,7 +269,7 @@ func serve(args []string) error {
 	if ip == nil || !ip.IsLoopback() && !(*container && host == "0.0.0.0") {
 		return errors.New("UI must use loopback, or explicit container binding")
 	}
-	server := &http.Server{Addr: *addr, Handler: handlerWithConnection(*dir, *compare, *socket), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192}
+	server := &http.Server{Addr: *addr, Handler: captureViewHandler(*dir, *compare, *socket), ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 15 * time.Second, MaxHeaderBytes: 8192}
 	listener, err := net.Listen("tcp", *addr)
 	if err != nil {
 		return err

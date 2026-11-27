@@ -8,15 +8,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 type holderPlan struct {
-	Root        string                   `json:"root"`
-	Profile     string                   `json:"profile"`
-	Network     *networkAuthorityPlan    `json:"network,omitempty"`
-	Role        admission.AllocationRole `json:"role"`
-	Route       *funding.Declaration     `json:"route,omitempty"`
-	Publication *publicationPlan         `json:"publication,omitempty"`
+	Root        string                      `json:"root"`
+	Profile     string                      `json:"profile"`
+	Network     *state.AuthorityDeclaration `json:"network,omitempty"`
+	Role        admission.AllocationRole    `json:"role"`
+	Route       *funding.Declaration        `json:"route,omitempty"`
+	Publication *publicationPlan            `json:"publication,omitempty"`
 }
 
 func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) int {

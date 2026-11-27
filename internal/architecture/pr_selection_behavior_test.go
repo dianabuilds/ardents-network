@@ -523,7 +523,7 @@ func decodedPRMatrixGroups(t *testing.T, raw []byte) struct {
 		}
 		parsers := false
 		for _, group := range job.Checks {
-			parsers = parsers || strings.HasSuffix(group.Package, "/internal/architecture")
+			parsers = parsers || strings.HasSuffix(group.Package, "/internal/diagnostics/command")
 		}
 		if parsers != job.DiagnosticParsers {
 			t.Fatal("batch omitted required diagnostic parsers")
@@ -579,7 +579,7 @@ func TestExactOriginalGroupsWithinJobEnvelope(t *testing.T) {
    checks:=make([]check,0,count)
    for i:=0;i<count;i++ {
     pkg:=fmt.Sprintf("example.com/check/pkg%04d",i)
-    if i==count-1 {pkg="example.com/check/internal/architecture"}
+    if i==count-1 {pkg="example.com/check/internal/diagnostics/command"}
     run:=fmt.Sprintf("^(TestExact%04d)$",i)
     checks=append(checks,check{pkg:pkg,run:run,race:i%2==0})
    }
@@ -602,7 +602,7 @@ func TestExactOriginalGroupsWithinJobEnvelope(t *testing.T) {
      if next>=count {t.Fatal("duplicated group")}
      original:=checks[next]
      if group.ID!=next || group.Package!=original.pkg || group.Run!=original.run || group.Race!=original.race {t.Fatalf("original group changed or omitted: %+v vs %+v",group,original)}
-     parsers=parsers||group.Package=="example.com/check/internal/architecture"
+     parsers=parsers||group.Package=="example.com/check/internal/diagnostics/command"
      next++
     }
     if job.Parsers!=parsers {t.Fatal("required parser omitted in second batch position")}

@@ -1,31 +1,26 @@
-//go:build ignore
-
-package main
+package logstore
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 )
 
-// The private directory is exclusively owned by this store. MaxFiles includes
+// Policy bounds the private log directory. MaxFiles includes
 // its empty lock file. Counters are session-local; retained bytes survive restart.
-type logRetentionPolicy struct {
+type Policy struct {
 	SegmentBytes int64         `json:"segment_bytes"`
 	MaxBytes     int64         `json:"max_bytes"`
 	MaxFiles     int           `json:"max_files"`
 	SegmentAge   time.Duration `json:"segment_age_ns"`
 	MaxAge       time.Duration `json:"max_age_ns"`
 }
-type logStoreStats struct {
+
+// Stats describes the original store's retained inventory and session accounting.
+type Stats struct {
 	FilesystemAvailable  bool  `json:"filesystem_available"`
 	FilesystemTotalBytes int64 `json:"filesystem_total_bytes"`
 	FilesystemFreeBytes  int64 `json:"filesystem_available_bytes"`
@@ -45,154 +40,48 @@ type retainedLogSegment struct {
 	info         os.FileInfo
 	file         *os.File
 }
-type logStore struct {
+
+// Store retains the original Linux directory and segment writer lease.
+type Store struct {
 	mu       sync.Mutex
 	root     *os.Root
 	lock     *os.File
-	policy   logRetentionPolicy
+	policy   Policy
 	segments []*retainedLogSegment
 	active   map[string]*retainedLogSegment
 	next     uint64
-	stats    logStoreStats
+	stats    Stats
 	failure  error
 	closed   bool
 }
 
-func validLogStream(stream string) bool {
-	switch stream {
-	case "stdout", "stderr", "events", "samples":
-		return true
+// Policy returns the immutable limits of this store.
+func (store *Store) Policy() Policy { return store.policy }
+
+// Continue reopens the closed store for maintenance in the same monitor
+// session. Inventory is reobserved while delivery counters stay cumulative.
+func (store *Store) Continue(at time.Time) (*Store, error) {
+	store.mu.Lock()
+	if !store.closed || store.root == nil {
+		store.mu.Unlock()
+		return nil, errors.New("log store must close before maintenance")
 	}
-	return false
-}
-func privateLogFile(info os.FileInfo) bool {
-	owner, ok := info.Sys().(*syscall.Stat_t)
-	return ok && info.Mode().IsRegular() && info.Mode().Perm() == 0600 && owner.Uid == uint32(os.Geteuid()) && owner.Nlink == 1
-}
-func logSegmentName(sequence uint64, at time.Time, stream string) string {
-	return fmt.Sprintf("log-%020d-%020d-%s.log", sequence, at.UnixNano(), stream)
+	path, policy, previous := store.root.Name(), store.policy, store.stats
+	store.mu.Unlock()
+	next, err := Open(path, policy, at)
+	if err != nil {
+		return nil, err
+	}
+	next.stats.ReceivedBytes = previous.ReceivedBytes
+	next.stats.WrittenBytes = previous.WrittenBytes
+	next.stats.LostBytes = previous.LostBytes
+	next.stats.ExpiredBytes += previous.ExpiredBytes
+	return next, nil
 }
 
-func openLogStore(dir string, policy logRetentionPolicy, at time.Time) (_ *logStore, outcome error) {
-	if policy.SegmentBytes < 1 || policy.MaxBytes < policy.SegmentBytes || policy.MaxBytes > 1<<30 ||
-		policy.MaxFiles < 2 || policy.MaxFiles > 128 || policy.SegmentAge <= 0 || policy.MaxAge < policy.SegmentAge || policy.MaxAge > 365*24*time.Hour ||
-		at.IsZero() || at.UnixNano() <= 0 || !filepath.IsAbs(dir) || filepath.Clean(dir) != dir {
-		return nil, errors.New("invalid log retention configuration")
-	}
-	parent, err := filepath.EvalSymlinks(filepath.Dir(dir))
-	if err != nil || parent != filepath.Dir(dir) {
-		return nil, errors.New("log parent must be canonical")
-	}
-	if err := os.Mkdir(dir, 0700); err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
-	}
-	resolved, err := filepath.EvalSymlinks(dir)
-	if err != nil || resolved != dir {
-		return nil, errors.New("log directory must be canonical")
-	}
-	info, err := os.Stat(dir)
-	if err != nil {
-		return nil, err
-	}
-	owner, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || !info.IsDir() || info.Mode().Perm() != 0700 || owner.Uid != uint32(os.Geteuid()) {
-		return nil, errors.New("log directory must be owner-private")
-	}
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return nil, err
-	}
-	store := &logStore{root: root, policy: policy, active: map[string]*retainedLogSegment{}}
-	admitted := false
-	defer func() {
-		if !admitted {
-			outcome = errors.Join(outcome, store.Close())
-		}
-	}()
-	lock, err := root.OpenFile("monitor.lock", os.O_CREATE|os.O_RDWR|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0600)
-	if err != nil {
-		return nil, err
-	}
-	store.lock = lock
-	lockInfo, err := lock.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !privateLogFile(lockInfo) || lockInfo.Size() != 0 {
-		return nil, errors.New("invalid monitoring lock file")
-	}
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		return nil, errors.New("log store already owned or lock unavailable")
-	}
-	entries, err := readLogInventory(root)
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range entries {
-		if entry.Name() == "monitor.lock" {
-			continue
-		}
-		parts := strings.Split(entry.Name(), "-")
-		if len(parts) != 4 || parts[0] != "log" || !strings.HasSuffix(parts[3], ".log") {
-			return nil, errors.New("unrecognized file in log directory")
-		}
-		sequence, err := strconv.ParseUint(parts[1], 10, 64)
-		if err != nil || sequence == 0 {
-			return nil, errors.New("invalid log segment sequence")
-		}
-		ns, err := strconv.ParseInt(parts[2], 10, 64)
-		if err != nil || ns <= 0 {
-			return nil, errors.New("invalid log segment time")
-		}
-		born := time.Unix(0, ns).UTC()
-		stream := strings.TrimSuffix(parts[3], ".log")
-		if !validLogStream(stream) || logSegmentName(sequence, born, stream) != entry.Name() {
-			return nil, errors.New("invalid log segment name")
-		}
-		info, err := root.Lstat(entry.Name())
-		if err != nil {
-			return nil, err
-		}
-		if !privateLogFile(info) || info.Size() > policy.SegmentBytes {
-			return nil, errors.New("unsafe log segment")
-		}
-		segment := &retainedLogSegment{name: entry.Name(), stream: stream, sequence: sequence, born: born, size: info.Size(), info: info}
-		store.segments = append(store.segments, segment)
-		store.next = max(store.next, sequence)
-		store.stats.RetainedBytes += info.Size()
-	}
-	sort.Slice(store.segments, func(i, j int) bool { return store.segments[i].sequence < store.segments[j].sequence })
-	for i := 1; i < len(store.segments); i++ {
-		if store.segments[i-1].sequence == store.segments[i].sequence {
-			return nil, errors.New("duplicate log sequence")
-		}
-	}
-	if err := store.prune(at, 0, 0); err != nil {
-		return nil, err
-	}
-	admitted = true
-	return store, nil
-}
-
-func readLogInventory(root *os.Root) (_ []os.DirEntry, outcome error) {
-	dir, err := root.Open(".")
-	if err != nil {
-		return nil, err
-	}
-	defer func() { outcome = errors.Join(outcome, dir.Close()) }()
-	entries, err := dir.ReadDir(257)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return nil, err
-	}
-	if len(entries) > 256 {
-		return nil, errors.New("log inventory exceeds bound")
-	}
-	return entries, nil
-}
-
-func (store *logStore) remove(segment *retainedLogSegment) error {
+func (store *Store) remove(segment *retainedLogSegment) error {
 	info, err := store.root.Lstat(segment.name)
-	if err != nil || !privateLogFile(info) || !os.SameFile(segment.info, info) {
+	if err != nil || !IsPrivateFile(info) || !os.SameFile(segment.info, info) {
 		return errors.Join(err, errors.New("log segment ownership changed"))
 	}
 	if segment.file != nil {
@@ -217,7 +106,7 @@ func (store *logStore) remove(segment *retainedLogSegment) error {
 	store.stats.ExpiredBytes += segment.size
 	return nil
 }
-func (store *logStore) prune(at time.Time, extraBytes int64, extraFiles int) error {
+func (store *Store) prune(at time.Time, extraBytes int64, extraFiles int) error {
 	for _, segment := range append([]*retainedLogSegment(nil), store.segments...) {
 		if at.Sub(segment.born) >= store.policy.MaxAge {
 			if err := store.remove(segment); err != nil {
@@ -235,7 +124,7 @@ func (store *logStore) prune(at time.Time, extraBytes int64, extraFiles int) err
 	}
 	return nil
 }
-func (store *logStore) fail(err error) error {
+func (store *Store) fail(err error) error {
 	if store.failure == nil {
 		store.failure = err
 	}
@@ -245,7 +134,7 @@ func (store *logStore) fail(err error) error {
 
 // Append preserves a record within a segment; oversized records are rejected.
 // Sink failure remains available independently through Stats and Close.
-func (store *logStore) Append(stream string, body []byte, at time.Time) (written int, outcome error) {
+func (store *Store) Append(stream string, body []byte, at time.Time) (written int, outcome error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	store.stats.ReceivedBytes += int64(len(body))
@@ -317,7 +206,7 @@ func (store *logStore) Append(stream string, body []byte, at time.Time) (written
 	}
 	return written, outcome
 }
-func (store *logStore) Prune(at time.Time) error {
+func (store *Store) Prune(at time.Time) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed {
@@ -334,7 +223,7 @@ func (store *logStore) Prune(at time.Time) error {
 	}
 	return nil
 }
-func (store *logStore) Stats() logStoreStats {
+func (store *Store) Stats() Stats {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	result := store.stats
@@ -351,7 +240,7 @@ func (store *logStore) Stats() logStoreStats {
 	}
 	return result
 }
-func (store *logStore) Close() error {
+func (store *Store) Close() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed {

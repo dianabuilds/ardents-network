@@ -274,6 +274,15 @@ source label and actual PID identify the selected local process; no Network
 readiness or cross-owner attribution is inferred. Collector heartbeat and last
 producer output have separate ages. A quiet stream is not a failed Node verdict.
 
+`internal/diagnostics/command` is the Linux source of the tool built by
+the diagnostic Docker image. `internal/diagnostics/logstore` owns the
+monitor's Linux writer lease and
+segment inventory. It verifies the original owner-private files and reopens
+them under the same retention policy after the active sinks join. The monitor
+retains subprocess delivery, `monitor.json`, console and panel state. A fresh
+monitor run starts new counters. The terminal-panel maintenance in the same run
+preserves received, written, lost and expired totals.
+
 The panel reads bounded supervisor memory, so file or snapshot failure remains
 visible without reading the failed sink. Source exit stays visible until the
 operator stops monitoring; periodic log age pruning remains active through that

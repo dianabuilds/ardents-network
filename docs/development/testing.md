@@ -1880,7 +1880,7 @@ selected Carriers.
   four disjoint portions of the race inventory on separate Ubuntu runners.
   Each portion keeps serial execution, shuffle, race instrumentation and the
   timeout. All portions and the core job must pass on the same revision. The
-  shard containing architecture tests installs the diagnostic parsers they use.
+  shard containing diagnostic command tests installs their Go parsers.
   Staticcheck, vulnerability and dead-code analyzers run in the core job.
   The Make jobs restore the Go caches in the paths they actually use.
   Pull request CI runs core and race gates in parallel with `-short` omitted,
@@ -3129,7 +3129,7 @@ Follow-up #885 (#691) split the pure typed refusal constructor
 `application/connection.Refuse` into the portable `server_refusal.go`
 (byte-identical bounded-outcome validation + `SetupRefusalError`), leaving the
 Linux-only `refusal` setupCleanupError classifier with the protected Linux server
-admission (`server_admission.go`/`transport.go` stay Linux). Per-file
+admission (`server_admission.go`/`server_linux.go` stay Linux). Per-file
 re-verification of the Reader dependency closure then confirmed every remaining
 dependency is portable, Unix-family, or has a typed `!linux` worker-launch
 refusal, so `reader/reader_linux.go`/`operation_linux.go`/`source_linux.go`/
@@ -3356,7 +3356,10 @@ selection; no build-error-based filtering or passing platform skip supplies that
 membership. Cohort 2a (#856) moved the Source serving and inspection owners into
 the common inventory: serving runs on the Unix family (Linux and macOS) and
 inspection carries a typed non-Linux refusal, so both are listed on every
-mandatory target and the Linux-only supplement currently holds no packages.
+mandatory target. The Linux diagnostic command tests run in the Linux-only
+supplement with the Go parsers installed by
+`make tools-install DIAGNOSTIC_PARSERS_ONLY=1`. The standalone
+`make diagnostics-check` runs the same command tests by package.
 
 The `portable` CI lane in `.github/workflows/quality.yml` executes that common
 inventory on `windows-latest` and `macos-latest`. On each runner it builds

@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 package main
 
@@ -107,7 +107,7 @@ func TestFailureAndTimeoutHaveTerminalEvidence(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			source := t.TempDir()
 			dir := filepath.Join(t.TempDir(), "capture")
-			if err := supervise(dir, source, []string{"sh", "-c", tc.command}, tc.limit, false); err == nil {
+			if err := supervise(dir, source, []string{"sh", "-c", tc.command}, tc.limit, false, reportConditions{}); err == nil {
 				t.Fatal("failure passed")
 			}
 			s, err := readSummary(dir)
@@ -130,12 +130,12 @@ func TestDashboardCannotServeRawFilesOrInjectMetricLabels(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := httptest.NewRecorder()
-	handler(dir).ServeHTTP(r, httptest.NewRequest("GET", "/metrics", nil))
+	captureViewHandler(dir, "", "").ServeHTTP(r, httptest.NewRequest("GET", "/metrics", nil))
 	if strings.Contains(r.Body.String(), "SECRET") {
 		t.Fatal("dynamic labels escaped allowlist")
 	}
 	r = httptest.NewRecorder()
-	handler(dir).ServeHTTP(r, httptest.NewRequest("GET", "/stdout.log", nil))
+	captureViewHandler(dir, "", "").ServeHTTP(r, httptest.NewRequest("GET", "/stdout.log", nil))
 	if r.Code != 404 {
 		t.Fatal("raw file exposed")
 	}
@@ -171,7 +171,7 @@ func TestSourceDigestIncludesUncommittedContent(t *testing.T) {
 func TestSuccessfulCommandRetainsCompleteTerminalEvidence(t *testing.T) {
 	source := t.TempDir()
 	dir := filepath.Join(t.TempDir(), "capture")
-	if err := supervise(dir, source, []string{"sh", "-c", "echo '{\"schema\":\"ardents-node-event-v1\",\"kind\":\"lifecycle\",\"state\":\"READY\"}'"}, 2*time.Second, false); err != nil {
+	if err := supervise(dir, source, []string{"sh", "-c", "echo '{\"schema\":\"ardents-node-event-v1\",\"kind\":\"lifecycle\",\"state\":\"READY\"}'"}, 2*time.Second, false, reportConditions{}); err != nil {
 		t.Fatal(err)
 	}
 	outcome, err := readSummary(dir)
@@ -244,7 +244,7 @@ func TestSourceInventoryRejectsFIFOAndHonorsCanceledContext(t *testing.T) {
 }
 func TestWholeRunDeadlineIncludesInventoryAndProducesFailureReceipt(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "expired")
-	if err := supervise(dir, t.TempDir(), []string{"sh", "-c", "exit 0"}, time.Nanosecond, false); err == nil {
+	if err := supervise(dir, t.TempDir(), []string{"sh", "-c", "exit 0"}, time.Nanosecond, false, reportConditions{}); err == nil {
 		t.Fatal("expired setup accepted")
 	}
 	body, err := os.ReadFile(filepath.Join(dir, "summary.json"))
@@ -275,7 +275,7 @@ func TestSourceMutationInvalidatesExactCandidateReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(t.TempDir(), "mutation")
-	if err := supervise(out, source, []string{"sh", "-c", "printf after > payload"}, time.Second, false); err == nil {
+	if err := supervise(out, source, []string{"sh", "-c", "printf after > payload"}, time.Second, false, reportConditions{}); err == nil {
 		t.Fatal("changing candidate accepted")
 	}
 	body, err := os.ReadFile(filepath.Join(out, "summary.json"))

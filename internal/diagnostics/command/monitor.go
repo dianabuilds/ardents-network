@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 package main
 
@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/logstore"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
@@ -30,45 +31,45 @@ type monitorLogRow struct {
 	Entry    event     `json:"entry"`
 }
 type monitorState struct {
-	MetricsFailed       bool               `json:"metrics_failed"`
-	MetricSampleMaxAge  time.Duration      `json:"metric_sample_max_age_ns"`
-	SourceName          string             `json:"source_name"`
-	SourcePID           int                `json:"source_pid"`
-	LastOutput          *time.Time         `json:"last_output,omitempty"`
-	TailEvictedRows     uint64             `json:"tail_evicted_rows"`
-	TotalSamples        uint64             `json:"total_samples"`
-	LatestSample        *monitorLogRow     `json:"latest_sample,omitempty"`
-	TotalRows           uint64             `json:"total_rows"`
-	Limits              logRetentionPolicy `json:"limits"`
-	Schema              string             `json:"schema"`
-	Started             time.Time          `json:"started"`
-	Updated             time.Time          `json:"updated"`
-	Finished            *time.Time         `json:"finished,omitempty"`
-	StartFailed         bool               `json:"start_failed"`
-	SourceAlive         bool               `json:"source_alive"`
-	SourceEnded         *time.Time         `json:"source_ended,omitempty"`
-	RetentionActive     bool               `json:"retention_active"`
-	RetentionFailed     bool               `json:"retention_failed"`
-	CleanupInProgress   bool               `json:"cleanup_in_progress"`
-	SourceExit          *int               `json:"source_exit,omitempty"`
-	Interrupted         bool               `json:"interrupted"`
-	TimedOut            bool               `json:"timed_out"`
-	Raw                 bool               `json:"raw"`
-	StdoutBytes         int64              `json:"stdout_bytes"`
-	StderrBytes         int64              `json:"stderr_bytes"`
-	QueueDroppedBytes   int64              `json:"queue_dropped_bytes"`
-	ConsoleDroppedBytes int64              `json:"console_dropped_bytes"`
-	UnknownLines        uint64             `json:"unknown_lines"`
-	OversizedLines      uint64             `json:"oversized_lines"`
-	FileFailed          bool               `json:"file_failed"`
-	ConsoleFailed       bool               `json:"console_failed"`
-	PanelFailed         bool               `json:"panel_failed"`
-	SnapshotFailed      bool               `json:"snapshot_failed"`
-	SinksJoined         bool               `json:"sinks_joined"`
-	CleanupFailed       bool               `json:"cleanup_failed"`
-	LogsObservedAt      time.Time          `json:"logs_observed_at,omitempty"`
-	Logs                logStoreStats      `json:"logs"`
-	Tail                []monitorLogRow    `json:"tail"`
+	MetricsFailed       bool            `json:"metrics_failed"`
+	MetricSampleMaxAge  time.Duration   `json:"metric_sample_max_age_ns"`
+	SourceName          string          `json:"source_name"`
+	SourcePID           int             `json:"source_pid"`
+	LastOutput          *time.Time      `json:"last_output,omitempty"`
+	TailEvictedRows     uint64          `json:"tail_evicted_rows"`
+	TotalSamples        uint64          `json:"total_samples"`
+	LatestSample        *monitorLogRow  `json:"latest_sample,omitempty"`
+	TotalRows           uint64          `json:"total_rows"`
+	Limits              logstore.Policy `json:"limits"`
+	Schema              string          `json:"schema"`
+	Started             time.Time       `json:"started"`
+	Updated             time.Time       `json:"updated"`
+	Finished            *time.Time      `json:"finished,omitempty"`
+	StartFailed         bool            `json:"start_failed"`
+	SourceAlive         bool            `json:"source_alive"`
+	SourceEnded         *time.Time      `json:"source_ended,omitempty"`
+	RetentionActive     bool            `json:"retention_active"`
+	RetentionFailed     bool            `json:"retention_failed"`
+	CleanupInProgress   bool            `json:"cleanup_in_progress"`
+	SourceExit          *int            `json:"source_exit,omitempty"`
+	Interrupted         bool            `json:"interrupted"`
+	TimedOut            bool            `json:"timed_out"`
+	Raw                 bool            `json:"raw"`
+	StdoutBytes         int64           `json:"stdout_bytes"`
+	StderrBytes         int64           `json:"stderr_bytes"`
+	QueueDroppedBytes   int64           `json:"queue_dropped_bytes"`
+	ConsoleDroppedBytes int64           `json:"console_dropped_bytes"`
+	UnknownLines        uint64          `json:"unknown_lines"`
+	OversizedLines      uint64          `json:"oversized_lines"`
+	FileFailed          bool            `json:"file_failed"`
+	ConsoleFailed       bool            `json:"console_failed"`
+	PanelFailed         bool            `json:"panel_failed"`
+	SnapshotFailed      bool            `json:"snapshot_failed"`
+	SinksJoined         bool            `json:"sinks_joined"`
+	CleanupFailed       bool            `json:"cleanup_failed"`
+	LogsObservedAt      time.Time       `json:"logs_observed_at,omitempty"`
+	Logs                logstore.Stats  `json:"logs"`
+	Tail                []monitorLogRow `json:"tail"`
 }
 type monitorRecord struct {
 	stream string
@@ -83,14 +84,14 @@ type monitorDelivery struct {
 	fileQueue             chan monitorRecord
 	consoleQueue          chan []byte
 	fileDone, consoleDone chan error
-	store                 *logStore
+	store                 *logstore.Store
 	console               *os.File
 }
 
 // File I/O never runs in producer drains or while holding the state lock.
-func newMonitorDelivery(store *logStore, console *os.File, raw bool, at time.Time) *monitorDelivery {
+func newMonitorDelivery(store *logstore.Store, console *os.File, raw bool, at time.Time) *monitorDelivery {
 	d := &monitorDelivery{store: store, console: console, fileQueue: make(chan monitorRecord, 128), consoleQueue: make(chan []byte, 64), fileDone: make(chan error, 1), consoleDone: make(chan error, 1),
-		state: monitorState{Schema: "ardents-monitor-v1", Started: at, Updated: at, Raw: raw, SourceName: "selected-process", Limits: store.policy, Logs: store.Stats(), LogsObservedAt: at}}
+		state: monitorState{Schema: "ardents-monitor-v1", Started: at, Updated: at, Raw: raw, SourceName: "selected-process", Limits: store.Policy(), Logs: store.Stats(), LogsObservedAt: at}}
 	go d.runFile()
 	go d.runConsole()
 	return d
@@ -361,7 +362,7 @@ func openMonitorRoot(dir string) (_ *os.Root, outcome error) {
 			outcome = errors.Join(outcome, root.Close())
 		}
 	}()
-	entries, err := readLogInventory(root)
+	entries, err := logstore.ReadInventory(root)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +381,7 @@ func openMonitorRoot(dir string) (_ *os.Root, outcome error) {
 			info, statErr := file.Stat()
 			body, readErr := io.ReadAll(io.LimitReader(file, 65537))
 			closeErr := file.Close()
-			if statErr != nil || !privateLogFile(info) || len(body) > 65536 || !validJSONRecord(body) {
+			if statErr != nil || !logstore.IsPrivateFile(info) || len(body) > 65536 || !validJSONRecord(body) {
 				return nil, errors.Join(statErr, readErr, closeErr, errors.New("invalid monitor snapshot"))
 			}
 			var previous monitorState
@@ -455,7 +456,7 @@ func monitorCommand(args []string) (outcome error) {
 		return err
 	}
 	defer func() { outcome = errors.Join(outcome, root.Close()) }()
-	store, err := openLogStore(filepath.Join(*out, "logs"), logRetentionPolicy{SegmentBytes: *segmentBytes, MaxBytes: *maxBytes, MaxFiles: *maxFiles, SegmentAge: *segmentAge, MaxAge: *maxAge}, time.Now().UTC())
+	store, err := logstore.Open(filepath.Join(*out, "logs"), logstore.Policy{SegmentBytes: *segmentBytes, MaxBytes: *maxBytes, MaxFiles: *maxFiles, SegmentAge: *segmentAge, MaxAge: *maxAge}, time.Now().UTC())
 	if err != nil {
 		return err
 	}
@@ -697,12 +698,12 @@ func validMonitorName(name string) bool {
 // Retained files continue to expire until the explicitly selected panel stops.
 func maintainMonitorLogs(ctx context.Context, root *os.Root, delivery *monitorDelivery, viewDone <-chan struct{}) (outcome error) {
 	prior := delivery.snapshot()
-	var store *logStore
+	var store *logstore.Store
 	var err error
 	if !prior.SinksJoined {
 		err = errors.New("retention cannot reopen unjoined log sinks")
 	} else {
-		store, err = openLogStore(delivery.store.root.Name(), delivery.store.policy, time.Now().UTC())
+		store, err = delivery.store.Continue(time.Now().UTC())
 	}
 	if err != nil {
 		delivery.mu.Lock()
@@ -714,12 +715,6 @@ func maintainMonitorLogs(ctx context.Context, root *os.Root, delivery *monitorDe
 		}
 		return err
 	}
-	// Reopening is maintenance within this session: preserve delivery counters,
-	// but inventory actual retained bytes and add newly expired files.
-	store.stats.ReceivedBytes = prior.Logs.ReceivedBytes
-	store.stats.WrittenBytes = prior.Logs.WrittenBytes
-	store.stats.LostBytes = prior.Logs.LostBytes
-	store.stats.ExpiredBytes += prior.Logs.ExpiredBytes
 	delivery.store = store
 	delivery.console = nil
 	delivery.fileQueue = make(chan monitorRecord, 128)

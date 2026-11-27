@@ -9,15 +9,16 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
 
 func runAdmissionCurrentIssuer(ctx context.Context, args []string, out io.Writer) int {
 	var c struct {
-		Plan    issuer.Plan           `json:"plan"`
-		Profile string                `json:"profile"`
-		Network *networkAuthorityPlan `json:"network,omitempty"`
-		Batch   []byte                `json:"batch"`
-		Kind    quota.Kind            `json:"kind"`
+		Plan    issuer.Plan                 `json:"plan"`
+		Profile string                      `json:"profile"`
+		Network *state.AuthorityDeclaration `json:"network,omitempty"`
+		Batch   []byte                      `json:"batch"`
+		Kind    quota.Kind                  `json:"kind"`
 	}
 	if ctx == nil || admissionConfig(args, &c) != nil {
 		return 2
