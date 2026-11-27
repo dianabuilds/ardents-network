@@ -13,7 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type snapshotConnectionOwner struct {
@@ -22,14 +22,14 @@ type snapshotConnectionOwner struct {
 	bytes    atomic.Uint32
 }
 
-func (owner *snapshotConnectionOwner) Open(_ context.Context, request connection.Request) (connection.Stream, error) {
-	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+func (owner *snapshotConnectionOwner) Open(_ context.Context, request endpointstream.Request) (endpointstream.Stream, error) {
+	if request.Destination != endpointstream.TargetLink || request.Value != "fixture-link" {
 		return nil, errors.New("fixture destination refused")
 	}
 	owner.opens.Add(1)
 	input, requestSink := io.Pipe()
 	response, output := io.Pipe()
-	stream := &snapshotConnection{request: requestSink, response: response, input: input, output: output, finished: make(chan struct{}), done: make(chan connection.Outcome, 1), bytes: &owner.bytes}
+	stream := &snapshotConnection{request: requestSink, response: response, input: input, output: output, finished: make(chan struct{}), done: make(chan endpointstream.Outcome, 1), bytes: &owner.bytes}
 	go func() {
 		defer close(stream.finished)
 		var probe [1]byte
@@ -40,11 +40,11 @@ func (owner *snapshotConnectionOwner) Open(_ context.Context, request connection
 			err = errors.New("unexpected file request payload")
 		}
 		_ = output.CloseWithError(err)
-		class := connection.CleanClose
+		class := endpointstream.CleanClose
 		if err != nil {
-			class = connection.IndeterminateFailure
+			class = endpointstream.IndeterminateFailure
 		}
-		stream.done <- connection.Outcome{Class: class}
+		stream.done <- endpointstream.Outcome{Class: class}
 		close(stream.done)
 	}()
 	return stream, nil
@@ -56,7 +56,7 @@ type snapshotConnection struct {
 	input     *io.PipeReader
 	output    *io.PipeWriter
 	finished  chan struct{}
-	done      chan connection.Outcome
+	done      chan endpointstream.Outcome
 	closeOnce sync.Once
 	bytes     *atomic.Uint32
 }
@@ -67,8 +67,8 @@ func (stream *snapshotConnection) Write(body []byte) (int, error) {
 	stream.bytes.Add(uint32(n))
 	return n, err
 }
-func (stream *snapshotConnection) CloseInput() error               { return stream.request.Close() }
-func (stream *snapshotConnection) Done() <-chan connection.Outcome { return stream.done }
+func (stream *snapshotConnection) CloseInput() error                   { return stream.request.Close() }
+func (stream *snapshotConnection) Done() <-chan endpointstream.Outcome { return stream.done }
 func (stream *snapshotConnection) Close() error {
 	stream.closeOnce.Do(func() {
 		_ = stream.request.Close()

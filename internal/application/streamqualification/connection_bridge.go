@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // BoundStream pairs a real Service stream with its fixed workload position.
@@ -20,7 +20,7 @@ import (
 // Each Reader owns 16 active and 48 retained positions, Publisher owns all 256.
 type BoundStream struct {
 	ID     uint32
-	Stream connection.Stream
+	Stream endpointstream.Stream
 }
 
 type StreamMeasurement struct {
@@ -348,7 +348,7 @@ func RunConnections(ctx context.Context, attachment io.ReadWriteCloser, init Ini
 	for _, bound := range supplied {
 		select {
 		case terminal, ok := <-bound.Stream.Done():
-			if !ok || terminal.Class != connection.CleanClose {
+			if !ok || terminal.Class != endpointstream.CleanClose {
 				outcome = errors.Join(outcome, fmt.Errorf("qualification stream %d terminal failed", bound.ID))
 			}
 		case <-bounded.Done():

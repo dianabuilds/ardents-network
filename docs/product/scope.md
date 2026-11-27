@@ -256,7 +256,7 @@ The Network audit candidate is the headless maintained product surface:
   Node duties, Endpoint, Service Publication, Connection, Instance and
   Reachability, Enrollment, Release, Custody and process resource protection;
 - the Local Grant and session lifecycle owned by `internal/domain/execution`;
-- the typed local Connection Interface in `internal/application/connection`
+- the typed local Connection Interface in `internal/application/endpointstream`
   and separately authorized Administration Interface in
   `internal/application/administration`;
 - the enrollment-v6 headless artifact lane and the maintained deterministic,
@@ -282,7 +282,7 @@ to the selected GitHub ledger. An audit does not qualify public operation.
 
 The local [Connection Interface](../technical/endpoint-service-runtime.md#ownership)
 owns the AAI4 bidirectional byte-stream requests for all content in
-`internal/application/connection`. The Endpoint applies the same authority and confinement rules to all bytes.
+`internal/application/endpointstream`. The Endpoint applies the same authority and confinement rules to all bytes.
 The authenticated Service context and Connection continuity have no content-type selector.
 
 The separately authorized v1 Administration Interface in

@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // The request and terminal outcome are local fixtures. The snapshot response
@@ -23,10 +23,10 @@ func requireHostilePublisherSnapshot(t *testing.T, parent context.Context, opera
 	var request [0]byte
 	stream := &hostileSnapshotStream{
 		Reader: bytes.NewReader(request[:]), limit: len(document),
-		terminal: make(chan connection.Outcome, 1), closedSignal: make(chan struct{}),
+		terminal: make(chan endpointstream.Outcome, 1), closedSignal: make(chan struct{}),
 	}
 	t.Cleanup(func() { _ = stream.Close() })
-	contract, err := operation.BindStreamContract(connection.ByteStreamDirectionalLimit, connection.ByteStreamDirectionalLimit)
+	contract, err := operation.BindStreamContract(endpointstream.ByteStreamDirectionalLimit, endpointstream.ByteStreamDirectionalLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ type hostileSnapshotStream struct {
 	limit        int
 	completed    bool
 	closed       bool
-	terminal     chan connection.Outcome
+	terminal     chan endpointstream.Outcome
 	closedSignal chan struct{}
 }
 
@@ -77,12 +77,12 @@ func (stream *hostileSnapshotStream) CloseInput() error {
 		return io.ErrClosedPipe
 	}
 	stream.completed = true
-	stream.terminal <- connection.Outcome{Class: connection.CleanClose}
+	stream.terminal <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 	close(stream.terminal)
 	return nil
 }
 
-func (stream *hostileSnapshotStream) Done() <-chan connection.Outcome { return stream.terminal }
+func (stream *hostileSnapshotStream) Done() <-chan endpointstream.Outcome { return stream.terminal }
 
 func (stream *hostileSnapshotStream) Close() error {
 	stream.mu.Lock()
@@ -90,7 +90,7 @@ func (stream *hostileSnapshotStream) Close() error {
 	if !stream.closed {
 		stream.closed = true
 		if !stream.completed {
-			stream.terminal <- connection.Outcome{Class: connection.LocalCancellation}
+			stream.terminal <- endpointstream.Outcome{Class: endpointstream.LocalCancellation}
 			close(stream.terminal)
 		}
 		close(stream.closedSignal)

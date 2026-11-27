@@ -6,7 +6,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // AwaitRetainedWorkerConnection keeps the original Reader awaiting its final
@@ -14,14 +14,14 @@ import (
 // Ready transfers bounded checked bytes, not permission or a joined result.
 // The caller releases only after that cleanup; cancellation still interrupts
 // the original reader and stream. The returned result includes final IPC join.
-func AwaitRetainedWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
+func AwaitRetainedWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
 	if ready == nil || release == nil {
 		return nil, errors.New("document reader completion retention is absent")
 	}
 	return awaitWorkerConnection(ctx, attachment, incoming, ready, release)
 }
 
-func awaitWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
+func awaitWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
 	if ctx == nil || attachment == nil || incoming == nil {
 		return nil, errors.New("document reader Connection is unavailable")
 	}
@@ -179,7 +179,7 @@ func (state *readerConnectionState) fromService(event readerServiceEvent) error 
 		}
 	}
 	if event.terminal {
-		if !state.serviceEOF || state.remoteClean || event.outcome.Class != connection.CleanClose {
+		if !state.serviceEOF || state.remoteClean || event.outcome.Class != endpointstream.CleanClose {
 			return errors.New("document Service Connection did not complete")
 		}
 		state.remoteClean = true

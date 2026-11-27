@@ -529,7 +529,7 @@ surviving-boundary claim; testing a sibling worker does not prove otherwise.
 
 | Owner | Responsibility / permitted imports when implemented |
 |---|---|
-| internal/application/connection | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
+| internal/application/endpointstream | Version-2 local Connection grammar, typed destination, bounded stream and conformance; standard library only |
 | internal/application/document | Fixed text request/response, bounded snapshots and safe presentation; the version-2 Connection contract and standard library |
 | internal/domain/endpoint | Verified installed-unit/socket identity, local job lifecycle, opaque launch receipt, Broker composition and existing Network/Service orchestration; use existing owned imports and the two selected Application contracts |
 | cmd/ardents-next | The trusted document commands in `ardents` owns terminal I/O. It delegates document exchange and presentation to document and uses the Administration client for publication and Link retrieval. |

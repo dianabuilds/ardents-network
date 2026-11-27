@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"context"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 )
 
@@ -18,7 +18,7 @@ func (owner *Owner) LaunchReader(ctx context.Context, principal [32]byte) (*Invo
 }
 
 func (invocation *Invocation) observeReaderAttachment() {
-	input := &readerConnectionInput{incoming: make(chan application.Stream), result: make(chan readerCompletion, 1), finish: make(chan struct{})}
+	input := &readerConnectionInput{incoming: make(chan endpointstream.Stream), result: make(chan readerCompletion, 1), finish: make(chan struct{})}
 	invocation.readerInput = input
 	// The initialized worker remains private. Its sole pending read may precede
 	// Operation creation; any returned protocol bytes and every write require the

@@ -9,14 +9,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // PresentPublishedLink presents one authorized local Link and joins closure of
 // the supplied output on completion or cancellation.
 func PresentPublishedLink(ctx context.Context, socket string, output io.WriteCloser) (outcome error) {
 	if ctx == nil || output == nil {
-		return connection.ErrInvalidTargetLink
+		return endpointstream.ErrInvalidTargetLink
 	}
 	bounded, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

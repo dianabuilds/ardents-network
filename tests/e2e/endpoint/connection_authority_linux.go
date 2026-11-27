@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 )
 
@@ -81,7 +81,7 @@ func AssertInstalledConnectionAuthorityLoss(t *testing.T, ctx context.Context, s
 		t.Fatal("repeated Close changed original outcome")
 	}
 	for result := range stream.Done() {
-		if result.Class != application.IndeterminateFailure {
+		if result.Class != endpointstream.IndeterminateFailure {
 			t.Fatal("authority loss published successful outcome", result.Class)
 		}
 	}

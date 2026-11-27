@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
@@ -32,7 +32,7 @@ type Stream struct {
 	failure           error
 	closing           bool
 	settled           bool
-	outcome           chan application.Outcome
+	outcome           chan endpointstream.Outcome
 	records           *attachmentRecords
 	publisherRoute    *publisherRecoveryRoute
 	initiatorRoute    *InitiatorSource
@@ -95,7 +95,7 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 		}
 		ctx, cancel := context.WithCancel(owner.context())
 		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, publisherRoute: publisherRoute,
-			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan application.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
+			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan endpointstream.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
 		stream.self = stream
 		if initiatorRoute != nil {
 			initiatorRoute.mu.Lock()

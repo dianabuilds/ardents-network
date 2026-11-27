@@ -706,15 +706,15 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 // receives the typed worker refusal before any root state; snapshot imports the
 // caller input read-only (document.ReadSnapshotFile creates no filesystem state or
 // authority) before the same typed launch refusal; byte_stream composes only the
-// portable application/connection contract, not the Refuse typed-refusal projection.
+// portable application/endpointstream contract, not the Refuse typed-refusal projection.
 // They move to linux || darwin and their opening/snapshot refusals narrow to
 // Windows (!linux && !darwin). macOS worker launch stays a typed refusal
 // (execution/runtime !linux stubs); no unconfined worker is spawned and Linux
 // behavior is byte-identical.
 //
 // The Reader coordinator (#885, #691) now shifts the same way after the pure
-// typed refusal constructor application/connection.Refuse was split into the
-// portable server_refusal.go (byte-identical; the Linux-only refusal
+// typed refusal constructor application/endpointstream.Refuse was split into the
+// portable terminal_outcome.go (the Linux-only setup-refusal
 // setupCleanupError classifier stays with the protected Linux server admission).
 // reader/operation/source/byte_stream compose only portable or Unix-family roots
 // and the typed !linux LaunchReader/LaunchByteStreamReader worker refusals, so on

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type presentationOutput struct {
@@ -22,7 +22,7 @@ type presentationOutput struct {
 func (output *presentationOutput) Close() error { output.closed = true; return output.err }
 
 func TestDocumentReadPreservesPresentationCleanupFailure(t *testing.T) {
-	peer := &documentReadPeer{response: documentResponse([]byte("ok")), class: connection.CleanClose}
+	peer := &documentReadPeer{response: documentResponse([]byte("ok")), class: endpointstream.CleanClose}
 	socket := documentReadSocket(t, peer)
 	output := &presentationOutput{err: io.ErrClosedPipe}
 	if err := document.ReadLocal(t.Context(), socket, io.NopCloser(strings.NewReader("fixture-link\n")), output); !errors.Is(err, io.ErrClosedPipe) || !output.closed {

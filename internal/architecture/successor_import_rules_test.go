@@ -42,7 +42,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "internal/application/administration/server.go",
 			"internal/application/administration/server_retirement_test.go",
-			"internal/application/connection/server_linux.go":
+			"internal/application/endpointstream/server_linux.go":
 			return true
 		default:
 			return false
@@ -443,13 +443,13 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/endpoint/reader/operation_unix.go" || source == "internal/domain/endpoint/reader/byte_stream_unix.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (source == "internal/application/administration/byte_stream_linux.go" || source == "internal/application/administration/published_link_client_linux.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/application/administration/byte_stream_linux.go" || source == "internal/application/administration/published_link_client_linux.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if (source == "internal/application/document/local_publication.go" || source == "internal/application/document/local_link_linux.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
-	if (source == "internal/domain/endpoint/reader/reader_unix.go" || source == "internal/domain/endpoint/reader/operation_unix.go" || source == "internal/domain/endpoint/reader/byte_stream_unix.go" || source == "internal/domain/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/endpoint/reader/reader_unix.go" || source == "internal/domain/endpoint/reader/operation_unix.go" || source == "internal/domain/endpoint/reader/byte_stream_unix.go" || source == "internal/domain/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if source == "cmd/ardents-next/diagnostic_timeline.go" && local == "internal/diagnostics/timeline" {
@@ -463,18 +463,18 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/endpoint/document_publisher_linux_test.go", "tests/e2e/endpoint/document_published_link_linux_test.go":
 			return dependency == modulePath+"/internal/application/administration"
 		case "tests/e2e/endpoint/document_reader_peer_linux_test.go", "tests/e2e/endpoint/document_reader_socket_linux_test.go", "tests/e2e/endpoint/stream_exchange_linux_test.go":
-			return dependency == modulePath+"/internal/application/connection"
+			return dependency == modulePath+"/internal/application/endpointstream"
 		case "tests/e2e/endpoint/document_reader_process_linux_test.go", "tests/e2e/endpoint/document_reader_linux_test.go":
-			return dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document"
+			return dependency == modulePath+"/internal/application/endpointstream" || dependency == modulePath+"/internal/application/document"
 		case "cmd/ardents-next/stream_command.go":
-			return dependency == modulePath+"/internal/application/connection"
+			return dependency == modulePath+"/internal/application/endpointstream"
 		case "cmd/ardents-next/document_command.go":
-			return dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document"
+			return dependency == modulePath+"/internal/application/endpointstream" || dependency == modulePath+"/internal/application/document"
 		}
 	}
 	if source == "internal/domain/endpoint/endpoint_journey_native_linux_test.go" || source == "internal/domain/endpoint/document_command_installed_linux_test.go" {
 		switch dependency {
-		case modulePath + "/internal/application/administration", modulePath + "/internal/application/connection", modulePath + "/internal/application/document":
+		case modulePath + "/internal/application/administration", modulePath + "/internal/application/endpointstream", modulePath + "/internal/application/document":
 			return true
 		}
 	}
@@ -484,7 +484,7 @@ func successorImportAllowed(source, dependency string) bool {
 	// the installed reader adapter does. It owns no Application server.
 	if source == "internal/domain/endpoint/latency_native_linux_test.go" {
 		switch dependency {
-		case modulePath + "/internal/application/connection", modulePath + "/internal/application/document":
+		case modulePath + "/internal/application/endpointstream", modulePath + "/internal/application/document":
 			return true
 		}
 	}
@@ -497,16 +497,16 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/byte_stream.go" || source == "internal/domain/execution/runtime/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (source == "internal/domain/execution/runtime/stream_contract.go" || source == "internal/domain/execution/runtime/stream_contract_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/execution/runtime/stream_contract.go" || source == "internal/domain/execution/runtime/stream_contract_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if source == "internal/domain/execution/runtime/document_reader_linux.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (source == "internal/domain/execution/runtime/document_reader_linux.go" || source == "internal/domain/execution/runtime/document_reader_handoff.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/execution/runtime/document_reader_linux.go" || source == "internal/domain/execution/runtime/document_reader_handoff.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
-	if (source == "internal/domain/execution/runtime/document_publisher_linux.go" || source == "internal/domain/execution/runtime/document_publisher_handoff.go" || source == "internal/domain/execution/runtime/hostile_snapshot_installed_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/execution/runtime/document_publisher_linux.go" || source == "internal/domain/execution/runtime/document_publisher_handoff.go" || source == "internal/domain/execution/runtime/hostile_snapshot_installed_linux_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if source == "internal/domain/execution/worker/stream_activation_installed_linux_test.go" && dependency == modulePath+"/internal/application/streamqualification" {
@@ -515,10 +515,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/stream_qualification_linux.go" || source == "internal/domain/execution/runtime/stream_qualification_other.go" || source == "internal/domain/execution/runtime/stream_qualification_installed_linux_test.go") && dependency == modulePath+"/internal/application/streamqualification" {
 		return true
 	}
-	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
-	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if source == "internal/domain/endpoint/publisher/snapshot_unix.go" && dependency == modulePath+"/internal/application/document" {
@@ -592,13 +592,13 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 
-	if source == "internal/domain/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/document") {
+	if source == "internal/domain/endpoint/reader/result.go" && (dependency == modulePath+"/internal/application/endpointstream" || dependency == modulePath+"/internal/application/document") {
 		return true
 	}
 	if (source == "internal/domain/endpoint/publisher/publisher_unix.go" || source == "internal/domain/endpoint/publisher/opening_unix.go" || source == "internal/domain/endpoint/publisher/byte_stream_unix.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if source == "internal/domain/endpoint/publisher/byte_stream_unix.go" && dependency == modulePath+"/internal/application/connection" {
+	if source == "internal/domain/endpoint/publisher/byte_stream_unix.go" && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if source == "internal/domain/endpoint/publisher/contract.go" && dependency == modulePath+"/internal/application/document" {

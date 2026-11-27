@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func TestDocumentReadCancellationDuringSetupAndTerminalWait(t *testing.T) {
@@ -22,11 +22,11 @@ func TestDocumentReadCancellationDuringSetupAndTerminalWait(t *testing.T) {
 	for _, phase := range []string{"setup", "terminal"} {
 		t.Run(phase, func(t *testing.T) {
 			ready := make(chan struct{})
-			var peer connection.Interface
+			var peer endpointstream.Interface
 			if phase == "setup" {
 				peer = &setupBlockingDocumentReadPeer{entered: ready}
 			} else {
-				peer = &documentReadPeer{response: documentResponse([]byte("secret")), class: connection.CleanClose,
+				peer = &documentReadPeer{response: documentResponse([]byte("secret")), class: endpointstream.CleanClose,
 					terminal: make(chan struct{}), responseSent: ready}
 			}
 			socket := documentReadSocket(t, peer)
@@ -84,7 +84,7 @@ func TestTrustedDocumentProcessCancellationInterruptsInheritedPipes(t *testing.T
 			name = "stalled-output"
 		}
 		t.Run(name, func(t *testing.T) {
-			peer := &documentReadPeer{response: documentResponse(bytes.Repeat([]byte("x"), document.MaximumBytes)), class: connection.CleanClose}
+			peer := &documentReadPeer{response: documentResponse(bytes.Repeat([]byte("x"), document.MaximumBytes)), class: endpointstream.CleanClose}
 			socket := documentReadSocket(t, peer)
 			ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
 			defer cancel()
@@ -147,7 +147,7 @@ func TestTrustedDocumentProcessCancellationInterruptsInheritedPipes(t *testing.T
 
 func TestDocumentReadPreservesInheritedPipeFlags(t *testing.T) {
 	binary := buildArdentsNext(t)
-	peer := &documentReadPeer{response: documentResponse([]byte("hello")), class: connection.CleanClose}
+	peer := &documentReadPeer{response: documentResponse([]byte("hello")), class: endpointstream.CleanClose}
 	socket := documentReadSocket(t, peer)
 	input, inputWriter, err := os.Pipe()
 	if err != nil {

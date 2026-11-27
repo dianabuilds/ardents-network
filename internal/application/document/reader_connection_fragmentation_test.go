@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // Split actual RunWorker output, preserving its bytes, credit and direction.
@@ -93,8 +93,8 @@ func TestReaderWorkerRequestMayUseOneByteFramesWithoutQueueDeadlock(t *testing.T
 	if err := document.InitializeWorker(ctx, endpoint, document.ReaderWorker, [32]byte{1}, nil); err != nil {
 		t.Fatal(err)
 	}
-	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
-	stream.done <- connection.Outcome{Class: connection.CleanClose}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan endpointstream.Outcome, 1)}
+	stream.done <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 	close(stream.done)
 	body, err := readTransferredReader(ctx, endpoint, stream)
 	if err != nil || string(body) != "ok" || stream.request.Len() != 0 || !stream.inputClosed || !stream.closed {
@@ -121,8 +121,8 @@ func TestReaderWorkerMalformedRequestNeverReachesService(t *testing.T) {
 	if err := document.InitializeWorker(ctx, endpoint, document.ReaderWorker, [32]byte{1}, nil); err != nil {
 		t.Fatal(err)
 	}
-	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
-	stream.done <- connection.Outcome{Class: connection.CleanClose}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan endpointstream.Outcome, 1)}
+	stream.done <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 	close(stream.done)
 	body, err := readTransferredReader(ctx, endpoint, stream)
 	if err == nil || body != nil || stream.request.Len() != 0 || !stream.closed {

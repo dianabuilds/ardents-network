@@ -184,6 +184,19 @@
       "timeout": "20s"
     },
     {
+      "id": "endpointstream-private-input-linux",
+      "state": "active",
+      "make_target": "endpointstream-private-input-check",
+      "surface": "actual CLI reads an owner-only Target Link as its owner and refuses a different unprivileged UID before local dial; exact diagnostic and no stdout",
+      "prerequisites": [
+        "Linux root with chown and UID/GID switching capability",
+        "writable /tmp with traversal for the selected numeric UIDs",
+        "Go 1.27.4 and race-capable C compiler"
+      ],
+      "invalid_environment": "root, ownership or credential switching unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
       "id": "custody-permission-filesystems-linux",
       "state": "active",
       "make_target": "custody-permission-filesystems-check",

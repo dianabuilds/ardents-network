@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // Failure projects local document errors without exposing private details.
@@ -14,20 +14,20 @@ func Failure(err error) string {
 		return "read cancelled"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "read timed out"
-	case errors.Is(err, connection.ErrInvalidTargetLink):
+	case errors.Is(err, endpointstream.ErrInvalidTargetLink):
 		return "document destination or local input is invalid"
 	}
-	if refusal, ok := errors.AsType[connection.SetupRefusalError](err); ok {
+	if refusal, ok := errors.AsType[endpointstream.SetupRefusalError](err); ok {
 		switch refusal.Outcome().Class {
-		case connection.LocalCancellation:
+		case endpointstream.LocalCancellation:
 			return "read cancelled"
-		case connection.LocalTimeout:
+		case endpointstream.LocalTimeout:
 			return "read timed out"
-		case connection.LocalFailure:
+		case endpointstream.LocalFailure:
 			return "local connection failed"
-		case connection.IndeterminateFailure:
+		case endpointstream.IndeterminateFailure:
 			return "connection outcome unknown"
-		case connection.CapacityUnavailable:
+		case endpointstream.CapacityUnavailable:
 			return "document capacity unavailable"
 		}
 	}

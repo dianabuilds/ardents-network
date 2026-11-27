@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
@@ -125,7 +125,7 @@ func runInstalledDocumentCommandsThroughJoinedNetwork(t *testing.T, snapshot []b
 	}()
 	sockets := t.TempDir()
 	readSocket, publishSocket := filepath.Join(sockets, "read"), filepath.Join(sockets, "publish")
-	readerListener, err := application.Listen(readSocket, reader)
+	readerListener, err := endpointstream.Listen(readSocket, reader)
 	if err != nil {
 		t.Fatal(err)
 	}

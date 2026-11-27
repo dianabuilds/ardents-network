@@ -53,7 +53,7 @@ func TestArdentsLinuxClosureRetiresAAI2(t *testing.T) {
 		receipt.Command != wantReceipt.Command || receipt.ScopeLimit != wantReceipt.ScopeLimit {
 		t.Fatalf("receipt = %+v", receipt)
 	}
-	for _, seam := range []string{"administration", "connection"} {
+	for _, seam := range []string{"administration", "endpointstream"} {
 		if !receipt.Dependencies[ardentsModulePath+"/internal/application/"+seam] {
 			t.Errorf("Linux %s closure does not retain the Application %s Interface", receipt.Command, seam)
 		}
@@ -223,7 +223,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 		t.Error("./cmd/ardents-next directly imports the retired generic AAI2 Connection client")
 	}
 
-	connection := ardentsModulePath + "/internal/application/connection"
+	connection := ardentsModulePath + "/internal/application/endpointstream"
 	administration := ardentsModulePath + "/internal/application/administration"
 	product := listedDirectImports(t, root, "./cmd/ardents-next")
 	if !product[connection] {

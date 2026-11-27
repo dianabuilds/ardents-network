@@ -14,7 +14,7 @@ github.com/dianabuilds/ardents-network/internal/domain/admission/console
 
 github.com/dianabuilds/ardents-network/internal/application/document/worker
 github.com/dianabuilds/ardents-network/tests/qualification/worker-lifecycle/stream-worker
-github.com/dianabuilds/ardents-network/internal/application/connection
+github.com/dianabuilds/ardents-network/internal/application/endpointstream
 github.com/dianabuilds/ardents-network/internal/application/document
 github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network

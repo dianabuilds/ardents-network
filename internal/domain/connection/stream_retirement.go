@@ -8,11 +8,11 @@ import (
 	"os"
 	"time"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 )
 
-func (stream *Stream) Done() <-chan application.Outcome {
+func (stream *Stream) Done() <-chan endpointstream.Outcome {
 	if stream == nil || stream.self != stream {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (stream *Stream) settleLocked() {
 		return
 	}
 	stream.settled = true
-	stream.outcome <- application.Outcome{Class: application.CleanClose}
+	stream.outcome <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 	close(stream.outcome)
 	close(stream.settledDone)
 	// Original authority/Instance remain retained during the control tail.
@@ -130,7 +130,7 @@ func (stream *Stream) retire() {
 		stream.closeErr = errors.Join(stream.failure, stream.cleanupErr)
 		clear(stream.key[:])
 		if !stream.settled {
-			stream.outcome <- application.Outcome{Class: application.IndeterminateFailure, Reason: "Service Connection did not complete authenticated Terminal exchange"}
+			stream.outcome <- endpointstream.Outcome{Class: endpointstream.IndeterminateFailure, Reason: "Service Connection did not complete authenticated Terminal exchange"}
 			close(stream.outcome)
 		}
 		stream.mu.Unlock()

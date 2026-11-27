@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type publisherHarness struct {
-	incoming chan connection.Stream
+	incoming chan endpointstream.Stream
 	finished chan struct{}
 	err      error
 	cancel   context.CancelFunc
@@ -48,7 +48,7 @@ func startPublisherHarnessWithWorker(t *testing.T, body []byte, decorate, decora
 	if decorate != nil {
 		attachment = decorate(endpoint)
 	}
-	harness := &publisherHarness{incoming: make(chan connection.Stream), finished: make(chan struct{}), cancel: cancel}
+	harness := &publisherHarness{incoming: make(chan endpointstream.Stream), finished: make(chan struct{}), cancel: cancel}
 	go func() {
 		defer close(harness.finished)
 		harness.err = document.ServeWorkerConnections(ctx, attachment, harness.incoming)
@@ -57,7 +57,7 @@ func startPublisherHarnessWithWorker(t *testing.T, body []byte, decorate, decora
 	return harness
 }
 
-func (harness *publisherHarness) admit(t *testing.T, stream connection.Stream) {
+func (harness *publisherHarness) admit(t *testing.T, stream endpointstream.Stream) {
 	t.Helper()
 	select {
 	case harness.incoming <- stream:
@@ -88,7 +88,7 @@ type publisherFixture struct {
 	startOnce sync.Once
 	closed    chan struct{}
 	closeOnce sync.Once
-	terminal  chan connection.Outcome
+	terminal  chan endpointstream.Outcome
 	doneOnce  sync.Once
 	mu        sync.Mutex
 	response  bytes.Buffer
@@ -97,7 +97,7 @@ type publisherFixture struct {
 
 func newPublisherFixture(request []byte, gate <-chan struct{}) *publisherFixture {
 	return &publisherFixture{input: bytes.NewReader(request), gate: gate, started: make(chan struct{}),
-		closed: make(chan struct{}), terminal: make(chan connection.Outcome, 1)}
+		closed: make(chan struct{}), terminal: make(chan endpointstream.Outcome, 1)}
 }
 
 func (stream *publisherFixture) Read(body []byte) (int, error) { return stream.input.Read(body) }
@@ -120,15 +120,15 @@ func (stream *publisherFixture) Write(body []byte) (int, error) {
 	}
 }
 func (stream *publisherFixture) CloseInput() error {
-	stream.finish(connection.CleanClose)
+	stream.finish(endpointstream.CleanClose)
 	return nil
 }
-func (stream *publisherFixture) finish(class connection.OutcomeClass) {
-	stream.doneOnce.Do(func() { stream.terminal <- connection.Outcome{Class: class}; close(stream.terminal) })
+func (stream *publisherFixture) finish(class endpointstream.OutcomeClass) {
+	stream.doneOnce.Do(func() { stream.terminal <- endpointstream.Outcome{Class: class}; close(stream.terminal) })
 }
-func (stream *publisherFixture) Done() <-chan connection.Outcome { return stream.terminal }
+func (stream *publisherFixture) Done() <-chan endpointstream.Outcome { return stream.terminal }
 func (stream *publisherFixture) Close() error {
-	stream.closeOnce.Do(func() { close(stream.closed); stream.finish(connection.LocalCancellation) })
+	stream.closeOnce.Do(func() { close(stream.closed); stream.finish(endpointstream.LocalCancellation) })
 	return stream.closeErr
 }
 func (stream *publisherFixture) assertResponse(t *testing.T, body []byte) {

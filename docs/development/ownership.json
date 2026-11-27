@@ -73,7 +73,7 @@
         "experiments/",
         "internal/application/administration/",
         "tests/compatibility/",
-        "internal/application/connection/",
+        "internal/application/endpointstream/",
         "internal/application/document/",
         "packaging/document-worker/",
         "tests/qualification/document-worker-policy/"
@@ -86,7 +86,7 @@
       "id": "application-connection",
       "owner": "application-connection",
       "include_prefixes": [
-        "internal/application/connection/"
+        "internal/application/endpointstream/"
       ]
     },
     {

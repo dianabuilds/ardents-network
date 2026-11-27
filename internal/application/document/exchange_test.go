@@ -8,14 +8,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type responseStream struct {
 	input               *bytes.Reader
 	request             bytes.Buffer
-	done                chan connection.Outcome
+	done                chan endpointstream.Outcome
 	inputClosed, closed bool
 	closeErr            error
 	closeOnce           sync.Once
@@ -28,7 +28,7 @@ func (stream *responseStream) Close() error {
 	stream.closeOnce.Do(func() { stream.closed = true })
 	return stream.closeErr
 }
-func (stream *responseStream) Done() <-chan connection.Outcome { return stream.done }
+func (stream *responseStream) Done() <-chan endpointstream.Outcome { return stream.done }
 
 func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 	valid := []byte{0, 0xff, 0x80, 'x'}
@@ -39,18 +39,18 @@ func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 		cleanup  error
 		want     bool
 	}{
-		{"binary", valid, string(connection.CleanClose), nil, true},
-		{"empty", nil, string(connection.CleanClose), nil, true},
-		{"maximum", bytes.Repeat([]byte{0xff}, document.MaximumBytes), string(connection.CleanClose), nil, true},
-		{"oversize", bytes.Repeat([]byte{0xff}, document.MaximumBytes+1), string(connection.CleanClose), nil, false},
+		{"binary", valid, string(endpointstream.CleanClose), nil, true},
+		{"empty", nil, string(endpointstream.CleanClose), nil, true},
+		{"maximum", bytes.Repeat([]byte{0xff}, document.MaximumBytes), string(endpointstream.CleanClose), nil, true},
+		{"oversize", bytes.Repeat([]byte{0xff}, document.MaximumBytes+1), string(endpointstream.CleanClose), nil, false},
 		{"missing terminal", valid, "", nil, false},
 		{"failed terminal", valid, "interrupted", nil, false},
-		{"cleanup failure", valid, string(connection.CleanClose), io.ErrClosedPipe, false},
+		{"cleanup failure", valid, string(endpointstream.CleanClose), io.ErrClosedPipe, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			stream := &responseStream{input: bytes.NewReader(test.response), done: make(chan connection.Outcome, 1), closeErr: test.cleanup}
+			stream := &responseStream{input: bytes.NewReader(test.response), done: make(chan endpointstream.Outcome, 1), closeErr: test.cleanup}
 			if test.outcome != "" {
-				stream.done <- connection.Outcome{Class: connection.OutcomeClass(test.outcome)}
+				stream.done <- endpointstream.Outcome{Class: endpointstream.OutcomeClass(test.outcome)}
 			}
 			close(stream.done)
 			body, err := document.Read(context.Background(), stream)
@@ -70,7 +70,7 @@ func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 func TestCancelledReadCreatesNoRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	stream := &responseStream{input: bytes.NewReader(nil), done: make(chan connection.Outcome)}
+	stream := &responseStream{input: bytes.NewReader(nil), done: make(chan endpointstream.Outcome)}
 	_, err := document.Read(ctx, stream)
 	if !errors.Is(err, context.Canceled) || stream.request.Len() != 0 || !stream.closed {
 		t.Fatalf("cancelled read = %v", err)

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type relayDirection struct {
@@ -48,7 +48,7 @@ func relayWorkerStreams(attachment io.ReadWriter) error {
 		switch frame.kind {
 		case 2:
 			size := uint32(len(frame.body))
-			if source.finished || size > source.credit || uint64(size) > connection.ByteStreamDirectionalLimit-source.bytes {
+			if source.finished || size > source.credit || uint64(size) > endpointstream.ByteStreamDirectionalLimit-source.bytes {
 				return errors.New("byte-stream worker input exceeds its credit")
 			}
 			source.credit -= size

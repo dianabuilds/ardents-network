@@ -9,14 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type bridgeTestStream struct {
 	once    sync.Once
 	closed  chan struct{}
 	wrote   chan struct{}
-	outcome chan connection.Outcome
+	outcome chan endpointstream.Outcome
 	fault   error
 }
 
@@ -36,12 +36,12 @@ func (s *bridgeTestStream) Write(b []byte) (int, error) {
 		return len(b), nil
 	}
 }
-func (s *bridgeTestStream) CloseInput() error               { return nil }
-func (s *bridgeTestStream) Done() <-chan connection.Outcome { return s.outcome }
+func (s *bridgeTestStream) CloseInput() error                   { return nil }
+func (s *bridgeTestStream) Done() <-chan endpointstream.Outcome { return s.outcome }
 func (s *bridgeTestStream) Close() error {
 	s.once.Do(func() {
 		close(s.closed)
-		s.outcome <- connection.Outcome{Class: connection.LocalCancellation}
+		s.outcome <- endpointstream.Outcome{Class: endpointstream.LocalCancellation}
 		close(s.outcome)
 	})
 	return nil
@@ -66,7 +66,7 @@ func runBridgeRetirement(t *testing.T, fault error) {
 		if index >= 16 {
 			id = 129 + uint32(index-16)*2
 		}
-		stream := &bridgeTestStream{closed: make(chan struct{}), wrote: wrote, outcome: make(chan connection.Outcome, 1), fault: fault}
+		stream := &bridgeTestStream{closed: make(chan struct{}), wrote: wrote, outcome: make(chan endpointstream.Outcome, 1), fault: fault}
 		streams = append(streams, BoundStream{ID: id, Stream: stream})
 	}
 	workerDone := make(chan error, 1)

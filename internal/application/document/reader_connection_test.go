@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func TestReaderWorkerUsesOneAdmittedServiceStreamAndJoinsItsResult(t *testing.T) {
@@ -17,8 +17,8 @@ func TestReaderWorkerUsesOneAdmittedServiceStreamAndJoinsItsResult(t *testing.T)
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
 			body := bytes.Repeat([]byte("x"), size)
 			response := body
-			stream := &responseStream{input: bytes.NewReader(response), done: make(chan connection.Outcome, 1)}
-			stream.done <- connection.Outcome{Class: connection.CleanClose}
+			stream := &responseStream{input: bytes.NewReader(response), done: make(chan endpointstream.Outcome, 1)}
+			stream.done <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 			close(stream.done)
 			worker, _ := startDocumentWorker(t, document.ReaderWorker, nil)
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
@@ -38,15 +38,15 @@ func TestReaderWorkerUsesOneAdmittedServiceStreamAndJoinsItsResult(t *testing.T)
 func TestReaderWorkerNeverReturnsContentOnInterruptedServiceOrCleanup(t *testing.T) {
 	for _, test := range []struct {
 		name     string
-		terminal connection.OutcomeClass
+		terminal endpointstream.OutcomeClass
 		cleanup  error
 	}{
-		{"missing terminal", "", nil}, {"non-clean terminal", connection.LocalFailure, nil}, {"cleanup failure", connection.CleanClose, io.ErrClosedPipe},
+		{"missing terminal", "", nil}, {"non-clean terminal", endpointstream.LocalFailure, nil}, {"cleanup failure", endpointstream.CleanClose, io.ErrClosedPipe},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1), closeErr: test.cleanup}
+			stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan endpointstream.Outcome, 1), closeErr: test.cleanup}
 			if test.terminal != "" {
-				stream.done <- connection.Outcome{Class: test.terminal}
+				stream.done <- endpointstream.Outcome{Class: test.terminal}
 			}
 			close(stream.done)
 			worker, _ := startDocumentWorker(t, document.ReaderWorker, nil)

@@ -7,8 +7,8 @@ import (
 	"errors"
 	"io"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 )
 
@@ -28,7 +28,7 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 	ctx, cancel := context.WithCancel(original)
 	request, input := io.Pipe()
 	output, response := io.Pipe()
-	stream := &resultStream{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan application.Outcome, 1)}
+	stream := &resultStream{input: input, output: output, cancel: cancel, joined: make(chan struct{}), done: make(chan endpointstream.Outcome, 1)}
 	go func() {
 		defer close(stream.joined)
 		defer cancel()
@@ -49,7 +49,7 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 			reason = "Service Connection did not authenticate terminal completion"
 			select {
 			case outcome, open := <-pending.service.Done():
-				if !open || outcome.Class != application.CleanClose {
+				if !open || outcome.Class != endpointstream.CleanClose {
 					err = errors.New("authenticated byte stream did not complete")
 				}
 			case <-ctx.Done():
@@ -64,9 +64,9 @@ func newByteStreamResult(original context.Context, check func() error, pending *
 		_ = request.CloseWithError(err)
 		_ = response.CloseWithError(err)
 		if err == nil {
-			stream.done <- application.Outcome{Class: application.CleanClose}
+			stream.done <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 		} else {
-			stream.done <- application.Outcome{Class: application.IndeterminateFailure, Reason: reason}
+			stream.done <- endpointstream.Outcome{Class: endpointstream.IndeterminateFailure, Reason: reason}
 		}
 		close(stream.done)
 	}()

@@ -7,8 +7,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
 )
 
@@ -28,7 +28,7 @@ func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, sna
 // the same original qualified operation reach it; the incoming byte boundary
 // neither authenticates Service nor supplies a replacement Job.
 func (invocation *Invocation) observePublisherAttachment() {
-	invocation.publisherInput = &publisherConnectionInput{incoming: make(chan connection.Stream)}
+	invocation.publisherInput = &publisherConnectionInput{incoming: make(chan endpointstream.Stream)}
 	go func() {
 		defer close(invocation.observationDone)
 		err := document.ServeWorkerConnections(invocation.job.Context(), invocation.activation.Attachment, invocation.publisherInput.incoming)

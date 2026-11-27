@@ -197,7 +197,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		case "tests/e2e/endpoint/native_delivery_linux.go":
 			return explicitImportResult(local == "internal/domain/endpoint/plan" || local == "internal/domain/release/infrastructure/launch")
 		case "tests/e2e/endpointinstalled/journey_participant_native_linux_test.go":
-			return explicitImportResult(local == "tests/e2e/endpoint" || local == "internal/application/administration" || local == "internal/application/connection" || local == "internal/application/document")
+			return explicitImportResult(local == "tests/e2e/endpoint" || local == "internal/application/administration" || local == "internal/application/endpointstream" || local == "internal/application/document")
 		case "tests/e2e/endpoint/journey_participant_linux.go":
 			return explicitImportResult(local == "internal/domain/network/state" || local == "tests/releasefixture")
 		case "tests/e2e/endpoint/connection_reopen_linux.go":
@@ -205,7 +205,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		case "tests/e2e/endpoint/connection_worker_linux.go":
 			return explicitImportResult(local == "internal/domain/execution/runtime")
 		case "tests/e2e/endpoint/connection_authority_linux.go":
-			return explicitImportResult(local == "internal/application/connection" || local == "internal/domain/connection")
+			return explicitImportResult(local == "internal/application/endpointstream" || local == "internal/domain/connection")
 		case "tests/e2e/endpoint/document_commands_linux.go":
 			return explicitImportResult(local == "internal/application/administration" || local == "internal/domain/publication")
 		case "tests/e2e/endpoint/service_refresh_linux.go":

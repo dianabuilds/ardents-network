@@ -7,7 +7,7 @@ import (
 	"io"
 	"testing"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
@@ -37,7 +37,7 @@ func TestTerminalFlagsCannotPublishSuccessWithoutOriginalOperation(t *testing.T)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream := &Stream{ctx: ctx, cancel: cancel, owner: &AuthenticatedAttachment{},
-		transfer: completedTransfer(t), outcome: make(chan application.Outcome, 1), settledDone: make(chan struct{})}
+		transfer: completedTransfer(t), outcome: make(chan endpointstream.Outcome, 1), settledDone: make(chan struct{})}
 	stream.mu.Lock()
 	stream.settleLocked()
 	stream.mu.Unlock()

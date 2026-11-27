@@ -3,7 +3,7 @@ package runtime
 import (
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 const qualificationDirectionalLimit uint64 = 64 << 20
@@ -61,7 +61,7 @@ func (contract StreamContract) Limits(operation *Operation) (uint64, uint64, err
 
 func validStreamLimits(byteStream bool, send, receive uint64) bool {
 	if byteStream {
-		return send == connection.ByteStreamDirectionalLimit && receive == connection.ByteStreamDirectionalLimit
+		return send == endpointstream.ByteStreamDirectionalLimit && receive == endpointstream.ByteStreamDirectionalLimit
 	}
 	return send > 0 && receive > 0 && send <= qualificationDirectionalLimit && receive <= qualificationDirectionalLimit
 }
