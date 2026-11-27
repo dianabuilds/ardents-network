@@ -5,7 +5,6 @@ package nodeinstalled_test
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,7 +17,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
-	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -67,29 +65,62 @@ func installedHolderPlan(t *testing.T, domain uint8) funding.Plan {
 	}
 }
 
-// Provision the actual selected Entry as the installed Node. Retain the two
-// selection roots across launches so no trial or redraw can avoid that Node.
-func (f *installedRouteFixture) selectForwarding(t *testing.T) [32]byte {
+// Provision the Entry exercised by a genuine Prefix and retain the holder's
+// selection roots across launches. Readiness uses that original selection.
+func (f *installedRouteFixture) selectForwarding(t *testing.T, binary string) [32]byte {
 	t.Helper()
 	f.forwarding = installedHolderPlan(t, 3)
-	chosen, err := selection.Open(selection.Config{EntryRoot: f.forwarding.EntryRoot, InteriorRoot: f.forwarding.InteriorRoot, Domain: f.forwarding.Domain, Current: f.holder.CurrentRuntime})
-	if err != nil {
-		t.Fatal(err)
+	var entry [32]byte
+	if !t.Run("select installed Forwarding Entry", func(t *testing.T) {
+		peers := f.startForwardingPeers(t, binary, [32]byte{})
+		plan := f.forwarding
+		plan.Deadline = time.Now().Add(30 * time.Second).UTC().Truncate(time.Second)
+		holder := processfixture.FundRouteStock(t, f.spec, f.bundle, f.issuer, f.holder.CurrentRuntime, admission.AllocationUser, [32]byte{})
+		before := make(map[[32]byte][]byte)
+		for _, peer := range peers {
+			if peer.entry {
+				before[peer.nodeID] = installedSpends(t, peer.spend)
+			}
+		}
+		prefix, err := session.OpenPrefix(t.Context(), plan, f.authority(), holder)
+		if err != nil {
+			t.Fatal("original Forwarding selection Prefix", err)
+		}
+		if err := prefix.Close(); err != nil {
+			t.Fatal("original Forwarding selection Prefix did not join", err)
+		}
+		for _, peer := range peers {
+			if baseline, ok := before[peer.nodeID]; ok && len(installedSpends(t, peer.spend)) > len(baseline) {
+				if entry != [32]byte{} {
+					t.Fatal("one Prefix spent at multiple Entries")
+				}
+				entry = peer.nodeID
+			}
+		}
+		if entry == [32]byte{} {
+			t.Fatal("original Prefix did not spend at a signed Entry")
+		}
+		stopInstalledPeers(t, peers)
+	}) {
+		t.FailNow()
 	}
-	leg, err := chosen.Select()
-	if err := errors.Join(err, chosen.Close()); err != nil {
-		t.Fatal(err)
-	}
-	return leg.Entry.NodeID
+	return entry
 }
 
 func (f installedRouteFixture) authority() funding.Authority {
 	return funding.Observe(f.holder.CurrentRuntime, f.holder.CurrentRuntimeWitness, funding.PresentationGuard(f.holder.CurrentRuntime))
 }
 
-func (f installedRouteFixture) startForwardingPeers(t *testing.T, binary string, installed [32]byte) []*processfixture.NativeProcess {
+type installedForwardingPeer struct {
+	nodeID  [32]byte
+	entry   bool
+	spend   string
+	process *processfixture.NativeProcess
+}
+
+func (f installedRouteFixture) startForwardingPeers(t *testing.T, binary string, installed [32]byte) []installedForwardingPeer {
 	t.Helper()
-	var peers []*processfixture.NativeProcess
+	var peers []installedForwardingPeer
 	for _, member := range f.bundle.Nodes {
 		id := member.NodeID
 		if id == installed || member.Subrole != 1 && member.Subrole != 2 {
@@ -97,14 +128,16 @@ func (f installedRouteFixture) startForwardingPeers(t *testing.T, binary string,
 		}
 		network := networkinputs.SeedNetworkState(t, f.spec.NetworkID, [32]byte(f.spec.Authority[32:]), f.bundle, f.clock)
 		cert, key := processfixture.WriteNativeCredential(t, f.certificates[id])
+		spend := t.TempDir()
 		plan := map[string]any{
 			"network": network, "node_id": id, "process_profile": processguard.ForwardingProfile,
-			"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(),
+			"participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": spend,
 			"hosting_root": processfixture.ProcessBudgetWithCapacity(t, 256), "certificate": cert, "private_key": key,
 			"work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000,
 		}
 		f.ports[id]()
-		peers = append(peers, processfixture.StartFreshRole(t, "forwarding", binary, processfixture.WriteConfig(t, plan), id[0]))
+		process := processfixture.StartFreshRole(t, "forwarding", binary, processfixture.WriteConfig(t, plan), id[0])
+		peers = append(peers, installedForwardingPeer{nodeID: id, entry: member.Subrole == 1, spend: spend, process: process})
 	}
 	return peers
 }
@@ -187,9 +220,9 @@ func requireInstalledSpend(t *testing.T, root string, before []byte) {
 	}
 }
 
-func stopInstalledPeers(t *testing.T, peers []*processfixture.NativeProcess) {
+func stopInstalledPeers(t *testing.T, peers []installedForwardingPeer) {
 	t.Helper()
 	for _, p := range peers {
-		p.Stop(t)
+		p.process.Stop(t)
 	}
 }

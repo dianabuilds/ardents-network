@@ -283,7 +283,7 @@ func provisionForwardingPlatformStand(t *testing.T) *forwardingPlatformStand {
 	}
 	networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
 	stand.workload = prepareInstalledRouteFixture(t, spec, bundle, issuerPlan, stand.clockPath, stand.sockets, certificates)
-	stand.nodeID = stand.workload.selectForwarding(t)
+	stand.nodeID = stand.workload.selectForwarding(t, binary)
 
 	var key [32]byte
 	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))

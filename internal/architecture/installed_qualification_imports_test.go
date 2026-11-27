@@ -134,6 +134,26 @@ func installedQualificationImport(source, dependency, local string, localImport 
 			}
 		}
 	}
+	// Installed workload drivers compose current Endpoint operations with their
+	// own fixture authority. They have no direct Route package imports.
+	if localImport {
+		switch source {
+		case "tests/e2e/nodeinstalled/join_workload_linux_test.go":
+			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/stock" ||
+				local == "internal/domain/endpoint/session" || local == "tests/e2e/node/processfixture")
+		case "tests/e2e/nodeinstalled/route_workload_linux_test.go":
+			switch local {
+			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/endpoint/funding",
+				"internal/domain/endpoint/session", "internal/domain/hosting", "internal/domain/network/state",
+				"internal/domain/reachability", "internal/platform/processguard", "tests/e2e/node/processfixture",
+				"tests/epochfixture/network", "tests/networkfixture":
+				return importAllowed
+			default:
+				return importDenied
+			}
+		}
+	}
+
 	if localImport && (source == "tests/e2e/nodeinstalled/descriptor_platform_native_linux_test.go" || source == "tests/e2e/nodeinstalled/forwarding_platform_native_linux_test.go" || source == "tests/e2e/nodeinstalled/join_platform_native_linux_test.go") {
 		switch local {
 		case "internal/domain/admission", "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
