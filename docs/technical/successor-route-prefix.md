@@ -9,12 +9,19 @@ selection, retry or privacy-policy amendment.
 
 ## Responsibilities and authority
 
-`internal/successor/route` owns role-purpose eligibility and Node/key/family
+`internal/domain/route` owns role-purpose eligibility and Node/key/family
 conflicts. `selection` owns exclusive independent Entry and Interior roots,
 committed ordered alternatives, original horizons and monotonic floors. It
 retains exact duties from one coherent Network observation and rechecks with
 fresh `CurrentRuntime`/`MatchDuty`; transport failure does not redraw a pair.
 Known locally controlled identities and families enter selection as exclusions.
+Entry and role selection keep their own state locks free during Network
+observations. A role checks its original admission and retained Entry set
+before writing Interior and before issuing the Leg. The selection attempt
+requires the same Network profile binding across its observations and uses
+the latest observed time for its final checks. Closing an owner seals new
+effects and waits for its original observation before releasing its lease.
+A refusal after a completed write preserves the committed floor.
 
 `selection.InitializeInstallation` explicitly prepares empty Entry and declared
 role Interior histories in existing vacant roots under a current Network

@@ -97,7 +97,7 @@ func TestClosedSetCanonicalBytesUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Members(1); err != nil {
+	if _, err := selectEntryPair(owner, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := owner.Close(); err != nil {

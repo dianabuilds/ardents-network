@@ -27,14 +27,14 @@ func TestClosedEntryDomainsRemainSeparateAcrossRestart(t *testing.T) {
 	}
 	selected := make(map[uint8][2]ClosedSetMember)
 	for _, domain := range []uint8{1, 3, 4} {
-		pair, err := owner.Members(domain)
+		pair, err := selectEntryPair(owner, domain)
 		if err != nil {
 			_ = owner.Close()
 			t.Fatalf("domain %d: %v", domain, err)
 		}
 		selected[domain] = pair
 	}
-	if _, err := owner.Members(2); err == nil {
+	if _, err := selectEntryPair(owner, 2); err == nil {
 		t.Fatal("activated non-adjacent Rendezvous")
 	}
 	if err := owner.Close(); err != nil {
@@ -47,7 +47,7 @@ func TestClosedEntryDomainsRemainSeparateAcrossRestart(t *testing.T) {
 	defer reopened.Close()
 	for domain, pair := range selected {
 		for slot, member := range pair {
-			current, err := reopened.CurrentMember(domain, uint8(slot))
+			current, _, err := reopened.currentMember(domain, uint8(slot))
 			if err != nil || current != member {
 				t.Fatalf("domain %d changed selected member on reopen: %v", domain, err)
 			}

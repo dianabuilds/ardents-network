@@ -3,6 +3,9 @@
 // bounds. Each local role has a separate persisted Interior pair and original
 // thirty-minute horizon. A fresh Network RuntimeView supplies every live check;
 // roots, receipts and copied participant values never grant current authority.
+// Durable selection stays serialized while Network observations run outside
+// the Entry and role state locks. Close seals admission and joins the original
+// selection before releasing its lease.
 // Retained Interior opening checks its format before acquiring a non-creating
 // lease and rechecks under that lease; missing history is never a fresh draw.
 // Explicit first preparation creates empty Entry and role histories without a
@@ -40,7 +43,7 @@
 //     interior_refusal_test.go, generation_store_test.go.
 //   - composition: installation.go, selection_owner.go (Borrow returns the
 //     serialized Owner). Tests: installation_test.go,
-//     installation_history_test.go, selection_owner_test.go,
+//     installation_history_test.go, selection_owner_test.go, selection_observation_test.go,
 //     installation_cleanup_linux_test.go. The store behavior tests execute on
 //     Windows and Linux through the platform owner-only floor; the physical
 //     lease-corruption, foreign-uid and Mkfifo identity controls stay native.
