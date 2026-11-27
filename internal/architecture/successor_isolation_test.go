@@ -2009,14 +2009,12 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	// Only the command composition consumes the Endpoint root from cmd.
+	// The Endpoint command retains the installed and offline effect dispatch.
 	if strings.HasPrefix(source, "cmd/ardents-next/") && localImport && local == "internal/domain/endpoint" {
-		switch source {
-		case "cmd/ardents-next/command.go":
-			return true
-		default:
-			return false
-		}
+		return false
+	}
+	if local == "internal/domain/endpoint/command" {
+		return source == "cmd/ardents-next/command.go"
 	}
 	switch source {
 	case "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go":
@@ -2178,7 +2176,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "cmd/ardents-next/command.go":
-			if local == "internal/domain/node" || local == "internal/domain/endpoint" || local == "internal/platform/launch" {
+			if local == "internal/domain/node" || local == "internal/platform/launch" {
 				return true
 			}
 		case "cmd/ardents-next/infrastructure_operator.go":
@@ -2298,17 +2296,12 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if dependency == modulePath+"/internal/domain/endpoint/command" {
-		return source == "cmd/ardents-next/command.go"
-	}
 	if dependency == modulePath+"/internal/domain/endpoint/internal/permission" {
 		return source == "internal/domain/endpoint/participant_linux.go" ||
 			source == "internal/domain/endpoint/latency_native_linux_test.go"
 	}
 	if dependency == modulePath+"/internal/domain/endpoint" {
 		switch source {
-		case "cmd/ardents-next/command.go":
-			return false
 		case "internal/domain/endpoint/command/installed_command_linux.go",
 			"internal/domain/endpoint/command/preparation_files_linux.go",
 			"internal/domain/endpoint/command/progress_report_linux_test.go":
@@ -2403,7 +2396,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/endpoint/publisher": {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/publication/durable", "domain/publication/instance", "domain/publication/runtime", "domain/route/prefix", "domain/route/selection", "pathcheck"},
 		"internal/domain/endpoint/reader":    {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/connection", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/reachability", "domain/route/prefix", "domain/route/selection"},
 		"internal/domain/endpoint/funding":   {"domain/admission", "domain/admission/stock", "domain/admission/token", "domain/hosting", "domain/network", "domain/network/state", "domain/route", "domain/route/ardp", "domain/route/bootstrap", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathcheck"},
-		"cmd/ardents-next":                   {"canonicaldigest", "pathcheck", "domain/endpoint/session", "domain/endpoint", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
+		"cmd/ardents-next":                   {"canonicaldigest", "pathcheck", "domain/endpoint/session", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
 
 		"internal/domain/endpoint/internal/permission": {"domain/admission/stock", "pathcheck"},
 	}
