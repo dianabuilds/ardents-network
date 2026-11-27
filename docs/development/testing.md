@@ -4253,7 +4253,8 @@ stop, forward program change, startup and failed-unit recovery through systemd.
 ### Descriptor Store retained history and repair
 
 `make descriptor-store-retained-check` runs the live Store owner against an
-explicit Linux root/ext4 TMPDIR. It checks retained signed history, refusal of
+explicit Linux root/ext4 TMPDIR and root-controlled ancestors. It checks retained
+signed history, refusal of
 missing or uncertain history without creation, bounded stage repair after all
 committed floors validate, exclusive lease and joined original users. The
 profile rejects missing native prerequisites and grants no installed, Release

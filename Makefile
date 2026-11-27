@@ -533,13 +533,16 @@ descriptor-store-retained-check:
 	@set -eu; \
 	path="$${TMPDIR:-}"; \
 	case "$$path" in /*) ;; *) echo "absolute TMPDIR required"; exit 2;; esac; \
-	if [ "$$(id -u)" -ne 0 ] || [ ! -d "$$path" ] || [ -L "$$path" ]; then \
-		echo "root and an original TMPDIR are required"; exit 2; \
+	if [ "$$(id -u)" -ne 0 ] || [ ! -d "$$path" ] || [ "$$(realpath -e "$$path")" != "$$path" ] || [ "$$(stat -f -c %t "$$path")" != ef53 ]; then \
+		echo "root and an original ext4 TMPDIR are required"; exit 2; \
 	fi; \
-	mode=$$(stat -c %a "$$path"); \
-	if [ "$$(stat -c %u "$$path")" -ne 0 ] || [ $$((0$$mode & 022)) -ne 0 ] || [ "$$(stat -f -c %t "$$path")" != ef53 ]; then \
-		echo "root-owned, non-writable-by-others ext4 TMPDIR required"; exit 2; \
-	fi
+	while :; do \
+		mode=$$(stat -c %a "$$path"); \
+		if [ "$$(stat -c %u "$$path")" -ne 0 ] || [ $$((0$$mode & 022)) -ne 0 ]; then \
+			echo "root-owned, non-writable-by-others TMPDIR and ancestors required"; exit 2; \
+		fi; \
+		[ "$$path" = / ] && break; path=$$(dirname "$$path"); \
+	done
 	go test -race -trimpath -buildvcs=false ./internal/domain/reachability/store -run '^Test(RetainedStore|RepairRetainedStoreStage|StoreForeignObservationDoesNotLockStateAndCloseJoins|StoreOriginalCustodyLossCannotReviveAfterRestoration|StoreOriginalLeaseLossAndFirstPhysicalRelease)' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-forward-release-check
