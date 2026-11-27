@@ -11,15 +11,13 @@ import (
 func TestAuthorityKeepsDistinctNetworkBindings(t *testing.T) {
 	notBefore := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
 	profile := network.ProfileFacts{
-		ProfileBinding: network.ProfileBinding{
-			Network:     [32]byte{1},
-			Generation:  [32]byte{2},
-			EpochDigest: [32]byte{3},
-			Digest:      [32]byte{4},
-			Epoch:       7,
-			NotBefore:   notBefore,
-			NotAfter:    notBefore.Add(time.Hour),
-		},
+		Network:              [32]byte{1},
+		Generation:           [32]byte{2},
+		EpochDigest:          [32]byte{3},
+		Digest:               [32]byte{4},
+		Epoch:                7,
+		NotBefore:            notBefore,
+		NotAfter:             notBefore.Add(time.Hour),
 		IssuanceAuthorityKey: [32]byte{5},
 		IssuerNodeID:         [32]byte{6},
 		IssuerDutyGeneration: 9,
