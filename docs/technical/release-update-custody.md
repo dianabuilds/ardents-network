@@ -68,9 +68,12 @@ receipt and writes the signed 228-byte permission only to the specified
 owner-only, same-directory no-replace output. Private delivery checks that the
 original output is owned by the effective user and that group/other access is
 absent before writing the staged Permission and when admitting an exact retry.
-The current checked Linux mechanism accepts only ext4 and tmpfs, whose POSIX
-ACL mask follows the mode bits; tmpfs is volatile and supplies no persistence
-claim. Other Linux filesystems, macOS and Windows return a typed unavailable
+The Linux mechanism accepts ext4 and tmpfs, whose POSIX ACL mask follows the
+mode bits; tmpfs is volatile and supplies no persistence claim. Since Linux
+uses the same filesystem magic for ext2, ext3 and ext4, ext4 is identified by
+the held object’s mount ID and the kernel mount table, never by magic or a
+path lookup alone. If the mount ID or trusted procfs table is unavailable,
+private delivery refuses. Other Linux filesystems, macOS and Windows return a typed unavailable
 result before the command opens the Vault or creates a staging file. The API
 rechecks the original file at delivery; command preflight is not a reservation.
 macOS ACLs are evaluated separately from POSIX mode bits, and Windows may

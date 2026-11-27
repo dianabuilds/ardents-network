@@ -184,6 +184,20 @@
       "timeout": "20s"
     },
     {
+      "id": "custody-permission-filesystems-linux",
+      "state": "active",
+      "make_target": "custody-permission-filesystems-check",
+      "surface": "private Permission real ext4/tmpfs creation and retry, ext2/ext3 pre-effect refusal and original-descriptor mount replacement; no installed or power-loss qualification",
+      "prerequisites": [
+        "Linux root with mount and bind-mount capability in a disposable mount namespace",
+        "separate writable ext2, ext3, ext4 and tmpfs mounts identified by findmnt",
+        "ARDENTS_TEST_EXT2, ARDENTS_TEST_EXT3, ARDENTS_TEST_EXT4 and ARDENTS_TEST_TMPFS point to those mounts",
+        "Go 1.27.4 and race-capable C compiler"
+      ],
+      "invalid_environment": "a selected mount, root or mount capability is unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
       "id": "custody-native-linux",
       "state": "active",
       "make_target": "custody-check",

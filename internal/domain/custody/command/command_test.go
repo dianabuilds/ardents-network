@@ -483,6 +483,16 @@ func TestPrivatePermissionUnavailableBeforeVaultOrPrompt(t *testing.T) {
 	destination := filepath.Join(t.TempDir(), "permission")
 	if runtime.GOOS == "linux" {
 		destination = "/proc/ardents-private-permission-test"
+		// The native filesystem profile selects actual ext2; the ordinary
+		// portable test uses procfs as a separately unsupported filesystem.
+		if root := os.Getenv("ARDENTS_TEST_EXT2"); root != "" {
+			directory, err := os.MkdirTemp(root, "permission-command-")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.RemoveAll(directory) })
+			destination = filepath.Join(directory, "permission")
+		}
 	}
 	probe := &privateDeliveryProbe{}
 	var output bytes.Buffer

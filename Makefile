@@ -460,6 +460,16 @@ issuer-profile-check:
 	go test ./internal/domain/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
 	go test ./internal/domain/admission/issuerprofile/signing -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
 
+.PHONY: custody-permission-filesystems-check
+custody-permission-filesystems-check:
+	@test "$(HEADLESS_GOOS)" = linux && [ "$$(id -u)" -eq 0 ] || (echo "Linux root and four real filesystem mounts required"; exit 2)
+	@set -eu; for item in "ext2:$${ARDENTS_TEST_EXT2:-}" "ext3:$${ARDENTS_TEST_EXT3:-}" "ext4:$${ARDENTS_TEST_EXT4:-}" "tmpfs:$${ARDENTS_TEST_TMPFS:-}"; do \
+		kind=$${item%%:*}; path=$${item#*:}; \
+		[ -n "$$path" ] && [ -d "$$path" ] && [ "$$(findmnt -n -o FSTYPE -T "$$path")" = "$$kind" ] || { echo "missing or wrong $$kind mount"; exit 2; }; \
+	done
+	go test -race -tags custody_private_permission_native ./internal/domain/custody -run '^TestPrivatePermissionMountedFilesystems$$' -count=1 -v -timeout=3m
+	go test -race ./internal/domain/custody/command -run '^TestPrivatePermissionUnavailableBeforeVaultOrPrompt$$' -count=1 -v -timeout=3m
+
 .PHONY: custody-check
 custody-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/custody ./internal/domain/custody/command ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
