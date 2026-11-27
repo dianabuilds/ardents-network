@@ -280,17 +280,17 @@ repair-retained`. Retained native evidence is
 (`node_process_native`). Descriptor Release signing is preserved and cut over to
 the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
 retained `descriptor-forward-release-linux` signing lane and the
-`descriptor-store-inspection-linux` read-only Store mechanism lane remain
+`descriptor-store-retained-linux` live Store history/repair lane remain
 required. The read-only retained-root inspection mechanisms
-(`state.OpenNodeInspection`, `duty.OpenNodeInspection`,
-`reachability/store.OpenInspection`) lose their last production consumer and
-are retained as
+(`state.OpenNodeInspection`, `duty.OpenNodeInspection`) lose their last
+production consumer and are retained as
 reviewed mechanism code with genuine native coverage (deadcode allowlist); their
 shared custody/floor/reader helpers remain production-live through
 SourceInspection, the live Store and the bounded repair.
-The unused Spending and Hosting inspections are retired; the active receiving
-owner retains its strict existing-history open, burn and lease checks. The live
-Hosting owner retains durable reservations and its original exclusive lease.
+The unused Spending, Hosting and Store inspections are retired; the active
+receiving owner retains strict existing-history, burn and lease checks. The live
+Hosting owner retains durable reservations and its original lease; Store retains
+signed floors, custody and bounded repair.
 
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
 build producer's exact source byte/mode grammar, duplicate refusal and actual
@@ -4250,18 +4250,16 @@ The Source replacement-cut test for the retired `installation replace-source`
 command was removed. The maintained installed Source process profile covers
 stop, forward program change, startup and failed-unit recovery through systemd.
 
-### Descriptor read-only Store inspection mechanism (retained)
+### Descriptor Store retained history and repair
 
-`make descriptor-store-inspection-check` selects root/ext4 mechanism controls
-with `ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1`: signed existing history and
-exclusive read-only lease, missing/uncertain history with no repair, same-byte
-inode substitution/restoration, held reader/Close and actual late descriptor
-failure. The checked three-minute profile fails missing prerequisites and grants
-no installed/runtime/Release or original-retirement evidence. Its compilation is
-included in `network-signing-compile-check`. After the orchestration retirement
-this lane exercises `reachability/store.OpenInspection` as reviewed mechanism code
-(deadcode allowlist); the parallel `state`/`duty` inspection mechanisms keep
-their own genuine native coverage.
+`make descriptor-store-retained-check` runs the live Store owner against an
+explicit Linux root/ext4 TMPDIR. It checks retained signed history, refusal of
+missing or uncertain history without creation, bounded stage repair after all
+committed floors validate, exclusive lease and joined original users. The
+profile rejects missing native prerequisites and grants no installed, Release
+or original-retirement evidence. The unused stopped Store inspection and its
+separate numeric-principal observation are retired; no runtime fallback is
+introduced.
 
 ### Descriptor retired installed orchestration lanes
 
