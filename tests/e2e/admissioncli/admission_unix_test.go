@@ -142,7 +142,11 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	if proto.Unmarshal(seen["/v1/traces"], &tr) != nil || len(tr.ResourceSpans) != 1 {
 		t.Fatal("missing trace")
 	}
-	span := tr.ResourceSpans[0].ScopeSpans[0].Spans[0]
+	traceScopes := tr.ResourceSpans[0].ScopeSpans
+	if len(traceScopes) != 1 || len(traceScopes[0].Spans) != 1 {
+		t.Fatal("expected exactly one trace span")
+	}
+	span := traceScopes[0].Spans[0]
 	if span.Name != "admission.initialize" || len(span.Attributes) != 3 || len(span.Events) != 0 || len(span.ParentSpanId) != 0 {
 		t.Fatal("unsafe span")
 	}
@@ -154,11 +158,20 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	resources := map[string]string{"service.name": "ardents-next"}
 	requireExactStringAttributes(t, tr.ResourceSpans[0].Resource.Attributes, resources)
 	requireExactStringAttributes(t, mr.ResourceMetrics[0].Resource.Attributes, resources)
-	for _, scope := range mr.ResourceMetrics[0].ScopeMetrics {
+	metricScopes := mr.ResourceMetrics[0].ScopeMetrics
+	if len(metricScopes) != 1 {
+		t.Fatal("expected exactly one metric scope")
+	}
+	instrumentNames := make(map[string]bool, 2)
+	for _, scope := range metricScopes {
 		if len(scope.Metrics) != 2 {
 			t.Fatal("extra instruments")
 		}
 		for _, m := range scope.Metrics {
+			if instrumentNames[m.Name] {
+				t.Fatal("duplicate instrument", m.Name)
+			}
+			instrumentNames[m.Name] = true
 			switch m.Name {
 			case "ardents.admission.operations":
 				points := m.GetSum().DataPoints
