@@ -611,24 +611,11 @@
           "internal/domain/reachability/store.storeInspection.nativeRoot",
           "internal/domain/reachability/store.Inspection.Check",
           "internal/domain/reachability/store.Inspection.Close",
-          "internal/domain/reachability/store.storeInspection.close",
-          "internal/domain/hosting.OpenInspection",
-          "internal/domain/hosting.openInspection",
-          "internal/domain/hosting.periodInspection.openDirectory",
-          "internal/domain/hosting.periodInspection.openLeaf",
-          "internal/domain/hosting.periodInspection.local",
-          "internal/domain/hosting.periodInspection.read",
-          "internal/domain/hosting.samePeriodInspectionFile",
-          "internal/domain/hosting.periodInspection.identities",
-          "internal/domain/hosting.periodInspection.nativeRoot",
-          "internal/domain/hosting.periodInspection.check",
-          "internal/domain/hosting.Inspection.Check",
-          "internal/domain/hosting.Inspection.Close",
-          "internal/domain/hosting.periodInspection.close"
+          "internal/domain/reachability/store.storeInspection.close"
         ],
         "classification": "retired transitional Descriptor replacement orchestration; retained read-only inspection mechanism test coverage",
-        "rationale": "The transitional installation/descriptor replacement orchestration and its canonical Node consumer retired (#604 FJD stage D, ADR-0125); replacement_inspections_linux.go was the sole production caller of these read-only retained-root inspection openers. The platform-led Descriptor lifecycle owns replacement through systemd and the canonical platform unit, and the bounded retained-producer repair uses its own dead-unit/lease openers, so these inspection openers have no remaining production consumer. They are retained as reviewed mechanism code because genuine Linux native tests exercise their exact numeric-principal custody, exclusive read-only lease, signed-floor/uncertain-history refusal without creation or repair, inode-restoration refusal, held-reader and physical Close join, and cancellation semantics: state/node_inspection_native_linux_test.go, duty/inspection_native_linux_test.go (which also covers the retained SourceInspection exposure policy), reachability/store/inspection_native_linux_test.go and inspection_join_native_linux_test.go (the descriptor-store-inspection-check lane), hosting/retained_inspection_native_linux_test.go. The shared custody/floor/reader helpers they call (durable.OpenInspection, readRetainedInspection, inspectionLocalClosure, participationInspection, checkRetainedStoreRoot, retainStoreCustody, restoreStoreFloors, inspectStoreCustody) remain production-live through SourceInspection, the live Store and the bounded repair, and are not listed here. Linux-native only; these files are excluded on Windows. No Linux/common checker exemption, successful authority substitute or installed qualification is added.",
-        "owner": "Product Owner and Codex; Network State/duty, Reachability Store and Hosting inspection owners",
+        "rationale": "The transitional installation/descriptor replacement orchestration and its canonical Node consumer retired (#604 FJD stage D, ADR-0125); replacement_inspections_linux.go was the sole production caller of these read-only retained-root inspection openers. The platform-led Descriptor lifecycle owns replacement through systemd and the canonical platform unit, and the bounded retained-producer repair uses its own dead-unit/lease openers, so these inspection openers have no remaining production consumer. They are retained as reviewed mechanism code because genuine Linux native tests exercise their exact numeric-principal custody, exclusive read-only lease, signed-floor/uncertain-history refusal without creation or repair, inode-restoration refusal, held-reader and physical Close join, and cancellation semantics: state/node_inspection_native_linux_test.go, duty/inspection_native_linux_test.go (which also covers the retained SourceInspection exposure policy), reachability/store/inspection_native_linux_test.go and inspection_join_native_linux_test.go (the descriptor-store-inspection-check lane). The shared custody/floor/reader helpers they call (durable.OpenInspection, readRetainedInspection, inspectionLocalClosure, participationInspection, checkRetainedStoreRoot, retainStoreCustody, restoreStoreFloors, inspectStoreCustody) remain production-live through SourceInspection, the live Store and the bounded repair, and are not listed here. Linux-native only; these files are excluded on Windows. No Linux/common checker exemption, successful authority substitute or installed qualification is added.",
+        "owner": "Product Owner and Codex; Network State/duty and Reachability Store inspection owners",
         "retirement": "Remove each allowance when its genuine native mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
       },
       {
@@ -673,17 +660,6 @@
         "rationale": "Node dispatch uses the exact typed role constructors after decoding its portable declarations. On Windows, typed startup stops before any native Route effect. These Network and Route checks remain reachable on Linux and retain their behavior tests.",
         "owner": "Network State and Route role",
         "retirement": "Remove each entry when a maintained Windows production role reaches the corresponding check."
-      },
-      {
-        "symbols": [
-          "internal/domain/hosting.Inspection.Check",
-          "internal/domain/hosting.Inspection.Close",
-          "internal/domain/hosting.OpenInspection"
-        ],
-        "classification": "Non-Linux retained-Hosting inspection typed refusal with no portable consumer (#865)",
-        "rationale": "retained_inspection_unsupported.go (!linux) mirrors the Linux-only retained-history Inspection API as an explicit ErrUnsupportedPlatform refusal: the mechanism requires the original root-only lease and the Linux ext4 storage floor (PO decision P1.1), which macOS APFS does not satisfy. No portable production or test caller opens a retained Hosting inspection (cmd/ardents-next/hosting.go uses only the portable Budget surface), so these refusal stubs are dead on windows-amd64. The genuine Linux inspection stays Linux-tagged and is exercised by hosting/retained_inspection_native_linux_test.go; its Linux production-dead allowance is separate. No weaker accepting path is introduced.",
-        "owner": "Product Owner and Codex; Hosting inspection owner",
-        "retirement": "Remove these exact Windows entries when a selected portable production consumer reaches the retained inspection on Windows, or when a researched macOS/Windows storage floor ports the mechanism, or when the retained-inspection contract is retired."
       },
       {
         "symbols": [
@@ -2438,17 +2414,6 @@
         "rationale": "The fixture declarations are portable data. Their only consumers exercise the Unix signing rules or native Linux signing custody, which are unavailable in this Windows test profile.",
         "owner": "Offline Network signing tests",
         "retirement": "Remove each fixture when its last signing test retires or a Windows signing test consumes it."
-      },
-      {
-        "symbols": [
-          "internal/domain/hosting.Inspection.Check",
-          "internal/domain/hosting.Inspection.Close",
-          "internal/domain/hosting.OpenInspection"
-        ],
-        "classification": "Non-Linux retained-Hosting inspection typed refusal, no Windows test path (#865)",
-        "rationale": "retained_inspection_unsupported.go (!linux) provides the explicit ErrUnsupportedPlatform refusal for the Linux-only retained-history Inspection (ext4 storage floor, root-only lease; PO decision P1.1). No portable test opens a retained Hosting inspection on Windows; the genuine mechanism is exercised only by the Linux native-tag test hosting/retained_inspection_native_linux_test.go. These refusal stubs are therefore fully-dead in the windows-amd64 native-tag analysis only, mirroring the windows-production allowance. The Linux native-tag test analysis remains empty. No weaker accepting path is introduced.",
-        "owner": "Product Owner and Codex; Hosting inspection owner",
-        "retirement": "Remove these exact Windows entries when a selected portable test or production path reaches the retained inspection on Windows, or when a researched storage floor ports the mechanism, or when the retained-inspection contract is retired. The Linux native-tag test analysis must remain empty."
       },
       {
         "symbols": [

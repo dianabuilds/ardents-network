@@ -283,13 +283,14 @@ retained `descriptor-forward-release-linux` signing lane and the
 `descriptor-store-inspection-linux` read-only Store mechanism lane remain
 required. The read-only retained-root inspection mechanisms
 (`state.OpenNodeInspection`, `duty.OpenNodeInspection`,
-`reachability/store.OpenInspection`, `hosting.OpenInspection`) lose their last
-production consumer and are retained as
+`reachability/store.OpenInspection`) lose their last production consumer and
+are retained as
 reviewed mechanism code with genuine native coverage (deadcode allowlist); their
 shared custody/floor/reader helpers remain production-live through
 SourceInspection, the live Store and the bounded repair.
-The unused Spending inspection is retired; the active receiving owner retains
-its strict existing-history open, burn and original lease checks.
+The unused Spending and Hosting inspections are retired; the active receiving
+owner retains its strict existing-history open, burn and lease checks. The live
+Hosting owner retains durable reservations and its original exclusive lease.
 
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
 build producer's exact source byte/mode grammar, duplicate refusal and actual
@@ -1612,18 +1613,12 @@ qualification: a full Introduction repair platform gate mirroring
 `join_platform_native`'s repair leg against a real failed unit and per-unit
 cgroup quiescence remains separate Linux/systemd evidence.
 
-`TestHostingInspectionNative*` is a separate owner selection in the same
-root/ext4 `network-signing-linux` profile:
-`go test -race -tags network_signing_native ./internal/domain/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`
-(also run by `make network-signing-check`; E1-2 executed proof restored).
-It uses actual Hosting initialization, kernel interface observations and durable
-reservations, then independently inspects original bytes/policy/principal under
-the original allowance lease. Missing/damaged/foreign/pending history refuses
-without repair or creation. A live original reservation remains charged until
-its genuine owner returns it; inspection never supplies that return. Held reads,
-cancellation, local denial, physical late Close failure and copied completion
-check custody through actual join. These controls establish no installed
-replacement/recovery or capacity permission.
+The root/ext4 `network-signing-linux` profile runs the live Hosting budget tests
+for retained reservations after restart, corrupt and pending history refusal,
+fresh Sample refusal on uncertain storage, exclusive lease and cross-process
+reservation termination. These controls exercise the actual Budget owner; they
+do not claim the retired inspection's numeric-principal read-only observation or
+installed replacement/recovery qualification.
 
 The root/ext4 `network-signing-linux` profile also executes the active Spending
 retained-opening tests. They use actual persisted spend and an exclusive lease
@@ -4265,8 +4260,8 @@ failure. The checked three-minute profile fails missing prerequisites and grants
 no installed/runtime/Release or original-retirement evidence. Its compilation is
 included in `network-signing-compile-check`. After the orchestration retirement
 this lane exercises `reachability/store.OpenInspection` as reviewed mechanism code
-(deadcode allowlist); the parallel `state`/`duty`/`spending`/`hosting` inspection
-mechanisms keep their own genuine native coverage.
+(deadcode allowlist); the parallel `state`/`duty` inspection mechanisms keep
+their own genuine native coverage.
 
 ### Descriptor retired installed orchestration lanes
 
