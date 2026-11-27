@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -220,5 +223,120 @@ func TestTimedDirectWorkloadCancelsBeforeReceiverStart(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("receiver-start wait did not join after cancellation")
+	}
+}
+
+func TestFixedDirectClientCancelsBeforeAcknowledgement(t *testing.T) {
+	listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := startFixedDirect(ctx, DirectConfig{Role: "direct-connect", Address: listener.Addr().String()})
+	if err := listener.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	peer, err := listener.AcceptTCP()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer peer.Close()
+
+	if err := peer.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var payload [32]byte
+	var initialBlock [40]byte
+	want := sha256.Sum256(initialBlock[:])
+	if _, err := io.ReadFull(peer, payload[:]); err != nil || payload != want {
+		t.Fatalf("original peer did not receive the complete workload: %v", err)
+	}
+
+	cancel()
+	requireCanceledFixedDirect(t, peer, done)
+}
+
+func TestFixedDirectListenerCancelsBeforePeerHalfClose(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	ready := make(chan string, 1)
+	done := startFixedDirect(ctx, DirectConfig{Role: "direct-listen", Address: "127.0.0.1:0",
+		Ready: func(address string) { ready <- address }})
+	var address string
+	select {
+	case address = <-ready:
+	case result := <-done:
+		t.Fatalf("listener returned before readiness: %v", result.err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("listener did not become ready")
+	}
+
+	peer, err := net.DialTimeout("tcp", address, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer peer.Close()
+	if err := peer.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var initialBlock [40]byte
+	payload := sha256.Sum256(initialBlock[:])
+	if count, err := peer.Write(payload[:]); err != nil || count != len(payload) {
+		t.Fatalf("send workload: %d bytes, %v", count, err)
+	}
+	var acknowledgement [1]byte
+	if _, err := io.ReadFull(peer, acknowledgement[:]); err != nil || acknowledgement != [1]byte{1} {
+		t.Fatalf("listener did not acknowledge the complete workload: %v, %v", acknowledgement, err)
+	}
+
+	cancel()
+	requireCanceledFixedDirect(t, peer, done)
+}
+
+type fixedDirectResult struct {
+	observation Observation
+	err         error
+}
+
+func startFixedDirect(ctx context.Context, config DirectConfig) <-chan fixedDirectResult {
+	done := make(chan fixedDirectResult, 1)
+	go func() {
+		var output bytes.Buffer
+		config.Bytes, config.Output = 32, &output
+		err := Direct(ctx, config)
+		var observation Observation
+		err = errors.Join(err, json.Unmarshal(output.Bytes(), &observation))
+		done <- fixedDirectResult{observation: observation, err: err}
+	}()
+	return done
+}
+
+func requireCanceledFixedDirect(t *testing.T, peer net.Conn, done <-chan fixedDirectResult) {
+	t.Helper()
+	select {
+	case result := <-done:
+		if !errors.Is(result.err, context.Canceled) || result.observation.Terminal != "error" {
+			t.Fatalf("canceled Direct reported terminal %q, error %v", result.observation.Terminal, result.err)
+		}
+	case <-time.After(3 * time.Second):
+		_ = peer.Close()
+		select {
+		case <-done:
+		case <-time.After(3 * time.Second):
+			t.Fatal("Direct did not join even after the peer closed")
+		}
+		t.Fatal("Direct did not join after cancellation alone")
+	}
+	if err := peer.SetReadDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var extra [1]byte
+	count, err := peer.Read(extra[:])
+	var timeout net.Error
+	if count != 0 || err == nil || errors.As(err, &timeout) && timeout.Timeout() {
+		t.Fatalf("original connection did not close without further data: %d bytes, %v", count, err)
 	}
 }
