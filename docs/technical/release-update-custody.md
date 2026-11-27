@@ -224,6 +224,13 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
+The verifier admits at most 64 entries in its retained generation directory,
+including staging residue. Under the original exclusive lease it refuses a
+new generation before staging would exceed that same read bound.
+`ErrHistoryCapacity` is the retained cause of that refusal. The current
+pointer, trusted roots and floors remain readable. An exact no-update can use
+the existing authenticated history.
+
 The isolated new-domain composition uses `internal/domain/release` with
 its own history and the genuine `ardents-next release verify-initial` consumer.
 It consumes new Enrollment's authenticated facts and frozen bytes, not the

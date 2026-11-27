@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	floorStoreMarkerName    = ".ardents-release-decision-v1"
-	floorStoreMarker        = "ardents-release-decision-v1\n"
-	floorStoreLockName      = ".ardents-release-decision-lock"
-	floorStoreLeaseContents = "ardents-release-decision-exclusive-lease-v1\n"
-	floorDigestPrefix       = "role="
+	floorStoreMarkerName      = ".ardents-release-decision-v1"
+	floorStoreMarker          = "ardents-release-decision-v1\n"
+	floorStoreLockName        = ".ardents-release-decision-lock"
+	floorStoreLeaseContents   = "ardents-release-decision-exclusive-lease-v1\n"
+	floorDigestPrefix         = "role="
+	maxFloorGenerationEntries = 64
 )
 
 var floorRoles = [...]string{"root", "timestamp", "snapshot", "targets"}
@@ -145,35 +146,41 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 }
 
 func (s *floorStore) ReadFloors() (FloorSet, error) {
+	floors, _, err := s.readFloors()
+	return floors, err
+}
+
+func (s *floorStore) readFloors() (FloorSet, int, error) {
 	if s.closed {
-		return FloorSet{}, ErrClosed
+		return FloorSet{}, 0, ErrClosed
 	}
 	if s.failure != nil {
-		return FloorSet{}, s.failure
+		return FloorSet{}, 0, s.failure
 	}
-	entries, err := readFloorStoreDirectory(filepath.Join(s.path, "generations"), 64)
+	entries, err := readFloorStoreDirectory(filepath.Join(s.path, "generations"), maxFloorGenerationEntries)
 	if err != nil {
-		return FloorSet{}, err
+		return FloorSet{}, 0, err
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() || (!floorGenerationName.MatchString(entry.Name()) && !stagedGenerationName.MatchString(entry.Name())) {
-			return FloorSet{}, errors.New("release: invalid retained generation")
+			return FloorSet{}, 0, errors.New("release: invalid retained generation")
 		}
 	}
 	pointer, err := readBoundedFloorFile(filepath.Join(s.path, "current"), 65)
 	if errors.Is(err, os.ErrNotExist) {
 		if len(entries) != 0 {
-			return FloorSet{}, errors.New("release: retained history pointer missing")
+			return FloorSet{}, 0, errors.New("release: retained history pointer missing")
 		}
-		return FloorSet{}, nil
+		return FloorSet{}, 0, nil
 	}
 	if err != nil {
-		return FloorSet{}, err
+		return FloorSet{}, 0, err
 	}
 	if len(pointer) != 65 || pointer[64] != '\n' || !floorGenerationName.Match(pointer[:64]) {
-		return FloorSet{}, errors.New("release: invalid history pointer")
+		return FloorSet{}, 0, errors.New("release: invalid history pointer")
 	}
-	return readFloorGeneration(s.path, string(pointer[:64]))
+	floors, err := readFloorGeneration(s.path, string(pointer[:64]))
+	return floors, len(entries), err
 }
 
 func (s *floorStore) CommitRoot(v int64, d []byte, chain [][]byte) error {
@@ -187,7 +194,7 @@ func (s *floorStore) CommitRoot(v int64, d []byte, chain [][]byte) error {
 }
 
 func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr error) {
-	previous, err := s.ReadFloors()
+	previous, generationEntries, err := s.readFloors()
 	if err != nil {
 		return err
 	}
@@ -205,6 +212,13 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 	if err != nil {
 		return err
 	}
+	name := floorGenerationID(payload, roots)
+	directory := filepath.Join(s.path, "generations", name)
+	_, err = os.Lstat(directory)
+	if errors.Is(err, os.ErrNotExist) && generationEntries >= maxFloorGenerationEntries {
+		// Refuse before making the already readable history exceed its read bound.
+		return ErrHistoryCapacity
+	}
 	// After admission into physical publication, uncertainty retires this
 	// owner. A later no-update cannot turn an observed unsynced pointer into
 	// durable authorization merely by reading it from the filesystem cache.
@@ -213,9 +227,6 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 			s.failure = resultErr
 		}
 	}()
-	name := floorGenerationID(payload, roots)
-	directory := filepath.Join(s.path, "generations", name)
-	_, err = os.Lstat(directory)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
