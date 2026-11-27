@@ -97,9 +97,9 @@ func domainMeasurementImportAllowed(source, dependency string) bool {
 			"internal/domain/route/channel/measurement_test.go",
 			"internal/domain/route/channel/queue_budget.go",
 			"internal/domain/route/channel/session.go",
-			"scripts/diagnostics/diagnostic-capture.go",
-			"scripts/diagnostics/diagnostic-report.go",
-			"scripts/diagnostics/diagnostic-view.go":
+			"internal/diagnostics/command/capture.go",
+			"internal/diagnostics/command/report.go",
+			"internal/diagnostics/command/view.go":
 			return true
 		}
 	case "github.com/dianabuilds/ardents-network/internal/diagnostics/telemetry":

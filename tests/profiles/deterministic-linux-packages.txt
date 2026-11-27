@@ -1,2 +1,4 @@
+github.com/dianabuilds/ardents-network/internal/diagnostics/command
+github.com/dianabuilds/ardents-network/internal/diagnostics/logstore
 github.com/dianabuilds/ardents-network/internal/domain/endpoint/internal/permission
 github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/sourcegenesis

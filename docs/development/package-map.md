@@ -38,7 +38,8 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | Importing package | Imported package | Allowed Go files |
 | --- | --- | --- |
 | internal/application/administration | internal/application/internal/socketfile | `server.go`, `server_retirement_test.go` |
-| internal/application/connection | internal/application/internal/socketfile | `transport.go` |
+| internal/application/connection | internal/application/internal/socketfile | `server_linux.go` |
+| internal/diagnostics/command | internal/diagnostics/logstore | `monitor.go`, `monitor_test.go` |
 | cmd/ardents-next | internal/domain/admission/console | `admission_console.go` |
 | cmd/ardents-next | internal/domain/admission/operator | `admission.go`, `command.go`, `issuance.go` |
 | cmd/ardents-next | internal/application/administration | `document_command.go`, `endpoint_administration_client.go` |
@@ -919,6 +920,8 @@ Git history; no current package may import or start a lab Module.
 
 | `internal/architecture` | `package architecture` | Class: engineering check. Test repository structure, ownership inventory, package/import boundaries, artifact-lane separation, extraction rehearsals, names, dependencies, formatting, and quality wiring. It owns the bounded AAI2 retirement closure guard whose exact receipt and scope are defined by [Testing](testing.md#reachability-audit). | standard library |
 | `tests/diagnostics/heapdump` | `package heapdump` | Class: engineering check. Receipt-bound heap dump verification and parsing test harness; no runtime implementation. | Standard library. Heap dump role-map tests consume `internal/domain/admission`. |
+| `internal/diagnostics/command` | `package main` | Class: engineering command. Linux entry point for the Docker diagnostic image and the `ardents-diagnostics` executable. Composes explicit capture, monitor, report, panel and evidence operations. The manifest and tool installation remain with `scripts/diagnostics`; log segment custody remains with the store. | standard library; `internal/diagnostics/logstore`, `internal/diagnostics/runtimeevent` |
+| `internal/diagnostics/logstore` | `package logstore` | Class: supporting mechanism. The Linux monitor's original owner-private directory, writer lease and segment identities bound retained size, count and age. Continues the same monitor session's counters after joined Close and inventory reopening. The monitor retains subprocess and panel ownership, Console output and its own status snapshot. The package grants no domain authority or capture capability. | standard library |
 | `internal/diagnostics/measurement` | `package measurement` | Class: supporting mechanism. Own explicitly activated, bounded capture-local aggregate recording and detached sample history. Domain producers perform no I/O and supply only finite runtimeevent instruments. Capture composition in both binaries joins its sampler after original work; only ardents-next can lend the existing bounded telemetry exporter. No domain authority, identity, root, SDK or network dependency. | standard library; `internal/diagnostics/runtimeevent` |
 | `internal/diagnostics/runtimeevent` | `package runtimeevent` | Class: supporting mechanism. Own the shared finite OTLP/local operation catalogue and canonical command-report writer. Adapt current owner/command reports through a finite operation/phase/outcome catalogue, preserving absent event time and excluding private details. Decode detached facts from the three retained local event formats and journal envelopes, validate shared field grammar and Source reason rules, and supply the finite category/numeric-name catalogue to timeline and engineering projections. No runtime authority, exporter, independent runtime sampler or raw input retention. | standard library |
 | `internal/diagnostics/telemetry` | `package telemetry` | Class: supporting mechanism. Own explicit loopback Collector admission and the bounded OTLP trace and metric exporter lifecycle for one command invocation. Admission, Hosting, Issuance, issuer-profile and issuance-results CLI adapters select registered operations and classify their own outcomes through the shared runtimeevent catalogue; this package owns SDK and export lifetime only. | Standard library; `go.opentelemetry.io/otel/attribute`, `go.opentelemetry.io/otel/metric`, `go.opentelemetry.io/otel/trace`, `go.opentelemetry.io/otel/sdk/{resource,trace,metric,metric/exemplar,metric/metricdata}`, `go.opentelemetry.io/otel/sdk/instrumentation` and the two selected OTLP HTTP exporters. `vocabulary_test.go` also uses the selected OTLP trace/metric protobuf readers and `google.golang.org/protobuf/proto` to verify actual collector packets. ; `internal/diagnostics/runtimeevent` for the finite local observation catalogue and classification |
@@ -1306,6 +1309,6 @@ Imports of `internal/diagnostics/runtimeevent` are permitted only from:
 - `internal/domain/route/channel/measurement_test.go`
 - `internal/domain/route/channel/queue_budget.go`
 - `internal/domain/route/channel/session.go`
-- `scripts/diagnostics/diagnostic-capture.go`
-- `scripts/diagnostics/diagnostic-report.go`
-- `scripts/diagnostics/diagnostic-view.go`
+- `internal/diagnostics/command/capture.go`
+- `internal/diagnostics/command/report.go`
+- `internal/diagnostics/command/view.go`

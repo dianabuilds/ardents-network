@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 package main
 
@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/diagnostics/logstore"
 	"golang.org/x/sys/unix"
 )
 
@@ -92,7 +93,7 @@ func TestMonitorTimeoutJoinsSourceAndWritesTerminalState(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	store, err := openLogStore(filepath.Join(out, "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	store, err := logstore.Open(filepath.Join(out, "logs"), logstore.Policy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +171,7 @@ func TestMonitorBlockedConsoleKeepsDrainingAndJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer root.Close()
-	store, err := openLogStore(filepath.Join(out, "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	store, err := logstore.Open(filepath.Join(out, "logs"), logstore.Policy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,15 +206,24 @@ func TestMonitorLivePanelSurvivesFileFailureAndShowsSourceExit(t *testing.T) {
 	}
 	defer root.Close()
 	at := time.Now().UTC()
-	store, err := openLogStore(filepath.Join(out, "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
+	logDir := filepath.Join(out, "logs")
+	store, err := logstore.Open(logDir, logstore.Policy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.Append("events", []byte("seed\n"), at); err != nil {
+	if _, err := store.Append("events", []byte("seed\n"), at.Add(-2*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	// A real failed file descriptor, established before any producer/worker runs.
-	if err := store.active["events"].file.Close(); err != nil {
+	// An expired original remains open. Replace its name before the next
+	// producer append so pruning refuses the real inode change.
+	segments, err := filepath.Glob(filepath.Join(logDir, "*-events.log"))
+	if err != nil || len(segments) != 1 {
+		t.Fatal("original log segment absent", err, segments)
+	}
+	if err := os.Remove(segments[0]); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(segments[0], []byte("replacement"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	delivery := newMonitorDelivery(store, nil, false, at)
@@ -310,6 +320,9 @@ func TestMonitorLivePanelSurvivesFileFailureAndShowsSourceExit(t *testing.T) {
 	if status.SourceStatus != "stopped" || status.State.SourceAlive || status.State.SourceExit == nil || status.State.Finished == nil || !status.State.FileFailed || !status.State.SinksJoined {
 		t.Fatalf("terminal failure/source evidence erased: %+v", status)
 	}
+	if body, err := os.ReadFile(segments[0]); err != nil || string(body) != "replacement" {
+		t.Fatal("failed retention changed the unrelated replacement", err)
+	}
 }
 
 func TestMonitorProjectsStructuredStderrWithoutRawContent(t *testing.T) {
@@ -336,7 +349,7 @@ func TestMonitorProjectsStructuredStderrWithoutRawContent(t *testing.T) {
 
 func TestMonitorNumericTailStaysWithinStatusBudget(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
-	store, err := openLogStore(dir, logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	store, err := logstore.Open(dir, logstore.Policy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +457,7 @@ func TestMonitorPublishesSourceExitBeforeSinkCleanup(t *testing.T) {
 	}
 	defer root.Close()
 	at := time.Now().UTC()
-	store, err := openLogStore(filepath.Join(out, "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
+	store, err := logstore.Open(filepath.Join(out, "logs"), logstore.Policy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -493,7 +506,8 @@ func TestMonitorPublishesSourceExitBeforeSinkCleanup(t *testing.T) {
 }
 
 func TestMonitorPeriodicSamplesDoNotDisplaceLogEvents(t *testing.T) {
-	store, err := openLogStore(filepath.Join(t.TempDir(), "logs"), logRetentionPolicy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	logDir := filepath.Join(t.TempDir(), "logs")
+	store, err := logstore.Open(logDir, logstore.Policy{SegmentBytes: lineLimit, MaxBytes: 4 * lineLimit, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +526,7 @@ func TestMonitorPeriodicSamplesDoNotDisplaceLogEvents(t *testing.T) {
 	if err := delivery.close(); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := os.ReadDir(store.root.Name())
+	entries, err := os.ReadDir(logDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -533,7 +547,7 @@ func TestMonitorMetricsScopesFreshnessAndDelivery(t *testing.T) {
 		Schema: "ardents-monitor-v1", Started: now.Add(-time.Minute), Updated: now,
 		SourceAlive: true, SourcePID: 987654, SourceName: "PRIVATE_SENTINEL",
 		MetricSampleMaxAge: 5 * time.Second, SnapshotFailed: true,
-		QueueDroppedBytes: 11, Logs: logStoreStats{LostBytes: 13, ExpiredBytes: 17},
+		QueueDroppedBytes: 11, Logs: logstore.Stats{LostBytes: 13, ExpiredBytes: 17},
 		LatestSample: &monitorLogRow{At: now, Entry: event{
 			Schema: "ardents-node-event-v1", Kind: "resource-sample", At: now.Format(time.RFC3339Nano),
 			Resource: map[string]float64{"cpu_usage_usec": 2000000, "memory_bytes": 4096,
@@ -780,8 +794,8 @@ func TestCollectorMetricsTLSClientPinAndRestrictedSurface(t *testing.T) {
 func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
 	at := time.Now().UTC()
 	directory := filepath.Join(t.TempDir(), "logs")
-	policy := logRetentionPolicy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}
-	store, err := openLogStore(directory, policy, at)
+	policy := logstore.Policy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := logstore.Open(directory, policy, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -790,7 +804,7 @@ func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	check := func(store *logStore, now time.Time, expired string) {
+	check := func(store *logstore.Store, now time.Time, expired string) {
 		t.Helper()
 		state := monitorState{Schema: "ardents-monitor-v1", Started: at.Add(-time.Minute), Updated: now, Limits: policy, Logs: store.Stats(), LogsObservedAt: now}
 		body, err := monitorMetrics(state, now)
@@ -838,7 +852,7 @@ func TestMonitorRetentionMetricsFollowRealRotationAndRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = openLogStore(directory, policy, at.Add(time.Second))
+	store, err = logstore.Open(directory, policy, at.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}

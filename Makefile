@@ -400,7 +400,7 @@ execution-recovery-check:
 .PHONY: diagnostics-check
 diagnostics-check:
 	@test "$$(go env GOOS)" = linux || (echo "diagnostics-check requires Linux"; exit 2)
-	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-report.go ./scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor-collector.go scripts/diagnostics/diagnostic-monitor_test.go ./scripts/diagnostics/diagnostic-log-retention.go ./scripts/diagnostics/diagnostic-log-retention_test.go ./scripts/diagnostics/diagnostic-capture_test.go ./scripts/diagnostics/diagnostic-report_test.go ./scripts/diagnostics/diagnostic-evidence.go ./scripts/diagnostics/diagnostic-evidence_test.go -count=1 -timeout=1m
+	go test ./internal/diagnostics/command -count=1 -timeout=1m
 
 .PHONY: hosting-check
 .PHONY: installation-native-check installation-native-compile-check

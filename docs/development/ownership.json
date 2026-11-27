@@ -114,7 +114,14 @@
       "path_prefix": "scripts/diagnostics/",
       "race": true,
       "owners": [
-        { "package": "internal/architecture", "test_pattern": "^TestLocalDiagnosticsCollector$" },
+        { "package": "internal/diagnostics/command", "test_pattern": "^Test" },
+        { "package": "tests/diagnostics/heapdump", "test_pattern": "^Test" }
+      ]
+    },
+    {
+      "path_prefix": "internal/diagnostics/command/",
+      "race": true,
+      "owners": [
         { "package": "tests/diagnostics/heapdump", "test_pattern": "^Test" }
       ]
     },

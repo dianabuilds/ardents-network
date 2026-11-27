@@ -1,8 +1,7 @@
-//go:build ignore
-
-package main
+package logstore
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,11 +9,51 @@ import (
 	"time"
 )
 
+func TestContinueReopensOriginalInventoryWithSessionAccounting(t *testing.T) {
+	at := time.Now().UTC()
+	dir := filepath.Join(t.TempDir(), "logs")
+	policy := Policy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := Open(dir, policy, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if next, err := store.Continue(at); next != nil || err == nil {
+		t.Fatal("maintenance admitted before the original writer joined", err)
+	}
+	for _, record := range []string{"aaaa", "bbbb", "cccc"} {
+		if n, err := store.Append("events", []byte(record), at); n != 4 || err != nil {
+			t.Fatal("log append", n, err)
+		}
+	}
+	if n, err := store.Append("events", []byte("too big"), at); n != 0 || err == nil {
+		t.Fatal("oversize record accepted", n, err)
+	}
+	if err := store.Close(); err == nil {
+		t.Fatal("original source sink failure was lost")
+	}
+
+	maintenance, err := store.Continue(at.Add(time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer maintenance.Close()
+	stats := maintenance.Stats()
+	if maintenance.Policy() != policy || stats.ReceivedBytes != 19 || stats.WrittenBytes != 12 ||
+		stats.LostBytes != 7 || stats.RetainedBytes != 0 || stats.ExpiredBytes != 12 || stats.Files != 1 || stats.Failed {
+		t.Fatalf("continuation lost original accounting or did not reobserve the inventory: %+v", stats)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 || entries[0].Name() != "monitor.lock" {
+		t.Fatal("expired log segments remain", err, entries)
+	}
+}
+
 func TestLogRetentionKeepsBudgetAcrossRestart(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
 	at := time.Now().UTC()
-	policy := logRetentionPolicy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}
-	store, err := openLogStore(dir, policy, at)
+	policy := Policy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := Open(dir, policy, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +69,7 @@ func TestLogRetentionKeepsBudgetAcrossRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = openLogStore(dir, policy, at.Add(time.Second))
+	store, err = Open(dir, policy, at.Add(time.Second))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,8 +107,8 @@ func TestLogRetentionKeepsBudgetAcrossRestart(t *testing.T) {
 func TestLogRetentionKeepsNewerActiveStream(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
 	at := time.Now().UTC()
-	policy := logRetentionPolicy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}
-	store, err := openLogStore(dir, policy, at)
+	policy := Policy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := Open(dir, policy, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +144,7 @@ func TestLogRetentionKeepsNewerActiveStream(t *testing.T) {
 
 func TestLogSinkFailureRemainsBoundedWhileDraining(t *testing.T) {
 	at := time.Now().UTC()
-	store, err := openLogStore(filepath.Join(t.TempDir(), "logs"), logRetentionPolicy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
+	store, err := Open(filepath.Join(t.TempDir(), "logs"), Policy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,11 +167,35 @@ func TestLogSinkFailureRemainsBoundedWhileDraining(t *testing.T) {
 	}
 }
 
+func TestLogSinkRetainsOriginalDescriptorFailure(t *testing.T) {
+	at := time.Now().UTC()
+	store, err := Open(filepath.Join(t.TempDir(), "logs"), Policy{SegmentBytes: 16, MaxBytes: 32, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	if _, err := store.Append("events", []byte("seed\n"), at); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.active["events"].file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := store.Append("events", []byte("next\n"), at); n != 0 || !errors.Is(err, os.ErrClosed) {
+		t.Fatal("original descriptor failure lost", n, err)
+	}
+	if err := store.Close(); !errors.Is(err, os.ErrClosed) {
+		t.Fatal("joined store lost original descriptor failure", err)
+	}
+	if stats := store.Stats(); !stats.Failed || stats.WrittenBytes != 5 || stats.LostBytes != 5 {
+		t.Fatalf("original descriptor accounting: %+v", stats)
+	}
+}
+
 func TestLogTimeRotationAndExpiryAcrossRestart(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
 	at := time.Now().UTC()
-	policy := logRetentionPolicy{SegmentBytes: 64, MaxBytes: 128, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: 2 * time.Minute}
-	store, err := openLogStore(dir, policy, at)
+	policy := Policy{SegmentBytes: 64, MaxBytes: 128, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: 2 * time.Minute}
+	store, err := Open(dir, policy, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +217,7 @@ func TestLogTimeRotationAndExpiryAcrossRestart(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = openLogStore(dir, policy, at.Add(3*time.Minute))
+	store, err = Open(dir, policy, at.Add(3*time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,13 +230,13 @@ func TestLogTimeRotationAndExpiryAcrossRestart(t *testing.T) {
 }
 func TestLogStoreRefusesForeignFilesAndSharedWriter(t *testing.T) {
 	at := time.Now().UTC()
-	policy := logRetentionPolicy{SegmentBytes: 64, MaxBytes: 128, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}
+	policy := Policy{SegmentBytes: 64, MaxBytes: 128, MaxFiles: 5, SegmentAge: time.Minute, MaxAge: time.Hour}
 	dir := filepath.Join(t.TempDir(), "logs")
-	store, err := openLogStore(dir, policy, at)
+	store, err := Open(dir, policy, at)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openLogStore(dir, policy, at); err == nil {
+	if other, err := Open(dir, policy, at); err == nil {
 		other.Close()
 		t.Fatal("second writer admitted")
 	}
@@ -187,7 +250,7 @@ func TestLogStoreRefusesForeignFilesAndSharedWriter(t *testing.T) {
 	if err := os.WriteFile(foreign, []byte("preserve"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openLogStore(dir, policy, at.Add(time.Hour)); err == nil {
+	if other, err := Open(dir, policy, at.Add(time.Hour)); err == nil {
 		other.Close()
 		t.Fatal("foreign file admitted")
 	}
@@ -210,7 +273,7 @@ func TestLogStoreRefusesForeignFilesAndSharedWriter(t *testing.T) {
 	if err := os.Symlink(outside, link); err != nil {
 		t.Fatal(err)
 	}
-	if other, err := openLogStore(dir, policy, at.Add(time.Hour)); err == nil {
+	if other, err := Open(dir, policy, at.Add(time.Hour)); err == nil {
 		other.Close()
 		t.Fatal("symlink admitted")
 	}
@@ -226,8 +289,8 @@ func TestLogStoreRefusesForeignFilesAndSharedWriter(t *testing.T) {
 func TestLogRetentionRefusesSmallerSegmentLimitOnRestart(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
 	at := time.Now().UTC()
-	policy := logRetentionPolicy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 4, SegmentAge: time.Minute, MaxAge: time.Hour}
-	store, err := openLogStore(dir, policy, at)
+	policy := Policy{SegmentBytes: 8, MaxBytes: 16, MaxFiles: 4, SegmentAge: time.Minute, MaxAge: time.Hour}
+	store, err := Open(dir, policy, at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +302,7 @@ func TestLogRetentionRefusesSmallerSegmentLimitOnRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	policy.SegmentBytes = 4
-	reopened, err := openLogStore(dir, policy, at.Add(time.Second))
+	reopened, err := Open(dir, policy, at.Add(time.Second))
 	if err == nil {
 		reopened.Close()
 		t.Fatal("restart advertised a smaller limit while keeping an oversized segment")
@@ -251,7 +314,7 @@ func TestLogRetentionRefusesSmallerSegmentLimitOnRestart(t *testing.T) {
 }
 
 func TestLogFilesystemObservationRequiresOpenAdmittedStore(t *testing.T) {
-	store, err := openLogStore(filepath.Join(t.TempDir(), "logs"), logRetentionPolicy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
+	store, err := Open(filepath.Join(t.TempDir(), "logs"), Policy{SegmentBytes: 4, MaxBytes: 8, MaxFiles: 3, SegmentAge: time.Minute, MaxAge: time.Hour}, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

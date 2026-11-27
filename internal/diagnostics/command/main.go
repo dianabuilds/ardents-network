@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 // Local Linux diagnostic runner. This is engineering tooling, not a product command.
 package main
@@ -166,7 +166,7 @@ func collect(mode string, args []string) error {
 		conditions.Race = race
 		conditions.Profiling = profile
 	}
-	return superviseWithConditions(absolute, root, command, *timeout, *raw, conditions)
+	return supervise(absolute, root, command, *timeout, *raw, conditions)
 }
 
 func within(root, path string) bool {

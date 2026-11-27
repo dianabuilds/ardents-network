@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 package main
 
@@ -264,11 +264,7 @@ func drain(reader io.Reader, raw *boundedFile, p *projection, stdout bool) error
 	}
 }
 
-func supervise(dir, source string, command []string, timeout time.Duration, raw bool) error {
-	return superviseWithConditions(dir, source, command, timeout, raw, reportConditions{})
-}
-
-func superviseWithConditions(dir, source string, command []string, timeout time.Duration, raw bool, conditions reportConditions) (outcome error) {
+func supervise(dir, source string, command []string, timeout time.Duration, raw bool, conditions reportConditions) (outcome error) {
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(signalCtx, timeout)

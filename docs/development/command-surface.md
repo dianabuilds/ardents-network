@@ -29,6 +29,7 @@ qualification worker has a separate installed verification lane.
 | Source and Node operator | ardents source, ardents node | installed infrastructure | Distinct pinned role inventories use the same command build for serving and retained role duties. |
 | Installed document worker | signed worker artifact `ardents-text` | automatic | Fixed confined Reader/Publisher worker entrypoints invoked by systemd. |
 | Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints, built from the qualification fixture. |
+| Local engineering diagnostics | ardents-diagnostics | Linux diagnostic image | Monitor, capture and detached evidence through the explicitly selected tool and evidence directory. The source is `internal/diagnostics/command`. |
 
 The pair-qualification launcher passes a temporary document worker executable
 through `ARDENTS_PREBUILT_DOCUMENT_WORKER`. The signed artifact inventory and

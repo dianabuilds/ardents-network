@@ -555,7 +555,7 @@ func writeMatrix(path string, checks []check) error {
 		group := entries[first:min(first+groupsPerJob, len(entries))]
 		parsers := false
 		for _, selected := range group {
-			parsers = parsers || strings.HasSuffix(selected.Package, "/internal/architecture")
+			parsers = parsers || strings.HasSuffix(selected.Package, "/internal/diagnostics/command")
 		}
 		jobs = append(jobs, job{len(jobs), group, 6 * len(group), parsers})
 	}

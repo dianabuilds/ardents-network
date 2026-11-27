@@ -10,7 +10,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-func decodeAdmissionObject(raw []byte, value any) error { return artifacts.DecodeObject(raw, value) }
 func admissionConfig(args []string, value any) error {
 	return admissionConfigBounded(args, value, 64<<10)
 }
@@ -22,7 +21,7 @@ func admissionConfigBounded(args []string, value any, maximum int64) error {
 	if err != nil {
 		return err
 	}
-	return decodeAdmissionObject(raw, value)
+	return artifacts.DecodeObject(raw, value)
 }
 func runAdmissionLocal(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
 	if ctx == nil {

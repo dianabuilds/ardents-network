@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build linux
 
 package main
 
@@ -307,7 +307,7 @@ func TestAssistantCLIAndPanelUseSameExplanation(t *testing.T) {
 	dir := reportFixture(t, 7)
 	expected := buildAssistantReport(dir, "", time.Now())
 	w := httptest.NewRecorder()
-	handler(dir).ServeHTTP(w, httptest.NewRequest("GET", "/report?dir=/etc", nil))
+	captureViewHandler(dir, "", "").ServeHTTP(w, httptest.NewRequest("GET", "/report?dir=/etc", nil))
 	var actual assistantReport
 	if err := json.Unmarshal(w.Body.Bytes(), &actual); err != nil {
 		t.Fatal(err)
@@ -317,13 +317,13 @@ func TestAssistantCLIAndPanelUseSameExplanation(t *testing.T) {
 	}
 	for _, path := range []string{"/manifest.json", "/command.json", "/events.ndjson", "/report/../../etc/passwd"} {
 		w = httptest.NewRecorder()
-		handler(dir).ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		captureViewHandler(dir, "", "").ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		if w.Code == 200 {
 			t.Fatalf("raw/control route admitted: %s", path)
 		}
 	}
 	w = httptest.NewRecorder()
-	handler(dir).ServeHTTP(w, httptest.NewRequest("POST", "/report", nil))
+	captureViewHandler(dir, "", "").ServeHTTP(w, httptest.NewRequest("POST", "/report", nil))
 	if w.Code != 405 {
 		t.Fatal("read-only boundary lost")
 	}
@@ -421,7 +421,7 @@ func TestAssistantDeclaredModeAndProfilingAreCaptured(t *testing.T) {
 	source := t.TempDir()
 	dir := filepath.Join(t.TempDir(), "run")
 	on := true
-	if err := superviseWithConditions(dir, source, []string{"sh", "-c", "exit 7"}, 5*time.Second, false, reportConditions{Mode: "test", Race: &on, Profiling: &on}); err == nil {
+	if err := supervise(dir, source, []string{"sh", "-c", "exit 7"}, 5*time.Second, false, reportConditions{Mode: "test", Race: &on, Profiling: &on}); err == nil {
 		t.Fatal("command failure hidden")
 	}
 	r := assessRun(dir, time.Now())
@@ -519,7 +519,7 @@ func TestConnectionSnapshotValidationAndGaps(t *testing.T) {
 
 func TestConnectionPanelDefaultDoesNotSelectOwnerOrAttachRun(t *testing.T) {
 	response := httptest.NewRecorder()
-	handler(reportFixture(t, 0)).ServeHTTP(response, httptest.NewRequest("GET", "/connection", nil))
+	captureViewHandler(reportFixture(t, 0), "", "").ServeHTTP(response, httptest.NewRequest("GET", "/connection", nil))
 	if response.Code != 200 || !strings.Contains(response.Body.String(), `"state":"unselected"`) || strings.Contains(response.Body.String(), "joined") {
 		t.Fatal("default panel claimed live capture")
 	}
@@ -597,7 +597,7 @@ func TestReaderSocketFixtureUsesSameProjectionInCLIFileAndPanel(t *testing.T) {
 				t.Fatal("snapshot overwrote existing evidence")
 			}
 			response := httptest.NewRecorder()
-			handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/connection", nil))
+			captureViewHandler(reportFixture(t, 2), "", socket).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/connection", nil))
 			var panel connectionObservation
 			if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-store" || json.Unmarshal(response.Body.Bytes(), &panel) != nil || !reflect.DeepEqual(panel, observation) {
 				t.Fatal("panel differs from CLI projection")
@@ -609,7 +609,7 @@ func TestReaderSocketFixtureUsesSameProjectionInCLIFileAndPanel(t *testing.T) {
 			}
 			closeSocket()
 			unavailable := httptest.NewRecorder()
-			handlerWithConnection(reportFixture(t, 2), "", socket).ServeHTTP(unavailable, httptest.NewRequest(http.MethodGet, "/connection", nil))
+			captureViewHandler(reportFixture(t, 2), "", socket).ServeHTTP(unavailable, httptest.NewRequest(http.MethodGet, "/connection", nil))
 			if unavailable.Code != http.StatusServiceUnavailable || strings.Contains(unavailable.Body.String(), socket) {
 				t.Fatal("closed fixture presented as live or disclosed socket path")
 			}

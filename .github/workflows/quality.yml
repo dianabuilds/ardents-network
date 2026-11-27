@@ -185,10 +185,10 @@ jobs:
         with:
           go-version: 1.27.4
           cache: true
-      - name: Install diagnostic parsers for architecture tests
+      - name: Install parsers for the diagnostic command tests
         run: |
           packages="$(make --no-print-directory race-shard-packages RACE_SHARD=${{ matrix.shard }})"
-          if printf '%s\n' "$packages" | grep -qx 'github.com/dianabuilds/ardents-network/internal/architecture'; then
+          if printf '%s\n' "$packages" | grep -qx 'github.com/dianabuilds/ardents-network/internal/diagnostics/command'; then
             make tools-install DIAGNOSTIC_PARSERS_ONLY=1
           fi
       - name: Run serial race shard
