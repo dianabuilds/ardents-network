@@ -731,13 +731,6 @@
         "retirement": "Remove each exact Windows entry when the endpoint byte-stream/failure composition is de-tagged onto a selected genuine native path or the projection is retired."
       },
       {
-        "symbols": ["internal/application/endpointstream.Refuse"],
-        "classification": "portable typed setup-refusal constructor with Linux/Unix-family protected composition (#885)",
-        "rationale": "Refuse validates a bounded Outcome and returns SetupRefusalError in portable terminal_outcome.go. Linux server admission owns setup refusal classification separately. Production consumers are Linux server transport/administration and the Unix-family Endpoint Reader; on Windows the constructor is exercised by terminal_outcome_test.go but has no production consumer. No weaker accepting path is introduced.",
-        "owner": "Product Owner and Codex; Application Connection and Endpoint Reader owners (#885)",
-        "retirement": "Remove the exact Windows entry when a selected genuine Windows production composition reaches Refuse, or when the owning contract is retired. Lost Linux production reachability requires repair, not another allowance."
-      },
-      {
         "symbols": [
           "internal/domain/network/closedprofile.Prepare",
           "internal/domain/network/epoch.PrepareInitialClosedEpoch",
