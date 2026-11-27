@@ -45,8 +45,11 @@
 //     bundle_restore.go (bundle_publication_test.go, recovery_lifecycle_test.go)
 //   - independent root provenance: independent_root.go
 //     (independent_root_refusal_test.go)
-//   - post-commit credential delivery: credential_delivery.go
-//     (credential_delivery_linux_test.go)
+//   - post-commit credential delivery: credential_delivery.go and
+//     private_permission_linux.go/private_permission_other.go. Linux admits
+//     owner-only ext4/tmpfs files; other platforms refuse private delivery
+//     before staging (credential_delivery_linux_test.go,
+//     credential_delivery_other_test.go). Public responses remain separate.
 //
 // terminal_input_test.go carries the shared sequenceSecrets input fixture and
 // no behavior of its own.

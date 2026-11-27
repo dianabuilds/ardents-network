@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -457,5 +458,40 @@ func TestLocalObservationStartsAfterUnterminatedPrompt(t *testing.T) {
 	}
 	if bytes.Contains(lines[1], []byte("private-sentinel")) {
 		t.Fatal("prompt copied into structured record")
+	}
+}
+
+type privateDeliveryProbe struct{ calls int }
+
+func (probe *privateDeliveryProbe) ReadSecret(context.Context, custody.SecretPrompt) ([]byte, error) {
+	probe.calls++
+	return nil, errors.New("unexpected secret input")
+}
+
+func (probe *privateDeliveryProbe) Confirm(context.Context, custody.ConfirmationPrompt) (bool, error) {
+	probe.calls++
+	return false, errors.New("unexpected confirmation")
+}
+
+func (probe *privateDeliveryProbe) ReadAdmissionRequestCommitment(context.Context) ([32]byte, error) {
+	probe.calls++
+	return [32]byte{}, errors.New("unexpected commitment input")
+}
+
+func TestPrivatePermissionUnavailableBeforeVaultOrPrompt(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "absent-vault")
+	destination := filepath.Join(t.TempDir(), "permission")
+	if runtime.GOOS == "linux" {
+		destination = "/proc/ardents-private-permission-test"
+	}
+	probe := &privateDeliveryProbe{}
+	var output bytes.Buffer
+	err := run(t.Context(), []string{"issue-admission-permission", "-vault-root", root,
+		"-record", "record", "-request", "absent-request", "-permission-output", destination}, &output, probe)
+	if !errors.Is(err, custody.ErrPrivatePermissionUnavailable) || probe.calls != 0 || output.Len() != 0 {
+		t.Fatal("unsupported delivery reached private authority or output", err, probe.calls)
+	}
+	if _, err := os.Lstat(root); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("unsupported delivery created the Vault", err)
 	}
 }

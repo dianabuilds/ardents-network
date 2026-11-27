@@ -50,6 +50,9 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 		if record == "" || requestPath == "" || permissionPath == "" {
 			return errors.New("issue-admission-permission requires record, request, and permission-output")
 		}
+		if err := custody.CheckAdmissionPermissionDestination(permissionPath); err != nil {
+			return err
+		}
 		binding, err := commandBinding(environment, network, authorityRoot, kind, identity)
 		if err != nil || binding.Kind != custody.AuthorityAdmission {
 			return errors.New("issue-admission-permission requires one exact admission Authority binding")

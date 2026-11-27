@@ -7,10 +7,20 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 )
+
+// ErrPrivatePermissionUnavailable means that owner-only Permission delivery
+// cannot be established on the selected platform or filesystem.
+var ErrPrivatePermissionUnavailable = errors.New("private admission permission delivery unavailable")
+
+// CheckAdmissionPermissionDestination checks whether the selected destination
+// can support private delivery. Publication rechecks the original objects; this
+// preflight is not a reservation and does not grant authority.
+func CheckAdmissionPermissionDestination(path string) error {
+	return checkPrivatePermissionDestination(path)
+}
 
 // PublishServiceResponse delivers the public response from a committed
 // Service Credential operation. An exact existing response permits retry.
@@ -28,6 +38,9 @@ func (receipt Receipt) PublishServiceResponse(path string) error {
 func (receipt Receipt) PublishAdmissionPermission(path string) error {
 	if receipt.Operation != OperationIssueAdmissionPermission || len(receipt.AdmissionPermission) != admission.PermissionSize {
 		return errors.New("admission permission is invalid")
+	}
+	if err := CheckAdmissionPermissionDestination(path); err != nil {
+		return err
 	}
 	return publishCredential(path, "admission permission", ".ardents-admission-permission-", receipt.AdmissionPermission, true)
 }
@@ -61,6 +74,17 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 	if err := staging.Chmod(0o600); err != nil {
 		return fmt.Errorf("protect %s staging file: %w", name, err)
 	}
+	if private {
+		opened, statErr := staging.Stat()
+		named, nameErr := os.Lstat(stagingPath)
+		if statErr != nil || nameErr != nil || !privatePermissionFile(opened) ||
+			!privatePermissionFile(named) || !os.SameFile(opened, named) {
+			return errors.Join(ErrPrivatePermissionUnavailable, statErr, nameErr)
+		}
+		if err := checkPrivatePermissionFilesystem(staging); err != nil {
+			return err
+		}
+	}
 	written, err := staging.Write(body)
 	if err == nil && written != len(body) {
 		err = io.ErrShortWrite
@@ -88,7 +112,7 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 func credentialMatches(path string, expected []byte, private bool) bool {
 	accepts := func(info os.FileInfo) bool {
 		return info.Mode().IsRegular() && info.Size() == int64(len(expected)) &&
-			(!private || runtime.GOOS != "linux" || info.Mode().Perm()&0o077 == 0)
+			(!private || privatePermissionFile(info))
 	}
 	named, err := os.Lstat(path)
 	if err != nil || !accepts(named) {
@@ -99,6 +123,10 @@ func credentialMatches(path string, expected []byte, private bool) bool {
 		return false
 	}
 	opened, err := file.Stat()
+	if private && checkPrivatePermissionFilesystem(file) != nil {
+		_ = file.Close()
+		return false
+	}
 	if err != nil || !accepts(opened) || !os.SameFile(named, opened) {
 		_ = file.Close()
 		return false
