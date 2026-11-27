@@ -30,6 +30,7 @@ github.com/dianabuilds/ardents-network/internal/domain/reachability
 github.com/dianabuilds/ardents-network/internal/domain/reachability/store
 github.com/dianabuilds/ardents-network/tests/descriptorfixture
 github.com/dianabuilds/ardents-network/internal/domain/enrollment
+github.com/dianabuilds/ardents-network/internal/domain/enrollment/infrastructureinventory
 github.com/dianabuilds/ardents-network/internal/domain/admission/issuance
 github.com/dianabuilds/ardents-network/internal/domain/admission/operator
 github.com/dianabuilds/ardents-network/internal/domain/admission/issuer

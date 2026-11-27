@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment/infrastructureinventory"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -53,18 +54,14 @@ func PrepareRuntimeInventoryFile(ctx context.Context, role, distribution, destin
 	if err != nil {
 		return nil, err
 	}
+	companions := infrastructureinventory.Files(role)
 	inputs := runtimePreparation{
 		ctx:          ctx,
 		distribution: directory,
-		expected: map[string]int64{
-			ProgramName:      64 << 20,
-			unit:             64 << 20,
-			descriptor:       16 << 10,
-			"root.json":      1 << 20,
-			"timestamp.json": 1 << 20,
-			"snapshot.json":  1 << 20,
-			"targets.json":   1 << 20,
-		},
+		expected:     make(map[string]int64, len(companions)),
+	}
+	for _, file := range companions {
+		inputs.expected[file.Name] = file.MaximumSize
 	}
 	defer func() {
 		result, err = inputs.finish(result, err)
@@ -83,14 +80,14 @@ func PrepareRuntimeInventoryFile(ctx context.Context, role, distribution, destin
 	if err != nil {
 		return nil, err
 	}
-	raw, err := enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{
+	raw, err := infrastructureinventory.Prepare(infrastructureinventory.Facts{
 		Platform: facts.Platform, ReleaseIdentity: facts.ReleaseIdentity,
 		ReleaseVersion: facts.ReleaseVersion, Invocation: facts.Invocation,
 	}, files)
 	if err != nil {
-		return nil, err
+		return nil, enrollment.ErrInventory
 	}
-	return inputs.publish(destination, enrollment.InfrastructureInventoryName, raw, observe)
+	return inputs.publish(destination, infrastructureinventory.Name, raw, observe)
 }
 
 type runtimePreparation struct {

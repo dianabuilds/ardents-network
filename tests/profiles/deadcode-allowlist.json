@@ -628,15 +628,28 @@
       },
       {
         "symbols": [
-          "internal/domain/enrollment.ValidateInfrastructureInventory"
+          "internal/domain/enrollment/infrastructureinventory.Validate"
         ],
         "classification": "retired transitional role selected-generation validation; retained canonical inventory mechanism test coverage",
-        "rationale": "ValidateInfrastructureInventory checks the closed seven-file infrastructure byte grammar against caller-supplied immutable images and returns copied declarations/digests. Its production consumers were the transitional JOIN/Descriptor selected-generation validation in the retired installation orchestration (#604 FJD stage D, ADR-0125); the retained prepare-inventory producers use PrepareInfrastructureInventory and the retained predecessor/candidate admission uses VerifyInfrastructure/ReadInfrastructureCandidate, so this validator has no remaining production caller. It is retained as reviewed mechanism code because genuine kept Linux tests exercise its exact canonical-byte equality, foreign-role and mutated-inventory refusal: enrollment/infrastructure_inventory_test.go and enrollment/descriptor_inventory_linux_test.go. The shared parseInfrastructureInventory/PrepareInfrastructureInventory helpers remain production-live and are not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
+        "rationale": "Validate checks the closed seven-file inventory against caller-supplied byte images. The JOIN/Descriptor selected-generation callers retired with the transitional installation orchestration (#604 FJD stage D, ADR-0125). Portable infrastructureinventory/canonical_test.go exercises exact bytes, foreign-role refusal and substituted image refusal. Linux production reaches Parse through original Enrollment custody and Prepare through offline Release preparation.",
         "owner": "Product Owner and Codex; Enrollment inventory owner",
         "retirement": "Remove this allowance when its genuine mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
       }
     ],
     "windows-amd64": [
+      {
+        "symbols": [
+          "internal/domain/enrollment/infrastructureinventory.Files",
+          "internal/domain/enrollment/infrastructureinventory.Parse",
+          "internal/domain/enrollment/infrastructureinventory.Prepare",
+          "internal/domain/enrollment/infrastructureinventory.Validate",
+          "internal/domain/enrollment/infrastructureinventory.validFacts"
+        ],
+        "classification": "portable infrastructure inventory with Linux-only product callers",
+        "rationale": "Windows runs the independent canonical byte tests for these pure operations. The native release preparation and Enrollment commands refuse on Windows before opening any input; both production edges are active on Linux.",
+        "owner": "Enrollment inventory and Release preparation",
+        "retirement": "Remove each symbol when a supported Windows production consumer reaches it or its portable coverage retires."
+      },
       {
         "symbols": [
           "internal/domain/network.RuntimeView.IssuerNodeID",
