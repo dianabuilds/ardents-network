@@ -85,6 +85,9 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 					t.Error(err)
 				}
 			})
+			if len(bundle.Nodes) != 11 {
+				t.Fatal("JOIN fixture must contain the original Issuer and ten Forward receivers")
+			}
 			userStock := processfixture.FundRouteStock(t, spec, bundle, issuerPlan, authority.CurrentRuntime, admission.AllocationUser, [32]byte{})
 			publisherStock := processfixture.FundRouteStock(t, spec, bundle, issuerPlan, authority.CurrentRuntime, admission.AllocationPublisher, [32]byte{})
 			routeAuthority := funding.Observe(authority.CurrentRuntime, authority.CurrentRuntimeWitness, funding.PresentationGuard(authority.CurrentRuntime))
