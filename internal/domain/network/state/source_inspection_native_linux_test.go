@@ -240,7 +240,7 @@ func TestSourceInspectionNativeCancellationJoinsOriginalClockReader(t *testing.T
 	select {
 	case err := <-closed:
 		t.Fatal("Close returned before original clock callback joined", err)
-	default:
+	case <-time.After(250 * time.Millisecond):
 	}
 	release.Do(func() { close(resume) })
 	if err := <-checked; !errors.Is(err, context.Canceled) {
