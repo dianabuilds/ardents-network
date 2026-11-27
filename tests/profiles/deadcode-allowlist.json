@@ -468,6 +468,8 @@
           "tests/e2e/endpoint.pairTerminateGuest",
           "tests/e2e/endpoint.pairWait",
           "tests/e2e/endpoint.platformNativeWorkers",
+          "tests/e2e/endpoint.prepareEndpointHistory",
+          "tests/e2e/endpoint.runStartupCommand",
           "tests/e2e/endpoint.writePlatformNativeFile",
           "tests/e2e/endpoint.writePlatformNativeLaunch"
         ],
