@@ -70,7 +70,7 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 	switch frame.kind {
 	case 2:
 		size := uint32(len(frame.body))
-		if size > stream.receiveCredit || size > MaximumBytes+13-stream.responseBytes {
+		if size > stream.receiveCredit || size > MaximumBytes-stream.responseBytes {
 			return errors.New("document Publisher response exceeds its bound")
 		}
 		stream.receiveCredit -= size
@@ -94,9 +94,6 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 		}
 		stream.sendCredit += credit
 	case 4:
-		if stream.responseBytes < 13 {
-			return errors.New("document Publisher response is incomplete")
-		}
 		stream.workerEOF = true
 	case 5:
 		if frame.body[0] > 6 {

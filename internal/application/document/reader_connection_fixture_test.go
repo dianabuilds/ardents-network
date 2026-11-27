@@ -6,6 +6,7 @@
 package document_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -13,11 +14,10 @@ import (
 	"sync/atomic"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
 )
 
 type snapshotConnectionOwner struct {
-	snapshot *document.Snapshot
+	snapshot []byte
 	opens    atomic.Uint32
 	bytes    atomic.Uint32
 }
@@ -32,7 +32,13 @@ func (owner *snapshotConnectionOwner) Open(_ context.Context, request connection
 	stream := &snapshotConnection{request: requestSink, response: response, input: input, output: output, finished: make(chan struct{}), done: make(chan connection.Outcome, 1), bytes: &owner.bytes}
 	go func() {
 		defer close(stream.finished)
-		err := owner.snapshot.Respond(input, output)
+		var probe [1]byte
+		_, err := io.ReadFull(input, probe[:])
+		if err == io.EOF {
+			_, err = io.Copy(output, bytes.NewReader(owner.snapshot))
+		} else if err == nil {
+			err = errors.New("unexpected file request payload")
+		}
 		_ = output.CloseWithError(err)
 		class := connection.CleanClose
 		if err != nil {

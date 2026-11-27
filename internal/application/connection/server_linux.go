@@ -100,7 +100,7 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 		return
 	}
 	defer cancel()
-	server.retainCleanupFailure(ServeLocalStream(server.ctx, local, application, targetLink.Application == ByteStream))
+	server.retainCleanupFailure(ServeLocalStream(server.ctx, local, application, true))
 }
 
 // retainCleanupFailure keeps one local failure across attachment turnover.

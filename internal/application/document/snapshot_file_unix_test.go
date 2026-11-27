@@ -68,11 +68,14 @@ func TestSnapshotFileRefusesSymlinksSpecialFilesAndInvalidContent(t *testing.T) 
 	if err := os.WriteFile(invalid, []byte{0xff}, 0600); err != nil {
 		t.Fatal(err)
 	}
+	if body, err := ReadSnapshotFile(t.Context(), invalid); err != nil || !bytes.Equal(body, []byte{0xff}) {
+		t.Fatalf("binary snapshot = %x, %v", body, err)
+	}
 	large := filepath.Join(root, "large")
 	if err := os.WriteFile(large, bytes.Repeat([]byte("x"), MaximumBytes+1), 0600); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{link, filepath.Join(directoryLink, "regular"), root, fifo, "/dev/null", invalid, large, "relative", regular + "/../regular"} {
+	for _, path := range []string{link, filepath.Join(directoryLink, "regular"), root, fifo, "/dev/null", large, "relative", regular + "/../regular"} {
 		body, err := ReadSnapshotFile(t.Context(), path)
 		if err == nil || body != nil {
 			t.Fatalf("invalid input admitted: %s", filepath.Base(path))

@@ -1,5 +1,7 @@
-// Package document owns the fixed bounded document Service exchange, trusted
+// Package document owns the bounded file transfer over the common Service byte stream, trusted
 // import of an explicitly selected local snapshot, and safe UTF-8 presentation.
+// The historical package name also covers binary file snapshots. No text
+// protocol or network content-type selection is implemented here.
 // It owns no destination or publication authority. Its worker entrypoints have
 // no file-selection operation and receive only an Endpoint-supplied snapshot.
 //
@@ -8,8 +10,6 @@
 //   - safe UTF-8 presentation: presentation.go (presentation_test.go)
 //   - safe read failure messages: read_failure_message.go
 //     (read_failure_message_test.go, read_failure_message_linux_test.go)
-//   - immutable snapshot publication exchange: snapshot_exchange.go
-//     (snapshot_exchange_test.go)
 //   - trusted local snapshot file import: snapshot_file_unix.go (Linux and
 //     macOS), snapshot_file_other.go (explicit refusal on other platforms)
 //     (snapshot_file_unix_test.go)

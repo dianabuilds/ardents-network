@@ -3,7 +3,6 @@ package document_test
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"io"
 	"sync"
@@ -32,9 +31,7 @@ func (stream *responseStream) Close() error {
 func (stream *responseStream) Done() <-chan connection.Outcome { return stream.done }
 
 func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
-	valid := []byte("ARDTXT01\x00\x00\x00\x00\x02ok")
-	oversize := bytes.Clone(valid)
-	binary.BigEndian.PutUint32(oversize[9:], document.MaximumBytes+1)
+	valid := []byte{0, 0xff, 0x80, 'x'}
 	for _, test := range []struct {
 		name     string
 		response []byte
@@ -42,16 +39,12 @@ func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 		cleanup  error
 		want     bool
 	}{
-		{"success", valid, string(connection.CleanClose), nil, true},
-		{"empty", []byte("ARDTXT01\x00\x00\x00\x00\x00"), string(connection.CleanClose), nil, true},
+		{"binary", valid, string(connection.CleanClose), nil, true},
+		{"empty", nil, string(connection.CleanClose), nil, true},
+		{"maximum", bytes.Repeat([]byte{0xff}, document.MaximumBytes), string(connection.CleanClose), nil, true},
+		{"oversize", bytes.Repeat([]byte{0xff}, document.MaximumBytes+1), string(connection.CleanClose), nil, false},
 		{"missing terminal", valid, "", nil, false},
 		{"failed terminal", valid, "interrupted", nil, false},
-		{"truncated", valid[:14], string(connection.CleanClose), nil, false},
-		{"trailing", append(bytes.Clone(valid), 'x'), string(connection.CleanClose), nil, false},
-		{"unavailable", []byte("ARDTXT01\x01\x00\x00\x00\x00"), string(connection.CleanClose), nil, false},
-		{"unknown status", []byte("ARDTXT01\x02\x00\x00\x00\x00"), string(connection.CleanClose), nil, false},
-		{"oversize", oversize, string(connection.CleanClose), nil, false},
-		{"invalid UTF-8", []byte("ARDTXT01\x00\x00\x00\x00\x01\xff"), string(connection.CleanClose), nil, false},
 		{"cleanup failure", valid, string(connection.CleanClose), io.ErrClosedPipe, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -64,10 +57,10 @@ func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 			if (err == nil) != test.want || (!test.want && body != nil) {
 				t.Fatalf("read = %q, %v", body, err)
 			}
-			if !stream.closed || !stream.inputClosed || stream.request.Len() != 512 {
+			if !stream.closed || !stream.inputClosed || stream.request.Len() != 0 {
 				t.Fatal("one-request/cleanup contract was lost")
 			}
-			if test.want && string(body) != string(test.response[13:]) {
+			if test.want && string(body) != string(test.response) {
 				t.Fatal("returned different content")
 			}
 		})

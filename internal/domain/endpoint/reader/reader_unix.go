@@ -50,7 +50,7 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 	if end, bounded := ctx.Deadline(); bounded && end.Before(plan.Deadline) {
 		plan.Deadline = end.UTC().Truncate(time.Second)
 	}
-	read, err := beginRead(ctx, owner.local, owner.principal, request.Application)
+	read, err := beginRead(ctx, owner.local, owner.principal)
 	if err != nil {
 		return nil, err
 	}
@@ -74,14 +74,7 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 	if err := errors.Join(ctx.Err(), owner.check(), read.check()); err != nil {
 		return nil, errors.Join(err, pending.close())
 	}
-	if request.Application == application.ByteStream {
-		return newByteStreamResult(ctx, owner.check, pending), nil
-	}
-	// The fixed local request precedes the same sole worker transfer used by
-	// the qualified document worker. The caller receives no raw Service transport.
-	return newResultStream(ctx, owner.check, func() ([]byte, error) {
-		return pending.complete(owner.check)
-	}, pending.close), nil
+	return newByteStreamResult(ctx, owner.check, pending), nil
 }
 
 // Config binds one original participant's retained owners. Reader borrows them;

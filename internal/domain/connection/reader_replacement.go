@@ -342,7 +342,7 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 	if err != nil {
 		return nil, nil, err
 	}
-	derived, err := deriveRecipientGeneration(descriptor.Publication, identity.Profile, request, digest, source.config.WorkSafetyMaximum, time.Now(), proposal.ticket.Generation(), identity.Application)
+	derived, err := deriveRecipientGeneration(descriptor.Publication, identity.Profile, request, digest, source.config.WorkSafetyMaximum, time.Now(), proposal.ticket.Generation())
 	if err != nil || derived.Identity != identity || derived.Logical != stream.owner.logical {
 		return nil, nil, errors.Join(errIntegrity, err)
 	}

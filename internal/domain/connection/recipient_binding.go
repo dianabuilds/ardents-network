@@ -32,7 +32,7 @@ func BindRecipient(ctx context.Context, operation *executionruntime.Operation, p
 	if err := errors.Join(ctx.Err(), operation.CheckPublisher()); err != nil {
 		return nil, err
 	}
-	facts, err := deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, time.Now(), 1, wire.ProfileForOperation(operation.UsesByteStream()))
+	facts, err := deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, time.Now(), 1)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func BindRecipient(ctx context.Context, operation *executionruntime.Operation, p
 // deriveRecipientGeneration checks the original capsule grammar and passes the
 // existing logical identity shape to the shared Publication/transcript rule.
 func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, request capsule.Request,
-	plaintextDigest [32]byte, localEnd, now time.Time, generation uint64, application wire.ApplicationProfile) (recipient.Facts, error) {
+	plaintextDigest [32]byte, localEnd, now time.Time, generation uint64) (recipient.Facts, error) {
 	actualDigest, err := request.Digest()
 	if err != nil || actualDigest != plaintextDigest {
 		return recipient.Facts{}, errors.Join(errors.New("recipient plaintext commitment differs"), err)
@@ -55,7 +55,7 @@ func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, reques
 		request.RendezvousNode == [32]byte{} || request.RendezvousDutyGeneration == 0 || request.AttachmentGeneration != generation {
 		return recipient.Facts{}, recipient.ErrBinding
 	}
-	identity := wire.LogicalIdentity{Network: request.Network, Target: request.Target, Application: application,
+	identity := wire.LogicalIdentity{Network: request.Network, Target: request.Target,
 		Publication: request.PublicationDigest, Profile: profile, ConnectionNonce: request.ConnectionNonce,
 		InitiatorBinding: request.InitiatorBinding, WorkSafetyNotAfter: request.WorkSafetyNotAfter,
 		WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}

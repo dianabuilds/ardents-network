@@ -10,8 +10,8 @@
   under ADR-0009. Accepted ADRs also select one bounded closed-alpha native
   Route, wire grammar, and TCP/TLS plus QUIC Carrier set; those selections do
   not imply a public or long-term protocol commitment. Public transport,
-  storage, consensus and blockchain remain unselected. ADR-0132 selects bounded closed Ubuntu
-  bidirectional Application streams and preserves the document profile.
+  storage, consensus and blockchain remain unselected. ADR-0134 selects one bounded closed Ubuntu
+  bidirectional Application byte stream for every file, including text.
   Installed scenario evidence applies to the exact profiles and artifacts
   exercised.
 - New delivery-horizon and epic labels are planning provenance only. They must

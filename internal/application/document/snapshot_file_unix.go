@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"unicode/utf8"
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
@@ -125,7 +124,7 @@ func verifySnapshotFile(ctx context.Context, file *os.File, before os.FileInfo, 
 	}
 	n, readErr := file.Read(excess[:])
 	after, statErr := file.Stat()
-	if n != 0 || readErr != io.EOF || statErr != nil || !durablefile.SameFileIdentity(before, after) || !utf8.Valid(body) {
+	if n != 0 || readErr != io.EOF || statErr != nil || !durablefile.SameFileIdentity(before, after) {
 		return errSnapshotFile
 	}
 	return ctx.Err()

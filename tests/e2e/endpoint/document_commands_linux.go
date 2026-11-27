@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -17,8 +18,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
-// VerifyInstalledDocumentCommands drives the pinned CLI through publish, Link, read and withdrawal.
-func VerifyInstalledDocumentCommands(t *testing.T, ctx context.Context, readSocket, publishSocket string, snapshot []byte, network, target [32]byte, awaitRefresh func()) {
+// VerifyInstalledDocumentCommands drives the pinned CLI through publish, Link, receipt and withdrawal.
+func VerifyInstalledDocumentCommands(t *testing.T, ctx context.Context, readSocket, publishSocket string, snapshot []byte, network, target [32]byte, binary bool, awaitRefresh func()) {
 	t.Helper()
 	input := filepath.Join(filepath.Dir(publishSocket), "document")
 	if err := os.WriteFile(input, snapshot, 0600); err != nil {
@@ -38,7 +39,16 @@ func VerifyInstalledDocumentCommands(t *testing.T, ctx context.Context, readSock
 	if err != nil || linkNetwork != network || linkTarget != target {
 		t.Fatal("link did not identify the original authenticated Service", err)
 	}
-	actual := installedDocumentCLI(t, ctx, link, len(snapshot), "read", readSocket)
+	var actual []byte
+	if binary {
+		linkFile := filepath.Join(t.TempDir(), "link")
+		if err := os.WriteFile(linkFile, link, 0600); err != nil {
+			t.Fatal(err)
+		}
+		actual = installedDocumentCLI(t, ctx, nil, len(snapshot), "stream", "connect", readSocket, "--link-file", linkFile)
+	} else {
+		actual = installedDocumentCLI(t, ctx, link, len(snapshot), "read", readSocket)
+	}
 	if !bytes.Equal(actual, snapshot) {
 		t.Fatalf("read returned different bytes, got length %d, wanted %d", len(actual), len(snapshot))
 	}
@@ -77,7 +87,12 @@ func installedDocumentCLI(t *testing.T, parent context.Context, input []byte, li
 	command := exec.CommandContext(ctx, RecoveryPinnedCommand(t, "ardents-next", "ARDENTS_RECOVERY_INSTANCE_SHA256"), args...)
 	command.WaitDelay = 5 * time.Second
 	command.Stdin, command.Stdout, command.Stderr = bytes.NewReader(input), stdout, stderr
-	if err := errors.Join(command.Run(), ctx.Err()); err != nil || stderr.body.Len() != 0 {
+	operation := "application." + args[0]
+	if args[0] == "stream" {
+		operation += "." + args[1]
+	}
+	wantDiagnostic := fmt.Sprintf("{\"operation\":%q,\"phase\":\"command\",\"outcome\":\"completed\"}\n", operation)
+	if err := errors.Join(command.Run(), ctx.Err()); err != nil || stderr.body.String() != wantDiagnostic {
 		t.Fatalf("installed document %s failed: %v, diagnostic %q", args[0], err, stderr.body.String())
 	}
 	return stdout.body.Bytes()

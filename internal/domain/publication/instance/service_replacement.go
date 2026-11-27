@@ -46,7 +46,7 @@ func (lease *ServiceLease) BeginReplacement(opening *Opening, physical *join.Joi
 		return nil, ErrUnavailable
 	}
 	value := lease.lifetime.binding.credential.Delegation()
-	identity := wire.LogicalIdentity{Network: request.Network, Target: request.Target, Instance: value.Instance, InstanceGeneration: value.Generation, Application: lease.identity.Application,
+	identity := wire.LogicalIdentity{Network: request.Network, Target: request.Target, Instance: value.Instance, InstanceGeneration: value.Generation,
 		Publication: request.PublicationDigest, Profile: request.ProfileDigest, ConnectionNonce: request.ConnectionNonce, InitiatorBinding: request.InitiatorBinding,
 		WorkSafetyNotAfter: request.WorkSafetyNotAfter, WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}
 	logical, attachment, err := wire.Contexts(identity, digest, request.AttachmentGeneration)

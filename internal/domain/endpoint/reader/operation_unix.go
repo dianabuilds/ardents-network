@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
@@ -17,29 +16,20 @@ import (
 
 // readerOperation retains one qualified Reader worker and its sole stream contract.
 type readerOperation struct {
-	caller    context.Context
 	worker    *executionruntime.Invocation
 	operation *executionruntime.Operation
 	contract  executionruntime.StreamContract
 }
 
 // beginRead qualifies the original worker before any Source or Application effect.
-func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32]byte, profile application.Application) (*readerOperation, error) {
+func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32]byte) (*readerOperation, error) {
 	if ctx == nil || local == nil {
 		return nil, errors.New("original Reader runtime is unavailable")
 	}
 	var worker *executionruntime.Invocation
 	var err error
-	send, receive := uint64(512), uint64(document.MaximumBytes+13)
-	switch profile {
-	case application.Document:
-		worker, err = local.LaunchReader(ctx, principal)
-	case application.ByteStream:
-		worker, err = local.LaunchByteStreamReader(ctx, principal)
-		send, receive = application.ByteStreamDirectionalLimit, application.ByteStreamDirectionalLimit
-	default:
-		return nil, errors.New("Reader Application profile is unavailable")
-	}
+	worker, err = local.LaunchByteStreamReader(ctx, principal)
+	send, receive := application.ByteStreamDirectionalLimit, application.ByteStreamDirectionalLimit
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +42,7 @@ func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32
 		operation.Close()
 		return nil, errors.Join(err, worker.Close())
 	}
-	return &readerOperation{caller: ctx, worker: worker, operation: operation, contract: contract}, nil
+	return &readerOperation{worker: worker, operation: operation, contract: contract}, nil
 }
 
 // check rechecks the original live Execution operation; it lends no new grant.
@@ -94,23 +84,6 @@ func (read *readerOperation) prepare(plan funding.Plan, authority funding.Author
 		return nil, err
 	}
 	return pending, nil
-}
-
-func (pending *preparedRead) complete(check func() error) ([]byte, error) {
-	read := pending.read
-	transferred, response, err := read.operation.DeliverReaderStream(read.contract, pending.service)
-	if !transferred {
-		_ = pending.service.Close()
-		read.operation.RetainCleanup(pending.service.JoinedCleanup())
-	}
-	if err != nil || response == nil {
-		return nil, errors.Join(err, errors.New("original Reader result is unavailable"), pending.close())
-	}
-	defer response.Close()
-	if err := errors.Join(pending.close(), read.caller.Err(), check()); err != nil {
-		return nil, err
-	}
-	return response.TakeBytes()
 }
 
 func (pending *preparedRead) close() error {

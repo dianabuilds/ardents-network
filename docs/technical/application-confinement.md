@@ -73,9 +73,9 @@ refusal, interruptions during staging and activation, retained root identities
 and floors, authenticated first use, the document journey, the bidirectional
 byte-stream journey and joined stop.
 
-`ARDTXT01` and the serialized `text_token_root` are separate wire and
-declaration identities. Keep their interpretation and bytes through this
-cutover. A later edition requires its own compatibility decision.
+File content uses the sole byte stream under ADR-0134. The serialized
+`text_token_root` remains a local declaration field, with no content-format
+meaning in the network exchange.
 
 ## Selected boundary
 
@@ -264,7 +264,7 @@ tag for the later canonical composition; it never accepts
 a path, executable, peer list, private key or administration operation.
 
 The Publisher's owner chooses the input file. Import once using a no-follow
-regular-file check, a 4 MiB read limit, UTF-8 validation and a stable-read
+regular-file check, a 4 MiB read limit and a stable-read
 check; copy to a bounded immutable in-memory snapshot. Transmit that snapshot
 over the scoped local Publisher attachment. The worker sees neither the
 original host path nor the host file tree. Publication authority and Instance
@@ -273,7 +273,7 @@ or publish a Service.
 
 The Linux trusted importer walks the selected absolute path through no-follow
 parent directory descriptors and opens the final file nonblocking before the
-regular-file check. It rejects oversized or invalid UTF-8 input and compares a
+regular-file check. It rejects oversized input and compares a
 second bounded read with the first, as well as file identity, size, mode,
 owner/link count and modification/change timestamps. Timestamp equality alone
 is insufficient on a filesystem with coarse change times. The returned bytes
@@ -296,7 +296,7 @@ cannot publish, refresh, retry or resurrect a Service and promises no future
 availability. Existing Publish, snapshot and Withdraw response bytes are unchanged.
 The trusted publication client uses the existing private Administration socket.
 Its bounded extension is ASCII `snapshot\n`[9], a big-endian u32 byte length,
-exact UTF-8 bytes (0 through 4 MiB), then directional EOF. There is no path,
+exact file bytes (0 through 4 MiB), then directional EOF. There is no path,
 Target, key, Principal or Grant in this request. The transport admits at most
 one snapshot allocation/transition at a time and retains the existing finite
 receive deadline. Withdrawal remains a separate operation. Only a publication
@@ -434,10 +434,10 @@ inventory may admit only its exact fixed stream-test worker through the same
 boundary, as specified by the qualification owner; no caller can enable it. Existing generic/unqualified callers remain compatible
 with current C0 but cannot enter the adopted protected profile.
 
-The new local Connection framing is version 2 with magic AAI3, retaining the
+The new local Connection framing is version 2 with magic AAI4, retaining the
 current bounded stream/EOF/terminal semantics. Its first request has a u8
 destination tag (Name=1 reserved, Target Link=2), u16 length and 1 through 512 UTF-8
-bytes. The complete request is AAI3[4], tag[1], length[2], destination[length].
+bytes. The complete request is AAI4[4], tag[1], length[2], destination[length].
 The current capability is bound to the server-side Principal/attachment;
 it is not a new wire field or an export to the worker. Apply the existing canonical
 Target Link parser for tag 2. Tag 1 returns not-selected before any network
@@ -449,7 +449,7 @@ length, u16 reason length, UTF-8 class[1..128] and reason[0..512]. Reasons conta
 no destination or private bytes. The current Stream close/Done/order semantics
 and typed terminal classes remain unchanged. The old AAI2 request is not
 accepted as a protected job. Conformance vectors cover accepted Link and refused Name tags,
-all boundaries, terminal outcomes and incompatible old requests. The local AAI3
+all boundaries, terminal outcomes and incompatible old requests. The local AAI4
 public-Interface oracle preserves each of the 256 byte values exactly once across
 unequal request and response fragments, observes the response only after the
 caller closes its input direction, and opens the owner exactly once. It exercises
@@ -458,8 +458,8 @@ Endpoint owner and is neither inferred from bytes nor delegated to the caller.
 
 ## Worker exchange
 
-AAI3 is the trusted local caller-to-Endpoint interface. The worker receives an
-already authorized stream through a separate, fixed text-worker exchange; it
+AAI4 is the trusted local caller-to-Endpoint interface. The worker receives an
+already authorized stream through a local worker attachment; it
 cannot ask Endpoint to choose a destination, open a file or issue a Grant.
 
 After installed-unit verification, Endpoint sends INIT: ASCII ARDTWP01[8],
@@ -483,15 +483,15 @@ released space. Unknown kinds, wrong directions, unsolicited streams or
 credit overflow close the job and its attachment. A malformed document request is scoped to its admitted Service stream: emit one non-clean CLOSE and retain the Publisher snapshot and other streams. Stop replenishing that rejected stream; discard only already credited in-flight input until Endpoint closes it.
 
 The verified Endpoint composition, not worker INIT or worker frames, assigns
-the Service stream's checked directional byte contract. Ordinary text keeps a
-512-byte reader request and a response of at most 4 MiB plus its 13-byte
-framing; the fixed qualification caller keeps 64 MiB in each direction. The
+the Service stream's checked directional byte contract. Every ordinary file
+uses the same 4 MiB bound in each direction; the fixed qualification caller
+keeps 64 MiB in each direction. The
 reader/publisher mapping is one composition contract, and a replacement Route
 Attachment continues its existing counters rather than acquiring fresh limits.
 
 After complete Service response validation the reader emits RESULT=6 on ID 2:
 status u8 and content-length u32, then bounded BYTES and EOF for that result.
-Endpoint accepts at most 4 MiB and independently checks length, UTF-8, current
+Endpoint accepts at most 4 MiB and independently checks length, current
 job identity and terminal outcome. Only the trusted presentation function may
 render these bytes, with its own escaping; arbitrary worker stdout is never
 sent to a terminal. This does not authenticate a compromised worker's account
@@ -500,7 +500,7 @@ network or host authority through this interface. No second remote request is
 created by result processing. Cancellation closes all streams and joins the
 whole worker cgroup; a replacement worker gets a new job and nonce.
 
-The trusted command's read client consumes AAI3 and the fixed text exchange.
+The trusted command's read client consumes AAI4 and the bounded file byte stream.
 It waits for the complete UTF-8 response and clean terminal result, joins the
 local stream, and independently escapes controls before presentation. The UI
 reopens and identity-checks only its exact inherited input/output as
@@ -510,7 +510,7 @@ initializes UI signal handling only after dispatch excludes the fixed worker
 entrypoints. This is a real local client; it does not supply a launch receipt,
 grant, authenticated State, or a replacement for protected Endpoint composition.
 
-When AAI3 refuses setup, the local client retains its bounded outcome class in
+When AAI4 refuses setup, the local client retains its bounded outcome class in
 `connection.SetupRefusalError`. The trusted command maps local cancellation and
 timeout to its existing stable diagnostics and presents every other setup
 outcome as unavailable. It does not present the refusal reason, destination,

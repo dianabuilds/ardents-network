@@ -109,7 +109,7 @@ the promotion decision. A separate post-release campaign may later use
 operational evidence, but cannot retroactively qualify an earlier build.
 
 For C0, the headless Network candidate and neutral Application Interface are
-joined by two selected seams: the typed Connection v2 contract with AAI3 grammar
+joined by two selected seams: the typed Connection v2 contract with AAI4 grammar
 in `internal/application/connection`, and the separate Administration v1
 contract `ardents-application-interface-v1` in
 `internal/application/administration`. The audit corpus uses

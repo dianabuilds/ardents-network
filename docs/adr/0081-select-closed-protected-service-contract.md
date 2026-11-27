@@ -1,4 +1,7 @@
 ---
+
+The separate document protocol/profile selection is superseded by
+[ADR-0134](0134-use-one-application-byte-stream.md).
 status: accepted
 date: 2026-09-07
 ---

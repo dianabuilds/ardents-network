@@ -94,7 +94,7 @@ current implementation hold remain in #497.
 Installation grants no Job, Local Grant or Service readiness; Route grants no
 Instance authentication or logical recovery. A delivered capsule, Store ACK,
 local Interface conformance or successful standalone stream test cannot replace
-the corresponding live owner. The trusted text clients use AAI3 and bounded
+the corresponding live owner. The trusted file clients use AAI4 and bounded
 Administration snapshots; actual Endpoint composition must still retain the
 original authorized Job and enforce those owners at effects and final handoff.
 
