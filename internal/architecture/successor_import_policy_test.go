@@ -7,6 +7,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"Admission converts public Network facts", "internal/domain/admission/authority.go", modulePath + "/internal/domain/network", true},
+		{"other Admission code cannot import Network", "internal/domain/admission/permission.go", modulePath + "/internal/domain/network", false},
+		{"Admission projection cannot open Network State", "internal/domain/admission/authority.go", modulePath + "/internal/domain/network/state", false},
 		{"Administration retains its original socket entry", "internal/application/administration/server.go", modulePath + "/internal/application/internal/socketfile", true},
 		{"Connection retains its original socket entry", "internal/application/connection/server_linux.go", modulePath + "/internal/application/internal/socketfile", true},
 		{"Application clients cannot admit a socket entry", "internal/application/connection/local_dial.go", modulePath + "/internal/application/internal/socketfile", false},

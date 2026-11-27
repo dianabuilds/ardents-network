@@ -12,13 +12,7 @@ import (
 // NetworkFacts returns detached facts for one observation, never a live permit.
 func NetworkFacts(view network.RuntimeView) (admission.AuthorityFacts, time.Time, error) {
 	profile := view.Profile()
-	facts := admission.AuthorityFacts{NetworkID: profile.Network, StateGeneration: profile.Generation,
-		StateDigest: profile.EpochDigest, Digest: profile.Digest, IssuanceAuthorityKey: profile.IssuanceAuthorityKey,
-		IssuerNodeID: profile.IssuerNodeID, IssuerDutyGeneration: profile.IssuerDutyGeneration, Epoch: profile.Epoch,
-		NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, TokenKeyCount: uint8(len(profile.TokenKeys))}
-	for index, key := range profile.TokenKeys {
-		facts.TokenKeys[index] = admission.TokenKey{WindowStart: key.WindowStart, Class: key.Class, SPKI: key.SPKI}
-	}
+	facts := admission.FactsFromNetworkProfile(profile)
 	now := view.ObservedAt()
 	return facts, now, facts.ValidateAt(now)
 }

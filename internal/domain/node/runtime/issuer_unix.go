@@ -228,7 +228,7 @@ func (f *issuerInvocation) observeIssuance() (admission.AuthorityFacts, time.Tim
 	if err != nil || m.NodeID != f.config.Authority.Duty.NodeID || m.RoleDomain != 2 || m.Subrole != 6 || m.DutyGeneration != p.IssuerDutyGeneration || m.PublicKey != f.config.Issuance.KeyBinding.Signer {
 		return admission.AuthorityFacts{}, time.Time{}, f.failedObservation(errors.Join(errors.New("original issuing member changed"), err), "network")
 	}
-	return nodeadmission.AuthorityFactsFromProfile(p), view.ObservedAt(), nil
+	return admission.FactsFromNetworkProfile(p), view.ObservedAt(), nil
 }
 
 func (f *issuerInvocation) admit(ctx context.Context, c receiver.Channel, raw []byte) (receiving.Grant, error) {

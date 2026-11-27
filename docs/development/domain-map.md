@@ -101,6 +101,12 @@ remain proposed until their current contracts and real consumers are verified.
 | **Software acceptance:** which exact generation may be installed or run? | Separate Enrollment initial-pin/inventory and Release exact-target authorization/monotonic floors | Network membership, Admission permissions, Service authority, generic signing, platform delivery and automatic rollback | [Enrollment](../technical/enrollment-verification.md), [Release/Custody](../technical/release-update-custody.md); current installation consumers are transitional mechanisms under [ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md) |
 | **Authority Custody** (supporting boundary) | Purpose-specific encrypted authority storage, approved signing commitments and recovery floors; authority kinds never become one signing right | Generic `Sign`, exported private authority, Network/Service/Admission decisions assigned to their own domains; runtime Instance/Node keys | New `internal/domain/custody` owns encrypted records and purpose-specific Admission through new Allocation and real `ardents-custody`; Service Authority issuance consumes the one pure Publication request/response contract; predecessor records remain evidence, never signing adoption; [Custody contract](../technical/release-update-custody.md) |
 
+Admission translates Network's copied public profile facts into its own input
+vocabulary in `authority.go`. The translation grants no authority: Network State
+owns authentication and freshness, and each consumer still validates its own
+observation, role and effect boundary. Admission cannot import State or retain
+its witness through this value conversion.
+
 Forwarding retains distinct supervision responsibilities within one original
 Node invocation: the independent Node timer checks Guard and participation;
 Route's joined authority watcher calls Node's full State/duty observation.

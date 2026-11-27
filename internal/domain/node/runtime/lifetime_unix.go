@@ -14,7 +14,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
-	nodeadmission "github.com/dianabuilds/ardents-network/internal/domain/node/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
@@ -190,7 +189,7 @@ func (l *nodeLifetime) observeReceiving(binding receiving.Receiver) (receiving.O
 	if p.NotAfter.Before(end) {
 		end = p.NotAfter
 	}
-	return receiving.Observation{Profile: nodeadmission.AuthorityFactsFromProfile(p), Receiver: binding, Now: view.ObservedAt(), NotAfter: end}, nil
+	return receiving.Observation{Profile: admission.FactsFromNetworkProfile(p), Receiver: binding, Now: view.ObservedAt(), NotAfter: end}, nil
 }
 
 // supervise is the independent Node watchdog shared by Issuer, Descriptor,

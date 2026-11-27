@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/domain/network"
 )
 
 // AuthorityFacts are the independently authenticated facts supplied for one
@@ -40,4 +41,35 @@ func (p AuthorityFacts) ValidateAt(now time.Time) error {
 		keys[i] = issuerprofile.Key{Class: k.Class, Window: uint64(k.WindowStart.Unix()), SPKI: k.SPKI[:]}
 	}
 	return issuerprofile.ValidateCohorts(p.NotBefore, p.NotAfter, keys)
+}
+
+// FactsFromNetworkProfile copies the binding and public issuance inventory from
+// one supplied Network profile. It authenticates nothing and grants no operation
+// authority. Callers must observe the original State at each required effect.
+// An oversized inventory yields zero, non-accepting facts.
+func FactsFromNetworkProfile(profile network.ProfileFacts) AuthorityFacts {
+	if len(profile.TokenKeys) > len((AuthorityFacts{}).TokenKeys) {
+		return AuthorityFacts{}
+	}
+	authority := AuthorityFacts{
+		NetworkID:            profile.Network,
+		StateGeneration:      profile.Generation,
+		StateDigest:          profile.EpochDigest,
+		Digest:               profile.Digest,
+		IssuanceAuthorityKey: profile.IssuanceAuthorityKey,
+		IssuerNodeID:         profile.IssuerNodeID,
+		IssuerDutyGeneration: profile.IssuerDutyGeneration,
+		Epoch:                profile.Epoch,
+		NotBefore:            profile.NotBefore,
+		NotAfter:             profile.NotAfter,
+		TokenKeyCount:        uint8(len(profile.TokenKeys)),
+	}
+	for i, key := range profile.TokenKeys {
+		authority.TokenKeys[i] = TokenKey{
+			WindowStart: key.WindowStart,
+			Class:       key.Class,
+			SPKI:        key.SPKI,
+		}
+	}
+	return authority
 }

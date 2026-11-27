@@ -22,7 +22,7 @@ var successorPackageImports = map[string][]string{
 	"internal/canonicaldigest":                            {},
 	"internal/durablefile":                                {},
 	"internal/pathcheck":                                  {},
-	"internal/domain/node/admission":                      {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/route/ardp", "domain/route/receiver"},
+	"internal/domain/node/admission":                      {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/route/ardp", "domain/route/receiver"},
 	"internal/domain/node/plan":                           {"domain/hosting", "pathcheck", "platform/processguard"},
 	"internal/domain/node/receive":                        {"domain/admission", "domain/admission/issuer", "domain/admission/quota", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/state", "domain/node/admission", "domain/reachability/store", "domain/route/ardp", "domain/route/channel", "domain/route/introduction", "domain/route/receiver", "domain/route/role", "pathcheck", "platform/artifacts"},
 	"internal/domain/node/runtime":                        {"domain/admission", "domain/admission/issuer", "domain/admission/quota", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/duty", "domain/network/state", "domain/node/admission", "domain/node/plan", "domain/reachability/store", "domain/route/ardp", "domain/route/bootstrap", "domain/route/introduction", "domain/route/receiver", "domain/route/role", "durablefile", "pathcheck", "platform/processguard"},
@@ -108,6 +108,11 @@ var successorPackageImports = map[string][]string{
 
 // Apply the exact package edges after the special file-scoped rules.
 func successorDomainPackageImport(source, dependency, owner string) bool {
+	// Only the public facts projection may consume Network's value vocabulary;
+	// State, its witness and other Admission files remain outside this edge.
+	if owner == "internal/domain/admission" && dependency == modulePath+"/internal/domain/network" {
+		return source == "internal/domain/admission/authority.go" || source == "internal/domain/admission/authority_test.go"
+	}
 	if (source == "internal/domain/endpoint/history_preparation_linux.go" || source == "internal/domain/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/domain/route/selection" {
 		return true
 	}

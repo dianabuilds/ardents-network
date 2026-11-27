@@ -632,7 +632,7 @@ func TestCohort2aDomainDetagSelection(t *testing.T) {
 }
 
 // P1-B batch 2 (#787, #691) de-tagged verified pure production files whose
-// composed symbols became portable in batch 1: the Node failure/admission
+// composed symbols became portable in batch 1: the Node failure and shared Admission facts
 // projections, the endpoint/funding composition and the shared reservation
 // and session deadline helpers. They add no native mechanism, so every mandatory target
 // must select them and their portable behavior tests. The Node first-failure
@@ -646,8 +646,8 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 		for _, name := range []string{
 			"internal/domain/node/runtime/failure.go",
 			"internal/domain/node/runtime/failure_test.go",
-			"internal/domain/node/admission/network_profile.go",
-			"internal/domain/node/admission/network_profile_test.go",
+			"internal/domain/admission/authority.go",
+			"internal/domain/admission/authority_test.go",
 			"internal/domain/hosting/reservation.go",
 			"internal/domain/endpoint/funding/issuance.go",
 			"internal/domain/endpoint/funding/parents.go",

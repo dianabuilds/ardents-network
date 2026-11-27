@@ -336,7 +336,7 @@ func (f *forwarding) observeAdmission(binding receiving.Receiver) (receiving.Obs
 	if err != nil || m.DutyGeneration != binding.DutyGeneration {
 		return receiving.Observation{}, errors.Join(errors.New("original receiving duty changed"), err)
 	}
-	facts := nodeadmission.AuthorityFactsFromProfile(p)
+	facts := admission.FactsFromNetworkProfile(p)
 	end := m.NotAfter()
 	if p.NotAfter.Before(end) {
 		end = p.NotAfter
