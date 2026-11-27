@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,10 +46,9 @@ import (
 // envelope to create the participation and receiving histories; the installed
 // unit then opens them retained. Honest limits: one fixture Release authority and
 // one operator, not independent participants or whole-host privacy qualification.
-// The forward executable is a distinct build of the same checked source. Genuine
-// Route byte-transfer is proven by TestNativeNodeForwardingTCP; this gate proves
-// the platform-led installed lifecycle and receiver listening admission. The
-// transitional Forwarding orchestration is not exercised or retired here.
+// The forward executable is a distinct build of the same checked source.
+// Each live phase completes an authenticated Prefix through the installed
+// Entry and checks its durable Forward spend.
 
 type forwardingPlatformStand struct {
 	ns                string
@@ -76,7 +75,7 @@ type forwardingPlatformStand struct {
 	uid               int
 	authority         *releasefixture.ReleaseAuthority
 	networkPlan       state.AuthorityDeclaration
-	address           string
+	workload          installedRouteFixture
 	nodeID            [32]byte
 	familyID          [32]byte
 	sockets           map[[32]byte]func()
@@ -95,12 +94,12 @@ func TestNativeForwardingPlatformInstalledLifecycle(t *testing.T) {
 	// provisioned delivery against the loaded manager, then the retained runtime
 	// claims the original node-duty producer and listens.
 	startForwardingPlatformUnit(t)
-	waitForwardingPlatformReady(t, stand, "first launch")
+	invocation := waitForwardingPlatformReady(t, stand, "first launch")
 	forwardingPlatformProducerPresent(t, stand, true, "first launch")
 	if out, err := runAsInstalledNode(t, stand.program, "node", "forwarding", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a live invocation", string(out))
 	}
-	stopForwardingPlatformUnit(t, "first launch")
+	invocation.stop(t, "first launch")
 	forwardingPlatformProducerPresent(t, stand, false, "first completion")
 	if out, err := runAsInstalledNode(t, stand.program, "node", "forwarding", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a clean root", string(out))
@@ -108,8 +107,8 @@ func TestNativeForwardingPlatformInstalledLifecycle(t *testing.T) {
 
 	// Retained relaunch over the same histories.
 	startForwardingPlatformUnit(t)
-	waitForwardingPlatformReady(t, stand, "relaunch")
-	stopForwardingPlatformUnit(t, "relaunch")
+	invocation = waitForwardingPlatformReady(t, stand, "relaunch")
+	invocation.stop(t, "relaunch")
 	forwardingPlatformProducerPresent(t, stand, false, "relaunch completion")
 
 	// Forward program change: a distinct working executable authenticated against
@@ -123,8 +122,8 @@ func TestNativeForwardingPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startForwardingPlatformUnit(t)
-	waitForwardingPlatformReady(t, stand, "forward launch")
-	stopForwardingPlatformUnit(t, "forward launch")
+	invocation = waitForwardingPlatformReady(t, stand, "forward launch")
+	invocation.stop(t, "forward launch")
 	// Rollback to the committed predecessor must refuse before serving.
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
@@ -148,12 +147,13 @@ func TestNativeForwardingPlatformInstalledLifecycle(t *testing.T) {
 	// live node-duty fence stays retained, a plain start refuses, and the bounded
 	// repair against real manager facts removes exactly that producer.
 	startForwardingPlatformUnit(t)
-	waitForwardingPlatformReady(t, stand, "crash launch")
+	crashed := waitForwardingPlatformReady(t, stand, "crash launch")
 	forwardingPlatformProducerPresent(t, stand, true, "crash launch")
 	if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGKILL", "ardents-forwarding.service").Run(); err != nil {
 		t.Fatal("original crash signal", err)
 	}
 	waitForwardingPlatformFailed(t)
+	crashed.requireCrashWithoutTerminal(t)
 	forwardingPlatformProducerPresent(t, stand, true, "after crash")
 	// A plain start must refuse the retained producer. Type=exec returns once the
 	// main process forks, so the runtime's asynchronous refusal is observed as the
@@ -167,8 +167,8 @@ func TestNativeForwardingPlatformInstalledLifecycle(t *testing.T) {
 	}
 	forwardingPlatformProducerPresent(t, stand, false, "after repair")
 	startForwardingPlatformUnit(t)
-	waitForwardingPlatformReady(t, stand, "post-repair launch")
-	stopForwardingPlatformUnit(t, "post-repair launch")
+	invocation = waitForwardingPlatformReady(t, stand, "post-repair launch")
+	invocation.stop(t, "post-repair launch")
 
 	// Causal pre-effect refusals against the committed delivery.
 	original, err := os.ReadFile(stand.program)
@@ -201,8 +201,8 @@ func TestNativeForwardingPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startForwardingPlatformUnit(t)
-	waitForwardingPlatformReady(t, stand, "restored launch")
-	stopForwardingPlatformUnit(t, "restored launch")
+	invocation = waitForwardingPlatformReady(t, stand, "restored launch")
+	invocation.stop(t, "restored launch")
 }
 
 func provisionForwardingPlatformStand(t *testing.T) *forwardingPlatformStand {
@@ -230,7 +230,6 @@ func provisionForwardingPlatformStand(t *testing.T) *forwardingPlatformStand {
 	stand.launchPath = filepath.Join(stand.etcDir, "launch.json")
 	stand.certPath = filepath.Join(stand.etcDir, "node.crt")
 	stand.keyPath = filepath.Join(stand.etcDir, "node.key")
-	stand.nodeID = [32]byte{12}
 
 	stand.uid = createInstalledNodeAccount(t)
 	t.Cleanup(func() { cleanupForwardingPlatformStand(t, stand) })
@@ -273,7 +272,7 @@ func provisionForwardingPlatformStand(t *testing.T) *forwardingPlatformStand {
 	t.Cleanup(func() { close(clockStop); <-clockJoined })
 
 	processfixture.WaitAdmissionHour(t)
-	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
+	spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	stand.sockets = make(map[[32]byte]func())
 	certificates := make(map[[32]byte]tls.Certificate)
 	carrier := spec.Nodes[1].Carrier
@@ -282,6 +281,10 @@ func provisionForwardingPlatformStand(t *testing.T) *forwardingPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
+	networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+	stand.workload = prepareInstalledRouteFixture(t, spec, bundle, issuerPlan, stand.clockPath, stand.sockets, certificates)
+	stand.nodeID = stand.workload.selectForwarding(t)
+
 	var key [32]byte
 	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))
 	stand.networkPlan = state.AuthorityDeclaration{Root: stand.stateRoot, NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
@@ -313,7 +316,7 @@ func provisionForwardingPlatformStand(t *testing.T) *forwardingPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stand.address, stand.familyID = member.Endpoint, member.FamilyID
+	stand.familyID = member.FamilyID
 
 	certificate := certificates[stand.nodeID]
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]})
@@ -475,29 +478,6 @@ func startForwardingPlatformUnit(t *testing.T) {
 	}
 }
 
-func stopForwardingPlatformUnit(t *testing.T, phase string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
-	defer cancel()
-	if out, err := exec.CommandContext(ctx, "systemctl", "stop", "ardents-forwarding.service").CombinedOutput(); err != nil {
-		t.Fatalf(phase, "installed Forwarding stop", string(out), err)
-	}
-	result, err := exec.Command("systemctl", "show", "ardents-forwarding.service", "-p", "Result", "--value").Output()
-	if err != nil || strings.TrimSpace(string(result)) != "success" {
-		t.Fatal(phase, "clean stop manager result", string(result), err)
-	}
-	var terminal struct{ Phase, Outcome string }
-	found := false
-	for _, line := range strings.Split(forwardingPlatformJournal(t), "\n") {
-		if json.Unmarshal([]byte(line), &terminal) == nil && terminal.Phase != "" {
-			found = true
-		}
-	}
-	if !found || terminal.Phase != "joined" || terminal.Outcome != "canceled" {
-		t.Fatal(phase, "original joined cancellation report", terminal, forwardingPlatformJournal(t))
-	}
-}
-
 func waitForwardingPlatformFailed(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
@@ -519,23 +499,13 @@ func forwardingPlatformJournal(t *testing.T) string {
 	return string(out)
 }
 
-// waitForwardingPlatformReady proves the retained runtime opened its shared
-// carrier listener at the signed member Endpoint (receiver.Listen admission).
-func waitForwardingPlatformReady(t *testing.T, stand *forwardingPlatformStand, phase string) {
+func waitForwardingPlatformReady(t *testing.T, stand *forwardingPlatformStand, phase string) installedInvocation {
 	t.Helper()
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", stand.address, 2*time.Second)
-		if err == nil {
-			_ = conn.Close()
-			return
-		}
-		if exec.Command("systemctl", "is-failed", "ardents-forwarding.service").Run() == nil {
-			t.Fatal(phase, "unit failed before listening", forwardingPlatformJournal(t))
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	t.Fatal(phase, "installed Forwarding never listened", forwardingPlatformJournal(t))
+	original := observeInstalledInvocation(t, "ardents-forwarding.service", "node.forwarding")
+	original.waitListening(t, phase)
+	stand.workload.verifyForwarding(t, stand.program, stand.spendRoot, stand.nodeID, phase)
+	original.requireCurrent(t)
+	return original
 }
 
 func forwardingPlatformProducerPresent(t *testing.T, stand *forwardingPlatformStand, want bool, phase string) {

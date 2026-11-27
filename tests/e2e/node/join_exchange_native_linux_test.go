@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -19,14 +18,9 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
-	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/domain/admission/quota"
-	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/session"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
-	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
@@ -91,8 +85,8 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 					t.Error(err)
 				}
 			})
-			userStock := fundNativeJoinStock(t, spec, bundle, issuerPlan, authority.CurrentRuntime, admission.AllocationUser)
-			publisherStock := fundNativeJoinStock(t, spec, bundle, issuerPlan, authority.CurrentRuntime, admission.AllocationPublisher)
+			userStock := processfixture.FundRouteStock(t, spec, bundle, issuerPlan, authority.CurrentRuntime, admission.AllocationUser, [32]byte{})
+			publisherStock := processfixture.FundRouteStock(t, spec, bundle, issuerPlan, authority.CurrentRuntime, admission.AllocationPublisher, [32]byte{})
 			routeAuthority := funding.Observe(authority.CurrentRuntime, authority.CurrentRuntimeWitness, funding.PresentationGuard(authority.CurrentRuntime))
 			var peers []*processfixture.NativeProcess
 			for nodeID := byte(12); nodeID <= 19; nodeID++ {
@@ -247,14 +241,7 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			}
 			// More than one credit window, bounded duplex bytes and directional EOF.
 			for side := range 2 {
-				payload := bytes.Repeat([]byte{byte(71 + side)}, 96<<10)
-				done := make(chan error, 1)
-				go func() { _, e := streams[side].Write(payload); done <- e }()
-				got := make([]byte, len(payload))
-				_, e := io.ReadFull(streams[1-side], got)
-				if e = errors.Join(e, <-done); e != nil || !bytes.Equal(got, payload) {
-					t.Fatal("native JOIN duplex byte oracle", e)
-				}
+				processfixture.TransferJoinDirection(t, streams[side], streams[1-side], byte(71+side))
 				if side == 0 && (mode == "caller" || mode == "process-loss" || mode == "clock-loss") {
 					p := processes[recipient.Node]
 					if mode == "caller" {
@@ -295,17 +282,8 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 					return
 				}
 
-				writer, ok := streams[side].(interface{ CloseWrite() error })
-				if !ok {
-					t.Fatal("joined stream cannot end one direction")
-				}
-				if e := writer.CloseWrite(); e != nil {
-					t.Fatal(e)
-				}
-				var one [1]byte
-				if n, e := streams[1-side].Read(one[:]); n != 0 || e != io.EOF {
-					t.Fatal("directional EOF", n, e)
-				}
+				processfixture.FinishJoinDirection(t, streams[side], streams[1-side])
+
 			}
 			for _, s := range streams {
 				if err := s.Close(); err != nil {
@@ -367,56 +345,6 @@ func wrapNativeJoinClose(owner string, err error) error {
 }
 
 func TestNativeJoinProvisionedCertificateTCP(t *testing.T) { nativeJoinWorkload(t, "certificate") }
-
-func fundNativeJoinStock(t *testing.T, spec networkfixture.ClosedSpec, bundle networkfixture.Closed, plan issuer.Plan, read func() (network.RuntimeView, error), role admission.AllocationRole) *stock.Owner {
-	t.Helper()
-	observe := func() (admission.AuthorityFacts, time.Time, error) {
-		view, err := read()
-		if err != nil {
-			return admission.AuthorityFacts{}, time.Time{}, err
-		}
-		return funding.NetworkFacts(view)
-	}
-	facts, now, err := observe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	maxima := [3]uint32{0, 10, 0}
-	holder := processfixture.OpenPermittedStock(t, t.TempDir(), role, maxima, observe, facts, spec.Authority, now)
-	if status := holder.Status(); !status.Accepted || status.Remaining != maxima {
-		t.Fatalf("JOIN allocation maxima changed: %+v", status)
-	}
-	var challenges []token.ClosedTokenContext
-	for _, member := range bundle.Nodes[1:] {
-		challenges = append(challenges, token.ClosedTokenContext{NetworkID: facts.NetworkID, ProfileDigest: facts.Digest,
-			IssuerNodeID: facts.IssuerNodeID, ReceiverNodeID: member.NodeID, ReceiverDutyGeneration: member.Generation,
-			Class: uint8(admission.ForwardClass), WindowStart: now.UTC().Truncate(time.Hour)})
-	}
-	attempt, err := holder.Begin(stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: [32]byte{31, byte(role)}, ProfileDigest: facts.Digest}, Bootstrap: true, Deadline: facts.NotAfter})
-	if err != nil {
-		t.Fatal(err)
-	}
-	batch, _, err := attempt.Request()
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoded, err := admission.DecodeClosedTokenBatch(batch)
-	if err != nil || decoded.Class != uint8(admission.ForwardClass) || len(decoded.BlindedRequests) != 10 {
-		t.Fatal("JOIN blinded batch class/count", err)
-	}
-	issued := issuer.IssueCurrent(t.Context(), plan, batch, quota.Bootstrap, observe)
-	if issued.Outcome != "issued-offline" {
-		t.Fatal(issued.Outcome)
-	}
-	response, err := admission.DecodeClosedTokenBatchResult(issued.Response)
-	if err != nil || response.Status != admission.ClosedTokenIssued || len(response.Signatures) != 10 {
-		t.Fatal("JOIN blind issuance result class/count", err)
-	}
-	if err := attempt.Complete(issued.Response, nil); err != nil {
-		t.Fatal(err)
-	}
-	return holder
-}
 
 func minNativeJoinDeadline(end time.Time, bounds ...time.Time) time.Time {
 	for _, bound := range bounds {
