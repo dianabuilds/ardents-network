@@ -33,8 +33,9 @@ Each case independently obtains a Service Credential through the installed
 Instance command and Custody with a no-echo PTY. The pinned ordinary CLI uses
 the actual local Administration and Connection sockets with the genuine
 successor Publisher and Reader. The Link travels through an owned pipe. The
-profile compares the complete immutable document for empty, 64 KiB and 4 MiB,
-then checks authenticated withdrawal and Link refusal. The fourth case compares
+profile checks empty and 4 MiB text files through `read`. The 64 KiB reference
+case publishes all 256 byte values and compares the raw output of
+`stream connect`. Each case checks authenticated withdrawal and Link refusal. The fourth case compares
 the full 64 KiB document after real elapsed refresh, a verified replacement
 Descriptor and refusal of a still-signed predecessor.
 

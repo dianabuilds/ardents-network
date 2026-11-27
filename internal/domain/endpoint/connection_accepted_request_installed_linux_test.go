@@ -29,7 +29,7 @@ import (
 )
 
 const acceptedRequestRecovery = "accepted-request-smoke"
-const installedRecoveryDocumentBytes = (64 << 10) - 13
+const installedRecoveryDocumentBytes = 64 << 10
 
 var installedRecoveryRendezvous = [32]byte{41}
 
@@ -93,11 +93,10 @@ func (observed *installedAcceptedRequestStream) Write(body []byte) (int, error) 
 
 func (observed *installedAcceptedRequestStream) requireRequest(t *testing.T) {
 	t.Helper()
-	var request [512]byte
-	copy(request[:], "ARDTXT01\x01")
+	var request [0]byte
 	observed.mu.Lock()
 	defer observed.mu.Unlock()
-	if observed.read != len(request) || observed.oversized || !observed.eof || !bytes.Equal(observed.request[:], request[:]) {
+	if observed.read != len(request) || observed.oversized || !observed.eof || !bytes.Equal(observed.request[:observed.read], request[:]) {
 		t.Fatal("Publisher did not receive exactly one original fixed request and EOF")
 	}
 }

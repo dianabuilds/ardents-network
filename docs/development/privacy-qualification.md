@@ -65,11 +65,11 @@ production outcomes or authorization to exceed existing product budgets.
 
 | Quantity | Selected bound and accounting |
 |---|---|
-| Reference request / response | 512 application bytes and 65,536 total response bytes; the document response includes its 13-byte header and 65,523 content bytes |
+| Reference request / response | No file request payload; 65,536 raw file bytes and directional EOF |
 | Cold response | p95 <=3 s from the authorized Reader request, including its worker launch, to the complete validated response; no private destination cache, token stock or prepared prefix |
 | Warm response | p95 <=1 s for a new Connection 1–30 s after a prior read in the same context; valid scoped cache/token stock, one target-free prefix and finite actual-work Node Carrier reuse allowed; retained local Rendezvous Node choice, no reserved join or open Service Connection |
 | Latency samples | 1,000 cold and 1,000 warm attempts per run, 3 declared seeds; report all outcomes and nearest-rank p50/p95/p99; a non-success in the normal reference counts as infinite completion time |
-| First job | UTF-8 document <=4 MiB; one request/Connection, at most 600 s logical lifetime |
+| First job | File <=4 MiB; one exchange/Connection, at most 600 s logical lifetime |
 | Whole open deadline | 10 s; caller can cancel earlier; timeout is a terminal failure, not a successful response |
 | Recovery | Existing immutable Connection authority; retain NET-14 recovery episodes: p95 <=5 s single/sequential and <=8 s overlapping, terminal within 15 s, inside immutable Work Safety; bounded authorized alternatives, no Application request replay |
 | Framing/queues | 16 KiB data frames; 64 KiB lane receive window; 4 MiB/prefix and 64 MiB/Node aggregate queued ciphertext; separately reserved control/termination space |
@@ -143,8 +143,7 @@ binding. No test should generate traffic merely to spend an allowance.
 For NET-14's broader network workload, use a fixed test stream Application in
 the separately pinned qualification artifact inventory, through the same
 verified installed-unit, descriptor, Principal/Grant and bounded-stream boundary.
-It generates the predeclared useful byte schedule and canaries instead of the
-text grammar; it has no arbitrary egress or authority. The qualification runner
+It generates the predeclared useful byte schedule and canaries; it has no arbitrary egress or authority. The qualification runner
 is its sole caller. A normal text-job inventory cannot admit its executable,
 and there is no runtime flag, caller bool or arbitrary-program launch bypass.
 The deterministic scheduled-byte generator covers all 256 byte values in its
@@ -198,7 +197,7 @@ model; it cannot disappear into a cache or an excluded readiness phase.
 
 | ID | Receiving boundary / experiment | Required verdict |
 |---|---|---|
-| P1 Job/authority | Publish/read empty, reference and maximum document by Link; Name refused; wrong Target, bad UTF-8, special/changing file, terminal escapes and extra request | Exact intended content/outcome; no redirected Target, arbitrary file read, automatic URL launch or control-sequence execution |
+| P1 Job/authority | Publish and receive empty, binary reference and maximum-size files by Link; Name refused; wrong Target, special/changing file, terminal escapes and unexpected upload to a snapshot | Exact intended content/outcome; no redirected Target, arbitrary file read, automatic URL launch or control-sequence execution |
 | P2 Wire/flow | All kinds and state transitions, zero/oversize/truncated/unknown records, lane reuse, credit overflow, blocked lane and hostile control flood | Reject before forbidden effects; bounded memory/work; independent lane progress; preserved EOF and joined cleanup |
 | P3 Role observations | Capture each role's entire inputs/state, then prescribed combinations; compare startup, lookup, admission, publication, data and cleanup | No forbidden origin–Target field join or cross-context identifier; complete observer traces, not packet-only evidence |
 | P4 Cryptography | RFC 9474/9577/9578 vectors and independent verification; wrong SPKI/key/cohort/receiver, changed capsule, replay, wrong Instance and later-key capture | Required authentication/confidentiality/PFS conditions hold; malformed fields rejected; no claim for captured live recipient keys |
@@ -227,7 +226,7 @@ does not transfer authority or permit connections to predecessor runtime.
 | Route | Use the isolated new Route and new command composition under the [migration contract](route-migration-contract.md); own physical paths/channels, Introduction and JOIN, not Service readiness or logical continuity |
 | Publication/Instance and Reachability | Keep live publication/recipient authority separate from Descriptor Store/history; registration ACK, Store ACK and exact-Instance authentication are distinct facts |
 | Connection | Retain immutable logical authority, ordered bytes, bounded recovery and joined terminal outcome; fresh Attachment changes no Target, Job or Grant |
-| Execution and Application | Admit verified confined workers through the [Execution owner](../technical/application-execution.md); AAI3 Target-Link requests and separate Administration do not grant Service or software authority. Name input is refused before work |
+| Execution and Application | Admit verified confined workers through the [Execution owner](../technical/application-execution.md); AAI4 Target-Link requests and separate Administration do not grant Service or software authority. Name input is refused before work |
 | Enrollment, Release and Installation | Keep first pin, exact-byte authorization/floors and native install/replacement/recovery/startup as separate owners; installed bytes and ACK do not qualify a Service journey |
 | Custody | Retain purpose-specific private authority and approved signing; no generic signing right or shared authority across domains |
 
@@ -237,8 +236,8 @@ selects fresh Service v3 roots and Links: no old Service reader, fallback,
 adoption or conversion; old bytes remain untouched and are refused before
 effects. [ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md)
 retires Naming and corpus readers without conversion or deletion. The separate
-Application Interface remains its typed v2 contract with AAI3 grammar; removed
-AAI2 requests are refused before Application owner I/O.
+The sole Connection Interface uses AAI4 byte-stream framing. Retired requests
+are refused before Application owner I/O.
 
 Prepare the authorized candidate's exact binaries, configuration and units
 before accepting its traffic. Installed replacement quiesces new predecessor
@@ -279,7 +278,7 @@ preserves this entire acceptance contract for the changed consolidated candidate
 Each bounded refactor/retirement includes its affected behavior checks and owner
 documents. Do not defer them into the final system campaign. The AAI2 removal
 is gated by retained binary-stream, fragmentation, half-close, cancellation
-and terminal cases through AAI3 with strict version refusal before Application
+and terminal cases through AAI4 with strict version refusal before Application
 owner I/O.
 
 Final qualification separates ordinary installed TCP/TLS journeys (QUIC is

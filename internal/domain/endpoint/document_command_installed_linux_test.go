@@ -5,7 +5,6 @@ package endpoint_test
 import (
 	"bytes"
 	"context"
-	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 
 func TestInstalledDocumentCommandsThroughJoinedNetworkTCP(t *testing.T) {
@@ -38,13 +38,20 @@ func TestInstalledDocumentCommandsThroughJoinedNetworkTCP(t *testing.T) {
 			{"empty", 0}, {"reference", 64 << 10}, {"maximum", document.MaximumBytes}, {"refresh", 64 << 10},
 		} {
 			t.Run(scenario.name, func(t *testing.T) {
-				runInstalledDocumentCommandsThroughJoinedNetwork(t, bytes.Repeat([]byte{'x'}, scenario.size), scenario.name == "refresh")
+				binary := scenario.name == "reference"
+				snapshot := bytes.Repeat([]byte{'x'}, scenario.size)
+				if binary {
+					for index := range snapshot {
+						snapshot[index] = byte(index)
+					}
+				}
+				runInstalledDocumentCommandsThroughJoinedNetwork(t, snapshot, binary, scenario.name == "refresh")
 			})
 		}
 	})
 }
 
-func runInstalledDocumentCommandsThroughJoinedNetwork(t *testing.T, snapshot []byte, refresh bool) {
+func runInstalledDocumentCommandsThroughJoinedNetwork(t *testing.T, snapshot []byte, binary, refresh bool) {
 	t.Helper()
 	if refresh && time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
 		t.Fatal("invalid environment: installed document command test needs sixteen minutes in the original token hour")
@@ -144,5 +151,5 @@ func runInstalledDocumentCommandsThroughJoinedNetwork(t *testing.T, snapshot []b
 			})
 		}
 	}
-	endpointfixture.VerifyInstalledDocumentCommands(t, ctx, readSocket, publishSocket, snapshot, f.profile.NetworkID, target, awaitRefresh)
+	endpointfixture.VerifyInstalledDocumentCommands(t, ctx, readSocket, publishSocket, snapshot, f.profile.NetworkID, target, binary, awaitRefresh)
 }

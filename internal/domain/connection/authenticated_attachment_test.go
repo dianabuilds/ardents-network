@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/recipient"
-	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/capsule"
@@ -113,7 +112,7 @@ func TestRecipientBindingTranscriptSeparatesLogicalAndAttachmentFacts(t *testing
 	binary.BigEndian.PutUint64(raw[267:275], uint64(request.WorkSafetyMaximum))
 	binary.BigEndian.PutUint64(raw[275:283], uint64(request.NoNewRecoveryAfter))
 	logical, attachment := binding.Logical, binding.Attachment
-	if logical != sha256.Sum256(raw) {
+	if logical != sha256.Sum256(append(raw, []byte("ardents-application-byte-stream-v1\x00")...)) {
 		t.Fatal("immutable logical transcript bytes differ")
 	}
 	attachmentRaw := make([]byte, 102)
@@ -196,5 +195,5 @@ func TestRecipientBindingCannotSupplyOriginalOperation(t *testing.T) {
 }
 
 func deriveRecipientBinding(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time) (recipient.Facts, error) {
-	return deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, now, 1, wire.DocumentApplication)
+	return deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, now, 1)
 }

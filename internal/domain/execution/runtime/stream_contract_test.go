@@ -14,7 +14,7 @@ func TestDetachedOperationCannotBindWorkloadByteContract(t *testing.T) {
 		if _, err := operation.ConnectionContext(); err == nil {
 			t.Fatal("missing original invocation supplied local Connection context")
 		}
-		if _, err := operation.BindStreamContract(512, 4<<20+13); err == nil {
+		if _, err := operation.BindStreamContract(1024, 4<<20); err == nil {
 			t.Fatal("missing original operation supplied byte contract")
 		}
 		if _, _, err := (StreamContract{}).Limits(operation); err == nil {
@@ -39,7 +39,7 @@ func TestByteStreamUsesTheFixedSymmetricContract(t *testing.T) {
 			t.Errorf("limits %d/%d admitted: %t", test.send, test.receive, result)
 		}
 	}
-	if !validStreamLimits(false, 512, 4<<20+13) ||
+	if !validStreamLimits(false, 1024, 4<<20) ||
 		!validStreamLimits(false, qualificationDirectionalLimit, qualificationDirectionalLimit) {
 		t.Fatal("existing document or qualification limits changed")
 	}

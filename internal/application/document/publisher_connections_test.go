@@ -3,7 +3,6 @@ package document_test
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"io"
 	"net"
@@ -137,8 +136,7 @@ func (stream *publisherFixture) assertResponse(t *testing.T, body []byte) {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 	response := stream.response.Bytes()
-	if len(response) != len(body)+13 || string(response[:8]) != "ARDTXT01" || response[8] != 0 ||
-		binary.BigEndian.Uint32(response[9:13]) != uint32(len(body)) || !bytes.Equal(response[13:], body) {
+	if !bytes.Equal(response, body) {
 		t.Fatalf("Publisher response is not the exact snapshot (%d bytes)", len(response))
 	}
 	select {
@@ -149,15 +147,13 @@ func (stream *publisherFixture) assertResponse(t *testing.T, body []byte) {
 }
 
 func publisherRequest() []byte {
-	body := make([]byte, 512)
-	copy(body, "ARDTXT01\x01")
-	return body
+	return nil
 }
 
 func TestPublisherWorkerConnectionsShareSnapshotAndIsolateMalformedRequest(t *testing.T) {
 	for _, size := range []int{0, 64 << 10, document.MaximumBytes} {
 		t.Run(strconv.Itoa(size)+" bytes", func(t *testing.T) {
-			body := bytes.Repeat([]byte("x"), size)
+			body := bytes.Repeat([]byte{0xff}, size)
 			harness := startPublisherHarness(t, body, nil)
 			valid := newPublisherFixture(publisherRequest(), nil)
 			malformed := newPublisherFixture(append(publisherRequest(), 1), nil)

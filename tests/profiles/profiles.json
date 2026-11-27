@@ -243,7 +243,7 @@
       "id": "connection-request-recovery",
       "state": "active",
       "make_target": "connection-request-recovery-check",
-      "surface": "TCP/TLS loss after the original Publisher worker accepts the exact request and EOF; one fresh JOIN pair, unchanged 65523-byte document, independently settled original Connection, and joined original workers within five seconds",
+      "surface": "TCP/TLS loss after the original Publisher worker accepts EOF on the unused sending direction; one fresh JOIN pair, exact 65536-byte file, independently settled original Connection, and joined original workers within five seconds",
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "genuine fixed root-installed Text artifact and activation units",

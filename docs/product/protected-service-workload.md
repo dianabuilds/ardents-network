@@ -6,18 +6,17 @@ refuses before effects without a transport fallback. Every Application, authorit
 confinement, resource, recovery and joined-cleanup obligation remains required
 on TCP/TLS; historical dual-Carrier receipts do not qualify changed artifacts.
 
-Status: **selected closed workload** under ADR-0081 and ADR-0132.
+Status: **selected closed workload** under ADR-0134.
 The [common architecture](../technical/common-privacy-architecture.md) provides
-one protection construction for both profiles. The
+one protection construction for all Application bytes. The
 [C0 scope](scope.md#c0-closed-alpha-readiness-profile) owns the qualification
 boundary and release claim limits.
 
 ## Outcome and supported scope
 
-A participant uses an explicit Target Link to reach a Service. The document
-profile publishes immutable UTF-8 text and renders the received document
-safely. The byte-stream profile exchanges ordered Application bytes in both
-directions. Endpoint selects the protected Route.
+A participant uses an explicit Target Link to reach a Service. Every file,
+including text, uses the same bidirectional byte stream. Endpoint selects the
+protected Route. File publication serves an immutable bounded snapshot.
 
 The first delivery is a closed test network with explicitly provisioned Nodes,
 State authority, time witness, issuers and finite resource permissions.
@@ -74,56 +73,21 @@ and Connection lifetime. A worker receives only its scoped attachment. Selected
 Application and worker identities must bind to signed local policy before any
 effect. Remote input cannot select a command, executable or local file path.
 
-Reuse the existing authenticated Service Connection and its ordered stream,
-flow control, continuity and terminal result. Reuse the local Application
-Connection byte framing where its authority and lifetime match the new profile.
-The [local binary conformance test](../../internal/application/connection/transport_binary_conformance_test.go)
-exercises a byte exchange through local framing with a test stream. The
-[scheduled qualification workload](../technical/application-confinement.md#selected-boundary)
-exercises fixed binary canaries with qualification-only state. Neither supplies
-a production participant job. Production admission needs an exact signed
-worker profile and a real Service handler; it must refuse an unsupported
-profile before delivering Application bytes. The existing document request
-grammar remains scoped to document Services. The current v3 Target Link carries
-only Network and Target. It can remain the destination input, but cannot prove
-which Application the authenticated Instance offers. The client must request
-the byte-stream profile explicitly. The Instance must authenticate its
-acceptance in the logical Connection setup before either side admits a data
-worker or forwards user payload. The acceptance must bind the exact Target,
-Instance, authenticated Connection and chosen profile. Continuity must retain
-that original binding. Use the existing transport and document grammar for
-document peers. An older peer, unknown profile, missing proof or profile
-mismatch must terminate the requested byte-stream operation without fallback.
+The sole Application stream uses the existing authenticated Service Connection,
+ordered bytes, flow control, continuity and terminal result. Local AAI4 framing
+and the authenticated byte-stream context apply to every ordinary connection.
+Content type does not select a protocol or Service profile.
 
-Use the existing encrypted Instance proof and Continuity setup to
-authenticate the profile. Both peers derive the expected Application binding
-from their own admitted local profile. The initiator derives it from the
-explicit operation, and the Publisher derives it from the verified Service
-configuration. Commit the byte-stream selection to the logical context that
-the Instance proves and Continuity retains. Preserve the exact existing
-document context transcript. A mismatch therefore fails the existing context
-verification without a new cleartext TLS negotiation field or a trial
-Application request. The two local owners must check this binding before they
-hand an authenticated stream to a data worker.
-
-The first byte-stream profile admits up to 4 MiB in each direction per
-Connection. Admission uses the original 60-second setup and exchange budget
-and one active exchange per stream job. Shorter authority and resource
-deadlines still apply and recovery cannot renew them. Existing peers retain
-the document profile and refuse a byte-stream binding. Keep the document workload and its signed identities
-unchanged until their separately designed migration is adopted. Qualify the new
-workload through the same protected Route with two installed Endpoints. Exercise
-non-UTF-8 bytes, directional EOF, backpressure, truncation, interrupted transfer,
-revocation and joined cleanup with both positive and causal refusal cases.
-Confidentiality of Application bytes and traffic-correlation exposure require
-separate evidence under the [threat model](../security/threat-model.md).
+Each direction admits up to 4 MiB per Connection within the existing bounded
+operation lifetime. Authority loss and earlier resource deadlines still stop
+the exchange. Qualification must exercise arbitrary binary bytes, directional
+EOF, backpressure, interruption, revocation and joined cleanup.
 
 ## Interaction
 
-1. The Publisher selects one regular local UTF-8 file, at most 4 MiB. A trusted
+1. The Publisher selects one regular local file, at most 4 MiB. A trusted
    local importer opens it without following symlinks and produces an immutable
-   owner-authorized snapshot. Reject special files, changing input, invalid
-   UTF-8 and oversize input before publication. No arbitrary path is accepted
+   owner-authorized snapshot. Reject special files, changing input and oversize input before publication. No arbitrary path is accepted
    from a network request.
 2. The isolated worker receives only that snapshot and its scoped local
    Application attachment. The Endpoint owns Instance authentication,
@@ -131,9 +95,9 @@ separate evidence under the [threat model](../security/threat-model.md).
    those operations succeed.
 3. The reader enters a Target Link. Endpoint admits local
    authority, verifies the exact destination, and makes one ordinary protected
-   Connection before the reader sends the document request.
+   Connection before transferring bytes.
 4. The Service returns a bounded response and closes its send direction.
-   The reader accepts the complete length and terminal result before rendering.
+   The reader waits for EOF and authenticated terminal completion before presenting a completed result.
    Render plain text: escape terminal control characters, including ESC,
    C0/C1 controls other than line feed and tab, and bidi control characters.
    Links are text, never automatically fetched or launched.
@@ -146,30 +110,22 @@ separate evidence under the [threat model](../security/threat-model.md).
    Explicit revoke or local safety failure cancels immediately.
 
 A document revision is a new explicit publication operation; there is no live
-editing or implicit file watcher. Download/save/export, arbitrary HTML/scripts,
+editing or implicit file watcher. Automatic execution of HTML/scripts,
 external subresources, redirects, authentication accounts and a general browser
 are outside this first supported job. The Network's ordered-stream contract
 and its large-stream tests remain broader than this document viewer.
 
 ## Application exchange
 
-Use one request per Connection. Its wire bytes are a fixed 512-byte record:
-ASCII `ARDTXT01` (8 bytes), request operation `1` (one byte), then 503 zero
-bytes. Reject any other length, operation, nonzero padding or second request.
+The receiver closes its sending direction. The Publisher writes the selected
+snapshot bytes directly and closes its sending direction. Empty files are valid.
+The receiver enforces the byte bound and accepts success only after directional
+EOF, authenticated terminal success and joined cleanup. The transfer has no
+content-specific request, header, status record or encoding validation.
 
-The response is `ARDTXT01`, one status byte, one unsigned big-endian u32 body
-length, then that many bytes and authenticated directional EOF. Status `0`
-means UTF-8 content (0 through 4 MiB); `1` means unavailable and has length
-zero. No HTTP, compression, redirect, MIME sniffing, script or remote filename.
-Authentication and exact Target are provided by Service Connection, not by
-this simple application grammar. A 64 KiB response is the NET-32 reference;
-larger documents have the same protection but a size-dependent completion time.
+A local text viewer checks UTF-8 and escapes terminal controls before output.
+Saving arbitrary bytes uses the ordinary stream commands and pipes.
 
-Never render an unbounded stream or partial unauthenticated outcome as a
-completed document. A lost Connection can resume the same ordered transport
-only under its bounded continuity contract; it cannot cause a second
-Application request. If that continuity fails, show an interrupted read.
-A new read requires an explicit User action.
 
 ## Visible failures and local lifecycle
 
@@ -194,7 +150,7 @@ Designing that separate authority change is not hidden inside privacy work.
 
 ## Acceptance and limits
 
-The full 512-byte / 64 KiB exchange has p95 at most 3 seconds on a cold
+The full 64 KiB file transfer has p95 at most 3 seconds on a cold
 destination and 1 second on a warm new Connection in the declared test envelope.
 A ready Endpoint is the start condition; full bootstrap is reported separately.
 The [qualification contract](../development/privacy-qualification.md) defines

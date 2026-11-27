@@ -986,8 +986,9 @@ diagnostics.
 The local client command is `ardents read /absolute/path/to/connection.sock`.
 Use Linux terminal or pipe input/output; non-interruptible descriptors are refused.
 Enter one explicit Target Link on standard input and finish the line. The
-destination is not a command argument or diagnostic. The client sends one AAI3
-Target-Link request and one fixed document request, with a 60-second setup/exchange
+destination is not a command argument or diagnostic. The client sends one AAI4
+Target-Link request, then closes its unused sending direction and receives raw
+file bytes, with a 60-second setup/exchange
 deadline after input. It prints the complete document only after successful
 terminal completion and joined local stream cleanup. C0/C1 controls other than
 LF/tab, ESC and Unicode bidi controls appear as local `\uXXXX` escapes. Links
@@ -997,13 +998,13 @@ SIGTERM cancels the input/read and joins the owned local handles.
 
 This client does not establish confinement or authenticate Network facts.
 The selected Endpoint must enforce canonical Target admission, verified worker
-launch and the protected Service path before accepting its AAI3 request.
+launch and the protected Service path before accepting its AAI4 request.
 Client conformance against a local test peer is not proof that the protected
 participant composition or installed Ubuntu workload is ready.
 
 The trusted publication client is
 `ardents publish /absolute/path/to/administration.sock /absolute/path/to/document`.
-On Linux it imports the selected regular UTF-8 file without following symlinks,
+On Linux it imports the selected regular file without following symlinks,
 rejects changing or oversized input, and sends only its bounded snapshot to the
 Administration owner. It returns success only after the owner confirms committed
 publication, including the actual Descriptor acknowledgement. It emits no
@@ -1012,7 +1013,7 @@ the fixed Publisher worker with that snapshot and retains the publication after
 the command returns. Obtain its Target Link with `ardents link
 /absolute/path/to/administration.sock`; withdraw through `ardents endpoint
 withdraw /absolute/path/to/administration.sock`. These commands require the
-running document Application and its separately accepted Administration
+running file Application and its separately accepted Administration
 permission.
 Component conformance and installed journey results remain separate evidence;
 command success does not establish full host qualification.

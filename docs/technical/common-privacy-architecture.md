@@ -89,7 +89,7 @@ Correlation and activity/recognizability measurements characterize limitations;
 they do not create a quantitative anonymity claim. A new protocol-field link,
 direct escape or violated required property remains an acceptance failure.
 
-The selected Ubuntu text job covers both Application process trees.
+The selected Ubuntu file and byte-stream operations cover both Application process trees.
 Kernel, privileged host, Endpoint verification or launcher compromise defeats
 claims relying on that boundary. Controlled roles and synthetic family values
 do not prove independent control, public anonymity or public availability.
@@ -105,7 +105,7 @@ do not prove independent control, public anonymity or public availability.
 | Naming and Reachability | Canonical independent proofs, exact Target, currentness, scoped caches and private terminal exchange |
 | Publication and Instance | Independent Introduction key/slot lifecycle, publication revision, withdrawal and non-exporting Instance custody |
 | Service Connection | Immutable logical connection, fresh Attachment binding, authenticated byte order and bounded continuity |
-| Application and installation owners | Bounded text job, verified confinement, artifacts, local effects and whole-tree cleanup |
+| Application and installation owners | Bounded byte-stream jobs, verified confinement, artifacts, local effects and whole-tree cleanup |
 | Resource, Release and diagnostics | Complete cost, owner-controlled adoption, safety floors and finite local observations |
 
 A small Interface remains with the owner of its state and effects. No generic

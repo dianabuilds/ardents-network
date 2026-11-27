@@ -28,11 +28,7 @@ func TestReaderWorkerTransfersThroughAAI3WithoutSecondOpen(t *testing.T) {
 		}
 	})
 	body := bytes.Repeat([]byte("closed text\n"), 8192)
-	snapshot, err := document.NewSnapshot(body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	owner := &snapshotConnectionOwner{snapshot: snapshot}
+	owner := &snapshotConnectionOwner{snapshot: body}
 	address := filepath.Join(directory, "connection.sock")
 	server, err := connection.Listen(address, owner)
 	if err != nil {
@@ -54,7 +50,7 @@ func TestReaderWorkerTransfersThroughAAI3WithoutSecondOpen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(actual, body) || owner.opens.Load() != 1 || owner.bytes.Load() != 512 {
+	if !bytes.Equal(actual, body) || owner.opens.Load() != 1 || owner.bytes.Load() != 0 {
 		t.Fatal("AAI3 exchange lost its exact content or one-request binding")
 	}
 }

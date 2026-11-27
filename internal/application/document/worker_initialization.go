@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"unicode/utf8"
 )
 
 const workerFrameLimit = 16 << 10
@@ -51,7 +50,7 @@ func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerIniti
 	if _, err := io.ReadFull(input, initial.snapshot); err != nil {
 		return workerInitialization{}, err
 	}
-	if !utf8.Valid(initial.snapshot) || sha256.Sum256(initial.snapshot) != initial.digest {
+	if sha256.Sum256(initial.snapshot) != initial.digest {
 		return workerInitialization{}, errors.New("document worker snapshot is invalid")
 	}
 	return initial, nil

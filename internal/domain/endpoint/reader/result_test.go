@@ -1,80 +1,82 @@
 package reader
 
 import (
+	"bytes"
 	"context"
 	"errors"
-	"sync"
-	"sync/atomic"
+	"io"
 	"testing"
-	"time"
 )
 
-// Local pipes isolate the fixed Application projection only. These callbacks
-// provide no qualified Job, Source, authentication or installed readiness.
-func TestInstalledReaderProjectionRejectsMalformedRequestBeforeWorkerTransfer(t *testing.T) {
-	var transfers, retirements atomic.Int32
-	stream := newResultStream(t.Context(), func() error { return nil }, func() ([]byte, error) {
-		transfers.Add(1)
-		return nil, errors.New("unexpected worker transfer")
-	}, func() error { retirements.Add(1); return nil })
+func TestResultStreamReceivesBytesAfterClosingItsSendingDirection(t *testing.T) {
+	_, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	request, input := io.Pipe()
+	output, response := io.Pipe()
+	stream := &resultStream{input: input, output: output, cancel: cancel, joined: make(chan struct{})}
 	defer stream.Close()
-	if _, err := stream.Write([]byte("invalid")); err != nil {
+	sent := []byte{0, 0xff}
+	reply := []byte{0x80, 0}
+	go func() {
+		defer close(stream.joined)
+		defer request.Close()
+		body, err := io.ReadAll(request)
+		if err == nil && !bytes.Equal(body, sent) {
+			err = errors.New("sending direction changed the bytes")
+		}
+		if err == nil {
+			_, err = response.Write(reply)
+		}
+		stream.err = err
+		_ = response.CloseWithError(err)
+	}()
+	if _, err := stream.Write(sent); err != nil {
 		t.Fatal(err)
 	}
-	_ = stream.CloseInput()
-	var body [1]byte
-	if n, err := stream.Read(body[:]); n != 0 || err == nil {
-		t.Fatal("malformed local request exposed a response", n, err)
+	if err := stream.CloseInput(); err != nil {
+		t.Fatal(err)
 	}
-	select {
-	case <-stream.Done():
-	case <-time.After(time.Second):
-		t.Fatal("malformed local request did not report a terminal outcome")
+	if body, err := io.ReadAll(stream); err != nil || !bytes.Equal(body, reply) {
+		t.Fatalf("received %x, %v", body, err)
 	}
-	if err := stream.Close(); err == nil || transfers.Load() != 0 || retirements.Load() != 1 {
-		t.Fatal("malformed request reached worker or lost retirement", err, transfers.Load(), retirements.Load())
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestInstalledReaderProjectionCloseInterruptsPendingOriginalCompletion(t *testing.T) {
-	entered, released := make(chan struct{}), make(chan struct{})
-	var releaseOnce sync.Once
-	var retirements atomic.Int32
-	stream := newResultStream(t.Context(), func() error { return nil }, func() ([]byte, error) {
-		close(entered)
-		<-released
-		return []byte("late private result"), nil
-	}, func() error {
-		retirements.Add(1)
-		releaseOnce.Do(func() { close(released) })
-		return nil
-	})
-	defer stream.Close()
-	request := make([]byte, 512)
-	copy(request, "ARDTXT01")
-	request[8] = 1
-	if _, err := stream.Write(request); err != nil {
-		t.Fatal(err)
-	}
-	_ = stream.CloseInput()
+func TestResultStreamCloseJoinsOriginalSettlement(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	request, input := io.Pipe()
+	output, response := io.Pipe()
+	defer request.Close()
+	defer response.Close()
+	release := make(chan struct{})
+	settled := errors.New("original cleanup failed")
+	stream := &resultStream{input: input, output: output, cancel: cancel, joined: make(chan struct{})}
+	go func() {
+		<-ctx.Done()
+		<-release
+		stream.err = settled
+		close(stream.joined)
+	}()
+	completed := make(chan error, 1)
+	go func() { completed <- stream.Close() }()
+	<-ctx.Done()
 	select {
-	case <-entered:
-	case <-time.After(time.Second):
-		t.Fatal("fixed local request did not reach completion")
+	case <-stream.Done():
+		t.Fatal("cancellation reported completion before settlement")
+	default:
 	}
-	closed := make(chan error, 1)
-	go func() { closed <- stream.Close() }()
 	select {
-	case err := <-closed:
-		if !errors.Is(err, context.Canceled) || retirements.Load() == 0 {
-			t.Fatal("original pending completion survived local Close", err, retirements.Load())
-		}
-	case <-time.After(time.Second):
-		releaseOnce.Do(func() { close(released) })
-		t.Fatal("Close did not interrupt and join original completion")
+	case <-completed:
+		t.Fatal("Close returned before original settlement")
+	default:
 	}
-	var body [1]byte
-	if n, _ := stream.Read(body[:]); n != 0 {
-		t.Fatal("late result escaped after local Close")
+	close(release)
+	if err := <-completed; !errors.Is(err, settled) {
+		t.Fatal("lost original cleanup failure", err)
+	}
+	if err := stream.Close(); !errors.Is(err, settled) {
+		t.Fatal("repeated Close lost retained failure", err)
 	}
 }

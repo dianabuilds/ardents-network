@@ -26,7 +26,7 @@ func TestDocumentReadUsesOneAAI3ConnectionAndSafePresentation(t *testing.T) {
 		command.Stdin = strings.NewReader("fixture-link\n")
 		command.Stdout, command.Stderr = &output, &diagnostic
 		if err := command.Run(); err != nil || !bytes.Equal(output.Bytes(), want.Bytes()) ||
-			diagnostic.String() != `{"operation":"application.read","phase":"command","outcome":"completed"}`+"\n" || peer.opens.Load() != 1 || peer.requestBytes.Load() != 512 {
+			diagnostic.String() != `{"operation":"application.read","phase":"command","outcome":"completed"}`+"\n" || peer.opens.Load() != 1 || peer.requestBytes.Load() != 0 {
 			t.Fatalf("document read: %v, output=%q, diagnostic=%q, opens=%d, request=%d",
 				err, &output, &diagnostic, peer.opens.Load(), peer.requestBytes.Load())
 		}
@@ -40,8 +40,7 @@ func TestDocumentReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 		class    connection.OutcomeClass
 	}{
 		{documentResponse([]byte("secret")), connection.LocalFailure},
-		{append(documentResponse([]byte("secret")), 0), connection.CleanClose},
-		{documentResponse([]byte("secret"))[:15], connection.CleanClose},
+		{bytes.Repeat([]byte("x"), document.MaximumBytes+1), connection.CleanClose},
 		{documentResponse([]byte{0xff}), connection.CleanClose},
 	} {
 		peer := &documentReadPeer{response: scenario.response, class: scenario.class}

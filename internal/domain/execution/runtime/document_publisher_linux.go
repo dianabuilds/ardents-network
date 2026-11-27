@@ -21,9 +21,6 @@ func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, sna
 	}
 	body := bytes.Clone(snapshot)
 	defer clear(body)
-	if _, err := document.NewSnapshot(body); err != nil {
-		return nil, err
-	}
 	return owner.launchApplicationInvocation(ctx, principal, execution.Administration, documentProtocol{snapshot: body, start: (*Invocation).observePublisherAttachment}, true, false)
 }
 

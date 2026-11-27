@@ -101,7 +101,7 @@ func (p *Publisher) StreamAcquisitionStopped(err error) bool {
 func (p *Publisher) findConnection(request capsule.Request, digest [32]byte) (*connection.Stream, error) {
 	value := p.credential.Delegation()
 	identity := wire.LogicalIdentity{Network: request.Network, Target: request.Target, Instance: value.Instance,
-		InstanceGeneration: value.Generation, Application: wire.ProfileForOperation(p.config.Operation.UsesByteStream()), Publication: request.PublicationDigest, Profile: request.ProfileDigest,
+		InstanceGeneration: value.Generation, Publication: request.PublicationDigest, Profile: request.ProfileDigest,
 		ConnectionNonce: request.ConnectionNonce, InitiatorBinding: request.InitiatorBinding,
 		WorkSafetyNotAfter: request.WorkSafetyNotAfter, WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}
 	logical, _, err := wire.Contexts(identity, digest, request.AttachmentGeneration)

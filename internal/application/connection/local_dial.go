@@ -47,7 +47,7 @@ func Dial(ctx context.Context, path string, destination Request) (Client, error)
 	if err != nil {
 		return nil, err
 	}
-	return dialLocalStream(ctx, path, request, destination.Application == ByteStream)
+	return dialLocalStream(ctx, path, request, true)
 }
 
 // DialPublishedStream requests the fixed byte-stream profile through local

@@ -358,7 +358,7 @@ func (stream *Stream) BindPublisherRecipient(ctx context.Context, operation *exe
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		facts, err := deriveRecipientGeneration(proof, profile, request, digest, end, time.Now(), stream.transfer.Generation()+1, stream.owner.identity.Application)
+		facts, err := deriveRecipientGeneration(proof, profile, request, digest, end, time.Now(), stream.transfer.Generation()+1)
 		if err != nil {
 			return err
 		}

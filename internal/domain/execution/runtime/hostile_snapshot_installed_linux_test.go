@@ -5,7 +5,6 @@ package runtime
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"io"
 	"sync"
@@ -21,14 +20,13 @@ func requireHostilePublisherSnapshot(t *testing.T, parent context.Context, opera
 	t.Helper()
 	ctx, cancel := context.WithTimeout(parent, 5*time.Second)
 	defer cancel()
-	var request [512]byte
-	copy(request[:], "ARDTXT01\x01")
+	var request [0]byte
 	stream := &hostileSnapshotStream{
-		Reader: bytes.NewReader(request[:]), limit: 13 + len(document),
+		Reader: bytes.NewReader(request[:]), limit: len(document),
 		terminal: make(chan connection.Outcome, 1), closedSignal: make(chan struct{}),
 	}
 	t.Cleanup(func() { _ = stream.Close() })
-	contract, err := operation.BindStreamContract(uint64(stream.limit), uint64(len(request)))
+	contract, err := operation.BindStreamContract(connection.ByteStreamDirectionalLimit, connection.ByteStreamDirectionalLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,8 +42,7 @@ func requireHostilePublisherSnapshot(t *testing.T, parent context.Context, opera
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
 	body := stream.response.Bytes()
-	if !stream.completed || len(body) != stream.limit || string(body[:8]) != "ARDTXT01" || body[8] != 0 ||
-		binary.BigEndian.Uint32(body[9:13]) != uint32(len(document)) || !bytes.Equal(body[13:], document) {
+	if !stream.completed || !bytes.Equal(body, document) {
 		t.Fatal("original Publisher did not return its exact immutable snapshot after victim cleanup")
 	}
 }

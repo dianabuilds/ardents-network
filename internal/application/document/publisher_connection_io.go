@@ -123,7 +123,7 @@ func (stream *publisherStreamIO) read() {
 	defer stream.workers.Done()
 	// One extra byte distinguishes an oversized request without reading or
 	// queuing arbitrary Service input. Idle Connections hold no response queue.
-	var request [requestBytes + 1]byte
+	var request [1]byte
 	n, err := io.ReadFull(stream.service, request[:])
 	if err == io.EOF || err == io.ErrUnexpectedEOF {
 		err = nil

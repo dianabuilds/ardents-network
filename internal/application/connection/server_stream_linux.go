@@ -34,7 +34,7 @@ func ServeLocalStream(ctx context.Context, local *net.UnixConn, application Stre
 		if readErr != nil {
 			if directionalEOF && errors.Is(readErr, io.EOF) {
 				if _, err := local.Write([]byte{0, 0, 0, 0}); err != nil {
-					return err
+					return
 				}
 			}
 			break

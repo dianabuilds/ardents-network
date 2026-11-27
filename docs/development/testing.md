@@ -1014,9 +1014,9 @@ receives the same pins in `ARDENTS_RECOVERY_INSTANCE_SHA256` and
 `ARDENTS_RECOVERY_CUSTODY_SHA256`. The commands issue a Credential through a
 real no-echo terminal and accept it on the original Instance. The profile interrupts
 the live original TCP/TLS Rendezvous at the first response write from the
-confined Publisher, after the exact 512-byte request and EOF. It checks one
-fresh JOIN pair against genuine receiving admission, the exact 65,523-byte
-document, independent Publisher terminal settlement, and joined original
+confined Publisher, after EOF on the unused sending direction. It checks one
+fresh JOIN pair against genuine receiving admission, the exact 65,536-byte
+file, independent Publisher terminal settlement, and joined original
 Reader and Publisher workers within five seconds of the fault. The Rendezvous
 releases its Hosting reservations at both joins. Pinned original cgroups and
 systemd unit collection are checked independently. This is a single component
@@ -2270,7 +2270,7 @@ The AAI2 retirement closure receipt has source `go list -deps -json`, profile
 is limited to repository-owned production Go files in that one Linux command
 dependency closure. The architecture gate rejects the removed
 `internal/application/interfacev1/connection` dependency and every exact
-`RunParticipant` identifier while requiring the selected AAI3 Connection and
+`RunParticipant` identifier while requiring the selected AAI4 Connection and
 Administration dependencies to remain. A temporary local module with the
 forbidden import and symbol proves that the gate fails on their return. This is
 not an all-platform, all-command, supply-chain, privacy, or release
@@ -2668,7 +2668,7 @@ product claim, environment, fixture, and Product Owner decision.
 ## Candidate boundaries
 
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
-`headless-check`, and the selected Network qualifications. Protected text AAI3 and the separate Administration v1
+`headless-check`, and the selected Network qualifications. Protected AAI4 byte streams and the separate Administration v1
 Interface remain covered at their selected seams. The deleted AAI2 package and
 vectors are neither a generic Endpoint workload nor compatibility surface. No
 Browser command, Browser implementation, Browser artifact, or Browser
@@ -2949,7 +2949,7 @@ The Text worker INIT/READY, frame, credit, reader/Publisher bridge and
 multiplexer controls and the Stream qualification initialization, bridge and
 workload controls are portable and execute in the portable deterministic
 inventory on Windows and macOS (P1-04/AR-P-01, #691 T10). The Linux-only
-controls remain bound: the AAI3 listener transfer control uses the selected
+controls remain bound: the AAI4 listener transfer control uses the selected
 Linux Connection server, the snapshot file-import controls use the no-follow
 Linux importer, and the inherited-descriptor audit, escape and hostile worker
 artifacts keep their native tags and stands. The unsupported-platform worker
@@ -3246,7 +3246,7 @@ durable behavior tests. The other 21 files keep their Linux constraint:
   `publication_registration_linux_test.go` (also composes Linux-only Instance
   custody), `issuance_telemetry_linux_test.go`, and
   `application/document/reader_connection_fixture_test.go` (serves only the Linux
-  AAI3 listener control).
+  AAI4 listener control).
 - Tests that open Linux-only production seams and refuse at runtime on other
   platforms: `internal/domain/hosting/counters/read_linux_test.go` (Hosting platform lease
   and `/sys` counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
@@ -3277,10 +3277,10 @@ deadcode allowlist is unchanged EXACT both ways: the de-tagged refusals reach no
 new Windows-dead production symbol, and the Linux native-tag test analysis
 remains empty.
 
-AAI3 server admission, lifecycle, cleanup and request round trips execute on
+AAI4 server admission, lifecycle, cleanup and request round trips execute on
 Linux with the Endpoint. Portable client cancellation/close tests retain their
 independent socket peer and explicit terminal-frame fixture; they do not require
-the selected Linux server to produce a response. The public AAI3 client/server
+the selected Linux server to produce a response. The public AAI4 client/server
 conformance oracle writes every byte value exactly once through unequal input
 fragments, closes only the input direction, and then reads the reversed bytes
 through different response fragments. Existing client tests retain cancellation,
@@ -3302,7 +3302,7 @@ and an available Unix socket, then proves no output creation or mutation and no
 IPC acceptance. The removed accepting client fixtures no longer qualify AAI2;
 the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
 the independent Administration client round trip remains covered. Shared
-directional-close evidence remains with AAI3 and native Service Connection.
+directional-close evidence remains with AAI4 and native Service Connection.
 
 Enrollment regressions verify the pinned v5 Endpoint and Authority Custody
 inventory and refuse prior descriptors and unexpected companions. The

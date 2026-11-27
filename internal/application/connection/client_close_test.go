@@ -201,6 +201,9 @@ func TestClientVerifiedRemoteOutcomePrecedesLaterClose(t *testing.T) {
 	cleanupClient(t, application)
 	peer := awaitPeerSetup(t, peerReady)
 	cleanupUnixConnection(t, peer)
+	if _, err := peer.Write(make([]byte, 4)); err != nil {
+		t.Fatal(err)
+	}
 	want := Outcome{Class: CleanClose, Reason: "remote terminal verified"}
 	if err := writeClientPeerTerminal(peer, want); err != nil {
 		t.Fatal(err)

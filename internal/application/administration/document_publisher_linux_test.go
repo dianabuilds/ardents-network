@@ -42,7 +42,7 @@ func TestPublishCommandImportsThenTransfersSnapshotWithoutPath(t *testing.T) {
 	binary := buildArdentsNext(t)
 	root := t.TempDir()
 	path, socket := filepath.Join(root, "document"), filepath.Join(root, "a.sock")
-	body := []byte("document\n\u202e")
+	body := []byte{0x00, 0x80, 0xff, '\n'}
 	if err := os.WriteFile(path, body, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -63,17 +63,7 @@ func TestPublishCommandImportsThenTransfersSnapshotWithoutPath(t *testing.T) {
 		t.Fatalf("publish: %v, output %q, diagnostic %q", err, &output, &diagnostic)
 	}
 	if calls, received := peer.observed(); calls != 1 || !bytes.Equal(received, body) {
-		t.Fatal("command did not transfer exact document once")
-	}
-	if err := os.WriteFile(path, []byte{0xff}, 0600); err != nil {
-		t.Fatal(err)
-	}
-	command = exec.CommandContext(t.Context(), binary, "publish", socket, path)
-	if output, err := command.CombinedOutput(); err == nil {
-		t.Fatalf("invalid document accepted: %q", output)
-	}
-	if calls, _ := peer.observed(); calls != 1 {
-		t.Fatal("invalid document reached publication owner")
+		t.Fatal("command did not transfer the exact binary file once")
 	}
 	link := filepath.Join(root, "link")
 	if err := os.Symlink(path, link); err != nil {

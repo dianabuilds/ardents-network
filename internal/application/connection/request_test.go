@@ -26,7 +26,7 @@ func TestRequestRejectsUnknownAndNoncanonicalDestination(t *testing.T) {
 		raw  []byte
 	}{
 		{name: "malformed magic", raw: []byte("AAI2\x02\x00\x01x")},
-		{name: "truncated destination", raw: []byte("AAI3\x02\x00\x02x")},
+		{name: "truncated destination", raw: []byte("AAI4\x02\x00\x02x")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := DecodeRequest(test.raw); err == nil {
@@ -36,15 +36,13 @@ func TestRequestRejectsUnknownAndNoncanonicalDestination(t *testing.T) {
 	}
 }
 
-func TestRequestUsesDistinctApplicationIdentities(t *testing.T) {
+func TestRequestUsesOneByteStreamGrammar(t *testing.T) {
 	for _, test := range []struct {
-		application Application
-		wire        string
+		wire string
 	}{
-		{Document, "AAI3\x02\x00\x01x"},
-		{ByteStream, "AAI4\x02\x00\x01x"},
+		{"AAI4\x02\x00\x01x"},
 	} {
-		want := Request{Application: test.application, Destination: TargetLink, Value: "x"}
+		want := Request{Destination: TargetLink, Value: "x"}
 		raw, err := EncodeRequest(want)
 		if err != nil || string(raw) != test.wire {
 			t.Fatalf("encode = %q, %v", raw, err)
@@ -54,7 +52,7 @@ func TestRequestUsesDistinctApplicationIdentities(t *testing.T) {
 			t.Fatalf("decode = %+v, %v", got, err)
 		}
 	}
-	if _, err := DecodeRequest([]byte("AAI4\x01\x00\x01x")); err == nil {
-		t.Fatal("byte-stream Name was accepted")
+	if _, err := DecodeRequest([]byte("AAI3\x02\x00\x01x")); err == nil {
+		t.Fatal("retired request magic was accepted")
 	}
 }
