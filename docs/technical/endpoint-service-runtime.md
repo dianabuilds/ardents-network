@@ -452,6 +452,15 @@ record-profile negotiation, direct fallback, Publication private key, or
 Application IPC authorization. The parser bound of 16 KiB per Data record is
 an allocation limit, not a product throughput promise.
 
+In the maintained product path, the Reader passes its retained Source and
+qualified contract to `InitiatorSource.OpenStream`. Publication runtime enters
+through `NextStream` and uses `NextAuthentication` for the initial Responder JOIN.
+Connection's `recordio` bounds physical reads and coalesces the Reader's first
+write. The authenticators keep the original owner checks between wire effects.
+The same `Stream` serializes replacement commit, Terminal state and retirement
+against its record actors. See the [Connection package guide](../../internal/domain/connection/doc.go)
+for the production entries and the tests that exercise each boundary.
+
 The Connection owner implements the successor's coalesced initial
 InstanceChallenge/Continuity request and InstanceProof/Continuity response.
 NewAuthenticatedStream verifies both proofs against the independently supplied

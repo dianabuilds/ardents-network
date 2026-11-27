@@ -1,4 +1,4 @@
-package connection
+package recordio
 
 import (
 	"errors"
@@ -11,14 +11,20 @@ import (
 // unaccepted: every decoded record still crosses the Stream's original-owner
 // commit barrier. The receive/replay ledger keeps its separate 256 KiB bound.
 // No background read, timer, generation transfer or accepting result is stored.
-type attachmentRecordReader struct {
+type StreamReader struct {
 	reader     io.Reader
 	buffer     [512]byte
 	start, end int
 	failure    error
 }
 
-func (input *attachmentRecordReader) Read(body []byte) (int, error) {
+// NewStreamReader binds one record reader to the actor's physical input.
+func NewStreamReader(reader io.Reader) *StreamReader {
+	return &StreamReader{reader: reader}
+}
+
+// Read supplies plaintext to the wire decoder.
+func (input *StreamReader) Read(body []byte) (int, error) {
 	if input.failure != nil {
 		return 0, input.failure
 	}
@@ -38,14 +44,15 @@ func (input *attachmentRecordReader) Read(body []byte) (int, error) {
 	return input.consume(body), err
 }
 
-func (input *attachmentRecordReader) consume(body []byte) int {
+func (input *StreamReader) consume(body []byte) int {
 	n := copy(body, input.buffer[input.start:input.end])
 	clear(input.buffer[input.start : input.start+n])
 	input.start += n
 	return n
 }
 
-func (input *attachmentRecordReader) readRecord() (wire.StreamRecord, int, error) {
+// ReadRecord reads one Stream record and reports the plaintext bytes consumed.
+func (input *StreamReader) ReadRecord() (wire.StreamRecord, int, error) {
 	observed := observedRecordRead{reader: input}
 	record, err := wire.ReadStream(&observed)
 	if input.failure != nil {
@@ -56,8 +63,23 @@ func (input *attachmentRecordReader) readRecord() (wire.StreamRecord, int, error
 	return record, observed.received, err
 }
 
-func (input *attachmentRecordReader) discard() {
+// Discard clears the reader scratch space and drops its transport reference.
+func (input *StreamReader) Discard() {
 	clear(input.buffer[:])
 	input.start, input.end = 0, 0
 	input.reader = nil
+}
+
+// Record parsing must observe no additional plaintext for a TLS-tail
+// truncation exception. A partially received Service record is not an empty
+// TLS tail, even when its final physical error is EOF.
+type observedRecordRead struct {
+	reader   io.Reader
+	received int
+}
+
+func (read *observedRecordRead) Read(body []byte) (int, error) {
+	n, err := read.reader.Read(body)
+	read.received += n
+	return n, err
 }

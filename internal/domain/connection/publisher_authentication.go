@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/recordio"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
@@ -75,8 +76,8 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 	if err != nil {
 		return nil, err
 	}
-	flight := initialFlightReader(service, wire.InitialRequestBytes)
-	first, err := flight.readRecord()
+	flight := recordio.NewInitialRequestReader(service)
+	first, err := flight.ReadRecord()
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +87,7 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 	if first.Challenge == nil {
 		return nil, errIntegrity
 	}
-	second, err := flight.readRecord()
+	second, err := flight.ReadRecord()
 	if err != nil {
 		return nil, err
 	}

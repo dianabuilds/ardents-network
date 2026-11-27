@@ -1,18 +1,17 @@
 package connection
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"errors"
-	"io"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/recordio"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
@@ -93,26 +92,18 @@ func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physi
 	if err != nil || request.Nonce == challenge.Nonce {
 		return nil, errors.Join(errIntegrity, err)
 	}
-	var flight bytes.Buffer
-	if err := wire.Write(&flight, wire.Record{Challenge: &challenge}); err != nil {
+	if err := recordio.WriteInitialRequest(attachment, challenge, request); err != nil {
 		return nil, err
 	}
-	if err := wire.Write(&flight, wire.Record{Continuity: &request}); err != nil {
-		return nil, err
-	}
-	n, err := attachment.Write(flight.Bytes())
-	if err != nil || n != flight.Len() {
-		return nil, errors.Join(err, io.ErrShortWrite)
-	}
-	response := initialFlightReader(attachment, wire.InitialResponseBytes)
-	first, err := response.readSetupRecord(ctx)
+	response := recordio.NewInitialResponseReader(attachment)
+	first, err := readInitialResponseRecord(ctx, response)
 	if err != nil {
 		return nil, err
 	}
 	if first.Proof == nil {
 		return nil, errIntegrity
 	}
-	second, err := response.readSetupRecord(ctx)
+	second, err := readInitialResponseRecord(ctx, response)
 	if err != nil {
 		return nil, err
 	}
@@ -163,4 +154,24 @@ func newInstanceTLSClient(conn net.Conn, expected [32]byte) *tls.Conn {
 			return verifyInstancePeer(state, expected)
 		},
 	})
+}
+
+// The setup caller can expire before its cancellation callback interrupts the
+// physical Attachment. Retain that original cause after the read has joined;
+// neither buffered complete bytes nor physical cancellation extend setup.
+func readInitialResponseRecord(ctx context.Context, flight *recordio.InitialReader) (wire.Record, error) {
+	if ctx == nil {
+		return wire.Record{}, errIntegrity
+	}
+	if err := ctx.Err(); err != nil {
+		return wire.Record{}, err
+	}
+	record, err := flight.ReadRecord()
+	if errors.Is(err, wire.ErrInvalidRecord) {
+		err = errors.Join(errIntegrity, err)
+	}
+	if err = errors.Join(err, ctx.Err()); err != nil {
+		return wire.Record{}, err
+	}
+	return record, nil
 }
