@@ -12,9 +12,9 @@ import (
 )
 
 // setupCancellation owns a local transport until Dial transfers that ownership
-// to a Client. The handoff and cancellation compete under one lock, so an
-// already-started cancellation cannot be lost between the accepted status and
-// the returned Client.
+// to the opened Stream. The handoff and cancellation compete under one lock,
+// so an already-started cancellation cannot be lost between the accepted status
+// and the returned Stream.
 type setupCancellation struct {
 	mu       sync.Mutex
 	canceled bool

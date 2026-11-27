@@ -26,8 +26,8 @@ const (
 type OutcomeClass string
 
 // Outcome is the single terminal result returned to the local Application.
-// Reason is diagnostic,
-// limited to 512 bytes by the local transport, and never carries a Target,
+// Reason is diagnostic, limited to 512 bytes by the local transport, and
+// never carries a Target,
 // Route, peer, credential, or Application bytes.
 type Outcome struct {
 	Class  OutcomeClass
