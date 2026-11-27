@@ -35,6 +35,19 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		!strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/") {
 		return true
 	}
+	if dependency == modulePath+"/internal/domain/release/infrastructure/signing/internal/keyset" {
+		switch source {
+		case "internal/domain/release/infrastructure/signing/release_key_command_linux.go",
+			"internal/domain/release/infrastructure/signing/release_key_receipt_unix.go",
+			"internal/domain/release/infrastructure/signing/release_key_receipt_unix_test.go":
+			return true
+		}
+		return false
+	}
+	if path.Dir(source) == "internal/domain/release/infrastructure/signing/internal/keyset" {
+		return source == "internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go" &&
+			dependency == modulePath+"/internal/platform/artifacts"
+	}
 	if dependency == modulePath+"/internal/domain/node/provisioning/sourcegenesis" {
 		return source == "internal/domain/node/provisioning/infrastructure/command_linux.go"
 	}
@@ -179,14 +192,10 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		"internal/domain/node/provisioning/infrastructure/public_identifier_unix_test.go",
 		"internal/domain/node/provisioning/sourcegenesis/keys_linux.go",
 		"internal/domain/node/provisioning/sourcegenesis/plan_linux.go",
-		"internal/domain/release/infrastructure/signing/descriptor_release_keys_linux.go",
-		"internal/domain/release/infrastructure/signing/forwarding_release_keys_linux.go",
-		"internal/domain/release/infrastructure/signing/infrastructure_release_keys_linux.go",
-		"internal/domain/release/infrastructure/signing/join_release_keys_linux.go",
 		"internal/domain/release/infrastructure/signing/node_release_arguments_linux.go",
 		"internal/domain/release/infrastructure/signing/node_release_arguments_linux_test.go",
+		"internal/domain/release/infrastructure/signing/release_key_command_linux.go",
 		"internal/domain/release/infrastructure/signing/release_key_receipt_unix.go",
-		"internal/domain/release/infrastructure/signing/source_release_keys_linux.go",
 		"internal/domain/release/infrastructure/signing/source_release_plan_linux_test.go":
 		switch dependency {
 		case modulePath + "/internal/canonicaldigest", modulePath + "/internal/platform/artifacts":

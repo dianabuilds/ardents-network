@@ -1,4 +1,4 @@
-package signing
+package keyset
 
 import (
 	"context"
@@ -7,14 +7,20 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"os"
+
+	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
+
+// Prepare creates one original set of Release key files and returns its public inventory.
+func Prepare(ctx context.Context, path string) (Inventory, error) {
+	return prepare(ctx, path, nil)
+}
 
 // This finite physical producer creates five fresh distinct Ed25519 files.
 // Each purpose-specific command owns its ceremony and public receipt. Key birth
 // supplies no signature, initial pin, Release proof or runtime permission.
-func prepareInfrastructureReleaseKeys(ctx context.Context, path string, observe func(string, *os.File)) (public [5][32]byte, result error) {
+func prepare(ctx context.Context, path string, observe func(string, *os.File)) (public Inventory, result error) {
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || !artifactio.AbsolutePath(path) {
 		return public, artifactio.ErrInput
 	}
@@ -24,7 +30,7 @@ func prepareInfrastructureReleaseKeys(ctx context.Context, path string, observe 
 			clear(file.Data)
 		}
 		if result != nil {
-			public = [5][32]byte{}
+			public = Inventory{}
 		}
 	}()
 	seen := map[[32]byte]bool{}
@@ -33,12 +39,14 @@ func prepareInfrastructureReleaseKeys(ctx context.Context, path string, observe 
 		if err != nil {
 			return public, err
 		}
-		copy(public[i][:], pub)
-		if seen[public[i]] {
+		var slot Slot
+		slot.File = fmt.Sprintf("release-key-%d.pem", i+1)
+		copy(slot.Public[:], pub)
+		if seen[slot.Public] {
 			clear(key)
 			return public, artifactio.ErrInput
 		}
-		seen[public[i]] = true
+		seen[slot.Public] = true
 		der, err := x509.MarshalPKCS8PrivateKey(key)
 		clear(key)
 		if err != nil {
@@ -46,7 +54,8 @@ func prepareInfrastructureReleaseKeys(ctx context.Context, path string, observe 
 		}
 		raw := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
 		clear(der)
-		files = append(files, artifactio.Content{Name: fmt.Sprintf("release-key-%d.pem", i+1), Data: raw})
+		files = append(files, artifactio.Content{Name: slot.File, Data: raw})
+		public[i] = slot
 	}
 	check := func() error {
 		if os.Geteuid() != 0 {

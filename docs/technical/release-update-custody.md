@@ -190,6 +190,10 @@ input; Release retains signature, policy, expiry and floor authority. This
 contract has distinct Source, Forwarding, JOIN and Descriptor pair owners in
 `release/infrastructure`. Native installation and each role lifecycle retain
 separate owners and acceptance scopes; existing Endpoint targets remain unchanged.
+The original Source, Forwarding, JOIN and Descriptor ceremonies publish five
+fresh private files through the protected keyset owner. The command renders the
+ordered public inventory after native publication and close. Signing separately
+admits the original key directory, purpose and independently verified targets.
 Descriptor initial admission requires its own independently pinned running Node
 program and entirely unborn Release floors. Its candidate reader requires complete
 retained floors and never reconstructs first-pin provenance. Fixed Descriptor

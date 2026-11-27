@@ -111,8 +111,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"tests/e2e/source/inspection_linux_test.go",
 			"internal/domain/release/infrastructure/command_linux.go",
 			"internal/domain/release/infrastructure/signing/command_linux.go",
-			"internal/domain/release/infrastructure/signing/join_release_keys_linux.go",
-			"internal/domain/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+			"internal/domain/release/infrastructure/signing/release_key_command_linux.go",
+			"internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_arguments_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_linux.go",
@@ -122,7 +122,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/artifacts/output_linux.go",
 			"internal/domain/release/infrastructure/signing/source_release_linux.go",
 			"internal/domain/release/infrastructure/signing/source_release_predecessor_linux.go",
-			"internal/domain/release/infrastructure/signing/source_release_keys_linux.go",
 			"internal/domain/release/infrastructure/signing/source_release_plan_linux.go",
 			"internal/domain/release/infrastructure/signing/source_release_plan_linux_test.go",
 			"internal/domain/node/provisioning/sourcegenesis/command_linux.go",
@@ -152,9 +151,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/release/infrastructure/doc.go",
 			"internal/domain/release/infrastructure/artifact.go",
 			"internal/domain/release/infrastructure/artifact_test.go",
-			"internal/domain/release/infrastructure/descriptor_artifact.go",
-			"internal/domain/release/infrastructure/forwarding_artifact.go",
-			"internal/domain/release/infrastructure/join_artifact.go",
+			"internal/domain/release/infrastructure/artifact_identity.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -440,7 +437,7 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/domain/release/infrastructure/signing/source_release_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
 			"internal/domain/release/infrastructure/signing/source_release_plan_linux.go",
-			"internal/domain/release/infrastructure/signing/infrastructure_release_keys_linux.go",
+			"internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -2872,7 +2869,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/domain/enrollment", false},
 		{"Fixed Node Release signing uses exact artifact resources", "internal/domain/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/domain/release/infrastructure", true},
 		{"Fixed Node Release predecessor verifies genuine Release", "internal/domain/release/infrastructure/signing/node_release_predecessor_linux.go", modulePath + "/internal/domain/release", true},
-		{"JOIN key birth grants no Release observation", "internal/domain/release/infrastructure/signing/join_release_keys_linux.go", modulePath + "/internal/domain/release", false},
+		{"Release key command uses private original key publication", "internal/domain/release/infrastructure/signing/release_key_command_linux.go", modulePath + "/internal/domain/release/infrastructure/signing/internal/keyset", true},
+		{"Release key publication uses protected artifact output", "internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go", modulePath + "/internal/platform/artifacts", true},
+		{"Release key publication cannot observe authorization", "internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go", modulePath + "/internal/domain/release", false},
+		{"Release signer does not call private key birth", "internal/domain/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/domain/release/infrastructure/signing/internal/keyset", false},
 		{"Fixed Node Release signing grants no Route consumer", "internal/domain/release/infrastructure/signing/node_release_linux.go", modulePath + "/internal/domain/route/role", false},
 		{"Fixed Node Release plan grants no State owner", "internal/domain/release/infrastructure/signing/node_release_plan_linux.go", modulePath + "/internal/domain/network/state", false},
 		{"delayed ACK fixture retains genuine installed operation", "internal/domain/endpoint/publication_ack_installed_linux_test.go", modulePath + "/internal/domain/execution/runtime", true},

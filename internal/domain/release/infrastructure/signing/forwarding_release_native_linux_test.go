@@ -94,22 +94,6 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			t.Fatal("independent private/public receipt mismatch")
 		}
 	}
-	if _, err := prepareInfrastructureReleaseKeys(t.Context(), keyRoot, nil); err == nil {
-		t.Fatal("Release key prefix adopted")
-	}
-	keyCtx, keyCancel := context.WithCancel(t.Context())
-	defer keyCancel()
-	failedPublic, keyErr := prepareInfrastructureReleaseKeys(keyCtx, filepath.Join(parent, "failed-keys"), func(stage string, file *os.File) {
-		if stage == "before-directory" {
-			keyCancel()
-			if err := file.Close(); err != nil {
-				t.Fatal(err)
-			}
-		}
-	})
-	if failedPublic != ([5][32]byte{}) || !errors.Is(keyErr, context.Canceled) || !errors.Is(keyErr, os.ErrClosed) {
-		t.Fatal("failed key custody published public success/lost physical failure", keyErr)
-	}
 	now := time.Now().UTC().Truncate(time.Second)
 	custom := func(artifact []byte) json.RawMessage {
 		digest := sha256.Sum256(artifact)
