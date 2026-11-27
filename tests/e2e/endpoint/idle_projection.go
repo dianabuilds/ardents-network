@@ -11,13 +11,14 @@ import (
 )
 
 type net32IdleSample struct {
-	at        time.Time // harness monotonic sampling instant (series cadence)
-	hostingAt time.Time // Hosting wall observation (log correlation only)
-	used      uint64    // Hosting ledger used bytes (policy-counted)
-	boot      string
-	ifaces    []net32IdleInterface
-	rss       uint64 // whole-client cgroup memory.current sum
-	cpuUsec   uint64 // whole-client cgroup cpu.stat usage_usec sum
+	at                              time.Time // harness monotonic sampling instant (series cadence)
+	hostingAt                       time.Time // Hosting wall observation (log correlation only)
+	used                            uint64    // Hosting ledger used bytes (policy-counted)
+	boot                            string
+	ifaces                          []net32IdleInterface
+	resourceBegan, resourceFinished time.Time // monotonic bounds around the cgroup reads
+	memoryBytes                     uint64    // whole-client cgroup memory.current sum
+	cpuUsec                         uint64    // whole-client cgroup cpu.stat usage_usec sum
 }
 
 type net32IdleInterface struct {
@@ -34,6 +35,14 @@ type net32IdleReport struct {
 	Stopped          time.Time
 	MeasuredDuration time.Duration
 	Samples          uint32
+	FailedAttempts   []net32FailedAttempt
+}
+
+type net32FailedAttempt struct {
+	Stage   string
+	Sample  int
+	Attempt int
+	Error   string
 }
 
 type net32Criterion struct {
@@ -46,6 +55,9 @@ type net32Criterion struct {
 
 type net32IdleVerdict struct {
 	Kind                   string
+	Status                 string
+	UnavailableReason      string `json:",omitempty"`
+	FailedAttempts         []net32FailedAttempt
 	Observation            string
 	MeasuredSeconds        float64
 	Samples                uint32
@@ -56,7 +68,7 @@ type net32IdleVerdict struct {
 	Projected24HourBytes   uint64
 	HostingLedgerDelta     uint64
 	ResourceMaxGapMs       float64
-	ResourceZeroRSS        int
+	ResourceZeroMemory     int
 	ResourceCPURegressions int
 	ResourceNonMonotonic   int
 	ResourceWideGaps       int
@@ -124,6 +136,8 @@ func collectNet32Idle(ctx context.Context, window time.Duration, now func() time
 func evaluateNet32Idle(report net32IdleReport, series []net32IdleSample, stateBytes uint64, stateErr error) net32IdleVerdict {
 	verdict := net32IdleVerdict{
 		Kind:            "net32-short-projection",
+		Status:          "observed",
+		FailedAttempts:  report.FailedAttempts,
 		Observation:     "ten-minute observation with an upper 24-hour projection; not a 24-hour observed run",
 		MeasuredSeconds: report.MeasuredDuration.Seconds(),
 		Samples:         report.Samples,
@@ -178,11 +192,11 @@ func evaluateNet32Idle(report net32IdleReport, series []net32IdleSample, stateBy
 	var memory []uint64
 	resourceComplete := true
 	var maxGap time.Duration
-	var zeroRSS, cpuRegressions, nonMonotonic, wideGaps int
+	var zeroMemory, cpuRegressions, nonMonotonic, wideGaps int
 	for index, sample := range series {
-		memory = append(memory, sample.rss)
-		if sample.rss == 0 {
-			zeroRSS++
+		memory = append(memory, sample.memoryBytes)
+		if sample.memoryBytes == 0 {
+			zeroMemory++
 			resourceComplete = false
 		}
 		if index > 0 {
@@ -205,19 +219,20 @@ func evaluateNet32Idle(report net32IdleReport, series []net32IdleSample, stateBy
 		}
 	}
 	verdict.ResourceMaxGapMs = float64(maxGap.Milliseconds())
-	verdict.ResourceZeroRSS = zeroRSS
+	verdict.ResourceZeroMemory = zeroMemory
 	verdict.ResourceCPURegressions = cpuRegressions
 	verdict.ResourceNonMonotonic = nonMonotonic
 	verdict.ResourceWideGaps = wideGaps
 	sort.Slice(memory, func(i, j int) bool { return memory[i] < memory[j] })
 	p95 := memory[(95*len(memory)+99)/100-1]
 	cpu := float64(0)
-	if last.at.After(first.at) && last.cpuUsec >= first.cpuUsec {
-		cpu = float64(last.cpuUsec-first.cpuUsec) / last.at.Sub(first.at).Seconds() / 10_000
+	cpuInterval := last.resourceBegan.Sub(first.resourceFinished)
+	if !first.resourceFinished.IsZero() && cpuInterval > 0 && last.cpuUsec >= first.cpuUsec {
+		cpu = float64(last.cpuUsec-first.cpuUsec) / cpuInterval.Seconds() / 10_000
 	} else {
 		resourceComplete = false
 	}
-	add("p95-whole-client-RSS-bytes", float64(p95), "<=", 512<<20, resourceComplete && p95 <= 512<<20)
+	add("p95-whole-client-cgroup-memory-bytes", float64(p95), "<=", 512<<20, resourceComplete && p95 <= 512<<20)
 	add("mean-whole-client-CPU-percent-one-core", cpu, "<=", 1, resourceComplete && cpu <= 1)
 	return verdict
 }

@@ -16,7 +16,7 @@ import (
 // NET-32 user-idle component measurement (M2 slice 3a, #652). It provisions ONE
 // platform-led successor Endpoint to Service readiness and leaves it idle — no
 // publication, no Application job — then observes the required State/time refresh
-// traffic and whole-client RSS over a bounded ten-minute window with a conservative
+// traffic and whole-client cgroup memory over a bounded ten-minute window with a conservative
 // 24-hour projection (privacy-qualification.md:80,112-132). This is component
 // evidence for one fixture operator, NOT a 24-hour observed run and NOT whole-host
 // privacy qualification. It reuses the #391 platform-led launch stand; the product
@@ -47,11 +47,14 @@ func TestNativeEndpointPlatformLedIdle(t *testing.T) {
 
 	hostingRoot := filepath.Join(stand.Base, "entry", "hosting")
 	verdict, err := endpointfixture.MeasureNET32Idle(t.Context(), hostingRoot, original[0], filepath.Join(stand.Base, "state"), net32IdleWindow)
+	raw, _ := json.MarshalIndent(verdict, "", "  ")
+	t.Logf("NET-32 short projection verdict:\n%s", raw)
 	if err != nil {
 		t.Fatalf("NET-32 idle observation: %v", err)
 	}
-	raw, _ := json.MarshalIndent(verdict, "", "  ")
-	t.Logf("NET-32 short projection verdict:\n%s", raw)
+	if current := endpointfixture.StartupIdentity(t, t.Context()); current != original {
+		t.Fatalf("NET-32 original Endpoint changed: %v", current)
+	}
 	for _, criterion := range verdict.Criteria {
 		if !criterion.Passed {
 			t.Errorf("NET-32 criterion failed: %s observed=%v %s bound=%v", criterion.Name, criterion.Observed, criterion.Relation, criterion.Bound)

@@ -27,13 +27,20 @@ func TestNET32IdleProjectionRequiresMonotonicAndCompleteSamples(t *testing.T) {
 			series := make([]net32IdleSample, int(report.Samples))
 			for second := range series {
 				at := started.Add(time.Duration(second) * time.Second)
-				series[second] = net32IdleSample{at: at, hostingAt: at, boot: "same-boot", ifaces: []net32IdleInterface{{name: "eth0", index: 2}}, rss: 1 << 20}
+				series[second] = net32IdleSample{at: at, hostingAt: at, resourceBegan: at, resourceFinished: at, boot: "same-boot", ifaces: []net32IdleInterface{{name: "eth0", index: 2}}, memoryBytes: 1 << 20}
 			}
 			last := &series[len(series)-1]
 			last.hostingAt, last.ifaces[0].tx, last.used = report.Stopped, observed, observed
+			// 2,995,000 microseconds over 599 seconds of one core is 0.5%.
+			series[0].resourceFinished = series[0].at.Add(time.Second)
+			last.cpuUsec = 2_995_000
 			verdict := evaluateNet32Idle(report, series, 4096, nil)
 			if want := observed * 144; verdict.Projected24HourBytes != want || net32IdleCriteriaPassed(verdict) != (observed == 6_000_000) {
 				t.Fatalf("wall %v bytes %d: projection and criteria = %+v, want %d", wallElapsed, observed, verdict, want)
+			}
+			cpu := verdict.Criteria[len(verdict.Criteria)-1]
+			if cpu.Name != "mean-whole-client-CPU-percent-one-core" || cpu.Observed != 0.5 || !cpu.Passed {
+				t.Fatalf("CPU sample = %+v, want 0.5%% of one core", cpu)
 			}
 			if net32IdleCriteriaPassed(evaluateNet32Idle(report, series[:599], 4096, nil)) {
 				t.Fatal("incomplete series passed")
