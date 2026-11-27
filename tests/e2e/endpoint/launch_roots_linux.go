@@ -14,7 +14,7 @@ import (
 )
 
 // PrepareLaunchRoots initializes the Endpoint history and Hosting root as the installed account.
-func PrepareLaunchRoots(t testing.TB, base, program, request, provider string, uid, gid uint32, epoch, profile []byte, inputs, materials [][]byte) {
+func PrepareLaunchRoots(t testing.TB, base, program, request, provider, historyOperation string, uid, gid uint32, epoch, profile []byte, inputs, materials [][]byte) {
 	t.Helper()
 	credential := &syscall.Credential{Uid: uid, Gid: gid, Groups: []uint32{}}
 
@@ -39,7 +39,7 @@ func PrepareLaunchRoots(t testing.TB, base, program, request, provider string, u
 	bundlePath, profilePath := filepath.Join(bootstrap, "state.bundle"), filepath.Join(bootstrap, "profile.bin")
 	WriteLaunchFile(t, bundlePath, bundleRaw, 0644)
 	WriteLaunchFile(t, profilePath, profile, 0644)
-	prepareEndpointHistory(t, program, credential, historyPlan, bundlePath, profilePath)
+	prepareEndpointHistory(t, program, credential, historyOperation, historyPlan, bundlePath, profilePath)
 
 	// Hosting provider budget is an explicit input, initialized under the account.
 	period := time.Now().UTC().Truncate(time.Second)

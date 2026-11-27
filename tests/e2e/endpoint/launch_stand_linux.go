@@ -148,7 +148,12 @@ func ProvisionLaunchStand(t *testing.T, binary string, refreshMS int, spec netwo
 		t.Fatalf("selection: %v: %s", err, selection)
 	}
 	stand.Program = filepath.Join(stand.InstallationRoot, "generations", selected.GenerationDigest, "ardents-linux-amd64")
-	PrepareLaunchRoots(t, stand.Base, stand.Program, request, "platform-led-launch-fixture", stand.UID, stand.GID,
+	historyOperation := prepareHistoryOperation
+	if predecessor != nil {
+		// The pinned V5 predecessor reported phase and outcome before operation identity was added.
+		historyOperation = ""
+	}
+	PrepareLaunchRoots(t, stand.Base, stand.Program, request, "platform-led-launch-fixture", historyOperation, stand.UID, stand.GID,
 		epoch.Epoch.Raw, epoch.Profile, epoch.Epoch.Inputs, epoch.Epoch.Materials)
 
 	stand.Manifest, stand.Pin = InstallNativeUnit(t, requestPath, releases.Candidate, stand.Program)

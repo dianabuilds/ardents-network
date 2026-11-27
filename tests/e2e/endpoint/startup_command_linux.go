@@ -24,15 +24,18 @@ func RunStartupCommand(t testing.TB, program string, credential *syscall.Credent
 	return out
 }
 
+const prepareHistoryOperation = "endpoint.prepare-history"
+
 // The history command publishes its finite result on the diagnostic stream.
-func prepareEndpointHistory(t testing.TB, program string, credential *syscall.Credential, plan, bundle, profile string) {
+func prepareEndpointHistory(t testing.TB, program string, credential *syscall.Credential, expectedOperation, plan, bundle, profile string) {
 	t.Helper()
 	out, diagnostic, err := runStartupCommand(t, program, credential, "endpoint", "prepare-history", plan, bundle, profile)
 	var event struct{ Operation, Phase, Outcome string }
 	decodeErr := json.Unmarshal(diagnostic, &event)
 	if err != nil || len(out) != 0 || decodeErr != nil ||
-		event.Operation != "endpoint.prepare-history" || event.Phase != "history-preparation" || event.Outcome != "prepared" {
-		t.Fatalf("prepare Endpoint history: exit=%v JSON=%v stdout=%s stderr=%s", err, decodeErr, out, diagnostic)
+		event.Operation != expectedOperation || event.Phase != "history-preparation" || event.Outcome != "prepared" {
+		t.Fatalf("prepare Endpoint history: want operation=%q exit=%v JSON=%v stdout=%s stderr=%s",
+			expectedOperation, err, decodeErr, out, diagnostic)
 	}
 }
 

@@ -3,6 +3,7 @@
 package endpoint
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -135,7 +136,7 @@ func RunJourneyParticipant(t *testing.T, binary, base, etcDir string, network Si
 	}
 	program := filepath.Join(installationRoot, "generations", selected.GenerationDigest, "ardents-linux-amd64")
 	credential := &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid), Groups: []uint32{}}
-	PrepareLaunchRoots(t, base, program, request, "platform-led-journey-fixture", uid, gid,
+	PrepareLaunchRoots(t, base, program, request, "platform-led-journey-fixture", prepareHistoryOperation, uid, gid,
 		network.Epoch, network.Profile, network.Inputs, network.Materials)
 	InstallNativeUnit(t, requestPath, candidateBundle, program)
 	original := StartOriginalEndpoint(t)
@@ -145,14 +146,16 @@ func RunJourneyParticipant(t *testing.T, binary, base, etcDir string, network Si
 		t.Fatal("accepted permission lost original invocation", current)
 	}
 	WaitOriginalReader(t, filepath.Join(base, "application", "reader"), original, uid, gid, 60*time.Second)
-	stop := func() {
-		if current := StartupIdentity(t, t.Context()); current[2] == "active" {
-			if out, err := exec.Command("systemctl", "stop", "ardents-endpoint.service").CombinedOutput(); err != nil {
+	t.Cleanup(func() {
+		// Go cancels the test context before cleanup. Give the installed unit a bounded stop.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(t.Context()), 30*time.Second)
+		defer cancel()
+		if current := StartupIdentity(t, cleanup); current[2] == "active" {
+			if out, err := exec.CommandContext(cleanup, "systemctl", "stop", "ardents-endpoint.service").CombinedOutput(); err != nil {
 				t.Errorf("journey stop: %v: %s", err, out)
 			}
 		}
-	}
-	t.Cleanup(stop)
+	})
 	t.Logf("guest platform-led Endpoint reached Service readiness; MainPID=%s InvocationID=%s", original[0], original[1])
 	exercise(JourneyParticipant{Base: base, Original: original, Principals: principals})
 }
