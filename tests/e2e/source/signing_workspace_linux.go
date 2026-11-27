@@ -5,7 +5,8 @@ package source
 import (
 	"errors"
 	"os"
-	"syscall"
+	"os/exec"
+	"strings"
 	"testing"
 
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
@@ -28,8 +29,8 @@ func SigningWorkspace(t *testing.T) string {
 	if err = errors.Join(ancestors.CheckRootAccess(), ancestors.Close()); err != nil {
 		t.Fatal("invalid environment: root-controlled direct ancestors required", err)
 	}
-	var fs syscall.Statfs_t
-	if err = syscall.Statfs(p, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", p).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: native ext4 required", err)
 	}
 	return p

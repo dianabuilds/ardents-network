@@ -176,8 +176,7 @@ func signNodeReleasePurpose(role nodeReleaseRole, ctx context.Context, args []st
 		if parent.Info().Mode() != os.ModeDir|0700 {
 			return nil, artifactio.ErrInput
 		}
-		var fs syscall.Statfs_t
-		if err := syscall.Fstatfs(int(parent.Descriptor().Fd()), &fs); err != nil || fs.Type != 0xef53 {
+		if err := artifactio.RequireExt4(parent.Descriptor()); err != nil {
 			return nil, errors.Join(artifactio.ErrInput, err)
 		}
 		probe, err := artifactio.OpenChild(parent, filepath.Base(path), false)

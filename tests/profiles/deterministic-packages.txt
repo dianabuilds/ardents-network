@@ -121,3 +121,4 @@ github.com/dianabuilds/ardents-network/internal/platform/artifacts
 github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing
 github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing/internal/keyset
 github.com/dianabuilds/ardents-network/internal/platform/launch
+github.com/dianabuilds/ardents-network/internal/platform/ext4

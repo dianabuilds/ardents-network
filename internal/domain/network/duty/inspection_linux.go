@@ -15,6 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/ext4"
 )
 
 // participationInspection is independently instantiated native read custody.
@@ -264,7 +265,7 @@ func (s *participationInspection) readRecords(policy func([]dutyRecord) error) e
 
 func (s *participationInspection) nativeRoot() (returned error) {
 	var fs syscall.Statfs_t
-	if err := syscall.Fstatfs(int(s.directory.Fd()), &fs); err != nil || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+	if err := errors.Join(syscall.Fstatfs(int(s.directory.Fd()), &fs), ext4.Require(s.directory)); err != nil || fs.Flags&1 != 0 {
 		return errors.Join(errors.New("retained participation filesystem differs"), err)
 	}
 	named, err := os.OpenFile(s.path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
@@ -277,8 +278,8 @@ func (s *participationInspection) nativeRoot() (returned error) {
 		}
 	}()
 	info, err := named.Stat()
-	fsErr := syscall.Fstatfs(int(named.Fd()), &fs)
-	if err != nil || fsErr != nil || !os.SameFile(s.info, info) || info.Mode() != s.info.Mode() || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+	fsErr := errors.Join(syscall.Fstatfs(int(named.Fd()), &fs), ext4.Require(named))
+	if err != nil || fsErr != nil || !os.SameFile(s.info, info) || info.Mode() != s.info.Mode() || fs.Flags&1 != 0 {
 		return errors.Join(errors.New("retained participation named filesystem differs"), err, fsErr)
 	}
 	return s.local()

@@ -23,6 +23,23 @@ func explicitImportResult(allowed bool) importPermission {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	const ext4Package = "internal/platform/ext4"
+	if dependency == modulePath+"/"+ext4Package {
+		switch source {
+		case "internal/domain/custody/private_permission_linux.go",
+			"internal/domain/network/duty/inspection_linux.go",
+			"internal/domain/network/state/durable/inspection_linux.go",
+			"internal/platform/artifacts/protected_input_linux.go",
+			"internal/platform/artifacts/protected_storage_linux.go",
+			"internal/platform/artifacts/output_linux.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if path.Dir(source) == ext4Package {
+		return allowedStandardImport(dependency) || source == "internal/platform/ext4/identity_linux.go" && dependency == "golang.org/x/sys/unix"
+	}
 	if permission := reachabilityImport(source, dependency); permission != importUnspecified {
 		return permission == importAllowed
 	}
@@ -363,9 +380,6 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 	if source == "internal/domain/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
-		return true
-	}
-	if source == "internal/domain/custody/private_permission_linux.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
 	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {

@@ -14,8 +14,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -47,8 +49,8 @@ func nodeInspectionNativeFixture(t *testing.T, opened bool) (state.Config, state
 	if err := os.Chmod(roles, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	var fs syscall.Statfs_t
-	if err := syscall.Statfs(root, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", root).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: private root-controlled ext4 TMPDIR required", err)
 	}
 	now := time.Unix(fixtureNow, 0).UTC()

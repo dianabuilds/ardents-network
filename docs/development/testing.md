@@ -1,5 +1,14 @@
 # Testing
 
+
+The `ext4-identity-native-check` profile requires Linux root and four independently
+identified ext2, ext3, ext4 and tmpfs mounts (`ARDENTS_TEST_EXT2`,
+`ARDENTS_TEST_EXT3`, `ARDENTS_TEST_EXT4`, `ARDENTS_TEST_TMPFS`). The selected
+`findmnt` from util-linux verifies the environment independently of the product
+mechanism. Real retained descriptors exercise artifact input/output and the
+State and participation refusal boundaries. A missing or wrong mount fails the
+profile. This is native component evidence, not installed qualification.
+
 ## Host quick-check prerequisites
 
 Select the registered Go toolchain and GNU Make on PATH before running
