@@ -2,6 +2,7 @@ package release
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -95,13 +96,13 @@ func openHistoryRoot(root string, retained bool) (*historyRoot, error) {
 		return fail(windows.CloseHandle(handle))
 	}
 	if err := checkHistoryObjectHandle(handle, true, true); err != nil {
-		return nil, errors.Join(ErrTrustUnavailable, err, file.Close(), windows.CloseHandle(parent))
+		return nil, errors.Join(fmt.Errorf("release: root security: %w", err), file.Close(), windows.CloseHandle(parent))
 	}
 	opened, openErr := file.Stat()
 	named, nameErr := os.Lstat(root)
 	if openErr != nil || nameErr != nil || !os.SameFile(opened, named) ||
 		!create && !os.SameFile(original, opened) {
-		return nil, errors.Join(ErrTrustUnavailable, openErr, nameErr, file.Close(), windows.CloseHandle(parent))
+		return nil, errors.Join(fmt.Errorf("release: root identity: %w", ErrTrustUnavailable), openErr, nameErr, file.Close(), windows.CloseHandle(parent))
 	}
 	return &historyRoot{parent: parent, root: file}, nil
 }
@@ -175,7 +176,7 @@ func checkHistoryVolume(handle windows.Handle) error {
 		return errors.Join(ErrTrustUnavailable, err)
 	}
 	if flags&windows.FILE_PERSISTENT_ACLS == 0 || windows.UTF16ToString(filesystem[:]) != historyFilesystem {
-		return ErrTrustUnavailable
+		return fmt.Errorf("release: unsupported history filesystem %q: %w", windows.UTF16ToString(filesystem[:]), ErrTrustUnavailable)
 	}
 	return nil
 }
@@ -198,7 +199,7 @@ func checkHistoryObjectHandle(handle windows.Handle, directory, protected bool) 
 	isDirectory := info.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY != 0
 	if isDirectory != directory || info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 ||
 		!directory && info.NumberOfLinks != 1 {
-		return ErrTrustUnavailable
+		return fmt.Errorf("release: history object kind or links: %w", ErrTrustUnavailable)
 	}
 	security, err := windows.GetSecurityInfo(handle, windows.SE_FILE_OBJECT,
 		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
@@ -211,15 +212,15 @@ func checkHistoryObjectHandle(handle windows.Handle, directory, protected bool) 
 	}
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil || !owner.Equals(user.User.Sid) {
-		return errors.Join(ErrTrustUnavailable, err)
+		return errors.Join(fmt.Errorf("release: history owner: %w", ErrTrustUnavailable), err)
 	}
 	control, _, err := security.Control()
 	if err != nil || protected && control&windows.SE_DACL_PROTECTED == 0 {
-		return errors.Join(ErrTrustUnavailable, err)
+		return errors.Join(fmt.Errorf("release: history DACL protection: %w", ErrTrustUnavailable), err)
 	}
 	acl, defaulted, err := security.DACL()
 	if err != nil || defaulted || acl == nil || acl.AceCount == 0 || acl.AceCount > 2 {
-		return errors.Join(ErrTrustUnavailable, err)
+		return errors.Join(fmt.Errorf("release: history DACL shape: %w", ErrTrustUnavailable), err)
 	}
 	// x/sys exposes ACE headers and masks but not a safe pointer to their SID.
 	// Compare each trustee with the descriptor's owner in the OS-rendered SDDL;
@@ -227,12 +228,12 @@ func checkHistoryObjectHandle(handle windows.Handle, directory, protected bool) 
 	sddl := security.String()
 	ownerIndex, daclIndex := strings.Index(sddl, "O:"), strings.Index(sddl, "D:")
 	if ownerIndex != 0 || daclIndex <= ownerIndex+2 {
-		return ErrTrustUnavailable
+		return fmt.Errorf("release: history security descriptor shape: %w", ErrTrustUnavailable)
 	}
 	ownerText, daclText := sddl[ownerIndex+2:daclIndex], sddl[daclIndex:]
 	count := int(acl.AceCount)
 	if strings.Count(daclText, "(A;") != count || strings.Count(daclText, ";;;"+ownerText+")") != count {
-		return ErrTrustUnavailable
+		return fmt.Errorf("release: history DACL trustees: %w", ErrTrustUnavailable)
 	}
 	effective, propagates := false, false
 	for i := 0; i < count; i++ {
@@ -242,12 +243,12 @@ func checkHistoryObjectHandle(handle windows.Handle, directory, protected bool) 
 		}
 		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE ||
 			ace.Mask != windows.GENERIC_ALL && ace.Mask != fileAllAccess {
-			return ErrTrustUnavailable
+			return fmt.Errorf("release: history ACE type %d mask %#x: %w", ace.Header.AceType, ace.Mask, ErrTrustUnavailable)
 		}
 		flags := ace.Header.AceFlags
 		allowed := uint8(windows.OBJECT_INHERIT_ACE | windows.CONTAINER_INHERIT_ACE | windows.INHERIT_ONLY_ACE | windows.INHERITED_ACE)
 		if flags & ^allowed != 0 {
-			return ErrTrustUnavailable
+			return fmt.Errorf("release: history ACE flags %#x: %w", flags, ErrTrustUnavailable)
 		}
 		if flags&windows.INHERIT_ONLY_ACE == 0 {
 			effective = true
@@ -257,11 +258,11 @@ func checkHistoryObjectHandle(handle windows.Handle, directory, protected bool) 
 			propagates = true
 		}
 		if !directory && inherit != 0 {
-			return ErrTrustUnavailable
+			return fmt.Errorf("release: file has inheritable ACE: %w", ErrTrustUnavailable)
 		}
 	}
 	if !effective || directory && !propagates {
-		return ErrTrustUnavailable
+		return fmt.Errorf("release: history DACL lacks effective or inherited access: %w", ErrTrustUnavailable)
 	}
 	return nil
 }
