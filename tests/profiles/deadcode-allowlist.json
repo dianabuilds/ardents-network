@@ -2207,9 +2207,10 @@
       {
         "symbols": [
           "internal/domain/route/selection.ClosedSets.Close",
-          "internal/domain/route/selection.ClosedSets.CurrentMember",
-          "internal/domain/route/selection.ClosedSets.Members",
           "internal/domain/route/selection.ClosedSets.commitClosedSet",
+          "internal/domain/route/selection.ClosedSets.currentMember",
+          "internal/domain/route/selection.ClosedSets.retainsLocked",
+          "internal/domain/route/selection.ClosedSets.selectMembers",
           "internal/domain/route/selection.InitializeInstallation",
           "internal/domain/route/selection.Installation.Borrow",
           "internal/domain/route/selection.Installation.Close",
@@ -2222,7 +2223,10 @@
           "internal/domain/route/selection.OpenRetainedInstallation",
           "internal/domain/route/selection.Owner.Close",
           "internal/domain/route/selection.Owner.Select",
+          "internal/domain/route/selection.Owner.available",
+          "internal/domain/route/selection.Owner.availableLocked",
           "internal/domain/route/selection.Owner.candidates",
+          "internal/domain/route/selection.Owner.selectInterior",
           "internal/domain/route/selection.acquireFreshRootLease",
           "internal/domain/route/selection.acquireRetainedRootLease",
           "internal/domain/route/selection.acquireRootLease",

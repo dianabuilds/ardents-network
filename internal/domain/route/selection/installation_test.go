@@ -17,8 +17,18 @@ import (
 // authenticated intake or successful Route transport evidence.
 func installationView(t *testing.T, networkID byte) network.RuntimeView {
 	t.Helper()
+	return installationGenerationView(t, networkID, 2)
+}
+
+func installationGenerationView(t *testing.T, networkID, generation byte) network.RuntimeView {
+	t.Helper()
+	return installationGenerationViewAt(t, networkID, generation, 0)
+}
+
+func installationGenerationViewAt(t *testing.T, networkID, generation byte, elapsed time.Duration) network.RuntimeView {
+	t.Helper()
 	now := time.Unix(1900000000, 0).UTC()
-	p := network.ProfileBinding{Network: [32]byte{networkID}, Generation: [32]byte{2}, EpochDigest: [32]byte{3}, Digest: [32]byte{4}, Epoch: 1, NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour)}
+	p := network.ProfileBinding{Network: [32]byte{networkID}, Generation: [32]byte{generation}, EpochDigest: [32]byte{3}, Digest: [32]byte{4}, Epoch: 1, NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour)}
 	var assignments []network.Assignment
 	var records []network.NodeRecord
 	for domain := uint8(3); domain <= 4; domain++ {
@@ -43,7 +53,8 @@ func installationView(t *testing.T, networkID byte) network.RuntimeView {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clock, err := network.ConfirmTime(network.ClockEvidence{Wall: now, Independent: now}, 0)
+	observed := now.Add(elapsed)
+	clock, err := network.ConfirmTime(network.ClockEvidence{Wall: observed, Independent: observed}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

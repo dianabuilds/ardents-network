@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"time"
 )
 
 // ClosedSetConfig claims the installation's selected-generation Entry root.
@@ -19,14 +20,17 @@ type ClosedSetConfig struct {
 // Role Domain. Losing a member never causes replacement before set expiry.
 // It generates no identity, Invite, holder key, admission, or transport.
 type ClosedSets struct {
-	mu      sync.Mutex
-	root    string
-	lease   rootLease
-	current func() (ClosedSetView, error)
-	state   closedSetState
-	name    string
-	closed  bool
-	failure error
+	// operations serializes observation and use without holding mu in Network.
+	operations sync.Mutex
+	closeOnce  sync.Once
+	mu         sync.Mutex
+	root       string
+	lease      rootLease
+	current    func() (ClosedSetView, error)
+	state      closedSetState
+	name       string
+	closed     bool
+	failure    error
 }
 
 type closedSetState struct {
@@ -37,70 +41,114 @@ type closedSetState struct {
 	Sets       [3]closedDomainSet `json:"sets"`
 }
 
-// Members fixes both alternatives before effects and returns their retained
-// public bindings. Call CurrentMember immediately before using either slot;
-// neither a missing current member nor a transport failure rotates this set.
-func (owner *ClosedSets) Members(domain uint8) ([2]ClosedSetMember, error) {
+func (owner *ClosedSets) retainsLocked(domain uint8, selected closedDomainSet, now time.Time) bool {
+	return !owner.closed && owner.failure == nil && owner.state.Sets[closedAdjacentIndex(domain)] == selected &&
+		!now.Before(selected.Chosen) && now.Before(selected.NotAfter)
+}
+
+// selectMembers fixes both alternatives before effects. Call currentMember
+// immediately before using a slot. A missing member or transport failure
+// cannot rotate the retained set.
+func (owner *ClosedSets) selectMembers(domain uint8, role *Owner) (closedDomainSet, ClosedSetView, error) {
+	index := closedAdjacentIndex(domain)
+	owner.operations.Lock()
+	defer owner.operations.Unlock()
 	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	if owner.closed || owner.failure != nil || closedAdjacentIndex(domain) < 0 {
-		return [2]ClosedSetMember{}, errors.New("closed Entry set unavailable")
+	unavailable := owner.closed || owner.failure != nil || index < 0
+	owner.mu.Unlock()
+	if unavailable {
+		return closedDomainSet{}, ClosedSetView{}, errors.New("closed Entry set unavailable")
+	}
+	if role != nil {
+		if err := role.available(); err != nil {
+			return closedDomainSet{}, ClosedSetView{}, err
+		}
 	}
 	view, err := owner.current()
-	if err != nil || !validClosedSetView(view, owner.state.NetworkID) {
-		return [2]ClosedSetMember{}, errors.New("closed Entry State unavailable")
+	if role != nil {
+		role.mu.Lock()
+		defer role.mu.Unlock()
+		if err := role.availableLocked(); err != nil {
+			return closedDomainSet{}, ClosedSetView{}, err
+		}
 	}
-	selected := owner.state.Sets[closedAdjacentIndex(domain)]
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if owner.closed || owner.failure != nil {
+		return closedDomainSet{}, ClosedSetView{}, errors.New("closed Entry set unavailable")
+	}
+	if err != nil || !validClosedSetView(view, owner.state.NetworkID) {
+		return closedDomainSet{}, ClosedSetView{}, errors.New("closed Entry State unavailable")
+	}
+	selected := owner.state.Sets[index]
 	if !selected.Chosen.IsZero() && view.Now.Before(selected.Chosen) {
-		return [2]ClosedSetMember{}, errors.New("closed Entry time regressed")
+		return closedDomainSet{}, ClosedSetView{}, errors.New("closed Entry time regressed")
 	}
 	if selected.Chosen.IsZero() || !view.Now.Before(selected.NotAfter) {
 		selected, err = chooseClosedEntryPair(view, domain)
 		if err != nil {
-			return [2]ClosedSetMember{}, err
+			return closedDomainSet{}, ClosedSetView{}, err
 		}
 		next := owner.state
-		next.Sets[closedAdjacentIndex(domain)] = selected
+		next.Sets[index] = selected
+		if role != nil {
+			if err := role.availableLocked(); err != nil {
+				return closedDomainSet{}, ClosedSetView{}, err
+			}
+		}
 		if err := owner.commitClosedSet(next); err != nil {
 			owner.failure = err
-			return [2]ClosedSetMember{}, err
+			return closedDomainSet{}, ClosedSetView{}, err
 		}
 	}
-	return selected.Members, nil
+	return selected, view, nil
 }
 
-// CurrentMember validates one already selected slot. It never activates a
+// currentMember validates one already selected slot. It never activates a
 // domain, draws randomness, rotates an expired set, or selects an alternative.
-func (owner *ClosedSets) CurrentMember(domain, slot uint8) (ClosedSetMember, error) {
+func (owner *ClosedSets) currentMember(domain, slot uint8) (ClosedSetMember, ClosedSetView, error) {
+	owner.operations.Lock()
+	defer owner.operations.Unlock()
 	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	if owner.closed || owner.failure != nil || closedAdjacentIndex(domain) < 0 || slot > 1 {
-		return ClosedSetMember{}, errors.New("closed Entry member unavailable")
+	index := closedAdjacentIndex(domain)
+	unavailable := owner.closed || owner.failure != nil || index < 0 || slot > 1
+	owner.mu.Unlock()
+	if unavailable {
+		return ClosedSetMember{}, ClosedSetView{}, errors.New("closed Entry member unavailable")
 	}
 	view, err := owner.current()
-	if err != nil || !validClosedSetView(view, owner.state.NetworkID) {
-		return ClosedSetMember{}, errors.New("closed Entry State unavailable")
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if owner.closed || owner.failure != nil {
+		return ClosedSetMember{}, ClosedSetView{}, errors.New("closed Entry member unavailable")
 	}
-	selected := owner.state.Sets[closedAdjacentIndex(domain)]
+	if err != nil || !validClosedSetView(view, owner.state.NetworkID) {
+		return ClosedSetMember{}, ClosedSetView{}, errors.New("closed Entry State unavailable")
+	}
+	selected := owner.state.Sets[index]
 	if selected.Chosen.IsZero() || view.Now.Before(selected.Chosen) || !view.Now.Before(selected.NotAfter) {
-		return ClosedSetMember{}, errors.New("closed Entry set expired")
+		return ClosedSetMember{}, ClosedSetView{}, errors.New("closed Entry set expired")
 	}
 	member := selected.Members[slot]
 	if slices.Contains(view.Candidates, member) {
-		return member, nil
+		return member, view, nil
 	}
-	return ClosedSetMember{}, errors.New("closed Entry member no longer current")
+	return ClosedSetMember{}, ClosedSetView{}, errors.New("closed Entry member no longer current")
 }
 
 func (owner *ClosedSets) Close() error {
 	if owner == nil {
 		return nil
 	}
-	owner.mu.Lock()
-	defer owner.mu.Unlock()
-	if !owner.closed {
+	owner.closeOnce.Do(func() {
+		owner.mu.Lock()
 		owner.closed = true
+		owner.mu.Unlock()
+		owner.operations.Lock()
+		defer owner.operations.Unlock()
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
 		owner.failure = errors.Join(owner.failure, owner.lease.release())
-	}
+	})
 	return owner.failure
 }

@@ -106,7 +106,8 @@ func openInstallation(config InstallationConfig, openEntries func(ClosedSetConfi
 		if err != nil {
 			return ClosedSetView{}, err
 		}
-		return ClosedSetView{NetworkID: view.ProfileBinding().Network, Now: view.ObservedAt(), Candidates: selectionCandidates(view, 1, i.exclusions)}, nil
+		profile := view.ProfileBinding()
+		return ClosedSetView{NetworkID: profile.Network, Now: view.ObservedAt(), Candidates: selectionCandidates(view, 1, i.exclusions), profile: profile}, nil
 	}})
 	if err != nil {
 		return nil, err

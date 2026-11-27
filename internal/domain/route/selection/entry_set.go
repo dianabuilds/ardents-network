@@ -25,6 +25,7 @@ type ClosedSetView struct {
 	NetworkID  [32]byte
 	Now        time.Time
 	Candidates []ClosedSetMember
+	profile    network.ProfileBinding
 }
 
 type closedDomainSet struct {

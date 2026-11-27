@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+func selectEntryPair(owner *ClosedSets, domain uint8) ([2]ClosedSetMember, error) {
+	selected, _, err := owner.selectMembers(domain, nil)
+	return selected.Members, err
+}
+
 func closedEntryFixture(t *testing.T) (ClosedSetConfig, *ClosedSetView) {
 	t.Helper()
 	now := time.Unix(1_800_000_000, 0).UTC()
@@ -29,7 +34,7 @@ func TestClosedEntrySetPersistsChoicesAndNeverRefillsOnFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := owner.Members(1)
+	selected, err := selectEntryPair(owner, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +53,7 @@ func TestClosedEntrySetPersistsChoicesAndNeverRefillsOnFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	repeated, err := owner.Members(1)
+	repeated, err := selectEntryPair(owner, 1)
 	if err != nil || selected != repeated {
 		t.Fatalf("restart rotated set: %v", err)
 	}
@@ -59,13 +64,13 @@ func TestClosedEntrySetPersistsChoicesAndNeverRefillsOnFailure(t *testing.T) {
 		}
 	}
 	view.Candidates = current
-	if _, err := owner.CurrentMember(1, 0); err == nil {
+	if _, _, err := owner.currentMember(1, 0); err == nil {
 		t.Fatal("withdrawn member still current")
 	}
-	if alternative, err := owner.CurrentMember(1, 1); err != nil || alternative != selected[1] {
+	if alternative, _, err := owner.currentMember(1, 1); err != nil || alternative != selected[1] {
 		t.Fatalf("retained alternative lost: %v", err)
 	}
-	repeated, err = owner.Members(1)
+	repeated, err = selectEntryPair(owner, 1)
 	if err != nil || selected != repeated {
 		t.Fatal("failure sampled replacement")
 	}
@@ -82,7 +87,7 @@ func TestClosedEntrySetConcurrentActivationCommitsOnePair(t *testing.T) {
 	failures := make(chan error, 16)
 	var callers sync.WaitGroup
 	for range 16 {
-		callers.Go(func() { members, err := owner.Members(1); results <- members; failures <- err })
+		callers.Go(func() { members, err := selectEntryPair(owner, 1); results <- members; failures <- err })
 	}
 	callers.Wait()
 	close(results)
@@ -110,19 +115,19 @@ func TestClosedEntrySetHonorsLifetimeAndTimeRegression(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer owner.Close()
-	if _, err := owner.Members(1); err != nil {
+	if _, err := selectEntryPair(owner, 1); err != nil {
 		t.Fatal(err)
 	}
 	original := owner.state.Sets[0]
 	view.Now = view.Now.Add(-time.Second)
-	if _, err := owner.Members(1); err == nil {
+	if _, err := selectEntryPair(owner, 1); err == nil {
 		t.Fatal("regressed clock accepted")
 	}
 	view.Now = original.NotAfter
-	if _, err := owner.CurrentMember(1, 0); err == nil {
+	if _, _, err := owner.currentMember(1, 0); err == nil {
 		t.Fatal("expired set still current")
 	}
-	if _, err := owner.Members(1); err != nil {
+	if _, err := selectEntryPair(owner, 1); err != nil {
 		t.Fatal(err)
 	}
 	if owner.state.Generation != 3 || owner.state.Sets[0].Chosen != view.Now {
@@ -138,7 +143,7 @@ func TestClosedEntrySetReconcilesPointerWithoutResettingFloor(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			selected, err := owner.Members(1)
+			selected, err := selectEntryPair(owner, 1)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -174,7 +179,7 @@ func TestClosedEntrySetReconcilesPointerWithoutResettingFloor(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer owner.Close()
-			repeated, err := owner.Members(1)
+			repeated, err := selectEntryPair(owner, 1)
 			if err != nil || repeated != selected {
 				t.Fatal("pointer repair rotated set")
 			}
@@ -190,7 +195,7 @@ func TestClosedEntrySetRefusesConflictsAndIncompleteCreation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Members(1); err == nil {
+	if _, err := selectEntryPair(owner, 1); err == nil {
 		t.Fatal("same-family pair accepted")
 	}
 	if owner.state.Generation != 1 {

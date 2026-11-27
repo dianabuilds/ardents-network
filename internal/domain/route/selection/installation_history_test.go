@@ -28,7 +28,7 @@ func TestInstallationFirstPreparationAndRetainedOpening(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := owner.entries.Members(3)
+	selected, err := selectEntryPair(owner.entries, 3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestInstallationFirstPreparationAndRetainedOpening(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if retained, err := owner.entries.Members(3); err != nil || retained != selected {
+	if retained, err := selectEntryPair(owner.entries, 3); err != nil || retained != selected {
 		t.Fatal("retained opening changed selection", err)
 	}
 	if err := owner.Close(); err != nil {
@@ -135,7 +135,7 @@ func TestRetainedEntryContentsLossCannotResampleBeforeExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := owner.Members(1)
+	selected, err := selectEntryPair(owner, 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestRetainedEntryContentsLossCannotResampleBeforeExpiry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if retained, err := owner.Members(1); err != nil || retained != selected {
+	if retained, err := selectEntryPair(owner, 1); err != nil || retained != selected {
 		t.Fatal("ordinary retained reopen resampled", err)
 	}
 	if err := owner.Close(); err != nil {
