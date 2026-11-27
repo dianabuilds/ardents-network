@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"errors"
@@ -72,10 +72,10 @@ func TestTerminalControlRequiresEveryCausalProof(t *testing.T) {
 	if x.complete(7) {
 		t.Fatal("EOF alone became success")
 	}
-	if err := x.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: 7, Terminal: true, TerminalConfirmation: false}); !errors.Is(err, errIntegrity) {
+	if err := x.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: 7, Terminal: true, TerminalConfirmation: false}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("receipt before Terminal accepted")
 	}
-	if err := x.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: 9, Terminal: true, TerminalConfirmation: true}); !errors.Is(err, errIntegrity) {
+	if err := x.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: 9, Terminal: true, TerminalConfirmation: true}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("confirmation before receipt accepted")
 	}
 	if ticket, err := x.beginWrite(6); err != nil || ticket != nil {
@@ -88,7 +88,7 @@ func TestTerminalControlRequiresEveryCausalProof(t *testing.T) {
 	if err := x.closeLocal(7); err != nil {
 		t.Fatal("repeated CloseInput refused")
 	}
-	if err := x.closeLocal(8); !errors.Is(err, errIntegrity) {
+	if err := x.closeLocal(8); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("changed local final offset accepted")
 	}
 	first, err := x.receiveTerminal(wire.Terminal{AttachmentGeneration: 1, Offset: 9}, 9, false)
@@ -114,7 +114,7 @@ func TestTerminalReplacementRenewsControlWithoutAnotherEOF(t *testing.T) {
 		{AttachmentGeneration: 2, Offset: 8, Terminal: true},
 		{AttachmentGeneration: 2, Offset: 9, Terminal: true, TerminalConfirmation: true},
 	} {
-		if err := x.receiveAcknowledgement(value); !errors.Is(err, errIntegrity) {
+		if err := x.receiveAcknowledgement(value); !errors.Is(err, ErrIntegrity) {
 			t.Fatalf("foreign/pre-causal control accepted: %+v", value)
 		}
 	}
@@ -170,7 +170,7 @@ func TestTerminalStaleWriteCannotCompleteReplacement(t *testing.T) {
 			if current || err != physical || x.terminalWritten || x.receiptWritten || x.confirmationWritten {
 				t.Fatal("stale completion changed successor or lost original error")
 			}
-			if _, err := x.finishWrite(ticket, nil); !errors.Is(err, errIntegrity) {
+			if _, err := x.finishWrite(ticket, nil); !errors.Is(err, ErrIntegrity) {
 				t.Fatal("one-use write ticket replayed")
 			}
 		})
@@ -203,7 +203,7 @@ func TestTerminalReplacementRefusesCopiedAndForeignWriteTickets(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, rejected := range []*terminalWrite{&copied, foreignTicket} {
-				if current, err := x.finishWrite(rejected, nil); current || !errors.Is(err, errIntegrity) {
+				if current, err := x.finishWrite(rejected, nil); current || !errors.Is(err, ErrIntegrity) {
 					t.Error("copied or foreign old writer bypassed original identity", current, err)
 				}
 			}
@@ -230,18 +230,18 @@ func TestTerminalRefusesForeignRangeGenerationAndGap(t *testing.T) {
 		{wire.Terminal{AttachmentGeneration: 0, Offset: 9}, 9, false}, {wire.Terminal{AttachmentGeneration: 2, Offset: 9}, 9, false}, {wire.Terminal{AttachmentGeneration: 1, Offset: 10}, 9, false}, {wire.Terminal{AttachmentGeneration: 1, Offset: 9}, 9, true},
 		{wire.Terminal{AttachmentGeneration: 1, Offset: 10}, 10, false},
 	} {
-		if _, err := x.receiveTerminal(tc.terminal, tc.next, tc.pending); !errors.Is(err, errIntegrity) {
+		if _, err := x.receiveTerminal(tc.terminal, tc.next, tc.pending); !errors.Is(err, ErrIntegrity) {
 			t.Fatal("invalid Terminal accepted")
 		}
 	}
-	if err := x.replace(1); !errors.Is(err, errIntegrity) {
+	if err := x.replace(1); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("generation reused")
 	}
-	if err := x.replace(3); !errors.Is(err, errIntegrity) {
+	if err := x.replace(3); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("generation skipped")
 	}
 	x.generation = math.MaxUint64
-	if err := x.replace(0); !errors.Is(err, errIntegrity) {
+	if err := x.replace(0); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("generation overflow accepted")
 	}
 }
@@ -254,14 +254,14 @@ func TestTerminalSingleWriterAndPhysicalFailure(t *testing.T) {
 		t.Fatal("second writer admitted")
 	}
 	foreign := *ticket
-	if _, err := x.finishWrite(&foreign, nil); !errors.Is(err, errIntegrity) {
+	if _, err := x.finishWrite(&foreign, nil); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("copied write ticket accepted")
 	}
 	physical := errors.New("physical write failed")
 	if current, err := x.finishWrite(ticket, physical); !current || err != physical || x.terminalWritten {
 		t.Fatal("failed write became proof")
 	}
-	if err := x.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: 7, Terminal: true, TerminalConfirmation: false}); !errors.Is(err, errIntegrity) {
+	if err := x.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: 7, Terminal: true, TerminalConfirmation: false}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("failed Terminal admitted receipt")
 	}
 	completeTerminalExchange(t, x)

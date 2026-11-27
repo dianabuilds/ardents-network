@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"errors"
@@ -9,8 +9,6 @@ import (
 )
 
 const logicalQueueLimit = 256 << 10
-
-var errBackpressure = errors.New("service Connection send replay queue is full")
 
 // sendLedger owns one direction's accepted bytes across every Attachment.
 // The surrounding stream serializes calls and checks original live authority
@@ -35,7 +33,7 @@ type dataWrite struct {
 
 func newSendLedger(generation, limit uint64) (*sendLedger, error) {
 	if generation == 0 || limit == 0 {
-		return nil, errIntegrity
+		return nil, ErrIntegrity
 	}
 	return &sendLedger{queueMetric: measurement.Track(runtimeevent.ConnectionSendBytes), generation: generation, limit: limit}, nil
 }
@@ -55,10 +53,10 @@ func (ledger *sendLedger) accept(payload []byte) error {
 func (ledger *sendLedger) checkAccept(payload []byte) error {
 	if ledger.closed || len(payload) == 0 || len(payload) > wire.MaximumDataBytes ||
 		uint64(len(payload)) > ^uint64(0)-ledger.end || ledger.end+uint64(len(payload)) > ledger.limit {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	if len(payload) > logicalQueueLimit-(len(ledger.data)-int(ledger.head)) {
-		return errBackpressure
+		return ErrBackpressure
 	}
 	return nil
 }
@@ -78,7 +76,7 @@ func (ledger *sendLedger) beginWrite() (*dataWrite, error) {
 		return nil, nil
 	}
 	if ledger.next < ledger.base || ledger.next > ledger.end {
-		return nil, errIntegrity
+		return nil, ErrIntegrity
 	}
 	size := min(uint64(wire.MaximumDataBytes), ledger.end-ledger.next)
 	start := ledger.head + (ledger.next - ledger.base)
@@ -94,14 +92,14 @@ func (ledger *sendLedger) beginWrite() (*dataWrite, error) {
 
 func (ledger *sendLedger) finishWrite(ticket *dataWrite, physicalErr error) (current bool, err error) {
 	if ticket == nil || ticket.self != ticket || ticket.owner != ledger || ticket.consumed {
-		return false, errIntegrity
+		return false, ErrIntegrity
 	}
 	if ticket.generation != ledger.generation {
 		ticket.consumed = true
 		return false, physicalErr
 	}
 	if ledger.active != ticket {
-		return false, errIntegrity
+		return false, ErrIntegrity
 	}
 	ticket.consumed = true
 	ledger.active = nil
@@ -115,7 +113,7 @@ func (ledger *sendLedger) finishWrite(ticket *dataWrite, physicalErr error) (cur
 // has actually entered its physical writer, including an in-flight write.
 func (ledger *sendLedger) acknowledge(generation, offset uint64) error {
 	if generation != ledger.generation || offset > ledger.end || offset > ledger.exposedEnd {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	if offset <= ledger.base {
 		return nil
@@ -157,7 +155,31 @@ func (ledger *sendLedger) replace(generation, peerReceiveNext uint64) error {
 func (ledger *sendLedger) checkReplacement(generation, peerReceiveNext uint64) error {
 	if ledger.generation == ^uint64(0) || generation != ledger.generation+1 || peerReceiveNext < ledger.base ||
 		peerReceiveNext > ledger.exposedEnd || peerReceiveNext > ledger.end {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	return nil
+}
+
+func (ledger *sendLedger) retireObservation() {
+	ledger.queueMetric.Decrease(ledger.end - ledger.base)
+	ledger.queueMetric = measurement.Gauge{}
+}
+
+// prepareReplacement copies the replay allocation and stages the new offsets
+// without publishing any change to the original queue observation.
+func (ledger *sendLedger) prepareReplacement(generation, peerReceiveNext uint64) (*sendLedger, error) {
+	next := *ledger
+	next.data = append([]byte(nil), ledger.data...)
+	next.queueMetric = measurement.Gauge{}
+	if err := next.replace(generation, peerReceiveNext); err != nil {
+		clear(next.data)
+		return nil, err
+	}
+	return &next, nil
+}
+
+func (ledger *sendLedger) finishReplacement(next *sendLedger) {
+	next.queueMetric = ledger.queueMetric
+	next.queueMetric.Decrease(next.base - ledger.base)
+	clear(ledger.data)
 }

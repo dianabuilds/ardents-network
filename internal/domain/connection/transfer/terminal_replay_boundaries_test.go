@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"bytes"
@@ -78,7 +78,7 @@ func TestTerminalReplayAcrossBothRolesAndEveryControlCut(t *testing.T) {
 							t.Fatal("old control proofs completed the replacement", err)
 						}
 						for _, confirmation := range []bool{false, true} {
-							if err := peer.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: offsets[index], Terminal: true, TerminalConfirmation: confirmation}); !errors.Is(err, errIntegrity) {
+							if err := peer.receiveAcknowledgement(wire.Acknowledgement{AttachmentGeneration: 1, Offset: offsets[index], Terminal: true, TerminalConfirmation: confirmation}); !errors.Is(err, ErrIntegrity) {
 								t.Fatal("stale receipt or confirmation crossed the replacement", err)
 							}
 						}
@@ -110,7 +110,7 @@ func TestTerminalReplayAcrossBothRolesAndEveryControlCut(t *testing.T) {
 							{AttachmentGeneration: 1, Offset: peer.localOffset, Terminal: true},
 							{AttachmentGeneration: 1, Offset: peer.remoteOffset, Terminal: true, TerminalConfirmation: true},
 						} {
-							if err := peer.receiveAcknowledgement(stale); !errors.Is(err, errIntegrity) {
+							if err := peer.receiveAcknowledgement(stale); !errors.Is(err, ErrIntegrity) {
 								t.Fatal("old generation reused current causal prerequisites", err)
 							}
 						}

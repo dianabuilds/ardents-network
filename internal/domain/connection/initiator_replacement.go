@@ -137,7 +137,8 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 	attachment.evidence = evidence
 	_, exporter := evidence.Secrets() // Retain the original logical key.
 	stream.mu.Lock()
-	sendBase, sendEnd, receiveNext := stream.send.base, stream.send.end, stream.receive.next
+	offsets := stream.transfer.ReplayOffsets()
+	sendBase, sendEnd, receiveNext := offsets.SendBase, offsets.SendEnd, offsets.ReceiveNext
 	stream.mu.Unlock()
 	local, err := wire.NewContinuity(key, wire.RoleInitiator, ticket.generation, sendBase, sendEnd, receiveNext, stream.owner.logical, exporter)
 	if err != nil {
@@ -168,7 +169,7 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 		return nil, proposal.failIntegrity(err)
 	}
 	stream.mu.Lock()
-	err = errors.Join(stream.send.checkReplacement(ticket.generation, peer.ReceiveNext), stream.receive.checkReplacement(ticket.generation, peer.SendBase, peer.SendEnd))
+	err = stream.transfer.CheckReplacement(ticket.generation, peer)
 	stream.mu.Unlock()
 	if err != nil {
 		return nil, proposal.failIntegrity(err)

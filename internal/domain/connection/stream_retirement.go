@@ -6,7 +6,6 @@ import (
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 )
 
 func (stream *Stream) Done() <-chan application.Outcome {
@@ -34,7 +33,7 @@ func (stream *Stream) failLocked(err error) {
 }
 
 func (stream *Stream) settleLocked() {
-	if stream.settled || stream.receive.readAt != stream.receive.next || !stream.terminal.complete(stream.send.base) {
+	if stream.settled || !stream.transfer.DeliveryComplete() {
 		return
 	}
 	if err := stream.checkLocked(); err != nil {
@@ -122,10 +121,7 @@ func (stream *Stream) retire() {
 		// Physical failures are retained by the exact lower cleanup owners.
 		_ = stream.records.join()
 		stream.mu.Lock()
-		stream.send.queueMetric.Decrease(stream.send.end - stream.send.base)
-		stream.receive.queueMetric.Decrease(stream.receive.next - stream.receive.readAt)
-		stream.send.queueMetric = measurement.Gauge{}
-		stream.receive.queueMetric = measurement.Gauge{}
+		stream.transfer.RetireObservation()
 		stream.cleanupErr = errors.Join(physical, stream.recoveryCleanup)
 		stream.closeErr = errors.Join(stream.failure, stream.cleanupErr)
 		clear(stream.key[:])
@@ -150,4 +146,42 @@ func (stream *Stream) Close() error {
 	<-stream.joined
 	<-stream.watcherDone
 	return stream.closeErr
+}
+
+// Joined observes original physical completion, distinct from Application Done.
+func (stream *Stream) Joined() <-chan struct{} {
+	if stream == nil || stream.self != stream {
+		return nil
+	}
+	return stream.joined
+}
+
+// JoinedCleanup returns the retained physical cleanup result only after this
+// original stream has joined. A logical refusal is not a cleanup failure.
+func (stream *Stream) JoinedCleanup() error {
+	if stream == nil || stream.self != stream {
+		return errIntegrity
+	}
+	select {
+	case <-stream.joined:
+		return stream.cleanupErr
+	default:
+		return errors.New("service Connection physical cleanup has not joined")
+	}
+}
+
+// Stop synchronously seals local effects without returning physical borrows.
+// Close still joins the original actors, callbacks and retained resources.
+func (stream *Stream) Stop() {
+	if stream == nil || stream.self != stream {
+		return
+	}
+	stream.mu.Lock()
+	stream.closing = true
+	if stream.recovery != nil {
+		stream.recovery.stop()
+	}
+	stream.cancel()
+	stream.signalLocked()
+	stream.mu.Unlock()
 }

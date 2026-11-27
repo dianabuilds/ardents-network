@@ -21,14 +21,13 @@
 //
 // For the Reader, start at initiator_source.go. It binds the original Target
 // and retained Prefix. initiator_authentication.go checks the initial Proof and
-// Continuity. The private instancetls package checks the exact Instance key
-// for both initial and replacement TLS. publisher_authentication.go checks the
-// independently admitted recipient. wire owns the record and transcript bytes.
+// Continuity and uses the same private exact-Instance TLS client for initial
+// and replacement Attachments. publisher_binding.go admits the recipient
+// before publisher_authentication.go checks its original JOIN. wire owns the record and transcript bytes.
 //
 // stream.go consumes the initial proof once and retains the logical owner.
-// stream_io.go owns caller-memory handoff and ordered writes. send_ledger.go,
-// receive_ledger.go and terminal_exchange.go retain the directional offsets and
-// receipts. stream_records.go serves one exact physical Attachment generation.
+// stream_io.go owns caller-memory handoff and ordered writes. The transfer
+// package retains directional offsets, replay and current Terminal receipts. stream_records.go serves one exact physical Attachment generation.
 //
 // recovery_episode.go retains the original recovery bound. The initiator and
 // Publisher prepare separate proposals. replacement_commit.go advances all

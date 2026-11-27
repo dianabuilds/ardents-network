@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"bytes"
@@ -46,14 +46,14 @@ func TestSendRecoveryImmediatelyReplaysRetainedSuffix(t *testing.T) {
 	if err != nil || next == nil || next.record.Offset != 7 || string(next.record.Payload) != "ok" {
 		t.Fatal("later bytes overtook replay")
 	}
-	if err := ledger.accept([]byte("!")); !errors.Is(err, errIntegrity) {
+	if err := ledger.accept([]byte("!")); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("directional counter reset on replacement")
 	}
 	end := ledger.closeInput()
 	if end != 9 || ledger.closeInput() != end {
 		t.Fatal("repeat CloseInput changed final offset")
 	}
-	if err := ledger.accept([]byte("later")); !errors.Is(err, errIntegrity) {
+	if err := ledger.accept([]byte("later")); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("bytes admitted after CloseInput")
 	}
 }
@@ -76,7 +76,7 @@ func TestSendQueueBoundAppliesBackpressureButAllowsReplay(t *testing.T) {
 	if len(ledger.data) != 262144 {
 		t.Fatal("queue did not retain exact bound")
 	}
-	if err := ledger.accept([]byte{1}); !errors.Is(err, errBackpressure) {
+	if err := ledger.accept([]byte{1}); !errors.Is(err, ErrBackpressure) {
 		t.Fatal("queue bound bypassed")
 	}
 	if err := ledger.replace(2, 0); err != nil {
@@ -101,7 +101,7 @@ func TestSendAcknowledgementRequiresExposedCurrentRange(t *testing.T) {
 	if err := ledger.accept([]byte("first")); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledger.acknowledge(1, 5); !errors.Is(err, errIntegrity) {
+	if err := ledger.acknowledge(1, 5); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("unsent queued range acknowledged")
 	}
 	ticket, _ := ledger.beginWrite()
@@ -115,11 +115,11 @@ func TestSendAcknowledgementRequiresExposedCurrentRange(t *testing.T) {
 		t.Fatal("matching delayed ACK changed base")
 	}
 	for _, value := range [][2]uint64{{0, 5}, {2, 5}, {1, 6}, {1, math.MaxUint64}} {
-		if err := ledger.acknowledge(value[0], value[1]); !errors.Is(err, errIntegrity) {
+		if err := ledger.acknowledge(value[0], value[1]); !errors.Is(err, ErrIntegrity) {
 			t.Fatal("foreign/future ACK accepted")
 		}
 	}
-	if err := ledger.replace(2, 4); !errors.Is(err, errIntegrity) {
+	if err := ledger.replace(2, 4); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("Continuity ACK rollback accepted")
 	}
 	if err := ledger.replace(2, 5); err != nil {
@@ -137,22 +137,22 @@ func TestSendWriterTicketsAndOffsetOverflow(t *testing.T) {
 		t.Fatal("second physical writer admitted")
 	}
 	copyTicket := *ticket
-	if _, err := ledger.finishWrite(&copyTicket, nil); !errors.Is(err, errIntegrity) {
+	if _, err := ledger.finishWrite(&copyTicket, nil); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("copied ticket accepted")
 	}
 	physical := errors.New("output failed")
 	if current, err := ledger.finishWrite(ticket, physical); !current || err != physical || ledger.next != 0 {
 		t.Fatal("failed output advanced offsets")
 	}
-	if _, err := ledger.finishWrite(ticket, nil); !errors.Is(err, errIntegrity) {
+	if _, err := ledger.finishWrite(ticket, nil); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("write ticket consumed twice")
 	}
 	ledger.end, ledger.limit = math.MaxUint64, math.MaxUint64
-	if err := ledger.accept([]byte{1}); !errors.Is(err, errIntegrity) {
+	if err := ledger.accept([]byte{1}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("offset overflow accepted")
 	}
 	ledger.generation = math.MaxUint64
-	if err := ledger.replace(0, 0); !errors.Is(err, errIntegrity) {
+	if err := ledger.replace(0, 0); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("Attachment generation overflow accepted")
 	}
 }
@@ -180,7 +180,7 @@ func TestSendReplacementRefusesCopiedAndForeignWriteTickets(t *testing.T) {
 				}
 			}
 			for _, rejected := range []*dataWrite{&copied, foreignTicket} {
-				if current, err := ledger.finishWrite(rejected, nil); current || !errors.Is(err, errIntegrity) {
+				if current, err := ledger.finishWrite(rejected, nil); current || !errors.Is(err, ErrIntegrity) {
 					t.Error("copied or foreign Data writer bypassed original identity", current, err)
 				}
 			}
@@ -221,7 +221,7 @@ func TestSendReplacementCannotAcknowledgeUnreplayedOldExposure(t *testing.T) {
 	if err := ledger.replace(2, 100); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledger.acknowledge(2, 20000); !errors.Is(err, errIntegrity) {
+	if err := ledger.acknowledge(2, 20000); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("new Attachment acknowledged old exposure before replay")
 	}
 	if ledger.base != 100 || ledger.next != 100 || ledger.end != 20000 || len(ledger.data)-int(ledger.head) != 19900 {
@@ -234,7 +234,7 @@ func TestSendReplacementCannotAcknowledgeUnreplayedOldExposure(t *testing.T) {
 	if err != nil || replay == nil || replay.record.Offset != 100 || len(replay.record.Payload) != 16384 {
 		t.Fatal("replacement did not immediately expose first ordered suffix")
 	}
-	if err := ledger.acknowledge(2, 20000); !errors.Is(err, errIntegrity) {
+	if err := ledger.acknowledge(2, 20000); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("new Attachment acknowledged beyond its current replay writer")
 	}
 	if err := ledger.acknowledge(2, 16484); err != nil {

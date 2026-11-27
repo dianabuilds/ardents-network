@@ -66,11 +66,21 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	if local == "internal/domain/connection/internal/instancetls" {
-		return source == "internal/domain/connection/initiator_authentication.go"
+	if source == "internal/domain/connection/instance_certificate.go" {
+		return allowedStandardImport(dependency)
 	}
-	if path.Dir(source) == "internal/domain/connection/internal/instancetls" && localImport {
+	if local == "internal/domain/connection/internal/instancetls" {
 		return false
+	}
+	if local == "internal/domain/connection/transfer" {
+		switch source {
+		case "internal/domain/connection/stream.go", "internal/domain/connection/stream_failure.go",
+			"internal/domain/connection/stream_io.go", "internal/domain/connection/stream_records.go",
+			"internal/domain/connection/attachment_records_test.go", "internal/domain/connection/terminal_tail_test.go":
+			return true
+		default:
+			return false
+		}
 	}
 	if local == "internal/domain/admission/console" {
 		switch source {

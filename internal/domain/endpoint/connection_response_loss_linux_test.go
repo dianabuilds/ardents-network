@@ -237,8 +237,8 @@ func TestInstalledConnectionControlDeliveryTCP(t *testing.T) {
 // These source sites are checked by the architecture profile: a moved call
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
 const connectionControlFramingReadLine = 36
-const connectionProgressReadLine = 42
-const connectionProgressCommitLine = 55
+const connectionProgressReadLine = 43
+const connectionProgressCommitLine = 56
 const connectionControlReadRecheckLine = 389
 
 const connectionPublisherControlWriteBeforeLine = 393
