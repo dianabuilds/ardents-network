@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package command
 
 import (
 	"context"
@@ -10,9 +10,10 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 )
 
-func RunInstalledCommand(ctx context.Context, args []string, diagnostic io.Writer) int {
+func Run(ctx context.Context, args []string, diagnostic io.Writer) int {
 	if ctx == nil || len(args) == 0 {
 		return 2
 	}
@@ -34,7 +35,7 @@ func RunInstalledCommand(ctx context.Context, args []string, diagnostic io.Write
 	if ctx.Err() != nil {
 		return 1
 	}
-	phase, err := Run(ctx, args[1], func(progress Progress) error {
+	phase, err := endpoint.Run(ctx, args[1], func(progress endpoint.Progress) error {
 		return reportInstalledProgress(diagnostic, progress)
 	})
 	code := installedEndpointFailure(ctx, err)
@@ -87,7 +88,7 @@ func installedEndpointCanceledOnly(err error) bool {
 	return false
 }
 
-func reportInstalledProgress(out io.Writer, progress Progress) error {
+func reportInstalledProgress(out io.Writer, progress endpoint.Progress) error {
 	outcome := "pending"
 	if progress.Phase == "permission-accepted" {
 		outcome = "accepted"

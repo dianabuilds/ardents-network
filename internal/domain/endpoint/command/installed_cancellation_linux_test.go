@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package command
 
 import (
 	"bytes"
@@ -34,7 +34,7 @@ func TestInstalledCancellationAtParticipantEntryIsNotSuccessfulStartup(t *testin
 	ctx := &installedOpeningCancellation{Context: parent, cancel: cancel}
 	root := filepath.Join(t.TempDir(), "absent-installation")
 	var diagnostic bytes.Buffer
-	if code := RunInstalledCommand(ctx, []string{"start-installed", root}, &diagnostic); code != 1 {
+	if code := Run(ctx, []string{"start-installed", root}, &diagnostic); code != 1 {
 		t.Fatalf("canceled pre-start was successful: code=%d", code)
 	}
 	if _, err := os.Lstat(root); !errors.Is(err, os.ErrNotExist) {

@@ -10,22 +10,23 @@
 // The only command consumer is ardents-next; schemas are bound Installation input,
 // while arguments, diagnostics and process exits remain with that command.
 //
+// Start at command for CLI preparation, installed start and bounded reports.
+// history_preparation_linux.go owns the first signed State and local history
+// effects. launch authenticates and retains the original installed startup.
+// participant_linux.go owns the shared funding and Execution lifetime and
+// joins Reader, Publisher and local IPC before returning those owners.
+// internal/permission owns original file exchange, while Stock authenticates
+// its response under the participant's live Startup check.
+//
 // Responsibility clusters and their tests:
 //   - declaration binding: declarations.go (declarations_test.go; portable);
-//     the installed identity and network/configuration binding in
-//     declarations_linux.go is exercised through the Linux suites below
-//   - installed command, cancellation and shutdown: installed_command_linux.go,
-//     installed_command_other.go, preparation_command_linux.go
-//     (installed_endpoint_command_test.go; portable,
-//     installed_cancellation_linux_test.go, installed_shutdown_linux_test.go;
-//     linux)
+//     declarations_linux.go projects installed identity and configuration
 //   - participant execution and stock: participant_linux.go
 //     (participant_linux_test.go, participant_stock_linux_test.go; linux)
-//   - permission exchange: permission_linux.go (permission_linux_test.go; linux)
 //   - explicit first history preparation: history_preparation_linux.go
 //     (history_preparation_linux_test.go; linux)
 //   - authenticated plan construction and file entries:
-//     plan_construction_linux.go, preparation_files_linux.go
+//     plan_construction_linux.go, plan_delivery_linux.go
 //     (plan_construction_linux_test.go; linux)
 //   - source trust preparation: source_trust_preparation_linux.go
 //     (source_trust_preparation_linux_test.go; linux,

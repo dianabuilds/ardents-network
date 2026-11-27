@@ -1,4 +1,4 @@
-package endpoint
+package command
 
 import (
 	"context"
@@ -12,8 +12,8 @@ func runEndpointPlanConstruction(ctx context.Context, args []string, diagnostic 
 	if ctx == nil || len(args) != 4 {
 		return 2
 	}
-	err := PreparePlansFromFiles(ctx, args[0], args[1], args[2], args[3])
-	if errors.Is(err, ErrPreparationPath) {
+	err := preparePlansFromFiles(ctx, args[0], args[1], args[2], args[3])
+	if errors.Is(err, errPreparationPath) {
 		return 2
 	}
 	if err != nil {
@@ -30,8 +30,8 @@ func runEndpointHistoryPreparation(ctx context.Context, paths []string, diagnost
 	if ctx.Err() != nil {
 		return 1
 	}
-	err := PrepareHistoriesFromFiles(ctx, paths[0], paths[1], paths[2])
-	if errors.Is(err, ErrPreparationInput) {
+	err := prepareHistoriesFromFiles(ctx, paths[0], paths[1], paths[2])
+	if errors.Is(err, errPreparationInput) {
 		return 2
 	}
 	outcome, code := "prepared", 0

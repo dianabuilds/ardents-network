@@ -1585,9 +1585,14 @@ The new installed participant lifetime is owned by `internal/domain/endpoint`.
 Its `Run` opens and retains the original Installation Startup, decodes only its
 bound declarations, prepares the local Execution provenance, refreshes genuine
 State and performs exact permission-file handover before opening shared funding
-parents and IPC. CLI `endpoint start-installed` supplies only the original root,
-public progress rendering and process-exit projection. Progress supplies no
-readiness or authority. IPC and Publication borrowers join before shared parents,
-Stock, State, local Execution and Startup close; partial construction follows the
-same reverse ownership order and retains original failures. Permission and
-history bytes, role declarations and qualified-worker requirements are unchanged.
+parents and IPC. `endpoint/launch` retains the original installed observations.
+`endpoint/internal/permission` owns the local request and response files. The
+participant surrounds the exchange with its original Startup check, and Stock
+authenticates the exact response during import. `endpoint/command` handles the
+arguments, before-effect platform refusal, public progress and process exit for
+`endpoint start-installed`, `construct-plan` and `prepare-history`. Progress
+supplies no readiness or authority. IPC and Publication borrowers join before
+shared parents, Stock, State, local Execution and Startup close. Partial
+construction follows the same reverse ownership order and retains original
+failures. Permission and history bytes, role declarations and qualified-worker
+requirements are unchanged.

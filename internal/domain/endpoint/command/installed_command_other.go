@@ -1,6 +1,6 @@
 //go:build !linux
 
-package endpoint
+package command
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 )
 
-func RunInstalledCommand(ctx context.Context, args []string, diagnostic io.Writer) int {
+func Run(ctx context.Context, args []string, diagnostic io.Writer) int {
 	if ctx == nil || len(args) == 0 {
 		return 2
 	}
