@@ -4260,8 +4260,8 @@ failure. The checked three-minute profile fails missing prerequisites and grants
 no installed/runtime/Release or original-retirement evidence. Its compilation is
 included in `network-signing-compile-check`. After the orchestration retirement
 this lane exercises `reachability/store.OpenInspection` as reviewed mechanism code
-(deadcode allowlist); the parallel `state`/`duty`/`spending`/`hosting` inspection
-mechanisms keep their own genuine native coverage.
+(deadcode allowlist); the parallel `state`/`duty` inspection mechanisms keep
+their own genuine native coverage.
 
 ### Descriptor retired installed orchestration lanes
 
