@@ -1113,11 +1113,13 @@ coordination (`transition_scope_linux.go`, `recovery_replacement_linux.go`,
 `systemd.DescriptorRecoveryReplacement`) retired with the transitional Descriptor
 package; no production consumer remains. The shared `state.OpenNodeInspection` /
 `duty.OpenNodeInspection` / `reachability/store.OpenInspection` /
-`spending.OpenInspection` / `hosting.OpenInspection` read-only inspection
-mechanisms lose their last production consumer and are retained as reviewed
-mechanism code with genuine native coverage (see the deadcode allowlist); their
-shared custody/floor/reader helpers remain production-live through
-SourceInspection, the live Store and the bounded repair.
+`hosting.OpenInspection` read-only inspection mechanisms lose their last
+production consumer and are retained as reviewed mechanism code with genuine
+native coverage (see the deadcode allowlist); their shared custody/floor/reader
+helpers remain production-live through SourceInspection, the live Store and the
+bounded repair. The unused Spending inspection is retired; its actual receiving
+owner continues to open existing spend history under the original exclusive
+lease and refuses missing or incomplete retained history.
 
 `route/receiver/outer_authority_linux.go` owns fresh parent HELLO and original
 adjacent-peer reobservation for JOIN and Descriptor. Its exact imports are
