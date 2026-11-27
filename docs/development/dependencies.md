@@ -199,7 +199,7 @@ or empty scanner result substitutes for it:
 ### Scoped systemd-nspawn use: #391 S2.1 two-manager platform-led qualification
 
 Reviewed 2026-11-18. The `endpoint_pair_native` qualification controller
-(`tests/e2e/endpoint/endpoint_pair_native_linux_test.go`) uses `systemd-nspawn` as a
+(`tests/e2e/endpointinstalled/endpoint_pair_native_linux_test.go`) uses `systemd-nspawn` as a
 qualification-environment tool to provision two separately admitted Ubuntu/systemd
 managers on the Product Owner host. It is not a product runtime dependency and
 adds no `go.mod` entry. Bounded applicability for the native findings above:

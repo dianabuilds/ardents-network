@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -20,42 +18,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 )
-
-type holderCommand struct {
-	Operation    string               `json:"operation"`
-	Maxima       [3]uint32            `json:"maxima,omitzero"`
-	Digest       [32]byte             `json:"digest,omitzero"`
-	Payload      []byte               `json:"payload,omitzero"`
-	Intent       stock.IssuanceIntent `json:"intent,omitzero"`
-	Presentation stock.Presentation   `json:"presentation,omitzero"`
-	Class        uint8                `json:"class,omitzero"`
-	Receivers    [][32]byte           `json:"receivers,omitzero"`
-	Revision     uint64               `json:"revision,omitzero"`
-	Target       [32]byte             `json:"target,omitzero"`
-}
-
-type localAdmissionReply = processfixture.AdmissionReply
-
-func admissionLocalCommand(t *testing.T, binary, operation string, config any) localAdmissionReply {
-	t.Helper()
-	cmd := exec.CommandContext(t.Context(), binary, "admission", operation, "--config", processfixture.WriteConfig(t, config))
-	var output, log bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &log
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("%s: %v %s %s", operation, err, &output, &log)
-	}
-	var reply localAdmissionReply
-	if err := json.Unmarshal(output.Bytes(), &reply); err != nil {
-		t.Fatal(err, &output)
-	}
-	return reply
-}
-
-func admissionLocalConsole(t *testing.T, binary, operation string, config any) (func(any) localAdmissionReply, func()) {
-	t.Helper()
-	return processfixture.OpenAdmissionConsole(t, binary, operation, processfixture.WriteConfig(t, config))
-}
 
 func TestAdmissionStandaloneCommandsIssuePresentReceiveAndReopen(t *testing.T) {
 	runAdmissionCycle(t, nil)
@@ -119,13 +81,13 @@ func runAdmissionCycle(t *testing.T, check func(*testing.T, admission.AuthorityF
 	profile := processfixture.WriteConfig(t, p)
 	holderRoot := t.TempDir()
 	holderConfig := map[string]any{"root": holderRoot, "profile": profile, "role": admission.AllocationUser}
-	holder, closeHolder := admissionLocalConsole(t, binary, "holder", holderConfig)
-	request := holder(holderCommand{Operation: "request", Maxima: [3]uint32{0, 5, 0}})
+	holder, closeHolder := processfixture.OpenConfiguredAdmissionConsole(t, binary, "holder", holderConfig)
+	request := holder(processfixture.HolderCommand{Operation: "request", Maxima: [3]uint32{0, 5, 0}})
 	if request.Outcome != "completed" {
 		t.Fatal(request)
 	}
 	allocationConfig := map[string]any{"request": request.Request, "journal": []byte{}, "network": p.NetworkID, "authority": p.IssuanceAuthorityKey}
-	decision := admissionLocalCommand(t, binary, "allocate", allocationConfig)
+	decision := processfixture.RunAdmissionCommand(t, binary, "allocate", allocationConfig)
 	if decision.Outcome != "unsigned-decision" || decision.Repeated || decision.Permission.Signature != [64]byte{} {
 		t.Fatal("allocation signed or missing", decision)
 	}
@@ -140,7 +102,7 @@ func runAdmissionCycle(t *testing.T, check func(*testing.T, admission.AuthorityF
 		t.Fatal(err)
 	}
 	allocationConfig["journal"] = retained
-	repeated := admissionLocalCommand(t, binary, "allocate", allocationConfig)
+	repeated := processfixture.RunAdmissionCommand(t, binary, "allocate", allocationConfig)
 	if !repeated.Repeated || repeated.Permission != decision.Permission {
 		t.Fatal("allocation retry changed")
 	}
@@ -150,50 +112,50 @@ func runAdmissionCycle(t *testing.T, check func(*testing.T, admission.AuthorityF
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r := holder(holderCommand{Operation: "import", Digest: request.Digest, Payload: signed}); r.Outcome != "completed" {
+	if r := holder(processfixture.HolderCommand{Operation: "import", Digest: request.Digest, Payload: signed}); r.Outcome != "completed" {
 		t.Fatal(r)
 	}
 	challenge := token.ClosedTokenContext{NetworkID: p.NetworkID, ProfileDigest: p.Digest, IssuerNodeID: p.IssuerNodeID, ReceiverNodeID: [32]byte{8}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: start}
 	intent := stock.IssuanceIntent{Challenges: []token.ClosedTokenContext{challenge, challenge}, Selection: stock.ExchangeBinding{ID: [32]byte{10}, ProfileDigest: p.Digest}, Bootstrap: true, Deadline: p.NotAfter}
-	batch := holder(holderCommand{Operation: "begin", Intent: intent})
+	batch := holder(processfixture.HolderCommand{Operation: "begin", Intent: intent})
 	issueConfig := map[string]any{"plan": plan, "profile": profile, "batch": batch.Request, "kind": quota.Bootstrap}
-	issued := admissionLocalCommand(t, binary, "issue-current", issueConfig)
-	retry := admissionLocalCommand(t, binary, "issue-current", issueConfig)
+	issued := processfixture.RunAdmissionCommand(t, binary, "issue-current", issueConfig)
+	retry := processfixture.RunAdmissionCommand(t, binary, "issue-current", issueConfig)
 	if issued.Outcome != "issued-offline" || retry.Outcome != "already-issued" || !bytes.Equal(issued.Response, retry.Response) {
 		t.Fatal("issuance retry failed", issued.Outcome, retry.Outcome)
 	}
-	if r := holder(holderCommand{Operation: "complete", Payload: issued.Response}); r.Outcome != "completed" {
+	if r := holder(processfixture.HolderCommand{Operation: "complete", Payload: issued.Response}); r.Outcome != "completed" {
 		t.Fatal(r)
 	}
 	presentation := stock.Presentation{NetworkID: p.NetworkID, StateGeneration: p.StateGeneration, StateDigest: p.StateDigest, ProfileDigest: p.Digest, RecipientNodeID: challenge.ReceiverNodeID, RecipientDutyGeneration: challenge.ReceiverDutyGeneration, ChannelNonce: [32]byte{11}, Deadline: p.NotAfter}
-	first := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
-	second := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	first := holder(processfixture.HolderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	second := holder(processfixture.HolderCommand{Operation: "take", Presentation: presentation, Class: 2})
 	if first.Outcome != "completed" || second.Outcome != "completed" {
 		t.Fatal(first.Outcome, second.Outcome)
 	}
 	intent.Challenges = append(intent.Challenges, challenge)
-	batch = holder(holderCommand{Operation: "begin", Intent: intent})
+	batch = holder(processfixture.HolderCommand{Operation: "begin", Intent: intent})
 	issueConfig["batch"] = batch.Request
-	issued = admissionLocalCommand(t, binary, "issue-current", issueConfig)
-	if r := holder(holderCommand{Operation: "complete", Payload: issued.Response}); r.Outcome != "completed" {
+	issued = processfixture.RunAdmissionCommand(t, binary, "issue-current", issueConfig)
+	if r := holder(processfixture.HolderCommand{Operation: "complete", Payload: issued.Response}); r.Outcome != "completed" {
 		t.Fatal(r)
 	}
-	third := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	third := holder(processfixture.HolderCommand{Operation: "take", Presentation: presentation, Class: 2})
 	if third.Outcome != "completed" {
 		t.Fatal(third)
 	}
-	fourth := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	fourth := holder(processfixture.HolderCommand{Operation: "take", Presentation: presentation, Class: 2})
 	if fourth.Outcome != "completed" {
 		t.Fatal(fourth)
 	}
-	fifth := holder(holderCommand{Operation: "take", Presentation: presentation, Class: 2})
+	fifth := holder(processfixture.HolderCommand{Operation: "take", Presentation: presentation, Class: 2})
 	if fifth.Outcome != "completed" {
 		t.Fatal(fifth)
 	}
 
 	closeHolder()
-	reopened, closeReopened := admissionLocalConsole(t, binary, "holder", holderConfig)
-	if r := reopened(holderCommand{Operation: "take", Presentation: presentation, Class: 2}); r.Outcome != "refused" {
+	reopened, closeReopened := processfixture.OpenConfiguredAdmissionConsole(t, binary, "holder", holderConfig)
+	if r := reopened(processfixture.HolderCommand{Operation: "take", Presentation: presentation, Class: 2}); r.Outcome != "refused" {
 		t.Fatal("volatile stock revived")
 	}
 	closeReopened()
@@ -206,12 +168,12 @@ func runAdmissionCycle(t *testing.T, check func(*testing.T, admission.AuthorityF
 	wrong := receiver
 	wrong.DutyGeneration++
 	foreignConfig := map[string]any{"root": t.TempDir(), "profile": profile, "receiver": wrong, "not_after": p.NotAfter}
-	foreign, closeForeign := admissionLocalConsole(t, binary, "receiver", foreignConfig)
+	foreign, closeForeign := processfixture.OpenConfiguredAdmissionConsole(t, binary, "receiver", foreignConfig)
 	if r := foreign(accept); r.Outcome != "refused" {
 		t.Fatal("foreign duty accepted")
 	}
 	closeForeign()
-	receive, closeReceive := admissionLocalConsole(t, binary, "receiver", receiverConfig)
+	receive, closeReceive := processfixture.OpenConfiguredAdmissionConsole(t, binary, "receiver", receiverConfig)
 	grant := receive(accept)
 	if grant.Outcome != "completed" {
 		t.Fatal(grant)
@@ -221,7 +183,7 @@ func runAdmissionCycle(t *testing.T, check func(*testing.T, admission.AuthorityF
 		t.Fatal("refill changed lifetime", refill)
 	}
 	closeReceive()
-	receive, closeReceive = admissionLocalConsole(t, binary, "receiver", receiverConfig)
+	receive, closeReceive = processfixture.OpenConfiguredAdmissionConsole(t, binary, "receiver", receiverConfig)
 	if r := receive(accept); r.Outcome != "refused" {
 		t.Fatal("spend replay after reopen")
 	}

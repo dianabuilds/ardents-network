@@ -115,6 +115,16 @@
     },
     {
       "symbols": [
+        "tests/e2e/node/processfixture.OpenConfiguredAdmissionConsole",
+        "tests/e2e/node/processfixture.RunAdmissionCommand"
+      ],
+      "classification": "shared compiled Admission command fixture",
+      "rationale": "The standalone Admission cycle and Route process suites invoke and join the compiled holder, receiver and issuer commands through these helpers. Their callers are process tests.",
+      "owner": "Admission and Route process tests",
+      "retirement": "Remove each helper with its last compiled process scenario."
+    },
+    {
+      "symbols": [
         "tests/releasefixture.FixtureDigest",
         "tests/releasefixture.SignedRelease",
         "tests/releasefixture.SignedPolicyMismatch",

@@ -702,6 +702,36 @@
       "owner": "Node command process behavior"
     },
     {
+      "id": "e2e-admission-cli",
+      "path": "tests/e2e/admissioncli",
+      "profile": "process",
+      "owner": "offline Admission and Issuance command process behavior"
+    },
+    {
+      "id": "e2e-routeprocess",
+      "path": "tests/e2e/routeprocess",
+      "profile": "process",
+      "owner": "checks compiled Route exchanges, refusals and retained spend"
+    },
+    {
+      "id": "e2e-endpointcli",
+      "path": "tests/e2e/endpointcli",
+      "profile": "process",
+      "owner": "checks the compiled Endpoint command and its distributed bundle"
+    },
+    {
+      "id": "e2e-nodeinstalled",
+      "path": "tests/e2e/nodeinstalled",
+      "profile": "process",
+      "owner": "checks installed Node and Source lifetimes through the host manager"
+    },
+    {
+      "id": "e2e-endpointinstalled",
+      "path": "tests/e2e/endpointinstalled",
+      "profile": "process",
+      "owner": "checks installed Endpoint lifecycle, manager isolation and Service exchange"
+    },
+    {
       "id": "e2e-source",
       "path": "tests/e2e/source",
       "profile": "process",

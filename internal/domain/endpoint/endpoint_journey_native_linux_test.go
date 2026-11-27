@@ -224,7 +224,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		// Keep the mutable root short: the application/administration Unix socket
 		// paths below it must fit the kernel sun_path bound (108 bytes).
 		guestRoot := filepath.Join("/var/lib/ardents", "journey-"+hex.EncodeToString(nonce[:6]))
-		script := fmt.Sprintf("cd %s/tests/e2e/endpoint && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=6m", repoRoot)
+		script := fmt.Sprintf("cd %s/tests/e2e/endpointinstalled && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=6m", repoRoot)
 		command := exec.Command("systemd-run", "-M", guest.Name(), "--pipe", "--quiet",
 			"--setenv=PATH=/usr/local/go/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"--setenv=GOTOOLCHAIN=local",
@@ -372,7 +372,7 @@ func journeyCompileParticipant(t *testing.T, repoRoot string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "journey.test")
 	cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_pair_native,document_worker_installed",
-		"-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "./tests/e2e/endpoint")
+		"-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "./tests/e2e/endpointinstalled")
 	cmd.Dir = repoRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("compile journey participant: %v: %s", err, out)
@@ -833,7 +833,7 @@ func journeyCrossHostBinaries(t *testing.T, repoRoot string) (string, string, st
 		}
 		return path
 	}
-	participant := build("journey.test", "./tests/e2e/endpoint", "test", "-c", "-tags=endpoint_pair_native,document_worker_installed", "-trimpath", "-buildvcs=false", "-ldflags=-w")
+	participant := build("journey.test", "./tests/e2e/endpointinstalled", "test", "-c", "-tags=endpoint_pair_native,document_worker_installed", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	next := build("ardents-next", "./cmd/ardents-next", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	workerPath := build("ardents-document-worker", "./internal/application/document/worker", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w")
 	return participant, next, workerPath

@@ -24,43 +24,43 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		switch source {
 		case "tests/e2e/node/command_usage_test.go":
 			return explicitImportResult(local == "internal/platform/systemd")
-		case "tests/e2e/node/offline_profile_inspection_test.go":
+		case "tests/e2e/admissioncli/offline_profile_inspection_test.go":
 			return explicitImportResult(local == "internal/domain/admission/issuerprofile" || local == "internal/domain/network/closedprofile")
-		case "tests/e2e/node/admission_authority_test.go", "tests/e2e/node/execution_route_refusal_test.go":
+		case "tests/e2e/admissioncli/admission_authority_test.go", "tests/e2e/node/execution_route_refusal_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/network/state" || local == "tests/e2e/node")
-		case "tests/e2e/node/admission_receiver_test.go":
+		case "tests/e2e/admissioncli/admission_receiver_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/issuerprofile" ||
 				local == "internal/domain/admission/receiving" || local == "tests/e2e/node")
-		case "tests/e2e/node/admission_interrupt_unix_test.go", "tests/e2e/node/admission_console_input_test.go":
+		case "tests/e2e/admissioncli/admission_interrupt_unix_test.go", "tests/e2e/admissioncli/admission_console_input_test.go":
 			return explicitImportResult(local == "tests/e2e/node")
 		case "tests/e2e/node/admission_cycle_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/issuance" ||
 				local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" ||
 				local == "internal/domain/admission/receiving" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "tests/e2e/node")
-		case "tests/e2e/node/route_bootstrap_linux_test.go":
+		case "tests/e2e/routeprocess/route_bootstrap_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network" || local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network")
-		case "tests/e2e/node/route_issuer_recovery_test.go":
+		case "tests/e2e/routeprocess/route_issuer_recovery_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/network/state" || local == "tests/epochfixture/network")
-		case "tests/e2e/node/route_quic_linux_test.go":
+		case "tests/e2e/routeprocess/route_quic_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network")
-		case "tests/e2e/node/route_registration_linux_test.go":
+		case "tests/e2e/routeprocess/route_registration_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network" || local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network")
-		case "tests/e2e/node/route_join_linux_test.go":
+		case "tests/e2e/routeprocess/route_join_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" ||
 				local == "internal/domain/hosting" || local == "internal/domain/network" || local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "tests/epochfixture/network")
-		case "tests/e2e/node/route_descriptor_linux_test.go":
+		case "tests/e2e/routeprocess/route_descriptor_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/endpoint/session" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network/epoch" || local == "internal/domain/network/state" || local == "internal/domain/reachability" || local == "tests/epochfixture/network")
-		case "tests/e2e/node/route_hello_linux_test.go":
+		case "tests/e2e/routeprocess/route_hello_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/stock" ||
 				local == "internal/domain/admission/token" || local == "internal/domain/endpoint/funding" || local == "internal/domain/hosting" ||
 				local == "internal/domain/network/state" || local == "tests/epochfixture/network")
@@ -71,7 +71,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		case "tests/e2e/node/hosting_work_lifecycle_linux_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/issuerprofile" ||
 				local == "internal/domain/admission/receiving" || local == "internal/domain/admission/token" || local == "internal/domain/hosting")
-		case "tests/e2e/node/source_installed_native_linux_test.go":
+		case "tests/e2e/nodeinstalled/source_installed_native_linux_test.go":
 			return explicitImportResult(local == "internal/domain/network/duty" || local == "internal/domain/network/epoch" ||
 				local == "internal/domain/network/source" || local == "internal/domain/network/source/servingdeclaration" ||
 				local == "internal/domain/network/state" || local == "internal/platform/systemd" ||
@@ -155,7 +155,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/allocation")
 	}
 	if localImport && source == "tests/e2e/node/processfixture/admission_console.go" {
-		return explicitImportResult(local == "internal/domain/admission")
+		return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/stock")
 	}
 	if localImport && source == "tests/e2e/node/provisioning_linux.go" {
 		return explicitImportResult(local == "internal/platform/artifacts" || local == "tests/epochfixture/network")
@@ -189,14 +189,14 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 	}
 	if localImport {
 		switch source {
-		case "tests/e2e/endpoint/endpoint_platform_native_linux_test.go":
+		case "tests/e2e/endpointinstalled/endpoint_platform_native_linux_test.go":
 			return explicitImportResult(local == "internal/domain/enrollment" || local == "internal/domain/release" ||
 				local == "internal/domain/release/endpoint" || local == "internal/domain/release/infrastructure/launch" ||
 				local == "internal/domain/endpoint/plan" || local == "internal/domain/endpoint/unit" ||
 				local == "tests/e2e/node" || local == "tests/e2e/source" || local == "tests/e2e/endpoint")
 		case "tests/e2e/endpoint/native_delivery_linux.go":
 			return explicitImportResult(local == "internal/domain/endpoint/plan" || local == "internal/domain/release/infrastructure/launch")
-		case "tests/e2e/endpoint/journey_participant_native_linux_test.go":
+		case "tests/e2e/endpointinstalled/journey_participant_native_linux_test.go":
 			return explicitImportResult(local == "tests/e2e/endpoint" || local == "internal/application/administration" || local == "internal/application/connection" || local == "internal/application/document")
 		case "tests/e2e/endpoint/journey_participant_linux.go":
 			return explicitImportResult(local == "internal/domain/network/state" || local == "tests/releasefixture")
@@ -212,13 +212,13 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 			return explicitImportResult(local == "internal/domain/publication" || local == "internal/domain/reachability")
 		case "tests/e2e/endpoint/recovery_custody_instance_linux.go", "tests/e2e/endpoint/service_instance_linux.go":
 			return explicitImportResult(local == "internal/domain/publication")
-		case "tests/e2e/endpoint/launch_replacement_native_linux_test.go":
+		case "tests/e2e/endpointinstalled/launch_replacement_native_linux_test.go":
 			return explicitImportResult(local == "tests/e2e/endpoint" || local == "tests/networkfixture")
-		case "tests/e2e/endpoint/endpoint_idle_native_linux_test.go", "tests/e2e/endpoint/endpoint_enrollment_migration_native_linux_test.go":
+		case "tests/e2e/endpointinstalled/endpoint_idle_native_linux_test.go", "tests/e2e/endpointinstalled/endpoint_enrollment_migration_native_linux_test.go":
 			return explicitImportResult(local == "tests/e2e/endpoint")
-		case "tests/e2e/endpoint/launch_refusals_native_linux_test.go":
+		case "tests/e2e/endpointinstalled/launch_refusals_native_linux_test.go":
 			return explicitImportResult(local == "tests/e2e/endpoint" || local == "tests/networkfixture")
-		case "tests/e2e/endpoint/endpoint_pair_native_linux_test.go", "tests/e2e/endpoint/release_process_test.go":
+		case "tests/e2e/endpointinstalled/endpoint_pair_native_linux_test.go", "tests/e2e/endpointcli/release_process_test.go":
 			return explicitImportResult(local == "tests/e2e/endpoint")
 		case "tests/e2e/endpoint/launch_roots_linux.go":
 			return explicitImportResult(local == "internal/domain/network/source")
@@ -402,10 +402,10 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 			return importDenied
 		}
 	}
-	if source == "tests/e2e/node/issuance_results_unix_test.go" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
+	if source == "tests/e2e/admissioncli/issuance_results_unix_test.go" && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return importAllowed
 	}
-	if source == "tests/e2e/node/issuance_telemetry_unix_test.go" || source == "tests/e2e/node/admission_unix_test.go" {
+	if source == "tests/e2e/admissioncli/issuance_telemetry_unix_test.go" || source == "tests/e2e/admissioncli/admission_unix_test.go" {
 		switch dependency {
 		case "go.opentelemetry.io/proto/otlp/collector/trace/v1", "go.opentelemetry.io/proto/otlp/collector/metrics/v1", "google.golang.org/protobuf/proto":
 			return importAllowed
@@ -413,15 +413,15 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 	}
 	if localImport {
 		switch source {
-		case "tests/e2e/node/offline_admission_fixture_unix.go", "tests/e2e/node/issuance_unix_test.go", "tests/e2e/node/issuance_commands_unix_test.go":
+		case "tests/e2e/node/offline_admission_fixture_unix.go", "tests/e2e/admissioncli/issuance_unix_test.go", "tests/e2e/admissioncli/issuance_commands_unix_test.go":
 			return explicitImportResult(local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/issuerprofile" || local == "internal/domain/admission/issuance")
-		case "tests/e2e/node/admission_fresh_roots_unix_test.go":
+		case "tests/e2e/admissioncli/admission_fresh_roots_unix_test.go":
 			return explicitImportResult(local == "tests/e2e/node" || local == "internal/domain/admission" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/issuance")
-		case "tests/e2e/node/admission_unix_test.go":
+		case "tests/e2e/admissioncli/admission_unix_test.go":
 			return explicitImportResult(local == "tests/e2e/node" || local == "internal/domain/admission/quota")
-		case "tests/e2e/node/issuance_results_unix_test.go":
+		case "tests/e2e/admissioncli/issuance_results_unix_test.go":
 			return explicitImportResult(local == "tests/e2e/node" || local == "internal/domain/admission/quota" || local == "internal/domain/admission/issuerprofile" || local == "internal/domain/admission/issuance")
-		case "tests/e2e/node/issuer_profile_unix_test.go":
+		case "tests/e2e/admissioncli/issuer_profile_unix_test.go":
 			return explicitImportResult(local == "internal/domain/admission/issuerprofile/signing")
 		}
 	}
@@ -458,7 +458,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 	}
 	if localImport && local == "tests/e2e/source" {
 		switch source {
-		case "internal/domain/endpoint/source_trust_native_linux_test.go", "tests/e2e/endpoint/endpoint_construction_linux_test.go":
+		case "internal/domain/endpoint/source_trust_native_linux_test.go", "tests/e2e/endpointcli/endpoint_construction_linux_test.go":
 			return importAllowed
 		default:
 			return importDenied

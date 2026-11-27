@@ -1,6 +1,11 @@
+github.com/dianabuilds/ardents-network/tests/e2e/admissioncli
 github.com/dianabuilds/ardents-network/tests/e2e/endpoint
+github.com/dianabuilds/ardents-network/tests/e2e/endpointcli
+github.com/dianabuilds/ardents-network/tests/e2e/endpointinstalled
 github.com/dianabuilds/ardents-network/tests/e2e/node
 github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture
+github.com/dianabuilds/ardents-network/tests/e2e/nodeinstalled
+github.com/dianabuilds/ardents-network/tests/e2e/routeprocess
 github.com/dianabuilds/ardents-network/tests/e2e/service
 github.com/dianabuilds/ardents-network/tests/e2e/service/fixturecommand/publish-app
 github.com/dianabuilds/ardents-network/tests/e2e/service/fixturecommand/stream-app

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 )
 
 // AdmissionReply is the bounded reply observed from the compiled Admission CLI.
@@ -147,4 +148,41 @@ func openAdmissionConsole(t testing.TB, binary, operation, config string, signal
 		return errors.Join(waitErr, closeErr)
 	}
 	return send, close, interrupt
+}
+
+// HolderCommand is the test request sent to the compiled holder console.
+type HolderCommand struct {
+	Operation    string               `json:"operation"`
+	Maxima       [3]uint32            `json:"maxima,omitzero"`
+	Digest       [32]byte             `json:"digest,omitzero"`
+	Payload      []byte               `json:"payload,omitzero"`
+	Intent       stock.IssuanceIntent `json:"intent,omitzero"`
+	Presentation stock.Presentation   `json:"presentation,omitzero"`
+	Class        uint8                `json:"class,omitzero"`
+	Receivers    [][32]byte           `json:"receivers,omitzero"`
+	Revision     uint64               `json:"revision,omitzero"`
+	Target       [32]byte             `json:"target,omitzero"`
+}
+
+// RunAdmissionCommand runs one Admission command through completion and decodes its reply.
+func RunAdmissionCommand(t testing.TB, binary, operation string, config any) AdmissionReply {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), binary, "admission", operation, "--config", WriteConfig(t, config))
+	var output, log bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &log
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("%s: %v %s %s", operation, err, &output, &log)
+	}
+	var reply AdmissionReply
+	if err := json.Unmarshal(output.Bytes(), &reply); err != nil {
+		t.Fatal(err, &output)
+	}
+	return reply
+}
+
+// OpenConfiguredAdmissionConsole writes the input for a bounded Admission console.
+func OpenConfiguredAdmissionConsole(t testing.TB, binary, operation string, config any) (func(any) AdmissionReply, func()) {
+	t.Helper()
+	return OpenAdmissionConsole(t, binary, operation, WriteConfig(t, config))
 }
