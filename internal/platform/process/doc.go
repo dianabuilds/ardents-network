@@ -1,33 +1,12 @@
-// Package process retains original kernel process observations of the separately
-// fixed installed Endpoint and Source. It owns proc-directory identity, start clock, executable,
-// arguments, credentials, cgroup membership and InvocationID observations.
-// Retain is root-only predecessor observation; RetainSelf is limited to the
-// actual non-root calling process. Kernel supplementary groups may contain only
-// its primary group. Expected facts grant no Release or startup authority.
-// Endpoint's Expected/Retain contract is unchanged; no public selector
-// generalizes a purpose. The transitional Source invocation orchestration
-// (SourceExpected/RetainSource/InterruptSource) is retired (ADR-0125, #604);
-// the platform-led Source lifecycle owns Source delivery. Installation checks
-// its original lease, bytes and manager around observations; cgroup separately
-// owns descendant join.
-// The transitional Forwarding invocation orchestration (ForwardingExpected,
-// RetainForwarding/RetainForwardingStop/RetainForwardingSelf and
-// InterruptForwarding) is retired (ADR-0125, #604 FJD stage D); the platform-led
-// Forwarding lifecycle owns process delivery and stop through the canonical
-// platform unit.
-// The transitional JOIN invocation orchestration (JoinExpected,
-// RetainJoin/RetainJoinStop/RetainJoinSelf and InterruptJoin) is retired
-// (ADR-0125, #604 FJD stage D); the platform-led JOIN lifecycle owns process
-// delivery and stop through the canonical platform unit.
-// The transitional Descriptor invocation orchestration (DescriptorExpected,
-// RetainDescriptor/RetainDescriptorStop/RetainDescriptorSelf and
-// InterruptDescriptor) is retired (ADR-0125, #604 FJD stage D); the platform-led
-// Descriptor lifecycle owns process delivery and stop through the canonical
-// platform unit.
-// CheckSourceRecoveryQuiescent independently excludes other processes of the
-// actual Source principal, including commands outside the fixed unit. State
-// separately retains semantic leases, manager and cgroup checks; procfs absence
-// is not successful original domain completion and grants no signal right.
+// Package process retains original Linux process observations for Endpoint
+// invocation and Source repair. Invocation observes the original proc
+// directory, start clock, executable, arguments, credentials, cgroup and
+// InvocationID. Retain observes the fixed predecessor as root. RetainSelf
+// observes the actual non-root caller.
+//
+// Source recovery separately checks that no other process retains the original
+// Source principal. State still owns retained leases and its original repair
+// decision. Observations grant no signal, Release or startup authority.
 package process
 
 import "errors"

@@ -86,7 +86,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/release/infrastructure/admission.go",
 			"internal/domain/release/infrastructure/source_release_inspection_linux.go",
 			"internal/domain/release/infrastructure/preparation_linux.go",
-			"internal/platform/cgroup/source_quiescence_linux.go",
+			"internal/platform/cgroup/quiescence_linux.go",
 			"internal/domain/network/state/source_inspection_linux.go",
 			"internal/domain/network/state/source_preparation_linux.go",
 			"internal/domain/endpoint/source_trust_preparation_linux.go",
@@ -132,7 +132,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/platform/artifacts/key_linux.go",
 			"internal/platform/systemd/node_slots_linux.go",
 			"internal/platform/systemd/node_slots_linux_test.go",
-			"internal/platform/systemd/source_object_linux_test.go",
+			"internal/platform/systemd/reference_objects_linux_test.go",
+			"internal/platform/systemd/manager_properties_linux.go",
 			"internal/platform/systemd/source_manager_linux.go",
 			"internal/domain/release/history_binding_linux.go",
 			"internal/domain/release/history_binding_linux_test.go",
@@ -148,6 +149,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		}
 		for _, name := range []string{
 			"internal/platform/systemd/infrastructure_unit_template.go",
+			"internal/platform/systemd/observation/properties.go",
+			"internal/platform/systemd/observation/properties_test.go",
 			"internal/domain/release/infrastructure/doc.go",
 			"internal/domain/release/infrastructure/artifact.go",
 			"internal/domain/release/infrastructure/artifact_test.go",
@@ -1052,6 +1055,17 @@ func successorImportAllowed(source, dependency string) bool {
 	const retiredSigner = "internal/nodeidentity"
 	const retiredInstallation = "internal/platform/installation"
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	if local == managerObservationPackage {
+		return managerObservationConsumer(source)
+	}
+	if path.Dir(source) == managerObservationPackage {
+		switch dependency {
+		case "bytes", "encoding/json", "errors", "io", "reflect", "strings", "testing", "unicode/utf8":
+			return true
+		default:
+			return false
+		}
+	}
 	if local == "internal/domain/connection/internal/instancetls" {
 		return source == "internal/domain/connection/initiator_authentication.go"
 	}
@@ -2057,10 +2071,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/enrollment.go" && localImport {
 		return local == "internal/domain/enrollment"
 	}
-	if dependency == modulePath+"/internal/platform/systemd" {
-		switch source {
-		}
-	}
 	if descriptorStartupImportAllowed(source, dependency) || descriptorInitialImportAllowed(source, dependency) {
 		return true
 	}
@@ -2130,19 +2140,14 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/network/state/introduction_repair_linux.go" || source == "internal/domain/network/state/forwarding_repair_linux.go" || source == "internal/domain/network/state/join_repair_linux.go" || source == "internal/domain/network/state/descriptor_repair_linux.go") && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
 		return true
 	}
-	// The one shared node-duty repair skeleton consumes the detached manager
-	// property vocabulary only; each role wrapper supplies its own per-unit
-	// cgroup quiescence closure (W4, #711).
-	if source == "internal/domain/network/state/node_duty_repair_linux.go" && dependency == modulePath+"/internal/platform/systemd" {
+	// The refusal controls pass only missing or unbound original handles.
+	if (source == "internal/domain/network/state/source_repair_linux_test.go" || source == "internal/domain/network/state/node_duty_repair_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
 	// The bounded Descriptor repair additionally clears an uncertain Store stage
 	// through the existing-only reachability mechanism under the same dead-unit
 	// proofs and retained leases; it grants no publication or runtime authority.
 	if source == "internal/domain/network/state/descriptor_repair_linux.go" && dependency == modulePath+"/internal/domain/reachability" {
-		return true
-	}
-	if (source == "internal/domain/network/state/source_repair_linux_test.go" || source == "internal/domain/network/state/node_duty_repair_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
 
@@ -2378,7 +2383,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/release":                             {"canonicaldigest", "durablefile", "pathcheck"},
 		"internal/domain/execution":                           {},
 		"internal/domain/execution/runtime":                   {"domain/execution", "domain/execution/worker"},
-		"internal/domain/execution/worker":                    {"platform/systemd", "domain/endpoint/unit", "canonicaldigest", "pathcheck"},
+		"internal/domain/execution/worker":                    {"domain/endpoint/unit", "canonicaldigest", "pathcheck"},
 		"internal/domain/release/endpoint":                    {"domain/enrollment", "domain/release"},
 		"internal/domain/release/infrastructure":              {"canonicaldigest", "domain/enrollment", "domain/release", "pathcheck"},
 		"internal/domain/release/infrastructure/launch":       {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
@@ -2390,7 +2395,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/platform/systemd":           {},
 		"internal/platform/process":           {"canonicaldigest", "pathcheck"},
 		"internal/domain/endpoint/generation": {"canonicaldigest", "durablefile", "pathcheck"},
-		"internal/domain/endpoint/unit":       {"canonicaldigest", "platform/systemd"},
+		"internal/domain/endpoint/unit":       {"canonicaldigest"},
 		"internal/domain/route":               {},
 		"internal/domain/route/ardp":          {},
 		"internal/domain/route/issuer":        {"domain/route/ardp", "domain/admission"},
@@ -2708,7 +2713,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/domain/admission/issuance" || owner == "internal/domain/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/platform/systemd/manager_reference_linux.go" || source == "internal/platform/systemd/node_slots_linux.go" || source == "internal/platform/systemd/forwarding_manager_linux.go" || source == "internal/platform/systemd/introduction_manager_linux.go" || source == "internal/platform/systemd/endpoint_reference_linux.go" || source == "internal/platform/systemd/startup_observation_linux.go" || source == "internal/platform/systemd/source_preflight_linux.go" || source == "internal/platform/systemd/source_stopped_linux.go" || source == "internal/platform/systemd/source_manager_linux.go" || source == "internal/platform/systemd/source_control_linux.go" || source == "internal/platform/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/platform/systemd/manager_reference_linux.go" || source == "internal/platform/systemd/node_slots_linux.go" || source == "internal/platform/systemd/forwarding_manager_linux.go" || source == "internal/platform/systemd/introduction_manager_linux.go" || source == "internal/platform/systemd/endpoint_reference_linux.go" || source == "internal/platform/systemd/startup_observation_linux.go" || source == "internal/platform/systemd/manager_properties_linux.go" || source == "internal/platform/systemd/source_manager_linux.go" || source == "internal/platform/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/domain/admission/spending" || owner == "internal/domain/network/duty" || owner == "internal/domain/network/state/durable") && dependency == "golang.org/x/sys/windows" {

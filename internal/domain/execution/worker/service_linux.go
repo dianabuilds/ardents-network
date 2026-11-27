@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit"
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // The calling Endpoint must be the installed system service's main process.
@@ -98,7 +98,7 @@ func verifyActivationSocket(ctx context.Context, inv inventory, role string) err
 	if err != nil {
 		return err
 	}
-	if err := unit.VerifyListeningSocketAt(systemd.Properties(observed), systemd.Properties(socket), role, inv.prefix+"-"+role+".socket", inv.socket(role)); err != nil {
+	if err := unit.VerifyListeningSocketAt(observation.Properties(observed), observation.Properties(socket), role, inv.prefix+"-"+role+".socket", inv.socket(role)); err != nil {
 		return errors.New("document worker effective activation socket differs")
 	}
 	return nil

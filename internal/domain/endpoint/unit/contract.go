@@ -9,11 +9,11 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
-type managerValue = systemd.Value
-type managerProperties = systemd.Properties
+type managerValue = observation.Value
+type managerProperties = observation.Properties
 
 // VerifyPlatformConfiguration admits the platform-managed Endpoint unit whose sole
 // ExecStartPre is the original privileged platform check (F-25 pre-start trust
@@ -29,16 +29,16 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 		return ErrNativeUnavailable
 	}
 	for name, wanted := range map[string]string{"Id": "ardents-endpoint.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-endpoint.service"} {
-		if !systemd.Matches(unit, name, "s", wanted) {
+		if !observation.Matches(unit, name, "s", wanted) {
 			return ErrBinding
 		}
 	}
-	if !systemd.Matches(unit, "DropInPaths", "as", []string{}) ||
-		!systemd.Contains(unit, "Requires", []string{"ardents-text-reader.socket", "ardents-text-publisher.socket"}) {
+	if !observation.Matches(unit, "DropInPaths", "as", []string{}) ||
+		!observation.Contains(unit, "Requires", []string{"ardents-text-reader.socket", "ardents-text-publisher.socket"}) {
 		return ErrBinding
 	}
 	for name, wanted := range map[string]string{"User": "ardents-endpoint", "Group": "ardents-endpoint", "Type": "exec", "WorkingDirectory": "/", "ProtectHome": "yes", "ProtectSystem": "strict", "KillMode": "control-group", "Restart": "no", "RootDirectory": "", "RootImage": ""} {
-		if !systemd.Matches(service, name, "s", wanted) {
+		if !observation.Matches(service, name, "s", wanted) {
 			return ErrBinding
 		}
 	}
@@ -46,33 +46,33 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 		if _, present := service[name]; !present && major == "249" {
 			continue
 		}
-		if !systemd.Matches(service, name, "s", wanted) {
+		if !observation.Matches(service, name, "s", wanted) {
 			return ErrBinding
 		}
 	}
 	paths := request.WritePaths
-	if !systemd.Matches(service, "UMask", "u", uint32(0077)) ||
-		!systemd.Matches(service, "SupplementaryGroups", "as", []string{}) || !systemd.Matches(service, "ReadWritePaths", "as", paths) {
+	if !observation.Matches(service, "UMask", "u", uint32(0077)) ||
+		!observation.Matches(service, "SupplementaryGroups", "as", []string{}) || !observation.Matches(service, "ReadWritePaths", "as", paths) {
 		return ErrBinding
 	}
 	for _, name := range []string{"CapabilityBoundingSet", "AmbientCapabilities", "LimitCORE"} {
-		if !systemd.Matches(service, name, "t", uint64(0)) {
+		if !observation.Matches(service, name, "t", uint64(0)) {
 			return ErrBinding
 		}
 	}
-	if !systemd.Matches(service, "TimeoutStopUSec", "t", uint64(30_000_000)) {
+	if !observation.Matches(service, "TimeoutStopUSec", "t", uint64(30_000_000)) {
 		return ErrBinding
 	}
 	for _, name := range []string{"NoNewPrivileges", "PrivateTmp", "ProtectControlGroups", "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs", "RestrictSUIDSGID", "LockPersonality", "MemoryAccounting", "CPUAccounting", "TasksAccounting"} {
-		if !systemd.Matches(service, name, "b", true) {
+		if !observation.Matches(service, name, "b", true) {
 			return ErrBinding
 		}
 	}
-	if !systemd.Matches(service, "RemainAfterExit", "b", false) {
+	if !observation.Matches(service, "RemainAfterExit", "b", false) {
 		return ErrBinding
 	}
 	for _, name := range []string{"ExecCondition", "ExecStartPost", "ExecReload", "ExecStop", "ExecStopPost"} {
-		if !systemd.Matches(service, name, "a(sasbttttuii)", []any{}) {
+		if !observation.Matches(service, name, "a(sasbttttuii)", []any{}) {
 			return ErrBinding
 		}
 	}
@@ -83,8 +83,8 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 	var parts []json.RawMessage
 	var allow bool
 	var names []string
-	if !found || families.Type != "(bas)" || systemd.Decode(families.Data, &parts) != nil || len(parts) != 2 ||
-		systemd.Decode(parts[0], &allow) != nil || !allow || systemd.Decode(parts[1], &names) != nil {
+	if !found || families.Type != "(bas)" || observation.Decode(families.Data, &parts) != nil || len(parts) != 2 ||
+		observation.Decode(parts[0], &allow) != nil || !allow || observation.Decode(parts[1], &names) != nil {
 		return ErrBinding
 	}
 	slices.Sort(names)
@@ -101,7 +101,7 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 func platformPreExecMatches(properties managerProperties, argv []string) bool {
 	value, found := properties["ExecStartPreEx"]
 	var entries [][]json.RawMessage
-	if !found || value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+	if !found || value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return false
 	}
 	for index, wanted := range []any{argv[0], argv, []string{"privileged", "no-env-expand"}} {
@@ -110,7 +110,7 @@ func platformPreExecMatches(properties managerProperties, argv []string) bool {
 			return false
 		}
 		var actual, expected any
-		if systemd.Decode(entries[0][index], &actual) != nil || systemd.Decode(encoded, &expected) != nil || !reflect.DeepEqual(actual, expected) {
+		if observation.Decode(entries[0][index], &actual) != nil || observation.Decode(encoded, &expected) != nil || !reflect.DeepEqual(actual, expected) {
 			return false
 		}
 	}
@@ -120,14 +120,14 @@ func platformPreExecMatches(properties managerProperties, argv []string) bool {
 func endpointExecObservation(properties managerProperties, root, generationDigest string) ([]json.RawMessage, error) {
 	value, found := properties["ExecStartEx"]
 	var entries [][]json.RawMessage
-	if !found || value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+	if !found || value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return nil, ErrBinding
 	}
 	program := path.Join(root, "generations", generationDigest, "ardents-linux-amd64")
 	for index, wanted := range map[int]any{0: program, 1: []string{program, "endpoint", "start-installed", root}, 2: []string{"no-env-expand"}} {
 		var actual, expected any
 		encoded, err := json.Marshal(wanted)
-		if err != nil || systemd.Decode(entries[0][index], &actual) != nil || systemd.Decode(encoded, &expected) != nil || !reflect.DeepEqual(actual, expected) {
+		if err != nil || observation.Decode(entries[0][index], &actual) != nil || observation.Decode(encoded, &expected) != nil || !reflect.DeepEqual(actual, expected) {
 			return nil, ErrBinding
 		}
 	}
@@ -152,9 +152,9 @@ func verifyRunningInvocation(unit, service managerProperties, request Configurat
 	if pid == 0 || invocation == [16]byte{} {
 		return ErrBinding
 	}
-	if !systemd.Matches(unit, "ActiveState", "s", "active") || !systemd.Matches(unit, "SubState", "s", "running") ||
-		!systemd.Matches(unit, "InvocationID", "ay", invocation) || !systemd.Matches(service, "MainPID", "u", pid) ||
-		!systemd.Matches(service, "ControlGroup", "s", "/system.slice/ardents-endpoint.service") {
+	if !observation.Matches(unit, "ActiveState", "s", "active") || !observation.Matches(unit, "SubState", "s", "running") ||
+		!observation.Matches(unit, "InvocationID", "ay", invocation) || !observation.Matches(service, "MainPID", "u", pid) ||
+		!observation.Matches(service, "ControlGroup", "s", "/system.slice/ardents-endpoint.service") {
 		return ErrBinding
 	}
 	parts, err := endpointExecObservation(service, request.InstallationRoot, generationDigest)
@@ -165,16 +165,16 @@ func verifyRunningInvocation(unit, service managerProperties, request Configurat
 	// exit result and status remain zero for this exact running invocation.
 	for _, index := range []int{3, 4} {
 		var number uint64
-		if systemd.Decode(parts[index], &number) != nil || number == 0 {
+		if observation.Decode(parts[index], &number) != nil || number == 0 {
 			return ErrBinding
 		}
 	}
 	for _, index := range []int{5, 6, 8, 9} {
-		if !systemd.Matches(managerProperties{"value": {Type: "t", Data: parts[index]}}, "value", "t", uint64(0)) {
+		if !observation.Matches(managerProperties{"value": {Type: "t", Data: parts[index]}}, "value", "t", uint64(0)) {
 			return ErrBinding
 		}
 	}
-	if !systemd.Matches(managerProperties{"value": {Type: "u", Data: parts[7]}}, "value", "u", pid) {
+	if !observation.Matches(managerProperties{"value": {Type: "u", Data: parts[7]}}, "value", "u", pid) {
 		return ErrBinding
 	}
 	return nil
@@ -183,7 +183,7 @@ func verifyRunningInvocation(unit, service managerProperties, request Configurat
 // VerifyNoJob checks the typed fixed-unit Job property for a queued operation.
 // MainPID zero or inactive alone cannot establish that no job remains queued.
 func VerifyNoJob(unit managerProperties) error {
-	if !systemd.Matches(unit, "Job", "(uo)", []any{uint32(0), "/"}) {
+	if !observation.Matches(unit, "Job", "(uo)", []any{uint32(0), "/"}) {
 		return ErrBinding
 	}
 	return nil
@@ -215,24 +215,24 @@ func verifyActivationSocketState(unit, socket managerProperties, role, active, s
 	}
 	name := socketName
 	for key, wanted := range map[string]string{"Id": name, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + name, "ActiveState": active, "SubState": substate} {
-		if !systemd.Matches(unit, key, "s", wanted) {
+		if !observation.Matches(unit, key, "s", wanted) {
 			return ErrBinding
 		}
 	}
-	if !systemd.Matches(unit, "DropInPaths", "as", []string{}) ||
-		!systemd.Matches(unit, "PartOf", "as", []string{"ardents-endpoint.service"}) ||
-		!systemd.Matches(socket, "Accept", "b", true) ||
-		!systemd.Matches(socket, "SocketUser", "s", "ardents-endpoint") ||
-		!systemd.Matches(socket, "SocketGroup", "s", "ardents-endpoint") ||
-		!systemd.Matches(socket, "SocketMode", "u", uint32(0600)) ||
-		!systemd.Matches(socket, "DirectoryMode", "u", uint32(0711)) ||
-		!systemd.Matches(socket, "MaxConnections", "u", uint32(64)) ||
-		!systemd.Matches(socket, "RemoveOnStop", "b", true) ||
-		!systemd.Matches(socket, "Listen", "a(ss)", [][2]string{{"Stream", listenPath}}) {
+	if !observation.Matches(unit, "DropInPaths", "as", []string{}) ||
+		!observation.Matches(unit, "PartOf", "as", []string{"ardents-endpoint.service"}) ||
+		!observation.Matches(socket, "Accept", "b", true) ||
+		!observation.Matches(socket, "SocketUser", "s", "ardents-endpoint") ||
+		!observation.Matches(socket, "SocketGroup", "s", "ardents-endpoint") ||
+		!observation.Matches(socket, "SocketMode", "u", uint32(0600)) ||
+		!observation.Matches(socket, "DirectoryMode", "u", uint32(0711)) ||
+		!observation.Matches(socket, "MaxConnections", "u", uint32(64)) ||
+		!observation.Matches(socket, "RemoveOnStop", "b", true) ||
+		!observation.Matches(socket, "Listen", "a(ss)", [][2]string{{"Stream", listenPath}}) {
 		return ErrBinding
 	}
 	for _, name := range []string{"ExecStartPre", "ExecStartPost", "ExecStopPre", "ExecStopPost"} {
-		if !systemd.Matches(socket, name, "a(sasbttttuii)", []any{}) {
+		if !observation.Matches(socket, name, "a(sasbttttuii)", []any{}) {
 			return ErrBinding
 		}
 	}

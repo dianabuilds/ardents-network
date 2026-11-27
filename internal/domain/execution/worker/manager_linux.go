@@ -14,14 +14,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // value retains the D-Bus signature: an absent, null or differently
 // typed hardening property never becomes a zero-value accepting observation.
-type value = systemd.Value
+type value = observation.Value
 
-type properties systemd.Properties
+type properties observation.Properties
 
 func validUnit(inv inventory, unit, role string) bool {
 	if role != "reader" && role != "publisher" {

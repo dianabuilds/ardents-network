@@ -42,7 +42,7 @@ func writeGeneration(root, name string, raw []byte) error {
 	if err := os.Rename(path, final); err != nil {
 		return err
 	}
-	return syncDirectory(root)
+	return durablefile.SyncDirectory(root)
 }
 
 func replaceFile(root, prefix, name, content string) error {

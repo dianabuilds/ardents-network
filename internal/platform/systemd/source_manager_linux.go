@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // SourceObservation is a fresh detached complete fixed-unit observation.
@@ -15,7 +17,7 @@ import (
 type SourceObservation struct {
 	Manager, Version string
 	UnitPaths        []string
-	Unit, Service    Properties
+	Unit, Service    observation.Properties
 }
 
 // SourceRuntime owns its own original read-only manager connection. It has no

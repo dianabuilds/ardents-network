@@ -9,6 +9,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const (
@@ -95,7 +97,7 @@ func (root *Root) CommitClosedProfile(state ClosedProfileState, profile []byte) 
 func standardClosedProfileByteOps() closedProfileByteOps {
 	return closedProfileByteOps{
 		write: (*os.File).Write, syncFile: (*os.File).Sync, closeFile: (*os.File).Close,
-		syncExisting: syncClosedProfileFile, syncDirectory: syncDirectory,
+		syncExisting: syncClosedProfileFile, syncDirectory: durablefile.SyncDirectory,
 	}
 }
 
@@ -191,7 +193,7 @@ func syncClosedProfileFile(path string) error {
 var ErrClosedProfileStateSyncUncertain = errors.New("closed profile state durability is uncertain after rename")
 
 func replaceClosedProfileState(root, name string, raw []byte) error {
-	return replaceClosedProfileStateWithSync(root, name, raw, syncDirectory)
+	return replaceClosedProfileStateWithSync(root, name, raw, durablefile.SyncDirectory)
 }
 
 // The injected sync isolates the post-rename boundary in deterministic tests.

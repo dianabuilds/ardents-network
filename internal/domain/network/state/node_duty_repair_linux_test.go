@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // Detached policy fixtures grant no manager/cgroup proof. The public adapter
@@ -16,18 +17,18 @@ import (
 // and root count, refuses every sibling role's facts, and preserves the causal
 // stopped-policy refusal matrix.
 
-func nodeDutyRepairPolicyFixture(t *testing.T, role string) (systemd.Properties, systemd.Properties) {
+func nodeDutyRepairPolicyFixture(t *testing.T, role string) (observation.Properties, observation.Properties) {
 	t.Helper()
-	property := func(signature string, value any) systemd.Value {
+	property := func(signature string, value any) observation.Value {
 		raw, err := json.Marshal(value)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return systemd.Value{Type: signature, Data: raw}
+		return observation.Value{Type: signature, Data: raw}
 	}
 	unitName := "ardents-" + role + ".service"
-	unit := systemd.Properties{}
-	service := systemd.Properties{}
+	unit := observation.Properties{}
+	service := observation.Properties{}
 	for name, value := range map[string]string{"Id": unitName, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + unitName, "ActiveState": "failed", "SubState": "failed"} {
 		unit[name] = property("s", value)
 	}
@@ -53,12 +54,12 @@ func TestNodeDutyRepairStoppedPolicyRoleEquivalence(t *testing.T) {
 				t.Fatal(err)
 			}
 			// The exact per-unit cgroup path is admitted alongside the empty one.
-			property := func(signature string, value any) systemd.Value {
+			property := func(signature string, value any) observation.Value {
 				raw, err := json.Marshal(value)
 				if err != nil {
 					t.Fatal(err)
 				}
-				return systemd.Value{Type: signature, Data: raw}
+				return observation.Value{Type: signature, Data: raw}
 			}
 			before := service["ControlGroup"]
 			service["ControlGroup"] = property("s", "/system.slice/ardents-"+entry.name+".service")
@@ -128,7 +129,7 @@ func TestNodeDutyRepairDeclarationRoleEquivalence(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					facts := systemd.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: raw}}
+					facts := observation.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: raw}}
 					// The caller-supplied declaration stays the canonical plan; a
 					// unit loaded with a different plan must refuse (as in the
 					// Source declaration oracle).
@@ -145,7 +146,7 @@ func TestNodeDutyRepairDeclarationRoleEquivalence(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						siblingFacts := systemd.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: siblingRaw}}
+						siblingFacts := observation.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: siblingRaw}}
 						if nodeDutyRepairDeclaration(siblingFacts, plan, entry) {
 							t.Fatal("sibling role declaration admitted:", sibling.name)
 						}

@@ -423,9 +423,10 @@ ledger.
 Private installed Startup reads fresh fixed manager facts on one bounded native
 connection per observation, retaining the unique manager across its original
 lifetime. Both complete property rounds, original file/process reobservations
-and physical cancellation remain distinct checks. Typed facts preserve original
-wire signatures and grant neither a cache nor startup authority; only the
-Installation consumer compares its original generation and invocation.
+and physical cancellation remain distinct checks. The portable `platform/systemd/observation` package preserves original wire
+signatures in detached facts. Endpoint unit policy checks those facts against
+its admitted generation and invocation. The original manager retains physical
+custody through both observation rounds and their cancellation.
 Original interruption preserves its caller's exclusive cancellation cause;
 independent physical failures remain failures. Finishing an already verified
 decoder frame after socket Close grants no manager or startup authority.
@@ -558,7 +559,8 @@ consumer is admitted by the platform path in `cmd/ardents-next`.
 | Canonical offline preparation/signing | Command composition retains original protected inputs, reviewed commitments and finite output custody. Network authenticates Records/Epoch/profile/State; Admission owns token keys/quota/results; Release authenticates signed software. Unsigned preparation, fixture keys or signatures alone grant no current runtime or installed qualification |
 
 Each fixed-purpose manager adapter opens its own original connection and closed
-vocabulary. Read-only clients cannot load, reload, start or stop; mutation
+vocabulary. The fixed-role kernel checks use the one cgroup quiescence owner,
+with a separate entry point for each literal unit. Read-only clients cannot load, reload, start or stop; mutation
 mechanisms retain their original finite attempts and joins. Shared source code
 is not shared connection, lease, authority or live runtime custody. Source is not
 a Node role, and Source input/State preparation grants no receiving duty.

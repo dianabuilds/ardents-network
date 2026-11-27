@@ -38,7 +38,6 @@ type Invocation struct {
 	program                     string
 	arguments, placement        string
 	programDevice, programInode uint64
-	namespaces                  map[string]*os.File // separately fixed Node/Source original kernel objects
 }
 
 // RetainSelf observes only the calling non-root service process. It cannot
@@ -139,7 +138,7 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 	if pin == nil || ctx == nil || pin.root == nil || pin.identity == nil {
 		return errInput
 	}
-	if err := pin.observeNamespaces(ctx); err != nil {
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	before, err := pin.root.Stat(".")
@@ -202,18 +201,14 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 		return errors.Join(errBinding, err, identityErr)
 	}
 	pin.started = started
-	return pin.observeNamespaces(ctx)
+	return ctx.Err()
 }
 
 func (pin *Invocation) Close() error {
 	if pin == nil || pin.root == nil {
 		return nil
 	}
-	var err error
-	for _, file := range pin.namespaces {
-		err = errors.Join(err, file.Close())
-	}
-	err = errors.Join(err, pin.root.Close())
+	err := pin.root.Close()
 	pin.root = nil
 	return err
 }

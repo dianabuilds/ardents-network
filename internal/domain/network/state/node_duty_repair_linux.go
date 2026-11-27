@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // nodeDutyRepairNative binds one node-duty role's portable repair descriptor to
@@ -29,7 +29,7 @@ import (
 // installed qualification.
 type nodeDutyRepairNative struct {
 	role       nodeDutyRepairRole
-	observe    func() (systemd.Properties, systemd.Properties, error)
+	observe    func() (observation.Properties, observation.Properties, error)
 	quiesce    func(context.Context) error
 	rootCount  int
 	storeStage func(*epoch.Decision, []string) error
@@ -190,15 +190,15 @@ func checkNodeDutyRepairQuiescence(ctx context.Context, native nodeDutyRepairNat
 	return native.quiesce(ctx)
 }
 
-func nodeDutyRepairDeclaration(service systemd.Properties, declaration string, role nodeDutyRepairRole) bool {
+func nodeDutyRepairDeclaration(service observation.Properties, declaration string, role nodeDutyRepairRole) bool {
 	value := service["ExecStartEx"]
 	var rows [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
+	if value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
 		return false
 	}
 	var program string
 	var args, flags []string
-	if systemd.Decode(rows[0][0], &program) != nil || systemd.Decode(rows[0][1], &args) != nil || systemd.Decode(rows[0][2], &flags) != nil {
+	if observation.Decode(rows[0][0], &program) != nil || observation.Decode(rows[0][1], &args) != nil || observation.Decode(rows[0][2], &flags) != nil {
 		return false
 	}
 	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 5 || args[0] != program || args[1] != "node" || args[2] != role.name || args[3] != "--retained-config" || args[4] != declaration {
@@ -207,44 +207,44 @@ func nodeDutyRepairDeclaration(service systemd.Properties, declaration string, r
 	return len(flags) == 1 && flags[0] == "no-env-expand"
 }
 
-func nodeDutyRepairStoppedPolicy(unit, service systemd.Properties, writableRoots []string, role nodeDutyRepairRole) error {
+func nodeDutyRepairStoppedPolicy(unit, service observation.Properties, writableRoots []string, role nodeDutyRepairRole) error {
 	unitName := "ardents-" + role.name + ".service"
 	for name, value := range map[string]string{"Id": unitName, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + unitName} {
-		if !systemd.Matches(unit, name, "s", value) {
+		if !observation.Matches(unit, name, "s", value) {
 			return role.unavailable
 		}
 	}
-	if !(systemd.Matches(unit, "ActiveState", "s", "inactive") && systemd.Matches(unit, "SubState", "s", "dead")) &&
-		!(systemd.Matches(unit, "ActiveState", "s", "failed") && systemd.Matches(unit, "SubState", "s", "failed")) {
+	if !(observation.Matches(unit, "ActiveState", "s", "inactive") && observation.Matches(unit, "SubState", "s", "dead")) &&
+		!(observation.Matches(unit, "ActiveState", "s", "failed") && observation.Matches(unit, "SubState", "s", "failed")) {
 		return role.unavailable
 	}
-	if !systemd.Matches(unit, "DropInPaths", "as", []string{}) || !systemd.Matches(unit, "TriggeredBy", "as", []string{}) {
+	if !observation.Matches(unit, "DropInPaths", "as", []string{}) || !observation.Matches(unit, "TriggeredBy", "as", []string{}) {
 		return role.unavailable
 	}
 	for name, value := range map[string]string{"User": "ardents-node", "Group": "ardents-node", "KillMode": "control-group", "Restart": "no", "ProtectSystem": "strict"} {
-		if !systemd.Matches(service, name, "s", value) {
+		if !observation.Matches(service, name, "s", value) {
 			return role.unavailable
 		}
 	}
 	for _, name := range []string{"MainPID", "ControlPID"} {
-		if !systemd.Matches(service, name, "u", uint32(0)) {
+		if !observation.Matches(service, name, "u", uint32(0)) {
 			return role.unavailable
 		}
 	}
 	for _, name := range []string{"NoNewPrivileges", "ProtectControlGroups"} {
-		if !systemd.Matches(service, name, "b", true) {
+		if !observation.Matches(service, name, "b", true) {
 			return role.unavailable
 		}
 	}
 	for _, name := range []string{"SendSIGKILL", "DynamicUser", "Delegate"} {
-		if !systemd.Matches(service, name, "b", false) {
+		if !observation.Matches(service, name, "b", false) {
 			return role.unavailable
 		}
 	}
-	if !systemd.Matches(service, "ReadWritePaths", "as", writableRoots) {
+	if !observation.Matches(service, "ReadWritePaths", "as", writableRoots) {
 		return role.unavailable
 	}
-	if !systemd.Matches(service, "ControlGroup", "s", "") && !systemd.Matches(service, "ControlGroup", "s", "/system.slice/"+unitName) {
+	if !observation.Matches(service, "ControlGroup", "s", "") && !observation.Matches(service, "ControlGroup", "s", "/system.slice/"+unitName) {
 		return role.unavailable
 	}
 	return nil

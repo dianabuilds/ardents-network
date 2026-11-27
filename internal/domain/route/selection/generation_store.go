@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // storeGrammar parameterizes the one durable generation-store mechanism shared
@@ -135,7 +137,7 @@ func commitStoreGeneration[T any](root string, retained T, retainedName string, 
 	if _, err := readStoreGeneration(root, name, g); err != nil {
 		return zero, "", err
 	}
-	if err := replaceWatermark(root, g.generation(next), name); err != nil {
+	if err := durablefile.ReplaceWatermark(root, g.generation(next), name, "entry generation watermark value is invalid"); err != nil {
 		return zero, "", err
 	}
 	if err := replaceCurrent(root, name); err != nil {

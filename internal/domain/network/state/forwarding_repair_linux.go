@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // RepairRetainedForwardingProducer explicitly abandons a dead platform
@@ -23,7 +24,7 @@ import (
 func RepairRetainedForwardingProducer(ctx context.Context, input Config, original *systemd.ForwardingRuntime, declaration string, writableRoots []string) error {
 	native := forwardingRepairNative
 	if original != nil {
-		native.observe = func() (systemd.Properties, systemd.Properties, error) {
+		native.observe = func() (observation.Properties, observation.Properties, error) {
 			facts, err := original.Observe()
 			return facts.Unit, facts.Service, err
 		}

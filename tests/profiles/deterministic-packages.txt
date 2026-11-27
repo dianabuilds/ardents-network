@@ -78,6 +78,7 @@ github.com/dianabuilds/ardents-network/internal/domain/execution
 github.com/dianabuilds/ardents-network/internal/domain/execution/runtime
 github.com/dianabuilds/ardents-network/internal/platform/cgroup
 github.com/dianabuilds/ardents-network/internal/platform/systemd
+github.com/dianabuilds/ardents-network/internal/platform/systemd/observation
 github.com/dianabuilds/ardents-network/internal/platform/process
 github.com/dianabuilds/ardents-network/internal/domain/endpoint/generation
 github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit

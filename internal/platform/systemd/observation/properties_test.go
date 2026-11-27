@@ -1,4 +1,4 @@
-package systemd
+package observation
 
 import (
 	"encoding/json"

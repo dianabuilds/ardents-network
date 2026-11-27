@@ -7,15 +7,17 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // These typed fixtures test only the pure comparison of loaded policy. They
 // supply no actual manager, root precheck, Release proof or installed acceptance.
-func infrastructureLoadedFixture(p InfrastructureUnit) (Properties, Properties) {
-	u, s := Properties{}, Properties{}
-	set := func(dst Properties, name, signature string, value any) {
+func infrastructureLoadedFixture(p InfrastructureUnit) (observation.Properties, observation.Properties) {
+	u, s := observation.Properties{}, observation.Properties{}
+	set := func(dst observation.Properties, name, signature string, value any) {
 		raw, _ := json.Marshal(value)
-		dst[name] = Value{Type: signature, Data: raw}
+		dst[name] = observation.Value{Type: signature, Data: raw}
 	}
 	for name, value := range map[string]string{"Id": "ardents-" + p.Role + ".service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-" + p.Role + ".service", "UnitFileState": "static", "ActiveState": "activating", "SubState": "start-pre"} {
 		set(u, name, "s", value)
@@ -66,9 +68,9 @@ func TestPlatformPrestartRejectsDifferentLoadedInvocationAndPolicy(t *testing.T)
 	for _, scenario := range []string{"healthy", "foreign-control-pid", "dropin", "unconfined", "automatic-restart", "forced-kill", "wrong-config", "ignored-precheck", "extra-command", "writable-trust", "foreign-address-family"} {
 		t.Run(scenario, func(t *testing.T) {
 			u, s := infrastructureLoadedFixture(p)
-			set := func(dst Properties, name, sig string, value any) {
+			set := func(dst observation.Properties, name, sig string, value any) {
 				raw, _ := json.Marshal(value)
-				dst[name] = Value{Type: sig, Data: raw}
+				dst[name] = observation.Value{Type: sig, Data: raw}
 			}
 			expected := p
 			switch scenario {
@@ -85,7 +87,7 @@ func TestPlatformPrestartRejectsDifferentLoadedInvocationAndPolicy(t *testing.T)
 			case "wrong-config":
 				expected.Manifest = "/etc/ardents/other.json"
 			case "ignored-precheck":
-				s["ExecStartPreEx"] = Value{Type: "a(sasasttttuii)", Data: bytes.Replace(s["ExecStartPreEx"].Data, []byte(`"privileged"`), []byte(`"ignore-failure"`), 1)}
+				s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: bytes.Replace(s["ExecStartPreEx"].Data, []byte(`"privileged"`), []byte(`"ignore-failure"`), 1)}
 			case "extra-command":
 				set(s, "ExecStartPost", "a(sasbttttuii)", []any{[]any{"/bin/true"}})
 			case "writable-trust":

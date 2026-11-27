@@ -6,9 +6,10 @@ import (
 	"errors"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
-type managerProperties = systemd.Properties
+type managerProperties = observation.Properties
 
 func unitObservationError(err error) error {
 	if err == nil {
@@ -44,15 +45,15 @@ func verifyPlatformRunningEndpointProperties(version string, unit, service manag
 func platformCheckBinding(service managerProperties) (checkProgram, manifest, pin string, err error) {
 	value, found := service["ExecStartPreEx"]
 	var entries [][]json.RawMessage
-	if !found || value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+	if !found || value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return "", "", "", ErrBinding
 	}
 	var argv []string
-	if systemd.Decode(entries[0][1], &argv) != nil || len(argv) != 5 || argv[1] != "platform" || argv[2] != "check" {
+	if observation.Decode(entries[0][1], &argv) != nil || len(argv) != 5 || argv[1] != "platform" || argv[2] != "check" {
 		return "", "", "", ErrBinding
 	}
 	var program string
-	if systemd.Decode(entries[0][0], &program) != nil || program != argv[0] {
+	if observation.Decode(entries[0][0], &program) != nil || program != argv[0] {
 		return "", "", "", ErrBinding
 	}
 	return argv[0], argv[3], argv[4], nil

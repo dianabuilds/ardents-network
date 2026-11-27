@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // JoinObservation is detached complete fixed-unit data. Installation must
@@ -15,7 +17,7 @@ import (
 type JoinObservation struct {
 	Manager, Version string
 	UnitPaths        []string
-	Unit, Service    Properties
+	Unit, Service    observation.Properties
 }
 
 // JoinRuntime owns an independently authenticated read-only connection.
