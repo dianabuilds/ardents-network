@@ -86,7 +86,7 @@ func (route *publisherRouteAcquisition) close() {
 // Stream.mu admits one original interruption/join and clock for both physical
 // actors, including simultaneous losses and peer proposals before local loss.
 func (stream *Stream) startRecoveryLocked(records *attachmentRecords, cause error) error {
-	if stream.records != records || records.generation != stream.send.generation || (stream.publisherRoute == nil && stream.initiatorRoute == nil) {
+	if stream.records != records || records.generation != stream.transfer.Generation() || (stream.publisherRoute == nil && stream.initiatorRoute == nil) {
 		return errIntegrity
 	}
 	if err := stream.checkLocked(); err != nil {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"testing/synctest"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 )
 
 // Local cancellation precedes the interrupted actor's return, even if the
@@ -73,12 +75,20 @@ func TestAttachmentRecordsJoinBothOriginalActors(t *testing.T) {
 func TestStaleAttachmentWriterCannotChangeCurrentLedgers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream := &Stream{ctx: ctx, cancel: cancel, send: &sendLedger{generation: 2, end: 7, next: 3}, terminal: &terminalExchange{generation: 2}}
+	flow, err := transfer.New(2, 7, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flow.Write([]byte("pending")); err != nil {
+		t.Fatal(err)
+	}
+	before := flow.Progress()
+	stream := &Stream{ctx: ctx, cancel: cancel, transfer: flow}
 	current := &attachmentRecords{generation: 2}
 	stream.records = current
 	stale := &attachmentRecords{generation: 1, writerDone: make(chan struct{})}
 	stream.writeRecords(stale)
-	if !errors.Is(stream.failure, errIntegrity) || stream.send.end != 7 || stream.send.next != 3 || stream.terminal.generation != 2 || stream.records != current {
+	if !errors.Is(stream.failure, errIntegrity) || flow.ReplayOffsets().SendEnd != 7 || flow.Progress() != before || flow.Generation() != 2 || stream.records != current {
 		t.Fatal("stale physical writer changed replacement state", stream.failure)
 	}
 	select {
@@ -96,12 +106,20 @@ func TestStaleAttachmentWriterCannotChangeCurrentLedgers(t *testing.T) {
 func TestRetiringAttachmentWriterCannotFailReplacement(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	stream := &Stream{ctx: ctx, cancel: cancel, send: &sendLedger{generation: 2, end: 7, next: 3}, terminal: &terminalExchange{generation: 2}}
+	flow, err := transfer.New(2, 7, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flow.Write([]byte("pending")); err != nil {
+		t.Fatal(err)
+	}
+	before := flow.Progress()
+	stream := &Stream{ctx: ctx, cancel: cancel, transfer: flow}
 	current := &attachmentRecords{generation: 2}
 	stream.records = current
 	previous := &attachmentRecords{generation: 1, retiring: true, writerDone: make(chan struct{})}
 	stream.writeRecords(previous)
-	if stream.failure != nil || ctx.Err() != nil || stream.send.end != 7 || stream.send.next != 3 || stream.records != current {
+	if stream.failure != nil || ctx.Err() != nil || flow.ReplayOffsets().SendEnd != 7 || flow.Progress() != before || stream.records != current {
 		t.Fatal("retiring original actor failed or changed its replacement", stream.failure)
 	}
 	select {

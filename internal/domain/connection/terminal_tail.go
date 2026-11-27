@@ -16,7 +16,7 @@ type observedRecordRead struct {
 // renew every Terminal proof before its clean Route close can retire the tail.
 // The caller separately checks live authority and that exact child's witness.
 func (stream *Stream) terminalTailCompleteLocked() bool {
-	return stream.settled && stream.terminal.complete(stream.send.base)
+	return stream.settled && stream.transfer.TerminalComplete()
 }
 
 func (read *observedRecordRead) Read(body []byte) (int, error) {

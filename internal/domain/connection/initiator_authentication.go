@@ -13,7 +13,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
-	"github.com/dianabuilds/ardents-network/internal/domain/connection/internal/instancetls"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
@@ -161,7 +160,7 @@ func newInstanceTLSClient(conn net.Conn, expected [32]byte) *tls.Conn {
 		CurvePreferences:   transport.ClosedProfileKeyExchangeGroups(),
 		InsecureSkipVerify: true, // The independently bound Instance is the verifier.
 		VerifyConnection: func(state tls.ConnectionState) error {
-			return instancetls.VerifyPeer(state, expected)
+			return verifyInstancePeer(state, expected)
 		},
 	})
 }

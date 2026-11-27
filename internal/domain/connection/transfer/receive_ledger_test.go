@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"bytes"
@@ -43,7 +43,7 @@ func TestReceiveReplayAcrossReplacementHasOneApplicationEffect(t *testing.T) {
 	if n, err := ledger.read(rest); n != 0 || !errors.Is(err, io.EOF) {
 		t.Fatal("authenticated Terminal did not close its direction", n, err)
 	}
-	if err := ledger.accept(wire.Data{AttachmentGeneration: 2, Offset: 9, Payload: []byte("j")}); !errors.Is(err, errIntegrity) {
+	if err := ledger.accept(wire.Data{AttachmentGeneration: 2, Offset: 9, Payload: []byte("j")}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("fresh Data accepted after Terminal", err)
 	}
 }
@@ -64,7 +64,7 @@ func TestReceiveContradictionHasNoQueueOrCounterEffect(t *testing.T) {
 			if err := ledger.accept(wire.Data{AttachmentGeneration: 1, Payload: []byte("abc")}); err != nil {
 				t.Fatal(err)
 			}
-			if err := ledger.accept(test.value); !errors.Is(err, errIntegrity) {
+			if err := ledger.accept(test.value); !errors.Is(err, ErrIntegrity) {
 				t.Fatal("contradiction accepted", err)
 			}
 			if ledger.next != 3 || ledger.readAt != 0 || string(ledger.data) != "abc" {
@@ -83,7 +83,7 @@ func TestReceiveCapacityRetainsUnreadBytesAndBoundedReplay(t *testing.T) {
 		}
 	}
 	fresh := wire.Data{AttachmentGeneration: 1, Offset: logicalQueueLimit, Payload: []byte{7}}
-	if err := ledger.accept(fresh); !errors.Is(err, errBackpressure) {
+	if err := ledger.accept(fresh); !errors.Is(err, ErrBackpressure) {
 		t.Fatal("full unread queue accepted bytes", err)
 	}
 	if ledger.next != logicalQueueLimit || ledger.base != 0 || len(ledger.data) != logicalQueueLimit || cap(ledger.data) > logicalQueueLimit {
@@ -99,7 +99,7 @@ func TestReceiveCapacityRetainsUnreadBytesAndBoundedReplay(t *testing.T) {
 	if ledger.base != 1 || ledger.readAt != wire.MaximumDataBytes || len(ledger.data) != logicalQueueLimit || cap(ledger.data) > logicalQueueLimit {
 		t.Fatal("recent history and pending bytes exceed one bounded buffer")
 	}
-	if err := ledger.accept(wire.Data{AttachmentGeneration: 1, Payload: []byte{42}}); !errors.Is(err, errIntegrity) {
+	if err := ledger.accept(wire.Data{AttachmentGeneration: 1, Payload: []byte{42}}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("unverifiable aged replay accepted", err)
 	}
 	if err := ledger.accept(wire.Data{AttachmentGeneration: 1, Offset: 1, Payload: chunk}); err != nil {
@@ -113,17 +113,17 @@ func TestReceiveReplacementCannotResetWorkOrHideMissingRange(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, replacement := range [][3]uint64{{2, 4, 4}, {2, 0, 2}, {3, 0, 3}, {2, 0, 4}} {
-		if err := ledger.replace(replacement[0], replacement[1], replacement[2]); !errors.Is(err, errIntegrity) || ledger.generation != 1 {
+		if err := ledger.replace(replacement[0], replacement[1], replacement[2]); !errors.Is(err, ErrIntegrity) || ledger.generation != 1 {
 			t.Fatal("replacement lost original range or work bound", replacement, err)
 		}
 	}
-	if err := ledger.closeInput(wire.Terminal{AttachmentGeneration: 1, Offset: 4}); !errors.Is(err, errIntegrity) || ledger.terminal {
+	if err := ledger.closeInput(wire.Terminal{AttachmentGeneration: 1, Offset: 4}); !errors.Is(err, ErrIntegrity) || ledger.terminal {
 		t.Fatal("Terminal hid a missing range", err)
 	}
 	if err := ledger.replace(2, 0, 3); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledger.accept(wire.Data{AttachmentGeneration: 2, Offset: 3, Payload: []byte("d")}); !errors.Is(err, errIntegrity) {
+	if err := ledger.accept(wire.Data{AttachmentGeneration: 2, Offset: 3, Payload: []byte("d")}); !errors.Is(err, ErrIntegrity) {
 		t.Fatal("replacement reset workload counter", err)
 	}
 }
@@ -136,7 +136,7 @@ func TestReceiveReplacementPreservesAuthenticatedTerminal(t *testing.T) {
 	if err := ledger.closeInput(wire.Terminal{AttachmentGeneration: 1, Offset: 3}); err != nil {
 		t.Fatal(err)
 	}
-	if err := ledger.replace(2, 0, 4); !errors.Is(err, errIntegrity) || ledger.generation != 1 {
+	if err := ledger.replace(2, 0, 4); !errors.Is(err, ErrIntegrity) || ledger.generation != 1 {
 		t.Fatal("replacement admitted bytes beyond authenticated Terminal", err)
 	}
 	if err := ledger.replace(2, 0, 3); err != nil {

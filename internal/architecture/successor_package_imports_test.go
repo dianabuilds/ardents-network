@@ -57,6 +57,7 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/publication/instance":                {"canonicaldigest", "domain/publication", "domain/publication/durable", "domain/reachability", "domain/route/introduction", "domain/route/capsule", "domain/route/join", "domain/connection/wire", "domain/execution/runtime"},
 	"internal/domain/publication/runtime":                 {"domain/connection", "domain/execution/runtime", "domain/network", "domain/publication", "domain/publication/instance", "domain/reachability", "domain/route", "domain/route/introduction", "domain/route/prefix", "domain/route/capsule", "domain/route/join"},
 	"internal/domain/connection":                          {"domain/execution/runtime", "domain/publication", "domain/publication/instance", "domain/route/capsule", "domain/route/join", "domain/connection/wire"},
+	"internal/domain/connection/transfer":                 {"domain/connection/wire"},
 	"internal/domain/connection/wire":                     {},
 	"internal/domain/reachability":                        {"domain/publication", "pathcheck"},
 	"internal/domain/enrollment":                          {"canonicaldigest", "pathcheck"},

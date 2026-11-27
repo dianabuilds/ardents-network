@@ -19,8 +19,8 @@ initial/recovery authentication вне соответствующей фазы.
 `instance_certificate.go` и `wire/instance_proof.go` проверяют конкретные
 криптографические обязательства. `wire/identity_transcript.go` — единственный
 производитель canonical logical/Attachment commitments для привязки и Instance.
-`send_ledger.go` удерживает bounded suffix и исходные counters между
-Attachment, `terminal_exchange.go` — причинный порядок Terminal/receipt/confirmation,
+`transfer/send_ledger.go` удерживает bounded suffix и исходные counters между
+Attachment, `transfer/terminal_exchange.go` — причинный порядок Terminal/receipt/confirmation,
 `recovery_episode.go` — конечное число proposals и исходный предел episode.
 Эти механизмы требуют внешней сериализации и настоящих проверок владельцев;
 их unit fixtures не являются Service readiness или физическим join.
@@ -33,7 +33,7 @@ Linux `make route-check` включает весь Connection вместе с с
 монотонной revision и исходного continuity key предшествует commit.
 `InitiatorSource.OpenStream` устанавливает исходный Reader replacement source;
 `initiator_replacement.go` удерживает конечный ticket до фактического join,
-а `initiator_replacement_commit.go` атомарно переносит все byte/Terminal ledgers.
+а `replacement_commit.go` атомарно переносит все byte/Terminal ledgers.
 Повторный lookup использует прежний Target, History и retained Rendezvous set.
 Текущий Attachment получает свежие JOIN/TLS/capsule факты, но не новую logical
 identity, operation, Work Safety границу или continuity secret. Физическое

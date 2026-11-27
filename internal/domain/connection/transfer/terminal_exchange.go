@@ -1,12 +1,10 @@
-package connection
+package transfer
 
 import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
-
-var errIntegrity = errors.New("service Connection integrity contradiction")
 
 // terminalExchange is the two-direction control ledger. Its caller holds the
 // logical stream lock and supplies checked current-generation offsets. It
@@ -36,14 +34,14 @@ type terminalWrite struct {
 
 func newTerminalExchange(generation uint64) (*terminalExchange, error) {
 	if generation == 0 {
-		return nil, errIntegrity
+		return nil, ErrIntegrity
 	}
 	return &terminalExchange{generation: generation}, nil
 }
 
 func (x *terminalExchange) closeLocal(offset uint64) error {
 	if x.localClosed && x.localOffset != offset {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	x.localClosed, x.localOffset = true, offset
 	return nil
@@ -52,7 +50,7 @@ func (x *terminalExchange) closeLocal(offset uint64) error {
 func (x *terminalExchange) receiveTerminal(value wire.Terminal, receiveNext uint64, pending bool) (firstEOF bool, err error) {
 	if value.AttachmentGeneration != x.generation || value.Offset != receiveNext || pending ||
 		x.remoteClosed && x.remoteOffset != value.Offset {
-		return false, errIntegrity
+		return false, ErrIntegrity
 	}
 	firstEOF = !x.remoteClosed
 	x.remoteClosed, x.remoteOffset = true, value.Offset
@@ -62,17 +60,17 @@ func (x *terminalExchange) receiveTerminal(value wire.Terminal, receiveNext uint
 
 func (x *terminalExchange) receiveAcknowledgement(value wire.Acknowledgement) error {
 	if value.AttachmentGeneration != x.generation || !value.Terminal {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	if value.TerminalConfirmation {
 		if !x.remoteClosed || value.Offset != x.remoteOffset || !x.receiptWritten && !x.receiptWriting {
-			return errIntegrity
+			return ErrIntegrity
 		}
 		x.receiptConfirmed = true
 		return nil
 	}
 	if !x.localClosed || value.Offset != x.localOffset || !x.terminalWritten && !x.terminalWriting {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	x.receiptReceived = true
 	return nil
@@ -100,7 +98,7 @@ func (x *terminalExchange) beginWrite(sentNext uint64) (*terminalWrite, error) {
 		return nil, nil
 	}
 	if x.writeSerial == ^uint64(0) {
-		return nil, errIntegrity
+		return nil, ErrIntegrity
 	}
 	x.writeSerial++
 	ticket := &terminalWrite{owner: x, generation: x.generation, serial: x.writeSerial, record: record}
@@ -121,14 +119,14 @@ func (x *terminalExchange) beginWrite(sentNext uint64) (*terminalWrite, error) {
 // it cannot become a successfully written control fact.
 func (x *terminalExchange) finishWrite(ticket *terminalWrite, physicalErr error) (current bool, err error) {
 	if ticket == nil || ticket.self != ticket || ticket.owner != x || ticket.consumed {
-		return false, errIntegrity
+		return false, ErrIntegrity
 	}
 	if ticket.generation != x.generation {
 		ticket.consumed = true
 		return false, physicalErr
 	}
 	if x.active != ticket || ticket.serial != x.writeSerial {
-		return false, errIntegrity
+		return false, ErrIntegrity
 	}
 	ticket.consumed = true
 	x.active = nil
@@ -156,7 +154,7 @@ func (x *terminalExchange) finishWrite(ticket *terminalWrite, physicalErr error)
 // EOF or accepted byte counters. Every generation advances by exactly one.
 func (x *terminalExchange) replace(generation uint64) error {
 	if x.generation == ^uint64(0) || generation != x.generation+1 {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	x.generation = generation
 	x.active = nil

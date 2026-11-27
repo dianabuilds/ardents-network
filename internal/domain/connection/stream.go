@@ -8,6 +8,7 @@ import (
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
@@ -26,12 +27,8 @@ type Stream struct {
 	mu                sync.Mutex
 	changed           chan struct{} // Stream.mu owns notification replacement.
 	writeMu           sync.Mutex
-	send              *sendLedger
-	receive           *receiveLedger
-	terminal          *terminalExchange
+	transfer          *transfer.State
 	key               [32]byte
-	ackSerial         uint64
-	ackWritten        uint64
 	failure           error
 	closing           bool
 	settled           bool
@@ -71,15 +68,7 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 	if err != nil {
 		return nil, err
 	}
-	send, err := newSendLedger(1, sendLimit)
-	if err != nil {
-		return nil, err
-	}
-	receive, err := newReceiveLedger(1, receiveLimit)
-	if err != nil {
-		return nil, err
-	}
-	terminal, err := newTerminalExchange(1)
+	flow, err := transfer.New(1, sendLimit, receiveLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +94,7 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 			return errors.Join(errIntegrity, err)
 		}
 		ctx, cancel := context.WithCancel(owner.context())
-		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, send: send, receive: receive, terminal: terminal, publisherRoute: publisherRoute,
+		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, publisherRoute: publisherRoute,
 			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan application.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
 		stream.self = stream
 		if initiatorRoute != nil {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
@@ -26,11 +27,11 @@ func (stream *Stream) Read(destination []byte) (int, error) {
 		done := false
 		err := stream.commitHandoff(func() error {
 			changed = stream.changeLocked()
-			n, readErr = stream.receive.peek(staged)
+			n, readErr = stream.transfer.Peek(staged)
 			done = n != 0 || readErr != nil || len(destination) == 0
 			return nil
 		}, func() {
-			n, readErr = stream.receive.read(staged)
+			n, readErr = stream.transfer.Read(staged)
 			n, readErr = deliverRead(destination, staged, n, readErr, nil)
 			if done {
 				stream.signalLocked()
@@ -74,15 +75,15 @@ func (stream *Stream) Write(body []byte) (int, error) {
 		var stagedSize int
 		var deliveryErr error
 		err := stream.commitHandoff(func() error {
-			if stream.settled || stream.send.closed {
+			if stream.settled || stream.transfer.InputClosed() {
 				return io.ErrClosedPipe
 			}
 			if accepted == len(body) {
 				return nil
 			}
 			size := min(len(body)-accepted, wire.MaximumDataBytes)
-			err := stream.send.checkAccept(body[accepted : accepted+size])
-			if errors.Is(err, errBackpressure) {
+			err := stream.transfer.CheckWrite(body[accepted : accepted+size])
+			if errors.Is(err, transfer.ErrBackpressure) {
 				changed = stream.changeLocked()
 				return nil
 			}
@@ -96,7 +97,7 @@ func (stream *Stream) Write(body []byte) (int, error) {
 			if stagedSize == 0 {
 				return
 			}
-			deliveryErr = stream.send.accept(body[accepted : accepted+stagedSize])
+			deliveryErr = stream.transfer.Write(body[accepted : accepted+stagedSize])
 			if deliveryErr != nil {
 				stream.failLocked(deliveryErr)
 				return
@@ -121,7 +122,7 @@ func (stream *Stream) CloseInput() error {
 	stream.writeMu.Lock()
 	defer stream.writeMu.Unlock()
 	return stream.commit(func() error {
-		if err := stream.terminal.closeLocal(stream.send.closeInput()); err != nil {
+		if err := stream.transfer.CloseInput(); err != nil {
 			stream.failLocked(err)
 			return err
 		}

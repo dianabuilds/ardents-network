@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"testing"
@@ -70,4 +70,48 @@ func TestMeasuredReplayAndUnreadQueuesPreserveBytesAcrossReplacement(t *testing.
 	if current(runtimeevent.ConnectionReceiveBytes) != 4 {
 		t.Fatal("read cursor not reflected")
 	}
+}
+
+func TestRejectedReplacementDoesNotTrimMeasuredReplay(t *testing.T) {
+	capture, err := measurement.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer capture.Stop()
+	state, err := New(1, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Write([]byte("request")); err != nil {
+		t.Fatal(err)
+	}
+	_, ticket, err := state.BeginRecordWrite()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := state.FinishRecordWrite(ticket, nil); err != nil {
+		t.Fatal(err)
+	}
+	if next, err := state.PrepareReplacement(2, wire.Continuity{ReceiveNext: 2, SendBase: 1, SendEnd: 1}); err == nil || next != nil {
+		t.Fatal("invalid peer range passed replacement preparation", err)
+	}
+	spec, _ := runtimeevent.ConnectionSendBytes.Spec()
+	assertReplay := func(want uint64) {
+		t.Helper()
+		capture.Sample()
+		for _, value := range capture.Latest().Values {
+			if value.Name == spec.Name && value.Available && value.Current == want {
+				return
+			}
+		}
+		t.Fatalf("measured send queue differs from original retained bytes, want %d", want)
+	}
+	assertReplay(7)
+	next, err := state.PrepareReplacement(2, wire.Continuity{ReceiveNext: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertReplay(7)
+	next.Commit()
+	assertReplay(5)
 }

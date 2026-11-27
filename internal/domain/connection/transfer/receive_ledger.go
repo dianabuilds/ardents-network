@@ -1,4 +1,4 @@
-package connection
+package transfer
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ type receiveLedger struct {
 
 func newReceiveLedger(generation, limit uint64) (*receiveLedger, error) {
 	if generation == 0 || limit == 0 {
-		return nil, errIntegrity
+		return nil, ErrIntegrity
 	}
 	return &receiveLedger{queueMetric: measurement.Track(runtimeevent.ConnectionReceiveBytes), generation: generation, limit: limit, data: make([]byte, 0, logicalQueueLimit)}, nil
 }
@@ -35,27 +35,27 @@ func newReceiveLedger(generation, limit uint64) (*receiveLedger, error) {
 func (ledger *receiveLedger) accept(value wire.Data) error {
 	if value.AttachmentGeneration != ledger.generation || len(value.Payload) == 0 || len(value.Payload) > wire.MaximumDataBytes ||
 		uint64(len(value.Payload)) > ^uint64(0)-value.Offset {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	end := value.Offset + uint64(len(value.Payload))
 	if end > ledger.limit || value.Offset > ledger.next || value.Offset < ledger.base {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	duplicateEnd := min(end, ledger.next)
 	duplicateSize := duplicateEnd - value.Offset
 	start := value.Offset - ledger.base
 	if !bytes.Equal(ledger.data[start:start+duplicateSize], value.Payload[:duplicateSize]) {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	if end <= ledger.next {
 		return nil
 	}
 	if ledger.terminal {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	fresh := value.Payload[duplicateSize:]
 	if uint64(len(fresh)) > logicalQueueLimit-(ledger.next-ledger.readAt) {
-		return errBackpressure
+		return ErrBackpressure
 	}
 	// Drop only already consumed history, keeping unread bytes and the newest
 	// replay window in the same allocation. No Application effect is evicted.
@@ -100,7 +100,7 @@ func (ledger *receiveLedger) peek(destination []byte) (int, error) {
 
 func (ledger *receiveLedger) closeInput(value wire.Terminal) error {
 	if value.AttachmentGeneration != ledger.generation || value.Offset != ledger.next {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	ledger.terminal = true
 	return nil
@@ -120,7 +120,12 @@ func (ledger *receiveLedger) replace(generation, peerSendBase, peerSendEnd uint6
 func (ledger *receiveLedger) checkReplacement(generation, peerSendBase, peerSendEnd uint64) error {
 	if ledger.generation == ^uint64(0) || generation != ledger.generation+1 || peerSendBase > ledger.next || peerSendEnd < ledger.next || peerSendEnd > ledger.limit ||
 		ledger.terminal && peerSendEnd != ledger.next {
-		return errIntegrity
+		return ErrIntegrity
 	}
 	return nil
+}
+
+func (ledger *receiveLedger) retireObservation() {
+	ledger.queueMetric.Decrease(ledger.next - ledger.readAt)
+	ledger.queueMetric = measurement.Gauge{}
 }

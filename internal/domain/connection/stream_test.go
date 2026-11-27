@@ -29,15 +29,13 @@ func TestCopiedStreamCannotInterruptOriginalLifetime(t *testing.T) {
 	}
 }
 
-// Completed ledger flags isolate the final authority gate. They are not a
-// successful TLS/Continuity fixture and cannot grant permission to a stream.
+// A completed exchange of Terminal records still requires the original
+// operation before the Stream publishes an Application outcome.
 func TestTerminalFlagsCannotPublishSuccessWithoutOriginalOperation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream := &Stream{ctx: ctx, cancel: cancel, owner: &AuthenticatedAttachment{},
-		send: &sendLedger{}, receive: &receiveLedger{}, outcome: make(chan application.Outcome, 1), settledDone: make(chan struct{})}
-	stream.terminal = &terminalExchange{localClosed: true, remoteClosed: true, remoteTerminalCurrent: true,
-		terminalWritten: true, receiptWritten: true, receiptReceived: true, receiptConfirmed: true, confirmationWritten: true}
+		transfer: completedTransfer(t), outcome: make(chan application.Outcome, 1), settledDone: make(chan struct{})}
 	stream.mu.Lock()
 	stream.settleLocked()
 	stream.mu.Unlock()

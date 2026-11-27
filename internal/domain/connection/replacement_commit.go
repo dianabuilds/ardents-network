@@ -26,7 +26,7 @@ func (proposal *initiatorReplacement) commit() (result error) {
 		if proposal.closed || proposal.transferred || proposal.failure != nil || stream.initiatorProposal != proposal ||
 			stream.records != proposal.previous || stream.recovery == nil || !stream.recovery.owns(proposal.ticket) ||
 			stream.closing || stream.ctx.Err() != nil || source.owner != stream.owner || source.stream != stream ||
-			proposal.attachment.binding.revision < stream.recipientRevision || stream.send.active != nil || stream.terminal.active != nil {
+			proposal.attachment.binding.revision < stream.recipientRevision || !stream.transfer.CanReplace() {
 			return errIntegrity
 		}
 		select {
@@ -53,21 +53,16 @@ func (proposal *initiatorReplacement) commit() (result error) {
 		if _, _, err := stream.contract.Limits(stream.owner.operation); err != nil {
 			return err
 		}
-		send, receive, terminal := *stream.send, *stream.receive, *stream.terminal
-		send.data = append([]byte(nil), send.data...)
-		if err := errors.Join(send.replace(proposal.ticket.generation, proposal.peer.ReceiveNext),
-			receive.replace(proposal.ticket.generation, proposal.peer.SendBase, proposal.peer.SendEnd), terminal.replace(proposal.ticket.generation)); err != nil {
-			clear(send.data)
+		nextTransfer, err := stream.transfer.PrepareReplacement(proposal.ticket.generation, proposal.peer)
+		if err != nil {
 			return err
 		}
 		if err := stream.recovery.commit(proposal.ticket, now); err != nil {
-			clear(send.data)
+			nextTransfer.Discard()
 			return err
 		}
-		clear(stream.send.data)
-		stream.send, stream.receive, stream.terminal = &send, &receive, &terminal
+		nextTransfer.Commit()
 		stream.recipientRevision = proposal.attachment.binding.revision
-		stream.ackWritten = stream.ackSerial
 		// Logical provenance stays with the immutable original authentication;
 		// the new record owner retains this exact physical child through Close.
 		next := &attachmentRecords{generation: proposal.ticket.generation,
@@ -140,22 +135,16 @@ func (proposal *PublisherReplacement) Commit() (result error) {
 		}
 		// Prepare all next state without trimming the live replay allocation.
 		// None of the three ledger transitions can leave a partial generation.
-		send, receive, terminal := *stream.send, *stream.receive, *stream.terminal
-		send.data = append([]byte(nil), send.data...)
-		if err := errors.Join(send.replace(proposal.ticket.generation, proposal.peer.ReceiveNext),
-			receive.replace(proposal.ticket.generation, proposal.peer.SendBase, proposal.peer.SendEnd),
-			terminal.replace(proposal.ticket.generation)); err != nil {
-			clear(send.data)
+		nextTransfer, err := stream.transfer.PrepareReplacement(proposal.ticket.generation, proposal.peer)
+		if err != nil {
 			return err
 		}
 		if err := stream.recovery.commit(proposal.ticket, time.Now()); err != nil {
-			clear(send.data)
+			nextTransfer.Discard()
 			return err
 		}
-		clear(stream.send.data)
-		stream.send, stream.receive, stream.terminal = &send, &receive, &terminal
+		nextTransfer.Commit()
 		stream.recipientRevision = proposal.revision
-		stream.ackWritten = stream.ackSerial
 		next := &attachmentRecords{generation: proposal.ticket.generation,
 			physical:   attachmentIO{owner: stream.owner, service: proposal.service, context: proposal.attachment},
 			readerDone: make(chan struct{}), writerDone: make(chan struct{}), retired: make(chan struct{}), replaced: make(chan struct{})}
@@ -186,8 +175,7 @@ func (proposal *PublisherReplacement) checkCommitStateLocked() error {
 	if proposal.closed || proposal.transferred || proposal.failure != nil || proposal.service == nil || proposal.previous == nil ||
 		proposal.revision < stream.recipientRevision || proposal.revision == 0 ||
 		stream.publisherProposal != proposal || stream.records != proposal.previous || stream.recovery == nil || !stream.recovery.owns(proposal.ticket) ||
-		proposal.opening == nil || stream.send.active != nil || stream.terminal.active != nil ||
-		stream.send.generation != stream.receive.generation || stream.send.generation != stream.terminal.generation || !time.Now().Before(proposal.ticket.deadline) {
+		proposal.opening == nil || !stream.transfer.CanReplace() || !time.Now().Before(proposal.ticket.deadline) {
 		return errIntegrity
 	}
 	select {
@@ -205,6 +193,5 @@ func (proposal *PublisherReplacement) checkCommitStateLocked() error {
 		return err
 	}
 	return errors.Join(proposal.ctx.Err(), stream.owner.context().Err(),
-		stream.send.checkReplacement(proposal.ticket.generation, proposal.peer.ReceiveNext),
-		stream.receive.checkReplacement(proposal.ticket.generation, proposal.peer.SendBase, proposal.peer.SendEnd))
+		stream.transfer.CheckReplacement(proposal.ticket.generation, proposal.peer))
 }

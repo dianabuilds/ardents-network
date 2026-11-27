@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
@@ -57,7 +58,7 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 					finished = true
 					return nil
 				}
-				if stream.records != records || stream.receive.generation != records.generation {
+				if stream.records != records || stream.transfer.Generation() != records.generation {
 					return errIntegrity
 				}
 				if readErr != nil {
@@ -74,9 +75,9 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 					}
 					return readErr
 				}
-				before := stream.recordProgressLocked()
+				before := stream.transfer.Progress()
 				if err := stream.acceptRecordLocked(record); err != nil {
-					if errors.Is(err, errBackpressure) {
+					if errors.Is(err, transfer.ErrBackpressure) {
 						changed = stream.changeLocked()
 						return nil
 					}
@@ -128,41 +129,10 @@ func (stream *Stream) failRecord(records *attachmentRecords, cause error) {
 }
 
 func (stream *Stream) acceptRecordLocked(record wire.Record) error {
-	switch {
-	case record.Data != nil:
-		if stream.settled {
-			return errIntegrity
-		}
-		if err := stream.receive.accept(*record.Data); err != nil {
-			return err
-		}
-		if stream.ackSerial == ^uint64(0) {
-			return errIntegrity
-		}
-		stream.ackSerial++
-	case record.Terminal != nil:
-		if err := stream.receive.closeInput(*record.Terminal); err != nil {
-			return err
-		}
-		if _, err := stream.terminal.receiveTerminal(*record.Terminal, stream.receive.next, false); err != nil {
-			return err
-		}
-	case record.Acknowledgement != nil:
-		value := *record.Acknowledgement
-		if value.Terminal {
-			if err := stream.terminal.receiveAcknowledgement(value); err != nil {
-				return err
-			}
-			if value.TerminalConfirmation {
-				return nil
-			}
-		}
-		return stream.send.acknowledge(value.AttachmentGeneration, value.Offset)
-	default:
-		// Initial/recovery authentication cannot arrive on an active stream.
+	if stream.settled && record.Data != nil {
 		return errIntegrity
 	}
-	return nil
+	return stream.transfer.AcceptRecord(record)
 }
 
 // One serialized writer sends accepted Data before its Terminal. ACK serials
@@ -172,9 +142,7 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 	defer func() { records.writerResult = result; close(records.writerDone) }()
 	for {
 		var record wire.Record
-		var data *dataWrite
-		var control *terminalWrite
-		var ackSerial uint64
+		var ticket *transfer.RecordWrite
 		var changed <-chan struct{}
 		finished := false
 		err := stream.commit(func() error {
@@ -182,27 +150,12 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 				finished = true
 				return nil
 			}
-			if stream.records != records || stream.send.generation != records.generation {
+			if stream.records != records || stream.transfer.Generation() != records.generation {
 				return errIntegrity
 			}
 			var err error
-			switch {
-			case stream.ackWritten != stream.ackSerial:
-				ackSerial = stream.ackSerial
-				record.Acknowledgement = &wire.Acknowledgement{AttachmentGeneration: stream.receive.generation, Offset: stream.receive.next}
-			case stream.send.next != stream.send.end:
-				data, err = stream.send.beginWrite()
-				if data != nil {
-					record.Data = &data.record
-				}
-			default:
-				control, err = stream.terminal.beginWrite(stream.send.next)
-				if control != nil {
-					record.Terminal = control.record.Terminal
-					record.Acknowledgement = control.record.Acknowledgement
-				}
-			}
-			if record.Data == nil && record.Acknowledgement == nil && record.Terminal == nil && err == nil {
+			record, ticket, err = stream.transfer.BeginRecordWrite()
+			if ticket == nil && err == nil {
 				changed = stream.changeLocked()
 			}
 			return err
@@ -222,18 +175,11 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 		writeErr := wire.Write(records.physical, record)
 		result = writeErr
 		err = stream.commit(func() error {
-			if stream.records != records || stream.send.generation != records.generation {
+			if stream.records != records || stream.transfer.Generation() != records.generation {
 				return errors.Join(errIntegrity, writeErr)
 			}
-			before := stream.recordProgressLocked()
-			err := writeErr
-			if data != nil {
-				_, err = stream.send.finishWrite(data, err)
-			} else if control != nil {
-				_, err = stream.terminal.finishWrite(control, err)
-			} else if err == nil {
-				stream.ackWritten = ackSerial
-			}
+			before := stream.transfer.Progress()
+			err := stream.transfer.FinishRecordWrite(ticket, writeErr)
 			if records.retiring {
 				finished = true
 				return nil
@@ -265,20 +211,8 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 
 // Matching replay and repeated ACKs cannot renew the progress anchor. Only
 // changed authenticated byte/control facts do; an active episode stays fixed.
-type recordProgress struct {
-	sendBase, sentNext, receivedNext                                       uint64
-	remoteClosed, remoteTerminalCurrent, receiptReceived, receiptConfirmed bool
-	terminalWritten, receiptWritten, confirmationWritten                   bool
-}
-
-func (stream *Stream) recordProgressLocked() recordProgress {
-	return recordProgress{stream.send.base, stream.send.next, stream.receive.next,
-		stream.terminal.remoteClosed, stream.terminal.remoteTerminalCurrent, stream.terminal.receiptReceived, stream.terminal.receiptConfirmed,
-		stream.terminal.terminalWritten, stream.terminal.receiptWritten, stream.terminal.confirmationWritten}
-}
-
-func (stream *Stream) noteRecordProgressLocked(before recordProgress) {
-	if before == stream.recordProgressLocked() || stream.checkLocked() != nil {
+func (stream *Stream) noteRecordProgressLocked(before transfer.Progress) {
+	if before == stream.transfer.Progress() || stream.checkLocked() != nil {
 		return
 	}
 	at := time.Now()

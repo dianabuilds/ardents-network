@@ -55,7 +55,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	var proposal *PublisherReplacement
 	var key [32]byte
 	err := stream.commit(func() error {
-		if stream.owner.role != wire.RolePublisher || stream.publisherRoute == nil || stream.key == [32]byte{} || stream.publisherProposal != nil || stream.send.generation != stream.receive.generation || stream.send.generation != stream.terminal.generation {
+		if stream.owner.role != wire.RolePublisher || stream.publisherRoute == nil || stream.key == [32]byte{} || stream.publisherProposal != nil || !stream.transfer.SameGeneration() {
 			return errIntegrity
 		}
 		if err := ctx.Err(); err != nil {
@@ -63,12 +63,12 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 		}
 		if stream.recovery == nil {
 			var err error
-			stream.recovery, err = newRecoveryEpisode(stream.send.generation, stream.lastProgress, time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
+			stream.recovery, err = newRecoveryEpisode(stream.transfer.Generation(), stream.lastProgress, time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
 			if err != nil {
 				return err
 			}
 		}
-		ticket, err := stream.recovery.begin(stream.send.generation, time.Now())
+		ticket, err := stream.recovery.begin(stream.transfer.Generation(), time.Now())
 		if err != nil {
 			return err
 		}
@@ -237,10 +237,11 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	}
 	var sendBase, sendEnd, receiveNext uint64
 	err = stream.commit(func() error {
-		if err := errors.Join(stream.send.checkReplacement(ticket.generation, peer.ReceiveNext), stream.receive.checkReplacement(ticket.generation, peer.SendBase, peer.SendEnd)); err != nil {
+		if err := stream.transfer.CheckReplacement(ticket.generation, peer); err != nil {
 			return err
 		}
-		sendBase, sendEnd, receiveNext = stream.send.base, stream.send.end, stream.receive.next
+		offsets := stream.transfer.ReplayOffsets()
+		sendBase, sendEnd, receiveNext = offsets.SendBase, offsets.SendEnd, offsets.ReceiveNext
 		return nil
 	})
 	if err != nil {
