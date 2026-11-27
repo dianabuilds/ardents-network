@@ -260,9 +260,9 @@ func successorImportAllowed(source, dependency string) bool {
 	// Exact owner edges for the command responsibility transfer.
 	if localImport {
 		switch source {
-		case "tests/e2e/endpoint/endpoint_construction_linux_test.go":
+		case "tests/e2e/endpointcli/endpoint_construction_linux_test.go":
 			return local == "internal/domain/network/state" || local == "tests/e2e/source" || local == "tests/epochfixture/network"
-		case "tests/e2e/endpoint/endpoint_history_linux_test.go":
+		case "tests/e2e/endpointcli/endpoint_history_linux_test.go":
 			return local == "internal/domain/network/source" || local == "tests/e2e/node/processfixture" || local == "tests/epochfixture/network"
 		case "cmd/ardents-next/document_command.go":
 			if local == "internal/application/administration" {

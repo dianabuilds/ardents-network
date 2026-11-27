@@ -121,7 +121,7 @@ e2e:
 	go test -p 1 $(PROCESS_PACKAGES) -shuffle=on -count=1
 
 package-e2e:
-	sudo env "PATH=$$PATH" "GOTOOLCHAIN=$(GOTOOLCHAIN)" "GOENV=$(GOENV)" "GOFLAGS=$(GOFLAGS)" "GOCACHE=$(GOCACHE)" "GOMODCACHE=$(GOMODCACHE)" go test -tags packagee2e ./tests/e2e/endpoint -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$$' -shuffle=on -count=1
+	sudo env "PATH=$$PATH" "GOTOOLCHAIN=$(GOTOOLCHAIN)" "GOENV=$(GOENV)" "GOFLAGS=$(GOFLAGS)" "GOCACHE=$(GOCACHE)" "GOMODCACHE=$(GOMODCACHE)" go test -tags packagee2e ./tests/e2e/endpointcli -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$$' -shuffle=on -count=1
 
 artifact-representation-check: export ARDENTS_CANONICAL_BUILD_REPRESENTATIONS := 1
 artifact-representation-check:
@@ -140,7 +140,7 @@ headless-evidence: headless-build
 	@test "$(HEADLESS_GOOS)" = linux && test "$(HEADLESS_GOARCH)" = amd64 || (echo "headless-evidence requires Linux x86-64"; exit 2)
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))"
 	go test ./internal/domain/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRefusesForeignCompanions|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
-	go test ./tests/e2e/endpoint -run '^(TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest)$$' -count=1
+	go test ./tests/e2e/endpointcli -run '^(TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest)$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 
 headless-check: export ARDENTS_EXTRACTION_OWNER := network
@@ -228,17 +228,17 @@ platform-installed-compile-check: export GOARCH := amd64
 platform-installed-compile-check: export CGO_ENABLED := 0
 platform-installed-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags endpoint_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-platform-installed.test" ./tests/e2e/endpoint
+	go test -c -tags endpoint_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-platform-installed.test" ./tests/e2e/endpointinstalled
 	go test -c -tags endpoint_launch_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-launch-installed.test" ./internal/domain/endpoint
 	go test -c -tags endpoint_pair_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-pair-installed.test" ./internal/domain/endpoint
-	go test -c -tags endpoint_pair_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-manager-pair.test" ./tests/e2e/endpoint
-	go test -c -tags source_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-installed.test" ./tests/e2e/node
-	go test -c -tags join_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-platform-installed.test" ./tests/e2e/node
-	go test -c -tags forwarding_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-platform-installed.test" ./tests/e2e/node
-	go test -c -tags descriptor_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-platform-installed.test" ./tests/e2e/node
-	go test -c -tags introduction_repair_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-repair-installed.test" ./tests/e2e/node
+	go test -c -tags endpoint_pair_native,document_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-manager-pair.test" ./tests/e2e/endpointinstalled
+	go test -c -tags source_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-installed.test" ./tests/e2e/nodeinstalled
+	go test -c -tags join_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-platform-installed.test" ./tests/e2e/nodeinstalled
+	go test -c -tags forwarding_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-platform-installed.test" ./tests/e2e/nodeinstalled
+	go test -c -tags descriptor_platform_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-platform-installed.test" ./tests/e2e/nodeinstalled
+	go test -c -tags introduction_repair_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-repair-installed.test" ./tests/e2e/nodeinstalled
 	go test -c -tags endpoint_launch_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-latency-participant.test" ./internal/domain/endpoint
-	go test -c -tags endpoint_launch_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-idle-observation.test" ./tests/e2e/endpoint
+	go test -c -tags endpoint_launch_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/endpoint-idle-observation.test" ./tests/e2e/endpointinstalled
 
 .PHONY: node-process-check
 .PHONY: node-development-check
@@ -427,7 +427,7 @@ installation-native-compile-check:
 .PHONY: route-check
 route-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting/... ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/domain/route/... ./internal/domain/endpoint/... $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
-	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
+	go test -race ./tests/e2e/routeprocess -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
 hosting-check:
@@ -443,7 +443,7 @@ admission-check:
 # out of the command's unit-test package.
 .PHONY: offline-admission-e2e-race
 offline-admission-e2e-race:
-	go test -race ./tests/e2e/node -run '^Test(Admission(Fresh|Initialization|OTLP|StandaloneCommands|Consoles|ConsoleInput|HolderInterrupt|HostingReservationAndWork)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
+	go test -race ./tests/e2e/node ./tests/e2e/admissioncli -run '^Test(Admission(Fresh|Initialization|OTLP|StandaloneCommands|Consoles|ConsoleInput|HolderInterrupt|HostingReservationAndWork)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict)' -count=1 -timeout=3m
 
 .PHONY: issuance-check
 issuance-check:

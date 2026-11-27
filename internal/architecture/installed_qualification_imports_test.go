@@ -134,7 +134,7 @@ func installedQualificationImport(source, dependency, local string, localImport 
 			}
 		}
 	}
-	if localImport && (source == "tests/e2e/node/descriptor_platform_native_linux_test.go" || source == "tests/e2e/node/forwarding_platform_native_linux_test.go" || source == "tests/e2e/node/join_platform_native_linux_test.go") {
+	if localImport && (source == "tests/e2e/nodeinstalled/descriptor_platform_native_linux_test.go" || source == "tests/e2e/nodeinstalled/forwarding_platform_native_linux_test.go" || source == "tests/e2e/nodeinstalled/join_platform_native_linux_test.go") {
 		switch local {
 		case "internal/domain/admission", "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
 			"internal/platform/processguard", "internal/domain/reachability", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",
@@ -142,7 +142,7 @@ func installedQualificationImport(source, dependency, local string, localImport 
 			return importAllowed
 		}
 	}
-	if localImport && source == "tests/e2e/node/introduction_repair_platform_native_linux_test.go" {
+	if localImport && source == "tests/e2e/nodeinstalled/introduction_repair_platform_native_linux_test.go" {
 		switch local {
 		case "internal/domain/hosting", "internal/domain/network/duty", "internal/domain/network/state", "internal/platform/systemd",
 			"internal/platform/processguard", "internal/domain/release/infrastructure", "internal/domain/release/infrastructure/launch",

@@ -20,7 +20,7 @@ func offlineOperatorFile(source string) bool {
 		"internal/domain/endpoint/source_trust_preparation_linux.go",
 		"internal/domain/network/state/source_state_files_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "tests/e2e/source/inspection_linux_test.go",
-		"cmd/ardents-next/offline_profile_inspection.go", "tests/e2e/node/offline_profile_inspection_test.go":
+		"cmd/ardents-next/offline_profile_inspection.go", "tests/e2e/admissioncli/offline_profile_inspection_test.go":
 		return true
 	}
 	return false
@@ -140,7 +140,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		fallthrough
-	case "tests/e2e/node/offline_profile_inspection_test.go":
+	case "tests/e2e/admissioncli/offline_profile_inspection_test.go":
 		switch dependency {
 		case modulePath + "/internal/domain/admission/issuerprofile", modulePath + "/internal/domain/network/closedprofile":
 			return true

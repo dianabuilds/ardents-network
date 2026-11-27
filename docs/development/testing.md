@@ -148,7 +148,7 @@ refusals. The platform-led Forwarding lifecycle replaces them: the canonical
 platform unit with its mandatory `platform check` ExecStartPre gate,
 `ardents-next node forwarding --retained-config` and
 `ardents-next forwarding repair-retained`. Retained native evidence is
-`TestNativeForwardingPlatformInstalledLifecycle` in `tests/e2e/node` under the
+`TestNativeForwardingPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the
 `forwarding_platform_native` build tag (the installed gate),
 `TestNativeNodeForwardingTCP` and `TestNativeForwardingRetainedLifecycle` in
 `forwarding-process-linux` (`node_process_native`). Forwarding Release signing
@@ -168,7 +168,7 @@ next retained opening refuses before listening). Its lifecycle legs are
 single-unit: one JOIN pair member owns its own participation root and sole
 node-duty fence; genuine paired JOIN byte transfer remains
 `TestNativeJoinDuplexAndReopenTCP` in `join-process-linux`.
-`TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/node` under the `join_platform_native`
+`TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the `join_platform_native`
 build tag is the installed gate against the real platform systemd manager: the
 mandatory `platform check` ExecStartPre of `ardents-join.service`,
 `ardents-next node join --retained-config` as the shared fixed `ardents-node`
@@ -195,7 +195,7 @@ root, sole node-duty fence and Store root. The readiness oracle is the
 authenticated listener, NOT publication readiness; genuine publish/lookup over
 the Route prefix remains `TestNativeDescriptorPublishLookupAndReopenTCP` in
 `descriptor-process-linux`.
-`TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/node` under the
+`TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the
 `descriptor_platform_native` build tag is the installed gate against the real
 platform systemd manager: the mandatory `platform check` ExecStartPre of
 `ardents-descriptor.service`, `ardents-next node descriptor --retained-config`
@@ -232,7 +232,7 @@ are removed. `ardents-node join ...` returns typed before-effect refusals. The
 platform-led JOIN lifecycle replaces them: the canonical platform unit with its
 mandatory `platform check` ExecStartPre gate, `ardents-next node join
 --retained-config` and `ardents-next join repair-retained`. Retained native
-evidence is `TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/node` under the
+evidence is `TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the
 `join_platform_native` build tag (the installed gate), the `TestNativeJoin*`
 workloads in `join-process-linux`, including `TestNativeJoinRetainedLifecycle`
 (`node_process_native`). JOIN Release signing is preserved and cut over to the
@@ -258,7 +258,7 @@ refusals. The platform-led Descriptor lifecycle replaces them: the canonical
 platform unit with its mandatory `platform check` ExecStartPre gate,
 `ardents-next node descriptor --retained-config` and `ardents-next descriptor
 repair-retained`. Retained native evidence is
-`TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/node` under the
+`TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the
 `descriptor_platform_native` build tag (the installed gate), the
 `TestNativeDescriptor*` workloads in `descriptor-process-linux`
 (`node-descriptor-check`), including `TestNativeDescriptorRetainedLifecycle`
@@ -2320,6 +2320,20 @@ authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
+Compiled process suites follow the operation under test:
+
+| Suite | Process boundary |
+| --- | --- |
+| `tests/e2e/admissioncli` | Offline Admission and Issuance CLI, independent pins and retained roots |
+| `tests/e2e/routeprocess` | Real Route exchanges, causal refusals and retained spend |
+| `tests/e2e/nodeinstalled` | Installed Source and Node role lifecycles on the admitted host |
+| `tests/e2e/endpointcli` | Compiled Endpoint CLI and distributed bundle |
+| `tests/e2e/endpointinstalled` | Installed Endpoint, two managers and Service exchange |
+
+`tests/e2e/node` retains the Node command and the standalone Admission cycle
+shared by the Hosting integration test. `tests/e2e/endpoint` holds the native
+Endpoint driver used by the installed suite and Endpoint owner tests.
+
 `join-process-linux`, invoked by `make node-join-check`, uses three independently
 SHA-256-pinned canonical command and `node_process_native` command/resource race
 artifacts built from the checked source. The root driver stays outside measured
@@ -2595,7 +2609,7 @@ The maintained local profiles are:
   `endpoint-replacement-ubuntu` lanes are retired with the per-user Portable
   Endpoint command surface (ADR-0125, #617 S3.5): their process tests drove the
   now-retired enroll/headless/user-unit/replace/rollback routes. The surviving
-  `tests/e2e/endpoint` process regressions cover the read-only `enrollment-check`
+  `tests/e2e/endpointcli` process regressions cover the read-only `enrollment-check`
   diagnostic through the successor enrollment verifier (byte-identical output
   contract), the retired persisted-input form, and the Ubuntu deb package payload and retention shape
   with the retired `enroll-installed` refusal. The enrollment-pinned
@@ -2803,7 +2817,7 @@ Neither category substitutes for the other.
 | Handshake failure category: a refused peer cannot hide an unrelated listener or cleanup failure in a joined error | `internal/domain/route/transport/handshake_failure_test.go`; portable complete-tree classification, with original error causes retained. Receiving composition uses this category to decide whether its listener remains usable |
 | Closed TLS key exchange: the four Route TLS constructors negotiate the hybrid with both groups offered, the classical group alone, and refuse P-256, P-384, TLS 1.2 and a foreign ALPN before completion; a client offers exactly the closed pair and no side resumes; the one group atom returns exactly that pair on a fresh slice | `internal/domain/route/transport/key_exchange_negotiation_test.go`, `key_exchange_test.go`; portable real TLS over pipes against an independent peer that pins its own literal. The Service TLS sites share the same atom; `internal/architecture/tls_key_exchange_policy_test.go` keeps one production literal owner. These controls establish no Network observation or Admission right |
 | Shared actual-adapter contract: TCP/TLS classifies direct/Node arrivals, exchange ordered bytes, bound handshake capacity and join readers interrupted by physical Close | `internal/domain/route/prefix/adapter_contract_test.go` and `adapter_retirement_test.go`, external tests on Windows/Linux. The actual opening/composition owner hosts this external contract matrix and imports the real TCP/TLS adapter; lower transport imports neither, including in its tests. Prefix and receiver select the exact profile at their real opening/listening operations; the former carrier package has no runtime or test facade |
-| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/domain/node/receive/forwarding_refill_linux_test.go`, `tests/e2e/node/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
+| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/domain/node/receive/forwarding_refill_linux_test.go`, `tests/e2e/routeprocess/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
 | Prefix original-generation retention: idle retirement of a stopped terminal borrower waits for its physical join before parent readers and resource return, preserves its late failure and repeated result | `internal/domain/route/prefix/borrowing_test.go`; controlled borrower completion with actual parent pipe readers. No successful authority or Registration is supplied. The actual Prefix mechanics and these tests are portable on Windows and Linux; Prefix is the actual generation owner |
 
 These are behavior-owner links, not a second task ledger or an installed
@@ -3377,6 +3391,11 @@ that target's job.
 
 ## Independent offline Admission profile
 
+Compiled offline Admission and Issuance scenarios live in
+`tests/e2e/admissioncli`. Both this suite and the standalone cycle and Hosting
+scenarios in `tests/e2e/node` use the existing process fixture build and execute
+through `make offline-admission-e2e-race`.
+
 The separate `issuer-key-material-linux` profile runs `make issuance-check`:
 real RSA keys, owner-only files, exclusive lifetime leases, fault/crash/reopen,
 compiled initialize/inspect/export commands, Admission SPKI compatibility and
@@ -3393,9 +3412,9 @@ holder/allocation/current-issuer/receiver operations, SIGINT with inherited stdi
 exact replay and refill, plus actual Hosting budget and OTLP checks. The checked
 profile is `admission-ledger-linux`; the Docker acceptance image is
 `golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea`.
-Command tests share one immutable compiled executable while keeping separate
-mutable roots. Linux prerequisites cannot be replaced by a Windows passing
-result. These tests provide no live issuer/State, power-loss storage or whole
+Each command suite reuses an immutable executable and keeps separate mutable
+roots. The common build fixture also accepts the same prebuilt artifact. The
+selected profile requires Linux. These tests provide no live issuer/State, power-loss storage or whole
 Network qualification.
 
 The token-issuance-linux profile executes make token-issuance-check with the
@@ -3526,7 +3545,7 @@ through actual systemd and socket-activated Worker lifetimes.
 ## Protected Endpoint platform-led pre-start native qualification
 
 The `endpoint_platform_native` build tag selects
-`tests/e2e/endpoint/endpoint_platform_native_linux_test.go`
+`tests/e2e/endpointinstalled/endpoint_platform_native_linux_test.go`
 (`TestNativeEndpointPlatformPrestartTrustTransfer` and
 `TestNativeEndpointPlatformStagesGeneration`). It is a real-host
 qualification run under a root driver on an admitted Ubuntu/systemd manager
@@ -3572,7 +3591,7 @@ accepts signed initial State and empty participation once, and a repeat
 leaves both histories intact.
 
 The `source_installed_native` build tag selects
-`tests/e2e/node/source_installed_native_linux_test.go`
+`tests/e2e/nodeinstalled/source_installed_native_linux_test.go`
 (`TestNativeSourceInstalledLifecycle`). It is a real-host qualification run
 under a root driver on an admitted Ubuntu/systemd manager (systemd 249/255,
 `/usr/bin/busctl --system`, cgroup v2, kernel supplying the processguard
@@ -3616,7 +3635,7 @@ a distinct build of the same checked source.
 ## Introduction installed repair
 
 The `introduction_repair_native` tag selects
-`TestNativeIntroductionPlatformRepairsCrashedProducer` in `tests/e2e/node`.
+`TestNativeIntroductionPlatformRepairsCrashedProducer` in `tests/e2e/nodeinstalled`.
 Use a clean Ubuntu/systemd host with a root driver, cgroup v2, ext4, and free
 fixed Node units and account. The test uses the compiled command, signed fixture
 delivery, the real fixed unit, and the original retained histories. It kills
@@ -3626,17 +3645,17 @@ and verifies a distinct producer on the next launch. Repair on a live or already
 clean invocation must refuse.
 
 `make platform-installed-compile-check` compiles the test. Run the binary from
-`tests/e2e/node` with the selected Go toolchain available to the root driver.
+`tests/e2e/nodeinstalled` with the selected Go toolchain available to the root driver.
 This test covers installed Introduction repair with fixture authority.
 
 ## Protected Endpoint platform-led full-launch native qualification
 
 The `endpoint_launch_native` build tag selects
-`tests/e2e/endpoint/launch_replacement_native_linux_test.go`
+`tests/e2e/endpointinstalled/launch_replacement_native_linux_test.go`
 (`TestNativeEndpointPlatformLedLaunch`) and
-`tests/e2e/endpoint/launch_refusals_native_linux_test.go`
+`tests/e2e/endpointinstalled/launch_refusals_native_linux_test.go`
 (`TestNativeEndpointPlatformLedLaunchRefusals`). Run them serially with
-`go test -tags endpoint_launch_native -run '^TestNativeEndpointPlatformLedLaunch' -count=1 -v ./tests/e2e/endpoint`. This is a real-host root-driver
+`go test -tags endpoint_launch_native -run '^TestNativeEndpointPlatformLedLaunch' -count=1 -v ./tests/e2e/endpointinstalled`. This is a real-host root-driver
 qualification on an admitted Ubuntu/systemd manager (systemd 249/255,
 `/usr/bin/busctl --system`, cgroup v2). Missing privileges or manager fail, never
 a passing skip. It is not a `make quick-check` executed lane; the ordinary suite
@@ -3690,7 +3709,7 @@ Build and run the v6 fixture with:
 sudo env "PATH=$PATH" "GOTOOLCHAIN=local" \
   "ARDENTS_ENROLLMENT_V5_ARTIFACTS=/absolute/path/to/pinned-v5-artifacts" \
   go test -tags endpoint_launch_native,endpoint_enrollment_migration_native \
-  ./tests/e2e/endpoint -run '^TestNativeEndpointEnrollmentV5ToV6$' -count=1
+  ./tests/e2e/endpointinstalled -run '^TestNativeEndpointEnrollmentV5ToV6$' -count=1
 ```
 
 The original v5 program stages and boots the signed predecessor with its
@@ -3713,14 +3732,14 @@ This is real-host replacement evidence with a live Worker and fixture authority.
 ## Protected Endpoint NET-32 user-idle native measurement
 
 The `endpoint_launch_native` build tag additionally selects
-`tests/e2e/endpoint/endpoint_idle_native_linux_test.go`
+`tests/e2e/endpointinstalled/endpoint_idle_native_linux_test.go`
 (`TestNativeEndpointPlatformLedIdle`), a real-host root-driver
 measurement on an admitted Ubuntu/systemd manager (systemd 249/255, cgroup v2).
 The same tag selects the fresh Hosting boundary regression in `tests/e2e/endpoint`.
 That package also owns the portable projection and sampling tests and the
 Linux provider-accounting integration test.
 Run it explicitly, for example `go test -tags endpoint_launch_native -run
-'^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./tests/e2e/endpoint`;
+'^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./tests/e2e/endpointinstalled`;
 missing privileges or manager are an invalid environment and fail, never a
 passing skip. Like the sibling native qualifications it is not a `make
 quick-check` executed lane and has no profiles.json entry; it is
@@ -3754,7 +3773,7 @@ measured; a result on one lane is not a result on the other.
 ## Protected Endpoint two-manager platform-led launch native qualification
 
 The `endpoint_pair_native` build tag selects
-`tests/e2e/endpoint/endpoint_pair_native_linux_test.go`
+`tests/e2e/endpointinstalled/endpoint_pair_native_linux_test.go`
 (`TestNativeEndpointPlatformLedPair`), a real-host root-driver qualification that
 proves the platform-led launch foundation on TWO separately admitted Ubuntu/systemd
 managers (#391 S2.1). One Endpoint per system manager is a fixed, multiply-enforced
@@ -3799,7 +3818,7 @@ The `endpoint_pair_native` build tag additionally selects
 `internal/domain/endpoint/endpoint_journey_native_linux_test.go` (compiled together with
 `document_worker_installed`), the #391 S2.2 journey harness. It reuses one unchanged
 platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`) in
-`tests/e2e/endpoint/journey_participant_native_linux_test.go`:
+`tests/e2e/endpointinstalled/journey_participant_native_linux_test.go`:
 the participant receives only public signed Network material and actual
 permission requests/responses over a local fixture channel, independently
 provisions and platform-led-launches a dual-role Endpoint with its own random
@@ -4091,7 +4110,7 @@ profile (`make join-installed-check`, `join_installed_native`,
 `JOIN_INSTALLED_TEST` protected-startup/pair, forward-replacement and
 replacement-recovery journeys) retired with the transitional JOIN orchestration
 (#604 FJD stage D, ADR-0125). The platform-led JOIN lifecycle owns installed
-qualification; see `TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/node` under the
+qualification; see `TestNativeJoinPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the
 `join_platform_native` build tag and the retained repair mechanism. The ordinary
 fixed manager grammar still admits only the JOIN object on the retained
 read-only JoinRuntime vocabulary and rejects every other Node/Source object and
