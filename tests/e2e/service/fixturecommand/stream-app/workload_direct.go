@@ -71,6 +71,7 @@ func listenDirect(ctx context.Context, config DirectConfig) error {
 	if config.MeasureDuration > 0 {
 		return receiveTimedDirect(ctx, connection, config)
 	}
+	joinCancellation := watchDirectCancellation(ctx, connection)
 	result, exchangeErr := Exchange(connection, "direct-server", [32]byte{}, config.Seed, 0, config.Bytes, nil, nil)
 	if exchangeErr == nil {
 		_, exchangeErr = connection.Write([]byte{1})
@@ -78,6 +79,8 @@ func listenDirect(ctx context.Context, config DirectConfig) error {
 	if exchangeErr == nil {
 		exchangeErr = awaitDirectHalfClose(connection)
 	}
+	joinCancellation()
+	exchangeErr = errors.Join(exchangeErr, ctx.Err())
 	if exchangeErr != nil {
 		result.Terminal = "error"
 	}
@@ -96,6 +99,7 @@ func connectDirect(ctx context.Context, config DirectConfig) error {
 	if config.MeasureDuration > 0 {
 		return sendTimedDirect(ctx, connection, config)
 	}
+	joinCancellation := watchDirectCancellation(ctx, connection)
 	result, exchangeErr := Exchange(connection, "direct-client", config.Seed, [32]byte{}, config.Bytes, 0, nil, nil)
 	if exchangeErr == nil {
 		acknowledgement := []byte{0}
@@ -112,6 +116,8 @@ func connectDirect(ctx context.Context, config DirectConfig) error {
 			exchangeErr = awaitDirectHalfClose(connection)
 		}
 	}
+	joinCancellation()
+	exchangeErr = errors.Join(exchangeErr, ctx.Err())
 	if exchangeErr != nil {
 		result.Terminal = "error"
 	}
@@ -160,4 +166,27 @@ func acceptDirect(ctx context.Context, listener net.Listener) (net.Conn, error) 
 	case value := <-result:
 		return value.connection, value.err
 	}
+}
+
+// watchDirectCancellation closes the original connection on cancellation, even
+// when its caller has no deadline. Joining stops or waits for the callback
+// before publishing the terminal observation.
+func watchDirectCancellation(ctx context.Context, connection net.Conn) func() {
+	done := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(done)
+		abortDirect(connection)
+	})
+	return func() {
+		if !stop() {
+			<-done
+		}
+	}
+}
+
+func abortDirect(connection net.Conn) {
+	if tcp, ok := connection.(*net.TCPConn); ok {
+		_ = tcp.SetLinger(0)
+	}
+	_ = connection.Close()
 }

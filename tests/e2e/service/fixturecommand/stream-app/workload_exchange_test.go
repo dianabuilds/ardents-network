@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"net"
 	"testing"
 )
@@ -57,3 +58,25 @@ func errorsJoin(err error, message string) error {
 type workloadTestError struct{ message string }
 
 func (err *workloadTestError) Error() string { return err.message }
+
+func TestExchangeRejectsWrongByteAtExpectedLength(t *testing.T) {
+	// The first zero-seed byte comes from SHA-256 of the zero seed and
+	// counter, independently of Exchange's generator.
+	var initialBlock [40]byte
+	firstByte := sha256.Sum256(initialBlock[:])[0]
+	for _, test := range []struct {
+		name string
+		data byte
+		want string
+	}{
+		{name: "correct", data: firstByte, want: "success"},
+		{name: "wrong byte", data: firstByte ^ 1, want: "error"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := Exchange(bytes.NewBuffer([]byte{test.data}), "receiver", [32]byte{}, [32]byte{}, 0, 1, nil, nil)
+			if result.ReceivedBytes != 1 || result.Terminal != test.want || (err != nil) != (test.want == "error") {
+				t.Fatalf("terminal %q, received %d, error %v", result.Terminal, result.ReceivedBytes, err)
+			}
+		})
+	}
+}

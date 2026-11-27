@@ -15,7 +15,7 @@ import (
 const timedDirectReceiptBytes = 8 + sha256.Size
 
 func sendTimedDirect(ctx context.Context, connection net.Conn, config DirectConfig) error {
-	stop := context.AfterFunc(ctx, func() { abortTimedDirect(connection) })
+	stop := context.AfterFunc(ctx, func() { abortDirect(connection) })
 	defer stop()
 
 	// Do not spend the measurement window while the peer has not begun receiving.
@@ -59,7 +59,7 @@ func sendTimedDirect(ctx context.Context, connection net.Conn, config DirectConf
 	}
 	measured := time.Since(started)
 	if ctx.Err() != nil || measured < config.MeasureDuration {
-		abortTimedDirect(connection)
+		abortDirect(connection)
 		return errors.Join(ctx.Err(), errors.New("timed direct workload ended before its measurement window"))
 	}
 	if written == config.Bytes && measured < config.MeasureDuration {
@@ -108,7 +108,7 @@ func directPrefixDigest(seed [32]byte, count int) [32]byte {
 }
 
 func receiveTimedDirect(ctx context.Context, connection net.Conn, config DirectConfig) error {
-	stop := context.AfterFunc(ctx, func() { abortTimedDirect(connection) })
+	stop := context.AfterFunc(ctx, func() { abortDirect(connection) })
 	defer stop()
 	started := time.Now()
 	if _, err := connection.Write([]byte{1}); err != nil {
@@ -161,11 +161,4 @@ func receiveTimedDirect(ctx context.Context, connection net.Conn, config DirectC
 		ReceivedBytes: uint32(received), ReceivedDigest: digest, ExpectSeed: config.Seed,
 		DurationMillis: uint32(measured / time.Millisecond)}
 	return json.NewEncoder(config.Output).Encode(result)
-}
-
-func abortTimedDirect(connection net.Conn) {
-	if tcp, ok := connection.(*net.TCPConn); ok {
-		_ = tcp.SetLinger(0)
-	}
-	_ = connection.Close()
 }
