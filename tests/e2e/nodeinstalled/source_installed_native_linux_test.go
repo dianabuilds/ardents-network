@@ -96,13 +96,14 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	startSourceUnit(t)
 	waitSourceFetch(t, stand, "first launch")
 	installedHealthyFetch(t, stand, "first launch")
+	checkInstalledStateLease(t, stand, true)
 	// Recovery while the original service is live must refuse.
 	if out, err := runAsSource(t, stand.program, "source", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a live invocation", string(out))
 	}
 	stopSourceUnit(t, "first launch")
 	installedProducerPresent(t, stand, false, "first completion")
-	reopenInstalledState(t, stand)
+	checkInstalledStateLease(t, stand, false)
 	// A clean root refuses repair without a Claim probe.
 	if out, err := runAsSource(t, stand.program, "source", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a clean root", string(out))
@@ -589,15 +590,28 @@ func installedProducerPresent(t *testing.T, stand *sourceInstalledStand, want bo
 	}
 }
 
-func reopenInstalledState(t *testing.T, stand *sourceInstalledStand) {
+func checkInstalledStateLease(t *testing.T, stand *sourceInstalledStand, live bool) {
 	t.Helper()
 	config, err := stand.networkPlan.Config()
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
+	if live {
+		if owner != nil {
+			_ = owner.Close()
+		}
+		if err == nil || !strings.Contains(err.Error(), "exclusive state-root lease") {
+			t.Fatalf("live installed Source did not fence another retained owner: %v", err)
+		}
+		return
+	}
 	if err != nil {
 		t.Fatal("original State lease not released", err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	if current, err := owner.Current(); err != nil || current.Digest != stand.bundle.Epoch.Digest || current.Freshness != "fresh" {
+		t.Fatalf("retained open after installed Source completion: %+v, %v", current, err)
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)

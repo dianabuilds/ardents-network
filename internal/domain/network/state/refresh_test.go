@@ -99,16 +99,35 @@ func TestRefreshWaitsForTwoAuthenticatedSourcesAndRestarts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	restarted, err := state.Open(endpointConfig)
+	restarted, err := state.OpenRetained(endpointConfig)
 	if err != nil {
 		t.Fatalf("restart endpoint: %v", err)
 	}
 	defer restarted.Close()
 	recovered, err := restarted.Current()
-	if err != nil || recovered.Epoch != 2 || recovered.SourceAttempts != 2 || recovered.TrustedTime != refreshed.TrustedTime {
+	if err != nil || recovered != refreshed || recovered.TrustedTime.IsZero() {
 		t.Fatalf("recovered source state=%+v err=%v", recovered, err)
 	}
 	if err := restarted.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// Even three mutually consistent clock samples cannot displace the
+	// durable time floor. The signed successor is still fresh at this time.
+	rollback := endpointConfig
+	rollback.Clock = advancingVerificationClock(refreshed.TrustedTime.Add(-10 * time.Second))
+	rollback.ObserveClock = rollback.Clock
+	rolledBack, err := state.OpenRetained(rollback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rolledBack.Close()
+	if view, err := rolledBack.Current(); err != nil || view.Freshness != "clock-uncertain" || view.TrustedTime != refreshed.TrustedTime {
+		t.Fatalf("retained clock rollback: %+v, %v", view, err)
+	}
+	if _, err := rolledBack.Refresh(t.Context()); err == nil || !strings.Contains(err.Error(), "clock confidence") {
+		t.Fatalf("retained clock rollback admitted refresh: %v", err)
+	}
+	if err := rolledBack.Close(); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(endpointRoot, "distribution", "current")); err != nil {

@@ -310,6 +310,14 @@ former ownership of Network policy. New command composition exercises the new
 owner. Future Node, Endpoint and Route replacements consume explicit observations
 and retained-duty contracts; they do not require changes to old consumers now.
 
+Within State, `distribution_commit.go` orders the verified Epoch write,
+distribution journal commit, and active pointer mirror. The journal is the
+durable acceptance floor. `distribution_recovery.go` verifies the retained
+chain on the original exclusive lease and reconciles a stale mirror before
+publishing State. Read-only inspection verifies the retained evidence and
+refuses a mismatched mirror without writing it. Source acquisition and
+exposure history stay in the same distribution journal.
+
 The closed-profile public token-key adapter is the exact permitted consumer of
 Admission's `issuerprofile` leaf. It delegates canonical SPKI validation there;
 no second production RSA-PSS parser is retained in Network. This gives the

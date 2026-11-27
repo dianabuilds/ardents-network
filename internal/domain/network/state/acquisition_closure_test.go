@@ -21,7 +21,7 @@ func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
 		sourceInfo: source.Details{Configured: true, OrderSeed: [32]byte{1}, Identities: [2][32]byte{{1}, {2}},
 			Exposures: [2][32]byte{{3}, {4}}, Families: [2]string{"source-one", "source-two"}}}
 	owner := &State{config: configuration, storage: storage}
-	if err := owner.loadDistributionState(); err != nil {
+	if err := owner.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
 	order, deadline, err := owner.startSourceWave(now)
@@ -50,7 +50,7 @@ func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
 	}
 	defer reopenedStorage.Close()
 	reopened := &State{config: configuration, storage: reopenedStorage}
-	if err := reopened.loadDistributionState(); err != nil {
+	if err := reopened.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
 	if reopened.distribution.Outcomes[order[0]] != distribution.OutcomeInterrupted || reopened.distribution.Attempts[order[0]] != distribution.AttemptFailed || reopened.distribution.CycleDeadline != deadline.Unix() {

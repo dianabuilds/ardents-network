@@ -44,7 +44,7 @@ func TestSourcePlanRotationRefusesRecoveryWithUnprovenExposureHistory(t *testing
 
 	original := config.Source.Sources[0].Identity
 	config.Source.Sources[0].Identity = sha256.Sum256([]byte("replacement-source-identity"))
-	rotated, reopenErr := state.Open(config)
+	rotated, reopenErr := state.OpenRetained(config)
 	if rotated != nil {
 		_ = rotated.Close()
 	}
@@ -53,14 +53,14 @@ func TestSourcePlanRotationRefusesRecoveryWithUnprovenExposureHistory(t *testing
 		t.Fatalf("changed Source plan recovered without proven guards: %v", reopenErr)
 	}
 	withoutSources := fixtureConfig(genesis, config.Root, time.Unix(genesis.now, 0).UTC())
-	readOnly, err := state.Open(withoutSources)
+	observer, err := state.OpenRetained(withoutSources)
 	if err != nil {
 		t.Fatalf("terminal Source journal refused offline reader: %v", err)
 	}
-	if _, err := readOnly.Current(); err != nil {
+	if _, err := observer.Current(); err != nil {
 		t.Fatalf("offline reader lost accepted State: %v", err)
 	}
-	if err := readOnly.Close(); err != nil {
+	if err := observer.Close(); err != nil {
 		t.Fatal(err)
 	}
 	after, err := os.ReadFile(controlPath)
@@ -71,7 +71,7 @@ func TestSourcePlanRotationRefusesRecoveryWithUnprovenExposureHistory(t *testing
 		t.Fatal("exhausted Source plan changed the distribution pointer")
 	}
 	config.Source.Sources[0].Identity = original
-	reopened, reopenErr := state.Open(config)
+	reopened, reopenErr := state.OpenRetained(config)
 	if reopenErr != nil {
 		t.Fatalf("reopen with original Source plan: %v", reopenErr)
 	}

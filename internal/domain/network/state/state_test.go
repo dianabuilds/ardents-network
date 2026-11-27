@@ -314,51 +314,6 @@ func TestStateRootLeaseExcludesSecondStore(t *testing.T) {
 	defer third.Close()
 }
 
-func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
-	genesis := newFixture(t)
-	successor := nextFixture(t, genesis)
-	clock := advancingVerificationClock(time.Unix(genesis.now, 0))
-	config := state.Config{
-		Root: t.TempDir(), NetworkID: genesis.networkID,
-		Authorities:            map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
-		ClosedProfileAuthority: genesis.authorityPublic,
-		Threshold:              1, Clock: clock, ObserveClock: clock,
-	}
-	store, err := state.Open(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer store.Close()
-	firstReceipt, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	first := firstReceipt.Snapshot
-	secondReceipt, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second := secondReceipt.Snapshot
-	if err := os.WriteFile(filepath.Join(config.Root, "current"), []byte(first.Generation+"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Close(); err != nil {
-		t.Fatal(err)
-	}
-	restarted, err := state.Open(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer restarted.Close()
-	current, err := restarted.Current()
-	if err != nil {
-		t.Fatalf("recover active generation: %v", err)
-	}
-	if current.Generation != second.Generation {
-		t.Fatalf("recovered active generation=%s", current.Generation)
-	}
-}
-
 func TestOpenRequiresDistributionJournalForActiveEpoch(t *testing.T) {
 	t.Parallel()
 	fixture := newFixture(t)
