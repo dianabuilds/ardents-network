@@ -419,8 +419,13 @@
           "tests/e2e/endpoint.observeNet32Idle",
           "tests/e2e/endpoint.readNet32Sample",
           "tests/e2e/endpoint.readNet32HostingState",
+          "tests/e2e/endpoint.openNet32ClientResources",
+          "tests/e2e/endpoint.net32ClientResources.checkCohort",
+          "tests/e2e/endpoint.net32ClientResources.close",
+          "tests/e2e/endpoint.net32ClientResources.read",
           "tests/e2e/endpoint.net32ClientCgroups",
           "tests/e2e/endpoint.net32CgroupUsage",
+          "tests/e2e/endpoint.retryNet32Hosting",
           "tests/e2e/endpoint.net32StateProfileBytes"
         ],
         "classification": "native idle qualification fixture",
