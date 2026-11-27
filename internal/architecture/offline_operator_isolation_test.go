@@ -130,7 +130,9 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	case "internal/platform/artifacts/private_file_publication_unix.go", "internal/platform/artifacts/platform_inputs_linux.go":
 		return dependency == modulePath+"/internal/pathcheck"
 	case "internal/domain/release/infrastructure/preparation_linux.go":
-		return dependency == modulePath+"/internal/platform/artifacts" || dependency == modulePath+"/internal/domain/enrollment"
+		return dependency == modulePath+"/internal/platform/artifacts" ||
+			dependency == modulePath+"/internal/domain/enrollment" ||
+			dependency == modulePath+"/internal/domain/enrollment/infrastructureinventory"
 	case "internal/domain/release/infrastructure/preparation_native_linux_test.go":
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/domain/node/provisioning/network_report_unix.go":

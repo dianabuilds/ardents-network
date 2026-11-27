@@ -547,7 +547,7 @@ consumer is admitted by the platform path in `cmd/ardents-next`.
 
 | Responsibility still realized by native deployment | Owner / preserved boundary |
 |---|---|
-| Initial pin and immutable role inventory | Enrollment retains independent pin and actual mapped-program provenance; a candidate or copied inventory cannot establish initial trust |
+| Initial pin and immutable role inventory | Enrollment retains independent pin and actual mapped-program provenance. Native Enrollment and offline Release preparation share the portable canonical inventory and companion bounds. A candidate or copied inventory cannot establish initial trust |
 | Exact coherent program/generation permission | Release retains trust, monotonic floors and original opaque proofs; native composition matches exact role/resources and current verifier. RuntimeAuthorization is a separate platform pre-start result and cannot enter native effects |
 | Read-only request/native preflight | Role-specific bounded input custody plus independently opened fixed-purpose systemd observations. Absence/preflight grants no creation, Start, domain initialization or recovery permission |
 | Initial stopped native deployment | Source, Forwarding, JOIN and Descriptor first installation are all platform-led (`source prepare-state` / `platform initialize-trust`/`unit` / `systemctl start ardents-source`; canonical platform unit / `platform check` / `node forwarding --retained-config` / `node join --retained-config` / `node descriptor --retained-config`), not native stopped creators. The transitional Descriptor stopped creator retired (#604 FJD stage D, ADR-0125). Semantic roots remain with their domain owners; pending publication follows actual joins |
