@@ -90,7 +90,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 				local == "internal/domain/network" || local == "internal/domain/network/duty" || local == "internal/domain/network/epoch")
 		case "tests/e2e/node/processfixture/receiving_fixture_linux.go":
 			return explicitImportResult(local == "tests/epochfixture/network")
-		case "tests/e2e/node/processfixture/introduction_stock_linux.go":
+		case "tests/e2e/node/processfixture/introduction_stock_linux.go", "tests/e2e/node/processfixture/route_stock_linux.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
 				"internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/network", "tests/epochfixture/network":

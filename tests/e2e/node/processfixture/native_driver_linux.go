@@ -1,4 +1,4 @@
-//go:build linux && node_process_native
+//go:build linux && (node_process_native || forwarding_platform_native || descriptor_platform_native || join_platform_native)
 
 package processfixture
 
@@ -175,36 +175,6 @@ func OwnerTestCommand(t testing.TB, unit, binary, testName, fixtureEnv, plan str
 	args := append(nodeEnvelope(runtimeSeconds), "--setenv="+fixtureEnv+"="+plan,
 		"--", binary, "-test.v=true", "-test.run=^"+testName+"$", "-test.timeout=30s")
 	return nativeUnitCommand(t, unit, args...)
-}
-
-// StartOperationProcess starts a pinned Node test and joins it on early return.
-func StartOperationProcess(t testing.TB, unit, testName, fixtureEnv, plan, signals string, runtimeSeconds int) *NativeProcess {
-	t.Helper()
-	command := OwnerTestCommand(t, unit, PinnedOwnerTest(t), testName, fixtureEnv, plan, runtimeSeconds)
-	process := &NativeProcess{Unit: unit, Command: command}
-	command.Stdout, command.Stderr = &process.Diagnostic, &process.Diagnostic
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if !process.Joined {
-			for _, marker := range []string{"release", "stop"} {
-				if err := writeOperationMarker(signals, marker); err != nil {
-					t.Error("release original test process", err)
-				}
-			}
-			if err := process.Wait(); err != nil {
-				// Wait can join only systemd-run after its context is canceled.
-				// Stop the unit as well so it cannot survive a failed workload.
-				stopErr := exec.Command("systemctl", "stop", unit).Run()
-				t.Error("original test process cleanup", errors.Join(err, stopErr))
-			}
-		}
-		if t.Failed() {
-			t.Log("original test diagnostics", process.Diagnostic.String())
-		}
-	})
-	return process
 }
 
 // Launch starts the exact requested systemd child and registers joined cleanup.

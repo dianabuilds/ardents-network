@@ -246,6 +246,18 @@
       },
       {
         "symbols": [
+          "tests/e2e/node/processfixture.FinishJoinDirection",
+          "tests/e2e/node/processfixture.FundRouteStock",
+          "tests/e2e/node/processfixture.SignedDescriptorForAuthority",
+          "tests/e2e/node/processfixture.TransferJoinDirection"
+        ],
+        "classification": "installed and process Node exchange fixtures",
+        "rationale": "The selected Linux native test binaries share fixture Stock issuance, independent Descriptor proof bytes and paired JOIN byte and EOF oracles. The Linux native-tag test scan must reach every symbol.",
+        "owner": "Node installed and process tests",
+        "retirement": "Remove each entry with its last native test consumer."
+      },
+      {
+        "symbols": [
           "tests/networkfixture.RefreshObservedClock"
         ],
         "classification": "signed Network clock fixture",
