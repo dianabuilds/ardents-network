@@ -401,6 +401,9 @@ func readHeapFields(r *heapDumpReader) ([]uint64, error) {
 
 func heapMemoryLinks(memory heapDumpMemory, pointerSize int, littleEndian bool) []string {
 	links := make([]string, 0, len(memory.fields))
+	if len(memory.data) < pointerSize {
+		return links
+	}
 	for _, offset := range memory.fields {
 		if offset > uint64(len(memory.data)-pointerSize) {
 			continue
@@ -461,5 +464,40 @@ func TestParseHeapDumpRecordsStackAddress(t *testing.T) {
 	}
 	if len(report.Matches) != 1 || report.Matches[0].Address != "0x100" {
 		t.Fatalf("stack matches = %#v", report.Matches)
+	}
+}
+
+func TestParseHeapDumpLinksStayWithinObject(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		width  byte
+		size   byte
+		offset byte
+		want   string
+	}{
+		{name: "32 bit exact fit", width: 4, size: 5, offset: 1, want: "+0x1->0x2a"},
+		{name: "32 bit short object", width: 4, size: 3, offset: 1},
+		{name: "32 bit crosses end", width: 4, size: 5, offset: 2},
+		{name: "64 bit exact fit", width: 8, size: 9, offset: 1, want: "+0x1->0x2a"},
+		{name: "64 bit short object", width: 8, size: 5, offset: 1},
+		{name: "64 bit crosses end", width: 8, size: 9, offset: 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dump := append([]byte(heapDumpHeader), heapTagParams, 0, tc.width, 0, 0, 0, 0, 1)
+			dump = append(dump, heapTagObject, 0x40, tc.size, 0xfe, 0x2a)
+			dump = append(dump, make([]byte, tc.size-2)...)
+			dump = append(dump, 1, tc.offset, 0, heapTagEOF)
+
+			report, err := parseHeapDump(dump, []byte{0xfe})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(report.Matches) != 1 || report.Matches[0].Object != "0x40" {
+				t.Fatalf("object matches = %#v", report.Matches)
+			}
+			if links := report.Matches[0].Links; strings.Join(links, ",") != tc.want {
+				t.Fatalf("object links = %q, want %q", links, tc.want)
+			}
+		})
 	}
 }

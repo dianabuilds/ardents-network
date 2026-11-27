@@ -213,6 +213,8 @@ process module. Its parser tests exercise the harness itself. The explicit
 captures and their original source digests, including separately retained source
 archives. Neither ordinary parser tests nor a historical capture qualifies the
 current runtime. The harness retains its historical report and capture profiles.
+A direct link requires the complete declared 32- or 64-bit pointer to fit in its
+own memory record. A malformed pointer field contributes no link to a byte match.
 
 The OTLP exporter uses the existing per-command bounds: 250 ms per export,
 750 ms total shutdown context, 32 KiB request bodies, 4 KiB response bodies and
