@@ -1,0 +1,64 @@
+name: Temporary ext4 identity verification
+on:
+  push:
+    branches: [codex/1049-ext4-identity]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: false
+      - name: Verify native filesystems and rejection controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          root=/root/ardents-ext4-identity
+          sudo mkdir -p "$root"/{ext2,ext3,ext4,tmpfs}
+          cleanup() {
+            for m in tmpfs ext4 ext3 ext2; do sudo umount "$root/$m" 2>/dev/null || true; done
+          }
+          trap cleanup EXIT
+          for fs in ext2 ext3 ext4; do
+            sudo truncate -s 128M "$root/$fs.img"
+            sudo "mkfs.$fs" -q -F "$root/$fs.img"
+            sudo mount -t "$fs" -o loop "$root/$fs.img" "$root/$fs"
+            test "$(findmnt -n -o FSTYPE -T "$root/$fs")" = "$fs"
+          done
+          sudo mount -t tmpfs -o size=64m tmpfs "$root/tmpfs"
+          test "$(findmnt -n -o FSTYPE -T "$root/tmpfs")" = tmpfs
+          sudo mkdir -p "$root/ext4/tmp" "$RUNNER_TEMP/ext4-go-cache" "$RUNNER_TEMP/ext4-go-mod"
+          export ARDENTS_TEST_EXT2="$root/ext2" ARDENTS_TEST_EXT3="$root/ext3" ARDENTS_TEST_EXT4="$root/ext4" ARDENTS_TEST_TMPFS="$root/tmpfs"
+          export GOTOOLCHAIN=local GOCACHE="$RUNNER_TEMP/ext4-go-cache" GOMODCACHE="$RUNNER_TEMP/ext4-go-mod" TMPDIR="$root/ext4/tmp"
+          go mod download
+          env_args=("PATH=$PATH" "ARDENTS_TEST_EXT2=$ARDENTS_TEST_EXT2" "ARDENTS_TEST_EXT3=$ARDENTS_TEST_EXT3" "ARDENTS_TEST_EXT4=$ARDENTS_TEST_EXT4" "ARDENTS_TEST_TMPFS=$ARDENTS_TEST_TMPFS" "GOTOOLCHAIN=$GOTOOLCHAIN" "GOCACHE=$GOCACHE" "GOMODCACHE=$GOMODCACHE" "TMPDIR=$TMPDIR")
+          sudo env "${env_args[@]}" make ext4-identity-native-check
+          sudo env "${env_args[@]}" make custody-permission-filesystems-check
+          sudo env "${env_args[@]}" go test -race -tags network_signing_native ./internal/domain/network/state ./internal/domain/network/duty ./internal/platform/artifacts -run '^(TestSourceInspectionNative|TestNodeInspectionNative|TestSourcePreparationNative)' -count=1 -v -timeout=5m
+          mkdir -p "$RUNNER_TEMP/mutant"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/mutant"
+          python3 - "$RUNNER_TEMP/mutant/internal/platform/ext4/identity_linux.go" <<'PY'
+          import pathlib, sys
+          p = pathlib.Path(sys.argv[1]); s = p.read_text()
+          marker = 'func Require(file *os.File) error {\n'
+          assert s.count(marker) == 1
+          p.write_text(s.replace(marker, marker + '\tif file != nil { return nil }\n'))
+          PY
+          cd "$RUNNER_TEMP/mutant"
+          for item in 'internal/platform/artifacts:TestArtifactNativeFilesystemIdentity' 'internal/domain/network/duty:TestParticipationInspectionRejectsOtherExtFilesystems' 'internal/domain/network/state/durable:TestStateInspectionRejectsOtherExtFilesystems'; do
+            package=${item%%:*}; testname=${item#*:}; log="$RUNNER_TEMP/$(basename "$package")-mutant.log"
+            set +e
+            sudo env "${env_args[@]}" go test -tags ext4_identity_native "./$package" -run "^${testname}$" -count=1 -v > "$log" 2>&1
+            status=$?
+            set -e
+            cat "$log"
+            if [ "$status" -eq 0 ] || ! grep -q -- "--- FAIL: $testname" "$log"; then
+              echo "Mutation was not detected by $testname" >&2
+              exit 1
+            fi
+          done
