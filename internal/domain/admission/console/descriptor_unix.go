@@ -1,6 +1,6 @@
 //go:build unix
 
-package admission
+package console
 
 import (
 	"errors"
@@ -8,11 +8,11 @@ import (
 	"syscall"
 )
 
-// OpenConsoleFile returns an owned duplicate that interruption can close.
+// openFile returns an owned duplicate that interruption can close.
 // NewFile notices O_NONBLOCK and attaches inherited pipes to Go's poller.
 // Closing the owned duplicate then interrupts Read/Write instead of leaving a
 // thread trapped in a blocking syscall on the original inherited descriptor.
-func OpenConsoleFile(file *os.File) (*os.File, error) {
+func openFile(file *os.File) (*os.File, error) {
 	fd, err := syscall.Dup(int(file.Fd()))
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package admission
+package console
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// LocalConsole owns the bounded input and output descriptors of one local conversation.
-type LocalConsole struct {
+// Console owns the bounded input and output descriptors of one local conversation.
+type Console struct {
 	Context    context.Context
 	Input      *os.File
 	Output     io.Writer
@@ -22,14 +22,14 @@ type LocalConsole struct {
 	once       sync.Once
 }
 
-// OpenLocalConsole duplicates inherited files and interrupts them on cancellation.
-func OpenLocalConsole(ctx context.Context, input *os.File, output, diagnostic io.Writer) (*LocalConsole, error) {
+// Open duplicates inherited files and interrupts them on cancellation.
+func Open(ctx context.Context, input *os.File, output, diagnostic io.Writer) (*Console, error) {
 	if ctx == nil || input == nil {
 		return nil, errors.New("local console unavailable")
 	}
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	console := &LocalConsole{Context: bounded, Output: output, Diagnostic: diagnostic, cancel: cancel, joined: make(chan struct{})}
-	owned, err := OpenConsoleFile(input)
+	console := &Console{Context: bounded, Output: output, Diagnostic: diagnostic, cancel: cancel, joined: make(chan struct{})}
+	owned, err := openFile(input)
 	if err != nil {
 		cancel()
 		return nil, err
@@ -39,7 +39,7 @@ func OpenLocalConsole(ctx context.Context, input *os.File, output, diagnostic io
 	writers := []*io.Writer{&console.Output, &console.Diagnostic}
 	for _, writer := range writers {
 		if file, ok := (*writer).(*os.File); ok {
-			owned, err = OpenConsoleFile(file)
+			owned, err = openFile(file)
 			if err != nil {
 				console.closeFiles()
 				cancel()
@@ -56,14 +56,14 @@ func OpenLocalConsole(ctx context.Context, input *os.File, output, diagnostic io
 	return console, nil
 }
 
-func (console *LocalConsole) closeFiles() {
+func (console *Console) closeFiles() {
 	for _, file := range console.files {
 		_ = file.Close()
 	}
 }
 
 // Close joins cancellation before releasing the remaining owned descriptors.
-func (console *LocalConsole) Close() {
+func (console *Console) Close() {
 	if console == nil {
 		return
 	}

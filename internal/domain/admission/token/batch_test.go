@@ -47,7 +47,7 @@ func TestPrepareClosedTokenBatchBindsStatePermissionAndVolatileBlindState(t *tes
 	}
 	keyID := sha256.Sum256(spki)
 	for _, blinded := range request.BlindedRequests {
-		if len(blinded) != closedTokenRequestSize || binary.BigEndian.Uint16(blinded[:2]) != closedTokenType || blinded[2] != keyID[31] {
+		if len(blinded) != 259 || binary.BigEndian.Uint16(blinded[:2]) != closedTokenType || blinded[2] != keyID[31] {
 			t.Fatalf("token request = %x", blinded)
 		}
 	}

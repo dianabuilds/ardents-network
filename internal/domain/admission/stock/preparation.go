@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/token"
 )
 
@@ -41,7 +42,7 @@ func (p *Preparation) Begin(intent IssuanceIntent) (Attempt, error) {
 // The fresh observation is outside stock state; Begin/Take still independently
 // validate current authority and irreversible effects.
 func (p *Preparation) Missing(challenges []token.ClosedTokenContext) ([]token.ClosedTokenContext, error) {
-	if p == nil || p.self != p || p.owner == nil || p.ctx.Err() != nil || len(challenges) == 0 || len(challenges) > token.MaximumBatchTokens {
+	if p == nil || p.self != p || p.owner == nil || p.ctx.Err() != nil || len(challenges) == 0 || len(challenges) > admission.MaximumBatchTokens {
 		return nil, errors.New("stock preparation unavailable")
 	}
 	o := p.owner

@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/admission"
-	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"io"
 	"os"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/console"
+	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
 func decodeAdmissionObject(raw []byte, value any) error { return artifacts.DecodeObject(raw, value) }
@@ -28,21 +29,21 @@ func runAdmissionLocal(ctx context.Context, operation string, args []string, out
 		return 2
 	}
 	if operation == "holder" || operation == "receiver" || operation == "execution-holder" || operation == "execution-holder-live" {
-		console, err := admission.OpenLocalConsole(ctx, os.Stdin, out, diagnostic)
+		local, err := console.Open(ctx, os.Stdin, out, diagnostic)
 		if err != nil {
 			return 1
 		}
-		defer console.Close()
+		defer local.Close()
 		if operation == "holder" {
-			return runAdmissionHolder(console.Context, args, console.Input, console.Output, console.Diagnostic)
+			return runAdmissionHolder(local.Context, args, local.Input, local.Output, local.Diagnostic)
 		}
 		if operation == "execution-holder" {
-			return runExecutionPreparation(console.Context, args, console.Input, console.Output, console.Diagnostic)
+			return runExecutionPreparation(local.Context, args, local.Input, local.Output, local.Diagnostic)
 		}
 		if operation == "execution-holder-live" {
-			return runExecutionRouteHolder(console.Context, args, console.Input, console.Output, console.Diagnostic)
+			return runExecutionRouteHolder(local.Context, args, local.Input, local.Output, local.Diagnostic)
 		}
-		return runAdmissionReceiver(console.Context, args, console.Input, console.Output, console.Diagnostic)
+		return runAdmissionReceiver(local.Context, args, local.Input, local.Output, local.Diagnostic)
 	}
 	switch operation {
 	case "allocate":

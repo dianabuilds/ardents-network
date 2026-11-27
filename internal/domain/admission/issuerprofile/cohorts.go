@@ -26,7 +26,7 @@ func ValidateCohorts(startTime, endTime time.Time, keys []Key) error {
 		if key.Window != uint64(start)+uint64(i/3)*3600 || key.Class != uint8(i%3+1) {
 			return ErrInvalid
 		}
-		if _, ok := ParseKey(key.SPKI); !ok {
+		if _, err := ParseKey(key.SPKI); err != nil {
 			return ErrInvalid
 		}
 		// A dedicated key cannot be reused across class/hour cohorts.

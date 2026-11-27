@@ -1,4 +1,5 @@
-// Package token owns closed token challenges, canonical batch and result
-// grammar, volatile holder blind state and receiver verification. It grants no
-// State authority and owns no issuer key, durable quota, stock or spend ledger.
+// Package token owns closed token challenges, volatile holder blind state and
+// receiver verification. Admission supplies the canonical batch and result
+// grammar. Issuerprofile supplies the exact public key parser. State authority,
+// private issuer keys, durable quota, stock and spend have separate owners.
 package token

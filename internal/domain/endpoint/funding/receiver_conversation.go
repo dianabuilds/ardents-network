@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/console"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
@@ -27,7 +27,7 @@ func RunLocalReceiver(ctx context.Context, root, profile string, network *state.
 	}
 	o := receiver.allowance
 	defer func() { code = receiver.finishConversation(code, diagnostic) }()
-	return admission.RunConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
+	return console.Run(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
 		return o.HandleLocalCommand(ctx, raw)
 	})
 }

@@ -1055,6 +1055,19 @@ func successorImportAllowed(source, dependency string) bool {
 	const retiredSigner = "internal/nodeidentity"
 	const retiredInstallation = "internal/platform/installation"
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	if local == "internal/domain/admission/console" {
+		switch source {
+		case "cmd/ardents-next/admission_console.go",
+			"internal/domain/endpoint/session/local_conversation.go",
+			"internal/domain/endpoint/funding/receiver_conversation.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if path.Dir(source) == "internal/domain/admission/console" && localImport {
+		return false
+	}
 	for _, directory := range []string{retired, retiredSigner, retiredInstallation} {
 		if strings.HasPrefix(source, directory+"/") || localImport && (local == directory || strings.HasPrefix(local, directory+"/")) {
 			return false
@@ -2134,7 +2147,7 @@ func successorImportAllowed(source, dependency string) bool {
 	// exact files. Directory nesting does not grant policy or Admission access.
 	if strings.HasPrefix(source, "internal/domain/network/") {
 		sourceAdapter := source
-		if sourceAdapter == "internal/domain/network/closedprofile/token_spki.go" && dependency == modulePath+"/internal/domain/admission/issuerprofile" {
+		if sourceAdapter == "internal/domain/network/closedprofile/profile.go" && dependency == modulePath+"/internal/domain/admission/issuerprofile" {
 			return true
 		}
 		if sourceAdapter == "internal/domain/network/duty/participation_policy.go" && dependency == modulePath+"/internal/domain/network" {
@@ -3127,9 +3140,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"candidate policy adapter", "internal/domain/network/epoch/candidate_evaluation.go", modulePath + "/internal/domain/network", true},
 		{"assignment adapter", "internal/domain/network/epoch/assignment.go", modulePath + "/internal/domain/network", true},
 		{"candidate adapter is exact", "internal/domain/network/epoch/record.go", modulePath + "/internal/domain/network", false},
-		{"public token grammar adapter", "internal/domain/network/closedprofile/token_spki.go", modulePath + "/internal/domain/admission/issuerprofile", true},
-		{"public token adapter is exact", "internal/domain/network/closedprofile/profile.go", modulePath + "/internal/domain/admission/issuerprofile", false},
-		{"public token adapter excludes signing", "internal/domain/network/closedprofile/token_spki.go", modulePath + "/internal/domain/admission/issuance", false},
+		{"public profile uses the token key grammar", "internal/domain/network/closedprofile/profile.go", modulePath + "/internal/domain/admission/issuerprofile", true},
+		{"public token grammar consumer is exact", "internal/domain/network/state/open.go", modulePath + "/internal/domain/admission/issuerprofile", false},
+		{"public profile excludes signing", "internal/domain/network/closedprofile/profile.go", modulePath + "/internal/domain/admission/issuance", false},
+		{"local admission command owns console input", "cmd/ardents-next/admission_console.go", modulePath + "/internal/domain/admission/console", true},
+		{"receiving policy does not consume a console", "internal/domain/admission/receiving/owner.go", modulePath + "/internal/domain/admission/console", false},
+		{"admission console has no token authority", "internal/domain/admission/console/conversation.go", modulePath + "/internal/domain/admission/token", false},
 		{"network excludes old state", "internal/domain/network/membership.go", modulePath + "/internal/domain/network/state", false},
 		{"network excludes execution", "internal/domain/network/membership.go", modulePath + "/internal/domain/node", false},
 		{"network excludes debit", "internal/domain/network/membership.go", modulePath + "/internal/domain/admission", false},

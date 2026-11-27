@@ -25,6 +25,11 @@ object per stdin line (maximum 64 KiB) and return one JSON result per line. EOF,
 Interrupt closes and joins command I/O. Failure diagnostics contain categories,
 not keys, file paths or received payloads.
 
+`admission/console` retains inherited descriptors and runs the bounded local
+conversation. Endpoint's holder and receiver supply the operations and close
+their original owners after the conversation joins. Windows returns the native
+descriptor refusal before opening those owners.
+
 JSON byte slices use base64; fixed byte arrays use arrays of integers of exactly
 the declared length. Short or excess fixed-array inputs refuse, including nested
 arrays; omitted optional fields retain their existing zero-value contract. Time values

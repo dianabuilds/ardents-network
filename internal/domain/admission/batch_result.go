@@ -23,8 +23,8 @@ func EncodeClosedTokenBatchResult(result ClosedTokenBatchResult) ([]byte, error)
 	raw[9] = byte(len(result.Signatures))
 	offset := 10
 	for _, signature := range result.Signatures {
-		copy(raw[offset:offset+closedTokenBlindElementSize], signature)
-		offset += closedTokenBlindElementSize
+		copy(raw[offset:offset+BlindSignatureSize], signature)
+		offset += BlindSignatureSize
 	}
 	return raw, nil
 }
@@ -40,7 +40,7 @@ func validClosedTokenBatchResult(result ClosedTokenBatchResult) bool {
 		return false
 	}
 	for _, signature := range result.Signatures {
-		if len(signature) != closedTokenBlindElementSize || allZeroClosedTokenBytes(signature) {
+		if len(signature) != BlindSignatureSize || allZeroClosedTokenBytes(signature) {
 			return false
 		}
 	}
@@ -68,16 +68,16 @@ func DecodeClosedTokenBatchResult(raw []byte) (ClosedTokenBatchResult, error) {
 		return ClosedTokenBatchResult{}, errors.New("closed token batch result count is invalid")
 	}
 	offset := 10
-	if offset+count*closedTokenBlindElementSize > len(raw) {
+	if offset+count*BlindSignatureSize > len(raw) {
 		return ClosedTokenBatchResult{}, errors.New("closed token batch result is truncated")
 	}
 	for range count {
-		signature := append([]byte(nil), raw[offset:offset+closedTokenBlindElementSize]...)
+		signature := append([]byte(nil), raw[offset:offset+BlindSignatureSize]...)
 		if allZeroClosedTokenBytes(signature) {
 			return ClosedTokenBatchResult{}, errors.New("closed token batch signature is invalid")
 		}
 		result.Signatures = append(result.Signatures, signature)
-		offset += closedTokenBlindElementSize
+		offset += BlindSignatureSize
 	}
 	for _, value := range raw[offset:] {
 		if value != 0 {

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 )
 
 // ClosedTokenKeyID extracts the unverified key ID from a structurally framed
@@ -33,7 +34,7 @@ func VerifyClosedToken(context ClosedTokenContext, spki, token []byte) error {
 	if err != nil || !bytes.Equal(token[:len(expected)], expected) {
 		return errors.New("closed token input does not match receiver context")
 	}
-	public, err := parseClosedTokenPublicKey(spki)
+	public, err := issuerprofile.ParseKey(spki)
 	if err != nil {
 		return err
 	}

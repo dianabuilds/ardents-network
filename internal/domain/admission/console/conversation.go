@@ -1,4 +1,4 @@
-package admission
+package console
 
 import (
 	"bufio"
@@ -8,9 +8,9 @@ import (
 	"time"
 )
 
-// RunConsole owns the input/output descriptors through cancellation. Closing them on cancellation
+// Run owns the input/output descriptors through cancellation. Closing them on cancellation
 // joins the blocking local I/O; no abandoned scanner goroutine is created.
-func RunConsole(ctx context.Context, in io.ReadCloser, out io.Writer, step func(context.Context, []byte) (any, bool, error)) int {
+func Run(ctx context.Context, in io.ReadCloser, out io.Writer, step func(context.Context, []byte) (any, bool, error)) int {
 	if ctx == nil || in == nil {
 		return 2
 	}

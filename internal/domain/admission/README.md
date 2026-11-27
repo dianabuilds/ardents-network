@@ -19,13 +19,14 @@ debit and exact response; failure never refunds allocation.
 | Package | Responsibility |
 | --- | --- |
 | admission | Permission and batch grammar, token classes, external authority facts |
+| console | Local holder and receiver conversation framing, inherited descriptors and joined interruption |
 | quota | Durable issuance quota, exact retry and opaque debit confirmation |
 | allocation | Permission allocation decisions and aggregate role maxima |
 | issuerprofile | Pure canonical public grammar, validated requests and signature verification |
 | issuerprofile/signing | Imported pinned Ed25519 material, original lease/failure/Close and only validated offline profile signing |
 | issuance | Private issuer material and retained issuance results |
 | issuer | Application coordination of quota, key and result owners |
-| token | Holder blind state, token challenge, finalization and verification |
+| token | Holder blind state, token challenge, finalization and verification using the Admission batch grammar |
 | stock | Holder permission, pending exact batch, available tokens and presentation; application executes the exchange |
 | attempts | Durable holder presentation history |
 | receiving | Receiver binding, bounded verification, redemption, finite allowance and reservation transfer |
