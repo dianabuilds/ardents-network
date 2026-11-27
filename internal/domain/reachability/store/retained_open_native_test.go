@@ -67,7 +67,7 @@ func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
 	}
 }
 
-func TestRetainedStorePreservesSignedFloorAndStaleRefusal(t *testing.T) {
+func TestRetainedStoreReopensOriginalSignedRecord(t *testing.T) {
 	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	config := descriptorstore.Config{Root: t.TempDir(), Network: network}
 	store, err := descriptorstore.Open(config)

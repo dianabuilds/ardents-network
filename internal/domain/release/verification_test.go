@@ -3,6 +3,7 @@ package release
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -253,12 +254,24 @@ func TestSignedVectorAuthorizationAndReopen(t *testing.T) {
 	if !ok {
 		t.Fatal("missing actual authorization")
 	}
+	wantTargets := sha256.Sum256(in.Files[metadataBaseURL+"1.targets.json"])
+	if !bytes.Equal(d.Floors.TargetsDigest, wantTargets[:]) {
+		t.Fatal("decision did not retain the signed targets digest")
+	}
 	d.Digest[0] ^= 255
 	d.Floors.TargetsDigest[0] ^= 255
 	d.Path = "changed"
 	frozen, ok := a.AcceptedDecision()
 	if !ok || frozen.Path != in.TargetPath || bytes.Equal(frozen.Digest, d.Digest) {
 		t.Fatal("authorization aliases public projection")
+	}
+	if !bytes.Equal(frozen.Floors.TargetsDigest, wantTargets[:]) {
+		t.Fatal("decision mutated the retained targets digest")
+	}
+	frozen.Floors.TargetsDigest[0] ^= 255
+	again, ok := a.AcceptedDecision()
+	if !ok || !bytes.Equal(again.Floors.TargetsDigest, wantTargets[:]) {
+		t.Fatal("accepted projection mutated the retained targets digest")
 	}
 	if err = v.Close(); err != nil {
 		t.Fatal(err)

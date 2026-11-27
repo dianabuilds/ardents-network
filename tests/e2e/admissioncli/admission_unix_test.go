@@ -23,6 +23,7 @@ import (
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	metrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traces "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	common "go.opentelemetry.io/proto/otlp/common/v1"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -141,38 +142,49 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 	if proto.Unmarshal(seen["/v1/traces"], &tr) != nil || len(tr.ResourceSpans) != 1 {
 		t.Fatal("missing trace")
 	}
-	span := tr.ResourceSpans[0].ScopeSpans[0].Spans[0]
+	traceScopes := tr.ResourceSpans[0].ScopeSpans
+	if len(traceScopes) != 1 || len(traceScopes[0].Spans) != 1 {
+		t.Fatal("expected exactly one trace span")
+	}
+	span := traceScopes[0].Spans[0]
 	if span.Name != "admission.initialize" || len(span.Attributes) != 3 || len(span.Events) != 0 || len(span.ParentSpanId) != 0 {
 		t.Fatal("unsafe span")
 	}
-	for _, attr := range span.Attributes {
-		want := map[string]string{"operation": "admission.initialize", "phase": "execute", "outcome": "initialized-offline"}
-		if want[attr.Key] != attr.Value.GetStringValue() {
-			t.Fatal("unexpected attribute", attr)
-		}
-	}
+	want := map[string]string{"operation": "admission.initialize", "phase": "execute", "outcome": "initialized-offline"}
+	requireExactStringAttributes(t, span.Attributes, want)
 	if proto.Unmarshal(seen["/v1/metrics"], &mr) != nil || len(mr.ResourceMetrics) != 1 {
 		t.Fatal("missing metrics")
 	}
-	if len(tr.ResourceSpans[0].Resource.Attributes) != 1 || len(mr.ResourceMetrics[0].Resource.Attributes) != 1 {
-		t.Fatal("extra resource metadata")
+	resources := map[string]string{"service.name": "ardents-next"}
+	requireExactStringAttributes(t, tr.ResourceSpans[0].Resource.Attributes, resources)
+	requireExactStringAttributes(t, mr.ResourceMetrics[0].Resource.Attributes, resources)
+	metricScopes := mr.ResourceMetrics[0].ScopeMetrics
+	if len(metricScopes) != 1 {
+		t.Fatal("expected exactly one metric scope")
 	}
-	for _, scope := range mr.ResourceMetrics[0].ScopeMetrics {
+	instrumentNames := make(map[string]bool, 2)
+	for _, scope := range metricScopes {
 		if len(scope.Metrics) != 2 {
 			t.Fatal("extra instruments")
 		}
 		for _, m := range scope.Metrics {
+			if instrumentNames[m.Name] {
+				t.Fatal("duplicate instrument", m.Name)
+			}
+			instrumentNames[m.Name] = true
 			switch m.Name {
 			case "ardents.admission.operations":
 				points := m.GetSum().DataPoints
 				if len(points) != 1 || points[0].GetAsInt() != 1 || len(points[0].Attributes) != 3 || len(points[0].Exemplars) != 0 {
 					t.Fatal("unsafe counter")
 				}
+				requireExactStringAttributes(t, points[0].Attributes, want)
 			case "ardents.admission.duration":
 				points := m.GetHistogram().DataPoints
 				if len(points) != 1 || points[0].Count != 1 || m.Unit != "s" || len(points[0].Attributes) != 3 || len(points[0].Exemplars) != 0 {
 					t.Fatal("unsafe duration")
 				}
+				requireExactStringAttributes(t, points[0].Attributes, want)
 			default:
 				t.Fatal("unexpected metric")
 			}
@@ -182,5 +194,21 @@ func TestAdmissionOTLPContainsOnlyFiniteAttributes(t *testing.T) {
 		if bytes.Contains(raw, []byte(root)) || bytes.Contains(raw, []byte(init["binding"].(admissionBindingInput).Authority)) {
 			t.Fatal("metadata leaked")
 		}
+	}
+}
+
+func requireExactStringAttributes(t *testing.T, attributes []*common.KeyValue, want map[string]string) {
+	t.Helper()
+	if len(attributes) != len(want) {
+		t.Fatalf("attribute count %d, want %d", len(attributes), len(want))
+	}
+	seen := make(map[string]bool, len(want))
+	for _, attr := range attributes {
+		value, ok := want[attr.GetKey()]
+		actual, isString := attr.GetValue().GetValue().(*common.AnyValue_StringValue)
+		if !ok || seen[attr.GetKey()] || !isString || actual.StringValue != value {
+			t.Fatalf("unexpected or duplicated string attribute %q", attr.GetKey())
+		}
+		seen[attr.GetKey()] = true
 	}
 }

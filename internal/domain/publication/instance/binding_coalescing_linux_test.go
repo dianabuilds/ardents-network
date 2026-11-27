@@ -2,6 +2,8 @@ package instance
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -162,5 +164,86 @@ func TestBindingObservationCoalescingPreservesRevocation(t *testing.T) {
 	}
 	if err := binding.observe(context.Background()); err == nil {
 		t.Fatal("revoked binding accepted an observation")
+	}
+}
+
+func TestAdmittedCanceledCallerJoinsSharedObservation(t *testing.T) {
+	root, config := acceptedNativeRoot(t)
+	t.Cleanup(func() { _ = root.Close() })
+	history, err := durable.Open(t.Context(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = history.Close() })
+	binding, err := root.Bind(t.Context(), history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = binding.Close() })
+	starts := make(chan struct{}, 2)
+	releases := []chan struct{}{make(chan struct{}), make(chan struct{})}
+	var once [2]sync.Once
+	release := func(round int) { once[round].Do(func() { close(releases[round]) }) }
+	defer release(0)
+	defer release(1)
+	var index int
+	binding.observePhysical = func(context.Context, rootLease) error {
+		round := index
+		index++
+		starts <- struct{}{}
+		<-releases[round]
+		return nil
+	}
+	start := func(ctx context.Context) <-chan error {
+		done := make(chan error, 1)
+		go func() { done <- binding.observe(ctx) }()
+		return done
+	}
+	barrier := func() {
+		t.Helper()
+		select {
+		case <-starts:
+		case <-time.After(3 * time.Second):
+			t.Fatal("round did not start")
+		}
+	}
+	result := func(done <-chan error) error {
+		t.Helper()
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(3 * time.Second):
+			t.Fatal("admitted caller did not join")
+			return nil
+		}
+	}
+	first := start(t.Context())
+	barrier()
+	live := start(t.Context())
+	waitQueued(t, binding, 1)
+	caller, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	canceled := start(caller)
+	waitQueued(t, binding, 2)
+	release(0)
+	if err := result(first); err != nil {
+		t.Fatal(err)
+	}
+	barrier()
+	cancel()
+	select {
+	case err := <-canceled:
+		t.Fatalf("canceled caller left before current round joined: %v", err)
+	default:
+	}
+	release(1)
+	if err := result(live); err != nil {
+		t.Fatal("live caller was refused", err)
+	}
+	if err := result(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatal("canceled caller did not retain original refusal", err)
+	}
+	if rounds := binding.observeRoundCount.Load(); rounds != 2 {
+		t.Fatal("unexpected number of rounds", rounds)
 	}
 }

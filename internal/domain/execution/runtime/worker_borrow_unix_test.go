@@ -226,8 +226,8 @@ func TestWorkerBorrowCloseRetainsFirstAuthority(t *testing.T) {
 }
 
 // The per-role check hooks remain distinct: cancelling the reader caller fails
-// only the Reader hook, never the Stream qualification hook, and each named hook
-// equals the exact original per-role expression. Possession merges no authority.
+// only the Reader hook, never the Stream qualification hook. Possession merges
+// no authority, and the Reader borrow must return that cancellation on Read.
 func TestWorkerBorrowRoleChecksAreDistinct(t *testing.T) {
 	fixture := newBorrowFixture(t)
 	stream, reader := fixture.streamBorrow(), fixture.readerBorrow()
@@ -245,13 +245,8 @@ func TestWorkerBorrowRoleChecksAreDistinct(t *testing.T) {
 	if readerErr == nil || !errors.Is(readerErr, context.Canceled) {
 		t.Fatalf("Reader check ignored the reader caller: %v", readerErr)
 	}
-	streamGot, streamWant := streamOperationCheck(fixture.invocation, fixture.operation), fixture.operation.Check()
-	if (streamGot == nil) != (streamWant == nil) || (streamGot != nil && streamGot.Error() != streamWant.Error()) {
-		t.Fatalf("Stream hook drifted from operation.Check: %v vs %v", streamGot, streamWant)
-	}
-	readerGot := readerOperationCheck(fixture.invocation, fixture.operation)
-	readerWant := errors.Join(fixture.readerCaller.Err(), fixture.operation.CheckReader())
-	if borrowErrString(readerGot) != borrowErrString(readerWant) {
-		t.Fatalf("Reader hook drifted from the original expression: %q vs %q", borrowErrString(readerGot), borrowErrString(readerWant))
+	n, err := reader.Read(make([]byte, 4))
+	if n != 0 || !errors.Is(err, context.Canceled) {
+		t.Fatal("Reader borrow lost the original caller cancellation", n, err)
 	}
 }
