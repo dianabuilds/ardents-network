@@ -30,9 +30,7 @@ func offlineOperatorFile(source string) bool {
 // take authority from a retained runtime root. Each foreign dependency is tied
 // to the particular source responsibility that uses it.
 func offlineOperatorImportAllowed(source, dependency string) bool {
-	first, _, _ := strings.Cut(dependency, "/")
-	if dependency != "" && dependency != "C" && dependency != "unsafe" &&
-		!strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/") {
+	if allowedStandardImport(dependency) {
 		return true
 	}
 	if dependency == modulePath+"/internal/domain/release/infrastructure/signing/internal/keyset" {
