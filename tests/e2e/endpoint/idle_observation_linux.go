@@ -11,8 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
@@ -22,7 +20,10 @@ import (
 func MeasureNET32Idle(ctx context.Context, hostingRoot, mainPID, stateRoot string, window time.Duration) (net32IdleVerdict, error) {
 	series, report, err := observeNet32Idle(ctx, hostingRoot, mainPID, window)
 	if err != nil {
-		return net32IdleVerdict{}, err
+		return net32IdleVerdict{
+			Kind: "net32-short-projection", Status: "unavailable", UnavailableReason: err.Error(),
+			Samples: report.Samples, FailedAttempts: report.FailedAttempts,
+		}, err
 	}
 	stateBytes, stateErr := net32StateProfileBytes(stateRoot)
 	return evaluateNet32Idle(report, series, stateBytes, stateErr), nil
@@ -54,19 +55,18 @@ func observeNet32Idle(ctx context.Context, hostingRoot, mainPID string, window t
 		defer stop()
 		resultErr = errors.Join(resultErr, reservation.Release(release))
 	}()
-	cgroups, err := net32ClientCgroups(mainPID)
-	if err != nil {
-		return nil, report, err
-	}
+	var failedAttempts []net32FailedAttempt
+	defer func() { report.FailedAttempts = failedAttempts }()
 	// Let the Endpoint's initial refresh burst settle so the timed window opens
 	// against a sampleable budget; startup lease contention is transient and is
 	// excluded from the measured window.
 	warmupDeadline := time.Now().Add(30 * time.Second)
-	for {
+	for attempt := 1; ; attempt++ {
 		_, sampleErr := budget.Sample(lifetime, time.Second)
 		if sampleErr == nil {
 			break
 		}
+		failedAttempts = append(failedAttempts, net32FailedAttempt{Stage: "startup-hosting", Attempt: attempt, Error: sampleErr.Error()})
 		if time.Now().After(warmupDeadline) || lifetime.Err() != nil {
 			return nil, report, fmt.Errorf("NET-32 budget not sampleable after startup: %w", sampleErr)
 		}
@@ -76,34 +76,41 @@ func observeNet32Idle(ctx context.Context, hostingRoot, mainPID string, window t
 		case <-time.After(200 * time.Millisecond):
 		}
 	}
+	resources, err := openNet32ClientResources(filepath.Join("/proc", mainPID), "/sys/fs/cgroup")
+	if err != nil {
+		return nil, report, fmt.Errorf("NET-32 client resource scope unavailable: %w", err)
+	}
+	defer func() { resultErr = errors.Join(resultErr, resources.close()) }()
+	sample := 0
 	return collectNet32Idle(lifetime, window, time.Now, func(fresh bool) (net32IdleSample, error) {
-		return readNet32Sample(lifetime, budget, hostingRoot, cgroups, fresh)
+		sample++
+		s, err := readNet32Sample(lifetime, budget, hostingRoot, fresh, func(attempt int, err error) {
+			failedAttempts = append(failedAttempts, net32FailedAttempt{Stage: "window-hosting", Sample: sample, Attempt: attempt, Error: err.Error()})
+		})
+		if err != nil {
+			return net32IdleSample{}, err
+		}
+		s.resourceBegan = time.Now()
+		s.memoryBytes, s.cpuUsec, err = resources.read()
+		s.resourceFinished = time.Now()
+		if err != nil {
+			failedAttempts = append(failedAttempts, net32FailedAttempt{Stage: "client-resources", Sample: sample, Attempt: 1, Error: err.Error()})
+			return net32IdleSample{}, fmt.Errorf("NET-32 client resources unavailable: %w", err)
+		}
+		return s, nil
 	})
 }
 
 // readNet32Sample forces a fresh charged measurement at either boundary. It
 // reads the confirmed persisted counters for the interface/ledger comparison.
-func readNet32Sample(ctx context.Context, budget *hosting.Budget, hostingRoot string, cgroups []string, fresh bool) (net32IdleSample, error) {
-	// The runtime's periodic refresh briefly holds the same per-transact lease.
-	var observation hosting.Observation
-	var err error
-	for attempt := 0; ; attempt++ {
+func readNet32Sample(ctx context.Context, budget *hosting.Budget, hostingRoot string, fresh bool, failed func(int, error)) (net32IdleSample, error) {
+	observation, err := retryNet32Hosting(ctx, func() (hosting.Observation, error) {
 		if fresh {
-			observation, err = budget.Observe(ctx)
-		} else {
-			var snapshot hosting.Snapshot
-			snapshot, err = budget.Sample(ctx, time.Second)
-			observation = snapshot.Observation()
+			return budget.Observe(ctx)
 		}
-		if err == nil || ctx.Err() != nil || attempt >= 4 {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return net32IdleSample{}, ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-		}
-	}
+		snapshot, err := budget.Sample(ctx, time.Second)
+		return snapshot.Observation(), err
+	}, failed)
 	if err != nil {
 		return net32IdleSample{}, err
 	}
@@ -118,15 +125,27 @@ func readNet32Sample(ctx context.Context, budget *hosting.Budget, hostingRoot st
 	for _, iface := range state.Reading.Interfaces {
 		s.ifaces = append(s.ifaces, net32IdleInterface{name: iface.Name, index: iface.Index, tx: iface.Tx, rx: iface.Rx})
 	}
-	for _, cgroup := range cgroups {
-		rss, cpu, err := net32CgroupUsage(cgroup)
-		if err != nil {
-			return net32IdleSample{}, err
-		}
-		s.rss += rss
-		s.cpuUsec += cpu
-	}
 	return s, nil
+}
+
+// The runtime's periodic refresh briefly holds the same per-transact lease.
+// A retry is part of the same sample, and each failed call remains in the report.
+func retryNet32Hosting(ctx context.Context, observe func() (hosting.Observation, error), failed func(int, error)) (hosting.Observation, error) {
+	for attempt := 1; ; attempt++ {
+		observation, err := observe()
+		if err == nil {
+			return observation, nil
+		}
+		failed(attempt, err)
+		if attempt == 5 || ctx.Err() != nil {
+			return hosting.Observation{}, err
+		}
+		select {
+		case <-ctx.Done():
+			return hosting.Observation{}, ctx.Err()
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
 
 type net32HostingState struct {
@@ -170,63 +189,6 @@ func readNet32HostingState(hostingRoot string) (net32HostingState, error) {
 		return net32HostingState{}, errors.New("NET-32 hosting reading unavailable")
 	}
 	return state, nil
-}
-
-// net32ClientCgroups returns the whole-client cgroup directories: the Endpoint
-// service cgroup (from MainPID) plus every active confined text worker unit. The
-// 512 MiB gate is whole-client, so confinement helpers/workers are included.
-func net32ClientCgroups(mainPID string) ([]string, error) {
-	raw, err := os.ReadFile(filepath.Join("/proc", mainPID, "cgroup"))
-	if err != nil {
-		return nil, err
-	}
-	var endpoint string
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		parts := strings.SplitN(line, ":", 3)
-		if len(parts) == 3 && parts[0] == "0" {
-			endpoint = filepath.Join("/sys/fs/cgroup", parts[2])
-		}
-	}
-	if endpoint == "" {
-		return nil, errors.New("NET-32 Endpoint cgroup unavailable")
-	}
-	cgroups := []string{endpoint}
-	entries, err := os.ReadDir("/sys/fs/cgroup/system.slice")
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if strings.HasPrefix(name, "ardents-text-reader@") || strings.HasPrefix(name, "ardents-text-publisher@") {
-			cgroups = append(cgroups, filepath.Join("/sys/fs/cgroup/system.slice", name))
-		}
-	}
-	return cgroups, nil
-}
-
-func net32CgroupUsage(cgroup string) (rss, cpuUsec uint64, err error) {
-	memory, err := os.ReadFile(filepath.Join(cgroup, "memory.current"))
-	if err != nil {
-		return 0, 0, err
-	}
-	rss, err = strconv.ParseUint(strings.TrimSpace(string(memory)), 10, 64)
-	if err != nil {
-		return 0, 0, err
-	}
-	cpu, err := os.ReadFile(filepath.Join(cgroup, "cpu.stat"))
-	if err != nil {
-		return 0, 0, err
-	}
-	for _, line := range strings.Split(string(cpu), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 2 && fields[0] == "usage_usec" {
-			cpuUsec, err = strconv.ParseUint(fields[1], 10, 64)
-			if err != nil {
-				return 0, 0, err
-			}
-		}
-	}
-	return rss, cpuUsec, nil
 }
 
 func net32StateProfileBytes(root string) (uint64, error) {

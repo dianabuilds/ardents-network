@@ -3735,9 +3735,9 @@ The `endpoint_launch_native` build tag additionally selects
 `tests/e2e/endpointinstalled/endpoint_idle_native_linux_test.go`
 (`TestNativeEndpointPlatformLedIdle`), a real-host root-driver
 measurement on an admitted Ubuntu/systemd manager (systemd 249/255, cgroup v2).
-The same tag selects the fresh Hosting boundary regression in `tests/e2e/endpoint`.
-That package also owns the portable projection and sampling tests and the
-Linux provider-accounting integration test.
+The same tag selects fresh Hosting boundary, retry history and cgroup sampling
+regressions in `tests/e2e/endpoint`. That package also owns the portable
+projection and sampling tests and the Linux provider-accounting integration test.
 Run it explicitly, for example `go test -tags endpoint_launch_native -run
 '^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./tests/e2e/endpointinstalled`;
 missing privileges or manager are an invalid environment and fail, never a
@@ -3757,10 +3757,25 @@ monotonic interval from the first fresh sample's completion to the final fresh
 sample's start; the verdict requires >=600 samples, a complete monotonic
 interface-counter window, `ceil(aggregate*86400/duration) <= 1,000,000,000`
 projected tx+rx bytes, Hosting-ledger/interface reconciliation, whole-client
-cgroup RSS p95 <=512 MiB, mean CPU <=1% of one core, and a <=64 KiB State profile
+cgroup memory p95 <=512 MiB, mean CPU <=1% of one core, and a <=64 KiB State profile
 (privacy-qualification.md NET-32). The product Hosting API is unchanged: the
 harness reads the persisted Hosting reading (`budget.json`) and the Endpoint plus
 confined-worker cgroups directly for the interface/resource reconciliation.
+Memory is the sum of cgroup v2 `memory.current` in bytes (which can include
+cache and kernel memory), so this component result does not establish OS RSS.
+CPU is the sum of cgroup `cpu.stat usage_usec` deltas divided by the conservatively
+bracketed monotonic resource interval in microseconds, expressed as a percentage
+of one core. The reader checks the original Endpoint and worker directories
+around each sample and refuses a changed cohort or unavailable counter. The
+one-second observations cannot establish that a worker which started and exited
+between observations was absent. The receipt includes the failed attempts of
+each Hosting sample even if a bounded retry succeeds.
+
+Run `TestNativeNET32ResourceScopeAndUnits` explicitly under the same tag in
+`tests/e2e/endpoint` on a disposable root-driven systemd host. It compares the
+sampler with raw kernel counters for real, frozen Endpoint and worker test units
+and excludes a separate unit in the same slice. This is a resource sampling
+check independent of the installed idle traffic measurement.
 
 This is a ten-minute component measurement with an upper 24-hour projection — NOT
 a 24-hour observed run, NOT whole-host privacy qualification, and one fixture
