@@ -44,8 +44,6 @@ func (streamProtocol) observe(ctx context.Context, name, role string) (worker.In
 
 func (protocol streamProtocol) role(execution.Surface) string { return protocol.explicitRole }
 
-func (protocol streamProtocol) consumer() attachmentConsumer { return protocol.input }
-
 func streamRole(role string) streamqualification.Role {
 	if role == "publisher" {
 		return streamqualification.PublisherRole
@@ -75,7 +73,9 @@ type streamQualificationInput struct {
 	attempted bool
 }
 
-func (input *streamQualificationInput) observe(invocation *Invocation) {
+func (protocol streamProtocol) startObservation(invocation *Invocation) {
+	input := protocol.input
+	invocation.qualification = input
 	go func() {
 		defer close(invocation.observationDone)
 		var result streamQualificationResult
@@ -175,8 +175,8 @@ func (operation *Operation) RunStreamConnections(ctx context.Context, contract S
 		return streamqualification.Report{}, errors.New("original qualification invocation is absent")
 	}
 	invocation.useMu.Lock()
-	input, ok := invocation.consumer.(*streamQualificationInput)
-	if !ok || invocation.closing || invocation.operation != operation || input == nil || input.attempted {
+	input := invocation.qualification
+	if invocation.closing || invocation.operation != operation || input == nil || input.attempted {
 		invocation.useMu.Unlock()
 		return streamqualification.Report{}, errors.New("original qualification stream handoff is unavailable or consumed")
 	}

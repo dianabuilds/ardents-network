@@ -12,6 +12,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/execution/worker"
 )
 
+// workerProtocol selects one fixed root-installed worker inventory and its INIT
+// and reobservation protocol. It is private: ordinary document composition uses the
+// document protocol through Launch/LaunchReader/LaunchPublisher, and the trusted
+// qualification composition uses the stream protocol through
+// LaunchStreamQualification. No caller-visible inventory selector exists.
+type workerProtocol interface {
+	activate(ctx context.Context, role string) (*worker.Activation, error)
+	initialize(ctx context.Context, attachment *worker.Attachment, nonce [32]byte, role string) error
+	observe(ctx context.Context, name, role string) (worker.Instance, error)
+	role(surface execution.Surface) string
+	startObservation(*Invocation)
+}
+
 // One process-wide inventory gate covers every local owner. Per-Job locks
 // cannot prevent a sibling's activation from entering the wrong baseline.
 var launchGate = make(chan struct{}, 1)
@@ -77,15 +90,60 @@ func (owner *Owner) Prepare(ctx context.Context, principal [32]byte, surface exe
 }
 
 func (owner *Owner) prepareJob(job *execution.Job, surface execution.Surface) error {
-	invocation, err := owner.launchJob(job, surface)
+	invocation, err := owner.launchControlWorker(job, surface)
 	if err != nil {
 		return err
 	}
 	return invocation.Close()
 }
 
-func (owner *Owner) launchJob(job *execution.Job, surface execution.Surface) (_ *Invocation, result error) {
+// launchControlWorker is the fixed worker setup used by joined preparation.
+func (owner *Owner) launchControlWorker(job *execution.Job, surface execution.Surface) (*Invocation, error) {
 	return owner.launchInitializedJob(job, surface, documentProtocol{}, false, nil)
+}
+
+// Launch admits one exact local session before effects and returns only the
+// privately bound original invocation, after installed READY reobservation.
+func (owner *Owner) Launch(ctx context.Context, principal [32]byte, surface execution.Surface) (_ *Invocation, result error) {
+	return owner.launchApplicationInvocation(ctx, principal, surface, documentProtocol{}, false, false)
+}
+
+func (owner *Owner) launchApplicationInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, protocol workerProtocol, publisher, reader bool) (_ *Invocation, result error) {
+	if owner == nil || ctx == nil || ctx.Err() != nil {
+		return nil, errors.New("execution launch is unavailable")
+	}
+	if reader && (publisher || surface != execution.Connection) {
+		return nil, errors.New("reader invocation purpose is invalid")
+	}
+	capability, err := owner.authority.Admit(principal, surface)
+	if err != nil {
+		return nil, err
+	}
+	session, err := owner.supervisor.Activate(ctx, capability, principal, surface)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if result != nil {
+			result = errors.Join(result, session.Close())
+		}
+	}()
+	job, err := session.BeginJob()
+	if err != nil {
+		return nil, err
+	}
+	var readerCaller context.Context
+	if reader {
+		readerCaller = ctx
+	}
+	invocation, err := owner.launchInitializedJob(job, surface, protocol, publisher, readerCaller)
+	if err != nil {
+		return nil, err
+	}
+	if publisher && surface == execution.Administration {
+		invocation.administration = AdministrationContext{session: session}
+	}
+	return invocation, nil
 }
 
 func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, protocol workerProtocol, publisher bool, readerCaller context.Context) (_ *Invocation, result error) {
@@ -201,8 +259,8 @@ func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.S
 	}
 	invocation := &Invocation{job: job, activation: activation, cleanup: cleanup, grant: grant, lease: lease,
 		stop: stop, callbackDone: callbackDone, done: make(chan struct{}), publisher: publisher, readerCaller: readerCaller, surface: surface,
-		consumer: protocol.consumer()}
-	invocation.observeAttachment()
+		observationDone: make(chan struct{})}
+	protocol.startObservation(invocation)
 	invocation.beginJoin()
 	transferred = true
 	// The exact candidate is pinned and privately bound. Sibling activations

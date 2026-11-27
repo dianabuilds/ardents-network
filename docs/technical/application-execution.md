@@ -7,6 +7,14 @@ native mechanisms. Genuine permission preparation, Route holder, Publication
 and bounded installed bootstrap consume this boundary. Exact imports remain
 in the [package map](../development/package-map.md).
 
+Each fixed launch profile starts its one attachment observer after common
+worker, artifact and Job verification. The Document Reader and Publisher own
+their document exchange, Byte Stream owns one port transfer, and Stream
+Qualification owns the separately admitted qualification transfer. Every
+observer joins through the same original Invocation before it reports the
+retained result. The [runtime source guide](../../internal/domain/execution/runtime/doc.go)
+names the profile entry points and handoff files.
+
 ## Responsibility and DDD posture
 
 **May this exact local Application invocation perform this operation now, and

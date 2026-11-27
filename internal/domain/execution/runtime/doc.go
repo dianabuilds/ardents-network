@@ -1,48 +1,26 @@
-// Package runtime orders genuine installed worker launch, readiness, exact
-// local permission and joined physical cleanup. Local execution rules remain
-// in execution; fixed native mechanisms remain in worker, and document INIT belongs
-// to document. Preparation provenance never authorizes a dead worker.
-// A qualified Publisher operation retains its original admitted Administration
-// context separately from the worker lease and Job's joined completion.
+// Package runtime owns the original installed worker invocation. It admits the
+// local session, pins and reobserves the worker, retains the qualified Grant,
+// and joins the attachment, operation and pinned descendants. Local authority
+// rules remain in execution and native worker mechanisms remain in worker.
 //
-// Navigation: one launch flow (launchInitializedJob) parameterized by a
-// private workerProtocol; Operation, Invocation and Owner share unexported
-// concurrency state. Test naming follows
-// docs/development/repository-layout.md. Installed behavior tests require the
-// native Linux worker; the _other refusal tests run on every platform.
+// Start at the entry point for the required exchange:
 //
-//   - ER1 owner-launch: launch.go, invocation.go, preparation.go, protocol.go.
-//     Tests: launch_test.go, preparation_test.go, invocation_retirement_test.go,
-//     native_refusal_other_test.go; installed:
-//     preparation_installed_linux_test.go,
-//     repeated_launch_installed_linux_test.go,
-//     endpoint_death_installed_linux_test.go, escape_installed_linux_test.go,
-//     hostile_tree_installed_linux_test.go.
-//   - ER2 operation: operation.go, connection_context.go, stream_contract.go,
-//     administration_context.go, administration_request.go. Tests:
-//     operation_test.go, stream_contract_test.go,
-//     administration_context_test.go, administration_request_test.go;
-//     connection_context.go is also exercised by
-//     preparation_installed_linux_test.go and reader_installed_linux_test.go.
-//   - ER3 reader-worker: reader_worker_linux.go, reader_worker_other.go,
-//     reader_stream.go. Tests: reader_worker_other_test.go,
-//     reader_stream_test.go, reader_installed_linux_test.go.
-//   - ER4 publisher-worker: publisher_worker_linux.go,
-//     publisher_worker_other.go, publisher_stream.go. Tests:
-//     publisher_worker_linux_test.go, publisher_installed_linux_test.go.
-//   - ER5 stream-qualification: stream_qualification_linux.go,
-//     stream_qualification_other.go. Tests:
-//     stream_qualification_installed_linux_test.go.
-//   - ER6 init-seam: initialization_linux.go, initialization_other.go;
-//     exercised through the installed launch and native-refusal tests.
-//   - ER7 byte-stream: byte_stream.go (portable ExchangeByteStream),
-//     byte_stream_linux.go (Linux launch and protocol), byte_stream_other.go
-//     (non-Linux LaunchByteStreamPublisher/LaunchByteStreamReader refusal stubs,
-//     #866). The authority-rechecking borrow shared by the Reader and Stream
-//     qualification bridges is worker_borrow_unix.go (Linux and macOS); its
-//     behavior test is worker_borrow_unix_test.go.
+//   - Document: LaunchReader and LaunchPublisher in document_reader_linux.go
+//     and document_publisher_linux.go. document_protocol.go and document_init_*
+//     bind the fixed inventory and INIT/READY exchange. The document handoff
+//     files own the single Reader result and Publisher stream transfers.
+//     Launch and Prepare use the same document inventory for Control and
+//     preparation, with an observer that admits no post-READY Application bytes.
+//   - Byte Stream: LaunchByteStreamReader and LaunchByteStreamPublisher in
+//     byte_stream_linux.go bind Byte Stream INIT and its own observer. The
+//     original qualified Operation transfers one pair of ports in byte_stream.go.
+//   - Stream Qualification: stream_qualification_linux.go owns its fixed
+//     inventory, INIT/READY and single transfer. The installed qualification
+//     test is the only admitted caller.
 //
-// Installed fixture helpers carry no behavior of their own:
-// activation_observation_installed_linux_test.go,
-// hostile_snapshot_installed_linux_test.go.
+// Each profile starts its observation once after common launch verification.
+// Invocation retains the original Job and joins the observer before reporting
+// the result. The Reader and qualification bridge share the authority-checked
+// borrow in worker_borrow_unix.go. Platform refusal files preserve the portable
+// entry points; actual installed worker coverage belongs to its Linux profile.
 package runtime

@@ -458,10 +458,10 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if source == "internal/domain/execution/runtime/initialization_linux.go" && dependency == modulePath+"/internal/application/document" {
+	if source == "internal/domain/execution/runtime/document_init_linux.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (source == "internal/domain/execution/runtime/publisher_worker_linux.go" || source == "internal/domain/execution/runtime/publisher_worker_linux_test.go") && dependency == modulePath+"/internal/application/document" {
+	if (source == "internal/domain/execution/runtime/document_publisher_linux.go" || source == "internal/domain/execution/runtime/document_publisher_linux_test.go") && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
 	if (source == "internal/domain/execution/runtime/byte_stream.go" || source == "internal/domain/execution/runtime/byte_stream_linux.go") && dependency == modulePath+"/internal/application/document" {
@@ -470,13 +470,13 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/stream_contract.go" || source == "internal/domain/execution/runtime/stream_contract_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if source == "internal/domain/execution/runtime/reader_worker_linux.go" && dependency == modulePath+"/internal/application/document" {
+	if source == "internal/domain/execution/runtime/document_reader_linux.go" && dependency == modulePath+"/internal/application/document" {
 		return true
 	}
-	if (source == "internal/domain/execution/runtime/reader_worker_linux.go" || source == "internal/domain/execution/runtime/reader_stream.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/execution/runtime/document_reader_linux.go" || source == "internal/domain/execution/runtime/document_reader_handoff.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if (source == "internal/domain/execution/runtime/publisher_worker_linux.go" || source == "internal/domain/execution/runtime/publisher_stream.go" || source == "internal/domain/execution/runtime/hostile_snapshot_installed_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/execution/runtime/document_publisher_linux.go" || source == "internal/domain/execution/runtime/document_publisher_handoff.go" || source == "internal/domain/execution/runtime/hostile_snapshot_installed_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "internal/domain/execution/worker/stream_activation_installed_linux_test.go" && dependency == modulePath+"/internal/application/streamqualification" {

@@ -14,7 +14,7 @@ import (
 // LaunchReader initializes one fixed Reader with a sole document protocol reader.
 // It grants no destination, Service authentication or Route acquisition.
 func (owner *Owner) LaunchReader(ctx context.Context, principal [32]byte) (*Invocation, error) {
-	return owner.launchInvocation(ctx, principal, execution.Connection, nil, false, true)
+	return owner.launchApplicationInvocation(ctx, principal, execution.Connection, documentProtocol{start: (*Invocation).observeReaderAttachment}, false, true)
 }
 
 func (invocation *Invocation) observeReaderAttachment() {

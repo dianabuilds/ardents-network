@@ -24,7 +24,7 @@ func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, sna
 	if _, err := document.NewSnapshot(body); err != nil {
 		return nil, err
 	}
-	return owner.launchInvocation(ctx, principal, execution.Administration, body, true, false)
+	return owner.launchApplicationInvocation(ctx, principal, execution.Administration, documentProtocol{snapshot: body, start: (*Invocation).observePublisherAttachment}, true, false)
 }
 
 // This sole reader belongs to the fixed document protocol. Only handoffs through

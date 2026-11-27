@@ -62,7 +62,7 @@ func TestInstalledExecutionRepeatedLaunch(t *testing.T) {
 						t.Fatal("replacement reused a Job nonce")
 					}
 					nonces[nonce] = true
-					invocation, err := owner.launchJob(job, surface)
+					invocation, err := owner.launchControlWorker(job, surface)
 					if err != nil {
 						t.Fatal(err)
 					}

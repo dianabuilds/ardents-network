@@ -9,6 +9,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/execution/worker"
 )
 
-func initializeWorker(context.Context, *worker.Attachment, string, [32]byte, []byte) error {
+func (documentProtocol) initialize(context.Context, *worker.Attachment, [32]byte, string) error {
 	return errors.New("ordinary Execution native initialization is unavailable")
 }

@@ -2993,7 +2993,7 @@ projection test was de-tagged (`result_test.go`) and a new portable root-isolati
 test (`roots_test.go`) added; both execute in the portable deterministic inventory
 on Windows and macOS. The genuine production consumers remain Linux — the Reader
 and Publisher coordinators compose the Linux `LaunchReader`/`LaunchPublisher`
-native worker seams (`reader_worker_linux.go`/`publisher_worker_linux.go`) with
+native worker seams (`document_reader_linux.go`/`document_publisher_linux.go`) with
 unchanged `!linux` typed refusals, the Publisher live Open composes selection and
 Instance custody, and `presentationGuard` is composed by `participant_linux.go` —
 so the de-tagged helpers carry reviewed windows-production-dead deadcode
