@@ -1,275 +1,121 @@
-name: quality
-
+name: Ardents 973 exact Ubuntu invocation evidence
 on:
-  pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: quality-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  select:
-    if: github.event_name == 'pull_request'
+  native:
+    name: Ubuntu 24.04 systemd, installed and held borrower
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      matrix: ${{ steps.selection.outputs.matrix }}
-      count: ${{ steps.selection.outputs.count }}
-      powershell: ${{ steps.selection.outputs.powershell }}
+    timeout-minutes: 55
     steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          fetch-depth: 0
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+          ref: d773ec367728c2e6cc2a3d921aadd6b19407b698
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: 1.27.4
-          cache: true
-      - name: Select affected tests and consumers
-        id: selection
-        env:
-          PR_HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD^2)" = "$PR_HEAD"
-          PR_BASE="$(git rev-parse HEAD^1)"
-          go run ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go --base "$PR_BASE" --head HEAD --matrix "$RUNNER_TEMP/checks.json" --full-gate-matrix --powershell "$RUNNER_TEMP/powershell.txt"
-          python3 - <<'PY'
-          import json, os
-          with open(os.environ["RUNNER_TEMP"] + "/checks.json") as source:
-              matrix = json.load(source)
-          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
-              output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
-              output.write("count=" + str(len(matrix["include"])) + "\n")
-              with open(os.environ["RUNNER_TEMP"] + "/powershell.txt") as marker:
-                  output.write("powershell=" + marker.read().strip() + "\n")
-          PY
-  qualification-scripts:
-    needs: select
-    if: needs.select.outputs.powershell == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Parse affected qualification PowerShell surface
-        shell: pwsh
-        run: |
-          $failed = $false
-          Get-ChildItem tests/qualification -Recurse -Filter *.ps1 | ForEach-Object {
-            $tokens = $null
-            $errors = $null
-            [void][Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors)
-            foreach ($error in $errors) {
-              Write-Error "$($_.FullName):$($error.Extent.StartLineNumber):$($error.Extent.StartColumnNumber): $($error.Message)"
-              $failed = $true
-            }
-          }
-          if ($failed) { exit 1 }
-  affected:
-    needs: select
-    if: needs.select.outputs.count != '0'
-    strategy:
-      fail-fast: false
-      max-parallel: 16
-      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
-    name: affected-${{ matrix.id }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: ${{ matrix.timeout_minutes }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Install standard Go diagnostic parsers
-        if: matrix.diagnostic_parsers
-        run: make tools-install DIAGNOSTIC_PARSERS_ONLY=1
-      - name: Run original bounded check groups
-        env:
-          SELECTED_CHECKS: ${{ toJSON(matrix.checks) }}
-        run: |
-          set -euo pipefail
-          python3 - > "$RUNNER_TEMP/check-groups" <<'PYTHON'
-          import json, os, sys
-          checks = json.loads(os.environ["SELECTED_CHECKS"])
-          if not isinstance(checks, list) or not 1 <= len(checks) <= 60:
-              raise RuntimeError("finite selected check groups required")
-          for check in checks:
-              if type(check["id"]) is not int or check["id"] < 0 or type(check["race"]) is not bool:
-                  raise RuntimeError("exact typed check declaration required")
-              fields = [str(check["id"]), check["package"], check["run"], str(check["race"]).lower()]
-              if any(not isinstance(field, str) or "\0" in field for field in fields):
-                  raise RuntimeError("closed check fields required")
-              sys.stdout.buffer.write(("\0".join(fields) + "\0").encode("utf-8"))
-          PYTHON
-          while IFS= read -r -d '' TEST_ID && IFS= read -r -d '' TEST_PACKAGE && IFS= read -r -d '' TEST_RUN && IFS= read -r -d '' TEST_RACE; do
-            # A failed group exits before another group can use this runner.
-            (
-              echo "::group::Selected check group $TEST_ID $TEST_PACKAGE"
-              args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
-              if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
-              test_log="$RUNNER_TEMP/selected-test-$TEST_ID.json"
-              set +e
-              timeout --signal=QUIT --kill-after=10s 330s go test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
-              status=${PIPESTATUS[0]}
-              set -e
-              if (( status != 0 )); then
-                failure=unclassified
-                if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
-                elif grep -q 'race detected' "$test_log"; then failure=race-detected
-                elif grep -q '"FailedBuild"' "$test_log" && grep -q 'proxy.golang.org' "$test_log"; then failure=dependency-fetch
-                elif grep -q '"FailedBuild"' "$test_log"; then failure=go-build
-                elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
-                elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
-                elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled
-                elif grep -q '\.Done:.*run=.*integrity violation' "$test_log"; then failure=retained-done-integrity
-                elif grep -q '\.Done:.*run=.*invalid request' "$test_log"; then failure=retained-done-invalid-request
-                elif grep -q '\.Done:.*run=.*recovery' "$test_log"; then failure=retained-done-recovery
-                elif grep -q '\.Done:.*run=.*text Service job retired' "$test_log"; then failure=retained-done-job-retired
-                elif grep -q '\.Done:.*run=<nil>' "$test_log"; then failure=retained-done-cleanup
-                elif grep -q '\.Done:' "$test_log"; then failure=retained-done-other
-                elif grep -q '\.Close:' "$test_log"; then failure=retained-close
-                elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
-                elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
-                elif grep -q ' Introduction ' "$test_log"; then failure=qualification-introduction
-                elif grep -q 'retained setup reached' "$test_log"; then failure=retained-setup-other
-                fi
-                echo "::error title=Selected check group failed::selected test failure category: $failure"
-              fi
-              echo "::endgroup::"
-              exit "$status"
-            )
-          done < "$RUNNER_TEMP/check-groups"
-  full:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    env:
-      GOCACHE: /tmp/ardents-network-quality/go-build
-      GOMODCACHE: /tmp/ardents-network-quality/go-mod
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Install pinned quality tools
-        run: make tools-install
-      - name: Run the core maintained gate
-        run: make check-core UNIT_TEST_FLAGS="-shuffle=on -count=1 -timeout=15m"
-  full-race:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2, 3]
-    env:
-      QUALITY_CACHE_ROOT: /tmp/ardents-network-quality-race-${{ matrix.shard }}
-      GOCACHE: /tmp/ardents-network-quality-race-${{ matrix.shard }}/go-build
-      GOMODCACHE: /tmp/ardents-network-quality-race-${{ matrix.shard }}/go-mod
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Install parsers for the diagnostic command tests
-        run: |
-          packages="$(make --no-print-directory race-shard-packages RACE_SHARD=${{ matrix.shard }})"
-          if printf '%s\n' "$packages" | grep -qx 'github.com/dianabuilds/ardents-network/internal/diagnostics/command'; then
-            make tools-install DIAGNOSTIC_PARSERS_ONLY=1
-          fi
-      - name: Run serial race shard
-        run: make test-race-shard RACE_SHARD=${{ matrix.shard }} RACE_TEST_FLAGS="-race -shuffle=on -count=1 -timeout=15m"
-  go:
-    if: always()
-    needs: [select, qualification-scripts, affected, full, full-race, portable]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 1
-    steps:
-      - name: Require the event's quality gate to complete successfully
-        env:
-          SELECTION: ${{ needs.select.result }}
-          GROUP_RESULT: ${{ needs.affected.result }}
-          POWERSHELL_RESULT: ${{ needs.qualification-scripts.result }}
-          FULL_RESULT: ${{ needs.full.result }}
-          RACE_RESULT: ${{ needs.full-race.result }}
-          PORTABLE_RESULT: ${{ needs.portable.result }}
-          EVENT: ${{ github.event_name }}
-        run: |
-          if [[ "$EVENT" == pull_request ]]; then
-            test "$SELECTION" = success
-            test "$GROUP_RESULT" = success || test "$GROUP_RESULT" = skipped
-            test "$POWERSHELL_RESULT" = success || test "$POWERSHELL_RESULT" = skipped
-            test "$FULL_RESULT" = success
-            test "$RACE_RESULT" = success
-          else
-            test "$SELECTION" = skipped
-            test "$GROUP_RESULT" = skipped
-            test "$FULL_RESULT" = success
-            test "$RACE_RESULT" = success
-          fi
-          test "$PORTABLE_RESULT" = success
-  portable:
-    # ADR-0129 mandatory-target evidence: compile and portable-unit verification
-    # on Windows and macOS. This lane is NOT native qualification; C0
-    # qualification stays Ubuntu LTS x86-64 and the Ubuntu jobs above retain
-    # every native profile unchanged. Native cells (linux and *_native build
-    # constraints) are excluded by their build tags on these runners, never as
-    # passing skips; the common deterministic inventory is the declared
-    # portable subset (tests/profiles/deterministic-packages.txt).
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    name: portable-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    defaults:
-      run:
+          cache: false
+      - name: Admit original native host and artifacts
         shell: bash
-    env:
-      CGO_ENABLED: "0"
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: 1.27.4
-          cache: true
-      - name: Build every package for the target platform
-        run: go build ./...
-      - name: Vet every package for the target platform
-        run: go vet ./...
-      - name: Run the portable deterministic unit inventory
-        # Run the entire common inventory with four independent packages in
-        # parallel. Native cells remain outside this portable profile.
         run: |
           set -euo pipefail
-          packages=()
-          while IFS= read -r package || [[ -n "$package" ]]; do
-            if [[ -n "$package" ]]; then packages+=("$package"); fi
-          done < tests/profiles/deterministic-packages.txt
-          go test -p 4 "${packages[@]}" -short -shuffle=on -count=1 -timeout=15m
-      - name: Check portable Enrollment against the compiled command
-        run: go test ./tests/e2e/endpointcli -run '^TestHeadlessEnrollmentAcceptsExactRunningBundleAndRejectsChangedManifest$' -count=1
-      - name: Check portable Node dispatch, refusal, and spend evidence
-        run: go test ./tests/e2e/node ./tests/e2e/routeprocess -run '^Test(CompiledNode(DispatchRequiresExactOperation|UnsupportedPlatformRefusesBeforePrivateInput)|InfrastructureCompiledRejectsRetiredSourceOperations|InfrastructureUnsupportedPlatformRefusesBeforeEffects|RouteSpendEvidenceRequiresOneCompleteCommittedRecord|CurrentSourceCommandReachesCompiledDiagnosticTimeline|DiagnosticTimelineCommandProjectsStdin|DomainCommandsUseSafeSharedObservationWithoutChangingReceipts|EndpointCommandIdentityReachesSharedTimeline|ApplicationCommandObservationExcludesPrivateArguments|DomainMeasurementsReachTimelineWithoutPrivateArguments)$' -count=1
-      - name: Check macOS Network and Admission process scenarios
-        if: runner.os == 'macOS'
-        run: go test ./tests/e2e/node ./tests/e2e/admissioncli -run '^Test(Admission(Fresh|Initialization|OTLP)|Issuance|ConfirmedIssuance|IssuerProfileCLI|ProfileCommandStrict|NetworkCommandsAndAdmissionUseAuthenticatedRoots)' -count=1 -timeout=3m
-      - name: Check portable Source refusals against the compiled command
-        run: go test ./tests/e2e/source -run '^TestCompiledSourceUnsupportedPlatformRefusesBeforePlanEffects$' -count=1
+          . /etc/os-release
+          test "$ID:$VERSION_ID" = ubuntu:24.04
+          test "$(uname -m)" = x86_64
+          test "$(cat /proc/1/comm)" = systemd
+          test "$(systemd-detect-virt --container)" = none
+          test "$(systemctl --version | awk 'NR==1 {print $2}')" = 255
+          test "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs
+          test "$(findmnt -T /var/lib -n -o FSTYPE)" = ext4
+          test "$(findmnt -T / -n -o FSTYPE)" = ext4
+          test "$(sudo -n id -u)" = 0
+          test -r /proc/pressure/cpu && test -r /proc/pressure/memory
+          sudo -n busctl --system status org.freedesktop.systemd1 >/dev/null
+          for account in ardents-node ardents-source; do
+            if getent passwd "$account" >/dev/null; then exit 1; fi
+          done
+          native_dir=$(sudo -n mktemp -d /ardents-973-native.XXXXXX)
+          printf 'NATIVE_TMPDIR=%s\n' "$native_dir" >> "$GITHUB_ENV"
+          printf 'Host: %s %s, arch=%s, virtualization=%s, %s, kernel=%s\n' \
+            "$ID" "$VERSION_ID" "$(uname -m)" "$(systemd-detect-virt)" "$(systemctl --version | head -1)" "$(uname -r)"
+      - name: Build artifacts from exact source
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+          GOENV: off
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = d773ec367728c2e6cc2a3d921aadd6b19407b698
+          test "$(git rev-parse HEAD^{tree})" = f15d7b7551446b8be9380207faba3a9f29e698c5
+          git show -s --format='Candidate %H tree %T'
+          go version
+          out="$RUNNER_TEMP/artifacts973"
+          mkdir -m 0700 "$out"
+          CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags=-w -o "$out/ardents-next" ./cmd/ardents-next
+          CGO_ENABLED=0 go test -c -buildvcs=false -tags source_installed_native,forwarding_platform_native,join_platform_native,descriptor_platform_native -o "$out/installed.test" ./tests/e2e/nodeinstalled
+          CGO_ENABLED=1 go test -c -race -buildvcs=false -tags node_process_native -o "$out/owner.test" ./internal/domain/node/runtime
+          CGO_ENABLED=1 go test -c -race -buildvcs=false -tags node_process_native -o "$out/process.test" ./tests/e2e/node
+          (cd "$out"; sha256sum ardents-next installed.test owner.test process.test > SHA256SUMS; cat SHA256SUMS; sha256sum -c SHA256SUMS)
+          printf 'NATIVE_GOCACHE=%s\nNATIVE_GOMODCACHE=%s\n' "$(go env GOCACHE)" "$(go env GOMODCACHE)" >> "$GITHUB_ENV"
+      - name: Run exact native cases serially
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/artifacts973"
+          root="$PWD"
+          results="$out/results.tsv"
+          digest=$(awk '$2 == "ardents-next" {print $1}' "$out/SHA256SUMS")
+          run() {
+            local suite="$1" binary="$2" name="$3" timeout="$4" result=PASS code=0
+            local log="$out/$name.log"
+            local -a environment=(PATH="$PATH" GOENV=off GOTOOLCHAIN=local CGO_ENABLED=0 GOFLAGS=-buildvcs=false
+              GOCACHE="$NATIVE_GOCACHE" GOMODCACHE="$NATIVE_GOMODCACHE" TMPDIR="$NATIVE_TMPDIR"
+              ARDENTS_PREBUILT_NEXT="$out/ardents-next" ARDENTS_NODE_NATIVE_COMMAND="$out/ardents-next" ARDENTS_NODE_NATIVE_COMMAND_SHA256="$digest")
+            if ! (cd "$root/$suite"; sudo -n env "${environment[@]}" "$out/$binary" -test.list "^$name$") |
+              grep -Fx "$name" >/dev/null; then
+              printf 'INVALID\t%s\tmissing test discovery\n' "$name" | tee -a "$results"
+              return
+            fi
+            (cd "$root/$suite"; sudo -n env "${environment[@]}" "$out/$binary" -test.v "-test.run=^$name$" "-test.timeout=$timeout") >"$log" 2>&1 || code=$?
+            if [ "$code" -ne 0 ] || ! grep -Fq -- "--- PASS: $name (" "$log" || grep -Fq -- '--- SKIP:' "$log"; then
+              result=FAIL
+            fi
+            local observed
+            observed=$(grep -F -m1 -- "--- $result: $name (" "$log" || true)
+            printf '%s\t%s\t%s\n' "$result" "$name" "${observed:-exit=$code}" | tee -a "$results"
+            if [ "$result" != PASS ]; then
+              tail -65 "$log"
+            fi
+          }
+          run tests/e2e/nodeinstalled installed.test TestInstalledInvocationRequiresOriginalCompleteTerminal 1m
+          run tests/e2e/nodeinstalled installed.test TestNativeSourceInstalledLifecycle 10m
+          run tests/e2e/nodeinstalled installed.test TestNativeForwardingPlatformInstalledLifecycle 10m
+          run tests/e2e/nodeinstalled installed.test TestNativeJoinPlatformInstalledLifecycle 10m
+          run tests/e2e/nodeinstalled installed.test TestNativeDescriptorPlatformInstalledLifecycle 10m
+          run internal/domain/node/runtime owner.test TestNativeDescriptorOriginalAuthorityAndJoinTCP 3m
+          run tests/e2e/node process.test TestNativeJoinDuplexAndReopenTCP 3m
+          (cd "$out"; sha256sum -c SHA256SUMS)
+          test "$(git rev-parse HEAD)" = d773ec367728c2e6cc2a3d921aadd6b19407b698
+          test -z "$(git status --porcelain --untracked-files=no)"
+          echo '## Native invocation evidence' >> "$GITHUB_STEP_SUMMARY"
+          printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
+          cat "$results" >> "$GITHUB_STEP_SUMMARY"
+          printf '```\n' >> "$GITHUB_STEP_SUMMARY"
+          test "$(wc -l < "$results")" -eq 7
+          test "$(grep -c '^PASS' "$results")" -eq 7
+      - name: Confirm original native resources joined
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for account in ardents-node ardents-source; do
+            if getent passwd "$account" >/dev/null; then printf 'Residual account: %s\n' "$account"; exit 1; fi
+          done
+          if systemctl list-units --state=active,activating,deactivating,failed 'ardents-*' --no-legend --no-pager | grep -q ardents-; then
+            systemctl list-units --state=active,activating,deactivating,failed 'ardents-*' --no-legend --no-pager
+            exit 1
+          fi
+          if [ -n "${NATIVE_TMPDIR:-}" ]; then sudo -n rmdir -- "$NATIVE_TMPDIR"; fi
+          echo 'No residual Ardents accounts or active/failed units observed.'
