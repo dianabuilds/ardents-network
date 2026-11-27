@@ -120,7 +120,16 @@ the recovered state. ADR-0105 retired both the witness producer and the
 terminal: it remains export-only and can never sign. No activation route
 creates a runtime Instance Key or Local Grant.
 
-The new owner keeps one original operation and native lease through terminal
+Follow `Vault.Execute` in `vault.go` for the original operation and native
+lease, `authority_record.go` for creation, verification and active/quarantine
+lookup, and `vault_record.go` for record names, the shared storage budget and
+durable ciphertext I/O. A new record is published without replacement, the
+directory is synced by the platform's existing mechanism, and the exact
+canonical encrypted bytes are read back before the caller can advance its
+floor or return a receipt. Admission still owns journal replacement and
+Recovery Bundle export still owns its test restore.
+
+The Vault keeps one original operation and native lease through terminal
 input, crypto and durable work. Close synchronously denies new effects, cancels
 and physically joins that user before secret erasure/lease return completes;
 late success retains the original cancellation and cleanup failure. Erasure

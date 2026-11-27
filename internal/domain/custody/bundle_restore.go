@@ -77,7 +77,7 @@ func (vault *Vault) restoreBundle(ctx context.Context, operation Operation, secr
 	if err != nil {
 		return Receipt{}, err
 	}
-	if err := vault.writeQuarantineRecord(recordID, envelopeBytes); err != nil {
+	if err := vault.publishQuarantineRecord(recordID, envelopeBytes); err != nil {
 		return Receipt{}, err
 	}
 	if !found || !floorEqualsState(retained, state) {

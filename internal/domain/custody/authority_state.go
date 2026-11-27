@@ -209,3 +209,7 @@ func isASCII(value string) bool {
 func isZeroAuthorityState(state authorityState) bool {
 	return state.Binding == (AuthorityBinding{}) && len(state.RootMaterial) == 0 && len(state.AdmissionJournal) == 0 && len(state.ServiceJournal) == 0 && state.Generation == 0 && state.Revision == 0 && len(state.Watermarks) == 0
 }
+
+func authorityReceipt(state authorityState) AuthorityReceipt {
+	return AuthorityReceipt{Binding: state.Binding, Generation: state.Generation, Revision: state.Revision, Watermarks: append([]Watermark(nil), state.Watermarks...)}
+}

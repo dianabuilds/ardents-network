@@ -32,7 +32,7 @@ func (vault *Vault) createAdmissionAuthority(ctx context.Context, operation Oper
 	state := authorityState{Binding: operation.Binding, RootMaterial: private, Generation: 1,
 		Watermarks: []Watermark{{Domain: admissionAllocationWatermark, Value: 0}}}
 	state.Binding.IDCommitment = sha256.Sum256(public)
-	receipt, err := vault.createRecord(ctx, Operation{Kind: operationCreateVaultRecord, authority: state}, secrets)
+	receipt, err := vault.createAuthorityRecord(ctx, Operation{Kind: operationCreateVaultRecord, authority: state}, secrets)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -65,7 +65,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil || sha256.Sum256(decoded.AuthorityKey[:]) != operation.Expected.IDCommitment {
 		return Receipt{}, ErrInvalid
 	}
-	raw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
+	raw, err := readEnvelopeFile(recordPath(vault.records, operation.RecordID))
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -227,7 +227,7 @@ func admissionLedgerPath(root, recordID string) (string, error) {
 }
 
 func (vault *Vault) openCurrentAdmissionAuthority(recordID string, password []byte, expected AuthorityBinding) (authorityState, EnvelopeInfo, error) {
-	baseRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+recordID+".json"))
+	baseRaw, err := readEnvelopeFile(recordPath(vault.records, recordID))
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}

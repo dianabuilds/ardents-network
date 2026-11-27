@@ -1,11 +1,13 @@
 package custody
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -60,6 +62,64 @@ func Open(config VaultConfig) (*Vault, error) {
 	}
 	return &Vault{root: root, records: records, quarantine: quarantine,
 		floors: filepath.Join(root, "authority-floors.json"), now: now, serial: make(chan struct{}, 1), closeDone: make(chan struct{}), stopping: make(chan struct{})}, nil
+}
+
+// Execute performs exactly one bounded custody operation. It never retains a
+// password, derived key, plaintext root, or signing capability after return.
+func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets SecretInput) (receipt Receipt, resultErr error) {
+	if ctx == nil || secrets == nil {
+		return Receipt{}, ErrInvalid
+	}
+	if len(operation.AdmissionRequest) > 512 || len(operation.ServiceRequest) > 1024 {
+		return Receipt{}, ErrInvalid
+	}
+	operation.AdmissionRequest = bytes.Clone(operation.AdmissionRequest)
+	operation.ServiceRequest = bytes.Clone(operation.ServiceRequest)
+	original, finish, err := vault.begin(ctx)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer func() {
+		resultErr = finish(resultErr)
+		if resultErr != nil {
+			receipt = Receipt{}
+		}
+	}()
+	ctx = original
+	if operation.Kind != OperationCreateAdmissionAuthority && operation.Kind != OperationCreateServiceAuthority && operation.Binding != (AuthorityBinding{}) {
+		return Receipt{}, ErrInvalid
+	}
+	operationLock, err := acquireVaultOperationLock(vault.root)
+	if err != nil {
+		return Receipt{}, err
+	}
+	defer func() { resultErr = errors.Join(resultErr, operationLock.release()) }()
+	if operation.Kind != OperationIssueAdmissionPermission && (len(operation.AdmissionRequest) != 0 || operation.AdmissionRequestCommitment != [32]byte{}) {
+		return Receipt{}, ErrInvalid
+	}
+	if operation.Kind != OperationIssueServiceCredential && (len(operation.ServiceRequest) != 0 || operation.ServiceRequestCommitment != [32]byte{}) {
+		return Receipt{}, ErrInvalid
+	}
+	switch operation.Kind {
+	case OperationCreateServiceAuthority:
+		return vault.createServiceAuthority(ctx, operation, secrets)
+	case OperationIssueServiceCredential:
+		return vault.issueServiceCredential(ctx, operation, secrets)
+	case OperationCreateAdmissionAuthority:
+		return vault.createAdmissionAuthority(ctx, operation, secrets)
+	case OperationIssueAdmissionPermission:
+		return vault.issueAdmissionPermission(ctx, operation, secrets)
+	case OperationVerifyVaultRecord:
+		return vault.verifyAuthorityRecord(ctx, operation, secrets)
+	case OperationExportRecoveryBundle:
+		return vault.exportBundle(ctx, operation, secrets)
+	case OperationRestoreRecoveryBundle:
+		return vault.restoreBundle(ctx, operation, secrets)
+	case OperationPurgeVaultRecord:
+		return vault.purgeRecord(ctx, operation, secrets)
+	default:
+		return Receipt{}, ErrInvalid
+	}
 }
 
 // Close synchronously denies new work, cancels the original operation, and
@@ -143,4 +203,26 @@ func (vault *Vault) check() error {
 		return ErrInvalid
 	}
 	return context.Cause(vault.active.ctx)
+}
+
+func (vault *Vault) isEmpty() (bool, error) {
+	for _, directory := range []string{vault.records, vault.quarantine} {
+		entries, err := os.ReadDir(directory)
+		if err != nil {
+			return false, fmt.Errorf("list vault records: %w", err)
+		}
+		if len(entries) != 0 {
+			return false, nil
+		}
+	}
+	entries, err := os.ReadDir(vault.root)
+	if err != nil {
+		return false, fmt.Errorf("list vault root: %w", err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "admission-ledger-") {
+			return false, nil
+		}
+	}
+	return true, nil
 }

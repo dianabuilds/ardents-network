@@ -32,7 +32,7 @@ func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operat
 	}
 	state.Binding.IDCommitment = sha256.Sum256(public)
 	state.RootMaterial = private
-	receipt, err := vault.createRecord(ctx, Operation{Kind: operationCreateVaultRecord, authority: state}, secrets)
+	receipt, err := vault.createAuthorityRecord(ctx, Operation{Kind: operationCreateVaultRecord, authority: state}, secrets)
 	if err != nil {
 		return Receipt{}, err
 	}

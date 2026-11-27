@@ -83,7 +83,7 @@ func TestCustodyNonRegularAndUncertainRecordInputsCannotAcknowledge(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := finish(f.vault.writeRecord(record, []byte("not a canonical envelope"))); !errors.Is(err, ErrInvalid) {
+	if err := finish(f.vault.publishActiveRecord(record, []byte("not a canonical envelope"))); !errors.Is(err, ErrInvalid) {
 		t.Fatal("uncertain invalid record acknowledged", err)
 	}
 	persisted, err := os.ReadFile(filepath.Join(f.vault.records, "record-"+record+".json"))
