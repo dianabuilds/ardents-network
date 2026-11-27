@@ -1,6 +1,6 @@
 //go:build linux
 
-package hosting
+package counters
 
 import (
 	"net"
@@ -11,7 +11,7 @@ import (
 func TestHostingKernelCountersIncludeBothLoopbackDirections(t *testing.T) {
 	// This tests the native counter adapter in its declared network namespace.
 	// Loopback is not a provider invoice or whole-system cost qualification.
-	before, err := measureHosting([]string{"lo"})
+	before, err := Read([]string{"lo"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestHostingKernelCountersIncludeBothLoopbackDirections(t *testing.T) {
 	if count, _, err := listener.ReadFrom(make([]byte, 1024)); err != nil || count != 512 {
 		t.Fatalf("loopback control: %d / %v", count, err)
 	}
-	after, err := measureHosting([]string{"lo"})
+	after, err := Read([]string{"lo"})
 	if err != nil {
 		t.Fatal(err)
 	}

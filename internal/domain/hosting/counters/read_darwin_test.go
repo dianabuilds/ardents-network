@@ -1,6 +1,6 @@
 //go:build darwin
 
-package hosting
+package counters
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 // per-interface monotonic byte totals in both directions, a stable name->index
 // binding, and a boot identity that stays equal within a boot.
 func TestDarwinMeasureLoopbackContinuity(t *testing.T) {
-	before, err := measureHosting([]string{"lo0"})
+	before, err := Read([]string{"lo0"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestDarwinMeasureLoopbackContinuity(t *testing.T) {
 	if count, _, err := listener.ReadFrom(make([]byte, 1024)); err != nil || count != 512 {
 		t.Fatalf("loopback control: %d / %v", count, err)
 	}
-	after, err := measureHosting([]string{"lo0"})
+	after, err := Read([]string{"lo0"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestDarwinMeasureFullWidthHostTotals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reading, err := measureHosting([]string{"lo0"})
+	reading, err := Read([]string{"lo0"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
 func TestCopiedReservationCannotRefundAnotherHandle(t *testing.T) {
@@ -119,13 +121,13 @@ func TestReserveUsesProviderDirections(t *testing.T) {
 	}{{"tx", 110}, {"rx", 220}, {"tx+rx", 330}} {
 		t.Run(tc.direction, func(t *testing.T) {
 			now := time.Date(2026, 10, 2, 0, 0, 0, 0, time.UTC)
-			reading := hostingReading{Boot: "fixture-boot", Interfaces: []hostingInterface{{Name: "lo", Index: 1}}}
+			reading := counters.Reading{Boot: "fixture-boot", Interfaces: []counters.Interface{{Name: "lo", Index: 1}}}
 			policy := Policy{Provider: "fixture", Start: now.Add(-time.Hour), End: now.Add(time.Hour), Unit: "B", Quantity: 1000, Directions: tc.direction, Interfaces: []string{"lo"}, LowWatermarkBytes: 100}
 			root := filepath.Join(t.TempDir(), "budget")
 			if err := initializeHosting(root, policy, reading, now); err != nil {
 				t.Fatal(err)
 			}
-			b, err := openHosting(root, func([]string) (hostingReading, error) { return reading, nil }, func() time.Time { return now })
+			b, err := openHosting(root, func([]string) (counters.Reading, error) { return reading, nil }, func() time.Time { return now })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -162,7 +164,7 @@ func TestForeignAndPendingStateRefusedWithoutMutation(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if b, err := openHosting(root, func([]string) (hostingReading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
+			if b, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
 				b.Close()
 				t.Fatal("ambiguous state opened")
 			}
@@ -174,7 +176,7 @@ func TestForeignAndPendingStateRefusedWithoutMutation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if b, err := openHosting(root, func([]string) (hostingReading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
+	if b, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
 		b.Close()
 		t.Fatal("legacy root opened")
 	}

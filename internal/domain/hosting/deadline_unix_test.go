@@ -8,13 +8,15 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
 func TestMeasurementCannotTransferExpiredReservation(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	owner := openHostingFixture(t, root, reading, now)
 	deadline := now.Add(time.Second)
-	owner.measure = func([]string) (hostingReading, error) {
+	owner.measure = func([]string) (counters.Reading, error) {
 		*now = deadline
 		return *reading, nil
 	}
@@ -108,7 +110,7 @@ func TestPostCommitCancellationDoesNotTransferReservation(t *testing.T) {
 func TestObservationRollbackDuringMeasurementRefusesCapacity(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	owner := openHostingFixture(t, root, reading, now)
-	owner.measure = func([]string) (hostingReading, error) { *now = now.Add(-time.Second); return *reading, nil }
+	owner.measure = func([]string) (counters.Reading, error) { *now = now.Add(-time.Second); return *reading, nil }
 	view, err := owner.Observe(t.Context())
 	if err == nil || !view.Protect || !view.Drain {
 		t.Fatal("rollback returned usable observation", view, err)

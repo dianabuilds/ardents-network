@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
@@ -35,7 +36,7 @@ func openHostingRoot(path string) (*os.Root, error) {
 	return root, nil
 }
 
-func initializeHosting(path string, policy Policy, reading hostingReading, now time.Time) (outcome error) {
+func initializeHosting(path string, policy Policy, reading counters.Reading, now time.Time) (outcome error) {
 	if _, err := policy.limit(); err != nil {
 		return err
 	}

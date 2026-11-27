@@ -3230,7 +3230,7 @@ durable behavior tests. The other 21 files keep their Linux constraint:
   `application/document/reader_connection_fixture_test.go` (serves only the Linux
   AAI3 listener control).
 - Tests that open Linux-only production seams and refuse at runtime on other
-  platforms: `internal/domain/hosting/counter_linux_test.go` (Hosting platform lease
+  platforms: `internal/domain/hosting/counters/read_linux_test.go` (Hosting platform lease
   and `/sys` counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
   (the retained-opening test is Linux-selected),
   `admission/issuer/lifecycle_linux_test.go` (issuance `storage_linux.go`/

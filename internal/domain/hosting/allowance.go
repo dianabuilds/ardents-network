@@ -4,6 +4,8 @@ import (
 	"errors"
 	"math"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
 // Policy is an operator-supplied billing budget. Quantity and Unit retain
@@ -111,30 +113,18 @@ func (policy Policy) cost(traffic Traffic) (uint64, error) {
 	return 0, errors.New("hosting traffic accounting is unavailable")
 }
 
-type hostingInterface struct {
-	Name  string `json:"name"`
-	Index uint64 `json:"index"`
-	Tx    uint64 `json:"tx"`
-	Rx    uint64 `json:"rx"`
-}
-
-type hostingReading struct {
-	Boot       string             `json:"boot"`
-	Interfaces []hostingInterface `json:"interfaces"`
-}
-
 // The committed snapshot keeps pending reservations after process death. A new
 // process has no reservation handle with which to refund an ambiguous old job.
 type hostingState struct {
-	Schema   string         `json:"schema"`
-	Policy   Policy         `json:"policy"`
-	Used     uint64         `json:"used"`
-	Reserved uint64         `json:"reserved"`
-	Observed time.Time      `json:"observed"`
-	Reading  hostingReading `json:"reading"`
+	Schema   string           `json:"schema"`
+	Policy   Policy           `json:"policy"`
+	Used     uint64           `json:"used"`
+	Reserved uint64           `json:"reserved"`
+	Observed time.Time        `json:"observed"`
+	Reading  counters.Reading `json:"reading"`
 }
 
-func (state *hostingState) observe(reading hostingReading, now time.Time) error {
+func (state *hostingState) observe(reading counters.Reading, now time.Time) error {
 	if now.Before(state.Observed) || reading.Boot == "" || reading.Boot != state.Reading.Boot || len(reading.Interfaces) != len(state.Reading.Interfaces) {
 		return errors.New("hosting observation continuity is unavailable")
 	}

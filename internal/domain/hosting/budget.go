@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
 // Budget owns access to one shared durable host budget. All local owners must
@@ -19,7 +20,7 @@ type Budget struct{ *budgetState }
 type budgetState struct {
 	gate     chan struct{}
 	root     *os.Root
-	measure  func([]string) (hostingReading, error)
+	measure  func([]string) (counters.Reading, error)
 	now      func() time.Time
 	closed   bool
 	closeErr error
@@ -28,13 +29,13 @@ type budgetState struct {
 // Initialize explicitly creates a new local period from operator inputs.
 // It never resets an existing directory, including an incomplete initialization.
 func Initialize(root string, policy Policy) error {
-	if err := hostingPlatform(); err != nil {
-		return err
+	if !counters.Supported() {
+		return ErrUnsupportedPlatform
 	}
 	if _, err := policy.limit(); err != nil {
 		return errors.Join(ErrInvalid, err)
 	}
-	reading, err := measureHosting(policy.Interfaces)
+	reading, err := counters.Read(policy.Interfaces)
 	if err != nil {
 		return err
 	}
@@ -44,13 +45,13 @@ func Initialize(root string, policy Policy) error {
 // Open reopens the same locally installed accounting root. Node or
 // Endpoint identities, listeners and job contexts do not select another budget.
 func Open(root string) (*Budget, error) {
-	if err := hostingPlatform(); err != nil {
-		return nil, err
+	if !counters.Supported() {
+		return nil, ErrUnsupportedPlatform
 	}
-	return openHosting(root, measureHosting, func() time.Time { return time.Now().UTC() })
+	return openHosting(root, counters.Read, func() time.Time { return time.Now().UTC() })
 }
 
-func openHosting(path string, measure func([]string) (hostingReading, error), now func() time.Time) (*Budget, error) {
+func openHosting(path string, measure func([]string) (counters.Reading, error), now func() time.Time) (*Budget, error) {
 	if measure == nil || now == nil {
 		return nil, errors.New("hosting observation is unavailable")
 	}

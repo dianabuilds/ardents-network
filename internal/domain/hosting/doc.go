@@ -27,11 +27,8 @@
 //     (snapshot_unix_test.go; unix)
 //   - Unix-family exclusive root lease: lease_unix.go, lease_other.go
 //     (lease_unix_test.go; unix)
-//   - platform counter measurement: measure_linux.go (Linux /proc/sys),
-//     measure_darwin.go (macOS IFMIB interface-data: full 64-bit totals; the
-//     routing-socket byte counters wrap at 2^32 and are not used),
-//     measure_other.go, counter_file.go (counter_linux_test.go; linux,
-//     counter_file_test.go, measure_darwin_test.go; darwin IFMIB continuity)
+//   - boot and interface observation: counters (Linux procfs/sysfs and macOS
+//     IFMIB 64-bit totals). Budget and storage apply continuity to these facts.
 //   - retained read-only period inspection: inspection_linux.go,
 //     inspection_other.go (inspection_native_linux_test.go; native linux)
 package hosting
