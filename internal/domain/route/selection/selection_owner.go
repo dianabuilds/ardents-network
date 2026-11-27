@@ -218,8 +218,8 @@ func (o *Owner) Close() error {
 	o.closed = true
 	o.mu.Unlock()
 	o.selection.Lock()
-	o.selection.Unlock()
 	result := errors.Join(o.failure, o.interior.close())
+	o.selection.Unlock()
 	o.installation.returnBorrow(o.root, result)
 	if o.privateInstallation {
 		result = errors.Join(result, o.installation.Close())
