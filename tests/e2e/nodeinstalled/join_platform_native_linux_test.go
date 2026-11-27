@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,15 +44,12 @@ import (
 //
 // The first installation runs the fresh --config composition under a transient
 // envelope to create the participation and receiving histories; the installed
-// unit then opens them retained. The lifecycle/repair legs are single-unit: one
-// JOIN pair member (id 20) owns its own participation root and sole node-duty
-// fence; pair semantics affect only the duplex-byte workload. Honest limits: one
-// fixture Release authority and one operator, not independent participants or
-// whole-host privacy qualification. The forward executable is a distinct build
-// of the same checked source. Genuine paired JOIN byte-transfer is proven by
-// TestNativeJoinDuplexAndReopenTCP; this gate proves the platform-led installed
-// lifecycle and receiver listening admission. The transitional JOIN
-// orchestration is not exercised or retired here.
+// unit then opens them retained. One installed JOIN pair member owns its
+// participation root and sole node-duty fence. Each live phase runs the
+// authenticated, paired duplex and directional EOF exchange through that
+// member with native Forwarding peers. The forward executable is a distinct
+// build of the same checked source. The fixture uses one Release authority
+// and operator.
 
 type joinPlatformStand struct {
 	ns                string
@@ -79,7 +76,7 @@ type joinPlatformStand struct {
 	uid               int
 	authority         *releasefixture.ReleaseAuthority
 	networkPlan       state.AuthorityDeclaration
-	address           string
+	workload          installedRouteFixture
 	nodeID            [32]byte
 	familyID          [32]byte
 	sockets           map[[32]byte]func()
@@ -98,12 +95,12 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 	// provisioned delivery against the loaded manager, then the retained runtime
 	// claims the original node-duty producer and listens.
 	startJoinPlatformUnit(t)
-	waitJoinPlatformReady(t, stand, "first launch")
+	invocation := waitJoinPlatformReady(t, stand, "first launch")
 	joinPlatformProducerPresent(t, stand, true, "first launch")
 	if out, err := runAsInstalledNode(t, stand.program, "node", "join", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a live invocation", string(out))
 	}
-	stopJoinPlatformUnit(t, "first launch")
+	invocation.stop(t, "first launch")
 	joinPlatformProducerPresent(t, stand, false, "first completion")
 	if out, err := runAsInstalledNode(t, stand.program, "node", "join", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a clean root", string(out))
@@ -111,8 +108,8 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 
 	// Retained relaunch over the same histories.
 	startJoinPlatformUnit(t)
-	waitJoinPlatformReady(t, stand, "relaunch")
-	stopJoinPlatformUnit(t, "relaunch")
+	invocation = waitJoinPlatformReady(t, stand, "relaunch")
+	invocation.stop(t, "relaunch")
 	joinPlatformProducerPresent(t, stand, false, "relaunch completion")
 
 	// Forward program change: a distinct working executable authenticated against
@@ -126,8 +123,8 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startJoinPlatformUnit(t)
-	waitJoinPlatformReady(t, stand, "forward launch")
-	stopJoinPlatformUnit(t, "forward launch")
+	invocation = waitJoinPlatformReady(t, stand, "forward launch")
+	invocation.stop(t, "forward launch")
 	// Rollback to the committed predecessor must refuse before serving.
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
@@ -151,12 +148,13 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 	// live node-duty fence stays retained, a plain start refuses, and the bounded
 	// repair against real manager facts removes exactly that producer.
 	startJoinPlatformUnit(t)
-	waitJoinPlatformReady(t, stand, "crash launch")
+	crashed := waitJoinPlatformReady(t, stand, "crash launch")
 	joinPlatformProducerPresent(t, stand, true, "crash launch")
 	if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGKILL", "ardents-join.service").Run(); err != nil {
 		t.Fatal("original crash signal", err)
 	}
 	waitJoinPlatformFailed(t)
+	crashed.requireCrashWithoutTerminal(t)
 	joinPlatformProducerPresent(t, stand, true, "after crash")
 	// A plain start must refuse the retained producer. Type=exec returns once the
 	// main process forks, so the runtime's asynchronous refusal is observed as the
@@ -170,8 +168,8 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 	}
 	joinPlatformProducerPresent(t, stand, false, "after repair")
 	startJoinPlatformUnit(t)
-	waitJoinPlatformReady(t, stand, "post-repair launch")
-	stopJoinPlatformUnit(t, "post-repair launch")
+	invocation = waitJoinPlatformReady(t, stand, "post-repair launch")
+	invocation.stop(t, "post-repair launch")
 
 	// Causal pre-effect refusals against the committed delivery.
 	original, err := os.ReadFile(stand.program)
@@ -204,8 +202,8 @@ func TestNativeJoinPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startJoinPlatformUnit(t)
-	waitJoinPlatformReady(t, stand, "restored launch")
-	stopJoinPlatformUnit(t, "restored launch")
+	invocation = waitJoinPlatformReady(t, stand, "restored launch")
+	invocation.stop(t, "restored launch")
 }
 
 func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
@@ -276,7 +274,7 @@ func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
 	t.Cleanup(func() { close(clockStop); <-clockJoined })
 
 	processfixture.WaitAdmissionHour(t)
-	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
+	spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	stand.sockets = make(map[[32]byte]func())
 	certificates := make(map[[32]byte]tls.Certificate)
 	carrier := spec.Nodes[1].Carrier
@@ -285,6 +283,9 @@ func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
+	networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+	stand.workload = prepareInstalledRouteFixture(t, spec, bundle, issuerPlan, stand.clockPath, stand.sockets, certificates)
+
 	var key [32]byte
 	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))
 	stand.networkPlan = state.AuthorityDeclaration{Root: stand.stateRoot, NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
@@ -316,7 +317,7 @@ func provisionJoinPlatformStand(t *testing.T) *joinPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stand.address, stand.familyID = member.Endpoint, member.FamilyID
+	stand.familyID = member.FamilyID
 
 	certificate := certificates[stand.nodeID]
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]})
@@ -478,29 +479,6 @@ func startJoinPlatformUnit(t *testing.T) {
 	}
 }
 
-func stopJoinPlatformUnit(t *testing.T, phase string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
-	defer cancel()
-	if out, err := exec.CommandContext(ctx, "systemctl", "stop", "ardents-join.service").CombinedOutput(); err != nil {
-		t.Fatalf(phase, "installed JOIN stop", string(out), err)
-	}
-	result, err := exec.Command("systemctl", "show", "ardents-join.service", "-p", "Result", "--value").Output()
-	if err != nil || strings.TrimSpace(string(result)) != "success" {
-		t.Fatal(phase, "clean stop manager result", string(result), err)
-	}
-	var terminal struct{ Phase, Outcome string }
-	found := false
-	for _, line := range strings.Split(joinPlatformJournal(t), "\n") {
-		if json.Unmarshal([]byte(line), &terminal) == nil && terminal.Phase != "" {
-			found = true
-		}
-	}
-	if !found || terminal.Phase != "joined" || terminal.Outcome != "canceled" {
-		t.Fatal(phase, "original joined cancellation report", terminal, joinPlatformJournal(t))
-	}
-}
-
 func waitJoinPlatformFailed(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
@@ -522,23 +500,13 @@ func joinPlatformJournal(t *testing.T) string {
 	return string(out)
 }
 
-// waitJoinPlatformReady proves the retained runtime opened its shared carrier
-// listener at the signed member Endpoint (receiver.Listen admission).
-func waitJoinPlatformReady(t *testing.T, stand *joinPlatformStand, phase string) {
+func waitJoinPlatformReady(t *testing.T, stand *joinPlatformStand, phase string) installedInvocation {
 	t.Helper()
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", stand.address, 2*time.Second)
-		if err == nil {
-			_ = conn.Close()
-			return
-		}
-		if exec.Command("systemctl", "is-failed", "ardents-join.service").Run() == nil {
-			t.Fatal(phase, "unit failed before listening", joinPlatformJournal(t))
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	t.Fatal(phase, "installed JOIN never listened", joinPlatformJournal(t))
+	original := observeInstalledInvocation(t, "ardents-join.service", "node.join")
+	original.waitListening(t, phase)
+	stand.workload.verifyJoin(t, stand.program, stand.spendRoot, stand.nodeID, phase)
+	original.requireCurrent(t)
+	return original
 }
 
 func joinPlatformProducerPresent(t *testing.T, stand *joinPlatformStand, want bool, phase string) {

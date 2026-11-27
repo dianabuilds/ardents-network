@@ -94,14 +94,15 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	// delivery against the loaded manager, then serve-retained claims the
 	// original producer and serves authenticated signed bytes.
 	startSourceUnit(t)
-	waitSourceFetch(t, stand, "first launch")
+	invocation := waitSourceFetch(t, stand, "first launch")
 	installedHealthyFetch(t, stand, "first launch")
+	invocation.requireCurrent(t)
 	checkInstalledStateLease(t, stand, true)
 	// Recovery while the original service is live must refuse.
 	if out, err := runAsSource(t, stand.program, "source", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a live invocation", string(out))
 	}
-	stopSourceUnit(t, "first launch")
+	invocation.stop(t, "first launch")
 	installedProducerPresent(t, stand, false, "first completion")
 	checkInstalledStateLease(t, stand, false)
 	// A clean root refuses repair without a Claim probe.
@@ -111,9 +112,10 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 
 	// Relaunch is a new independently checked invocation over the same roots.
 	startSourceUnit(t)
-	waitSourceFetch(t, stand, "relaunch")
+	invocation = waitSourceFetch(t, stand, "relaunch")
 	installedHealthyFetch(t, stand, "relaunch")
-	stopSourceUnit(t, "relaunch")
+	invocation.requireCurrent(t)
+	invocation.stop(t, "relaunch")
 	installedProducerPresent(t, stand, false, "relaunch completion")
 
 	// Forward program change: a distinct working executable authenticated
@@ -128,9 +130,10 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startSourceUnit(t)
-	waitSourceFetch(t, stand, "forward launch")
+	invocation = waitSourceFetch(t, stand, "forward launch")
 	installedHealthyFetch(t, stand, "forward launch")
-	stopSourceUnit(t, "forward launch")
+	invocation.requireCurrent(t)
+	invocation.stop(t, "forward launch")
 	// Rollback to the committed predecessor must refuse before serving.
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
@@ -152,12 +155,13 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 
 	// Crash recovery: a killed invocation supplies no completion evidence.
 	startSourceUnit(t)
-	waitSourceFetch(t, stand, "crash launch")
+	crashed := waitSourceFetch(t, stand, "crash launch")
 	installedProducerPresent(t, stand, true, "crash launch")
 	if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGKILL", "ardents-source.service").Run(); err != nil {
 		t.Fatal("original crash signal", err)
 	}
 	waitSourceFailed(t)
+	crashed.requireCrashWithoutTerminal(t)
 	installedProducerPresent(t, stand, true, "after crash")
 	if out, err := exec.CommandContext(t.Context(), "systemctl", "start", "ardents-source.service").CombinedOutput(); err == nil {
 		t.Fatal("retained producer adopted after crash", string(out))
@@ -168,9 +172,10 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 	}
 	installedProducerPresent(t, stand, false, "after repair")
 	startSourceUnit(t)
-	waitSourceFetch(t, stand, "post-repair launch")
+	invocation = waitSourceFetch(t, stand, "post-repair launch")
 	installedHealthyFetch(t, stand, "post-repair launch")
-	stopSourceUnit(t, "post-repair launch")
+	invocation.requireCurrent(t)
+	invocation.stop(t, "post-repair launch")
 
 	// Causal pre-effect refusals against the committed delivery.
 	original, err := os.ReadFile(stand.program)
@@ -203,8 +208,8 @@ func TestNativeSourceInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startSourceUnit(t)
-	waitSourceFetch(t, stand, "restored launch")
-	stopSourceUnit(t, "restored launch")
+	invocation = waitSourceFetch(t, stand, "restored launch")
+	invocation.stop(t, "restored launch")
 }
 
 func provisionSourceInstalledStand(t *testing.T) *sourceInstalledStand {
@@ -483,35 +488,6 @@ func startSourceUnit(t *testing.T) {
 	}
 }
 
-func stopSourceUnit(t *testing.T, phase string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
-	defer cancel()
-	if out, err := exec.CommandContext(ctx, "systemctl", "stop", "ardents-source.service").CombinedOutput(); err != nil {
-		t.Fatalf(phase, "installed Source stop", string(out), err)
-	}
-	// The installed unit admits exit 130 as success; systemd normalizes the
-	// reported main status, so the runtime's own joined-cancellation report and
-	// the manager result are the clean-stop evidence (the raw exit-130
-	// projection is separately proven under the transient envelope).
-	result, err := exec.Command("systemctl", "show", "ardents-source.service", "-p", "Result", "--value").Output()
-	if err != nil || strings.TrimSpace(string(result)) != "success" {
-		t.Fatal(phase, "clean stop manager result", string(result), err)
-	}
-	var terminal struct {
-		Phase, Outcome string
-	}
-	found := false
-	for _, line := range strings.Split(sourceUnitJournal(t), "\n") {
-		if json.Unmarshal([]byte(line), &terminal) == nil && terminal.Phase != "" {
-			found = true
-		}
-	}
-	if !found || terminal.Phase != "joined" || terminal.Outcome != "canceled" {
-		t.Fatal(phase, "original joined cancellation report", terminal, sourceUnitJournal(t))
-	}
-}
-
 func waitSourceFailed(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
@@ -533,7 +509,9 @@ func sourceUnitJournal(t *testing.T) string {
 	return string(out)
 }
 
-func waitSourceFetch(t *testing.T, stand *sourceInstalledStand, phase string) {
+func waitSourceFetch(t *testing.T, stand *sourceInstalledStand, phase string) installedInvocation {
+	t.Helper()
+	original := observeInstalledInvocation(t, "ardents-source.service", "source.serve")
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
@@ -543,7 +521,8 @@ func waitSourceFetch(t *testing.T, stand *sourceInstalledStand, phase string) {
 			response, fetchErr := c.Fetch(ctx, 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(stand.networkPlan.NetworkID)})
 			cancel()
 			if fetchErr == nil && response.Status == "ok" {
-				return
+				original.requireCurrent(t)
+				return original
 			}
 		}
 		if exec.Command("systemctl", "is-failed", "ardents-source.service").Run() == nil {
@@ -552,6 +531,7 @@ func waitSourceFetch(t *testing.T, stand *sourceInstalledStand, phase string) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	t.Fatal(phase, "installed Source never served", sourceUnitJournal(t))
+	return installedInvocation{}
 }
 
 func installedHealthyFetch(t *testing.T, stand *sourceInstalledStand, phase string) {
