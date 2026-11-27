@@ -38,7 +38,7 @@ jobs:
           go mod download
           python3 -c 'from pathlib import Path; p=Path("internal/domain/custody/private_permission_linux.go"); s=p.read_text(); a="if fs.Type == tmpfsFilesystem {"; assert s.count(a)==1; p.write_text(s.replace(a, "if fs.Type == tmpfsFilesystem || fs.Type == extFilesystem {"))'
           set +e
-          sudo --preserve-env=PATH,ARDENTS_TEST_EXT2,ARDENTS_TEST_EXT3,ARDENTS_TEST_EXT4,ARDENTS_TEST_TMPFS,GOTOOLCHAIN,GOCACHE,GOMODCACHE go test -tags custody_private_permission_native ./internal/domain/custody -run '^TestPrivatePermissionMountedFilesystems/(ext2|ext3)$' -count=1 -v > "$RUNNER_TEMP/baseline.log" 2>&1
+          sudo env "PATH=$PATH" "ARDENTS_TEST_EXT2=$ARDENTS_TEST_EXT2" "ARDENTS_TEST_EXT3=$ARDENTS_TEST_EXT3" "ARDENTS_TEST_EXT4=$ARDENTS_TEST_EXT4" "ARDENTS_TEST_TMPFS=$ARDENTS_TEST_TMPFS" "GOTOOLCHAIN=$GOTOOLCHAIN" "GOCACHE=$GOCACHE" "GOMODCACHE=$GOMODCACHE" go test -tags custody_private_permission_native ./internal/domain/custody -run '^TestPrivatePermissionMountedFilesystems/(ext2|ext3)$' -count=1 -v > "$RUNNER_TEMP/baseline.log" 2>&1
           baseline=$?
           set -e
           cat "$RUNNER_TEMP/baseline.log"
@@ -47,4 +47,4 @@ jobs:
             echo 'Baseline-equivalent control did not demonstrate both expected refusals failing' >&2
             exit 1
           fi
-          sudo --preserve-env=PATH,ARDENTS_TEST_EXT2,ARDENTS_TEST_EXT3,ARDENTS_TEST_EXT4,ARDENTS_TEST_TMPFS,GOTOOLCHAIN,GOCACHE,GOMODCACHE make custody-permission-filesystems-check
+          sudo env "PATH=$PATH" "ARDENTS_TEST_EXT2=$ARDENTS_TEST_EXT2" "ARDENTS_TEST_EXT3=$ARDENTS_TEST_EXT3" "ARDENTS_TEST_EXT4=$ARDENTS_TEST_EXT4" "ARDENTS_TEST_TMPFS=$ARDENTS_TEST_TMPFS" "GOTOOLCHAIN=$GOTOOLCHAIN" "GOCACHE=$GOCACHE" "GOMODCACHE=$GOMODCACHE" make custody-permission-filesystems-check
