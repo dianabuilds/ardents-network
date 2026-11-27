@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const closedSetMarker = ".ardents-entry-set-v1"
@@ -197,5 +199,5 @@ func cleanupClosedSetStaging(root string) error {
 			}
 		}
 	}
-	return syncDirectory(root)
+	return durablefile.SyncDirectory(root)
 }

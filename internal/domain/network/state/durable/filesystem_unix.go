@@ -46,7 +46,3 @@ func (lease rootLease) release() error {
 	}
 	return nil
 }
-
-func syncDirectory(path string) error {
-	return durablefile.SyncDirectory(path)
-}

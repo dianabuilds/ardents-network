@@ -1,18 +1,24 @@
-package systemd
+package observation
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 	"unicode/utf8"
 )
 
+// ErrObservation reports invalid manager observations.
+var ErrObservation = errors.New("installation manager observation differs")
+
+// Value keeps the signature alongside the detached JSON body.
 type Value struct {
 	Type string          `json:"type"`
 	Data json.RawMessage `json:"data"`
 }
 
+// Properties holds the detached values from an observation.
 type Properties map[string]Value
 
 // Decode preserves signatures, integer precision and absence. Duplicate fields cannot

@@ -58,7 +58,7 @@ func writeGeneration(root, final string, raw []byte) error {
 		}
 	}
 	committed = true
-	return syncDirectory(root)
+	return durablefile.SyncDirectory(root)
 }
 
 func replaceCurrent(root, name string) error {
@@ -73,8 +73,4 @@ func replaceOwnedFile(root, temporaryPrefix, finalName string, raw []byte) error
 
 func cleanupGenerations(root, current, previous string) error {
 	return durablefile.CleanupGenerations(root, current, previous)
-}
-
-func syncDirectory(path string) error {
-	return durablefile.SyncDirectory(path)
 }

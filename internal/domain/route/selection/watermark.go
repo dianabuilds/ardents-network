@@ -16,7 +16,3 @@ func loadWatermark(root string) (generationWatermark, bool, error) {
 	}
 	return generationWatermark{generation: generation, name: name}, true, nil
 }
-
-func replaceWatermark(root string, generation uint64, name string) error {
-	return durablefile.ReplaceWatermark(root, generation, name, "entry generation watermark value is invalid")
-}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // RequireStoppedEndpointScopes checks the original kernel scopes and activation sockets after Stop.
@@ -23,10 +24,10 @@ func RequireStoppedEndpointScopes(t testing.TB, scopes []*os.File) {
 		if err != nil {
 			t.Fatalf("observe stopped %s activation socket: %v", role, err)
 		}
-		if !systemd.Matches(unit, "Id", "s", "ardents-text-"+role+".socket") ||
-			!systemd.Matches(unit, "ActiveState", "s", "inactive") ||
-			!systemd.Matches(unit, "SubState", "s", "dead") ||
-			!systemd.Matches(unit, "Job", "(uo)", []any{uint32(0), "/"}) {
+		if !observation.Matches(unit, "Id", "s", "ardents-text-"+role+".socket") ||
+			!observation.Matches(unit, "ActiveState", "s", "inactive") ||
+			!observation.Matches(unit, "SubState", "s", "dead") ||
+			!observation.Matches(unit, "Job", "(uo)", []any{uint32(0), "/"}) {
 			t.Fatalf("activation socket %s did not stop cleanly", role)
 		}
 	}

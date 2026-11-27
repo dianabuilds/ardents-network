@@ -396,8 +396,11 @@ State/Startup acceptance nor installed or independently operated qualification.
 Forwarding D-Bus object response that the formerly Source-only physical reply
 grammar refused during initial stopped installation. The Linux deterministic
 systemd suite checks each original connection's closed vocabulary: reciprocal
-Source/Forwarding refusal, other duties, Source jobs, foreign manager, unknown
-vocabulary and every truncation. Loaded policy belongs to the platform-led
+Source/Forwarding refusal, other duties, foreign manager, unknown vocabulary and
+every truncation. The fixed-purpose matrix independently encodes the accepted
+unit objects and the rejected job objects for every read-only role and the
+absence-only connection. The portable observation package exercises exact
+signatures, integer precision, duplicate-field refusal and bounded JSON. Loaded policy belongs to the platform-led
 pre-start check; accepting a native frame cannot grant Start or reuse Source
 startup authority.
 

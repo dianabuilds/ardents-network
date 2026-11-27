@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // platformCheckBinding projects the sole privileged F-25 pre-start argv from the
@@ -20,7 +20,7 @@ func platformBindingService(t *testing.T, entry []any) managerProperties {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return managerProperties{"ExecStartPreEx": systemd.Value{Type: "a(sasasttttuii)", Data: raw}}
+	return managerProperties{"ExecStartPreEx": observation.Value{Type: "a(sasasttttuii)", Data: raw}}
 }
 
 func platformBindingEntry() []any {
@@ -46,36 +46,36 @@ func TestPlatformCheckBindingRefusesForeignOrMalformedPreStart(t *testing.T) {
 	for name, change := range map[string]func(managerProperties){
 		"missing": func(s managerProperties) { delete(s, "ExecStartPreEx") },
 		"wrong-type": func(s managerProperties) {
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasbttttuii)", Data: json.RawMessage(`[]`)}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasbttttuii)", Data: json.RawMessage(`[]`)}
 		},
 		"empty": func(s managerProperties) {
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: json.RawMessage(`[]`)}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: json.RawMessage(`[]`)}
 		},
 		"two-entries": func(s managerProperties) {
 			raw, _ := json.Marshal([][]any{platformBindingEntry(), platformBindingEntry()})
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: raw}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: raw}
 		},
 		"short-entry": func(s managerProperties) {
 			raw, _ := json.Marshal([][]any{{"/distribution/ardents-linux-amd64"}})
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: raw}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: raw}
 		},
 		"short-argv": func(s managerProperties) {
 			entry := platformBindingEntry()
 			entry[1] = []string{"/distribution/ardents-linux-amd64", "platform", "check"}
 			raw, _ := json.Marshal([][]any{entry})
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: raw}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: raw}
 		},
 		"foreign-verb": func(s managerProperties) {
 			entry := platformBindingEntry()
 			entry[1] = []string{"/distribution/ardents-linux-amd64", "platform", "start", "/etc/ardents/endpoint.json", strings.Repeat("ab", 32)}
 			raw, _ := json.Marshal([][]any{entry})
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: raw}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: raw}
 		},
 		"program-mismatch": func(s managerProperties) {
 			entry := platformBindingEntry()
 			entry[0] = "/foreign/ardents-linux-amd64"
 			raw, _ := json.Marshal([][]any{entry})
-			s["ExecStartPreEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: raw}
+			s["ExecStartPreEx"] = observation.Value{Type: "a(sasasttttuii)", Data: raw}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

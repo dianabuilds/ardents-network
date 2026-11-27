@@ -108,7 +108,7 @@ func prepareRoot(root string, create bool) error {
 			return fmt.Errorf("unknown local role entry %q", name)
 		}
 	}
-	return syncDirectory(root)
+	return durablefile.SyncDirectory(root)
 }
 
 func writeExclusive(path string, raw []byte) error {

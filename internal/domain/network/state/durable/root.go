@@ -171,7 +171,7 @@ func prepareRoot(root string) error {
 	if err := cleanupOwnedStaging(root, generations); err != nil {
 		return err
 	}
-	return syncDirectory(root)
+	return durablefile.SyncDirectory(root)
 }
 
 func ensureRootMarker(root string) error {
@@ -197,7 +197,7 @@ func ensureRootMarker(root string) error {
 	if err := writeSynced(markerPath, []byte(rootMarker)); err != nil {
 		return fmt.Errorf("create state root ownership marker: %w", err)
 	}
-	return syncDirectory(root)
+	return durablefile.SyncDirectory(root)
 }
 
 func cleanupOwnedStaging(root, generations string) error {
@@ -220,7 +220,7 @@ func cleanupOwnedStaging(root, generations string) error {
 		}
 	}
 	if len(generationStaging) != 0 {
-		return syncDirectory(generations)
+		return durablefile.SyncDirectory(generations)
 	}
 	return nil
 }
@@ -296,7 +296,7 @@ func verifyRootWritable(root string) error {
 	if err := errors.Join(writeErr, closeErr, removeErr); err != nil {
 		return fmt.Errorf("complete state durability probe: %w", err)
 	}
-	if err := syncDirectory(root); err != nil {
+	if err := durablefile.SyncDirectory(root); err != nil {
 		return fmt.Errorf("sync state durability probe: %w", err)
 	}
 	return nil

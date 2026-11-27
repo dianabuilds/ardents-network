@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/godbus/dbus/v5"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // ForwardingObservation is detached complete fixed-unit data. Installation must
@@ -15,7 +17,7 @@ import (
 type ForwardingObservation struct {
 	Manager, Version string
 	UnitPaths        []string
-	Unit, Service    Properties
+	Unit, Service    observation.Properties
 }
 
 // ForwardingRuntime owns an independently authenticated read-only connection.

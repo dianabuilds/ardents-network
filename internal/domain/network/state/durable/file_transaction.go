@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 func writeSynced(path string, contents []byte) error {
@@ -31,7 +33,7 @@ func writeSynced(path string, contents []byte) error {
 var ErrPointerSyncUncertain = errors.New("current pointer durability is uncertain after rename")
 
 func replacePointer(root, name, generation string) error {
-	return replacePointerWithSync(root, name, generation, syncDirectory)
+	return replacePointerWithSync(root, name, generation, durablefile.SyncDirectory)
 }
 
 // The final sync is passed explicitly so the post-rename failure boundary can

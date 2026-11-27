@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // RepairRetainedDescriptorProducer explicitly abandons a dead platform
@@ -37,7 +38,7 @@ import (
 func RepairRetainedDescriptorProducer(ctx context.Context, input Config, original *systemd.DescriptorRuntime, declaration string, writableRoots []string) error {
 	native := descriptorRepairNative
 	if original != nil {
-		native.observe = func() (systemd.Properties, systemd.Properties, error) {
+		native.observe = func() (observation.Properties, observation.Properties, error) {
 			facts, err := original.Observe()
 			return facts.Unit, facts.Service, err
 		}

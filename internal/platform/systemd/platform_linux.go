@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"os"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // Infrastructure observes one of the six fixed service objects. It performs
@@ -11,7 +13,7 @@ import (
 // mutation, arbitrary unit, bus path, command or environment selection.
 // The caller must compare the loaded configuration and its current invocation;
 // these detached properties supply neither Release permission nor domain join.
-func Infrastructure(ctx context.Context, role string) (Properties, Properties, error) {
+func Infrastructure(ctx context.Context, role string) (observation.Properties, observation.Properties, error) {
 	switch role {
 	case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
 		return properties(ctx, "/org/freedesktop/systemd1/unit/ardents_2d"+role+"_2eservice", "Service")

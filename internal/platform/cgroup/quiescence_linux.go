@@ -14,13 +14,38 @@ import (
 // range may observe it; State separately binds the exact named account, loaded
 // stopped service, original manager and both exclusive semantic leases.
 func CheckSourceRecoveryQuiescent(ctx context.Context) error {
-	if ctx == nil || os.Geteuid() < 100 || os.Geteuid() > 999 || os.Getegid() != os.Geteuid() {
-		return errInput
-	}
 	return observeFixedQuiescent(ctx, "ardents-source.service")
 }
 
+// Node roles share the ardents-node account. Each repair observes only its
+// original unit scope so a sibling invocation does not block the repair.
+// The caller separately checks the named account and the stopped unit.
+
+// CheckForwardingRecoveryQuiescent observes the fixed Forwarding scope.
+func CheckForwardingRecoveryQuiescent(ctx context.Context) error {
+	return observeFixedQuiescent(ctx, "ardents-forwarding.service")
+}
+
+// CheckJoinRecoveryQuiescent observes the fixed JOIN scope.
+func CheckJoinRecoveryQuiescent(ctx context.Context) error {
+	return observeFixedQuiescent(ctx, "ardents-join.service")
+}
+
+// CheckDescriptorRecoveryQuiescent observes the fixed Descriptor scope.
+func CheckDescriptorRecoveryQuiescent(ctx context.Context) error {
+	return observeFixedQuiescent(ctx, "ardents-descriptor.service")
+}
+
+// CheckIntroductionRecoveryQuiescent observes the fixed Introduction scope.
+func CheckIntroductionRecoveryQuiescent(ctx context.Context) error {
+	return observeFixedQuiescent(ctx, "ardents-introduction.service")
+}
+
 func observeFixedQuiescent(ctx context.Context, unit string) (err error) {
+	uid := os.Geteuid()
+	if ctx == nil || uid < 100 || uid > 999 || os.Getegid() != uid {
+		return errInput
+	}
 	if err = ctx.Err(); err != nil {
 		return err
 	}

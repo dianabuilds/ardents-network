@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const (
@@ -103,7 +105,7 @@ func (root *Root) CommitState(generation Generation) error {
 		return fmt.Errorf("publish state generation: %w", err)
 	}
 	committed = true
-	if err := syncDirectory(generationsRoot); err != nil {
+	if err := durablefile.SyncDirectory(generationsRoot); err != nil {
 		return err
 	}
 	if generation.Activate {
@@ -149,10 +151,10 @@ func writeStateGeneration(directory string, generation Generation) error {
 			return err
 		}
 	}
-	if err := syncDirectory(inputsRoot); err != nil {
+	if err := durablefile.SyncDirectory(inputsRoot); err != nil {
 		return err
 	}
-	return syncDirectory(directory)
+	return durablefile.SyncDirectory(directory)
 }
 
 func stateGenerationMatches(directory string, generation Generation, limits Limits) bool {

@@ -6,8 +6,6 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -15,23 +13,21 @@ import (
 // The client decoder is never given an unchecked frame or auth line. In
 // particular a finite outer frame alone does not bound nested length fields.
 type referenceTransport struct {
-	socket         *net.UnixConn
-	mu             sync.Mutex
-	closed         bool
-	active         sync.WaitGroup
-	closeOnce      sync.Once
-	closeErr       error
-	readMu         sync.Mutex
-	writeMu        sync.Mutex
-	binary         atomic.Bool
-	owner          atomic.Value // original manager unique bus name, never rebound
-	line           int
-	pending        []byte
-	reader         *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
-	properties     bool             // closed read-only Startup replies; references keep scalar admission
-	unitReply      managerUnitReply // immutable before the decoder starts
-	sourceJobs     atomic.Bool      // only fixed root Source control admits canonical job replies
-	forwardingJobs atomic.Bool      // distinct fixed root Forwarding control; never Source permission
+	socket     *net.UnixConn
+	mu         sync.Mutex
+	closed     bool
+	active     sync.WaitGroup
+	closeOnce  sync.Once
+	closeErr   error
+	readMu     sync.Mutex
+	writeMu    sync.Mutex
+	binary     atomic.Bool
+	owner      atomic.Value // original manager unique bus name, never rebound
+	line       int
+	pending    []byte
+	reader     *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
+	properties bool             // closed read-only Startup replies; references keep scalar admission
+	unitReply  managerUnitReply // immutable before the decoder starts
 }
 
 func (t *referenceTransport) begin() bool {
@@ -116,14 +112,8 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 			return 0, err
 		}
 		owner, _ := t.owner.Load().(string)
-		var frameErr error
-		if t.unitReply == forwardingUnitReply {
-			frameErr = verifyForwardingManagerFrame(frame, owner, t.properties, t.forwardingJobs.Load())
-		} else {
-			frameErr = verifyManagerFrame(frame, owner, t.properties, t.sourceJobs.Load(), t.unitReply)
-		}
-		if frameErr != nil {
-			return 0, frameErr
+		if err := verifyManagerFrame(frame, owner, t.properties, t.unitReply); err != nil {
+			return 0, err
 		}
 		t.pending = frame
 	}
@@ -173,19 +163,7 @@ func referenceByteOrder(marker byte) (binary.ByteOrder, bool) {
 // Closed scalar reply vocabulary covers Hello/GetNameOwner/RefUnit/UnrefUnit/
 // Ping and broker notifications. Property observations additionally admit the
 // bounded GetAll dictionary grammar. Header variants retain exact scalar types.
-func verifyManagerFrame(frame []byte, owner string, properties, sourceJobs bool, reply managerUnitReply) error {
-	return verifyClosedManagerFrame(frame, owner, properties, sourceJobs, false, reply)
-}
-
-func verifyForwardingManagerFrame(frame []byte, owner string, properties, forwardingJobs bool) error {
-	return verifyClosedManagerFrame(frame, owner, properties, false, forwardingJobs, forwardingUnitReply)
-}
-
-func verifyClosedManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs bool, reply managerUnitReply) error {
-	return verifyNodeManagerFrame(frame, owner, properties, sourceJobs, forwardingJobs, reply)
-}
-
-func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs bool, reply managerUnitReply) error {
+func verifyManagerFrame(frame []byte, owner string, properties bool, reply managerUnitReply) error {
 	if len(frame) < 16 || len(frame) > 65536 || !reply.valid() {
 		return ErrObservation
 	}
@@ -259,17 +237,14 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 	if properties && frame[1] == 2 && owner != "" && sender == owner && (sig == "v" || sig == "a{sv}") {
 		return verifyManagerValues(frame, int(bodyStart), sig, order)
 	}
-	// Each connection admits only its fixed unit's native LoadUnit reply. Job
-	// replies belong only to that purpose's original root control. This grammar
-	// grants no method selector, loaded policy or accepting startup fact.
-	// An absence-only connection refuses all unit and job objects before decode.
+	// A read-only role connection admits only its fixed unit's object.
+	// Absence-only connections refuse all object replies before decode.
 	if properties && frame[1] == 2 && owner != "" && sender == owner && sig == "o" {
 		if reply == nodeSlotsReply {
 			return ErrObservation
 		}
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
-		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs
-		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {
+		if err != nil || pos != len(frame) || object != reply.object() {
 			return ErrObservation
 		}
 		return nil
@@ -288,16 +263,6 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 		return ErrObservation
 	}
 	return nil
-}
-
-func managerJobPath(object string) bool {
-	const prefix = "/org/freedesktop/systemd1/job/"
-	if !strings.HasPrefix(object, prefix) {
-		return false
-	}
-	value := strings.TrimPrefix(object, prefix)
-	number, err := strconv.ParseUint(value, 10, 32)
-	return err == nil && number != 0 && strconv.FormatUint(number, 10) == value
 }
 
 func referenceScalar(frame []byte, pos, end int, kind byte, order binary.ByteOrder) (string, int, error) {

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 func TestClosedEntryDomainsRemainSeparateAcrossRestart(t *testing.T) {
@@ -81,7 +83,7 @@ func TestClosedEntryLegacyRendezvousSetRefusesWithoutReinterpretation(t *testing
 	if err := writeGeneration(config.Root, path, raw); err != nil {
 		t.Fatal(err)
 	}
-	if err := replaceWatermark(config.Root, legacy.Generation, name); err != nil {
+	if err := durablefile.ReplaceWatermark(config.Root, legacy.Generation, name, "entry generation watermark value is invalid"); err != nil {
 		t.Fatal(err)
 	}
 	if err := replaceCurrent(config.Root, name); err != nil {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // RepairRetainedJoinProducer explicitly abandons a dead platform JOIN's sole
@@ -25,7 +26,7 @@ import (
 func RepairRetainedJoinProducer(ctx context.Context, input Config, original *systemd.JoinRuntime, declaration string, writableRoots []string) error {
 	native := joinRepairNative
 	if original != nil {
-		native.observe = func() (systemd.Properties, systemd.Properties, error) {
+		native.observe = func() (observation.Properties, observation.Properties, error) {
 			facts, err := original.Observe()
 			return facts.Unit, facts.Service, err
 		}

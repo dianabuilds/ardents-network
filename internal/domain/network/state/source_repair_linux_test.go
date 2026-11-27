@@ -6,20 +6,21 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // Detached policy fixtures grant no manager/cgroup proof. The public adapter
 // cannot receive these dictionaries and never accepts a zero native lifetime.
 func TestSourceRepairStoppedPolicyRefusesUnsafeNativeFacts(t *testing.T) {
-	property := func(signature string, value any) systemd.Value {
+	property := func(signature string, value any) observation.Value {
 		raw, err := json.Marshal(value)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return systemd.Value{Type: signature, Data: raw}
+		return observation.Value{Type: signature, Data: raw}
 	}
-	unit := systemd.Properties{}
-	service := systemd.Properties{}
+	unit := observation.Properties{}
+	service := observation.Properties{}
 	for name, value := range map[string]string{"Id": "ardents-source.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-source.service", "ActiveState": "failed", "SubState": "failed"} {
 		unit[name] = property("s", value)
 	}
@@ -93,7 +94,7 @@ func TestSourceRepairBindsLoadedRetainedDeclaration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			facts := systemd.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: raw}}
+			facts := observation.Properties{"ExecStartEx": {Type: "a(sasasttttuii)", Data: raw}}
 			if sourceRepairDeclaration(facts, plan) != test.accepted {
 				t.Fatal("wrong loaded declaration admission")
 			}

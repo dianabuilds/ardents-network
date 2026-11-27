@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // RepairRetainedSourceProducer explicitly abandons a dead platform Source's
@@ -140,15 +141,15 @@ func checkSourceRepairQuiescence(ctx context.Context, original *systemd.SourceRu
 	return process.CheckSourceRecoveryQuiescent(ctx)
 }
 
-func sourceRepairDeclaration(service systemd.Properties, declaration string) bool {
+func sourceRepairDeclaration(service observation.Properties, declaration string) bool {
 	value := service["ExecStartEx"]
 	var rows [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
+	if value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
 		return false
 	}
 	var program string
 	var args, flags []string
-	if systemd.Decode(rows[0][0], &program) != nil || systemd.Decode(rows[0][1], &args) != nil || systemd.Decode(rows[0][2], &flags) != nil {
+	if observation.Decode(rows[0][0], &program) != nil || observation.Decode(rows[0][1], &args) != nil || observation.Decode(rows[0][2], &flags) != nil {
 		return false
 	}
 	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 4 || args[0] != program || args[1] != "source" || args[2] != "serve-retained" || args[3] != declaration {
@@ -157,43 +158,43 @@ func sourceRepairDeclaration(service systemd.Properties, declaration string) boo
 	return len(flags) == 1 && flags[0] == "no-env-expand"
 }
 
-func sourceRepairStoppedPolicy(unit, service systemd.Properties, stateRoot, participation string) error {
+func sourceRepairStoppedPolicy(unit, service observation.Properties, stateRoot, participation string) error {
 	for name, value := range map[string]string{"Id": "ardents-source.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-source.service"} {
-		if !systemd.Matches(unit, name, "s", value) {
+		if !observation.Matches(unit, name, "s", value) {
 			return ErrSourceRepairUnavailable
 		}
 	}
-	if !(systemd.Matches(unit, "ActiveState", "s", "inactive") && systemd.Matches(unit, "SubState", "s", "dead")) &&
-		!(systemd.Matches(unit, "ActiveState", "s", "failed") && systemd.Matches(unit, "SubState", "s", "failed")) {
+	if !(observation.Matches(unit, "ActiveState", "s", "inactive") && observation.Matches(unit, "SubState", "s", "dead")) &&
+		!(observation.Matches(unit, "ActiveState", "s", "failed") && observation.Matches(unit, "SubState", "s", "failed")) {
 		return ErrSourceRepairUnavailable
 	}
-	if !systemd.Matches(unit, "DropInPaths", "as", []string{}) || !systemd.Matches(unit, "TriggeredBy", "as", []string{}) {
+	if !observation.Matches(unit, "DropInPaths", "as", []string{}) || !observation.Matches(unit, "TriggeredBy", "as", []string{}) {
 		return ErrSourceRepairUnavailable
 	}
 	for name, value := range map[string]string{"User": "ardents-source", "Group": "ardents-source", "KillMode": "control-group", "Restart": "no", "ProtectSystem": "strict"} {
-		if !systemd.Matches(service, name, "s", value) {
+		if !observation.Matches(service, name, "s", value) {
 			return ErrSourceRepairUnavailable
 		}
 	}
 	for _, name := range []string{"MainPID", "ControlPID"} {
-		if !systemd.Matches(service, name, "u", uint32(0)) {
+		if !observation.Matches(service, name, "u", uint32(0)) {
 			return ErrSourceRepairUnavailable
 		}
 	}
 	for _, name := range []string{"NoNewPrivileges", "ProtectControlGroups"} {
-		if !systemd.Matches(service, name, "b", true) {
+		if !observation.Matches(service, name, "b", true) {
 			return ErrSourceRepairUnavailable
 		}
 	}
 	for _, name := range []string{"SendSIGKILL", "DynamicUser", "Delegate"} {
-		if !systemd.Matches(service, name, "b", false) {
+		if !observation.Matches(service, name, "b", false) {
 			return ErrSourceRepairUnavailable
 		}
 	}
-	if !systemd.Matches(service, "ReadWritePaths", "as", []string{stateRoot, participation}) {
+	if !observation.Matches(service, "ReadWritePaths", "as", []string{stateRoot, participation}) {
 		return ErrSourceRepairUnavailable
 	}
-	if !systemd.Matches(service, "ControlGroup", "s", "") && !systemd.Matches(service, "ControlGroup", "s", "/system.slice/ardents-source.service") {
+	if !observation.Matches(service, "ControlGroup", "s", "") && !observation.Matches(service, "ControlGroup", "s", "/system.slice/ardents-source.service") {
 		return ErrSourceRepairUnavailable
 	}
 	return nil

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 const maximumControlGenerations = 4096
@@ -20,13 +22,13 @@ func (root *Root) prepareControl() error {
 	if err := cleanupStaging(directory, generations); err != nil {
 		return err
 	}
-	if err := syncDirectory(generations); err != nil {
+	if err := durablefile.SyncDirectory(generations); err != nil {
 		return err
 	}
-	if err := syncDirectory(directory); err != nil {
+	if err := durablefile.SyncDirectory(directory); err != nil {
 		return err
 	}
-	return syncDirectory(root.path)
+	return durablefile.SyncDirectory(root.path)
 }
 
 func (root *Root) LoadControl() (string, []byte, error) {
@@ -60,7 +62,7 @@ func (root *Root) LoadControl() (string, []byte, error) {
 }
 
 func (root *Root) CommitControl(name string, raw []byte) error {
-	return root.commitControlWithPointerSync(name, raw, syncDirectory)
+	return root.commitControlWithPointerSync(name, raw, durablefile.SyncDirectory)
 }
 
 func (root *Root) commitControlWithPointerSync(name string, raw []byte, sync func(string) error) error {
@@ -98,13 +100,13 @@ func (root *Root) commitControlWithPointerSync(name string, raw []byte, sync fun
 	if err := writeSynced(filepath.Join(staging, "state.bin"), raw); err != nil {
 		return err
 	}
-	if err := syncDirectory(staging); err != nil {
+	if err := durablefile.SyncDirectory(staging); err != nil {
 		return err
 	}
 	if err := os.Rename(staging, final); err != nil {
 		return fmt.Errorf("publish control generation: %w", err)
 	}
-	if err := syncDirectory(generations); err != nil {
+	if err := durablefile.SyncDirectory(generations); err != nil {
 		return err
 	}
 	return replacePointerWithSync(directory, "current", name, sync)
@@ -148,7 +150,7 @@ func pruneSupersededControl(directory, generations string) error {
 		return errors.New("control journal current generation is missing")
 	}
 	if changed {
-		return syncDirectory(generations)
+		return durablefile.SyncDirectory(generations)
 	}
 	return nil
 }
