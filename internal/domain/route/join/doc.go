@@ -13,4 +13,10 @@
 // Original joined CleanupResult receipts separate failed transport work from
 // actual physical write/close failures without discarding either Close result.
 // InterruptIO performs no new deadline I/O after framing already stopped.
+//
+// Start at Context.Open for one logical attempt, acquisition.go for ownership
+// of the original Prefix borrows and client.go for the bounded handshake.
+// stream.go exposes the accepted ordered bytes and returns physical ownership
+// through the acquisition on Close. The receiver's pairing package owns the
+// independent two-sided barrier and relay.
 package join

@@ -463,6 +463,13 @@ after joined child Finish or parent Close; the reserve remains inside the shared
 physical principal's 1024-child and memory bounds. Admission rights and Hosting
 reservations remain separate and grant no bypass of these Route limits.
 
+Within `route/channel`, child opening, physical output and Session retirement
+use the same original Session. Both OPEN directions share the capacity owner.
+The lane owns consumption and the frame writer credits only physical emission.
+Retirement retains each source's native failure through reader, writer and
+child joins. Prefix, receiving roles and the paired JOIN use these same
+operations and retain their own role authority and completion.
+
 ## Node composition: original lifetime boundary
 
 Existing Node and Source runtime composition remains distinct from software

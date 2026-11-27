@@ -1,6 +1,8 @@
 package channel
 
 import (
+	"encoding/binary"
+	"errors"
 	"io"
 	"net"
 	"time"
@@ -185,4 +187,192 @@ func writePhysicalOutput(conn net.Conn, kind uint8, raw []byte, initial error, c
 		out.err = nil
 	}
 	return out
+}
+
+// write distinguishes queued work from a started physical frame. Expired
+// queued work consumes neither physical output nor credit. A failed started
+// frame invalidates the shared framing boundary even when Write returns zero.
+func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
+	raw, err := ardp.EncodeFrame(f)
+	if err != nil {
+		return err
+	}
+	release, err := s.turn(l, f, terminal, uint64(len(raw)))
+	if err != nil {
+		return err
+	}
+	defer release()
+	if s.check != nil {
+		if err := s.check(); err != nil {
+			s.Retire(err)
+			return err
+		}
+	}
+	s.mu.Lock()
+	end := l.frameDeadline(f, terminal)
+	if s.stopped || s.finishingRole || s.ctx.Err() != nil || l.peerClosed || (!terminal && l.closed) {
+		s.mu.Unlock()
+		return &frameRetirement{lane: l, kind: f.Kind}
+	}
+	if !time.Now().Before(end) {
+		s.mu.Unlock()
+		return &frameExpiry{end: end}
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && l.caller != nil {
+		// Currentness observation can finish after the original operation is
+		// canceled, before its cancellation callback closes the control lane.
+		// Refuse synchronously before capacity, debit or physical output.
+		if err := l.caller.Err(); err != nil {
+			s.mu.Unlock()
+			return err
+		}
+	}
+	cost := uint64(len(raw))
+	if cost > s.limit-s.used {
+		s.mu.Unlock()
+		return errors.New("route byte allowance exhausted")
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && cost == s.limit-s.used {
+		s.mu.Unlock()
+		return errors.New("route refill requires positive original reserve")
+	}
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 && l.refill != nil && l.refill.requiresHold {
+		needed := l.refill.remaining - (s.limit - s.used - cost)
+		if needed > l.refill.held {
+			s.mu.Unlock()
+			return &refillCapacityDelta{additional: needed - l.refill.held}
+		}
+	}
+	if f.Kind == ardp.KindBytes {
+		if l.handshake && uint32(len(f.Body)) > 4096-l.handshakeOutput-l.handshakeBytes {
+			s.mu.Unlock()
+			return errors.New("route pending TLS output allowance exhausted")
+		}
+		if uint32(len(f.Body)) > l.credit {
+			s.mu.Unlock()
+			return errors.New("route credit changed")
+		}
+	}
+	if l.trafficLimit != 0 && !(terminal && f.Kind == ardp.KindClose) && cost > l.trafficLimit-l.trafficUsed {
+		cause := errors.New("route child byte allowance exhausted")
+		l.stopLocked(cause)
+		s.mu.Unlock()
+		return &frameCapacityRefusal{cause: cause}
+	}
+	if s.chargeOutput != nil {
+		if err := s.chargeOutput(cost); err != nil {
+			l.stopLocked(err)
+			s.mu.Unlock()
+			return &frameCapacityRefusal{cause: err}
+		}
+	}
+	if l.chargeOutput != nil {
+		if err := l.chargeOutput(cost, terminal && f.Kind == ardp.KindClose); err != nil {
+			l.stopLocked(err)
+			s.mu.Unlock()
+			return &frameCapacityRefusal{cause: err}
+		}
+	}
+	if l.trafficLimit != 0 && !(terminal && f.Kind == ardp.KindClose) {
+		l.trafficUsed += cost
+	}
+	if f.Kind == ardp.KindBytes {
+		l.credit -= uint32(len(f.Body))
+		l.sendCreditMetric.Decrease(uint64(len(f.Body)))
+		if l.handshake {
+			l.handshakeOutput += uint32(len(f.Body))
+		}
+	}
+	s.used += cost
+	if f.Kind == ardp.KindAdmit && f.Lane == 0 {
+		if l.refill != nil {
+			l.refill.witness = s.used
+			l.refill.charged = true
+		}
+	}
+	s.active = l
+	s.activeKind = f.Kind
+	// An already selected directional EOF is a terminal, not payload. Like
+	// selected CREDIT it must join its actual writer under bounded cleanup;
+	// expiring it inside TLS can poison a healthy multiplexed parent.
+	control := f.Kind == ardp.KindCredit || f.Kind == ardp.KindEOF || l.controlOutput != 0
+	s.activeControl = control
+	s.activeEnd = end
+	s.activeDeadline = &outputDeadline{lane: l, end: end, cutoff: end}
+	deadline := l.retainOutputDeadlineLocked()
+	s.mu.Unlock()
+	performed, err := s.applyOutputDeadline(deadline)
+	output := physicalOutput{err: err}
+	refused := false
+	if performed && err == nil {
+		// The deadline effect can block outside state while this exact lane
+		// seals. Refuse before entering TLS/Carrier Write: even an unemitted
+		// TLS failure can make that shared writer permanently unusable.
+		// Already selected control retains only its original cleanup bound.
+		s.mu.Lock()
+		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (terminal && l.peerClosed) || (!terminal && l.closed && (!control || f.Kind == ardp.KindEOF)) {
+			output.err = &frameRetirement{lane: l, kind: f.Kind}
+			refused = true
+		} else if !time.Now().Before(deadline.end) {
+			output.err = &frameExpiry{end: deadline.end}
+			refused = true
+		} else if f.Kind == ardp.KindOpen {
+			// Cleanup may emit CLOSE only once this original OPEN is
+			// admitted to Write, never merely because its deadline started.
+			l.openEmitted = true
+		} else if f.Kind == ardp.KindCredit {
+			credit := binary.BigEndian.Uint32(f.Body)
+			if credit > l.queuedCredit {
+				output.err = errors.New("route unearned receive credit")
+				refused = true
+			} else {
+				// The peer may use the grant before Write returns. Admit it at
+				// physical output, never while consumption or queued output waits.
+				l.queuedCredit -= credit
+			}
+		}
+		s.mu.Unlock()
+	}
+	if performed && !refused {
+		output = writePhysicalOutput(s.conn, f.Kind, raw, err, control)
+	} else if !performed && err == nil {
+		output.err = &frameRetirement{lane: l, kind: f.Kind}
+		refused = true
+	}
+	err = output.err
+	s.mu.Lock()
+	// The selected writer stays active until native provenance and failure are
+	// published together. An adapter refusal cannot mint a lower-lane attempt;
+	// nested TLS still retains every preceding physical record from this write.
+	if output.physical {
+		l.physicalAttempts++
+		if f.Kind != ardp.KindCredit {
+			l.payloadAttempts++
+		}
+	}
+	if err != nil {
+		if output.failure != nil {
+			l.physicalWriteFailed = true
+			physical := output.failure
+			if !output.nested {
+				physical = &physicalWriteFailure{owner: s, kind: f.Kind, cause: physical}
+				err = physical
+			} else {
+				err = errors.Join(err, physical)
+			}
+			l.physicalErr = errors.Join(l.physicalErr, physical)
+			s.writeErr = errors.Join(s.writeErr, physical)
+		}
+	}
+	s.active = nil
+	s.activeDeadline = nil
+	s.activeControl = false
+	s.mu.Unlock()
+	if err != nil && !refused {
+		// A lower refusal/local closure with no new lower output remains this
+		// channel's failed terminal result, not a fabricated physical failure
+		// of its receiving owner. Actual lower failures stay with that owner.
+		s.Retire(err)
+	}
+	return err
 }

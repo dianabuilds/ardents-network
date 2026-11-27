@@ -38,30 +38,15 @@
 // and all started physical failures. A reverse EOF without that peer terminal
 // cannot discharge retirement. Physical Close still owns join and returns.
 //
-// Navigation: one Session owns the clusters below. Test naming follows
-// docs/development/repository-layout.md; all tests are package channel
-// behavior tests, and a test listed under several clusters verifies each of
-// them.
-//
-//   - core: session.go, joined_session.go, role_frames.go, request_context.go,
-//     deadline_bound.go. Tests: session_lifecycle_test.go, join_input_test.go,
-//     role_frames_test.go, open_lane_test.go, deadline_effect_test.go,
-//     deadline_bound_test.go.
-//   - lane: lane.go, record_capacity.go. Tests: lane_stop_test.go,
-//     lane_notify_test.go, credit_batch_test.go, credit_close_test.go,
-//     credit_retirement_test.go, nested_control_close_test.go, open_lane_test.go.
-//   - output: frame_schedule.go, physical_output.go, physical_close.go,
-//     framing_retirement.go, terminal_outcome.go. Tests:
-//     frame_schedule_test.go, framing_retirement_test.go,
-//     native_refusal_test.go, frame_admission_test.go,
-//     credit_retirement_test.go (TerminalFailureStage classification).
-//   - capacity: queue_budget.go, child_capacity.go, child_limits.go. Tests:
-//     budget_test.go, child_capacity_test.go, child_limits_test.go,
-//     child_queue_test.go.
-//   - parent: parent_exchange.go. Tests: parent_exchange_test.go,
-//     parent_allowance_test.go.
-//   - retirement: role_retirement.go, peer_close.go. Tests:
-//     role_retirement_test.go, peer_close_test.go, peer_close_writer_test.go,
-//     close_collision_test.go, dedicated_close_test.go, eof_retirement_test.go,
-//     refused_close_test.go.
+// Start at child_opening.go for outgoing OPEN and the dedicated JOIN lane.
+// The reader in session.go checks inbound frames and hands incoming OPEN to
+// the same slot owner in child_capacity.go. Both directions use the original
+// Session lock and principal Budget. Lane.Read and Lane.Write in lane.go own
+// queued bytes and consumption. frame_schedule.go orders the writers, and
+// physical_output.go debits a complete frame and grants CREDIT when its write
+// starts. parent_exchange.go owns replenishment under the same byte account.
+// session_retirement.go seals, interrupts, joins and retains the exact physical
+// result before capacity returns. role_retirement.go adds the exact peer
+// terminal required by a nested role. The session and lane close tests exercise
+// these joins with held writers and late physical failures.
 package channel
