@@ -27,7 +27,7 @@ const stateSchema = "ardents-service-instance-root-v3"
 
 type generationState struct {
 	phase    State
-	request  RequestView
+	request  publication.RequestView
 	private  ed25519.PrivateKey
 	response []byte
 	terminal [32]byte
@@ -53,7 +53,7 @@ func generateState(network [32]byte, before, after int64) (generationState, erro
 	if err != nil {
 		return generationState{}, err
 	}
-	value := generationState{phase: Pending, private: private, request: RequestView{NetworkID: network, NotBefore: before, NotAfter: after}}
+	value := generationState{phase: Pending, private: private, request: publication.RequestView{NetworkID: network, NotBefore: before, NotAfter: after}}
 	copy(value.request.InstancePublic[:], public)
 	value.request.Commitment = publication.ServiceRequestCommitment(value.request)
 	if err = value.validate(); err != nil {
@@ -64,7 +64,7 @@ func generateState(network [32]byte, before, after int64) (generationState, erro
 }
 
 func (value generationState) validate() error {
-	if _, err := ParseRequest(publication.EncodeServiceRequest(value.request)); err != nil {
+	if _, err := publication.ParseServiceRequest(publication.EncodeServiceRequest(value.request)); err != nil {
 		return err
 	}
 	if len(value.private) != 0 {
@@ -140,7 +140,7 @@ func unmarshalState(raw []byte) (generationState, error) {
 	if err := json.Unmarshal(raw, &stored); err != nil || stored.Schema != stateSchema {
 		return generationState{}, ErrInvalid
 	}
-	value := generationState{phase: stored.Phase, request: RequestView{NotBefore: stored.NotBefore, NotAfter: stored.NotAfter}}
+	value := generationState{phase: stored.Phase, request: publication.RequestView{NotBefore: stored.NotBefore, NotAfter: stored.NotAfter}}
 	fail := func() (generationState, error) { value.erase(); return generationState{}, ErrInvalid }
 	for _, item := range []struct {
 		text string

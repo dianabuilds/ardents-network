@@ -38,7 +38,7 @@ func exerciseRegisteredInstanceRecord(t *testing.T, registration *introduction.H
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := instance.ParseRequest(request)
+	view, err := publication.ParseServiceRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,9 +74,15 @@ func exerciseRegisteredInstanceRecord(t *testing.T, registration *introduction.H
 	}
 	ack := receipt.Facts().Acknowledgement
 	commitment := sha256.Sum256(ack[:])
-	commitmentStart := len("ardents-service-publication-v3\x00") + 222
-	if len(record) != commitmentStart+len(commitment)+ed25519.SignatureSize || !bytes.Equal(record[commitmentStart:commitmentStart+len(commitment)], commitment[:]) {
-		t.Fatal("Publication changed canonical actual REGISTER commitment")
+	const responseCredentialOffset = len("ardents-service-instance-response-v3\x00") + sha256.Size
+	expectedBody := append([]byte("ardents-service-publication-v3\x00"), response[responseCredentialOffset:]...)
+	expectedBody = append(expectedBody, commitment[:]...)
+	if len(record) != len(expectedBody)+ed25519.SignatureSize || !bytes.Equal(record[:len(expectedBody)], expectedBody) {
+		t.Fatal("Publication changed the issued Credential or the canonical REGISTER commitment")
+	}
+	digest := sha256.Sum256(expectedBody)
+	if !ed25519.Verify(view.InstancePublic[:], digest[:], record[len(expectedBody):]) {
+		t.Fatal("Instance signature did not authenticate the independently reconstructed Publication bytes")
 	}
 	again, err := binding.Publication(t.Context(), registration)
 	if err != nil || !bytes.Equal(record, again) {

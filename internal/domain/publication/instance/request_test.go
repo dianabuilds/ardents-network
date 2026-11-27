@@ -14,7 +14,7 @@ import (
 )
 
 // External Authority issuance is fixture input, not a maintained signing API.
-func fixtureResponse(request RequestView, generation uint64, caps uint32) []byte {
+func fixtureResponse(request publication.RequestView, generation uint64, caps uint32) []byte {
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x11}, 32))
 	public := authority.Public().(ed25519.PublicKey)
 	target := sha256.Sum256(append([]byte("ardents-service-target-v3\x00"), public...))
@@ -47,7 +47,7 @@ func TestHostGeneratedRequestAndIndependentGrammar(t *testing.T) {
 	if !bytes.Equal(independent, publication.EncodeServiceRequest(view)) || commitment != view.Commitment {
 		t.Fatal("canonical public request changed")
 	}
-	parsed, err := ParseRequest(independent)
+	parsed, err := publication.ParseServiceRequest(independent)
 	if err != nil || parsed != view {
 		t.Fatal(parsed, err)
 	}
@@ -62,7 +62,7 @@ func TestHostGeneratedRequestAndIndependentGrammar(t *testing.T) {
 	for _, offset := range []int{0, len("ardents-service-instance-request-v3\x00"), len(independent) - 1} {
 		bad := append([]byte(nil), independent...)
 		bad[offset] ^= 1
-		if _, err := ParseRequest(bad); err == nil {
+		if _, err := publication.ParseServiceRequest(bad); err == nil {
 			t.Fatal("mutated request accepted", offset)
 		}
 	}
@@ -117,7 +117,7 @@ func TestSignedResponseExactRequestBinding(t *testing.T) {
 			case "length":
 				raw = append(raw, 0)
 			case "overflow":
-				binary.BigEndian.PutUint64(raw[len(responseDomain)+32+106:], 1<<63)
+				binary.BigEndian.PutUint64(raw[len("ardents-service-instance-response-v3\x00")+sha256.Size+106:], 1<<63)
 			}
 			if _, err := publication.VerifyServiceResponse(raw, value.request); !errors.Is(err, want) {
 				t.Fatalf("response %s: %v", mode, err)

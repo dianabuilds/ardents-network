@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
 func nativeConfig(t *testing.T) Config {
@@ -43,7 +45,7 @@ func TestNativeInstanceExactAcceptanceAndTerminalResponse(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			view, err := ParseRequest(raw)
+			view, err := publication.ParseServiceRequest(raw)
 			if err != nil {
 				t.Fatal(err)
 			}

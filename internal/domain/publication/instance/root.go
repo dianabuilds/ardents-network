@@ -16,6 +16,13 @@ const marker = "ardents-service-instance-root-v3\n"
 const stateName = "instance-root.json"
 const lockName = ".instance-root.lock"
 
+var (
+	ErrInvalid           = publication.ErrRequestInvalid
+	ErrUnavailable       = publication.ErrResponseMismatch
+	ErrPending           = errors.New("service Instance response pending")
+	ErrSuccessorRequired = errors.New("service Instance successor required")
+)
+
 // Config contains only host-selected public request facts. It cannot supply
 // private material, an Authority signer or an arbitrary Instance public key.
 type Config struct {
@@ -203,7 +210,7 @@ func (root *Root) Credential(ctx context.Context) (publication.Credential, error
 	case Consumed:
 		return publication.Credential{}, ErrSuccessorRequired
 	case Accepted:
-		return verifyResponse(root.state.response, root.state.request)
+		return publication.VerifyServiceResponse(root.state.response, root.state.request)
 	default:
 		return publication.Credential{}, ErrUnavailable
 	}
