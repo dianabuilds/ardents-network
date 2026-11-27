@@ -91,9 +91,11 @@ github.com/dianabuilds/ardents-network/internal/platform/processguard
 github.com/dianabuilds/ardents-network/internal/durablefile
 github.com/dianabuilds/ardents-network/internal/canonicaldigest
 github.com/dianabuilds/ardents-network/internal/pathcheck
-github.com/dianabuilds/ardents-network/internal/domain/node
+github.com/dianabuilds/ardents-network/internal/domain/node/admission
+github.com/dianabuilds/ardents-network/internal/domain/node/plan
+github.com/dianabuilds/ardents-network/internal/domain/node/receive
+github.com/dianabuilds/ardents-network/internal/domain/node/runtime
 github.com/dianabuilds/ardents-network/internal/domain/node/command
-github.com/dianabuilds/ardents-network/internal/domain/node/internal/credential
 github.com/dianabuilds/ardents-network/internal/domain/connection/wire
 github.com/dianabuilds/ardents-network/internal/domain/endpoint/session
 github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure

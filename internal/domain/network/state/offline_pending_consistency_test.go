@@ -173,9 +173,13 @@ func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testin
 
 func TestSourceRefreshRefusesExpiredPendingEpoch(t *testing.T) {
 	genesis := newFixture(t)
+	validFrom := time.Unix(genesis.now, 0).UTC().Add(20 * time.Second)
+	// The Sources must retain a current Epoch through their real disk setup.
+	// The reader crosses the expiry explicitly after persisting the pending one.
+	validUntil := validFrom.Add(5 * time.Minute)
 	pending := buildFixtureEpoch(t, genesis, pendingEpoch, genesis.epochDigest,
-		sha256.Sum256([]byte("expired-pending-assignment-seed")), time.Unix(genesis.now+20, 0).UTC(), time.Unix(genesis.now+22, 0).UTC())
-	pending.now = genesis.now + 20
+		sha256.Sum256([]byte("expired-pending-assignment-seed")), validFrom, validUntil)
+	pending.now = validFrom.Unix()
 	config, closeSources := sourceEnvironment(t, genesis, pending, pending)
 	defer closeSources()
 
@@ -191,7 +195,7 @@ func TestSourceRefreshRefusesExpiredPendingEpoch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expired := time.Unix(genesis.now+23, 0).UTC()
+	expired := validUntil.Add(time.Second)
 	config.Clock = advancingVerificationClock(expired)
 	config.ObserveClock = config.Clock
 	restarted, err := state.Open(config)

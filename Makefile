@@ -29,6 +29,7 @@ read-profile-list = $(or $(strip $(file <$1)),$(error Cannot read $1. Check the 
 # can run before the registered Make is available.
 UNIT_PACKAGES = $(call read-profile-list,tests/profiles/deterministic-packages.txt)
 PROCESS_PACKAGES = $(call read-profile-list,tests/profiles/process-packages.txt)
+NODE_ROLE_PACKAGES := ./internal/domain/node/admission ./internal/domain/node/plan ./internal/domain/node/receive ./internal/domain/node/runtime
 HEADLESS_COMMANDS = $(call read-profile-list,tests/profiles/headless-commands.txt)
 ifneq ($(filter source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
@@ -425,17 +426,17 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/domain/route/... ./internal/domain/endpoint/... ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/domain/route/... ./internal/domain/endpoint/... $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
 hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/hosting ./internal/domain/admission/receiving ./internal/domain/node -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/hosting ./internal/domain/admission/receiving $(NODE_ROLE_PACKAGES) -count=1 -timeout=3m,$(error hosting-check requires Linux))
 	go test -race ./tests/e2e/node -run '^Test(AdmissionHostingReservationAndWork|HostingPlanExactFields|HostingCompiledCLIInitializationAndObservation|HostingOTLPContainsOnlyFiniteAttributes|HostingCollectorFailurePreservesCommittedResult|CanceledSocketChildRetainsReservationUntilJoined)' -count=1 -timeout=3m
 
 .PHONY: admission-check
 admission-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission/... ./internal/domain/endpoint/session ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error admission-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission/... ./internal/domain/endpoint/session $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error admission-check requires Linux))
 	$(MAKE) --no-print-directory offline-admission-e2e-race
 
 # Keep compiled offline command scenarios in the race inventory after their move
@@ -446,16 +447,16 @@ offline-admission-e2e-race:
 
 .PHONY: issuance-check
 issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission/issuance ./internal/domain/admission/operator ./internal/domain/endpoint/session ./internal/domain/node ./tests/networkfixture -count=1 -timeout=3m,$(error issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission/issuance ./internal/domain/admission/operator ./internal/domain/endpoint/session $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=3m,$(error issuance-check requires Linux))
 	$(MAKE) --no-print-directory offline-admission-e2e-race
 
 .PHONY: token-issuance-check
 token-issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission ./internal/domain/admission/issuerprofile ./internal/domain/admission/issuance ./internal/domain/admission/issuer ./internal/domain/admission/operator ./internal/domain/endpoint/session ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission ./internal/domain/admission/issuerprofile ./internal/domain/admission/issuance ./internal/domain/admission/issuer ./internal/domain/admission/operator ./internal/domain/endpoint/session $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
 
 .PHONY: issuer-profile-check
 issuer-profile-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission ./internal/domain/admission/issuerprofile ./internal/domain/admission/issuerprofile/signing ./internal/domain/admission/issuance ./internal/domain/admission/issuer ./internal/domain/admission/operator ./internal/domain/node ./tests/networkfixture -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/admission ./internal/domain/admission/issuerprofile ./internal/domain/admission/issuerprofile/signing ./internal/domain/admission/issuance ./internal/domain/admission/issuer ./internal/domain/admission/operator $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
 	go test ./internal/domain/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
 	go test ./internal/domain/admission/issuerprofile/signing -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
 

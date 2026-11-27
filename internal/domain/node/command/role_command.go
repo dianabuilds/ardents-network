@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
 	"io"
 	"time"
 
@@ -11,12 +10,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
+	nodeplan "github.com/dianabuilds/ardents-network/internal/domain/node/plan"
+	noderuntime "github.com/dianabuilds/ardents-network/internal/domain/node/runtime"
 )
 
 // RunRole owns the selected role and retained Network State lifetime.
 func RunRole(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
 	name := "node." + operation
-	if !node.RuntimeAvailable {
+	if !noderuntime.RuntimeAvailable {
 		if err := writeEvent(out, name, "refused", "unsupported-platform", "", "", ""); err != nil {
 			return 2
 		}
@@ -24,21 +25,21 @@ func RunRole(ctx context.Context, operation string, args []string, out, diagnost
 	}
 	switch operation {
 	case "forwarding":
-		return runNodeReceiving(ctx, forwardingOperation, args, out, diagnostic, false, node.DecodeForwardingPlan)
+		return runNodeReceiving(ctx, forwardingOperation, args, out, diagnostic, false, nodeplan.DecodeForwardingPlan)
 	case "issuer":
 		return runNodeIssuer(ctx, args, out, diagnostic)
 	case "descriptor":
-		return runNodeReceiving(ctx, name, args, out, diagnostic, true, node.DecodeDescriptorPlan)
+		return runNodeReceiving(ctx, name, args, out, diagnostic, true, nodeplan.DecodeDescriptorPlan)
 	case "introduction":
-		return runNodeReceiving(ctx, name, args, out, diagnostic, true, node.DecodeIntroductionPlan)
+		return runNodeReceiving(ctx, name, args, out, diagnostic, true, nodeplan.DecodeIntroductionPlan)
 	case "join":
-		return runNodeReceiving(ctx, name, args, out, diagnostic, true, node.DecodeJoinPlan)
+		return runNodeReceiving(ctx, name, args, out, diagnostic, true, nodeplan.DecodeJoinPlan)
 	default:
 		return 2
 	}
 }
 
-func runNodeReceiving[P node.ReceivingPlan](ctx context.Context, operation string, args []string, out, diagnostic io.Writer, cancelableRead bool, decode func([]byte) (P, error)) int {
+func runNodeReceiving[P nodeplan.Receiving](ctx context.Context, operation string, args []string, out, diagnostic io.Writer, cancelableRead bool, decode func([]byte) (P, error)) int {
 	var raw []byte
 	var retained bool
 	if cancelableRead {
@@ -66,8 +67,8 @@ func runNodeReceiving[P node.ReceivingPlan](ctx context.Context, operation strin
 	if cancelableRead && ctx.Err() != nil {
 		return 130
 	}
-	return runNodeWithState(ctx, out, diagnostic, operation, config, waitMS, func(owner *state.State) (node.RuntimeInvocation, error) {
-		return node.StartReceivingRole(ctx, owner, plan, retained)
+	return runNodeWithState(ctx, out, diagnostic, operation, config, waitMS, func(owner *state.State) (noderuntime.RuntimeInvocation, error) {
+		return noderuntime.StartReceivingRole(ctx, owner, plan, retained)
 	})
 }
 
@@ -79,7 +80,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if err != nil {
 		return 2
 	}
-	plan, err := node.DecodeIssuerPlan(raw)
+	plan, err := nodeplan.DecodeIssuerPlan(raw)
 	if err != nil {
 		return 2
 	}
@@ -91,8 +92,8 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if err != nil {
 		return 2
 	}
-	return runNodeWithState(ctx, out, diagnostic, "node.issuer", config, plan.RetirementWaitMS, func(owner *state.State) (node.RuntimeInvocation, error) {
-		return node.StartIssuingRole(ctx, owner, plan, retained, issuer.Plan{
+	return runNodeWithState(ctx, out, diagnostic, "node.issuer", config, plan.RetirementWaitMS, func(owner *state.State) (noderuntime.RuntimeInvocation, error) {
+		return noderuntime.StartIssuingRole(ctx, owner, plan, retained, issuer.Plan{
 			AdmissionRoot:    prepared.AdmissionRoot,
 			AdmissionBinding: prepared.AdmissionBinding,
 			KeyRoot:          prepared.KeyRoot,
@@ -102,7 +103,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	})
 }
 
-func nodeStateConfig(network *node.Network, participationRoot string) (state.Config, error) {
+func nodeStateConfig(network *nodeplan.Network, participationRoot string) (state.Config, error) {
 	config, err := (*state.AuthorityDeclaration)(network).Config()
 	if err != nil {
 		return state.Config{}, err
@@ -114,7 +115,7 @@ func nodeStateConfig(network *node.Network, participationRoot string) (state.Con
 // Each selected role supplies its real constructor and exact typed plan.
 // The command owns the original State and closes it after the Node's joined
 // completion, even when the bounded wait has already reported unavailability.
-func runNodeWithState(ctx context.Context, out, diagnostic io.Writer, operation string, config state.Config, waitMS uint32, listen func(*state.State) (node.RuntimeInvocation, error)) int {
+func runNodeWithState(ctx context.Context, out, diagnostic io.Writer, operation string, config state.Config, waitMS uint32, listen func(*state.State) (noderuntime.RuntimeInvocation, error)) int {
 	defer measurement.Begin(runtimeevent.NodeLifetime).End()
 
 	owner, err := state.OpenRetained(config)
@@ -128,7 +129,7 @@ func runNodeWithState(ctx context.Context, out, diagnostic io.Writer, operation 
 	if err != nil {
 		return startupRefusal(out, operation, err, owner.Close())
 	}
-	result := node.SuperviseInvocation(ctx, original, time.Duration(waitMS)*time.Millisecond, func() error {
+	result := noderuntime.SuperviseInvocation(ctx, original, time.Duration(waitMS)*time.Millisecond, func() error {
 		return writeEvent(out, operation, "listening", "original-duty", "", "", "")
 	}, func() {
 		reportWaitExpired(diagnostic, operation, original.FirstFailure)

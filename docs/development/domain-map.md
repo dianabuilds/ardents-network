@@ -513,7 +513,7 @@ and the native platform adapters. Existing installed roots and durable role
 histories stay with their current owners.
 
 The node-role runtime invocation declaration grammar is owned by
-`internal/domain/node` (`plan_declaration.go`): a pure closed byte codec
+`internal/domain/node/plan` (`declaration.go`): a pure closed byte codec
 mirroring `network/source.ServingDeclaration`, shared by the five node-role
 runtime commands, the four retained repair commands (Forwarding/JOIN/Descriptor/
 Introduction) and the `ardents-next node prepare-plan` operator command (#673,
@@ -706,7 +706,7 @@ consumer cannot establish a supported Node installation or qualified host.
 
 ### Realized prerequisites and design limits
 
-`internal/domain/node/route_receive_linux.go` composes genuine State, retained duty,
+`internal/domain/node/receive/command_linux.go` composes genuine State, retained duty,
 receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
 Descriptor owners only when that exact duty requires them. Receiver supports
 TCP/TLS, refuses deferred QUIC before listening, reobserves authority and joins its work.
@@ -718,9 +718,11 @@ issuance selection. This command is an existing component consumer. Its
 Forwarding refill uses the same reserve-before-spend operation as the original
 Node Forwarding role. Each consumer retains its own reservation map and lifetime.
 
-`internal/domain/node` composes original Forwarding, Issuer, Descriptor, Introduction and
+`internal/domain/node/runtime` composes original Forwarding, Issuer, Descriptor, Introduction and
 JOIN lifetimes through the typed CLI adapters in
-`internal/domain/node/command/role_command.go`. JOIN surrounds the existing Receiver/Pairing with exact original process,
+`internal/domain/node/command/role_command.go`. The shared `node/admission`
+package transfers public profile facts and retains physical reservations in the
+original Route channel. JOIN surrounds the existing Receiver/Pairing with exact original process,
 producer and fixed TLS custody, full class-2 reserve-before-spend and retained
 joined completion. Matching, both RESULT writes, credit, EOF and CLOSE remain
 Route rules. It grants no refill, Service authority or automatic replacement.

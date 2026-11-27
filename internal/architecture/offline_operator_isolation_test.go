@@ -165,11 +165,11 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	case "internal/domain/node/provisioning/runtimeplan/command_test.go":
-		return dependency == modulePath+"/internal/domain/admission/issuance" || dependency == modulePath+"/internal/domain/network/state" || dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/platform/processguard"
+		return dependency == modulePath+"/internal/domain/admission/issuance" || dependency == modulePath+"/internal/domain/network/state" || dependency == modulePath+"/internal/domain/node/plan" || dependency == modulePath+"/internal/platform/processguard"
 	case "internal/domain/node/provisioning/runtimeplan/prepare.go":
 		switch dependency {
 		case modulePath + "/internal/domain/admission/issuance", modulePath + "/internal/canonicaldigest", modulePath + "/internal/domain/hosting", modulePath + "/internal/domain/network/state",
-			modulePath + "/internal/domain/node", modulePath + "/internal/pathcheck", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/processguard":
+			modulePath + "/internal/domain/node/plan", modulePath + "/internal/pathcheck", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/processguard":
 			return true
 		}
 	case "internal/domain/node/provisioning/infrastructure/epoch_plan_linux.go",

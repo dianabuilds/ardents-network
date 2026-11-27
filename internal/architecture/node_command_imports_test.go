@@ -4,28 +4,31 @@ import "strings"
 
 // Original Node credentials and role commands use the declared owners in each direction.
 func nodeAndSourceCommandImport(source, dependency, local string, localImport bool) importPermission {
-	if localImport && strings.HasPrefix(source, "internal/domain/node/internal/credential/") {
+	if localImport {
 		switch source {
-		case "internal/domain/node/internal/credential/load_unix.go", "internal/domain/node/internal/credential/join_unix.go":
+		case "internal/domain/node/runtime/credential_unix.go", "internal/domain/node/runtime/join_credential_unix.go":
 			return explicitImportResult(local == "internal/durablefile" || local == "internal/pathcheck")
-		default:
-			return importDenied
 		}
-	}
-	if localImport && local == "internal/domain/node/internal/credential" {
-		switch source {
-		case "internal/domain/node/forwarding_unix.go", "internal/domain/node/descriptor_unix.go",
-			"internal/domain/node/introduction_unix.go", "internal/domain/node/issuer_unix.go", "internal/domain/node/join_unix.go":
-			return importAllowed
-		default:
+		switch local {
+		case "internal/domain/node", "internal/domain/node/internal/credential":
 			return importDenied
+		case "internal/domain/node/admission":
+			switch source {
+			case "internal/domain/node/runtime/lifetime_unix.go", "internal/domain/node/runtime/forwarding_unix.go",
+				"internal/domain/node/runtime/issuer_unix.go", "internal/domain/node/receive/authority_linux.go", "internal/domain/node/receive/command_linux.go":
+				return importAllowed
+			default:
+				return importDenied
+			}
+		case "internal/domain/node/receive":
+			return explicitImportResult(source == "cmd/ardents-next/command.go")
 		}
 	}
 	if strings.HasPrefix(source, "internal/domain/node/command/") && localImport {
 		switch source {
 		case "internal/domain/node/command/role_command.go":
 			switch local {
-			case "internal/domain/node", "internal/domain/admission/issuer", "internal/domain/admission/issuance",
+			case "internal/domain/node/runtime", "internal/domain/node/plan", "internal/domain/admission/issuer", "internal/domain/admission/issuance",
 				"internal/domain/network/state":
 				return importAllowed
 			}
@@ -36,7 +39,7 @@ func nodeAndSourceCommandImport(source, dependency, local string, localImport bo
 			return explicitImportResult(local == "internal/platform/artifacts")
 		case "internal/domain/node/command/report.go", "internal/domain/node/command/report_test.go",
 			"internal/domain/node/command/role_report.go", "internal/domain/node/command/role_report_test.go":
-			return explicitImportResult(local == "internal/domain/node")
+			return explicitImportResult(local == "internal/domain/node/runtime")
 		default:
 			return importDenied
 		}

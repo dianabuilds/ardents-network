@@ -317,16 +317,18 @@ func TestStateRootLeaseExcludesSecondStore(t *testing.T) {
 func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)
+	clock := advancingVerificationClock(time.Unix(genesis.now, 0))
 	config := state.Config{
 		Root: t.TempDir(), NetworkID: genesis.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
 		ClosedProfileAuthority: genesis.authorityPublic,
-		Threshold:              1, Now: time.Unix(genesis.now, 0), ClockObservation: time.Unix(genesis.now, 0),
+		Threshold:              1, Clock: clock, ObserveClock: clock,
 	}
 	store, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer store.Close()
 	firstReceipt, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
 	if err != nil {
 		t.Fatal(err)

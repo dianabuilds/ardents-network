@@ -263,7 +263,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		}
 	}
 	// These command tests consume only the registered process and signed fixture owners.
-	if localImport && source == "internal/domain/node/introduction_exchange_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/runtime/introduction_exchange_native_linux_test.go" {
 		switch local {
 		case "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
 			"internal/domain/network/epoch", "internal/domain/network/state", "internal/platform/processguard", "internal/domain/route/capsule",
@@ -271,7 +271,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 			return importAllowed
 		}
 	}
-	if localImport && source == "internal/domain/node/operation_workload_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/runtime/operation_workload_native_linux_test.go" {
 		switch local {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota",
 			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding",
@@ -281,38 +281,38 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 			return importAllowed
 		}
 	}
-	if localImport && source == "internal/domain/node/operation_process_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/runtime/operation_process_native_linux_test.go" {
 		switch local {
 		case "internal/domain/admission", "internal/domain/admission/issuance", "internal/domain/admission/issuer",
 			"internal/domain/admission/quota", "internal/domain/admission/spending", "internal/domain/endpoint/funding",
 			"internal/domain/hosting", "internal/domain/network", "internal/domain/network/state",
-			"internal/domain/node", "internal/domain/route/role":
+			"internal/domain/node/runtime", "internal/domain/route/role":
 			return importAllowed
 		}
 	}
-	if localImport && source == "internal/domain/node/authority_process_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/runtime/authority_process_native_linux_test.go" {
 		switch local {
 		case "internal/domain/admission/issuance", "internal/domain/admission/issuer", "internal/domain/admission/spending", "internal/domain/hosting",
-			"internal/domain/network", "internal/domain/network/duty", "internal/domain/network/state", "internal/domain/node", "internal/domain/reachability",
+			"internal/domain/network", "internal/domain/network/duty", "internal/domain/network/state", "internal/domain/node/runtime", "internal/domain/reachability",
 			"internal/domain/route/introduction", "internal/domain/route/role", "internal/domain/route/transport", "tests/epochfixture/network":
 			return importAllowed
 		}
 	}
 	if localImport {
 		switch source {
-		case "internal/domain/node/route_refusal_linux_test.go":
+		case "internal/domain/node/receive/post_spend_refusal_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 				"internal/domain/hosting", "internal/domain/route/receiver", "internal/domain/route/role", "internal/domain/route/selection":
 				return importAllowed
 			}
-		case "internal/domain/node/route_receiving_fixture_linux_test.go":
+		case "internal/domain/node/receive/receiver_fixture_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock", "internal/domain/admission/token",
 				"internal/domain/endpoint/funding", "internal/domain/network/state", "internal/domain/route/transport", "tests/epochfixture/network":
 				return importAllowed
 			}
-		case "internal/domain/node/route_join_fixture_linux_test.go":
+		case "internal/domain/node/receive/join_fixture_linux_test.go":
 			switch local {
 			case "internal/domain/route/receiver", "tests/e2e/node/processfixture", "internal/domain/admission", "internal/domain/admission/allocation",
 				"internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving", "internal/domain/admission/stock",
@@ -320,27 +320,27 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 				"tests/epochfixture/network", "tests/networkfixture", "internal/domain/route/role", "internal/domain/route/transport":
 				return importAllowed
 			}
-		case "internal/domain/node/route_join_lifecycle_linux_test.go":
+		case "internal/domain/node/receive/responder_lifetime_linux_test.go":
 			switch local {
 			case "internal/domain/route/join", "internal/domain/route/prefix", "internal/domain/route/transport", "internal/domain/admission",
 				"internal/domain/admission/allocation", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/stock",
 				"internal/domain/admission/token", "internal/domain/hosting", "internal/domain/route/ardp", "internal/domain/route/selection":
 				return importAllowed
 			}
-		case "internal/domain/node/route_join_linux_test.go":
+		case "internal/domain/node/receive/responder_startup_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/stock", "internal/domain/endpoint/funding", "internal/domain/hosting",
 				"internal/domain/route/prefix", "internal/domain/route/selection", "internal/domain/route/transport", "tests/e2e/node/processfixture":
 				return importAllowed
 			}
-		case "internal/domain/node/route_token_linux_test.go":
+		case "internal/domain/node/receive/source_funding_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding",
 				"internal/domain/hosting", "internal/domain/route/ardp", "internal/domain/route/prefix", "internal/domain/route/selection",
 				"internal/domain/route/transport", "tests/e2e/node/processfixture":
 				return importAllowed
 			}
-		case "internal/domain/node/route_bootstrap_linux_test.go":
+		case "internal/domain/node/receive/issuer_control_linux_test.go":
 			switch local {
 			case "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/admission", "internal/domain/admission/issuer",
 				"internal/domain/admission/quota", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/hosting",
@@ -348,14 +348,14 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 				"internal/domain/route/role", "internal/domain/route/transport", "tests/e2e/node/processfixture":
 				return importAllowed
 			}
-		case "internal/domain/node/route_bootstrap_capacity_linux_test.go":
+		case "internal/domain/node/receive/bootstrap_capacity_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/hosting",
 				"internal/domain/route/ardp", "internal/domain/route/channel", "internal/domain/route/receiver", "internal/domain/route/role",
 				"internal/domain/route/transport", "internal/domain/route/transport/tls":
 				return importAllowed
 			}
-		case "internal/domain/node/route_descriptor_linux_test.go":
+		case "internal/domain/node/receive/descriptor_retirement_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
 				"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/endpoint/session", "internal/domain/hosting",
@@ -363,26 +363,26 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 				"internal/domain/route/transport", "tests/epochfixture/network":
 				return importAllowed
 			}
-		case "internal/domain/node/route_submission_linux_test.go":
+		case "internal/domain/node/receive/introduction_submission_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 				"internal/domain/hosting", "internal/domain/route/capsule", "internal/domain/route/introduction", "internal/domain/route/prefix",
 				"internal/domain/route/receiver", "internal/domain/route/role", "internal/domain/route/selection":
 				return importAllowed
 			}
-		case "internal/domain/node/route_registration_linux_test.go":
+		case "internal/domain/node/receive/introduction_registration_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/endpoint/funding", "internal/domain/endpoint/session",
 				"internal/domain/hosting", "internal/domain/route/ardp", "internal/domain/route/channel", "internal/domain/route/introduction", "internal/domain/route/receiver", "internal/domain/route/role":
 				return importAllowed
 			}
-		case "internal/domain/node/publication_registration_linux_test.go":
+		case "internal/domain/node/receive/publication_registration_linux_test.go":
 			switch local {
 			case "internal/domain/publication", "internal/domain/publication/durable", "internal/domain/publication/instance", "internal/domain/reachability",
 				"internal/domain/route/capsule", "internal/domain/route/introduction":
 				return importAllowed
 			}
-		case "internal/domain/node/route_refill_linux_test.go":
+		case "internal/domain/node/receive/forwarding_refill_linux_test.go":
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/stock", "internal/domain/hosting", "internal/domain/network",
 				"internal/domain/route/ardp", "internal/domain/route/channel", "internal/domain/route/receiver", "internal/domain/route/role", "internal/domain/route/transport",
@@ -391,7 +391,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 			}
 		}
 	}
-	if localImport && source == "internal/domain/node/refill_process_native_linux_test.go" {
+	if localImport && source == "internal/domain/node/runtime/forwarding_refill_native_linux_test.go" {
 		switch local {
 		case "internal/domain/admission", "internal/domain/admission/issuer", "internal/domain/admission/quota", "internal/domain/admission/receiving",
 			"internal/domain/admission/stock", "internal/domain/admission/token", "internal/domain/endpoint/funding", "internal/domain/hosting",

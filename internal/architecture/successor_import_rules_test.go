@@ -262,7 +262,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "cmd/ardents-next/command.go":
-			if local == "internal/domain/node" || local == "internal/platform/launch" {
+			if local == "internal/platform/launch" {
 				return true
 			}
 		case "cmd/ardents-next/infrastructure_operator.go":
@@ -289,15 +289,15 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/platform/artifacts" {
 				return true
 			}
-		case "internal/domain/node/role_authority.go":
+		case "internal/domain/node/runtime/start.go":
 			if local == "internal/domain/network/state" || local == "internal/domain/admission/issuer" {
 				return true
 			}
-		case "internal/domain/node/route_admission_linux.go":
+		case "internal/domain/node/receive/authority_linux.go":
 			if local == "internal/domain/admission/issuer" {
 				return true
 			}
-		case "internal/domain/node/route_receive_linux.go":
+		case "internal/domain/node/receive/command_linux.go":
 			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/reachability" || local == "internal/domain/route/channel" || local == "internal/domain/route/introduction" {
 				return true
 			}
