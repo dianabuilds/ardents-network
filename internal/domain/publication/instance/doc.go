@@ -27,7 +27,8 @@
 //   - I2 native-custody: custody_unix.go, custody_other.go. Tests:
 //     root_refusal_unix_test.go, lifecycle_unix_test.go,
 //     custody_other_test.go.
-//   - I3 grammar-adapter: request.go. Tests: request_test.go.
+//   - I3 public request preparation and original root closure:
+//     request_preparation.go. Tests: request_test.go.
 //   - I4 binding: binding.go, generation_consumption.go. Tests:
 //     binding_linux_test.go, binding_coalescing_linux_test.go,
 //     binding_observation_linux_test.go.

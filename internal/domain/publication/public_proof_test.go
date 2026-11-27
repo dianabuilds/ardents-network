@@ -30,10 +30,31 @@ func publicRecord(caps uint32) ([]byte, [32]byte, [32]byte, time.Time) {
 	credential = binary.BigEndian.AppendUint32(credential, caps)
 	credential = append(credential, ed25519.Sign(authority, credential)...)
 	record := append([]byte("ardents-service-publication-v3\x00"), credential...)
-	record = append(record, bytes.Repeat([]byte{0x44}, 32)...)
+	acknowledgement := [32]byte{0x44}
+	acknowledgementCommitment := sha256.Sum256(acknowledgement[:])
+	record = append(record, acknowledgementCommitment[:]...)
 	commitment := sha256.Sum256(record)
 	record = append(record, ed25519.Sign(instance, commitment[:])...)
 	return record, target, network, at
+}
+
+func TestServicePublicationTranscriptMatchesIndependentlySignedBytes(t *testing.T) {
+	record, target, network, at := publicRecord(3)
+	const credentialStart = len("ardents-service-publication-v3\x00")
+	const credentialEnd = credentialStart + 222
+	credential, err := publication.VerifyCredential(record[credentialStart:credentialEnd], target, network, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := publication.ServicePublicationTranscript(credential, [32]byte{0x44})
+	expected := record[:len(record)-ed25519.SignatureSize]
+	if !bytes.Equal(body, expected) {
+		t.Fatal("Publication transcript differs from independently signed bytes")
+	}
+	body[credentialStart] ^= 1
+	if again := publication.ServicePublicationTranscript(credential, [32]byte{0x44}); !bytes.Equal(again, expected) {
+		t.Fatal("changing the exported transcript modified the retained Credential")
+	}
 }
 
 func TestPublicProofPublishRequiresDelegationBeyondConnect(t *testing.T) {

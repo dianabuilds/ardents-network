@@ -778,7 +778,7 @@ func installedPublisherInstance(t *testing.T, network [32]byte) (endpointpublish
 	if err != nil {
 		t.Fatal(err)
 	}
-	view, err := instance.ParseRequest(request)
+	view, err := publication.ParseServiceRequest(request)
 	if err != nil {
 		t.Fatal(err)
 	}

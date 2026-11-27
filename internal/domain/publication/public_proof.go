@@ -38,6 +38,19 @@ func Target(authority [32]byte) [32]byte {
 	return sha256.Sum256(append([]byte("ardents-service-target-v3\x00"), authority[:]...))
 }
 
+// ServicePublicationTranscript builds the unsigned v3 Publication bytes from
+// a verified Credential and the original REGISTER acknowledgement. The caller
+// owns registration admission, private signing and publication lifetime.
+func ServicePublicationTranscript(credential Credential, acknowledgement [32]byte) []byte {
+	raw := make([]byte, 0, publicProofSize)
+	raw = append(raw, publicationDomain...)
+	raw = append(raw, credential.raw[:]...)
+	// The acknowledgement is already the digest of the REGISTER RESULT.
+	// The v3 Publication format commits to that digest again.
+	commitment := sha256.Sum256(acknowledgement[:])
+	return append(raw, commitment[:]...)
+}
+
 // Verify checks public read evidence for an independently selected Target.
 func Verify(record []byte, target, network [32]byte, at time.Time) (Proof, error) {
 	return verify(record, target, network, at, connectCapability)

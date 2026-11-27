@@ -82,7 +82,7 @@ func (root *Root) Bind(ctx context.Context, history *durable.Root) (*Binding, er
 		root.mu.Unlock()
 		return nil, ErrUnavailable
 	}
-	credential, err := verifyResponse(root.state.response, root.state.request)
+	credential, err := publication.VerifyServiceResponse(root.state.response, root.state.request)
 	if err != nil || root.state.validate() != nil {
 		root.mu.Unlock()
 		return nil, ErrUnavailable
@@ -102,7 +102,7 @@ func (root *Root) Bind(ctx context.Context, history *durable.Root) (*Binding, er
 		root.mu.Unlock()
 		return nil, errors.Join(currentErr, err, generation.Close())
 	}
-	current, currentErr := verifyResponse(root.state.response, root.state.request)
+	current, currentErr := publication.VerifyServiceResponse(root.state.response, root.state.request)
 	if root.state.phase != Accepted || root.binding != nil || currentErr != nil || current.Digest() != credential.Digest() {
 		root.mu.Unlock()
 		return nil, errors.Join(ErrUnavailable, err, currentErr, generation.Close())

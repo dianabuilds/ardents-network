@@ -12,8 +12,8 @@ Instance, точный Target/Network, validity и отдельные права
 Публичный proof сам по себе не предоставляет эти живые полномочия.
 
 Pure `publication` владеет единым canonical v3 request/response codec,
-commitment, unsigned fixed-purpose Credential transcript и exact verification
-для настоящих Custody и Instance consumers. Public verification не выдаёт
+commitment, unsigned fixed-purpose Credential и Publication transcripts и
+exact verification для настоящих Custody и Instance consumers. Public verification не выдаёт
 private signing, current validity или readiness authority.
 
 `instance` генерирует host key и владеет исходным public request, принятием
@@ -25,9 +25,11 @@ Service host. Отдельный private binding сверяет настоящи
 удерживает его reservation до Close и повышает floor перед consumed redaction.
 Приватный ключ остаётся только у исходного volatile binding; reopen не возвращает
 signer. Подпись public Publication требует настоящего REGISTER receipt и сохраняет
-bytes exact retry. Эти механизмы проверяются вместе с настоящей регистрацией на
-обоих Carriers; public preparation команды не запускают accepting Publisher или
-Descriptor Store ACK. Generic signer и Authority key не выдаются.
+bytes exact retry. Instance передаёт чистому codec проверенный Credential и
+исходный ACK, сохраняет у себя подпись и завершение. Эти механизмы
+проверяются вместе с настоящей регистрацией. Public preparation команды
+не запускают accepting Publisher или Descriptor Store ACK. Generic signer и
+Authority key не выдаются.
 
 Исходный binding также сохраняет точный public record/current через свой
 consumed durable reservation. Sync staging link, record/staging directory,
@@ -74,9 +76,11 @@ Descriptor Store, восстановление Connection, изменение Jo
 и непрозрачную доставку; Reachability — размещение Descriptor. Custody сохраняет
 корневые полномочия; runtime-ключ Instance не превращается в корневую власть.
 
-**Где искать обязанности:** `internal/service/instance`, `service/publication`,
-регистрация и Introduction в `internal/domain/endpoint`. Переносить только обязанности
-публикации: принимающие слоты и их история принадлежат Route.
+**Где искать обязанности.** `instance/request_preparation.go` открывает и
+закрывает исходный root ради публичного запроса. `service_request.go` задаёт
+формат запроса и ответа, `public_proof.go` собирает и проверяет подписываемые
+байты. `instance/publication_record.go` владеет подписью по исходному REGISTER.
+Принимающие слоты и их история принадлежат Route.
 
 **Основа:** [Service](../../../docs/technical/endpoint-service-runtime.md),
 [reachability](../../../docs/technical/private-reachability.md),

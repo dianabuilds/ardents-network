@@ -915,6 +915,15 @@
       },
       {
         "symbols": [
+          "internal/domain/publication.ServicePublicationTranscript"
+        ],
+        "classification": "portable Publication transcript for native Instance signing",
+        "rationale": "The real Linux Instance Binding.Publication assembles a signed v3 record with this pure transcript after genuine REGISTER and original generation consumption. Windows refuses native Instance acquisition and cannot reach the signing operation. A portable independent signed-vector and detachment test exercises the same transcript, so only Windows production reachability has an allowance.",
+        "owner": "Service Publication and purpose-scoped Instance; docs/technical/endpoint-service-runtime.md",
+        "retirement": "Remove the exact Windows entry when a selected native Instance signing consumer reaches it or the signing operation is retired."
+      },
+      {
+        "symbols": [
           "internal/domain/connection.BindRecipient",
           "internal/domain/connection.RecipientBinding.Check",
           "internal/domain/connection.RecipientBinding.Contexts",

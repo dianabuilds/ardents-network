@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 )
 
@@ -39,13 +40,7 @@ func (binding *Binding) Publication(ctx context.Context, registration *introduct
 			root.mu.Unlock()
 			return nil, ErrUnavailable
 		}
-		// Compatibility preserves the original double commitment: Route's
-		// acknowledgement is SHA256(actual RESULT body), and Publication hashes
-		// that exact 32-byte receipt again in its signed canonical record.
-		facts := receipt.Facts()
-		ack := sha256.Sum256(facts.Acknowledgement[:])
-		raw := append([]byte("ardents-service-publication-v3\x00"), root.state.response[len(responseDomain)+32:]...)
-		raw = append(raw, ack[:]...)
+		raw := publication.ServicePublicationTranscript(binding.credential, receipt.Facts().Acknowledgement)
 		commitment := sha256.Sum256(raw)
 		binding.record = append(raw, ed25519.Sign(binding.private, commitment[:])...)
 		binding.receipt = receipt
