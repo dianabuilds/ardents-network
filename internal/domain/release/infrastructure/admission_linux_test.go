@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/domain/enrollment/infrastructureinventory"
 	"github.com/dianabuilds/ardents-network/internal/domain/release"
 )
 
@@ -96,8 +97,8 @@ func TestCandidateOuterGuardRefusesBeforeTrustObservation(t *testing.T) {
 				"targets.json":   []byte("targets"),
 				"timestamp.json": []byte("timestamp"),
 			}
-			facts := enrollment.InfrastructureFacts{Platform: "linux-amd64", ReleaseIdentity: "guard", ReleaseVersion: 1, Invocation: role.invocation}
-			inventory, err := enrollment.PrepareInfrastructureInventory(facts, files)
+			facts := infrastructureinventory.Facts{Platform: "linux-amd64", ReleaseIdentity: "guard", ReleaseVersion: 1, Invocation: role.invocation}
+			inventory, err := infrastructureinventory.Prepare(facts, files)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -106,7 +107,7 @@ func TestCandidateOuterGuardRefusesBeforeTrustObservation(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if err := os.WriteFile(filepath.Join(dir, enrollment.InfrastructureInventoryName), inventory, 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, infrastructureinventory.Name), inventory, 0600); err != nil {
 				t.Fatal(err)
 			}
 			c, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
