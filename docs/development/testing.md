@@ -3024,7 +3024,7 @@ four undefined symbols: `execution/runtime.Owner.LaunchByteStreamPublisher` and
 Reader coordinators and `participant_linux.go` therefore stay Linux: they compose
 the Linux native worker launch seam (systemd/cgroup), and the participant also
 composes the Linux `endpoint/launch`, `declarations_linux.go` and
-`internal/permission/exchange_linux.go` projections and `application/connection.Listen`. The session
+`permission_handover_linux.go` projections and `application/connection.Listen`. The session
 `Open*` and Publisher live Open/snapshot compositions compile clean on darwin, but
 their underlying native mechanisms — Hosting `/proc` measurement
 (`hosting/platform_other.go` typed refusal), the native worker launch,
@@ -3070,7 +3070,7 @@ are coupled to live Open; `reader/reader_linux.go` composes the Linux-only
 `reader/operation_linux.go`/`source_linux.go`/`byte_stream_linux.go` have only that
 Linux coordinator as a production consumer (de-tagging them alone would add
 Windows/macOS production-dead code); `participant_linux.go` composes `endpoint/launch`
-systemd delivery plus the `declarations_linux.go`/`internal/permission/exchange_linux.go` projections.
+systemd delivery plus the `declarations_linux.go`/`permission_handover_linux.go` projections.
 The architecture assertion was renamed `TestCohort2bEndpointNativeBoundaryStaysLinux`
 → `TestCohort2dEndpointNativeBoundary` and re-pins the new boundary (session Unix
 composition + Windows refusal; Publisher/Reader/participant Linux + `!linux`
@@ -3140,7 +3140,7 @@ or root state, so no unconfined worker is spawned and Linux behavior is
 byte-identical. The Reader has no Windows refusal stub: its sole production
 consumer is the Linux participant, so the composition adds no Windows production
 code. The participant STAYS Linux (`endpoint/launch` systemd delivery plus the
-`declarations_linux.go`/`internal/permission/exchange_linux.go` projections, Layer 2). A portable
+`declarations_linux.go`/`permission_handover_linux.go` projections, Layer 2). A portable
 `Refuse` behavior test (`server_refusal_test.go`) joins the deterministic lane;
 the `refusal` classifier test stays Linux. The architecture assertion
 `TestCohort2dEndpointNativeBoundary` was re-pinned (Reader Unix composition;

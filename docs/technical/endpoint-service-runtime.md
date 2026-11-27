@@ -1594,7 +1594,7 @@ Its `Run` opens and retains the original Installation Startup, decodes only its
 bound declarations, prepares the local Execution provenance, refreshes genuine
 State and performs exact permission-file handover before opening shared funding
 parents and IPC. `endpoint/launch` retains the original installed observations.
-`endpoint/internal/permission` owns the local request and response files. The
+Endpoint’s `permission_handover_linux.go` owns the local request and response files. The
 participant surrounds the exchange with its original Startup check, and Stock
 authenticates the exact response during import. `endpoint/command` handles the
 arguments, before-effect platform refusal, public progress and process exit for

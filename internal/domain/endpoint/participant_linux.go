@@ -16,7 +16,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
-	permissionfiles "github.com/dianabuilds/ardents-network/internal/domain/endpoint/internal/permission"
 	endpointlaunch "github.com/dianabuilds/ardents-network/internal/domain/endpoint/launch"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/domain/endpoint/reader"
@@ -186,7 +185,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 		// invocation's handover so this fresh invocation can publish its own fresh
 		// holder request for external authority re-approval. First boot has no
 		// handover and this is a no-op; the durable presentation journal is retained.
-		if err := permissionfiles.Retire(permission.RequestPath, permission.ResponsePath, check); err != nil {
+		if err := retirePermissionHandover(permission.RequestPath, permission.ResponsePath, check); err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}
 		originalFacts, _, err := observe()
@@ -214,13 +213,13 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			}
 			return nil
 		}
-		if err := permissionfiles.PublishRequest(permission.RequestPath, request, permissionCheck); err != nil {
+		if err := publishPermissionRequest(permission.RequestPath, request, permissionCheck); err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}
 		if err := report(Progress{Phase: "permission-pending", Role: name, Digest: digest}); err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}
-		if err := permissionfiles.AwaitResponse(ctx, permission.ResponsePath, digest, decoded.Permission.NotAfter, holder, permissionCheck); err != nil {
+		if err := awaitPermissionResponse(ctx, permission.ResponsePath, digest, decoded.Permission.NotAfter, holder, permissionCheck); err != nil {
 			return phase, err
 		}
 		if err := report(Progress{Phase: "permission-accepted", Role: name, Digest: digest}); err != nil {

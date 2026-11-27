@@ -1,6 +1,6 @@
 //go:build linux
 
-package permission
+package endpoint
 
 import (
 	"bytes"
@@ -19,21 +19,21 @@ func TestInstalledPermissionHandover(t *testing.T) {
 	path := filepath.Join(directory, "request")
 	raw := []byte("public request fixture")
 	check := func() error { return nil } // Filesystem mechanism only; no authority fixture.
-	if err := PublishRequest(path, raw, check); err != nil {
+	if err := publishPermissionRequest(path, raw, check); err != nil {
 		t.Fatal(err)
 	}
 	original, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := PublishRequest(path, raw, check); err != nil {
+	if err := publishPermissionRequest(path, raw, check); err != nil {
 		t.Fatal(err)
 	}
 	again, err := os.Stat(path)
 	if err != nil || !os.SameFile(original, again) {
 		t.Fatal("retry replaced the original request", err)
 	}
-	if err := PublishRequest(path, []byte("another holder request"), check); err == nil {
+	if err := publishPermissionRequest(path, []byte("another holder request"), check); err == nil {
 		t.Fatal("replaced a different request")
 	}
 	retained, err := os.ReadFile(path)
@@ -43,7 +43,7 @@ func TestInstalledPermissionHandover(t *testing.T) {
 	if err := os.Chmod(path, 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := PublishRequest(path, raw, check); err == nil {
+	if err := publishPermissionRequest(path, raw, check); err == nil {
 		t.Fatal("accepted nonprivate request")
 	}
 }
@@ -60,7 +60,7 @@ func TestInstalledPermissionRefusesSymlinkAndCancellation(t *testing.T) {
 	if err := os.Symlink(target, path); err != nil {
 		t.Fatal(err)
 	}
-	if err := PublishRequest(path, []byte("replacement"), func() error { return nil }); err == nil {
+	if err := publishPermissionRequest(path, []byte("replacement"), func() error { return nil }); err == nil {
 		t.Fatal("followed request symlink")
 	}
 	raw, err := os.ReadFile(target)
@@ -68,7 +68,7 @@ func TestInstalledPermissionRefusesSymlinkAndCancellation(t *testing.T) {
 		t.Fatal("symlink refusal changed target", err)
 	}
 	absent := filepath.Join(directory, "absent")
-	if err := PublishRequest(absent, []byte("request"), func() error { return context.Canceled }); !errors.Is(err, context.Canceled) {
+	if err := publishPermissionRequest(absent, []byte("request"), func() error { return context.Canceled }); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(absent); !errors.Is(err, os.ErrNotExist) {
@@ -95,7 +95,7 @@ func TestInstalledPermissionRefusesOriginalParentReplacement(t *testing.T) {
 		}
 		return nil
 	}
-	if err := PublishRequest(path, []byte("public request"), check); err == nil {
+	if err := publishPermissionRequest(path, []byte("public request"), check); err == nil {
 		t.Fatal("accepted replacement parent")
 	}
 	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
@@ -117,14 +117,14 @@ func TestInstalledPermissionResponseCustody(t *testing.T) {
 	if err := os.WriteFile(path, expected, 0600); err != nil {
 		t.Fatal(err)
 	}
-	raw, err := readResponse(path)
+	raw, err := readPermissionResponse(path)
 	if err != nil || !bytes.Equal(raw, expected) {
 		t.Fatal("lost owned response bytes", err)
 	}
 	if err := os.Chmod(path, 0644); err != nil {
 		t.Fatal(err)
 	}
-	if raw, err := readResponse(path); raw != nil || err == nil {
+	if raw, err := readPermissionResponse(path); raw != nil || err == nil {
 		t.Fatal("accepted shared response")
 	}
 	if err := os.Chmod(path, 0600); err != nil {
@@ -134,13 +134,13 @@ func TestInstalledPermissionResponseCustody(t *testing.T) {
 	if err := os.Symlink(path, link); err != nil {
 		t.Fatal(err)
 	}
-	if raw, err := readResponse(link); raw != nil || err == nil {
+	if raw, err := readPermissionResponse(link); raw != nil || err == nil {
 		t.Fatal("accepted response symlink")
 	}
 	if err := os.WriteFile(path, expected[:227], 0600); err != nil {
 		t.Fatal(err)
 	}
-	if raw, err := readResponse(path); raw != nil || err == nil {
+	if raw, err := readPermissionResponse(path); raw != nil || err == nil {
 		t.Fatal("accepted partial response")
 	}
 }
@@ -154,11 +154,11 @@ func TestInstalledPermissionRetireRestart(t *testing.T) {
 	responsePath := filepath.Join(directory, "response")
 	check := func() error { return nil } // Filesystem mechanism only; no authority fixture.
 	// First boot has no handover; retirement is a no-op.
-	if err := Retire(requestPath, responsePath, check); err != nil {
+	if err := retirePermissionHandover(requestPath, responsePath, check); err != nil {
 		t.Fatal("first-boot retirement", err)
 	}
 	original := []byte("prior invocation public request")
-	if err := PublishRequest(requestPath, original, check); err != nil {
+	if err := publishPermissionRequest(requestPath, original, check); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(responsePath, bytes.Repeat([]byte{9}, 228), 0600); err != nil {
@@ -166,11 +166,11 @@ func TestInstalledPermissionRetireRestart(t *testing.T) {
 	}
 	// The single-shot publish rule is unchanged: a differing fresh request is
 	// refused while the prior invocation's handover is retained.
-	if err := PublishRequest(requestPath, []byte("fresh invocation request"), check); err == nil {
+	if err := publishPermissionRequest(requestPath, []byte("fresh invocation request"), check); err == nil {
 		t.Fatal("replaced a prior invocation request without retirement")
 	}
 	// Retirement clears the prior handover so the fresh invocation can publish.
-	if err := Retire(requestPath, responsePath, check); err != nil {
+	if err := retirePermissionHandover(requestPath, responsePath, check); err != nil {
 		t.Fatal("restart retirement", err)
 	}
 	if _, err := os.Lstat(requestPath); !errors.Is(err, os.ErrNotExist) {
@@ -180,7 +180,7 @@ func TestInstalledPermissionRetireRestart(t *testing.T) {
 		t.Fatal("retirement retained the prior response", err)
 	}
 	fresh := []byte("fresh invocation request")
-	if err := PublishRequest(requestPath, fresh, check); err != nil {
+	if err := publishPermissionRequest(requestPath, fresh, check); err != nil {
 		t.Fatal("fresh invocation publish after retirement", err)
 	}
 	retained, err := os.ReadFile(requestPath)
@@ -210,7 +210,7 @@ func TestInstalledPermissionRetireResponseBeforeRequest(t *testing.T) {
 		}
 		return nil
 	}
-	if err := Retire(requestPath, responsePath, check); err == nil {
+	if err := retirePermissionHandover(requestPath, responsePath, check); err == nil {
 		t.Fatal("accepted interrupted retirement")
 	}
 	if _, err := os.Lstat(responsePath); !errors.Is(err, os.ErrNotExist) {
@@ -238,7 +238,7 @@ func TestInstalledPermissionRetireRefusesForeignHandover(t *testing.T) {
 	if err := os.Chmod(requestPath, 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Retire(requestPath, responsePath, check); err == nil {
+	if err := retirePermissionHandover(requestPath, responsePath, check); err == nil {
 		t.Fatal("retired a shared-mode request")
 	}
 	if _, err := os.Lstat(requestPath); err != nil {
@@ -255,7 +255,7 @@ func TestInstalledPermissionRetireRefusesForeignHandover(t *testing.T) {
 	if err := os.Symlink(target, responsePath); err != nil {
 		t.Fatal(err)
 	}
-	if err := Retire(requestPath, responsePath, check); err == nil {
+	if err := retirePermissionHandover(requestPath, responsePath, check); err == nil {
 		t.Fatal("retired a symlink response")
 	}
 	if raw, err := os.ReadFile(target); err != nil || string(raw) != "untouched" {
@@ -276,7 +276,7 @@ func TestInstalledPermissionRetireRefusesParentReplacementAndCancellation(t *tes
 	if err := os.WriteFile(requestPath, []byte("prior request"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := Retire(requestPath, responsePath, func() error { return context.Canceled }); !errors.Is(err, context.Canceled) {
+	if err := retirePermissionHandover(requestPath, responsePath, func() error { return context.Canceled }); !errors.Is(err, context.Canceled) {
 		t.Fatal("cancelled retirement", err)
 	}
 	if _, err := os.Lstat(requestPath); err != nil {
@@ -295,7 +295,7 @@ func TestInstalledPermissionRetireRefusesParentReplacementAndCancellation(t *tes
 		}
 		return nil
 	}
-	if err := Retire(requestPath, responsePath, check); err == nil {
+	if err := retirePermissionHandover(requestPath, responsePath, check); err == nil {
 		t.Fatal("accepted replacement parent")
 	}
 }
