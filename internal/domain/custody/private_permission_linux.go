@@ -24,10 +24,10 @@ func checkPrivatePermissionDestination(path string) error {
 	if statErr != nil || !info.IsDir() {
 		return errors.Join(ErrPrivatePermissionUnavailable, statErr, parent.Close())
 	}
-	return errors.Join(checkPrivatePermissionFilesystem(parent), parent.Close())
+	return errors.Join(checkPrivatePermissionProtection(parent), parent.Close())
 }
 
-func checkPrivatePermissionFilesystem(file *os.File) error {
+func checkPrivatePermissionProtection(file *os.File) error {
 	var fs syscall.Statfs_t
 	if err := syscall.Fstatfs(int(file.Fd()), &fs); err != nil {
 		return errors.Join(ErrPrivatePermissionUnavailable, err)
@@ -41,7 +41,7 @@ func checkPrivatePermissionFilesystem(file *os.File) error {
 	return nil
 }
 
-func privatePermissionFile(info os.FileInfo) bool {
+func privatePermissionMetadata(info os.FileInfo) bool {
 	if info == nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
 		return false
 	}
