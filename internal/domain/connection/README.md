@@ -1,5 +1,17 @@
 # Service Connection
 
+| Путь | Открытие и полномочия | Физический ресурс и замена |
+| --- | --- | --- |
+| Reader | [Исходный Source](reader_source.go) → [привязка и Instance TLS](reader_authentication.go) | [Заём JOIN](reader_attachment.go) → [попытка замены](reader_replacement.go) |
+| Publisher | [Привязка получателя](recipient_binding.go) → [аутентификация](publisher_authentication.go) | [Исходные Source и Responder](publisher_route.go) → [попытка замены](publisher_replacement.go) |
+| Обе роли | [Capsule](recipient_binding.go) → [общие факты получателя](recipient) → [однократный handoff](stream.go) | [Смена Attachment](stream_replacement.go) → [Terminal и joined Close](stream_retirement.go) |
+
+Тесты следуют тем же путям: [Reader Source](reader_source_test.go),
+[аутентификация Reader](reader_authentication_test.go),
+[замена Publisher](publisher_replacement_test.go),
+[передача байтов](stream_handoff_test.go), [завершение](stream_retirement_test.go).
+
+
 Начальная ограниченная реализация связывает проверенную Publication и поля
 приватной капсулы с исходной квалифицированной Execution operation. Она вычисляет
 неизменяемый logical context и отдельный Attachment context, отказывает при
@@ -34,7 +46,7 @@ Linux `make route-check` включает весь Connection вместе с с
 полной неизменяемой identity; независимая проверка текущей Publication,
 монотонной revision и исходного continuity key предшествует commit.
 `InitiatorSource.OpenStream` устанавливает исходный Reader replacement source;
-`initiator_replacement.go` удерживает конечный ticket до фактического join,
+`reader_replacement.go` удерживает конечный ticket до фактического join,
 а `stream_replacement.go` атомарно переносит все byte/Terminal ledgers.
 Повторный lookup использует прежний Target, History и retained Rendezvous set.
 Текущий Attachment получает свежие JOIN/TLS/capsule факты, но не новую logical
@@ -48,9 +60,9 @@ identity, operation, Work Safety границу или continuity secret. Физ
 JOIN через purpose-specific `publication/instance.ServiceAttachment`.
 Continuity проверяется до InstanceProof; начальный ответ связывает exact TLS,
 proof и нулевые offsets и записывается до снятия setup deadline. Возвращаемый
-opaque Attachment удерживает исходную operation. `initiator_binding.go` создаёт
+opaque Attachment удерживает исходную operation. `reader_authentication.go` создаёт
 свежий salted commitment исходного локального Reader ConnectionContext;
-`initiator_authentication.go` проверяет точный Instance certificate, подписанный
+`reader_authentication.go` проверяет точный Instance certificate, подписанный
 ответ и его initial Continuity. `authenticated_attachment.go` удерживает
 роль, неизменную identity и исходный TLS ресурс. `OpenStream` потребляет это
 начальное состояние однократно под проверенным `execution/runtime.StreamContract`.
@@ -155,7 +167,7 @@ continuity key, counters или Work Safety. Фактический отказ c
 `BindRecipient` требует исходную живую Publisher operation и sealed Publication
 proof. `RecipientBinding.Check` проверяет ту же operation и исходный capsule
 deadline перед первой передачей результата; `Contexts` возвращает только копии
-transcript commitments. `publisher_binding.go` хранит эти неизменяемые факты
+transcript commitments. `recipient_binding.go` хранит эти неизменяемые факты
 без сетевых эффектов, приватного ключа или отдельного cleanup ресурса.
 Поведение проверяется независимыми signed-input/transcript fixtures и отказами
 при подмене, расширении пределов и отсутствии исходной operation. Эти fixtures
@@ -163,7 +175,7 @@ transcript commitments. `publisher_binding.go` хранит эти неизме�
 
 | Сценарий | Вход и эффект | Проверка |
 | --- | --- | --- |
-| Первое подключение | `endpoint/reader` вызывает `InitiatorSource.OpenStream`. `publication/runtime.NextStream` вызывает `NextAuthentication` и `OpenPublisherStream`. `openStream` потребляет initial state однократно и запускает пару обработчиков. | `initiator_source_test.go` проверяет общий setup, `instance_tls_test.go` — точный Instance. `TestInstalledDocumentCommandsThroughJoinedNetworkTCP` проходит через оба командных адаптера. |
+| Первое подключение | `endpoint/reader` вызывает `InitiatorSource.OpenStream`. `publication/runtime.NextStream` вызывает `NextAuthentication` и `OpenPublisherStream`. `openStream` потребляет initial state однократно и запускает пару обработчиков. | `reader_source_test.go` проверяет общий setup, `reader_authentication_test.go` — точный Instance. `TestInstalledDocumentCommandsThroughJoinedNetworkTCP` проходит через оба командных адаптера. |
 | Замена Attachment | Reader начинает восстановление при потере своего поколения, Publisher направляет fresh recipient в `PreparePublisherReplacement`. `stream_replacement.go` дожидается прежней пары и меняет поколение и replay под `Stream.mu`. | `transfer/recovery_episode_test.go`, `publisher_replacement_test.go` и `transfer/replacement_test.go` проверяют исходный срок, отзыв caller и rollback. `TestInstalledConnectionStreamTCP` проверяет замену после потери настоящего Rendezvous. |
 | Завершение | Reader закрывает Source, Publisher дожидается удерживаемых Connections. `stream_retirement.go` под тем же mutex закрывает вход эффектов и публикует исход после join. | `stream_retirement_test.go` проверяет отзыв, Terminal текущего поколения и неполный хвост. `TestInstalledConnectionWithdrawalTCP` проверяет отзыв через Publisher и физическое завершение обеих ролей. |
 
