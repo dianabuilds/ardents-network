@@ -1,4 +1,4 @@
-package hosting
+package main
 
 import (
 	"bytes"
@@ -7,17 +7,18 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
-type CommandPlan struct {
-	Root   string `json:"root"`
-	Policy Policy `json:"policy"`
+type hostingConfig struct {
+	Root   string         `json:"root"`
+	Policy hosting.Policy `json:"policy"`
 }
 
-// DecodeCommandPlan validates the exact local budget declaration before effects.
-func DecodeCommandPlan(raw []byte, operation string) (CommandPlan, error) {
-	var p CommandPlan
+// decodeHostingConfig validates the exact local budget declaration before effects.
+func decodeHostingConfig(raw []byte, operation string) (hostingConfig, error) {
+	var p hostingConfig
 	bad := errors.New("invalid-input")
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()

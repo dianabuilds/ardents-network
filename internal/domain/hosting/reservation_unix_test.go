@@ -3,10 +3,11 @@
 package hosting
 
 import (
+	"context"
 	"errors"
 	"math"
-	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -147,40 +148,144 @@ func TestReserveUsesProviderDirections(t *testing.T) {
 	}
 }
 
-func TestForeignAndPendingStateRefusedWithoutMutation(t *testing.T) {
-	for _, file := range []string{"budget.pending", "budget.pin", "budget.lock", "budget.json"} {
-		t.Run(file, func(t *testing.T) {
-			root, reading, now := hostingFixture(t)
-			path := filepath.Join(root, file)
-			if file == "budget.pending" {
-				if err := os.WriteFile(path, []byte("interrupted"), 0600); err != nil {
-					t.Fatal(err)
-				}
-			} else {
-				if err := os.Remove(path); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.Symlink("outside", path); err != nil {
-					t.Fatal(err)
-				}
+func TestMeasurementCannotTransferExpiredReservation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	deadline := now.Add(time.Second)
+	owner.measure = func([]string) (counters.Reading, error) {
+		*now = deadline
+		return *reading, nil
+	}
+	held, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 10}, Termination: Traffic{Rx: 10}, WorkUntil: deadline, HoldUntil: deadline})
+	if err == nil || held != nil {
+		t.Fatal("measurement delay transferred expired reservation")
+	}
+	view, err := owner.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 0 {
+		t.Fatalf("late admission changed budget: %+v / %v", view, err)
+	}
+}
+
+func TestPostCommitExpiryOnlyReleasesOwnReservation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	other, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 20}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := now.Add(time.Second)
+	// The durable state transition, not clock-call counts, advances the clock.
+	owner.now = func() time.Time {
+		state, err := readCommittedHostingState(owner.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if state.Reserved == 50 {
+			*now = deadline
+		}
+		return *now
+	}
+	held, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 10}, Termination: Traffic{Rx: 10}, WorkUntil: deadline, HoldUntil: deadline.Add(time.Second)})
+	if err == nil || held != nil {
+		t.Fatal("late commit transferred work")
+	}
+	view, err := owner.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 30 {
+		t.Fatal("late cleanup changed another reserve", view, err)
+	}
+	if err := other.Release(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCompletionCoverageDoesNotRenewWork(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	held, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 10}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Second), HoldUntil: now.Add(time.Minute)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	*now = now.Add(2 * time.Second)
+	view, err := owner.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 20 {
+		t.Fatal("expiry released unfinished work", view, err)
+	}
+	if err := held.Release(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 10}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: *now}); err == nil {
+		t.Fatal("cleanup ends before work")
+	}
+}
+
+func TestPostCommitCancellationDoesNotTransferReservation(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	owner.now = func() time.Time {
+		state, err := readCommittedHostingState(owner.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if state.Reserved == 20 {
+			cancel()
+		}
+		return *now
+	}
+	held, err := owner.Reserve(ctx, ReservationRequest{Work: Traffic{Tx: 10}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
+	if held != nil || !errors.Is(err, context.Canceled) {
+		t.Fatal("canceled commit transferred reservation", held, err)
+	}
+	view, err := owner.Observe(t.Context())
+	if err != nil || view.ReservedBytes != 0 {
+		t.Fatal("canceled unpublished reservation retained", view, err)
+	}
+}
+
+func TestIndependentOwnersCannotOversubscribe(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owners := make([]*Budget, 12)
+	for i := range owners {
+		owners[i] = openHostingFixture(t, root, reading, now)
+	}
+	start := make(chan struct{})
+	results := make(chan *Reservation, len(owners))
+	failures := make(chan error, len(owners))
+	var joined sync.WaitGroup
+	for _, owner := range owners {
+		joined.Go(func() {
+			<-start
+			held, err := owner.Reserve(t.Context(), ReservationRequest{Work: Traffic{Tx: 90}, Termination: Traffic{Rx: 10}, WorkUntil: now.Add(time.Minute), HoldUntil: now.Add(time.Minute)})
+			if err != nil && !errors.Is(err, ErrCapacity) {
+				failures <- err
 			}
-			if b, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
-				b.Close()
-				t.Fatal("ambiguous state opened")
+			if held != nil {
+				results <- held
 			}
 		})
 	}
-	root, reading, now := hostingFixture(t)
-	for _, file := range []string{"pin", "lock", "json"} {
-		if err := os.Rename(filepath.Join(root, "budget."+file), filepath.Join(root, "period."+file)); err != nil {
+	close(start)
+	joined.Wait()
+	close(results)
+	close(failures)
+	for err := range failures {
+		t.Error(err)
+	}
+	if len(results) != 8 {
+		t.Fatalf("got %d successful reservations, want 8", len(results))
+	}
+	view, err := owners[0].Observe(t.Context())
+	if err != nil || view.ReservedBytes != 800 || view.RemainingBytes != 100 {
+		t.Fatal("concurrent capacity changed", view, err)
+	}
+	for held := range results {
+		if err := held.Release(t.Context()); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if b, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
-		b.Close()
-		t.Fatal("legacy root opened")
-	}
-	if _, err := os.Stat(filepath.Join(root, "budget.json")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("foreign root changed")
+	view, err = owners[0].Observe(t.Context())
+	if err != nil || view.ReservedBytes != 0 || view.UsedBytes != 100 {
+		t.Fatal("release refunded usage or leaked reserve", view, err)
 	}
 }

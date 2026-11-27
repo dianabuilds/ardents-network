@@ -88,18 +88,18 @@ func openInspection(ctx context.Context, path, policy string, uid, gid uint32, o
 	if err != nil {
 		return result, err
 	}
-	s.lease, err = s.openLeaf("budget.lock", 0)
+	s.lease, err = s.openLeaf(periodLeaseFile, 0)
 	if err != nil {
 		return result, err
 	}
 	if err := syscall.Flock(int(s.lease.file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return result, err
 	}
-	s.pin, err = s.openLeaf("budget.pin", 64)
+	s.pin, err = s.openLeaf(periodPolicyPinFile, periodPolicyPinBytes)
 	if err != nil {
 		return result, err
 	}
-	s.state, err = s.openLeaf("budget.json", 16<<10)
+	s.state, err = s.openLeaf(periodStateFile, maxPeriodStateBytes)
 	if err != nil {
 		return result, err
 	}
@@ -244,7 +244,7 @@ func (s *periodInspection) check() error {
 		return err
 	}
 	slices.Sort(names)
-	if !slices.Equal(names, []string{"budget.json", "budget.lock", "budget.pin"}) {
+	if !slices.Equal(names, []string{periodStateFile, periodLeaseFile, periodPolicyPinFile}) {
 		return errors.New("retained Hosting inventory differs")
 	}
 	pin, err := s.read(s.pin)

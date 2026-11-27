@@ -126,7 +126,7 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 	}
 	if dependency == modulePath+"/internal/platform/artifacts" {
 		switch source {
-		case "cmd/ardents-next/inputs.go", "cmd/ardents-next/publication.go", "cmd/ardents-next/route_linux.go",
+		case "cmd/ardents-next/inputs.go", "cmd/ardents-next/hosting_config.go", "cmd/ardents-next/publication.go", "cmd/ardents-next/route_linux.go",
 			"internal/domain/network/source/command/serve_linux.go", "internal/domain/network/source/command/prepare_linux.go",
 			"internal/domain/network/state/source_state_files_linux_test.go":
 			return true

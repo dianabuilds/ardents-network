@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-
 	"testing"
 	"time"
 
@@ -314,5 +313,69 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 	}
 	if err = other.Release(t.Context()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestObservationRollbackDuringMeasurementRefusesCapacity(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	owner.measure = func([]string) (counters.Reading, error) { *now = now.Add(-time.Second); return *reading, nil }
+	view, err := owner.Observe(t.Context())
+	if err == nil || !view.Protect || !view.Drain {
+		t.Fatal("rollback returned usable observation", view, err)
+	}
+}
+
+func TestCopiedBudgetSharesClosedLifecycle(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	owner := openHostingFixture(t, root, reading, now)
+	independent := openHostingFixture(t, root, reading, now)
+	copied := *owner
+	if err := copied.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Observe(t.Context()); err == nil {
+		t.Fatal("copy did not close shared owner")
+	}
+	if _, err := independent.Observe(t.Context()); err != nil {
+		t.Fatal("copy closed independent owner", err)
+	}
+}
+
+func TestForeignAndPendingStateRefusedWithoutMutation(t *testing.T) {
+	for _, file := range []string{"budget.pending", "budget.pin", "budget.lock", "budget.json"} {
+		t.Run(file, func(t *testing.T) {
+			root, reading, now := hostingFixture(t)
+			path := filepath.Join(root, file)
+			if file == "budget.pending" {
+				if err := os.WriteFile(path, []byte("interrupted"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink("outside", path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if b, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
+				b.Close()
+				t.Fatal("ambiguous state opened")
+			}
+		})
+	}
+	root, reading, now := hostingFixture(t)
+	for _, file := range []string{"pin", "lock", "json"} {
+		if err := os.Rename(filepath.Join(root, "budget."+file), filepath.Join(root, "period."+file)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if b, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
+		b.Close()
+		t.Fatal("legacy root opened")
+	}
+	if _, err := os.Stat(filepath.Join(root, "budget.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("foreign root changed")
 	}
 }

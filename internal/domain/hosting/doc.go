@@ -7,28 +7,17 @@
 // zero-reservation provenance under its own original lease. It mutates nothing
 // and grants no current capacity; Close joins its original physical users.
 //
-// Navigation: one Budget owns the portable accounting clusters; the native
-// inspection mechanism is instantiated per observation. Test naming follows
-// docs/development/repository-layout.md.
+// Follow the live path through allowance.go (directions and provider limit),
+// budget.go (owning transaction and counter continuity), period_storage.go
+// (pin, journal and readback), then reservation.go (reserve, detach, release).
+// additional_reservation.go accounts for joint work under an original
+// termination reservation. snapshot.go is the confirmed observation path.
 //
-// Responsibility clusters and their tests:
-//   - allowance policy, directional cost and pressure accounting: allowance.go
-//     (allowance_test.go)
-//   - budget lifecycle, durable period root and committed journal: budget.go,
-//     storage.go, failure.go (budget_unix_test.go; unix)
-//   - work/termination reservation lifecycle and transfer deadlines:
-//     reservation.go (Reserve/Release/DetachTermination),
-//     reservation_request.go (reservation_unix_test.go, deadline_unix_test.go;
-//     unix, reservation_process_linux_test.go; linux)
-//   - joint coverage and additional joint reservations: reservation.go
-//     (CoversJoint/ReserveAdditionalJoint), joint_traffic.go
-//     (joint_traffic_test.go, additional_reservation_unix_test.go; unix)
-//   - shared confirmed snapshot sampling: snapshot.go
-//     (snapshot_unix_test.go; unix)
-//   - Unix-family exclusive root lease: lease_unix.go, lease_other.go
-//     (lease_unix_test.go; unix)
-//   - boot and interface observation: counters (Linux procfs/sysfs and macOS
-//     IFMIB 64-bit totals). Budget and storage apply continuity to these facts.
-//   - retained read-only period inspection: inspection_linux.go,
-//     inspection_other.go (inspection_native_linux_test.go; native linux)
+// The accounting rules and command inputs are portable. The live budget uses
+// a Linux/macOS exclusive lease in period_lease_unix.go and native boot and
+// interface observations in counters. Other hosts receive a typed refusal.
+// retained_inspection_linux.go uses the separate Linux ext4 custody floor
+// and native tests. Other hosts refuse retained inspection explicitly.
+//
+// The ardents-next adapter owns flags, exact config JSON and finite outcomes.
 package hosting

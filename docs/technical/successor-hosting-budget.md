@@ -4,7 +4,7 @@ This bounded successor slice reuses the maintained Hosting arithmetic and
 durable transaction semantics described in network-route-node.md and
 private-admission.md. It grants no admission, token or network authority.
 
-The standard-library-only internal/domain/hosting owner provides Initialize,
+The `internal/domain/hosting` owner provides Initialize,
 Open, Observe, Sample, Reserve, Close and Reservation.Release. Policy, Traffic and
 Observation retain finite provider-period bounds and separate Tx/Rx counts.
 Sample shares confirmed persisted observations up to one second old; every read
@@ -87,8 +87,9 @@ prerequisites fail. These cases qualify the Hosting component and CLI.
 
 ## Command growth policy
 
-cmd/ardents-next owns arguments, bounded input decoding, rendering, signal
-handling, finite command composition and concrete OTel setup. Budget rules,
+`cmd/ardents-next/hosting.go` owns arguments, rendering, finite command
+composition and OTel setup. `hosting_config.go` in the same package decodes
+the bounded, exact JSON declaration into a root path and Hosting Policy. Budget rules,
 durable state and reservation correctness stay in hosting; none may depend on
 command syntax, output or the collector. The current hold wait is one command
 scenario, not a general workload runner.
