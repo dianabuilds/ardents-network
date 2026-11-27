@@ -18,8 +18,8 @@ jobs:
             release: '24.04'
             systemd: 255
     env:
-      CANDIDATE: e113f7dfa25bd3bd5307bfbdf14ab36b278a3deb
-      CANDIDATE_TREE: 2b640bb7d4c9baf8d59f22d2977b5ac1709c6579
+      CANDIDATE: 640cb433e6d3f87ed249b813540bd38a931693a9
+      CANDIDATE_TREE: 9b2df31922ec2d384c18bf283d7f144490d38e23
       UBUNTU_RELEASE: ${{ matrix.release }}
       SYSTEMD_VERSION: ${{ matrix.systemd }}
     steps:
