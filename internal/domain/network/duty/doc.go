@@ -8,11 +8,9 @@
 // continuity, and watermark rollback protection are preserved while the spend
 // records are dropped - but no writer emits version 1, and the first
 // replacement commits version 2.
-// Linux SourceInspection and NodeInspection independently retain existing
-// read-only histories under their original leases. Source permits only retained
-// exposure records; stopped Node inspection permits no producer record at all.
-// Neither policy clears, repairs or initializes history, and native readers join
-// before their original lease returns.
+// Linux SourceInspection retains existing read-only history under its original
+// lease. It permits only retained Source exposure, never clears, repairs or
+// initializes history, and joins native readers before returning the lease.
 // Initialize is a separate explicit first-history operation for offline Source
 // preparation. It claims only an existing vacant root with a newly born lease;
 // existing or partial histories refuse without cleanup. Empty history grants no
@@ -50,7 +48,6 @@
 //     behavior is verified by the network/state repair tests; retained
 //     opening by operation_lease_test.go above)
 //   - native inspection (linux): inspection_linux.go,
-//     source_inspection_linux.go, node_inspection_linux.go
-//     (source_completion_policy_linux_test.go,
-//     inspection_native_linux_test.go)
+//     source_inspection_linux.go (source_completion_policy_linux_test.go,
+//     source_inspection_native_linux_test.go)
 package duty
