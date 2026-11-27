@@ -156,6 +156,16 @@ those joins. Acquisition keeps the full refusal for its caller and supplies only
 the joined physical result to Prefix cleanup. Missing completion remains a
 failure; this receipt creates no JOIN, new attempt or recovery authority.
 
+The holder's one fixed-size JOIN request is setup control. Cancellation before
+its physical write is admitted denies that output. If cancellation wins after
+admission, the same selected write joins within the earlier of its existing
+bound and the lane's one-second cleanup bound. This keeps local retirement
+from changing the deadline of that shared TLS write to an immediate timeout.
+The sealed lane admits no new request or payload. Real partial writes, native
+deadline failures and parent retirement still fail through their original
+owners. Admission spend, request bytes and successful JOIN handoff keep their
+original rules.
+
 `pair.go` keeps capacity, matching, setup and the two-RESULT barrier together;
 `relay.go` owns activated frame accounting, credit and terminal joining. Their
 tests are grouped by these lifetimes in `pair_test.go` and `relay_test.go`,
