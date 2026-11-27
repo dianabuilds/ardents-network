@@ -18,12 +18,19 @@ the seven public files. The snapshot retains original loader cancellation after
 all physical input descriptors join; Release/admission recheck it at handoff.
 Actual Linux mapped-executable inode and bytes must equal the enrolled program;
 same-looking paths or a copied public receipt cannot supply that result.
-This Source extension and its canonical byte oracles compile only on the selected
-Linux profile with their real consumer. The Endpoint grammar and its behavior tests remain portable; unsupported commands refuse before opening any artifact/history.
+Native infrastructure admission is restricted to Linux amd64. Unsupported
+commands refuse before opening any artifact or history.
 
-The new owner's `ValidateInfrastructureInventory` checks a canonical Source,
-Forwarding or JOIN inventory against all seven bounded supplied byte images. Its copied
-declarations and fresh digest map supply no initial pin, native file custody,
+`internal/domain/enrollment/infrastructureinventory` owns the portable
+canonical grammar, fixed role companions and byte bounds. Offline Release
+preparation constructs the public inventory from the seven bounded byte images.
+Native Enrollment parses that same grammar after the independent pin check for
+an initial Bundle. The portable byte oracles independently specify Source,
+Forwarding, JOIN and Descriptor encodings.
+
+`infrastructureinventory.Validate` checks the canonical document against all
+seven bounded supplied byte images. Its copied declarations and fresh digest
+map supply no initial pin, native file custody,
 running-program proof, Candidate, Bundle or installation permission. A caller
 may compare the same image's digests with other public commitments within that
 one validation; independently pinned loading and executable verification remain

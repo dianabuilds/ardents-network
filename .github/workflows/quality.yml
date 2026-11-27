@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 9a2f0a55139eb5daf5b7a0c2372c1e2626265b6c
+          ref: d78871340b23eece17534802d64c7763481b4f5f
           path: candidate
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
@@ -57,8 +57,8 @@ jobs:
           GOENV: off
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = 9a2f0a55139eb5daf5b7a0c2372c1e2626265b6c
-          test "$(git rev-parse HEAD^{tree})" = 98e34e15a29f42128f91ff8d31ce544bbb0eb35e
+          test "$(git rev-parse HEAD)" = d78871340b23eece17534802d64c7763481b4f5f
+          test "$(git rev-parse HEAD^{tree})" = 57ab64d1f1732659181c62a10eaa64366c508fad
           git show -s --format='Candidate %H tree %T'
           go version
           mkdir -m 0700 "$RUNNER_TEMP/artifacts1011"
@@ -114,7 +114,7 @@ jobs:
           run tests/e2e/endpointinstalled endpoint.test TestNativeEndpointPlatformLedPair 25m
           run internal/domain/endpoint journey.test TestNativeEndpointPlatformLedJourney 25m
           (cd "$out"; sha256sum -c SHA256SUMS)
-          test "$(git rev-parse HEAD)" = 9a2f0a55139eb5daf5b7a0c2372c1e2626265b6c
+          test "$(git rev-parse HEAD)" = d78871340b23eece17534802d64c7763481b4f5f
           test -z "$(git status --porcelain --untracked-files=no)"
           echo '## Exact installed outcomes' >> "$GITHUB_STEP_SUMMARY"
           printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
