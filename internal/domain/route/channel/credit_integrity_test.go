@@ -3,11 +3,12 @@ package channel
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"net"
 	"testing"
 	"testing/synctest"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 )
 
 func TestIndependentLaneManyCreditWaitsPreserveBytes(t *testing.T) {

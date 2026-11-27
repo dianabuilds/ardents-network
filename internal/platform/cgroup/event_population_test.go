@@ -2,7 +2,7 @@ package cgroup
 
 import "testing"
 
-func TestIndependentPopulatedAndFrozenAreIndependent(t *testing.T) {
+func TestPopulationIsIndependentOfFreezerState(t *testing.T) {
 	for _, tc := range []struct {
 		body      string
 		populated bool
