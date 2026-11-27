@@ -268,7 +268,7 @@ retained `descriptor-forward-release-linux` signing lane and the
 `descriptor-store-inspection-linux` read-only Store mechanism lane remain
 required. The read-only retained-root inspection mechanisms
 (`state.OpenNodeInspection`, `duty.OpenNodeInspection`,
-`reachability.OpenStoreInspection`, `spending.OpenInspection`,
+`reachability/store.OpenInspection`, `spending.OpenInspection`,
 `hosting.OpenInspection`) lose their last production consumer and are retained as
 reviewed mechanism code with genuine native coverage (deadcode allowlist); their
 shared custody/floor/reader helpers remain production-live through
@@ -4221,7 +4221,7 @@ inode substitution/restoration, held reader/Close and actual late descriptor
 failure. The checked three-minute profile fails missing prerequisites and grants
 no installed/runtime/Release or original-retirement evidence. Its compilation is
 included in `network-signing-compile-check`. After the orchestration retirement
-this lane exercises `reachability.OpenStoreInspection` as reviewed mechanism code
+this lane exercises `reachability/store.OpenInspection` as reviewed mechanism code
 (deadcode allowlist); the parallel `state`/`duty`/`spending`/`hosting` inspection
 mechanisms keep their own genuine native coverage.
 

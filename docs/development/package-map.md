@@ -1106,7 +1106,7 @@ The former Descriptor replacement exact-import inventory
 coordination (`transition_scope_linux.go`, `recovery_replacement_linux.go`,
 `systemd.DescriptorRecoveryReplacement`) retired with the transitional Descriptor
 package; no production consumer remains. The shared `state.OpenNodeInspection` /
-`duty.OpenNodeInspection` / `reachability.OpenStoreInspection` /
+`duty.OpenNodeInspection` / `reachability/store.OpenInspection` /
 `spending.OpenInspection` / `hosting.OpenInspection` read-only inspection
 mechanisms lose their last production consumer and are retained as reviewed
 mechanism code with genuine native coverage (see the deadcode allowlist); their

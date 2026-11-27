@@ -42,7 +42,7 @@ func Signed(input Input) ([]byte, [32]byte) {
 	record = append(record, ed25519.Sign(instance, commitment[:])...)
 	digest := sha256.Sum256(record)
 	recipient := binary.BigEndian.AppendUint64(nil, 9)
-	for _, key := range [][32]byte{{0x55}, {0x66}, {0x77}} {
+	for _, key := range [][32]byte{input.Introduction, input.Slot, input.RecipientKey} {
 		recipient = append(recipient, key[:]...)
 	}
 	for _, seconds := range []uint64{uint64(input.ValidFrom.Unix()), uint64(input.RecipientEnd.Unix())} {
