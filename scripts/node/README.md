@@ -23,7 +23,7 @@ the Node owner, Node e2e and process resource test binaries with the selected
 toolchain and dependency owner.
 
 ```sh
-go test -c -race -tags node_process_native -o /external/node-owner.test ./internal/domain/node
+go test -c -race -tags node_process_native -o /external/node-owner.test ./internal/domain/node/runtime
 go test -c -race -tags node_process_native -o /external/node-e2e.test ./tests/e2e/node
 go test -c -race -tags node_process_native -o /external/node-resource.test ./internal/platform/processguard
 ```

@@ -106,7 +106,7 @@ native evidence; these units supply no fake accepting inspection or manager.
 ### Node-role declaration codec and prepare-plan command
 
 The node domain's pure runtime-plan declaration codec
-(`internal/domain/node/plan_declaration.go`, #673, ADR-0125 decision 6) has
+(`internal/domain/node/plan/declaration.go`, #673, ADR-0125 decision 6) has
 portable behavior tests (`plan_declaration_test.go`): full per-role grammar
 acceptance, exact closed role field sets (a foreign role extension refuses),
 duplicate/null/unknown-member and short/overlong 32-byte array refusal, exact
@@ -1686,7 +1686,7 @@ checks. They share no live state or manager/account effects; complete inventorie
 exact birth checks, refusal cases and the selected native deadline remain unchanged.
 
 The genuine issuer exclusive-work, signed-State-loss and receiver-cancellation
-scenarios in `internal/domain/node/route_bootstrap_linux_test.go` and receiving
+scenarios in `internal/domain/node/receive/issuer_control_linux_test.go` and receiving
 Registration in `route_registration_linux_test.go` run in parallel.
 Each constructs its own authenticated State, Admission/Hosting histories, holder
 and reserved listeners; they share no live authority, roots or transport. Their
@@ -1695,7 +1695,7 @@ join assertions and the command package's five-minute terminal timeout. This
 schedule avoids adding their independent complete matrices serially to that
 package's elapsed time; it neither filters checks nor qualifies installed work.
 
-Issuer transport scenarios in `internal/domain/node/route_bootstrap_linux_test.go`
+Issuer transport scenarios in `internal/domain/node/receive/issuer_control_linux_test.go`
 and `route_process_linux_test.go` start with genuine permission but no offline
 token stock. Actual holder commands obtain two bootstrap batches, refuse a third,
 join bootstrap and establish fresh admitted channels before ordinary issuance on
@@ -2803,7 +2803,7 @@ Neither category substitutes for the other.
 | Handshake failure category: a refused peer cannot hide an unrelated listener or cleanup failure in a joined error | `internal/domain/route/transport/handshake_failure_test.go`; portable complete-tree classification, with original error causes retained. Receiving composition uses this category to decide whether its listener remains usable |
 | Closed TLS key exchange: the four Route TLS constructors negotiate the hybrid with both groups offered, the classical group alone, and refuse P-256, P-384, TLS 1.2 and a foreign ALPN before completion; a client offers exactly the closed pair and no side resumes; the one group atom returns exactly that pair on a fresh slice | `internal/domain/route/transport/key_exchange_negotiation_test.go`, `key_exchange_test.go`; portable real TLS over pipes against an independent peer that pins its own literal. The Service TLS sites share the same atom; `internal/architecture/tls_key_exchange_policy_test.go` keeps one production literal owner. These controls establish no Network observation or Admission right |
 | Shared actual-adapter contract: TCP/TLS classifies direct/Node arrivals, exchange ordered bytes, bound handshake capacity and join readers interrupted by physical Close | `internal/domain/route/prefix/adapter_contract_test.go` and `adapter_retirement_test.go`, external tests on Windows/Linux. The actual opening/composition owner hosts this external contract matrix and imports the real TCP/TLS adapter; lower transport imports neither, including in its tests. Prefix and receiver select the exact profile at their real opening/listening operations; the former carrier package has no runtime or test facade |
-| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/domain/node/route_refill_linux_test.go`, `tests/e2e/node/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
+| Actual public refill and paired JOIN: signed/current Network, durable Stock/spend, real Hosting and TCP/TLS | `internal/domain/node/receive/forwarding_refill_linux_test.go`, `tests/e2e/node/route_join_linux_test.go` and their real command fixtures; Linux durable composition prerequisites remain explicit |
 | Prefix original-generation retention: idle retirement of a stopped terminal borrower waits for its physical join before parent readers and resource return, preserves its late failure and repeated result | `internal/domain/route/prefix/borrowing_test.go`; controlled borrower completion with actual parent pipe readers. No successful authority or Registration is supplied. The actual Prefix mechanics and these tests are portable on Windows and Linux; Prefix is the actual generation owner |
 
 These are behavior-owner links, not a second task ledger or an installed
@@ -2821,7 +2821,7 @@ key/encapsulation/info; this is suite evidence, not live authority.
 `recipient_lifetime_test.go` retains an original failure-only user across Close
 and requires key/capacity erasure after its join. Genuine signed Network,
 host-generated Instance and TCP/TLS REGISTER composition in
-`internal/domain/node/publication_registration_linux_test.go` exercises the same
+`internal/domain/node/receive/publication_registration_linux_test.go` exercises the same
 borrowed fixed opening and exact foreign-binding refusal. Candidate Rendezvous,
 Connection and Work Safety fields in that scenario remain unaccepted input;
 this evidence establishes no replay commit or successful downstream delivery.
@@ -2848,7 +2848,7 @@ Genuine TCP/TLS admitted and compiled JOIN scenarios remain in
 `cmd/ardents-next` and the full new-domain profile.
 
 Original WITHDRAW caller cancellation has two genuine TCP/TLS controls in
-`internal/domain/node/route_registration_linux_test.go`: cancellation just after a
+`internal/domain/node/receive/introduction_registration_linux_test.go`: cancellation just after a
 live caller observation with its callback delayed, and cancellation while its
 callback stop completes after the real Registry ACK. Both require canceled
 operation and retained Close results, exactly one callback stop, joined cleanup
@@ -3462,7 +3462,7 @@ physical write still retires the original parent and retains its failure.
 The native `TestRouteJoinCancellationAfterAdmission` independently retains the
 irreversible spend and original selected Prefix through real TCP/TLS.
 
-`internal/domain/node/route_bootstrap_linux_test.go` uses genuine signed Network,
+`internal/domain/node/receive/issuer_control_linux_test.go` uses genuine signed Network,
 Stock, receiving spend and Hosting on TCP/TLS: four pending restricted
 children retain their actual Hosting work/termination and Route allocations,
 the fifth refuses before TLS/admission and
@@ -3973,7 +3973,7 @@ process pins; its own exact retirement notice is not an independent failure.
 
 ### Forwarding local protection during held authority
 
-`internal/domain/node`'s `node_process_native` component test
+`internal/domain/node/runtime`'s `node_process_native` component test
 `TestForwardingNativeLocalProtectionDuringHeldAuthority` requires its own actual
 sole-process cgroup-v2 leaf under the unchanged Forwarding process envelope,
 including GOMAXPROCS=1 and the exact CPU/RAM/PID/FD limits. Build with `-race` and

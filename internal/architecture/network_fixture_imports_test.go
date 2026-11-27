@@ -73,14 +73,14 @@ func networkFixtureImport(source, dependency, local string, localImport bool) im
 			"internal/domain/endpoint/publication_installed_linux_test.go",
 			"internal/domain/endpoint/funding/intent_network_test.go",
 			"internal/domain/network/source/command/state_lifetime_linux_test.go",
-			"internal/domain/node/authority_process_native_linux_test.go",
-			"internal/domain/node/introduction_exchange_native_linux_test.go",
-			"internal/domain/node/operation_workload_native_linux_test.go",
-			"internal/domain/node/refill_process_native_linux_test.go",
-			"internal/domain/node/route_descriptor_linux_test.go",
-			"internal/domain/node/route_join_fixture_linux_test.go",
-			"internal/domain/node/route_bootstrap_linux_test.go",
-			"internal/domain/node/route_receiving_fixture_linux_test.go",
+			"internal/domain/node/runtime/authority_process_native_linux_test.go",
+			"internal/domain/node/runtime/introduction_exchange_native_linux_test.go",
+			"internal/domain/node/runtime/operation_workload_native_linux_test.go",
+			"internal/domain/node/runtime/forwarding_refill_native_linux_test.go",
+			"internal/domain/node/receive/descriptor_retirement_linux_test.go",
+			"internal/domain/node/receive/join_fixture_linux_test.go",
+			"internal/domain/node/receive/issuer_control_linux_test.go",
+			"internal/domain/node/receive/receiver_fixture_linux_test.go",
 			"tests/e2e/endpoint/endpoint_history_linux_test.go",
 			"tests/e2e/endpoint/launch_refusals_native_linux_test.go",
 			"tests/e2e/endpoint/launch_replacement_native_linux_test.go",
@@ -156,13 +156,13 @@ func networkFixtureImport(source, dependency, local string, localImport bool) im
 			"tests/e2e/node/descriptor_exchange_native_linux_test.go", "tests/e2e/node/issuer_exchange_native_linux_test.go", "tests/e2e/node/network_commands_unix_test.go",
 			"tests/e2e/node/admission_cycle_test.go", "tests/e2e/node/admission_receiver_test.go", "tests/e2e/node/admission_interrupt_unix_test.go":
 			return importAllowed
-		case "internal/domain/node/route_bootstrap_linux_test.go", "internal/domain/node/route_token_linux_test.go":
+		case "internal/domain/node/receive/issuer_control_linux_test.go", "internal/domain/node/receive/source_funding_linux_test.go":
 			return importAllowed
-		case "internal/domain/node/route_join_linux_test.go", "internal/domain/node/route_join_fixture_linux_test.go":
+		case "internal/domain/node/receive/responder_startup_linux_test.go", "internal/domain/node/receive/join_fixture_linux_test.go":
 			return importAllowed
-		case "internal/domain/node/route_descriptor_linux_test.go":
+		case "internal/domain/node/receive/descriptor_retirement_linux_test.go":
 			return importAllowed
-		case "internal/domain/node/publication_registration_linux_test.go", "tests/e2e/endpoint/service_instance_linux.go":
+		case "internal/domain/node/receive/publication_registration_linux_test.go", "tests/e2e/endpoint/service_instance_linux.go":
 			return importAllowed
 		case "tests/e2e/node/command_test.go", "tests/e2e/endpoint/command_test.go", "internal/domain/endpoint/connection_accepted_request_installed_linux_test.go":
 			return importAllowed
@@ -178,18 +178,18 @@ func networkFixtureImport(source, dependency, local string, localImport bool) im
 			"internal/domain/endpoint/connection_installed_linux_test.go",
 			"internal/domain/endpoint/execution_installed_linux_test.go",
 			"internal/domain/endpoint/network_admission_fixture_linux_test.go",
-			"internal/domain/node/introduction_exchange_native_linux_test.go",
+			"internal/domain/node/runtime/introduction_exchange_native_linux_test.go",
 			"tests/e2e/node/join_exchange_native_linux_test.go",
-			"internal/domain/node/operation_workload_native_linux_test.go",
+			"internal/domain/node/runtime/operation_workload_native_linux_test.go",
 			"internal/domain/endpoint/publication_ack_installed_linux_test.go",
 			"internal/domain/endpoint/publication_installed_linux_test.go",
 			"internal/domain/endpoint/route_issuer_fixture_linux_test.go",
 			"internal/domain/endpoint/route_fixture_linux_test.go",
-			"internal/domain/node/refill_process_native_linux_test.go",
-			"internal/domain/node/route_receiving_fixture_linux_test.go",
-			"internal/domain/node/route_refusal_linux_test.go", "internal/domain/node/route_refill_linux_test.go", "internal/domain/node/route_registration_linux_test.go", "internal/domain/node/route_submission_linux_test.go",
-			"internal/domain/node/authority_process_native_linux_test.go",
-			"internal/domain/node/operation_process_native_linux_test.go",
+			"internal/domain/node/runtime/forwarding_refill_native_linux_test.go",
+			"internal/domain/node/receive/receiver_fixture_linux_test.go",
+			"internal/domain/node/receive/post_spend_refusal_linux_test.go", "internal/domain/node/receive/forwarding_refill_linux_test.go", "internal/domain/node/receive/introduction_registration_linux_test.go", "internal/domain/node/receive/introduction_submission_linux_test.go",
+			"internal/domain/node/runtime/authority_process_native_linux_test.go",
+			"internal/domain/node/runtime/operation_process_native_linux_test.go",
 			"tests/e2e/endpoint/endpoint_platform_native_linux_test.go",
 			"tests/e2e/node/completion_native_linux_test.go",
 			"tests/e2e/node/forwarding_startup_native_linux_test.go",

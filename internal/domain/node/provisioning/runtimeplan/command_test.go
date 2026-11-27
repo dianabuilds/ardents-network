@@ -12,13 +12,13 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
+	nodeplan "github.com/dianabuilds/ardents-network/internal/domain/node/plan"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
 func writePreparePlanNetwork(t *testing.T, base string) {
 	t.Helper()
-	network := node.Network{Root: filepath.Join(base, "state"), NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: filepath.Join(base, "clock")}
+	network := nodeplan.Network{Root: filepath.Join(base, "state"), NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: filepath.Join(base, "clock")}
 	raw, err := json.Marshal(network)
 	if err != nil {
 		t.Fatal(err)
@@ -70,11 +70,11 @@ func preparePlanTestArgs(role, base string, extra map[string]string) []string {
 // decodedPreparePlanFacts decodes the produced plan through the runtime codec and
 // returns the facts the runtime admission gate consumes, proving the written plan
 // is admissible by the same closed grammar and per-role policy the runtime uses.
-func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Network, string, []string, uint32) {
+func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*nodeplan.Network, string, []string, uint32) {
 	t.Helper()
 	switch role {
 	case "forwarding":
-		p, err := node.DecodeForwardingPlan(raw)
+		p, err := nodeplan.DecodeForwardingPlan(raw)
 		if err != nil {
 			t.Fatal("produced Forwarding plan does not decode:", err)
 		}
@@ -83,7 +83,7 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot}, p.RetirementWaitMS
 	case "join":
-		p, err := node.DecodeJoinPlan(raw)
+		p, err := nodeplan.DecodeJoinPlan(raw)
 		if err != nil {
 			t.Fatal("produced JOIN plan does not decode:", err)
 		}
@@ -92,7 +92,7 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot}, p.RetirementWaitMS
 	case "descriptor":
-		p, err := node.DecodeDescriptorPlan(raw)
+		p, err := nodeplan.DecodeDescriptorPlan(raw)
 		if err != nil {
 			t.Fatal("produced Descriptor plan does not decode:", err)
 		}
@@ -101,7 +101,7 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.DescriptorRoot}, p.RetirementWaitMS
 	case "introduction":
-		p, err := node.DecodeIntroductionPlan(raw)
+		p, err := nodeplan.DecodeIntroductionPlan(raw)
 		if err != nil {
 			t.Fatal("produced Introduction plan does not decode:", err)
 		}
@@ -110,7 +110,7 @@ func decodedPreparePlanFacts(t *testing.T, role string, raw []byte) (*node.Netwo
 		}
 		return p.Network, p.ProcessProfile, []string{p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.IntroductionRoot}, p.RetirementWaitMS
 	case "issuer":
-		p, err := node.DecodeIssuerPlan(raw)
+		p, err := nodeplan.DecodeIssuerPlan(raw)
 		if err != nil {
 			t.Fatal("produced Issuer plan does not decode:", err)
 		}

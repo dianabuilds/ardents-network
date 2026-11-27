@@ -54,7 +54,8 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 			switch owner {
 			case "cmd/ardents-next", "internal/domain/connection", "internal/domain/endpoint", "internal/domain/endpoint/funding",
 				"internal/domain/endpoint/publisher", "internal/domain/endpoint/reader", "internal/domain/endpoint/session",
-				"internal/domain/node", "internal/domain/publication/instance", "internal/domain/publication/runtime":
+				"internal/domain/node/admission", "internal/domain/node/receive", "internal/domain/node/runtime",
+				"internal/domain/publication/instance", "internal/domain/publication/runtime":
 			default:
 				return false
 			}
@@ -112,6 +113,11 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 	}{
 		{"old Endpoint consumer", "internal/domain/endpoint/source.go", modulePath + "/internal/domain/route", false},
 		{"old Node adapter", "internal/domain/node/authority/token.go", modulePath + "/internal/domain/route/receiver", false},
+		{"retired Node root has no Route consumer", "internal/domain/node/route_receive_linux.go", modulePath + "/internal/domain/route/receiver", false},
+		{"Node declaration has no Route dependency", "internal/domain/node/plan/declaration.go", modulePath + "/internal/domain/route/role", false},
+		{"Node development receiver", "internal/domain/node/receive/command_linux.go", modulePath + "/internal/domain/route/receiver", true},
+		{"original Node Forwarding", "internal/domain/node/runtime/forwarding_unix.go", modulePath + "/internal/domain/route/receiver", true},
+		{"Node Forwarding reservation handoff", "internal/domain/node/admission/forwarding_refill_unix.go", modulePath + "/internal/domain/route/receiver", true},
 		{"old Route test consumer", "internal/domain/route/closed_join_test.go", modulePath + "/internal/domain/route", false},
 		{"old command consumer", "cmd/ardents/route.go", modulePath + "/internal/domain/route", false},
 		{"e2e bridge", "tests/e2e/route/scenario_test.go", modulePath + "/internal/domain/route/receiver", false},

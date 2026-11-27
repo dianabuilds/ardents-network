@@ -616,6 +616,25 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/domain/network.RuntimeView.IssuerNodeID",
+          "internal/domain/network.RuntimeView.MatchDuty",
+          "internal/domain/network.RuntimeView.MemberByKey",
+          "internal/domain/network.RuntimeView.Members",
+          "internal/domain/route.CarrierPermitted",
+          "internal/domain/route.PurposePermitsDuty",
+          "internal/domain/route/role.Authority.FreshHello",
+          "internal/domain/route/role.Authority.Hello",
+          "internal/domain/route/role.Authority.Member",
+          "internal/domain/route/role.Authority.ObserveHello",
+          "internal/domain/route/role.Authority.observeMember"
+        ],
+        "classification": "Role authority observations behind unsupported Windows effects",
+        "rationale": "Node dispatch uses the exact typed role constructors after decoding its portable declarations. On Windows, typed startup stops before any native Route effect. These Network and Route checks remain reachable on Linux and retain their behavior tests.",
+        "owner": "Network State and Route role",
+        "retirement": "Remove each entry when a maintained Windows production role reaches the corresponding check."
+      },
+      {
+        "symbols": [
           "internal/domain/hosting.Inspection.Check",
           "internal/domain/hosting.Inspection.Close",
           "internal/domain/hosting.OpenInspection"
@@ -663,10 +682,10 @@
       },
       {
         "symbols": [
-          "internal/domain/node/internal/credential.Material.Close",
-          "internal/domain/node/internal/credential.decodeCredential",
-          "internal/domain/node.originalRetirementResult",
-          "internal/domain/node.removeOriginalRetirementNotice"
+          "internal/domain/node/runtime.credentialMaterial.Close",
+          "internal/domain/node/runtime.decodeCredential",
+          "internal/domain/node/runtime.originalRetirementResult",
+          "internal/domain/node/runtime.removeOriginalRetirementNotice"
         ],
         "classification": "portable Node rules with Linux role startup",
         "rationale": "Credential decoding and clearing and the retirement error filter run in portable tests and serve the Linux runtime. The command composition is analyzed on Windows too, but actual Windows invocation refuses before opening the plan.",
@@ -739,7 +758,7 @@
       },
       {
         "symbols": [
-          "internal/domain/node.RepairDeclaration"
+          "internal/domain/node/plan.RepairDeclaration"
         ],
         "classification": "portable original Node repair declaration behind Linux custody",
         "rationale": "The native Linux retained repair validates the role and original ordered roots through this portable decoder before opening the manager. Portable tests exercise role substitution and overlapping roots. Windows production refuses the native repair before file effects.",
@@ -814,14 +833,14 @@
           "internal/domain/endpoint/funding.minRouteDeadline",
           "internal/domain/endpoint/session.minRouteDeadline",
           "internal/domain/hosting.Reservation.ReleaseJoined",
-          "internal/domain/node.admissionFacts",
-          "internal/domain/node.expiredMeasurement",
-          "internal/domain/node.failureRecord.retain",
-          "internal/domain/node.failureRecord.retainCleanup",
-          "internal/domain/node.failureRecord.snapshot"
+          "internal/domain/node/admission.AuthorityFactsFromProfile",
+          "internal/domain/node/runtime.expiredMeasurement",
+          "internal/domain/node/runtime.failureRecord.retain",
+          "internal/domain/node/runtime.failureRecord.retainCleanup",
+          "internal/domain/node/runtime.failureRecord.snapshot"
         ],
         "classification": "P1-B batch 2 de-tagged newly-unlocked pure production files with Linux-native genuine consumers (#787, #691)",
-        "rationale": "These exact functions were accidentally Linux-bound pure Go unlocked by batch 1: the Node first-failure and admission public-observation projections (node/failure_projection.go, node/admission_projection.go), the whole endpoint/funding composition (source/preparation/prefix/issuance/parents/observation/reservation) and the endpoint/session deadline helper. Hosting ReleaseJoined now owns the shared bounded release and is reached by the portable nil-reservation test. Batch 2 dropped their Linux build constraints after per-file purity verification at the integration candidate: each composes only portable symbols (batch-1 hosting reservation release, processguard failure projection, stock/token/prefix/selection helpers) and adds no native mechanism. Their genuine production consumers remain Windows-excluded (session OpenPrefix/OpenBootstrap/OpenJoinContext run the genuine Unix-family composition on Linux/macOS, Cohort 2d #877, but keep a Windows typed refusal in route_other.go (!linux && !darwin) that does not reach the deadline helper; endpoint publisher/reader and cmd/ardents-next adapters stay Linux; node role lifetimes compose the Linux forwarding lifetime and route/receiver.Channel), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Node projections (failure_projection_test.go, admission_projection_test.go), the session reservation helpers (reservation_test.go) and funding's Stock-preparation coordination (preparation_test.go), so those are production-dead but not test-dead; the remaining funding Source/Prefix/Parents/issuance compositions are fully dead on Windows and carry a separate reviewed test_dead allowance. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals, and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",
+        "rationale": "These exact functions were accidentally Linux-bound pure Go unlocked by batch 1: the Node first-failure and admission public-observation projections (node/runtime/failure.go, node/admission/network_profile.go), the whole endpoint/funding composition (source/preparation/prefix/issuance/parents/observation/reservation) and the endpoint/session deadline helper. Hosting ReleaseJoined now owns the shared bounded release and is reached by the portable nil-reservation test. Batch 2 dropped their Linux build constraints after per-file purity verification at the integration candidate: each composes only portable symbols (batch-1 hosting reservation release, processguard failure projection, stock/token/prefix/selection helpers) and adds no native mechanism. Their genuine production consumers remain Windows-excluded (session OpenPrefix/OpenBootstrap/OpenJoinContext run the genuine Unix-family composition on Linux/macOS, Cohort 2d #877, but keep a Windows typed refusal in route_other.go (!linux && !darwin) that does not reach the deadline helper; endpoint publisher/reader and cmd/ardents-next adapters stay Linux; node role lifetimes compose the Linux forwarding lifetime and route/receiver.Channel), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Node projections (failure_test.go, network_profile_test.go), the session reservation helpers (reservation_test.go) and funding's Stock-preparation coordination (preparation_test.go), so those are production-dead but not test-dead; the remaining funding Source/Prefix/Parents/issuance compositions are fully dead on Windows and carry a separate reviewed test_dead allowance. The native mechanism seams stay Linux-tagged with unchanged !linux typed refusals, and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; Node, endpoint funding and session owners",
         "retirement": "Remove each exact Windows entry when a selected genuine portable production consumer reaches it (the next dependency-chain batch unlocks the session Open compositions, endpoint publisher/reader, node forwarding/receiver and cmd adapters), or when the owning contract is retired. Lost Linux production reachability requires repair, not another allowance."
       },

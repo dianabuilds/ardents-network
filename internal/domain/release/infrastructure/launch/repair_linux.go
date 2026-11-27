@@ -10,7 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/serving"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
+	nodeplan "github.com/dianabuilds/ardents-network/internal/domain/node/plan"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
@@ -44,7 +44,7 @@ func repair(ctx context.Context, role, path string) (result error) {
 		network = (*state.AuthorityDeclaration)(plan.Network)
 		roots = []string{network.Root, plan.ParticipationRoot}
 	} else {
-		plan, declaredRoots, err := node.RepairDeclaration(role, file.Bytes())
+		plan, declaredRoots, err := nodeplan.RepairDeclaration(role, file.Bytes())
 		pins := (*state.AuthorityDeclaration)(&plan)
 		if err != nil || !pins.ValidShape() {
 			return artifacts.ErrObservedInput

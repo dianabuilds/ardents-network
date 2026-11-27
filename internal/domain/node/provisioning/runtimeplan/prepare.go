@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
+	nodeplan "github.com/dianabuilds/ardents-network/internal/domain/node/plan"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
@@ -41,7 +41,7 @@ func prepare(ctx context.Context, role string, flags map[string]string) error {
 	if err != nil {
 		return errRuntimePlan
 	}
-	network, err := node.DecodeNodeNetwork(networkRaw)
+	network, err := nodeplan.DecodeNodeNetwork(networkRaw)
 	if err != nil {
 		return errRuntimePlan
 	}
@@ -154,19 +154,19 @@ func preparePlanRole(role string, flags map[string]string) (profile string, root
 func preparePlanGrammar(role string, raw []byte) error {
 	switch role {
 	case "forwarding":
-		_, err := node.DecodeForwardingPlan(raw)
+		_, err := nodeplan.DecodeForwardingPlan(raw)
 		return err
 	case "join":
-		_, err := node.DecodeJoinPlan(raw)
+		_, err := nodeplan.DecodeJoinPlan(raw)
 		return err
 	case "descriptor":
-		_, err := node.DecodeDescriptorPlan(raw)
+		_, err := nodeplan.DecodeDescriptorPlan(raw)
 		return err
 	case "introduction":
-		_, err := node.DecodeIntroductionPlan(raw)
+		_, err := nodeplan.DecodeIntroductionPlan(raw)
 		return err
 	case "issuer":
-		_, err := node.DecodeIssuerPlan(raw)
+		_, err := nodeplan.DecodeIssuerPlan(raw)
 		return err
 	}
 	return errors.New("invalid prepare-plan role")

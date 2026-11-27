@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/operator"
 	endpointcommand "github.com/dianabuilds/ardents-network/internal/domain/endpoint/command"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
+	nodereceive "github.com/dianabuilds/ardents-network/internal/domain/node/receive"
 	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"
 )
 
@@ -67,7 +67,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) (co
 	case "enrollment":
 		return runEnrollmentCommand(ctx, args, out, diagnostic)
 	case "route":
-		return node.RunRouteReceive(ctx, args, out, diagnostic)
+		return nodereceive.RunRouteReceive(ctx, args, out, diagnostic)
 	case "network":
 		return runNetwork(ctx, args, out)
 	case "node-identity":

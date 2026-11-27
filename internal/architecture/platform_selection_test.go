@@ -227,10 +227,10 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 			"internal/domain/endpoint/generation/directory_unix.go",
 			"internal/domain/endpoint/launch/root_ownership_unix.go",
 			"internal/domain/endpoint/plan/custody_unix.go",
-			"internal/domain/node/internal/credential/load_unix.go",
-			"internal/domain/node/internal/credential/load_unix_test.go",
-			"internal/domain/node/internal/credential/join_unix.go",
-			"internal/domain/node/internal/credential/join_unix_test.go",
+			"internal/domain/node/runtime/credential_unix.go",
+			"internal/domain/node/runtime/credential_unix_test.go",
+			"internal/domain/node/runtime/join_credential_unix.go",
+			"internal/domain/node/runtime/join_credential_unix_test.go",
 			"internal/platform/artifacts/input_unix.go",
 			"internal/platform/artifacts/input_unix_test.go",
 			"internal/platform/artifacts/directory_unix.go",
@@ -535,21 +535,18 @@ func TestCohort2aDomainDetagSelection(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/domain/node/descriptor_unix.go",
-			"internal/domain/node/forwarding_admission_unix.go",
-			"internal/domain/node/forwarding_unix.go",
-			"internal/domain/node/forwarding_observation_unix.go",
-			"internal/domain/node/introduction_unix.go",
-			"internal/domain/node/issuer_unix.go",
-			"internal/domain/node/join_unix.go",
-			"internal/domain/node/lifetime_unix.go",
-			"internal/domain/node/runtime_unix.go",
-			"internal/domain/node/descriptor_startup_unix_test.go",
-			"internal/domain/node/failure_projection_unix_test.go",
-			"internal/domain/node/introduction_startup_unix_test.go",
-			"internal/domain/node/join_startup_unix_test.go",
-			"internal/domain/node/lifetime_equivalence_unix_test.go",
-			"internal/domain/node/retirement_unix_test.go",
+			"internal/domain/node/runtime/descriptor_unix.go",
+			"internal/domain/node/runtime/forwarding_unix.go",
+			"internal/domain/node/runtime/introduction_unix.go",
+			"internal/domain/node/runtime/issuer_unix.go",
+			"internal/domain/node/runtime/join_unix.go",
+			"internal/domain/node/runtime/lifetime_unix.go",
+			"internal/domain/node/runtime/descriptor_startup_unix_test.go",
+			"internal/domain/node/runtime/failure_join_unix_test.go",
+			"internal/domain/node/runtime/introduction_startup_unix_test.go",
+			"internal/domain/node/runtime/join_startup_unix_test.go",
+			"internal/domain/node/runtime/lifetime_equivalence_unix_test.go",
+			"internal/domain/node/runtime/retirement_unix_test.go",
 			"internal/domain/route/receiver/admission_retirement_unix.go",
 			"internal/domain/route/receiver/bootstrap_unix.go",
 			"internal/domain/route/receiver/descriptor_unix.go",
@@ -585,7 +582,7 @@ func TestCohort2aDomainDetagSelection(t *testing.T) {
 		for _, name := range []string{
 			"internal/domain/network/source/serving/serving_other.go",
 			"internal/domain/network/source/serving/serving_other_test.go",
-			"internal/domain/node/runtime_other.go",
+			"internal/domain/node/runtime/start_other.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -632,10 +629,10 @@ func TestP1BBatch2PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/domain/node/failure_projection.go",
-			"internal/domain/node/failure_projection_test.go",
-			"internal/domain/node/admission_projection.go",
-			"internal/domain/node/admission_projection_test.go",
+			"internal/domain/node/runtime/failure.go",
+			"internal/domain/node/runtime/failure_test.go",
+			"internal/domain/node/admission/network_profile.go",
+			"internal/domain/node/admission/network_profile_test.go",
 			"internal/domain/hosting/reservation.go",
 			"internal/domain/endpoint/funding/issuance.go",
 			"internal/domain/endpoint/funding/parents.go",

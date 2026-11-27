@@ -9,7 +9,7 @@
 // The runtime serve composition (cmd/ardents-next source input), canonical
 // Control prepare-state/inspect-latest and State's read-only SourceInspection
 // consume this one shared grammar. It mirrors the original node-role
-// declaration codec in internal/domain/node (plan_declaration.go, #673): a shared
+// declaration codec in internal/domain/node/plan (declaration.go, #673): a shared
 // byte grammar with no authority. Extracted from internal/domain/network/source as
 // AR-N-07a under the audit-remediation campaign (#691); the canonical
 // declaration bytes are unchanged. Only the standard library is imported.

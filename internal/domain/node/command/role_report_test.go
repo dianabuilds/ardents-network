@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
+	noderuntime "github.com/dianabuilds/ardents-network/internal/domain/node/runtime"
 	"testing"
 )
 
@@ -24,7 +24,7 @@ func TestForwardingStartupReportsNetworkCleanupFailure(t *testing.T) {
 
 func TestForwardingWaitExpiryKeepsJoinedOutcome(t *testing.T) {
 	var out bytes.Buffer
-	firstFailure := func() *node.FailureDiagnostic { return nil }
+	firstFailure := func() *noderuntime.FailureDiagnostic { return nil }
 	reportWaitExpired(&out, forwardingOperation, firstFailure)
 	var event map[string]string
 	if err := json.Unmarshal(out.Bytes(), &event); err != nil || event["phase"] != "retiring" || event["outcome"] != "completion-unavailable" {
@@ -32,7 +32,7 @@ func TestForwardingWaitExpiryKeepsJoinedOutcome(t *testing.T) {
 	}
 
 	out.Reset()
-	result := node.InvocationCompletion{Outcome: "canceled", TimedOut: true}
+	result := noderuntime.InvocationCompletion{Outcome: "canceled", TimedOut: true}
 	if code := reportCompletion(&out, forwardingOperation, result, firstFailure); code != 1 || out.Len() != 0 {
 		t.Fatalf("timed-out Forwarding projected another report: %d, %q", code, out.String())
 	}

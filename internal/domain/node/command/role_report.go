@@ -2,8 +2,9 @@ package command
 
 import (
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/domain/node"
 	"io"
+
+	noderuntime "github.com/dianabuilds/ardents-network/internal/domain/node/runtime"
 )
 
 // forwardingOperation identifies the Forwarding report and its established compatibility rules.
@@ -23,7 +24,7 @@ func writeEvent(out io.Writer, operation, phase, outcome, first, cleanup, failur
 
 // Preserve the original one-object/string-field role report. The encoded local
 // fact contains no raw error text or private role binding and grants no authority.
-func failureDiagnostic(fact *node.FailureDiagnostic) string {
+func failureDiagnostic(fact *noderuntime.FailureDiagnostic) string {
 	if fact == nil {
 		return ""
 	}
@@ -35,7 +36,7 @@ func failureDiagnostic(fact *node.FailureDiagnostic) string {
 }
 
 // reportCompletion projects a physically joined invocation onto the CLI report and exit status.
-func reportCompletion(diagnostic io.Writer, operation string, result node.InvocationCompletion, firstFailure func() *node.FailureDiagnostic) int {
+func reportCompletion(diagnostic io.Writer, operation string, result noderuntime.InvocationCompletion, firstFailure func() *noderuntime.FailureDiagnostic) int {
 	forwarding := operation == forwardingOperation
 	// Forwarding's established diagnostic contract suppresses a final event
 	// on a timed-out but otherwise clean retirement. The other roles report
@@ -70,14 +71,14 @@ func startupRefusal(out io.Writer, operation string, cause, cleanup error) int {
 		cleanupOwner = "network"
 	}
 	if err := writeEvent(out, operation, "refused", "startup-unavailable", "", cleanupOwner,
-		failureDiagnostic(node.StartupFailure(cause))); err != nil {
+		failureDiagnostic(noderuntime.StartupFailure(cause))); err != nil {
 		return 2
 	}
 	return 1
 }
 
 // reportWaitExpired reports unavailability while the original invocation still joins.
-func reportWaitExpired(diagnostic io.Writer, operation string, firstFailure func() *node.FailureDiagnostic) {
+func reportWaitExpired(diagnostic io.Writer, operation string, firstFailure func() *noderuntime.FailureDiagnostic) {
 	detail := ""
 	if operation == forwardingOperation {
 		detail = failureDiagnostic(firstFailure())

@@ -22,7 +22,10 @@ var successorPackageImports = map[string][]string{
 	"internal/canonicaldigest":                            {},
 	"internal/durablefile":                                {},
 	"internal/pathcheck":                                  {},
-	"internal/domain/node":                                {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/duty", "pathcheck", "platform/processguard", "domain/route/ardp", "domain/route/receiver", "domain/route/role"},
+	"internal/domain/node/admission":                      {"domain/admission", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/route/ardp", "domain/route/receiver"},
+	"internal/domain/node/plan":                           {"domain/hosting", "pathcheck", "platform/processguard"},
+	"internal/domain/node/receive":                        {"domain/admission", "domain/admission/issuer", "domain/admission/quota", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/state", "domain/node/admission", "domain/reachability", "domain/route/ardp", "domain/route/channel", "domain/route/introduction", "domain/route/receiver", "domain/route/role", "pathcheck", "platform/artifacts"},
+	"internal/domain/node/runtime":                        {"domain/admission", "domain/admission/issuer", "domain/admission/quota", "domain/admission/receiving", "domain/hosting", "domain/network", "domain/network/duty", "domain/network/state", "domain/node/admission", "domain/node/plan", "domain/reachability", "domain/route/ardp", "domain/route/bootstrap", "domain/route/introduction", "domain/route/receiver", "domain/route/role", "durablefile", "pathcheck", "platform/processguard"},
 	"internal/domain/network":                             {},
 	"internal/domain/network/canonicalcursor":             {},
 	"internal/domain/network/closedprofile":               {"domain/network/canonicalcursor"},
@@ -63,7 +66,7 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/execution/worker":                    {"domain/endpoint/unit", "canonicaldigest", "pathcheck"},
 	"internal/domain/release/endpoint":                    {"domain/enrollment", "domain/release"},
 	"internal/domain/release/infrastructure":              {"canonicaldigest", "domain/enrollment", "domain/release", "pathcheck"},
-	"internal/domain/release/infrastructure/launch":       {"domain/admission/issuance", "canonicaldigest", "domain/node", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
+	"internal/domain/release/infrastructure/launch":       {"domain/admission/issuance", "canonicaldigest", "domain/node/plan", "domain/enrollment", "domain/network/source/serving", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/process", "platform/systemd", "domain/release", "domain/release/infrastructure"},
 	"internal/domain/endpoint/launch":                     {"domain/release/endpoint", "canonicaldigest", "durablefile", "domain/enrollment", "domain/release", "platform/cgroup", "platform/systemd", "platform/process", "domain/endpoint/generation", "domain/endpoint/unit", "domain/endpoint/plan"},
 	"internal/platform/cgroup":                            {"pathcheck"},
 	"internal/platform/artifacts":                         {"durablefile", "pathcheck"},
@@ -126,22 +129,19 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 		}
 	}
 
-	if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/domain/node" || dependency == modulePath+"/internal/platform/processguard") {
+	if source == "cmd/ardents-next/node_roles.go" && (dependency == modulePath+"/internal/platform/processguard") {
 		return true
 	}
-	if (source == "internal/domain/node/runtime_unix.go" || source == "internal/domain/node/runtime_other.go") && dependency == modulePath+"/internal/domain/admission/issuer" {
+	if (source == "internal/domain/node/runtime/start.go" || source == "internal/domain/node/runtime/start_other.go") && dependency == modulePath+"/internal/domain/admission/issuer" {
 		return true
 	}
-	if source == "internal/domain/node/issuer_unix.go" && (dependency == modulePath+"/internal/domain/admission/issuer" || dependency == modulePath+"/internal/domain/admission/quota" || dependency == modulePath+"/internal/domain/route/bootstrap") {
+	if source == "internal/domain/node/runtime/issuer_unix.go" && (dependency == modulePath+"/internal/domain/admission/issuer" || dependency == modulePath+"/internal/domain/admission/quota" || dependency == modulePath+"/internal/domain/route/bootstrap") {
 		return true
 	}
-	if source == "internal/domain/node/introduction_unix.go" && dependency == modulePath+"/internal/domain/route/introduction" {
+	if source == "internal/domain/node/runtime/introduction_unix.go" && dependency == modulePath+"/internal/domain/route/introduction" {
 		return true
 	}
-	if source == "internal/domain/node/descriptor_unix.go" && dependency == modulePath+"/internal/domain/reachability" {
-		return true
-	}
-	if source == "cmd/ardents-next/route_linux.go" && dependency == modulePath+"/internal/domain/node" {
+	if source == "internal/domain/node/runtime/descriptor_unix.go" && dependency == modulePath+"/internal/domain/reachability" {
 		return true
 	}
 	if source == "internal/domain/endpoint/document_command_installed_linux_test.go" {
