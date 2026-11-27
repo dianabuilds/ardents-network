@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 )
@@ -15,7 +16,7 @@ import (
 // can reach an accepted Attachment or another Application operation.
 type initiatorReplacement struct {
 	stream                     *Stream
-	ticket                     *recoveryProposal
+	ticket                     *transfer.RecoveryTicket
 	previous                   *attachmentRecords
 	ctx                        context.Context
 	cancel                     context.CancelFunc
@@ -53,7 +54,7 @@ func (stream *Stream) recoverInitiator(records *attachmentRecords) {
 			if stream.records != records {
 				return errIntegrity
 			}
-			if stream.recovery == nil || stream.recovery.stopped || stream.recovery.proposals >= recoveryProposalLimit || !time.Now().Before(stream.recovery.deadline) {
+			if stream.recovery == nil || !stream.recovery.CanRetry(time.Now()) {
 				return errors.Join(errRecoveryExhausted, last)
 			}
 			return nil
@@ -76,14 +77,14 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 		if stream.initiatorRoute == nil || stream.records != records || !records.retiring || stream.initiatorProposal != nil || stream.key == [32]byte{} || stream.recovery == nil {
 			return errIntegrity
 		}
-		ticket, err := stream.recovery.begin(records.generation, time.Now())
+		ticket, err := stream.recovery.Begin(records.generation, time.Now())
 		if err != nil {
 			return err
 		}
-		ctx, cancel := context.WithDeadline(stream.ctx, ticket.deadline)
+		ctx, cancel := context.WithDeadline(stream.ctx, ticket.Deadline())
 		proposal = &initiatorReplacement{stream: stream, ticket: ticket, previous: records, ctx: ctx, cancel: cancel,
 			interruptionDone: make(chan struct{}), prepared: make(chan struct{})}
-		if stream.recovery.proposals > 1 {
+		if ticket.IsRetry() {
 			proposal.slot = 1
 		}
 		stream.initiatorProposal = proposal
@@ -140,7 +141,7 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 	offsets := stream.transfer.ReplayOffsets()
 	sendBase, sendEnd, receiveNext := offsets.SendBase, offsets.SendEnd, offsets.ReceiveNext
 	stream.mu.Unlock()
-	local, err := wire.NewContinuity(key, wire.RoleInitiator, ticket.generation, sendBase, sendEnd, receiveNext, stream.owner.logical, exporter)
+	local, err := wire.NewContinuity(key, wire.RoleInitiator, ticket.Generation(), sendBase, sendEnd, receiveNext, stream.owner.logical, exporter)
 	if err != nil {
 		return nil, err
 	}
@@ -160,16 +161,16 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 	if record.Continuity == nil || record.Continuity.Nonce == local.Nonce {
 		return nil, proposal.failIntegrity(nil)
 	}
-	receipt, err := wire.VerifyReplacement(evidence, key, *record.Continuity, wire.RolePublisher, ticket.generation, stream.owner.logical)
+	receipt, err := wire.VerifyReplacement(evidence, key, *record.Continuity, wire.RolePublisher, ticket.Generation(), stream.owner.logical)
 	if err != nil {
 		return nil, proposal.failIntegrity(err)
 	}
-	peer, err := receipt.Consume(evidence, wire.RolePublisher, ticket.generation, stream.owner.logical, wire.ContinuityCommitment(key))
+	peer, err := receipt.Consume(evidence, wire.RolePublisher, ticket.Generation(), stream.owner.logical, wire.ContinuityCommitment(key))
 	if err != nil {
 		return nil, proposal.failIntegrity(err)
 	}
 	stream.mu.Lock()
-	err = stream.transfer.CheckReplacement(ticket.generation, peer)
+	err = stream.transfer.CheckReplacement(ticket.Generation(), peer)
 	stream.mu.Unlock()
 	if err != nil {
 		return nil, proposal.failIntegrity(err)
@@ -190,7 +191,7 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 func (proposal *initiatorReplacement) check() error {
 	stream := proposal.stream
 	return stream.commit(func() error {
-		if proposal.closed || stream.initiatorProposal != proposal || stream.recovery == nil || !stream.recovery.owns(proposal.ticket) || !time.Now().Before(proposal.ticket.deadline) {
+		if proposal.closed || stream.initiatorProposal != proposal || stream.recovery == nil || !stream.recovery.Owns(proposal.ticket) || !time.Now().Before(proposal.ticket.Deadline()) {
 			return errRecoveryExhausted
 		}
 		return proposal.ctx.Err()
@@ -240,7 +241,7 @@ func (proposal *initiatorReplacement) close() error {
 			}
 		}
 		stream.mu.Lock()
-		proposal.closeErr = stream.recovery.reject(proposal.ticket, errors.Join(proposal.failure, proposal.ctx.Err(), proposal.interruptErr, retirement, physical))
+		proposal.closeErr = stream.recovery.Reject(proposal.ticket, errors.Join(proposal.failure, proposal.ctx.Err(), proposal.interruptErr, retirement, physical))
 		stream.recoveryCleanup = errors.Join(stream.recoveryCleanup, physical)
 		if stream.initiatorProposal == proposal {
 			stream.initiatorProposal = nil

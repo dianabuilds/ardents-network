@@ -45,7 +45,7 @@ type Stream struct {
 	closeErr          error
 	cleanupErr        error
 	lastProgress      time.Time
-	recovery          *recoveryEpisode
+	recovery          *transfer.RecoveryEpisode
 	publisherProposal *PublisherReplacement
 	initiatorProposal *initiatorReplacement
 	prepareUsers      sync.WaitGroup

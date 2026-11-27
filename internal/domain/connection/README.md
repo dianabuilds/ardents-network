@@ -21,7 +21,9 @@ initial/recovery authentication вне соответствующей фазы.
 производитель canonical logical/Attachment commitments для привязки и Instance.
 `transfer/send_ledger.go` удерживает bounded suffix и исходные counters между
 Attachment, `transfer/terminal_exchange.go` — причинный порядок Terminal/receipt/confirmation,
-`recovery_episode.go` — конечное число proposals и исходный предел episode.
+`transfer/recovery_episode.go` ведёт исходный дедлайн и одноразовый билет каждой
+попытки. `stream_replacement.go` проверяет полномочия, дожидается завершения
+старых обработчиков и устанавливает новый Attachment.
 Эти механизмы требуют внешней сериализации и настоящих проверок владельцев;
 их unit fixtures не являются Service readiness или физическим join.
 Linux `make route-check` включает весь Connection вместе с соседними доменами
@@ -162,7 +164,7 @@ transcript commitments. `publisher_binding.go` хранит эти неизме�
 | Сценарий | Вход и эффект | Проверка |
 | --- | --- | --- |
 | Первое подключение | `endpoint/reader` вызывает `InitiatorSource.OpenStream`. `publication/runtime.NextStream` вызывает `NextAuthentication` и `OpenPublisherStream`. `openStream` потребляет initial state однократно и запускает пару обработчиков. | `initiator_source_test.go` проверяет общий setup, `instance_tls_test.go` — точный Instance. `TestInstalledDocumentCommandsThroughJoinedNetworkTCP` проходит через оба командных адаптера. |
-| Замена Attachment | Reader начинает восстановление при потере своего поколения, Publisher направляет fresh recipient в `PreparePublisherReplacement`. `stream_replacement.go` дожидается прежней пары и меняет поколение и replay под `Stream.mu`. | `recovery_episode_test.go`, `publisher_replacement_test.go` и `transfer/replacement_test.go` проверяют исходный срок, отзыв caller и rollback. `TestInstalledConnectionStreamTCP` проверяет замену после потери настоящего Rendezvous. |
+| Замена Attachment | Reader начинает восстановление при потере своего поколения, Publisher направляет fresh recipient в `PreparePublisherReplacement`. `stream_replacement.go` дожидается прежней пары и меняет поколение и replay под `Stream.mu`. | `transfer/recovery_episode_test.go`, `publisher_replacement_test.go` и `transfer/replacement_test.go` проверяют исходный срок, отзыв caller и rollback. `TestInstalledConnectionStreamTCP` проверяет замену после потери настоящего Rendezvous. |
 | Завершение | Reader закрывает Source, Publisher дожидается удерживаемых Connections. `stream_retirement.go` под тем же mutex закрывает вход эффектов и публикует исход после join. | `stream_retirement_test.go` проверяет отзыв, Terminal текущего поколения и неполный хвост. `TestInstalledConnectionWithdrawalTCP` проверяет отзыв через Publisher и физическое завершение обеих ролей. |
 
 **Вопрос домена:** как один аутентифицированный логический поток сохраняет идентичность?

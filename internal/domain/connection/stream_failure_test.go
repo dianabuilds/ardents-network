@@ -12,3 +12,11 @@ func TestStreamFailureReasonRetainsOriginalLossWithoutPrivateError(t *testing.T)
 		t.Fatal(got)
 	}
 }
+
+func TestRecoveryFailureKeepsOriginalAttachmentCause(t *testing.T) {
+	original := errors.New("original attachment refused")
+	err := recoveryFailure(original, errRecoveryExhausted)
+	if !errors.Is(err, original) || !errors.Is(err, errRecoveryExhausted) {
+		t.Fatal(err)
+	}
+}

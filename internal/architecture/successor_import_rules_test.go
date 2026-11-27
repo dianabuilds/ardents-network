@@ -92,7 +92,9 @@ func successorImportAllowed(source, dependency string) bool {
 		switch source {
 		case "internal/domain/connection/stream.go", "internal/domain/connection/stream_failure.go",
 			"internal/domain/connection/stream_io.go", "internal/domain/connection/stream_records.go",
-			"internal/domain/connection/attachment_records_test.go", "internal/domain/connection/stream_retirement_test.go":
+			"internal/domain/connection/attachment_records_test.go", "internal/domain/connection/stream_retirement_test.go",
+			"internal/domain/connection/initiator_replacement.go", "internal/domain/connection/publisher_replacement.go",
+			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go":
 			return true
 		default:
 			return false

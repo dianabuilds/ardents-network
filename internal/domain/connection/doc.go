@@ -24,7 +24,8 @@
 // Responder scopes. stream_replacement.go owns both roles' common transition
 // from failed actor pair to installed generation. Its commit checks the old
 // pair joined before changing the active Attachment and replay state under
-// Stream.mu. recovery_episode.go keeps the original deadline and proposal limit.
+// Stream.mu. transfer/recovery_episode.go keeps the original deadline and
+// proposal limit while the Stream joins and installs the physical Attachment.
 //
 // Completion. Reader Source retirement and Publisher runtime retirement both
 // reach stream_retirement.go. Stop seals effects immediately. Close joins

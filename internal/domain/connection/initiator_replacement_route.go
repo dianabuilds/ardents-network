@@ -37,7 +37,7 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 		defer close(proposal.interruptionDone)
 		proposal.interruptErr = acquisition.Close()
 	})
-	lookupEnd := proposal.ticket.deadline.UTC().Truncate(time.Second)
+	lookupEnd := proposal.ticket.Deadline().UTC().Truncate(time.Second)
 	candidate, err := handle.LookupDescriptor(proposal.ctx, lookupEnd, source.target, source.config.History, source.config.Exclusions)
 	if err != nil {
 		return nil, nil, fmt.Errorf("connection replacement Descriptor lookup: %w", err)
@@ -83,7 +83,7 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 	}
 	request := capsule.Request{Network: identity.Network, Target: identity.Target, PublicationDigest: identity.Publication,
 		Revision: descriptor.Introduction.Revision, RendezvousNode: rendezvous.NodeID, RendezvousDutyGeneration: rendezvous.RecordGeneration,
-		ProfileDigest: identity.Profile, AttachmentGeneration: proposal.ticket.generation, Deadline: setupEnd,
+		ProfileDigest: identity.Profile, AttachmentGeneration: proposal.ticket.Generation(), Deadline: setupEnd,
 		ConnectionNonce: identity.ConnectionNonce, InitiatorBinding: identity.InitiatorBinding,
 		WorkSafetyNotAfter: identity.WorkSafetyNotAfter, WorkSafetyMaximum: identity.WorkSafetyMaximum, NoNewRecoveryAfter: identity.NoNewRecoveryAfter}
 	defer clear(request.JoinSecret[:])
@@ -97,7 +97,7 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 	if err != nil {
 		return nil, nil, err
 	}
-	derived, err := deriveRecipientGeneration(descriptor.Publication, identity.Profile, request, digest, source.config.WorkSafetyMaximum, time.Now(), proposal.ticket.generation, identity.Application)
+	derived, err := deriveRecipientGeneration(descriptor.Publication, identity.Profile, request, digest, source.config.WorkSafetyMaximum, time.Now(), proposal.ticket.Generation(), identity.Application)
 	if err != nil || derived.identity != identity || derived.logical != stream.owner.logical {
 		return nil, nil, errors.Join(errIntegrity, err)
 	}
