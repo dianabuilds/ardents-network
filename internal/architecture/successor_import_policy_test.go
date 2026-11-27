@@ -184,6 +184,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Connection framing cannot borrow Source", "internal/domain/connection/recordio/stream_read.go", modulePath + "/internal/domain/route/prefix", false},
 		{"Publication scheduler cannot read Connection framing directly", "internal/domain/publication/runtime/scheduler.go", modulePath + "/internal/domain/connection/recordio", false},
 		{"Stream retains ordered transfer state", "internal/domain/connection/stream.go", modulePath + "/internal/domain/connection/transfer", true},
+		{"Stream replacement owns the recovery episode", "internal/domain/connection/stream_replacement.go", modulePath + "/internal/domain/connection/transfer", true},
+		{"Recovery accounting cannot borrow a Route", "internal/domain/connection/transfer/recovery_episode.go", modulePath + "/internal/domain/route/join", false},
 		{"Publisher cannot acquire transfer bookkeeping directly", "internal/domain/publication/runtime/publisher.go", modulePath + "/internal/domain/connection/transfer", false},
 		{"Connection transfer does not borrow Instance", "internal/domain/connection/transfer/stream_state.go", modulePath + "/internal/domain/publication/instance", false},
 		{"Connection ledger cannot choose Source", "internal/domain/connection/transfer/receive_ledger.go", modulePath + "/internal/domain/route/prefix", false},

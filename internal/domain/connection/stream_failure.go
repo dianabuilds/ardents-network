@@ -10,7 +10,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 )
 
-var errIntegrity = transfer.ErrIntegrity
+var (
+	errIntegrity         = transfer.ErrIntegrity
+	errRecoveryExhausted = transfer.ErrRecoveryExhausted
+)
 
 // StreamFailureReason projects fixed Connection failure categories. It omits
 // transport addresses, destinations, authority and detailed child errors.

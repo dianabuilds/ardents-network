@@ -3,6 +3,8 @@ package connection
 import (
 	"errors"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 )
 
 // Stream.mu admits one original interruption/join and clock for both physical
@@ -19,17 +21,17 @@ func (stream *Stream) startRecoveryLocked(records *attachmentRecords, cause erro
 	}
 	if stream.recovery == nil {
 		var err error
-		stream.recovery, err = newRecoveryEpisode(records.generation, stream.lastProgress, time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
+		stream.recovery, err = transfer.NewRecoveryEpisode(records.generation, stream.lastProgress, time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
 		if err != nil {
 			return err
 		}
 	}
-	if err := stream.recovery.start(records.generation, time.Now()); err != nil {
+	if err := stream.recovery.Start(records.generation, time.Now()); err != nil {
 		return err
 	}
 	records.recoveryCause = cause
 	records.retiring = true
-	deadline := stream.recovery.deadline
+	deadline := stream.recovery.Deadline()
 	stream.recoveryUsers.Add(1)
 	stream.signalLocked()
 	go stream.joinFailedAttachment(records, deadline)
@@ -101,7 +103,7 @@ func (proposal *initiatorReplacement) commit() (result error) {
 		source.mu.Lock()
 		defer source.mu.Unlock()
 		if proposal.closed || proposal.transferred || proposal.failure != nil || stream.initiatorProposal != proposal ||
-			stream.records != proposal.previous || stream.recovery == nil || !stream.recovery.owns(proposal.ticket) ||
+			stream.records != proposal.previous || stream.recovery == nil || !stream.recovery.Owns(proposal.ticket) ||
 			stream.closing || stream.ctx.Err() != nil || source.owner != stream.owner || source.stream != stream ||
 			proposal.attachment.binding.revision < stream.recipientRevision || !stream.transfer.CanReplace() {
 			return errIntegrity
@@ -112,7 +114,7 @@ func (proposal *initiatorReplacement) commit() (result error) {
 			return errIntegrity
 		}
 		now := time.Now()
-		if !now.Before(proposal.ticket.deadline) || !now.Before(proposal.attachment.binding.expires) || !now.Before(proposal.attachment.binding.recipientEnd) {
+		if !now.Before(proposal.ticket.Deadline()) || !now.Before(proposal.attachment.binding.expires) || !now.Before(proposal.attachment.binding.recipientEnd) {
 			return errRecoveryExhausted
 		}
 		if err := errors.Join(checkOriginal(), source.localLocked(), proposal.ctx.Err(), stream.owner.context().Err()); err != nil {
@@ -130,11 +132,11 @@ func (proposal *initiatorReplacement) commit() (result error) {
 		if _, _, err := stream.contract.Limits(stream.owner.operation); err != nil {
 			return err
 		}
-		nextTransfer, err := stream.transfer.PrepareReplacement(proposal.ticket.generation, proposal.peer)
+		nextTransfer, err := stream.transfer.PrepareReplacement(proposal.ticket.Generation(), proposal.peer)
 		if err != nil {
 			return err
 		}
-		if err := stream.recovery.commit(proposal.ticket, now); err != nil {
+		if err := stream.recovery.Commit(proposal.ticket, now); err != nil {
 			nextTransfer.Discard()
 			return err
 		}
@@ -142,7 +144,7 @@ func (proposal *initiatorReplacement) commit() (result error) {
 		stream.recipientRevision = proposal.attachment.binding.revision
 		// Logical provenance stays with the immutable original authentication;
 		// the new record owner retains this exact physical child through Close.
-		next := &attachmentRecords{generation: proposal.ticket.generation,
+		next := &attachmentRecords{generation: proposal.ticket.Generation(),
 			physical:   attachmentIO{owner: stream.owner, initiator: proposal.attachment, context: proposal.attachment.binding.attachment},
 			readerDone: make(chan struct{}), writerDone: make(chan struct{}), retired: make(chan struct{}), replaced: make(chan struct{})}
 		stream.records = next
@@ -212,17 +214,17 @@ func (proposal *PublisherReplacement) Commit() (result error) {
 		}
 		// Prepare all next state without trimming the live replay allocation.
 		// None of the three ledger transitions can leave a partial generation.
-		nextTransfer, err := stream.transfer.PrepareReplacement(proposal.ticket.generation, proposal.peer)
+		nextTransfer, err := stream.transfer.PrepareReplacement(proposal.ticket.Generation(), proposal.peer)
 		if err != nil {
 			return err
 		}
-		if err := stream.recovery.commit(proposal.ticket, time.Now()); err != nil {
+		if err := stream.recovery.Commit(proposal.ticket, time.Now()); err != nil {
 			nextTransfer.Discard()
 			return err
 		}
 		nextTransfer.Commit()
 		stream.recipientRevision = proposal.revision
-		next := &attachmentRecords{generation: proposal.ticket.generation,
+		next := &attachmentRecords{generation: proposal.ticket.Generation(),
 			physical:   attachmentIO{owner: stream.owner, service: proposal.service, context: proposal.attachment},
 			readerDone: make(chan struct{}), writerDone: make(chan struct{}), retired: make(chan struct{}), replaced: make(chan struct{})}
 		stream.records = next
@@ -251,8 +253,8 @@ func (proposal *PublisherReplacement) checkCommitStateLocked() error {
 	stream := proposal.stream
 	if proposal.closed || proposal.transferred || proposal.failure != nil || proposal.service == nil || proposal.previous == nil ||
 		proposal.revision < stream.recipientRevision || proposal.revision == 0 ||
-		stream.publisherProposal != proposal || stream.records != proposal.previous || stream.recovery == nil || !stream.recovery.owns(proposal.ticket) ||
-		proposal.opening == nil || !stream.transfer.CanReplace() || !time.Now().Before(proposal.ticket.deadline) {
+		stream.publisherProposal != proposal || stream.records != proposal.previous || stream.recovery == nil || !stream.recovery.Owns(proposal.ticket) ||
+		proposal.opening == nil || !stream.transfer.CanReplace() || !time.Now().Before(proposal.ticket.Deadline()) {
 		return errIntegrity
 	}
 	select {
@@ -270,5 +272,5 @@ func (proposal *PublisherReplacement) checkCommitStateLocked() error {
 		return err
 	}
 	return errors.Join(proposal.ctx.Err(), stream.owner.context().Err(),
-		stream.transfer.CheckReplacement(proposal.ticket.generation, proposal.peer))
+		stream.transfer.CheckReplacement(proposal.ticket.Generation(), proposal.peer))
 }

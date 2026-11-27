@@ -95,7 +95,7 @@ func (stream *Stream) retire() {
 		}
 		stream.closing = true
 		if stream.recovery != nil {
-			stream.recovery.stop()
+			stream.recovery.Stop()
 		}
 		proposal := stream.publisherProposal
 		initiatorProposal := stream.initiatorProposal
@@ -180,7 +180,7 @@ func (stream *Stream) Stop() {
 	stream.mu.Lock()
 	stream.closing = true
 	if stream.recovery != nil {
-		stream.recovery.stop()
+		stream.recovery.Stop()
 	}
 	stream.cancel()
 	stream.signalLocked()

@@ -219,6 +219,6 @@ func (stream *Stream) noteRecordProgressLocked(before transfer.Progress) {
 	at := time.Now()
 	stream.lastProgress = at
 	if stream.recovery != nil {
-		stream.recovery.progress(at)
+		stream.recovery.Progress(at)
 	}
 }

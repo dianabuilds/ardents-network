@@ -5,6 +5,9 @@ import (
 	"errors"
 	"testing"
 	"testing/synctest"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 )
 
 // This isolates callback retirement and cancellation, without constructing an
@@ -37,8 +40,12 @@ func TestPublisherCommitRetainsCallerAfterSetupCallbackJoin(t *testing.T) {
 // It isolates original callback join and ticket retirement, never Service I/O.
 func TestPublisherRejectionJoinsCallbackPublishedDuringPreparation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		episode, started := recoveryFixture(t)
-		ticket, err := episode.begin(1, started)
+		started := time.Now()
+		episode, err := transfer.NewRecoveryEpisode(1, started, started.Add(time.Minute))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ticket, err := episode.Begin(1, started)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,15 +80,18 @@ func TestPublisherRejectionJoinsCallbackPublishedDuringPreparation(t *testing.T)
 			t.Fatalf("rejection retired before its published callback joined: %v", err)
 		default:
 		}
-		if ticket.consumed || episode.active != ticket {
+		if !episode.Owns(ticket) {
 			t.Fatal("unjoined callback released the original proposal")
 		}
 		close(finishInterruption)
 		if err := <-result; !errors.Is(err, context.Canceled) {
 			t.Fatalf("rejection lost original cancellation: %v", err)
 		}
-		if !ticket.consumed || episode.active != nil {
+		if episode.Owns(ticket) {
 			t.Fatal("joined rejection did not retire its exact ticket")
+		}
+		if _, err := episode.Begin(1, started); err != nil {
+			t.Fatalf("joined rejection still holds the proposal slot: %v", err)
 		}
 	})
 }

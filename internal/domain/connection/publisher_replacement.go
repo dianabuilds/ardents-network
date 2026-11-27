@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
@@ -17,7 +18,7 @@ import (
 type PublisherReplacement struct {
 	self                                   *PublisherReplacement
 	stream                                 *Stream
-	ticket                                 *recoveryProposal
+	ticket                                 *transfer.RecoveryTicket
 	service                                *instance.ServiceAttachment // Stream.mu publishes ownership.
 	physical                               *join.Joined
 	acquisition                            *join.Acquisition
@@ -63,16 +64,16 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 		}
 		if stream.recovery == nil {
 			var err error
-			stream.recovery, err = newRecoveryEpisode(stream.transfer.Generation(), stream.lastProgress, time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
+			stream.recovery, err = transfer.NewRecoveryEpisode(stream.transfer.Generation(), stream.lastProgress, time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
 			if err != nil {
 				return err
 			}
 		}
-		ticket, err := stream.recovery.begin(stream.transfer.Generation(), time.Now())
+		ticket, err := stream.recovery.Begin(stream.transfer.Generation(), time.Now())
 		if err != nil {
 			return err
 		}
-		child, cancel := context.WithDeadline(stream.ctx, ticket.deadline)
+		child, cancel := context.WithDeadline(stream.ctx, ticket.Deadline())
 		proposal = &PublisherReplacement{stream: stream, ticket: ticket, opening: opening, ctx: child, caller: ctx, cancel: cancel,
 			callerDone: make(chan struct{}), interruptionDone: make(chan struct{}), prepared: make(chan struct{})}
 		proposal.self = proposal
@@ -102,7 +103,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	}
 	check := func() error {
 		return stream.commit(func() error {
-			if proposal.closed || stream.publisherProposal != proposal || stream.recovery.active != ticket || !time.Now().Before(ticket.deadline) {
+			if proposal.closed || stream.publisherProposal != proposal || !stream.recovery.Owns(ticket) || !time.Now().Before(ticket.Deadline()) {
 				return errRecoveryExhausted
 			}
 			return errors.Join(ctx.Err(), child.Err())
@@ -125,7 +126,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	stream.mu.Lock()
 	revision := stream.recipientRevision
 	stream.mu.Unlock()
-	if request.AttachmentGeneration != ticket.generation || request.Revision < revision {
+	if request.AttachmentGeneration != ticket.Generation() || request.Revision < revision {
 		return nil, errIntegrity
 	}
 	// Each peer anchors recovery to its own authenticated progress. Their
@@ -183,7 +184,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	stream.mu.Lock()
 	proposal.service = service
 	stream.mu.Unlock()
-	_, proposal.attachment, err = wire.Contexts(stream.owner.identity, digest, ticket.generation)
+	_, proposal.attachment, err = wire.Contexts(stream.owner.identity, digest, ticket.Generation())
 	if err != nil {
 		return nil, err
 	}
@@ -210,11 +211,11 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	if record.Continuity == nil {
 		return nil, violation(nil)
 	}
-	receipt, err := wire.VerifyReplacement(evidence, key, *record.Continuity, wire.RoleInitiator, ticket.generation, stream.owner.logical)
+	receipt, err := wire.VerifyReplacement(evidence, key, *record.Continuity, wire.RoleInitiator, ticket.Generation(), stream.owner.logical)
 	if err != nil {
 		return nil, violation(err)
 	}
-	peer, err := receipt.Consume(evidence, wire.RoleInitiator, ticket.generation, stream.owner.logical, wire.ContinuityCommitment(key))
+	peer, err := receipt.Consume(evidence, wire.RoleInitiator, ticket.Generation(), stream.owner.logical, wire.ContinuityCommitment(key))
 	if err != nil {
 		return nil, violation(err)
 	}
@@ -237,7 +238,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	}
 	var sendBase, sendEnd, receiveNext uint64
 	err = stream.commit(func() error {
-		if err := stream.transfer.CheckReplacement(ticket.generation, peer); err != nil {
+		if err := stream.transfer.CheckReplacement(ticket.Generation(), peer); err != nil {
 			return err
 		}
 		offsets := stream.transfer.ReplayOffsets()
@@ -251,7 +252,7 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 		return nil, err
 	}
 	_, exporter := evidence.Secrets() // Its fresh key is deliberately not used.
-	local, err := wire.NewContinuity(key, wire.RolePublisher, ticket.generation, sendBase, sendEnd, receiveNext, stream.owner.logical, exporter)
+	local, err := wire.NewContinuity(key, wire.RolePublisher, ticket.Generation(), sendBase, sendEnd, receiveNext, stream.owner.logical, exporter)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +327,7 @@ func (proposal *PublisherReplacement) Close() error {
 		}
 		stream.mu.Lock()
 		failure := errors.Join(proposal.failure, proposal.ctx.Err(), proposal.interruptErr, retirement, physical)
-		proposal.closeErr = stream.recovery.reject(proposal.ticket, failure)
+		proposal.closeErr = stream.recovery.Reject(proposal.ticket, failure)
 		stream.recoveryCleanup = errors.Join(stream.recoveryCleanup, physical)
 		if stream.publisherProposal == proposal {
 			stream.publisherProposal = nil

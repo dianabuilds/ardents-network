@@ -21,7 +21,9 @@ initial/recovery authentication вне соответствующей фазы.
 производитель canonical logical/Attachment commitments для привязки и Instance.
 `transfer/send_ledger.go` удерживает bounded suffix и исходные counters между
 Attachment, `transfer/terminal_exchange.go` — причинный порядок Terminal/receipt/confirmation,
-`recovery_episode.go` — конечное число proposals и исходный предел episode.
+`transfer/recovery_episode.go` ведёт исходный дедлайн и одноразовый билет каждой
+попытки. `stream_replacement.go` проверяет полномочия, дожидается завершения
+старых обработчиков и устанавливает новый Attachment.
 Эти механизмы требуют внешней сериализации и настоящих проверок владельцев;
 их unit fixtures не являются Service readiness или физическим join.
 Linux `make route-check` включает весь Connection вместе с соседними доменами
