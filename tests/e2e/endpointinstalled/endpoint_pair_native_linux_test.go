@@ -82,7 +82,7 @@ func pairRunLaunchQualification(t *testing.T, guest *endpointfixture.PairGuest, 
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 6*time.Minute)
 	defer cancel()
-	script := fmt.Sprintf("cd %s && go test -tags=endpoint_launch_native -run '^TestNativeEndpointPlatformLedLaunch' -count=1 -v ./tests/e2e/endpoint", repoRoot)
+	script := fmt.Sprintf("cd %s && go test -tags=endpoint_launch_native -run '^TestNativeEndpointPlatformLedLaunch' -count=1 -v ./tests/e2e/endpointinstalled", repoRoot)
 	cmd := exec.CommandContext(ctx, "systemd-run", "-M", guest.Name(), "--pipe", "--quiet",
 		"--setenv=PATH="+filepath.Join(endpointfixture.GoEnv(t, "GOROOT"), "bin")+":/usr/sbin:/usr/bin:/sbin:/bin",
 		"--setenv=GOTOOLCHAIN=local",
