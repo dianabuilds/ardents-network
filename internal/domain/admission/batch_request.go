@@ -33,7 +33,7 @@ type ClosedTokenBatchRequest struct {
 	RequestID       [32]byte
 	Class           uint8
 	WindowStart     time.Time
-	SPKI            [346]byte
+	SPKI            [issuerprofile.TokenSPKISize]byte
 	BlindedRequests [][]byte
 	Signature       [ed25519.SignatureSize]byte
 }
@@ -210,7 +210,7 @@ func ValidTokenElement(encoded []byte, public *rsa.PublicKey) bool {
 
 // TokenBatchBaseSize is the framing width excluding blinded elements.
 func TokenBatchBaseSize() int {
-	return len(closedTokenBatchMagic) + PermissionSize + 32 + 1 + 8 + 346 + 2 + ed25519.SignatureSize
+	return len(closedTokenBatchMagic) + PermissionSize + 32 + 1 + 8 + issuerprofile.TokenSPKISize + 2 + ed25519.SignatureSize
 }
 
 // ErrBatchSignature distinguishes holder proof from malformed batch fields.

@@ -28,13 +28,16 @@ type keySubject struct {
 	Public    asn1.BitString
 }
 
+// TokenSPKISize is the byte length of the canonical RSA-PSS token public key.
+const TokenSPKISize = 346
+
 // ErrTokenSPKI is the refusal for a key outside the canonical token grammar.
 var ErrTokenSPKI = errors.New("closed token SPKI is not canonical")
 
 // ParseKey accepts only the selected canonical RSA-PSS public encoding.
 // It preserves key identity rather than normalizing admitted bytes.
 func ParseKey(raw []byte) (*rsa.PublicKey, error) {
-	if len(raw) != 346 {
+	if len(raw) != TokenSPKISize {
 		return nil, ErrTokenSPKI
 	}
 	var subject keySubject

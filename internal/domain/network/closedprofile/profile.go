@@ -201,7 +201,7 @@ func decodeKeys(d *canonicalcursor.Decoder, profile *Profile) error {
 			return errors.New("closed profile key class is invalid")
 		}
 		length, readErr := d.Uint16()
-		if readErr != nil || length != 346 {
+		if readErr != nil || length != issuerprofile.TokenSPKISize {
 			return errors.New("closed profile key length is invalid")
 		}
 		key.SPKI, err = d.Bytes(int(length))

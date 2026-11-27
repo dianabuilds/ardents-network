@@ -117,7 +117,7 @@ func Inspect(raw []byte, expected PublicPins) (Inspection, error) {
 	keys := make([]Key, 0, count)
 	for i := range count {
 		off := 90 + i*357
-		if binary.BigEndian.Uint16(body[off+9:off+11]) != 346 {
+		if binary.BigEndian.Uint16(body[off+9:off+11]) != TokenSPKISize {
 			return Inspection{}, ErrInvalid
 		}
 		keys = append(keys, Key{Window: binary.BigEndian.Uint64(body[off : off+8]), Class: body[off+8], SPKI: append([]byte(nil), body[off+11:off+357]...)})
