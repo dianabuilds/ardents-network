@@ -12,7 +12,7 @@ import (
 func TestInitialGenerationMatchesIndependentBytes(t *testing.T) {
 	// These literal fragments describe the v1 wire format independently of
 	// the production structs and JSON encoder.
-	const zeroID = "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]"
+	const zeroID = "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]"
 	const networkID = "[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]"
 	const member = `{"NodeID":` + zeroID + `,"PublicKey":` + zeroID +
 		`,"FamilyID":` + zeroID + `,"RecordDigest":` + zeroID +
