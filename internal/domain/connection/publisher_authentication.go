@@ -32,7 +32,7 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 		return nil, err
 	}
 	logicalContext, cancelLogical := context.WithCancel(lease.Context())
-	owner := &AuthenticatedAttachment{role: wire.RolePublisher, operation: operation, service: service, lease: lease, identity: binding.identity, logical: binding.logical, attachment: binding.attachment, recipientRevision: binding.revision, publisherJoin: physical,
+	owner := &AuthenticatedAttachment{role: wire.RolePublisher, operation: operation, service: service, lease: lease, identity: binding.facts.Identity, logical: binding.facts.Logical, attachment: binding.facts.Attachment, recipientRevision: binding.facts.Revision, publisherJoin: physical,
 		logicalContext: logicalContext, cancelLogical: cancelLogical}
 	owner.self = owner
 	defer func() {
@@ -61,7 +61,7 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 		// BeginService constructs both handles together. Service identity
 		// checking fully observes its same original lease, then matches this
 		// immutable logical and Attachment tuple before returning.
-		return service.CheckIdentity(binding.identity, binding.logical, binding.attachment)
+		return service.CheckIdentity(binding.facts.Identity, binding.facts.Logical, binding.facts.Attachment)
 	}
 	if err := check(); err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 	if second.Continuity == nil {
 		return nil, errIntegrity
 	}
-	expected := wire.Challenge{Network: binding.identity.Network, Target: binding.identity.Target, InstanceGeneration: binding.identity.InstanceGeneration, Context: binding.logical}
+	expected := wire.Challenge{Network: binding.facts.Identity.Network, Target: binding.facts.Identity.Target, InstanceGeneration: binding.facts.Identity.InstanceGeneration, Context: binding.facts.Logical}
 	receipt, err := wire.VerifyInitialRequest(evidence, expected, *first.Challenge, *second.Continuity)
 	if err != nil {
 		return nil, err
@@ -114,11 +114,11 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 	}
 	key, exporter := evidence.Secrets()
 	defer clear(key[:])
-	continuity, err := wire.NewContinuity(key, wire.RolePublisher, 1, 0, 0, 0, binding.logical, exporter)
+	continuity, err := wire.NewContinuity(key, wire.RolePublisher, 1, 0, 0, 0, binding.facts.Logical, exporter)
 	if err != nil {
 		return nil, err
 	}
-	response, err := wire.NewInitialResponse(receipt, binding.identity.Instance, proof, continuity)
+	response, err := wire.NewInitialResponse(receipt, binding.facts.Identity.Instance, proof, continuity)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 		return nil, err
 	}
 	joinCaller()
-	if err := errors.Join(ctx.Err(), operation.CheckPublisher(), service.CheckIdentity(binding.identity, binding.logical, binding.attachment)); err != nil {
+	if err := errors.Join(ctx.Err(), operation.CheckPublisher(), service.CheckIdentity(binding.facts.Identity, binding.facts.Logical, binding.facts.Attachment)); err != nil {
 		return nil, err
 	}
 	owner.mu.Lock()

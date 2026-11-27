@@ -158,8 +158,8 @@ func TestSuccessorConnectionControlProfileSelectsOriginalWriteSites(t *testing.T
 	}{
 		{"internal/domain/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteBeforeLine", "enter", false},
 		{"internal/domain/publication/instance/service_attachment.go", "ServiceAttachment", "connectionPublisherControlWriteAfterLine", "recheck", true},
-		{"internal/domain/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteBeforeLine", "enter", false},
-		{"internal/domain/connection/initiator_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteAfterLine", "check", true},
+		{"internal/domain/connection/reader_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteBeforeLine", "enter", false},
+		{"internal/domain/connection/reader_attachment.go", "initiatorAttachment", "connectionInitiatorControlWriteAfterLine", "check", true},
 	} {
 		file, err := parser.ParseFile(set, filepath.Join(root, site.path), nil, 0)
 		if err != nil {
