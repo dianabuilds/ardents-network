@@ -17,7 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	nodeadmission "github.com/dianabuilds/ardents-network/internal/domain/node/admission"
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
@@ -149,9 +149,9 @@ func RunRouteReceive(ctx context.Context, args []string, out, diagnostic io.Writ
 			}
 		}()
 	}
-	var descriptorStore *reachability.Store
+	var descriptorStore *descriptorstore.Store
 	if resolutionDuty {
-		descriptorStore, err = reachability.OpenStore(reachability.StoreConfig{Root: plan.DescriptorRoot, Network: p.Network})
+		descriptorStore, err = descriptorstore.Open(descriptorstore.Config{Root: plan.DescriptorRoot, Network: p.Network})
 		if err != nil {
 			return 1
 		}

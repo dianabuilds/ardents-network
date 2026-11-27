@@ -1,6 +1,6 @@
 //go:build linux || darwin || windows
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -14,15 +14,17 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 // Delaying a foreign observation must not hold the Store state lock. Close,
 // however, must retain the original lease until that publication has returned.
 func TestStoreForeignObservationDoesNotLockStateAndCloseJoins(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +60,7 @@ func TestStoreForeignObservationDoesNotLockStateAndCloseJoins(t *testing.T) {
 		t.Error("Close returned before original observer joined", err)
 	case <-time.After(20 * time.Millisecond):
 	}
-	if other, err := reachability.OpenStore(config); err == nil {
+	if other, err := descriptorstore.Open(config); err == nil {
 		t.Error("Close released original lease before publication join")
 		_ = other.Close()
 	}
@@ -72,7 +74,7 @@ func TestStoreForeignObservationDoesNotLockStateAndCloseJoins(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Error(err)
 	}
-	other, err := reachability.OpenStore(config)
+	other, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,10 +87,10 @@ func TestStoreForeignObservationDoesNotLockStateAndCloseJoins(t *testing.T) {
 func TestStoreOriginalCustodyLossCannotReviveAfterRestoration(t *testing.T) {
 	for _, object := range []string{"root", "records", ".ardents-reachability-store-v3", "record"} {
 		t.Run(object, func(t *testing.T) {
-			raw, target, network, profile, at := signedDescriptor(3)
+			raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 			root := filepath.Join(t.TempDir(), "store")
-			config := reachability.StoreConfig{Root: root, Network: network}
-			store, err := reachability.OpenStore(config)
+			config := descriptorstore.Config{Root: root, Network: network}
+			store, err := descriptorstore.Open(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -136,13 +138,13 @@ func TestStoreOriginalCustodyLossCannotReviveAfterRestoration(t *testing.T) {
 			if _, _, err := store.Lookup(target, profile, at); !errors.Is(err, first) {
 				t.Fatal("failed original returned proof", err)
 			}
-			if _, err := reachability.OpenStore(config); err == nil {
+			if _, err := descriptorstore.Open(config); err == nil {
 				t.Fatal("failed original lost exclusive lease")
 			}
 			if err := store.Close(); err != nil {
 				t.Fatal("operational failure replaced physical release result", err)
 			}
-			fresh, err := reachability.OpenStore(config)
+			fresh, err := descriptorstore.Open(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -155,8 +157,8 @@ func TestStoreOriginalCustodyLossCannotReviveAfterRestoration(t *testing.T) {
 }
 
 func TestStoreRequestRefusalDoesNotRetireOriginal(t *testing.T) {
-	raw, _, network, profile, at := signedDescriptor(3)
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), Network: network})
+	raw, _, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: t.TempDir(), Network: network})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,15 +173,15 @@ func TestStoreRequestRefusalDoesNotRetireOriginal(t *testing.T) {
 }
 
 func TestStoreDelayedPublicationUsesLatestCommittedFloor(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	higher := resignDescriptor(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], binary.BigEndian.Uint64(raw[162:170])+1) })
+	higher := descriptorfixture.ResignFixed(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], binary.BigEndian.Uint64(raw[162:170])+1) })
 	entered, resume := make(chan struct{}), make(chan struct{})
 	delayed := make(chan error, 1)
 	checks := 0
@@ -210,7 +212,7 @@ func TestStoreDelayedPublicationUsesLatestCommittedFloor(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := reachability.OpenStore(config)
+	fresh, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,10 +223,10 @@ func TestStoreDelayedPublicationUsesLatestCommittedFloor(t *testing.T) {
 }
 
 func TestStoreLateNativeFailureSurvivesOriginalDenial(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +283,7 @@ func TestStoreLateNativeFailureSurvivesOriginalDenial(t *testing.T) {
 	if store.OperationalFailure() != cause {
 		t.Fatal("joined Close lost original native cause")
 	}
-	fresh, err := reachability.OpenStore(config)
+	fresh, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}

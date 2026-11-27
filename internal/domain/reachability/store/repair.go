@@ -1,12 +1,14 @@
-package reachability
+package store
 
 import (
 	"errors"
 	"os"
 	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
-// RepairRetainedStoreStage clears only the uncertain staging file of an
+// RepairStage clears only the uncertain staging file of an
 // EXISTING retained Store root, under its exclusive lease, after validating
 // every committed floor. It is the bounded Store half of the platform-led
 // Descriptor participation repair: the repair adapter calls it only after
@@ -20,10 +22,10 @@ import (
 // record and never deletes foreign entries. Staging is uncommitted (never a
 // committed proof, including a complete synced write), so its removal loses no
 // committed publication. With no staging present it is a validating no-op.
-// OpenStore and OpenRetainedStore behavior is unchanged: a fresh opening still
+// Open and OpenRetained behavior is unchanged: a fresh opening still
 // removes staging without a dead-unit proof, and a retained opening still
 // refuses it.
-func RepairRetainedStoreStage(config StoreConfig) (result error) {
+func RepairStage(config Config) (result error) {
 	if !storePlatformSupported || config.Root == "" || config.Network == [32]byte{} {
 		return errors.New("reachability Store configuration or platform unavailable")
 	}
@@ -67,6 +69,6 @@ func RepairRetainedStoreStage(config StoreConfig) (result error) {
 	// selects stage removal only here, after the caller's dead-unit proofs,
 	// while this exclusive lease fences any new writer; the removal is synced
 	// under the same lease before custody and lease release.
-	floors := make(map[[32]byte]retainedFloor)
+	floors := make(map[[32]byte]reachability.RetainedFloor)
 	return restoreStoreFloors(custody, config.Network, floors, storeStageRemove)
 }

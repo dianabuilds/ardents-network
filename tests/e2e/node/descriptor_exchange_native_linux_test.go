@@ -28,6 +28,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -305,7 +306,7 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if !resolution.Joined {
 				t.Fatal("Descriptor manager completion absent")
 			}
-			fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: descriptorRoot, Network: facts.NetworkID})
+			fresh, err := descriptorstore.Open(descriptorstore.Config{Root: descriptorRoot, Network: facts.NetworkID})
 			if err != nil {
 				t.Fatal("actual Store lease/custody did not reopen after original join", err)
 			}

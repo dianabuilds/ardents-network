@@ -13,7 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -66,11 +66,11 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 		"participation_root": participation, "spend_root": spend, "hosting_root": budget,
 		"certificate": certPath, "private_key": keyPath,
 		"work": work, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
-	var storeConfig reachability.StoreConfig
+	var storeConfig descriptorstore.Config
 	if role == "descriptor" {
-		storeConfig = reachability.StoreConfig{Root: t.TempDir(), Network: networkPlan.NetworkID}
+		storeConfig = descriptorstore.Config{Root: t.TempDir(), Network: networkPlan.NetworkID}
 		plan["descriptor_root"] = storeConfig.Root
-		store, err := reachability.OpenStore(storeConfig)
+		store, err := descriptorstore.Open(storeConfig)
 		if err != nil {
 			t.Fatal("Store root provisioning refused", err)
 		}
@@ -124,7 +124,7 @@ func testNativeRetainedLifecycle(t *testing.T, role, profile string, id, domain,
 	if role == "descriptor" {
 		// The process died with no publication in flight. The original Store
 		// must reopen without an uncertain stage or a live lease.
-		store, err := reachability.OpenRetainedStore(storeConfig)
+		store, err := descriptorstore.OpenRetained(storeConfig)
 		if err != nil {
 			t.Fatal("retained Store refused after crash without uncertain stage", err)
 		}

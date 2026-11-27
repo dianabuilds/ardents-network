@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
-func installedServiceNetwork(t *testing.T, carrier string) (*networkAdmissionFixture, *reachability.Store) {
+func installedServiceNetwork(t *testing.T, carrier string) (*networkAdmissionFixture, *descriptorstore.Store) {
 	f, reservations, certificates := publicationRouteNetwork(t, transport.CarrierProfile(carrier), true)
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), Network: f.profile.NetworkID})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: t.TempDir(), Network: f.profile.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}

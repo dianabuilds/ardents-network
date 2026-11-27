@@ -30,6 +30,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
@@ -182,7 +183,7 @@ func nativeDescriptorOperationParent(t *testing.T, carrier string, phase string)
 	if err != nil || observed.ReservedBytes != 0 {
 		t.Fatal("joined operation failed to return Hosting", observed, err)
 	}
-	fresh, err := reachability.OpenStore(reachability.StoreConfig{Root: p.Descriptor, Network: fixture.profile.NetworkID})
+	fresh, err := descriptorstore.Open(descriptorstore.Config{Root: p.Descriptor, Network: fixture.profile.NetworkID})
 	if err != nil {
 		t.Fatal("independent Store reopen", err)
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/tests/e2e/node/processfixture"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	networkinputs "github.com/dianabuilds/ardents-network/tests/networkfixture"
@@ -299,7 +300,7 @@ func TestRouteDescriptorSurvivesReceiverRestart(t *testing.T) {
 			t.Fatal("receiver did not join", err, peer.diagnostic.String())
 		}
 	}
-	stored, err := reachability.OpenStore(reachability.StoreConfig{Root: descriptorRoot, Network: facts.NetworkID})
+	stored, err := descriptorstore.Open(descriptorstore.Config{Root: descriptorRoot, Network: facts.NetworkID})
 	if err != nil {
 		t.Fatal("Descriptor Store reopen", err)
 	}

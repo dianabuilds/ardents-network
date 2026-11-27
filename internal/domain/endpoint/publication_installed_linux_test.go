@@ -34,6 +34,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
@@ -56,7 +57,7 @@ func runInstalledPublisher(t *testing.T, carrier transport.CarrierProfile) {
 	defer cancel()
 	plan, target := installedPublisherInstance(t, f.profile.NetworkID)
 	storeRoot := t.TempDir()
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: f.profile.NetworkID})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: f.profile.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +210,7 @@ func runInstalledPublisher(t *testing.T, carrier transport.CarrierProfile) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: f.profile.NetworkID})
+	reopened, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: f.profile.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -578,15 +579,15 @@ type installedReceiverEvidence struct {
 	afterJoin    []func() int
 }
 
-func installedPublisherReceivers(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *reachability.Store, descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
+func installedPublisherReceivers(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *descriptorstore.Store, descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
 	return installedPublisherReceiversChecked(t, f, reservations, certificates, store, nil, descriptorCurrent...)
 }
 
-func installedPublisherReceiversChecked(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *reachability.Store, checkRetirement func(error) bool, descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
+func installedPublisherReceiversChecked(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *descriptorstore.Store, checkRetirement func(error) bool, descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
 	return installedPublisherReceiversObserved(t, f, reservations, certificates, store, nil, checkRetirement, nil, descriptorCurrent...)
 }
 
-func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *reachability.Store, evidence *installedReceiverEvidence, checkRetirement func(error) bool, observe func([32]byte, receiver.ReceiverConfig, *receiver.Receiver), descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
+func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *descriptorstore.Store, evidence *installedReceiverEvidence, checkRetirement func(error) bool, observe func([32]byte, receiver.ReceiverConfig, *receiver.Receiver), descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
 	var servers []*receiver.Receiver
 	ids := [][32]byte{{12}, {13}, {14}, {15}, {17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}}
 	if certificates[[32]byte{18}].Certificate != nil {

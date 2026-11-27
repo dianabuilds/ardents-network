@@ -1,6 +1,6 @@
 //go:build linux || darwin || windows
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 // These tests require the actual Unix-family/Windows lease and directory-sync adapter.
@@ -20,10 +22,10 @@ import (
 // the repair adapter, not this mechanism; no publication or runtime authority is
 // granted here.
 func TestRepairRetainedStoreStageRemovesUncertainStageUnderLeaseAndPreservesFloors(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,16 +44,16 @@ func TestRepairRetainedStoreStageRemovesUncertainStageUnderLeaseAndPreservesFloo
 	// never a committed proof, even when they are complete valid envelope bytes.
 	// A distinct authority seed gives the staged Target a different name from the
 	// committed floor, so the no-promotion assertion is meaningful.
-	foreignRaw, foreignTarget, _, _, _ := signedDescriptorForAuthority(3, 0x99)
+	foreignRaw, foreignTarget, _, _, _ := descriptorfixture.Fixed(3, 0x99)
 	stage := filepath.Join(root, "records", ".record-stage")
 	if err := os.WriteFile(stage, append([]byte{3, 0}, foreignRaw...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if retained, err := reachability.OpenRetainedStore(config); err == nil {
+	if retained, err := descriptorstore.OpenRetained(config); err == nil {
 		_ = retained.Close()
 		t.Fatal("retained opening adopted the uncertain stage")
 	}
-	if err := reachability.RepairRetainedStoreStage(config); err != nil {
+	if err := descriptorstore.RepairStage(config); err != nil {
 		t.Fatal("bounded stage repair refused", err)
 	}
 	if _, err := os.Lstat(stage); !os.IsNotExist(err) {
@@ -65,7 +67,7 @@ func TestRepairRetainedStoreStageRemovesUncertainStageUnderLeaseAndPreservesFloo
 	if _, err := os.Lstat(filepath.Join(root, "records", storeTargetNameForTest(foreignTarget))); !os.IsNotExist(err) {
 		t.Fatal("repair promoted uncommitted staging", err)
 	}
-	retained, err := reachability.OpenRetainedStore(config)
+	retained, err := descriptorstore.OpenRetained(config)
 	if err != nil {
 		t.Fatal("retained opening refused after bounded repair", err)
 	}
@@ -77,10 +79,10 @@ func TestRepairRetainedStoreStageRemovesUncertainStageUnderLeaseAndPreservesFloo
 }
 
 func TestRepairRetainedStoreStageNoStageIsValidatingNoOp(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,14 +93,14 @@ func TestRepairRetainedStoreStageNoStageIsValidatingNoOp(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := storeRootBytesForTest(t, root)
-	if err := reachability.RepairRetainedStoreStage(config); err != nil {
+	if err := descriptorstore.RepairStage(config); err != nil {
 		t.Fatal("no-stage repair refused", err)
 	}
 	if after := storeRootBytesForTest(t, root); !bytes.Equal(before, after) {
 		// Compare the full byte inventory; map order is irrelevant.
 		t.Fatal("no-op repair changed retained bytes")
 	}
-	retained, err := reachability.OpenRetainedStore(config)
+	retained, err := descriptorstore.OpenRetained(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,25 +114,25 @@ func TestRepairRetainedStoreStageNoStageIsValidatingNoOp(t *testing.T) {
 func TestRepairRetainedStoreStageMissingRootNeverInitializes(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "missing")
-	config := reachability.StoreConfig{Root: root, Network: [32]byte{1}}
-	if err := reachability.RepairRetainedStoreStage(config); err == nil {
+	config := descriptorstore.Config{Root: root, Network: [32]byte{1}}
+	if err := descriptorstore.RepairStage(config); err == nil {
 		t.Fatal("missing root repaired")
 	}
 	if _, err := os.Lstat(root); !os.IsNotExist(err) {
 		t.Fatal("repair initialized a missing root", err)
 	}
-	for _, invalid := range []reachability.StoreConfig{{Root: "", Network: [32]byte{1}}, {Root: root, Network: [32]byte{}}} {
-		if err := reachability.RepairRetainedStoreStage(invalid); err == nil {
+	for _, invalid := range []descriptorstore.Config{{Root: "", Network: [32]byte{1}}, {Root: root, Network: [32]byte{}}} {
+		if err := descriptorstore.RepairStage(invalid); err == nil {
 			t.Fatal("invalid repair configuration accepted")
 		}
 	}
 }
 
 func TestRepairRetainedStoreStageHeldLeaseRefusesWithoutChanges(t *testing.T) {
-	raw, _, network, profile, at := signedDescriptor(3)
+	raw, _, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +147,7 @@ func TestRepairRetainedStoreStageHeldLeaseRefusesWithoutChanges(t *testing.T) {
 	before := storeRootBytesForTest(t, root)
 	// The live Store holds the exclusive lease; repair must refuse rather than
 	// reacquire or share it.
-	if err := reachability.RepairRetainedStoreStage(config); err == nil {
+	if err := descriptorstore.RepairStage(config); err == nil {
 		t.Fatal("repair acquired a held Store lease")
 	}
 	if after := storeRootBytesForTest(t, root); !bytes.Equal(before, after) {
@@ -154,7 +156,7 @@ func TestRepairRetainedStoreStageHeldLeaseRefusesWithoutChanges(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := reachability.RepairRetainedStoreStage(config); err != nil {
+	if err := descriptorstore.RepairStage(config); err != nil {
 		t.Fatal("repair refused after the original lease released", err)
 	}
 	if _, err := os.Lstat(stage); !os.IsNotExist(err) {
@@ -165,10 +167,10 @@ func TestRepairRetainedStoreStageHeldLeaseRefusesWithoutChanges(t *testing.T) {
 func TestRepairRetainedStoreStageInvalidHistoryRefusesAndPreservesEvidence(t *testing.T) {
 	for _, fault := range []string{"corrupt-floor", "foreign-root-entry", "missing-marker"} {
 		t.Run(fault, func(t *testing.T) {
-			raw, target, network, profile, at := signedDescriptor(3)
+			raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 			root := t.TempDir()
-			config := reachability.StoreConfig{Root: root, Network: network}
-			store, err := reachability.OpenStore(config)
+			config := descriptorstore.Config{Root: root, Network: network}
+			store, err := descriptorstore.Open(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -199,7 +201,7 @@ func TestRepairRetainedStoreStageInvalidHistoryRefusesAndPreservesEvidence(t *te
 				}
 			}
 			before := storeRootBytesForTest(t, root)
-			if err := reachability.RepairRetainedStoreStage(config); err == nil {
+			if err := descriptorstore.RepairStage(config); err == nil {
 				t.Fatal("invalid retained history repaired", fault)
 			}
 			if after := storeRootBytesForTest(t, root); !bytes.Equal(before, after) {

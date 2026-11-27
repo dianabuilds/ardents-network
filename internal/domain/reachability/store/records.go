@@ -1,4 +1,4 @@
-package reachability
+package store
 
 import (
 	"bytes"
@@ -7,14 +7,19 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 const (
-	storeMarkerName = ".ardents-reachability-store-v3"
-	storeMarker     = "ardents-reachability-store-v3\n"
-	storeLockName   = ".ardents-reachability-store-lock"
-	storeRecords    = "records"
+	storeMarkerName         = ".ardents-reachability-store-v3"
+	storeMarker             = "ardents-reachability-store-v3\n"
+	storeLockName           = ".ardents-reachability-store-lock"
+	storeRecords            = "records"
+	storedRecordVersion     = 3
+	storedRecordHeaderSize  = 2
+	publicationConflictFlag = 1 << 0
+	revisionConflictFlag    = 1 << 1
 	// The single serialized writer owns this exact reserved staging name. Its
 	// contents are never a committed proof, including a complete synced write.
 	storeStage = ".record-stage"
@@ -22,7 +27,7 @@ const (
 
 // storeStagePolicy selects how a restore treats the reserved uncertain staging
 // name after every committed floor has validated. Only the fresh opener and the
-// bounded repair (RepairRetainedStoreStage, called after independent dead-unit
+// bounded repair (RepairStage, called after independent dead-unit
 // proofs while holding the exclusive lease) may remove it; a retained opening
 // or stopped inspection refuses it.
 type storeStagePolicy uint8
@@ -43,13 +48,13 @@ func (store *Store) restore(retained bool) error {
 // Read the same closed grammar for a live owner, an independently leased stopped
 // inspection or the bounded repair. Only the fresh opener and the bounded repair
 // may select existing stage removal; a retained opening refuses it.
-func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]byte]retainedFloor, policy storeStagePolicy) error {
+func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]byte]reachability.RetainedFloor, policy storeStagePolicy) error {
 	root := custody.records
 	directory, err := root.Open(".")
 	if err != nil {
 		return err
 	}
-	entries, readErr := directory.ReadDir(MaximumTargets + 2)
+	entries, readErr := directory.ReadDir(reachability.MaximumTargets + 2)
 	if errors.Is(readErr, io.EOF) {
 		readErr = nil
 	}
@@ -57,23 +62,23 @@ func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]
 	if err != nil {
 		return err
 	}
-	if len(entries) > MaximumTargets+1 {
+	if len(entries) > reachability.MaximumTargets+1 {
 		return errors.New("reachability directory population exceeds bound")
 	}
 	stage := false
 	for _, entry := range entries {
 		if entry.Name() == storeStage {
 			info, err := root.Lstat(storeStage)
-			if stage || err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > MaximumDescriptorSize+2 {
+			if stage || err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > reachability.MaximumDescriptorSize+2 {
 				return errors.New("reachability staging invalid")
 			}
 			stage = true
 			continue
 		}
-		if len(floors) >= MaximumTargets || len(entry.Name()) != 64 {
+		if len(floors) >= reachability.MaximumTargets || len(entry.Name()) != 64 {
 			return errors.New("reachability record population or name invalid")
 		}
-		raw, err := readOriginalStoreFile(root, entry.Name(), MaximumDescriptorSize+2)
+		raw, err := readOriginalStoreFile(root, entry.Name(), reachability.MaximumDescriptorSize+2)
 		if err != nil {
 			return err
 		}
@@ -81,7 +86,7 @@ func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]
 		if err != nil {
 			return err
 		}
-		target := floor.descriptor.Target
+		target := floor.Proof.Target
 		if entry.Name() != storeTargetName(target) {
 			return errors.New("reachability retained Target name differs")
 		}
@@ -110,7 +115,7 @@ func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]
 	return nil
 }
 
-func (store *Store) write(floor retainedFloor) (result error) {
+func (store *Store) write(floor reachability.RetainedFloor) (result error) {
 	store.custody.mu.Lock()
 	defer store.custody.mu.Unlock()
 	if err := store.inspectCustody(); err != nil {
@@ -127,13 +132,13 @@ func (store *Store) write(floor retainedFloor) (result error) {
 		}
 	}()
 	flags := byte(0)
-	if floor.publicationConflict {
-		flags |= 1
+	if floor.PublicationConflict {
+		flags |= publicationConflictFlag
 	}
-	if floor.revisionConflict {
-		flags |= 2
+	if floor.RevisionConflict {
+		flags |= revisionConflictFlag
 	}
-	raw := append([]byte{3, flags}, floor.descriptor.raw...)
+	raw := floor.Proof.AppendTo([]byte{storedRecordVersion, flags})
 	file, err := store.custody.records.OpenFile(storeStage, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
@@ -152,7 +157,7 @@ func (store *Store) write(floor retainedFloor) (result error) {
 	if err != nil {
 		return err
 	}
-	name := storeTargetName(floor.descriptor.Target)
+	name := storeTargetName(floor.Proof.Target)
 	if err = store.custody.records.Rename(storeStage, name); err != nil {
 		return err
 	}
@@ -166,31 +171,20 @@ func (store *Store) write(floor retainedFloor) (result error) {
 	// commit but before observing its retained floor. Close/denial may already
 	// have happened; the durable floor is still retained and no ACK is granted.
 	store.mu.Lock()
-	store.floors[floor.descriptor.Target] = floor
+	store.floors[floor.Proof.Target] = floor
 	store.mu.Unlock()
 	return nil
 }
 
-func decodeStoredFloor(raw []byte, network [32]byte) (retainedFloor, error) {
-	if len(raw) < 2+284+64 || raw[0] != 3 || raw[1] > 3 {
-		return retainedFloor{}, errors.New("reachability stored envelope invalid")
+func decodeStoredFloor(raw []byte, network [32]byte) (reachability.RetainedFloor, error) {
+	if len(raw) < storedRecordHeaderSize || raw[0] != storedRecordVersion || raw[1]&^(publicationConflictFlag|revisionConflictFlag) != 0 {
+		return reachability.RetainedFloor{}, errors.New("reachability stored envelope invalid")
 	}
-	// Expired signed floors still restore; only actual lookup may establish live
-	// currentness. The validity fields have fixed positions in the v3 envelope.
-	seconds := uint64(0)
-	for _, value := range raw[2+274 : 2+282] {
-		seconds = seconds<<8 | uint64(value)
-	}
-	if seconds == 0 || seconds > 1<<63-1 {
-		return retainedFloor{}, errors.New("reachability retained expiry invalid")
-	}
-	var profile [32]byte
-	copy(profile[:], raw[2+130:2+162])
-	proof, err := VerifyPublish(raw[2:], network, profile, time.Unix(int64(seconds)-1, 0).UTC())
+	proof, err := reachability.VerifyRetainedDescriptor(raw[storedRecordHeaderSize:], network)
 	if err != nil {
-		return retainedFloor{}, err
+		return reachability.RetainedFloor{}, err
 	}
-	return retainedFloor{descriptor: proof, publicationConflict: raw[1]&1 != 0, revisionConflict: raw[1]&2 != 0}, nil
+	return reachability.RetainedFloor{Proof: proof, PublicationConflict: raw[1]&publicationConflictFlag != 0, RevisionConflict: raw[1]&revisionConflictFlag != 0}, nil
 }
 
 func storeTargetName(target [32]byte) string { return fmt.Sprintf("%x", target) }

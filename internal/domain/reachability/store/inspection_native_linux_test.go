@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -12,9 +12,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
-func descriptorInspectionFixture(t *testing.T) (reachability.StoreConfig, []byte, [32]byte, [32]byte, time.Time) {
+func descriptorInspectionFixture(t *testing.T) (descriptorstore.Config, []byte, [32]byte, [32]byte, time.Time) {
 	t.Helper()
 	if os.Geteuid() != 0 || os.Getenv("ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE") != "1" {
 		t.Fatal("invalid environment: explicit root Store inspection stand required")
@@ -28,9 +30,9 @@ func descriptorInspectionFixture(t *testing.T) (reachability.StoreConfig, []byte
 			t.Error(err)
 		}
 	})
-	raw, target, network, profile, at := signedDescriptor(3)
-	config := reachability.StoreConfig{Root: filepath.Join(parent, "store"), Network: network}
-	store, err := reachability.OpenStore(config)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	config := descriptorstore.Config{Root: filepath.Join(parent, "store"), Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +55,7 @@ func TestDescriptorStoreInspectionNativeRetainsSignedHistoryAndExclusiveLease(t 
 	config, raw, target, profile, at := descriptorInspectionFixture(t)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second*10)
 	defer cancel()
-	h, err := reachability.OpenStoreInspection(ctx, config, 988, 988)
+	h, err := descriptorstore.OpenInspection(ctx, config, 988, 988)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,14 +63,14 @@ func TestDescriptorStoreInspectionNativeRetainsSignedHistoryAndExclusiveLease(t 
 	if err := h.Check(); err != nil {
 		t.Fatal(err)
 	}
-	if other, err := reachability.OpenRetainedStore(config); err == nil {
+	if other, err := descriptorstore.OpenRetained(config); err == nil {
 		other.Close()
 		t.Fatal("inspection lent or released its original exclusive lease")
 	}
 	if err := h.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err := reachability.OpenRetainedStore(config)
+	store, err := descriptorstore.OpenRetained(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +112,7 @@ func TestDescriptorStoreInspectionNativeRefusesMissingUncertainAndForeignHistory
 					t.Fatal(err)
 				}
 			}
-			if h, err := reachability.OpenStoreInspection(ctx, config, 988, 988); err == nil {
+			if h, err := descriptorstore.OpenInspection(ctx, config, 988, 988); err == nil {
 				h.Close()
 				t.Fatal("missing/uncertain/foreign retained history accepted")
 			}
@@ -132,7 +134,7 @@ func TestDescriptorStoreInspectionNativeRestorationCannotReviveFailedOriginal(t 
 	config, _, _, _, _ := descriptorInspectionFixture(t)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second*10)
 	defer cancel()
-	h, err := reachability.OpenStoreInspection(ctx, config, 988, 988)
+	h, err := descriptorstore.OpenInspection(ctx, config, 988, 988)
 	if err != nil {
 		t.Fatal(err)
 	}

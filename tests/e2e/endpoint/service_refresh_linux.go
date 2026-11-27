@@ -9,10 +9,11 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 )
 
 // InstalledPairStoredProof verifies the authenticated receiver Store entry for an installed Link.
-func InstalledPairStoredProof(t *testing.T, store *reachability.Store, networkID, profileDigest [32]byte, link string) reachability.Descriptor {
+func InstalledPairStoredProof(t *testing.T, store *descriptorstore.Store, networkID, profileDigest [32]byte, link string) reachability.Descriptor {
 	t.Helper()
 	network, target, err := publication.ParseTargetLink(link)
 	if err != nil || network != networkID {
@@ -21,7 +22,7 @@ func InstalledPairStoredProof(t *testing.T, store *reachability.Store, networkID
 	return installedStoredProof(t, store, network, profileDigest, target)
 }
 
-func installedStoredProof(t *testing.T, store *reachability.Store, network, profileDigest, target [32]byte) reachability.Descriptor {
+func installedStoredProof(t *testing.T, store *descriptorstore.Store, network, profileDigest, target [32]byte) reachability.Descriptor {
 	t.Helper()
 	now := time.Now()
 	raw, outcome, err := store.Lookup(target, profileDigest, now)
@@ -36,7 +37,7 @@ func installedStoredProof(t *testing.T, store *reachability.Store, network, prof
 }
 
 // InstalledPairAwaitRefresh observes the Store until its automatic refresh is acknowledged.
-func InstalledPairAwaitRefresh(t *testing.T, store *reachability.Store, networkID, profileDigest [32]byte, link string, first reachability.Descriptor, publishStarted time.Time) {
+func InstalledPairAwaitRefresh(t *testing.T, store *descriptorstore.Store, networkID, profileDigest [32]byte, link string, first reachability.Descriptor, publishStarted time.Time) {
 	t.Helper()
 	// No forced Refresh, clock adjustment or shortened product scheduler. This
 	// observer alone polls the actual receiving Store under the timing profile.
@@ -70,7 +71,7 @@ func InstalledPairAwaitRefresh(t *testing.T, store *reachability.Store, networkI
 }
 
 // VerifyInstalledDocumentRefresh checks that the new descriptor takes over while the original proof is still current.
-func VerifyInstalledDocumentRefresh(t *testing.T, ctx context.Context, store *reachability.Store, network, profileDigest, target [32]byte, requireRetired func(reachability.Descriptor)) {
+func VerifyInstalledDocumentRefresh(t *testing.T, ctx context.Context, store *descriptorstore.Store, network, profileDigest, target [32]byte, requireRetired func(reachability.Descriptor)) {
 	t.Helper()
 	first := installedStoredProof(t, store, network, profileDigest, target)
 	ticker := time.NewTicker(time.Second)

@@ -1,6 +1,6 @@
 //go:build !linux && !darwin && !windows
 
-package reachability
+package store
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 
 func TestUnsupportedStoreRefusesBeforeFiles(t *testing.T) {
 	parent := t.TempDir()
-	store, err := OpenStore(StoreConfig{Root: filepath.Join(parent, "absent"), Network: [32]byte{1}})
+	store, err := Open(Config{Root: filepath.Join(parent, "absent"), Network: [32]byte{1}})
 	if store != nil || err == nil {
 		t.Fatal("unsupported Store accepted", store, err)
 	}

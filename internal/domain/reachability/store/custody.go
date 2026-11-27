@@ -1,4 +1,4 @@
-package reachability
+package store
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
 // Native access remains relative to the original directory handles. Path
@@ -151,7 +153,7 @@ func inspectStoreCustody(c *storeCustody, lease *storeLease, root string) error 
 	if err != nil {
 		return err
 	}
-	entries, err := directory.ReadDir(MaximumTargets + 1)
+	entries, err := directory.ReadDir(reachability.MaximumTargets + 1)
 	if errors.Is(err, io.EOF) {
 		err = nil
 	}
@@ -182,7 +184,7 @@ func inspectStoreCustody(c *storeCustody, lease *storeLease, root string) error 
 }
 
 func (custody *storeCustody) readRecord(name string) ([]byte, error) {
-	return readOriginalStoreFile(custody.records, name, MaximumDescriptorSize+2)
+	return readOriginalStoreFile(custody.records, name, reachability.MaximumDescriptorSize+2)
 }
 
 func (custody *storeCustody) remember(name string, raw []byte) error {

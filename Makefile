@@ -526,12 +526,12 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/domain/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-trust-owner.test" ./internal/domain/endpoint
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-public-preparation.test" ./tests/e2e/node
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/domain/reachability
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/domain/reachability/store
 
 .PHONY: descriptor-store-inspection-check
 descriptor-store-inspection-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-store-inspection-check requires explicit Linux root/ext4 stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/reachability -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/reachability/store -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-forward-release-check
 descriptor-forward-release-check:

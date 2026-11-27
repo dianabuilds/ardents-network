@@ -24,6 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/launch"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
@@ -59,7 +60,7 @@ import (
 //
 // The causal mid-Publish-crash leg simulates the uncertain Store stage honestly.
 // A genuine signed publication is first committed through the real Store owner
-// (reachability.OpenStore + Publish, verify-before-mutate/persist-before-expose)
+// (descriptorstore.Open + Publish, verify-before-mutate/persist-before-expose)
 // while the unit is cleanly stopped, then the installed retained runtime reopens
 // that floor, is SIGKILLed, and the reserved .record-stage name is written
 // directly into the records directory while the unit is failed. The stand cannot
@@ -245,7 +246,7 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	stopDescriptorPlatformUnit(t, "post-stage-repair launch")
 	// With the unit stopped the exclusive Store lease is free: the committed
 	// publication survived the stage repair and still resolves byte-exact.
-	reopened, err := reachability.OpenRetainedStore(reachability.StoreConfig{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
+	reopened, err := descriptorstore.OpenRetained(descriptorstore.Config{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
 	if err != nil {
 		t.Fatal("retained Store refused after stage repair", err)
 	}
@@ -436,7 +437,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	}
 	// Provision the fifth writable root through the genuine fresh Store opener,
 	// then release it; the installed retained runtime reopens this same root.
-	provisioned, err := reachability.OpenStore(reachability.StoreConfig{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
+	provisioned, err := descriptorstore.Open(descriptorstore.Config{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
 	if err != nil {
 		t.Fatal("Store root provisioning refused", err)
 	}
@@ -563,7 +564,7 @@ func commitDescriptorPlatformFloor(t *testing.T, stand *descriptorPlatformStand)
 	}
 	raw, target := processfixture.SignedDescriptor(t, stand.facts, 3, [32]byte{18}, stand.facts.Digest)
 	profile := stand.facts.Digest
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
 	if err != nil {
 		t.Fatal("Store floor commit opening refused", err)
 	}

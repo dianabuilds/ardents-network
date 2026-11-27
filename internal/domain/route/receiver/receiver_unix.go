@@ -15,7 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/bootstrap"
@@ -52,7 +52,7 @@ type ReceiverConfig struct {
 	Introduction *introduction.Registry
 	// DescriptorStore is the genuine separately owned receiving Store. Command
 	// composition closes its root only after this Receiver has physically joined.
-	DescriptorStore *reachability.Store
+	DescriptorStore *descriptorstore.Store
 }
 
 // Receiver owns its listener, in-flight handshakes, admitted parents and all
