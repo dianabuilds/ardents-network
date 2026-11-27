@@ -3042,7 +3042,7 @@ four undefined symbols: `execution/runtime.Owner.LaunchByteStreamPublisher` and
 Reader coordinators and `participant_linux.go` therefore stay Linux: they compose
 the Linux native worker launch seam (systemd/cgroup), and the participant also
 composes the Linux `endpoint/launch`, `declarations_linux.go` and
-`permission_handover_linux.go` projections and `application/endpointstream.Listen`. The session
+`permission_handover_linux.go` projections and `application/endpointstream/server.Listen`. The session
 `Open*` and Publisher live Open/snapshot compositions compile clean on darwin, but
 their underlying native mechanisms — Hosting `/proc` measurement
 (`hosting/platform_other.go` typed refusal), the native worker launch,
@@ -3147,7 +3147,7 @@ Follow-up #885 (#691) split the pure typed refusal constructor
 `application/endpointstream.Refuse` as a portable constructor (now in `terminal_outcome.go`)
 (byte-identical bounded-outcome validation + `SetupRefusalError`), leaving the
 Linux-only `classifySetupRefusal` setupCleanupError classifier with the protected Linux server
-admission (`server_admission_linux.go`/`server_linux.go` stay Linux). Per-file
+admission (`server/admission_linux.go`/`server/listener_linux.go` stay Linux). Per-file
 re-verification of the Reader dependency closure then confirmed every remaining
 dependency is portable, Unix-family, or has a typed `!linux` worker-launch
 refusal, so `reader/reader_linux.go`/`operation_linux.go`/`source_linux.go`/

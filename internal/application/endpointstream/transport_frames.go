@@ -6,8 +6,9 @@ import (
 	"io"
 )
 
-func writeData(writer io.Writer, data []byte) error {
-	if len(data) == 0 || len(data) > maximumFrame {
+// WriteData writes one bounded nonempty Application frame.
+func WriteData(writer io.Writer, data []byte) error {
+	if len(data) == 0 || len(data) > MaximumFrame {
 		return errors.New("local Application data frame is invalid")
 	}
 	var header [4]byte
@@ -19,20 +20,23 @@ func writeData(writer io.Writer, data []byte) error {
 	return err
 }
 
+// MaximumFrame bounds one data frame; TerminalMarker marks a terminal outcome.
 const (
-	maximumFrame   = 16 << 10
-	terminalMarker = ^uint32(0)
+	MaximumFrame   = 16 << 10
+	TerminalMarker = ^uint32(0)
 )
 
-func readRefusal(reader io.Reader) (Outcome, error) {
+// ReadRefusal reads a terminal refusal from the peer.
+func ReadRefusal(reader io.Reader) (Outcome, error) {
 	var marker [4]byte
-	if _, err := io.ReadFull(reader, marker[:]); err != nil || binary.BigEndian.Uint32(marker[:]) != terminalMarker {
+	if _, err := io.ReadFull(reader, marker[:]); err != nil || binary.BigEndian.Uint32(marker[:]) != TerminalMarker {
 		return Outcome{}, errors.New("local Application refusal is invalid")
 	}
-	return readTerminal(reader)
+	return ReadTerminal(reader)
 }
 
-func readTerminal(reader io.Reader) (Outcome, error) {
+// ReadTerminal reads and validates a bounded terminal outcome.
+func ReadTerminal(reader io.Reader) (Outcome, error) {
 	var lengths [4]byte
 	if _, err := io.ReadFull(reader, lengths[:]); err != nil {
 		return Outcome{}, err

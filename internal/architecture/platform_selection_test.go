@@ -4,6 +4,7 @@ import (
 	"go/build"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -780,6 +781,38 @@ func TestCohort2dEndpointNativeBoundary(t *testing.T) {
 			}
 			if want := target == "linux"; selected != want {
 				t.Errorf("native Endpoint composition %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+	}
+}
+
+func TestLocalApplicationStreamPlatformBoundaries(t *testing.T) {
+	root := repositoryRoot(t)
+	cases := []struct {
+		file    string
+		targets string
+	}{
+		{"internal/application/endpointstream/server/doc.go", "linux"},
+		{"internal/application/endpointstream/server/listener_linux.go", "linux"},
+		{"internal/application/endpointstream/server_frames_linux.go", "linux"},
+		{"internal/application/console/descriptors_linux.go", "linux"},
+		{"internal/application/console/descriptors_other.go", "darwin windows"},
+		{"internal/application/endpointstream/client/host_linux.go", "linux"},
+		{"internal/application/endpointstream/client/host_other.go", "darwin windows"},
+		{"internal/application/endpointstream/targetlink/private_file_unix.go", "linux darwin"},
+		{"internal/application/endpointstream/targetlink/private_file_other.go", "windows"},
+	}
+	for _, target := range []string{"linux", "darwin", "windows"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, test := range cases {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(test.file)), path.Base(test.file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := slices.Contains(strings.Fields(test.targets), target)
+			if selected != want {
+				t.Errorf("%s on %s selected=%v, want %v", test.file, target, selected, want)
 			}
 		}
 	}

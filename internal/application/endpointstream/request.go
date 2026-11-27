@@ -14,6 +14,9 @@ const (
 	maximumTarget = 512
 )
 
+// ErrInvalidLocalInput identifies an invalid local destination or input.
+var ErrInvalidLocalInput = errors.New("document destination or local input is invalid")
+
 // DestinationTag identifies the only selected destination form. Name is
 // deliberately parsed as a reserved value so it cannot be mistaken for a
 // Target Link or gain a fallback route.
@@ -33,7 +36,7 @@ type Request struct {
 
 // EncodeRequest returns the canonical request for the selected Application.
 func EncodeRequest(request Request) ([]byte, error) {
-	if err := validRequest(request); err != nil {
+	if err := ValidateRequest(request); err != nil {
 		return nil, err
 	}
 	magic := localMagic
@@ -45,7 +48,8 @@ func EncodeRequest(request Request) ([]byte, error) {
 	return raw, nil
 }
 
-func validRequest(request Request) error {
+// ValidateRequest checks the bounded local destination without encoding it.
+func ValidateRequest(request Request) error {
 	if (request.Destination != Name && request.Destination != TargetLink) || len(request.Value) == 0 ||
 		len(request.Value) > maximumTarget || !utf8.ValidString(request.Value) {
 		return errors.New("local Application Connection destination is invalid")

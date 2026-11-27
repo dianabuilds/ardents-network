@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
-	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	endpointserver "github.com/dianabuilds/ardents-network/internal/application/endpointstream/server"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
@@ -306,7 +306,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			return phase, errors.Join(ErrUnavailable, err)
 		}
 		phase = "reader-listener"
-		server, err := endpointstream.Listen(plan.ApplicationSocket, readerOwner)
+		server, err := endpointserver.Listen(plan.ApplicationSocket, readerOwner)
 		if err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}

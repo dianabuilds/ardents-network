@@ -463,7 +463,7 @@ issuer-profile-check:
 .PHONY: endpointstream-private-input-check
 endpointstream-private-input-check:
 	@test "$(HEADLESS_GOOS)" = linux && [ "$$(id -u)" -eq 0 ] || (echo "Linux root and UID switching required"; exit 2)
-	go test -race -tags endpointstream_native ./internal/application/endpointstream -run '^TestPrivateLinkOwnerAndForeignUserBeforeDial$$' -count=1 -v -timeout=3m
+	go test -race -tags endpointstream_native ./internal/application/endpointstream/targetlink -run '^TestPrivateLinkOwnerAndForeignUserBeforeDial$$' -count=1 -v -timeout=3m
 
 .PHONY: custody-permission-filesystems-check
 custody-permission-filesystems-check:

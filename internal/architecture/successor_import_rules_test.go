@@ -37,12 +37,101 @@ func successorImportAllowed(source, dependency string) bool {
 		return offlineOperatorImportAllowed(source, dependency)
 	}
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	const applicationConsole = "internal/application/console"
+	if local == applicationConsole {
+		switch source {
+		case "cmd/ardents-next/document_command.go",
+			"internal/application/administration/local_link_linux.go",
+			"internal/application/endpointstream/client/console_exchange.go":
+			return true
+		default:
+			return false
+		}
+	}
+	const targetLink = "internal/application/endpointstream/targetlink"
+	if local == targetLink {
+		switch source {
+		case "internal/application/document/presentation.go",
+			"internal/application/endpointstream/client/console_exchange.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if local == "internal/application/endpointstream" && path.Dir(source) == targetLink {
+		return source == "internal/application/endpointstream/targetlink/input.go" || source == "internal/application/endpointstream/targetlink/input_test.go"
+	}
+	const endpointClient = "internal/application/endpointstream/client"
+	if local == endpointClient {
+		switch source {
+		case "cmd/ardents-next/stream_command.go",
+			"internal/application/document/presentation.go",
+			"internal/application/document/reader_connection_aai3_linux_test.go",
+			"internal/application/endpointstream/server/cleanup_linux_test.go",
+			"internal/application/endpointstream/server/lifecycle_linux_test.go",
+			"internal/application/endpointstream/server/binary_conformance_linux_test.go",
+			"internal/application/endpointstream/server/transport_linux_test.go",
+			"tests/e2e/endpointinstalled/journey_participant_native_linux_test.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if local == "internal/application/endpointstream" && path.Dir(source) == endpointClient {
+		switch source {
+		case "internal/application/endpointstream/client/closure_test.go",
+			"internal/application/endpointstream/client/receive.go",
+			"internal/application/endpointstream/client/setup_cancellation_test.go",
+			"internal/application/endpointstream/client/stream.go",
+			"internal/application/endpointstream/client/peer_test.go",
+			"internal/application/endpointstream/client/dial.go",
+			"internal/application/endpointstream/client/console_exchange.go",
+			"internal/application/endpointstream/client/response_eof_linux_test.go",
+			"internal/application/endpointstream/client/exchange.go",
+			"internal/application/endpointstream/client/exchange_test.go":
+			return true
+		default:
+			return false
+		}
+	}
+	const endpointServer = "internal/application/endpointstream/server"
+	if local == endpointServer {
+		switch source {
+		case "internal/application/administration/byte_stream_linux.go",
+			"internal/application/document/document_reader_socket_linux_test.go",
+			"internal/application/document/reader_connection_aai3_linux_test.go",
+			"internal/application/endpointstream/server/lifecycle_linux_test.go",
+			"internal/application/endpointstream/server/binary_conformance_linux_test.go",
+			"internal/application/endpointstream/server/transport_linux_test.go",
+			"internal/domain/endpoint/document_command_installed_linux_test.go",
+			"internal/domain/endpoint/participant_linux.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if local == "internal/application/endpointstream" {
+		switch source {
+		case "internal/application/endpointstream/server/listener_linux.go",
+			"internal/application/endpointstream/server/admission_linux.go",
+			"internal/application/endpointstream/server/stream_linux.go",
+			"internal/application/endpointstream/server/cleanup_linux_test.go",
+			"internal/application/endpointstream/server/admission_linux_test.go",
+			"internal/application/endpointstream/server/lifecycle_linux_test.go",
+			"internal/application/endpointstream/server/binary_conformance_linux_test.go",
+			"internal/application/endpointstream/server/transport_linux_test.go":
+			return true
+		}
+		if path.Dir(source) == endpointServer {
+			return false
+		}
+	}
 	const socketFile = "internal/application/internal/socketfile"
 	if local == socketFile {
 		switch source {
 		case "internal/application/administration/server.go",
 			"internal/application/administration/server_retirement_test.go",
-			"internal/application/endpointstream/server_linux.go":
+			"internal/application/endpointstream/server/listener_linux.go":
 			return true
 		default:
 			return false
@@ -467,9 +556,9 @@ func successorImportAllowed(source, dependency string) bool {
 		case "tests/e2e/endpoint/document_reader_process_linux_test.go", "tests/e2e/endpoint/document_reader_linux_test.go":
 			return dependency == modulePath+"/internal/application/endpointstream" || dependency == modulePath+"/internal/application/document"
 		case "cmd/ardents-next/stream_command.go":
-			return dependency == modulePath+"/internal/application/endpointstream"
+			return dependency == modulePath+"/internal/application/endpointstream/client"
 		case "cmd/ardents-next/document_command.go":
-			return dependency == modulePath+"/internal/application/endpointstream" || dependency == modulePath+"/internal/application/document"
+			return dependency == modulePath+"/internal/application/console" || dependency == modulePath+"/internal/application/document"
 		}
 	}
 	if source == "internal/domain/endpoint/endpoint_journey_native_linux_test.go" || source == "internal/domain/endpoint/document_command_installed_linux_test.go" {

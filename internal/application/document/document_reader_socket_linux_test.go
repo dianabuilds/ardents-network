@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	endpointserver "github.com/dianabuilds/ardents-network/internal/application/endpointstream/server"
 )
 
 func documentReadSocket(t *testing.T, peer endpointstream.Interface) string {
@@ -22,7 +23,7 @@ func documentReadSocket(t *testing.T, peer endpointstream.Interface) string {
 		}
 	})
 	socket := filepath.Join(dir, "local.sock")
-	server, err := endpointstream.Listen(socket, peer)
+	server, err := endpointserver.Listen(socket, peer)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,12 +5,12 @@ package administration
 import (
 	"context"
 
-	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	appconsole "github.com/dianabuilds/ardents-network/internal/application/console"
 )
 
 // PresentLocalLink presents a locally authorized Link on the owned console.
 func PresentLocalLink(ctx context.Context, socket string) error {
-	output, err := endpointstream.OpenLocalConsoleOutput()
+	output, err := appconsole.OpenOutput()
 	if err != nil {
 		return err
 	}
