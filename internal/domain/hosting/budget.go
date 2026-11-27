@@ -42,6 +42,19 @@ func Initialize(root string, policy Policy) error {
 	return initializeHosting(root, policy, reading, time.Now().UTC())
 }
 
+// InitializeContext checks cancellation before starting the one-use
+// initialization. Once started, it joins the durable initialization exactly as
+// Initialize does, even if the caller's context is canceled in the meantime.
+func InitializeContext(ctx context.Context, root string, policy Policy) error {
+	if ctx == nil {
+		return ErrInvalid
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return Initialize(root, policy)
+}
+
 // Open reopens the same locally installed accounting root. Node or
 // Endpoint identities, listeners and job contexts do not select another budget.
 func Open(root string) (*Budget, error) {

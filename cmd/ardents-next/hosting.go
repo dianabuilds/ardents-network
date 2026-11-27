@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"time"
 
@@ -44,8 +45,8 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		return write()
 	}
 	r.Operation = "hosting." + args[0]
-	if outcome := hosting.LocalAvailability(); outcome != "" {
-		r.Outcome = outcome
+	if !hosting.Supported() {
+		r.Outcome = hostingOutcome(hosting.ErrUnsupportedPlatform)
 		return write()
 	}
 	if ctx == nil {
@@ -67,7 +68,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 		return write()
 	}
 	defer clear(raw)
-	p, err := hosting.DecodeCommandPlan(raw, args[0])
+	p, err := decodeHostingConfig(raw, args[0])
 	if err != nil {
 		return write()
 	}
@@ -75,7 +76,7 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	observedOperation := runtimeevent.LookupOperation(r.Operation)
 	finish := o.Begin(observedOperation)
 	r.Phase = "execute"
-	result, err := hosting.ExecuteLocal(ctx, args[0], p)
+	result, err := executeHosting(ctx, args[0], p)
 	if result.Sampled {
 		observation, at, until := result.Snapshot.Observation(), result.Snapshot.ObservedAt(), result.Snapshot.ValidUntil()
 		r.Observation, r.ObservedAt, r.ValidUntil = &observation, &at, &until
@@ -83,9 +84,41 @@ func runHosting(ctx context.Context, args []string, out, diagnostic io.Writer) i
 	if result.CloseFailed {
 		r.Phase = "close"
 	}
-	r.Outcome = hosting.Outcome(err)
+	r.Outcome = hostingOutcome(err)
 	finish(observedOperation.Classify(r.Phase, r.Outcome))
 	delivery := o.CloseWithStatus(telemetryErr)
 	_ = json.NewEncoder(diagnostic).Encode(struct{ Operation, Phase, Outcome, Telemetry string }{r.Operation, r.Phase, string(r.Outcome), string(delivery)})
 	return write()
+}
+
+// executeHosting initializes a budget or obtains a joined observation.
+func executeHosting(ctx context.Context, operation string, plan hostingConfig) (hosting.SampleResult, error) {
+	switch operation {
+	case "initialize":
+		return hosting.SampleResult{}, hosting.InitializeContext(ctx, plan.Root, plan.Policy)
+	case "observe":
+		return hosting.SampleRoot(ctx, plan.Root, time.Second)
+	default:
+		return hosting.SampleResult{}, hosting.ErrInvalid
+	}
+}
+
+// hostingOutcome classifies a local Hosting operation without exposing private causes.
+func hostingOutcome(err error) string {
+	switch {
+	case errors.Is(err, hosting.ErrUncertain):
+		return "storage-uncertain"
+	case errors.Is(err, hosting.ErrUnsupportedPlatform):
+		return "unsupported-platform"
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return "canceled"
+	case errors.Is(err, hosting.ErrInvalid):
+		return "invalid-input"
+	case errors.Is(err, hosting.ErrCapacity):
+		return "budget-exhausted"
+	case err != nil:
+		return "budget-unavailable"
+	default:
+		return "completed"
+	}
 }

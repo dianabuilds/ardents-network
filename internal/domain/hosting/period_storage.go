@@ -15,7 +15,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
-const hostingSchema = "ardents-hosting-budget-v1"
+const (
+	periodStateFile      = "budget.json"
+	periodLeaseFile      = "budget.lock"
+	periodPolicyPinFile  = "budget.pin"
+	periodPendingFile    = "budget.pending"
+	maxPeriodStateBytes  = 16 << 10
+	periodPolicyPinBytes = 2 * sha256.Size // Hex-encoded SHA-256.
+	hostingSchema        = "ardents-hosting-budget-v1"
+)
 
 func openHostingRoot(path string) (*os.Root, error) {
 	if !pathcheck.IsCleanAbsolute(path) {
@@ -73,10 +81,10 @@ func initializeHosting(path string, policy Policy, reading counters.Reading, now
 		return err
 	}
 	digest := sha256.Sum256(policyBytes)
-	if err := createHostingFile(root, "budget.pin", []byte(hex.EncodeToString(digest[:]))); err != nil {
+	if err := createHostingFile(root, periodPolicyPinFile, []byte(hex.EncodeToString(digest[:]))); err != nil {
 		return err
 	}
-	if err := createHostingFile(root, "budget.lock", nil); err != nil {
+	if err := createHostingFile(root, periodLeaseFile, nil); err != nil {
 		return err
 	}
 	state := hostingState{Schema: hostingSchema, Policy: policy, Used: policy.InitialUsedBytes, Observed: now, Reading: reading}
@@ -132,18 +140,18 @@ func readHostingFile(root *os.Root, name string, maximum int64) ([]byte, error) 
 }
 
 func readHostingState(root *os.Root) (hostingState, error) {
-	if _, err := root.Lstat("budget.pending"); !errors.Is(err, os.ErrNotExist) {
+	if _, err := root.Lstat(periodPendingFile); !errors.Is(err, os.ErrNotExist) {
 		return hostingState{}, errors.New("hosting state has an unfinished write")
 	}
 	return readCommittedHostingState(root)
 }
 
 func readCommittedHostingState(root *os.Root) (hostingState, error) {
-	raw, err := readHostingFile(root, "budget.json", 16<<10)
+	raw, err := readHostingFile(root, periodStateFile, maxPeriodStateBytes)
 	if err != nil {
 		return hostingState{}, err
 	}
-	pin, err := readHostingFile(root, "budget.pin", 64)
+	pin, err := readHostingFile(root, periodPolicyPinFile, periodPolicyPinBytes)
 	if err != nil {
 		return hostingState{}, err
 	}
@@ -216,13 +224,13 @@ func writeHostingState(root *os.Root, state hostingState) error {
 		SHA256 string          `json:"sha256"`
 	}{State: body, SHA256: hex.EncodeToString(digest[:])}
 	raw, err := json.Marshal(envelope)
-	if err != nil || len(raw) > 16<<10 {
+	if err != nil || len(raw) > maxPeriodStateBytes {
 		return errors.New("hosting state exceeds its bound")
 	}
-	if err := createHostingFile(root, "budget.pending", raw); err != nil {
+	if err := createHostingFile(root, periodPendingFile, raw); err != nil {
 		return err
 	}
-	if err := root.Rename("budget.pending", "budget.json"); err != nil {
+	if err := root.Rename(periodPendingFile, periodStateFile); err != nil {
 		return err
 	}
 	directory, err := root.Open(".")
@@ -232,7 +240,7 @@ func writeHostingState(root *os.Root, state hostingState) error {
 	if err := errors.Join(directory.Sync(), directory.Close()); err != nil {
 		return err
 	}
-	confirmed, err := readHostingFile(root, "budget.json", 16<<10)
+	confirmed, err := readHostingFile(root, periodStateFile, maxPeriodStateBytes)
 	if err != nil || !bytes.Equal(raw, confirmed) {
 		return errors.New("hosting commit could not be confirmed")
 	}

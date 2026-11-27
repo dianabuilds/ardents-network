@@ -307,6 +307,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"standard", "internal/domain/admission/check.go", "context", true},
 		{"zone", "cmd/ardents-next/main.go", modulePath + "/internal/domain/admission", true},
 		{"hosting caller", "cmd/ardents-next/hosting.go", modulePath + "/internal/domain/hosting", true},
+		{"Hosting CLI decodes exact JSON at the command boundary", "cmd/ardents-next/hosting_config.go", modulePath + "/internal/platform/artifacts", true},
+		{"Hosting accounting has no command artifact dependency", "internal/domain/hosting/period_storage.go", modulePath + "/internal/platform/artifacts", false},
 		{"independent domains", "internal/domain/hosting/budget.go", modulePath + "/internal/domain/admission", false},
 		{"network input adapter", "internal/domain/network/state/membership.go", modulePath + "/internal/domain/network", true},
 		{"network adapter is exact", "internal/domain/network/state/other.go", modulePath + "/internal/domain/network", false},

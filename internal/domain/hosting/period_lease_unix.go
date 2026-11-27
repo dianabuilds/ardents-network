@@ -48,11 +48,11 @@ func acquireHostingLeaseMode(ctx context.Context, root *os.Root, mode int) (*hos
 }
 
 func openHostingLease(root *os.Root) (*os.File, error) {
-	before, err := root.Lstat("budget.lock")
+	before, err := root.Lstat(periodLeaseFile)
 	if err != nil || !before.Mode().IsRegular() {
 		return nil, errors.New("hosting lock is unavailable")
 	}
-	file, err := root.OpenFile("budget.lock", os.O_RDWR, 0)
+	file, err := root.OpenFile(periodLeaseFile, os.O_RDWR, 0)
 	if err != nil {
 		return nil, err
 	}

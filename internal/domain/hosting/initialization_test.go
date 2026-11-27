@@ -12,7 +12,7 @@ func TestLocalInitializationCancellationPrecedesEffects(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	root := filepath.Join(t.TempDir(), "budget")
-	_, err := ExecuteLocal(ctx, "initialize", CommandPlan{Root: root})
+	err := InitializeContext(ctx, root, Policy{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled initialization: %v", err)
 	}

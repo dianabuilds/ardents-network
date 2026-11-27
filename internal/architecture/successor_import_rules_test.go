@@ -367,7 +367,7 @@ func successorImportAllowed(source, dependency string) bool {
 			if local == "internal/canonicaldigest" || local == "internal/platform/artifacts" {
 				return true
 			}
-		case "internal/domain/hosting/command_declaration.go", "internal/domain/admission/issuer/result_operation.go":
+		case "internal/domain/admission/issuer/result_operation.go":
 			if local == "internal/platform/artifacts" {
 				return true
 			}
@@ -400,7 +400,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/admission/issuer/profile_declaration.go" && dependency == modulePath+"/internal/canonicaldigest" {
 		return true
 	}
-	if (source == "internal/domain/admission/issuance/result_declaration.go" || source == "internal/domain/hosting/command_declaration.go" || source == "internal/domain/admission/issuer/profile_declaration.go") && dependency == modulePath+"/internal/platform/artifacts" {
+	if (source == "internal/domain/admission/issuance/result_declaration.go" || source == "internal/domain/admission/issuer/profile_declaration.go") && dependency == modulePath+"/internal/platform/artifacts" {
 		return true
 	}
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {

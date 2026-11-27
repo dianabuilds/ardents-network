@@ -109,7 +109,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/network/duty/inspection_linux.go",
 			"internal/domain/network/duty/node_inspection_linux.go",
 			"internal/domain/admission/spending/inspection_linux.go",
-			"internal/domain/hosting/inspection_linux.go",
+			"internal/domain/hosting/retained_inspection_linux.go",
 			"internal/domain/node/provisioning/infrastructure/command_linux.go",
 			"internal/domain/network/source/command/prepare_linux.go",
 			"internal/domain/network/source/command/command_linux_test.go",
@@ -205,7 +205,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 				"internal/domain/network/state/node_inspection_native_linux_test.go",
 				"internal/domain/network/duty/inspection_native_linux_test.go",
 				"internal/domain/admission/spending/inspection_native_linux_test.go",
-				"internal/domain/hosting/inspection_native_linux_test.go",
+				"internal/domain/hosting/retained_inspection_native_linux_test.go",
 			} {
 				selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 				if err != nil {
@@ -316,11 +316,10 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/domain/hosting/lease_unix.go",
-			"internal/domain/hosting/lease_unix_test.go",
+			"internal/domain/hosting/period_lease_unix.go",
+			"internal/domain/hosting/period_lease_unix_test.go",
 			"internal/domain/hosting/budget_unix_test.go",
 			"internal/domain/hosting/reservation_unix_test.go",
-			"internal/domain/hosting/deadline_unix_test.go",
 			"internal/domain/hosting/additional_reservation_unix_test.go",
 			"internal/domain/hosting/snapshot_unix_test.go",
 		} {
@@ -333,7 +332,7 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/domain/hosting/lease_other.go",
+			"internal/domain/hosting/period_lease_unsupported.go",
 			"internal/domain/hosting/counters/read_other.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
@@ -348,7 +347,7 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 			"internal/domain/hosting/counters/read_linux.go",
 			"internal/domain/hosting/counters/read_linux_test.go",
 			"internal/domain/hosting/reservation_process_linux_test.go",
-			"internal/domain/hosting/inspection_linux.go",
+			"internal/domain/hosting/retained_inspection_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -370,7 +369,7 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 				t.Errorf("macOS hosting measure boundary %s on %s: %v, want %v", name, target, selected, want)
 			}
 		}
-		selected, err := profile.MatchFile(path.Join(root, "internal/domain/hosting"), "inspection_other.go")
+		selected, err := profile.MatchFile(path.Join(root, "internal/domain/hosting"), "retained_inspection_unsupported.go")
 		if err != nil {
 			t.Fatal(err)
 		}
