@@ -107,7 +107,7 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	}
 	contents, err := readBoundedFloorFile(lockPath, int64(len(floorStoreLeaseContents)))
 	if err != nil || string(contents) != floorStoreLeaseContents {
-		return nil, errors.New("release: invalid history lease")
+		return nil, errors.Join(errors.New("release: invalid history lease"), err)
 	}
 	lease, err := acquireHistoryLease(root)
 	if err != nil {

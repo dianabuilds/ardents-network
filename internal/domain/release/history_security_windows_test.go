@@ -68,7 +68,7 @@ func TestWindowsRetainedHistoryRefusesBroadDACLBeforeRecovery(t *testing.T) {
 				t.Fatal(err)
 			}
 			residue := filepath.Join(root, ".current-12345")
-			if err := os.WriteFile(residue, []byte("012345abcdef"), 0600); err != nil {
+			if err := writeSyncedFile(residue, []byte("012345abcdef")); err != nil {
 				t.Fatal(err)
 			}
 			path := root
@@ -156,7 +156,7 @@ func TestWindowsRetainedHistoryRefusesForeignOwnerBeforeRecovery(t *testing.T) {
 				t.Fatal(err)
 			}
 			residue := filepath.Join(root, ".current-12345")
-			if err := os.WriteFile(residue, []byte("012345abcdef"), 0600); err != nil {
+			if err := writeSyncedFile(residue, []byte("012345abcdef")); err != nil {
 				t.Fatal(err)
 			}
 			path := root

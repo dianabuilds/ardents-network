@@ -90,14 +90,14 @@ func TestRecoverExactWriterResidueRetainsCommittedHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	stage := filepath.Join(root, "generations", ".stage-12345")
-	if err = os.Mkdir(stage, 0700); err != nil {
+	if err = createHistoryDirectory(stage); err != nil {
 		t.Fatal(err)
 	}
-	if err = os.WriteFile(filepath.Join(stage, "state.bin"), []byte("role=root version=1 digest=abc"), 0600); err != nil {
+	if err = writeSyncedFile(filepath.Join(stage, "state.bin"), []byte("role=root version=1 digest=abc")); err != nil {
 		t.Fatal(err)
 	}
 	pointer := filepath.Join(root, ".current-67890")
-	if err = os.WriteFile(pointer, []byte("012345abcdef"), 0600); err != nil {
+	if err = writeSyncedFile(pointer, []byte("012345abcdef")); err != nil {
 		t.Fatal(err)
 	}
 	v, err = Open(root)
@@ -129,10 +129,10 @@ func TestMalformedResidueRefusesWithoutDeletingOtherResidue(t *testing.T) {
 	}
 	valid := filepath.Join(root, ".current-1")
 	bad := filepath.Join(root, ".current-2")
-	if err = os.WriteFile(valid, []byte("abc"), 0600); err != nil {
+	if err = writeSyncedFile(valid, []byte("abc")); err != nil {
 		t.Fatal(err)
 	}
-	if err = os.WriteFile(bad, []byte("foreign-pointer"), 0600); err != nil {
+	if err = writeSyncedFile(bad, []byte("foreign-pointer")); err != nil {
 		t.Fatal(err)
 	}
 	if reopened, err := Open(root); err == nil {
