@@ -14,7 +14,7 @@ func Failure(err error) string {
 		return "read cancelled"
 	case errors.Is(err, context.DeadlineExceeded):
 		return "read timed out"
-	case errors.Is(err, endpointstream.ErrInvalidTargetLink):
+	case errors.Is(err, endpointstream.ErrInvalidLocalInput):
 		return "document destination or local input is invalid"
 	}
 	if refusal, ok := errors.AsType[endpointstream.SetupRefusalError](err); ok {

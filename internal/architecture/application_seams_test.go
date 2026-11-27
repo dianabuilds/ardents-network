@@ -226,8 +226,8 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	connection := ardentsModulePath + "/internal/application/endpointstream"
 	administration := ardentsModulePath + "/internal/application/administration"
 	product := listedDirectImports(t, root, "./cmd/ardents-next")
-	if !product[connection] {
-		t.Error("./cmd/ardents-next does not use the selected protected Application Connection Module")
+	if !product[connection+"/client"] {
+		t.Error("./cmd/ardents-next does not use the selected local Application stream client")
 	}
 	worker := listedDependencies(t, root, "./internal/application/document/worker")
 	if worker[administration] || worker[ardentsModulePath+"/internal/domain/endpoint"] {
@@ -243,7 +243,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	t.Setenv("CGO_ENABLED", "0")
 	const endpoint = "./internal/domain/endpoint"
 	dependencies := listedDependencies(t, root, endpoint)
-	for _, seam := range []string{connection, administration} {
+	for _, seam := range []string{connection, connection + "/server", administration} {
 		if !dependencies[seam] {
 			t.Errorf("%s does not use the selected Application Module %s", endpoint, seam)
 		}

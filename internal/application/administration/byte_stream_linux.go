@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	endpointserver "github.com/dianabuilds/ardents-network/internal/application/endpointstream/server"
 )
 
 // ByteStreamPublisher admits an operator's local attachment before switching
@@ -22,7 +23,7 @@ func (server *server) handleByteStream(local *net.UnixConn, raw []byte, started 
 	}
 	publisher, ok := server.owner.(ByteStreamPublisher)
 	if !ok {
-		_ = endpointstream.WriteLocalStreamRefusal(local, endpointstream.Refuse(endpointstream.Outcome{Class: endpointstream.ServiceUnavailable}))
+		_ = endpointserver.WriteSetupRefusal(local, endpointstream.Refuse(endpointstream.Outcome{Class: endpointstream.ServiceUnavailable}))
 		return true
 	}
 	const lifetime = 10 * time.Minute
@@ -34,9 +35,9 @@ func (server *server) handleByteStream(local *net.UnixConn, raw []byte, started 
 	}
 	stream, err := publisher.OpenByteStream(ctx)
 	if err != nil || stream == nil {
-		_ = endpointstream.WriteLocalStreamRefusal(local, err)
+		_ = endpointserver.WriteSetupRefusal(local, err)
 		return true
 	}
-	_ = endpointstream.ServeLocalStream(ctx, local, stream, true)
+	_ = endpointserver.ServeStream(ctx, local, stream, true)
 	return true
 }

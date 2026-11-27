@@ -16,7 +16,7 @@ import (
 // the supplied output on completion or cancellation.
 func PresentPublishedLink(ctx context.Context, socket string, output io.WriteCloser) (outcome error) {
 	if ctx == nil || output == nil {
-		return endpointstream.ErrInvalidTargetLink
+		return endpointstream.ErrInvalidLocalInput
 	}
 	bounded, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

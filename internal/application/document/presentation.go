@@ -10,13 +10,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	endpointclient "github.com/dianabuilds/ardents-network/internal/application/endpointstream/client"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream/targetlink"
 )
 
 // ReadLocal owns the input and output until the single document read and any
 // cancellation-driven closure have joined.
 func ReadLocal(ctx context.Context, socket string, input io.ReadCloser, output io.WriteCloser) (outcome error) {
 	if ctx == nil || !filepath.IsAbs(socket) || input == nil || output == nil {
-		return endpointstream.ErrInvalidTargetLink
+		return endpointstream.ErrInvalidLocalInput
 	}
 	var closeErr error
 	closed := make(chan struct{})
@@ -36,7 +38,7 @@ func ReadLocal(ctx context.Context, socket string, input io.ReadCloser, output i
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	link, err := endpointstream.ReadTargetLink(input)
+	link, err := targetlink.Read(input)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func PresentLocal(ctx context.Context, socket, link string, output io.Writer) er
 	}
 	bounded, cancel := context.WithTimeout(ctx, endpointstream.ReaderTimeout)
 	defer cancel()
-	stream, err := endpointstream.Dial(bounded, socket, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
+	stream, err := endpointclient.Dial(bounded, socket, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
 	if err != nil {
 		return errors.Join(err, bounded.Err())
 	}

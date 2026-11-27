@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
+	appconsole "github.com/dianabuilds/ardents-network/internal/application/console"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
-	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 var errDocumentUsage = errors.New("invalid document command arguments")
@@ -29,7 +29,7 @@ func executeDocumentCommand(ctx context.Context, arguments []string) error {
 	case len(arguments) == 3 && arguments[0] == "publish" && filepath.IsAbs(arguments[1]) && filepath.IsAbs(arguments[2]):
 		return administration.PublishLocal(ctx, arguments[1], arguments[2])
 	case len(arguments) == 2 && arguments[0] == "read" && filepath.IsAbs(arguments[1]):
-		input, output, err := endpointstream.OpenLocalConsole()
+		input, output, err := appconsole.Open()
 		if err != nil {
 			return err
 		}

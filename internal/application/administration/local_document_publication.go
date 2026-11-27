@@ -15,7 +15,7 @@ import (
 // after the bounded request and returns only once the publication commits.
 func PublishLocal(ctx context.Context, socket, path string) error {
 	if ctx == nil || !filepath.IsAbs(socket) || !filepath.IsAbs(path) {
-		return endpointstream.ErrInvalidTargetLink
+		return endpointstream.ErrInvalidLocalInput
 	}
 	snapshot, err := document.ReadSnapshotFile(ctx, path)
 	if err != nil {

@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	endpointclient "github.com/dianabuilds/ardents-network/internal/application/endpointstream/client"
 	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 
@@ -109,7 +110,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 					t.Fatal("publisher received reader fixture command")
 				}
 				ctx, cancel := context.WithTimeout(t.Context(), endpointstream.ReaderTimeout)
-				stream, err := endpointstream.Dial(ctx, filepath.Join(participant.Base, "application", "reader"), endpointstream.Request{Destination: endpointstream.TargetLink, Value: command.Link})
+				stream, err := endpointclient.Dial(ctx, filepath.Join(participant.Base, "application", "reader"), endpointstream.Request{Destination: endpointstream.TargetLink, Value: command.Link})
 				if err == nil {
 					response.Body, err = document.Read(ctx, stream)
 				}
