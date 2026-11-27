@@ -17,11 +17,7 @@ func (byteStreamProtocol) initialize(ctx context.Context, attachment *worker.Att
 	return document.InitializeWorker(ctx, attachment, document.ByteStreamWorker, nonce, nil)
 }
 
-func (byteStreamProtocol) consumer() attachmentConsumer { return byteStreamConsumer{} }
-
-type byteStreamConsumer struct{}
-
-func (byteStreamConsumer) observe(invocation *Invocation) {
+func (byteStreamProtocol) startObservation(invocation *Invocation) {
 	invocation.byteStream = true
 	input := &byteStreamInput{incoming: make(chan byteStreamExchange)}
 	invocation.byteStreamInput = input

@@ -39,7 +39,7 @@ type Invocation struct {
 	readerCaller     context.Context
 	readerInput      *readerConnectionInput
 	surface          execution.Surface
-	consumer         attachmentConsumer
+	qualification    *streamQualificationInput
 }
 
 var errUnexpectedWorkerEnd = errors.New("qualified worker attachment ended unexpectedly")
@@ -48,20 +48,7 @@ var errUnexpectedWorkerEnd = errors.New("qualified worker attachment ended unexp
 // post-READY Application frames. Its sole reader observes EOF, credential/FD
 // refusal or unsolicited bytes. An Application consumer owns its protocol
 // reader for the invocation. Retirement orders loss against caller close.
-func (invocation *Invocation) observeAttachment() {
-	invocation.observationDone = make(chan struct{})
-	if invocation.consumer != nil {
-		invocation.consumer.observe(invocation)
-		return
-	}
-	if invocation.publisher {
-		invocation.observePublisherAttachment()
-		return
-	}
-	if invocation.readerCaller != nil {
-		invocation.observeReaderAttachment()
-		return
-	}
+func (invocation *Invocation) observeControlAttachment() {
 	go func() {
 		defer close(invocation.observationDone)
 		var byteBuffer [1]byte
@@ -161,52 +148,4 @@ func (invocation *Invocation) CleanupResult() (error, bool) {
 	default:
 		return nil, false
 	}
-}
-
-// Launch admits one exact local session before effects and returns only the
-// privately bound original invocation, after installed READY reobservation.
-func (owner *Owner) Launch(ctx context.Context, principal [32]byte, surface execution.Surface) (_ *Invocation, result error) {
-	return owner.launchInvocation(ctx, principal, surface, nil, false, false)
-}
-
-func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, snapshot []byte, publisher, reader bool) (*Invocation, error) {
-	return owner.launchApplicationInvocation(ctx, principal, surface, documentProtocol{snapshot: snapshot}, publisher, reader)
-}
-
-func (owner *Owner) launchApplicationInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, protocol workerProtocol, publisher, reader bool) (_ *Invocation, result error) {
-	if owner == nil || ctx == nil || ctx.Err() != nil {
-		return nil, errors.New("execution launch is unavailable")
-	}
-	if reader && (publisher || surface != execution.Connection) {
-		return nil, errors.New("reader invocation purpose is invalid")
-	}
-	capability, err := owner.authority.Admit(principal, surface)
-	if err != nil {
-		return nil, err
-	}
-	session, err := owner.supervisor.Activate(ctx, capability, principal, surface)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if result != nil {
-			result = errors.Join(result, session.Close())
-		}
-	}()
-	job, err := session.BeginJob()
-	if err != nil {
-		return nil, err
-	}
-	var readerCaller context.Context
-	if reader {
-		readerCaller = ctx
-	}
-	invocation, err := owner.launchInitializedJob(job, surface, protocol, publisher, readerCaller)
-	if err != nil {
-		return nil, err
-	}
-	if publisher && surface == execution.Administration {
-		invocation.administration = AdministrationContext{session: session}
-	}
-	return invocation, nil
 }
