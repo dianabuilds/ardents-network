@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
 func TestAdditionalReservationKeepsOriginalTermination(t *testing.T) {
@@ -239,14 +241,14 @@ func TestAdditionalUncertainReturnRetainsOriginalCoverage(t *testing.T) {
 	state := filepath.Join(root, "budget.json")
 	saved := state + ".saved"
 	fault := true
-	b.measure = func([]string) (hostingReading, error) {
+	b.measure = func([]string) (counters.Reading, error) {
 		if fault {
 			fault = false
 			if e := os.Rename(state, saved); e != nil {
-				return hostingReading{}, e
+				return counters.Reading{}, e
 			}
 			if e := os.Mkdir(state, 0700); e != nil {
-				return hostingReading{}, e
+				return counters.Reading{}, e
 			}
 		}
 		return *reading, nil

@@ -1,6 +1,6 @@
 //go:build darwin
 
-package hosting
+package counters
 
 import (
 	"encoding/binary"
@@ -40,10 +40,11 @@ const (
 	ifmibSize         = 180                  // sizeof(struct ifmibdata).
 )
 
-func hostingPlatform() error { return nil }
+func Supported() bool { return true }
 
-func measureHosting(names []string) (hostingReading, error) {
-	var reading hostingReading
+// Read returns an observation of the named interfaces and original boot.
+func Read(names []string) (Reading, error) {
+	var reading Reading
 	boot, err := unix.SysctlTimeval("kern.boottime")
 	if err != nil {
 		return reading, err
@@ -55,15 +56,15 @@ func measureHosting(names []string) (hostingReading, error) {
 	for _, name := range names {
 		iface, err := net.InterfaceByName(name)
 		if err != nil {
-			return hostingReading{}, err
+			return Reading{}, err
 		}
 		index := iface.Index
 		raw, err := unix.SysctlRaw("net.link.generic.ifdata", index, ifdataGeneral)
 		if err != nil {
-			return hostingReading{}, err
+			return Reading{}, err
 		}
 		if len(raw) != ifmibSize {
-			return hostingReading{}, errors.New("hosting interface counter is unavailable")
+			return Reading{}, errors.New("hosting interface counter is unavailable")
 		}
 		rx := binary.LittleEndian.Uint64(raw[ifmibIbytesOffset : ifmibIbytesOffset+8])
 		tx := binary.LittleEndian.Uint64(raw[ifmibObytesOffset : ifmibObytesOffset+8])
@@ -71,9 +72,9 @@ func measureHosting(names []string) (hostingReading, error) {
 		// the counter source bound to this period, even when its name is reused.
 		after, err := net.InterfaceByName(name)
 		if err != nil || after.Index != index {
-			return hostingReading{}, errors.New("hosting interface changed during observation")
+			return Reading{}, errors.New("hosting interface changed during observation")
 		}
-		reading.Interfaces = append(reading.Interfaces, hostingInterface{Name: name, Index: uint64(index), Tx: tx, Rx: rx})
+		reading.Interfaces = append(reading.Interfaces, Interface{Name: name, Index: uint64(index), Tx: tx, Rx: rx})
 	}
 	return reading, nil
 }

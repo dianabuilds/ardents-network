@@ -7,15 +7,17 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
 func TestSharedSnapshotFreshnessAndReservationVisibility(t *testing.T) {
 	root, reading, now := hostingFixture(t)
 	first := openHostingFixture(t, root, reading, now)
 	second := openHostingFixture(t, root, reading, now)
-	first.measure = func([]string) (hostingReading, error) {
+	first.measure = func([]string) (counters.Reading, error) {
 		t.Fatal("fresh sample measured again")
-		return hostingReading{}, nil
+		return counters.Reading{}, nil
 	}
 	sample, err := first.Sample(t.Context(), time.Second)
 	if err != nil || sample.ObservedAt() != *now {
@@ -35,7 +37,7 @@ func TestSharedSnapshotFreshnessAndReservationVisibility(t *testing.T) {
 		t.Fatal("sample aliases caller")
 	}
 	*now = now.Add(2 * time.Second)
-	first.measure = func([]string) (hostingReading, error) { return *reading, nil }
+	first.measure = func([]string) (counters.Reading, error) { return *reading, nil }
 	sample, err = first.Sample(t.Context(), time.Second)
 	if err != nil || sample.ObservedAt() != *now {
 		t.Fatal("stale sample reused", sample, err)

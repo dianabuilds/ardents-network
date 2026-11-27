@@ -1,4 +1,4 @@
-package hosting
+package counters
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 // boundedFile is the portable bounded read shared by the native counter
 // adapter. Its limit and joined-error semantics are platform-independent, so
 // they execute on every mandatory target even though the genuine production
-// caller (measureHosting) stays Linux.
+// caller (Read) stays Linux.
 func TestBoundedFileEnforcesLimitAndJoinedErrors(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "counter")

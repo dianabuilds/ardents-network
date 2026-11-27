@@ -11,12 +11,14 @@ import (
 
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/hosting/counters"
 )
 
-func hostingFixture(t *testing.T) (string, *hostingReading, *time.Time) {
+func hostingFixture(t *testing.T) (string, *counters.Reading, *time.Time) {
 	t.Helper()
 	now := time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
-	reading := &hostingReading{Boot: "boot-one", Interfaces: []hostingInterface{{Name: "eth0", Index: 2, Tx: 500, Rx: 800}}}
+	reading := &counters.Reading{Boot: "boot-one", Interfaces: []counters.Interface{{Name: "eth0", Index: 2, Tx: 500, Rx: 800}}}
 	root := filepath.Join(t.TempDir(), "hosting")
 	policy := Policy{Provider: "declared fixture provider", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
 		Unit: "B", Quantity: 1000, Directions: "tx+rx", Interfaces: []string{"eth0"}, InitialUsedBytes: 100, LowWatermarkBytes: 100}
@@ -26,9 +28,9 @@ func hostingFixture(t *testing.T) (string, *hostingReading, *time.Time) {
 	return root, reading, &now
 }
 
-func openHostingFixture(t *testing.T, root string, reading *hostingReading, now *time.Time) *Budget {
+func openHostingFixture(t *testing.T, root string, reading *counters.Reading, now *time.Time) *Budget {
 	t.Helper()
-	owner, err := openHosting(root, func([]string) (hostingReading, error) { return *reading, nil }, func() time.Time { return *now })
+	owner, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +110,7 @@ func TestHostingReopenDoesNotRefundAbandonedWork(t *testing.T) {
 
 func TestHostingStartsAnAlreadyExhaustedPeriodOnlyToDrain(t *testing.T) {
 	now := time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC)
-	reading := hostingReading{Boot: "boot-one", Interfaces: []hostingInterface{{Name: "eth0", Index: 2, Tx: 500, Rx: 800}}}
+	reading := counters.Reading{Boot: "boot-one", Interfaces: []counters.Interface{{Name: "eth0", Index: 2, Tx: 500, Rx: 800}}}
 	root := filepath.Join(t.TempDir(), "hosting")
 	policy := Policy{Provider: "declared fixture provider", Start: now.Add(-time.Hour), End: now.Add(time.Hour),
 		Unit: "B", Quantity: 1000, Directions: "tx+rx", Interfaces: []string{"eth0"}, InitialUsedBytes: 1000, LowWatermarkBytes: 100}
@@ -159,7 +161,7 @@ func TestHostingCorruptStateIsNeverInitializedAgain(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "budget.json"), raw[:len(raw)/2], 0600); err != nil {
 		t.Fatal(err)
 	}
-	if owner, err := openHosting(root, func([]string) (hostingReading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
+	if owner, err := openHosting(root, func([]string) (counters.Reading, error) { return *reading, nil }, func() time.Time { return *now }); err == nil {
 		_ = owner.Close()
 		t.Fatal("corrupt period reopened")
 	}
@@ -262,14 +264,14 @@ func TestHostingReleaseAfterPersistenceFailureStaysUnresolved(t *testing.T) {
 	state := filepath.Join(root, "budget.json")
 	saved := state + ".saved"
 	fault := false
-	owner, err := openHosting(root, func([]string) (hostingReading, error) {
+	owner, err := openHosting(root, func([]string) (counters.Reading, error) {
 		if fault {
 			fault = false
 			if err := os.Rename(state, saved); err != nil {
-				return hostingReading{}, err
+				return counters.Reading{}, err
 			}
 			if err := os.Mkdir(state, 0o700); err != nil {
-				return hostingReading{}, err
+				return counters.Reading{}, err
 			}
 		}
 		return *reading, nil

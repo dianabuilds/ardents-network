@@ -426,12 +426,12 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/domain/route/... ./internal/domain/endpoint/... $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/domain/network/... ./internal/domain/admission/... ./internal/domain/hosting/... ./internal/domain/publication/... ./internal/domain/connection/... ./internal/domain/reachability/... ./internal/domain/enrollment/... ./internal/domain/release/... ./internal/platform/... ./internal/domain/execution/... ./internal/domain/route/... ./internal/domain/endpoint/... $(NODE_ROLE_PACKAGES) ./tests/networkfixture -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test -race ./tests/e2e/node -run '^TestRoute' -count=1 -timeout=5m
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired|TestMakeProfileSelectorsHaveTests)$$' -count=1
 
 hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/hosting ./internal/domain/admission/receiving $(NODE_ROLE_PACKAGES) -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/hosting/... ./internal/domain/admission/receiving $(NODE_ROLE_PACKAGES) -count=1 -timeout=3m,$(error hosting-check requires Linux))
 	go test -race ./tests/e2e/node -run '^Test(AdmissionHostingReservationAndWork|HostingPlanExactFields|HostingCompiledCLIInitializationAndObservation|HostingOTLPContainsOnlyFiniteAttributes|HostingCollectorFailurePreservesCommittedResult|CanceledSocketChildRetainsReservationUntilJoined)' -count=1 -timeout=3m
 
 .PHONY: admission-check

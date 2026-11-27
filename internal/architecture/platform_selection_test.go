@@ -318,7 +318,7 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 		}
 		for _, name := range []string{
 			"internal/domain/hosting/lease_other.go",
-			"internal/domain/hosting/measure_other.go",
+			"internal/domain/hosting/counters/read_other.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
@@ -329,8 +329,8 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/domain/hosting/measure_linux.go",
-			"internal/domain/hosting/counter_linux_test.go",
+			"internal/domain/hosting/counters/read_linux.go",
+			"internal/domain/hosting/counters/read_linux_test.go",
 			"internal/domain/hosting/reservation_process_linux_test.go",
 			"internal/domain/hosting/inspection_linux.go",
 		} {
@@ -343,8 +343,8 @@ func TestHostingUnixLeasePortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/domain/hosting/measure_darwin.go",
-			"internal/domain/hosting/measure_darwin_test.go",
+			"internal/domain/hosting/counters/read_darwin.go",
+			"internal/domain/hosting/counters/read_darwin_test.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {
