@@ -47,3 +47,17 @@ func attachmentFailureReason(err error) string {
 		return "the original attachment failed"
 	}
 }
+
+type originalAttachmentFailure struct{ cause error }
+
+func (failure originalAttachmentFailure) Error() string {
+	return "original Service Connection attachment failed"
+}
+func (failure originalAttachmentFailure) Unwrap() error { return failure.cause }
+
+func recoveryFailure(cause, outcome error) error {
+	if cause == nil {
+		return outcome
+	}
+	return errors.Join(outcome, originalAttachmentFailure{cause: cause})
+}

@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"io"
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
@@ -184,4 +185,36 @@ func (stream *Stream) Stop() {
 	stream.cancel()
 	stream.signalLocked()
 	stream.mu.Unlock()
+}
+
+// Application settlement survives replacement, but the new Attachment must
+// renew every Terminal proof before its clean Route close can retire the tail.
+// The caller separately checks live authority and that exact child's witness.
+func (stream *Stream) terminalTailCompleteLocked() bool {
+	return stream.settled && stream.transfer.TerminalComplete()
+}
+
+// A clean Route terminal permits only TLS truncation after the authenticated
+// exchange is complete. Joined authority, integrity and cleanup errors cannot
+// be hidden merely because one of their causes is EOF.
+func terminalTruncation(err error, received int) bool {
+	if received != 0 {
+		return false
+	}
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return true
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !terminalTruncation(cause, 0) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }

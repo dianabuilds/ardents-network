@@ -235,7 +235,7 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 	if (source == "internal/domain/admission/stock/cycle_test.go" || source == "internal/domain/admission/stock/receiving_cycle_test.go") && (dependency == modulePath+"/internal/domain/admission/receiving" || dependency == modulePath+"/internal/domain/admission/spending") {
 		return true
 	}
-	if source == "internal/domain/connection/publisher_recovery.go" && dependency == modulePath+"/internal/domain/route/prefix" {
+	if source == "internal/domain/connection/publisher_route.go" && dependency == modulePath+"/internal/domain/route/prefix" {
 		return true
 	}
 	switch source {
