@@ -15,7 +15,6 @@ func reachabilityImport(source, dependency string) importPermission {
 			"tests/e2e/nodeinstalled/descriptor_platform_native_linux_test.go", "tests/e2e/node/retained_lifecycle_native_linux_test.go",
 			"tests/e2e/routeprocess/route_descriptor_linux_test.go",
 			"internal/domain/reachability/store/persistence_crash_linux_amd64_test.go",
-			"internal/domain/reachability/store/inspection_native_linux_test.go",
 			"internal/domain/reachability/store/lifetime_native_test.go",
 			"internal/domain/reachability/store/publication_native_test.go",
 			"internal/domain/reachability/store/repair_native_test.go",
@@ -29,7 +28,7 @@ func reachabilityImport(source, dependency string) importPermission {
 		switch source {
 		case "internal/domain/reachability/descriptor_draft_test.go", "internal/domain/reachability/descriptor_test.go",
 			"internal/domain/reachability/lookup_history_test.go", "internal/domain/reachability/store/persistence_crash_linux_amd64_test.go",
-			"internal/domain/reachability/store/inspection_native_linux_test.go", "internal/domain/reachability/store/lifetime_native_test.go",
+			"internal/domain/reachability/store/lifetime_native_test.go",
 			"internal/domain/reachability/store/publication_native_test.go", "internal/domain/reachability/store/repair_native_test.go",
 			"internal/domain/reachability/store/retained_open_native_test.go", "internal/domain/reachability/store/partial_write_unix_test.go",
 			"tests/e2e/node/processfixture/descriptor_input_linux.go":

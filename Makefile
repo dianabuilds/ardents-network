@@ -526,12 +526,24 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/domain/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-trust-owner.test" ./internal/domain/endpoint
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-public-preparation.test" ./tests/e2e/node
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/domain/reachability/store
 
-.PHONY: descriptor-store-inspection-check
-descriptor-store-inspection-check:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-store-inspection-check requires explicit Linux root/ext4 stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/reachability/store -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
+.PHONY: descriptor-store-retained-check
+descriptor-store-retained-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-store-retained-check requires Linux root/ext4"; exit 2)
+	@set -eu; \
+	path="$${TMPDIR:-}"; \
+	case "$$path" in /*) ;; *) echo "absolute TMPDIR required"; exit 2;; esac; \
+	if [ "$$(id -u)" -ne 0 ] || [ ! -d "$$path" ] || [ "$$(realpath -e "$$path")" != "$$path" ] || [ "$$(stat -f -c %t "$$path")" != ef53 ] || [ "$$(findmnt -n -o FSTYPE -T "$$path")" != ext4 ]; then \
+		echo "root and an original ext4 TMPDIR are required"; exit 2; \
+	fi; \
+	while :; do \
+		mode=$$(stat -c %a "$$path"); \
+		if [ "$$(stat -c %u "$$path")" -ne 0 ] || [ $$((0$$mode & 022)) -ne 0 ]; then \
+			echo "root-owned, non-writable-by-others TMPDIR and ancestors required"; exit 2; \
+		fi; \
+		[ "$$path" = / ] && break; path=$$(dirname "$$path"); \
+	done
+	go test -race -trimpath -buildvcs=false ./internal/domain/reachability/store -run '^Test(RetainedStore|RepairRetainedStoreStage|StoreForeignObservationDoesNotLockStateAndCloseJoins|StoreOriginalCustodyLossCannotReviveAfterRestoration|StoreOriginalLeaseLossAndFirstPhysicalRelease)' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-forward-release-check
 descriptor-forward-release-check:

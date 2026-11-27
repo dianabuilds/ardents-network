@@ -14,15 +14,15 @@
       "timeout": "3m"
     },
     {
-      "id": "descriptor-store-inspection-linux",
+      "id": "descriptor-store-retained-linux",
       "state": "active",
-      "make_target": "descriptor-store-inspection-check",
-      "surface": "independently leased stopped Store signed history, exact numeric principal/native custody, missing or uncertain history refusal without creation/repair, inode-restoration refusal, held reader and physical Close join; no installed/runtime/ACK claim",
+      "make_target": "descriptor-store-retained-check",
+      "surface": "live Store retained signed history, refusal of missing or uncertain history without creation, bounded stage repair after committed floors validate, exclusive lease and joined original users; no installed/runtime/Release or original-retirement claim",
       "prerequisites": [
-        "explicit ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1; Linux root with writable ext4 under root-controlled /var/lib",
-        "no live Store owner; finite caller and original exclusively held read-only lease; fixtures prove physical history only, not Release or domain retirement"
+        "Linux root and absolute, canonical root-owned TMPDIR and ancestors with no group/other write access; TMPDIR on writable ext4",
+        "Go 1.27.4, race-capable C compiler, findmnt and same-source fixtures; no systemd manager or installed role is claimed"
       ],
-      "invalid_environment": "missing selected prerequisite fails, never skips",
+      "invalid_environment": "missing native prerequisites fail; no skips",
       "timeout": "3m"
     },
     {
