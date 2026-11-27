@@ -66,8 +66,7 @@ func TestRealTLSExporterBindsExactAttachmentContext(t *testing.T) {
 	defer rawPublisher.Close()
 	var expectedInstance [32]byte
 	copy(expectedInstance[:], public)
-	client := tls.Client(rawClient, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, InsecureSkipVerify: true, SessionTicketsDisabled: true, CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519},
-		VerifyConnection: func(state tls.ConnectionState) error { return verifyInstanceCertificate(state, expectedInstance) }})
+	client := newInstanceTLSClient(rawClient, expectedInstance)
 	publisher := tls.Server(rawPublisher, &tls.Config{MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, SessionTicketsDisabled: true, CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519}, Certificates: []tls.Certificate{{Certificate: [][]byte{der}, PrivateKey: private}}})
 	if err := rawClient.SetDeadline(now.Add(5 * time.Second)); err != nil {
 		t.Fatal(err)

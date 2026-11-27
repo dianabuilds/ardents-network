@@ -2,14 +2,12 @@ package connection
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
-	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 // One finite original-key proposal owns all new physical resources until its
@@ -118,13 +116,7 @@ func (stream *Stream) prepareInitiatorReplacement(records *attachmentRecords) (_
 	child, cancelPhysical := context.WithCancel(stream.owner.context())
 	attachment := &initiatorAttachment{binding: binding, physical: physical, ctx: child, cancel: cancelPhysical, watcherDone: make(chan struct{})}
 	attachment.self = attachment
-	attachment.connection = tls.Client(initiatorTLSBorrow{attachment: attachment}, &tls.Config{
-		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, CurvePreferences: transport.ClosedProfileKeyExchangeGroups(),
-		InsecureSkipVerify: true, // Exact independently verified Instance only.
-		VerifyConnection: func(state tls.ConnectionState) error {
-			return verifyInstanceCertificate(state, binding.identity.Instance)
-		},
-	})
+	attachment.connection = newInstanceTLSClient(initiatorTLSBorrow{attachment: attachment}, binding.identity.Instance)
 	proposal.attachment = attachment
 	go attachment.watch()
 	if err := physical.SetDeadline(binding.expires); err != nil {
