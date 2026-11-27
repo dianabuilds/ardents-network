@@ -11,7 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/execution/worker"
 )
 
-type byteStreamProtocol struct{ documentProtocol }
+type byteStreamProtocol struct{ textWorkerInventory }
 
 func (byteStreamProtocol) initialize(ctx context.Context, attachment *worker.Attachment, nonce [32]byte, _ string) error {
 	return document.InitializeWorker(ctx, attachment, document.ByteStreamWorker, nonce, nil)
