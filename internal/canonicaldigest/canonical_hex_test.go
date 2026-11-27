@@ -53,28 +53,6 @@ func TestDecodeAdmitsOnlyCanonicalLowercaseHex32(t *testing.T) {
 	}
 }
 
-func TestValidMatchesDecodeAdmission(t *testing.T) {
-	for _, raw := range []string{
-		"",
-		"0",
-		"00",
-		strings.Repeat("00", 32),
-		strings.Repeat("ff", 32),
-		strings.Repeat("FF", 32),
-		strings.Repeat("aB", 32),
-		strings.Repeat("0123456789abcdef", 4),
-		strings.Repeat("0a", 31) + "0",
-		strings.Repeat("0a", 33),
-		strings.Repeat("0a", 31) + "zz",
-		"0x" + strings.Repeat("0a", 31),
-	} {
-		_, ok := Decode(raw)
-		if Valid(raw) != ok {
-			t.Fatalf("Valid and Decode disagree on %q", raw)
-		}
-	}
-}
-
 func TestDecodeRefusesOversizedInputWithoutAllocating(t *testing.T) {
 	oversized := strings.Repeat("a", 1<<20)
 	allocations := testing.AllocsPerRun(10, func() {

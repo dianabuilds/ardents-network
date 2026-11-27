@@ -51,3 +51,20 @@ func TestProfilesRetainFullOpenSets(t *testing.T) {
 		}
 	}
 }
+
+func TestNET14ProfilesHaveExactSchedules(t *testing.T) {
+	for _, profile := range []Profile{ClientToPublisher, PublisherToClient} {
+		for _, target := range []struct {
+			role Role
+			want Schedule
+		}{
+			{ReaderRole, Schedule{OpenConnections: 64, ActiveConnections: 16, AggregateBits: 10_000_000}},
+			{PublisherRole, Schedule{OpenConnections: 256, ActiveConnections: 64, AggregateBits: 40_000_000}},
+		} {
+			got, err := profile.Definition(target.role)
+			if err != nil || got != target.want {
+				t.Fatalf("profile %d role %d: %+v / %v, want %+v", profile, target.role, got, err, target.want)
+			}
+		}
+	}
+}

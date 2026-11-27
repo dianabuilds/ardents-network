@@ -255,3 +255,12 @@ func TestWorkerBorrowRoleChecksAreDistinct(t *testing.T) {
 		t.Fatalf("Reader hook drifted from the original expression: %q vs %q", borrowErrString(readerGot), borrowErrString(readerWant))
 	}
 }
+
+func TestWorkerBorrowReadRetainsOriginalCallerCancellation(t *testing.T) {
+	fixture := newBorrowFixture(t)
+	fixture.cancelReader()
+	n, err := fixture.readerBorrow().Read(make([]byte, 4))
+	if n != 0 || !errors.Is(err, context.Canceled) {
+		t.Fatal("original Reader cause lost", n, err)
+	}
+}

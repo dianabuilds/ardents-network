@@ -187,3 +187,15 @@ func TestRecoveryFailureKeepsOriginalAttachmentCause(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnknownStreamFailureDoesNotExposePrivateReason(t *testing.T) {
+	private := errors.New("private synthetic diagnostic")
+	for _, err := range []error{private, fmt.Errorf("wrapped: %w", private), errors.Join(private, errors.New("other detail"))} {
+		if got := StreamFailureReason(err); got != "" {
+			t.Fatal("unknown cause projected to public reason", got)
+		}
+	}
+	if got := StreamFailureReason(errors.Join(private, io.ErrUnexpectedEOF)); got != "Service Connection was truncated" {
+		t.Fatal("known category lost", got)
+	}
+}
