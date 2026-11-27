@@ -283,11 +283,13 @@ retained `descriptor-forward-release-linux` signing lane and the
 `descriptor-store-inspection-linux` read-only Store mechanism lane remain
 required. The read-only retained-root inspection mechanisms
 (`state.OpenNodeInspection`, `duty.OpenNodeInspection`,
-`reachability/store.OpenInspection`, `spending.OpenInspection`,
-`hosting.OpenInspection`) lose their last production consumer and are retained as
+`reachability/store.OpenInspection`, `hosting.OpenInspection`) lose their last
+production consumer and are retained as
 reviewed mechanism code with genuine native coverage (deadcode allowlist); their
 shared custody/floor/reader helpers remain production-live through
 SourceInspection, the live Store and the bounded repair.
+The unused Spending inspection is retired; the active receiving owner retains
+its strict existing-history open, burn and original lease checks.
 
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
 build producer's exact source byte/mode grammar, duplicate refusal and actual
@@ -1623,20 +1625,12 @@ cancellation, local denial, physical late Close failure and copied completion
 check custody through actual join. These controls establish no installed
 replacement/recovery or capacity permission.
 
-`TestSpendInspectionNative*` belongs to the existing root/ext4
-`network-signing-linux` profile. Run its bounded owner selection with
-`go test -race -tags network_signing_native ./internal/domain/admission/spending -run '^TestSpendInspectionNative' -count=1 -timeout=2m`
-(also run by `make network-signing-check`; E1-2 executed proof restored)
-under the profile's original development lock, private root-controlled native
-TMPDIR and pinned toolchain/dependencies. It uses genuine spend persistence and
-native exclusive leases, checking unchanged bytes, retained burn, missing or
-damaged history without repair/creation, numeric principal, changed inode/bytes/
-inventory/root, permanent refusal after restoration, copied Close, cancellation
-and held original readers/Close with actual late close failure. The lease must
-remain unavailable until original users and descriptor closes join. Supplied
-binding/token bytes isolate storage; this is no signed State, installed duty,
-retirement, replacement or recovery acceptance. Its selected execution and source
-identity remain separate from compilation and ordinary deterministic checks.
+The root/ext4 `network-signing-linux` profile also executes the active Spending
+retained-opening tests. They use actual persisted spend and an exclusive lease
+to check missing, damaged or foreign history refuses without initialization or
+repair, failed opens return their lease, an empty retained header grants no fresh
+root fact, and a committed token cannot be spent again. They do not claim the
+retired read-only inspection's numeric-principal or installed-recovery proof.
 
 `TestReceivingHeldForeignWorkDeniesBeforeJoin` and
 `TestReceivingOriginalAttemptCancellationAndRefill` hold Receiving's original
