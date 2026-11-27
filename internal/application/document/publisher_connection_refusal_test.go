@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type hostilePublisherAttachment struct {
@@ -86,7 +86,7 @@ func TestPublisherWorkerAlreadyCancelledDoesNotReceiveAnotherService(t *testing.
 	defer peer.Close()
 	stream := newPublisherFixture(publisherRequest(), nil)
 	defer stream.Close()
-	incoming := make(chan connection.Stream, 1)
+	incoming := make(chan endpointstream.Stream, 1)
 	incoming <- stream
 	if err := document.ServeWorkerConnections(ctx, endpoint, incoming); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancel outcome = %v", err)

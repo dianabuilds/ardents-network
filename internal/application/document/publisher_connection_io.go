@@ -6,14 +6,14 @@ import (
 	"io"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type publisherEvent struct {
 	stream  *publisherStream
 	kind    byte // request=1, terminal=2, write=3, joined close=4
 	body    []byte
-	outcome connection.Outcome
+	outcome endpointstream.Outcome
 	eof     bool
 	err     error
 }
@@ -88,7 +88,7 @@ type publisherStreamIO struct {
 	cancel     context.CancelFunc
 	owner      *publisherConnections
 	state      *publisherStream
-	service    connection.Stream
+	service    endpointstream.Stream
 	writes     chan publisherWrite
 	workers    sync.WaitGroup
 	closeOnce  sync.Once
@@ -97,7 +97,7 @@ type publisherStreamIO struct {
 	cleanupErr error // Joined physical result reported to worker cleanup.
 }
 
-func (owner *publisherConnections) startStream(service connection.Stream) *publisherStream {
+func (owner *publisherConnections) startStream(service endpointstream.Stream) *publisherStream {
 	ctx, cancel := context.WithCancel(owner.ctx)
 	state := &publisherStream{}
 	stream := &publisherStreamIO{ctx: ctx, cancel: cancel, owner: owner, state: state, service: service,

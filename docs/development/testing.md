@@ -3004,7 +3004,7 @@ symbols are already portable: the Reader local Text result projection
 (`endpoint/publisher/roots.go`) and fixed document stream contract
 (`endpoint/publisher/contract.go`), and the Endpoint network presentation guard
 (`endpoint/authority.go`). Each file was re-verified pure at `origin/dev`: zero
-native mechanism and every composed symbol portable (`application/connection`
+native mechanism and every composed symbol portable (`application/endpointstream`
 and `application/document` projections, `pathcheck.IsCleanAbsolute`, the portable
 `Operation.BindStreamContract`, and `stock`/`network`/`funding` facts). The Reader
 projection test was de-tagged (`result_test.go`) and a new portable root-isolation
@@ -3038,11 +3038,11 @@ shift the three `!linux` stubs to `!linux && !darwin`) fails darwin on exactly
 four undefined symbols: `execution/runtime.Owner.LaunchByteStreamPublisher` and
 `LaunchByteStreamReader` (`byte_stream_linux.go`, no refusal stub),
 `connection.StreamFailureReason` (`stream_failure_linux.go`) and
-`application/connection.Refuse` (`server_refusal_linux.go`). The Publisher and
+`application/endpointstream.Refuse` (now `terminal_outcome.go`). The Publisher and
 Reader coordinators and `participant_linux.go` therefore stay Linux: they compose
 the Linux native worker launch seam (systemd/cgroup), and the participant also
 composes the Linux `endpoint/launch`, `declarations_linux.go` and
-`permission_handover_linux.go` projections and `application/connection.Listen`. The session
+`permission_handover_linux.go` projections and `application/endpointstream.Listen`. The session
 `Open*` and Publisher live Open/snapshot compositions compile clean on darwin, but
 their underlying native mechanisms — Hosting `/proc` measurement
 (`hosting/platform_other.go` typed refusal), the native worker launch,
@@ -3084,7 +3084,7 @@ refusal would land after selection/Hosting/Instance root state, so shifting it w
 break refusal ordering; `publisher/snapshot_linux.go` reads the snapshot file before
 the native launch refusal; `publisher/publisher_linux.go` and `byte_stream_linux.go`
 are coupled to live Open; `reader/reader_linux.go` composes the Linux-only
-`application/connection.Refuse` projection (setupCleanupError classification), and
+`application/endpointstream.Refuse` projection (setupCleanupError classification), and
 `reader/operation_linux.go`/`source_linux.go`/`byte_stream_linux.go` have only that
 Linux coordinator as a production consumer (de-tagging them alone would add
 Windows/macOS production-dead code); `participant_linux.go` composes `endpoint/launch`
@@ -3104,12 +3104,12 @@ test still requires the Linux-only route-topology fixture (`AddRouteFixtureNodes
 with receiver sockets/certificates); porting that fixture is a separate follow-up,
 not part of this boundary shift. The next unblocking prerequisites are porting the
 `publication/durable` lease seam, the native worker launch composition and the
-`application/connection.Refuse` projection. Follow-up #880 (#691) has since
+`application/endpointstream.Refuse` projection. Follow-up #880 (#691) has since
 re-tagged the `publication/durable` lease seam to the Unix family (Linux and
 macOS, byte-identical flock lease) while the existing Windows lease is
 unchanged; the Publisher/Reader/participant boundary now stays Linux on the
 remaining recorded grounds (native worker launch composition,
-snapshot-read-before-launch ordering, the `application/connection.Refuse`
+snapshot-read-before-launch ordering, the `application/endpointstream.Refuse`
 projection and systemd delivery), with the architecture rationale updated.
 
 Follow-up #883 (#691) shifted the Publisher composition itself to the Unix family
@@ -3128,7 +3128,7 @@ read-only (`document.ReadSnapshotFile` opens `O_RDONLY`/`O_NOFOLLOW` into a
 caller-owned buffer and creates no filesystem state or authority) before the same
 typed launch refusal, so the snapshot-read-before-launch ordering no longer blocks
 the port — reading caller input is not state creation. The byte-stream adapter
-composes only the portable `application/connection` stream interface and terminal
+composes only the portable `application/endpointstream` stream interface and terminal
 outcomes, not the Linux-only `Refuse`/`setupCleanupError` projection (which remains the Reader's
 blocker at `reader_linux.go`). macOS worker launch stays a typed refusal
 (`execution/runtime` `!linux` stubs); no unconfined worker is spawned and Linux
@@ -3140,14 +3140,14 @@ assertion `TestCohort2dEndpointNativeBoundary` was re-pinned (Publisher Unix
 composition + Windows refusal; Reader/participant Linux); the deadcode allowlist
 symbols are unchanged (linux/windows selections identical, only batch-3 rationale
 prose updated). The next unblocking prerequisites are the
-`application/connection.Refuse` projection (Reader) and `endpoint/launch` systemd
+`application/endpointstream.Refuse` projection (Reader) and `endpoint/launch` systemd
 delivery (participant), then the cmd adapters.
 
 Follow-up #885 (#691) split the pure typed refusal constructor
-`application/connection.Refuse` into the portable `server_refusal.go`
+`application/endpointstream.Refuse` as a portable constructor (now in `terminal_outcome.go`)
 (byte-identical bounded-outcome validation + `SetupRefusalError`), leaving the
-Linux-only `refusal` setupCleanupError classifier with the protected Linux server
-admission (`server_admission.go`/`server_linux.go` stay Linux). Per-file
+Linux-only `classifySetupRefusal` setupCleanupError classifier with the protected Linux server
+admission (`server_admission_linux.go`/`server_linux.go` stay Linux). Per-file
 re-verification of the Reader dependency closure then confirmed every remaining
 dependency is portable, Unix-family, or has a typed `!linux` worker-launch
 refusal, so `reader/reader_linux.go`/`operation_linux.go`/`source_linux.go`/
@@ -3159,8 +3159,8 @@ byte-identical. The Reader has no Windows refusal stub: its sole production
 consumer is the Linux participant, so the composition adds no Windows production
 code. The participant STAYS Linux (`endpoint/launch` systemd delivery plus the
 `declarations_linux.go`/`permission_handover_linux.go` projections, Layer 2). A portable
-`Refuse` behavior test (`server_refusal_test.go`) joins the deterministic lane;
-the `refusal` classifier test stays Linux. The architecture assertion
+`Refuse` behavior test (`terminal_outcome_test.go`) joins the deterministic lane;
+the setup-refusal classifier test stays Linux. The architecture assertion
 `TestCohort2dEndpointNativeBoundary` was re-pinned (Reader Unix composition;
 participant Linux) and the filename-keyed isolation allowances re-pathed. The
 deadcode allowlist adds one Windows-production entry for `Refuse`
@@ -3942,6 +3942,15 @@ two independently admitted real host managers performing the protected-text
 journey. It is NOT the whole-host two-participant privacy qualification. The
 transitional guarded-start/ACK/recovery orchestration is neither exercised nor
 retired (ADR-0125 D6).
+
+## Local Target Link ownership
+
+`make endpointstream-private-input-check` uses the real Linux command under two
+unprivileged numeric UIDs. A mode-0600 Target Link owned by one UID reaches the
+local dial for its owner; the other UID receives the private-input refusal
+before dial. Linux root with chown and UID/GID switching is required; missing
+capabilities fail the selected profile. This is local access and diagnostic
+ordering evidence, not a claim against privileged or same-UID processes.
 
 ## Private Permission filesystem identity
 

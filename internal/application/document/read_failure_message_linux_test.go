@@ -5,13 +5,13 @@ package document_test
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"testing"
 )
 
 func TestDocumentReadLocalContextDiagnosticPrecedesDeliveredRefusal(t *testing.T) {
-	refusal := connection.Refuse(connection.Outcome{Class: connection.CapacityUnavailable, Reason: "private fixture detail"})
+	refusal := endpointstream.Refuse(endpointstream.Outcome{Class: endpointstream.CapacityUnavailable, Reason: "private fixture detail"})
 	for _, test := range []struct {
 		contextErr error
 		want       string

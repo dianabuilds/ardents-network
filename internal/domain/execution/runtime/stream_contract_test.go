@@ -3,7 +3,7 @@ package runtime
 import (
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func TestDetachedOperationCannotBindWorkloadByteContract(t *testing.T) {
@@ -24,7 +24,7 @@ func TestDetachedOperationCannotBindWorkloadByteContract(t *testing.T) {
 }
 
 func TestByteStreamUsesTheFixedSymmetricContract(t *testing.T) {
-	limit := connection.ByteStreamDirectionalLimit
+	limit := endpointstream.ByteStreamDirectionalLimit
 	for _, test := range []struct {
 		send, receive uint64
 		allowed       bool

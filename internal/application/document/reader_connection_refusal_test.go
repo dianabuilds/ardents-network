@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type blockedReaderService struct {
 	entered   chan struct{}
 	closed    chan struct{}
-	done      chan connection.Outcome
+	done      chan endpointstream.Outcome
 	readOnce  sync.Once
 	closeOnce sync.Once
 }
@@ -29,8 +29,8 @@ func (stream *blockedReaderService) Write([]byte) (int, error) {
 	<-stream.closed
 	return 0, io.ErrClosedPipe
 }
-func (stream *blockedReaderService) CloseInput() error               { return nil }
-func (stream *blockedReaderService) Done() <-chan connection.Outcome { return stream.done }
+func (stream *blockedReaderService) CloseInput() error                   { return nil }
+func (stream *blockedReaderService) Done() <-chan endpointstream.Outcome { return stream.done }
 func (stream *blockedReaderService) Close() error {
 	stream.closeOnce.Do(func() { close(stream.closed); close(stream.done) })
 	return nil
@@ -48,7 +48,7 @@ func TestReaderWorkerRefusesUnsolicitedOutputBeforeServiceCompletion(t *testing.
 		t.Run(test.name, func(t *testing.T) {
 			endpoint, peer := net.Pipe()
 			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-			service := &blockedReaderService{entered: make(chan struct{}), closed: make(chan struct{}), done: make(chan connection.Outcome)}
+			service := &blockedReaderService{entered: make(chan struct{}), closed: make(chan struct{}), done: make(chan endpointstream.Outcome)}
 			finished := make(chan error, 1)
 			joined := make(chan struct{})
 			go func() {
@@ -97,7 +97,7 @@ func TestReaderWorkerCancellationJoinsBlockedServiceAndWorkerIO(t *testing.T) {
 	endpoint, peer := net.Pipe()
 	defer peer.Close()
 	ctx, cancel := context.WithCancel(t.Context())
-	service := &blockedReaderService{entered: make(chan struct{}), closed: make(chan struct{}), done: make(chan connection.Outcome)}
+	service := &blockedReaderService{entered: make(chan struct{}), closed: make(chan struct{}), done: make(chan endpointstream.Outcome)}
 	finished := make(chan error, 1)
 	joined := make(chan struct{})
 	go func() {
@@ -139,7 +139,7 @@ func TestReaderWorkerCancellationJoinsBlockedServiceAndWorkerIO(t *testing.T) {
 func TestReaderWorkerRejectsOversizedFrameBeforePayloadRead(t *testing.T) {
 	endpoint, peer := net.Pipe()
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	service := &blockedReaderService{entered: make(chan struct{}), closed: make(chan struct{}), done: make(chan connection.Outcome)}
+	service := &blockedReaderService{entered: make(chan struct{}), closed: make(chan struct{}), done: make(chan endpointstream.Outcome)}
 	finished := make(chan error, 1)
 	joined := make(chan struct{})
 	go func() {

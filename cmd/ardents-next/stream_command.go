@@ -6,7 +6,7 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func runStreamCommand(ctx context.Context, args []string, diagnostic io.Writer) int {
@@ -19,9 +19,9 @@ func runStreamCommand(ctx context.Context, args []string, diagnostic io.Writer) 
 	}
 	var err error
 	if publish {
-		err = connection.PublishLocalStream(ctx, args[1])
+		err = endpointstream.PublishLocalStream(ctx, args[1])
 	} else {
-		err = connection.ConnectLocalStream(ctx, args[1], args[3])
+		err = endpointstream.ConnectLocalStream(ctx, args[1], args[3])
 	}
 	if err != nil {
 		_, writeErr := fmt.Fprintln(diagnostic, "Application stream failed:", err)

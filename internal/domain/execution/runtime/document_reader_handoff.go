@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type readerCompletion struct {
@@ -14,7 +14,7 @@ type readerCompletion struct {
 }
 
 type readerConnectionInput struct {
-	incoming  chan application.Stream
+	incoming  chan endpointstream.Stream
 	result    chan readerCompletion
 	finish    chan struct{}
 	completed bool // Invocation.useMu owns the retained RESULT barrier.
@@ -35,7 +35,7 @@ type ReaderResult struct {
 // DeliverReaderStream gives the sole initialized document reader one authenticated
 // stream. A true transfer remains receiver-owned even if completion fails.
 // The caller closes its Operation and Invocation before consuming the result.
-func (operation *Operation) DeliverReaderStream(contract StreamContract, stream application.Stream) (transferred bool, result *ReaderResult, failure error) {
+func (operation *Operation) DeliverReaderStream(contract StreamContract, stream endpointstream.Stream) (transferred bool, result *ReaderResult, failure error) {
 	if stream == nil {
 		return false, nil, errors.New("reader stream is absent")
 	}

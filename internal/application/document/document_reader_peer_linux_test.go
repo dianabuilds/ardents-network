@@ -10,7 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // This is only a local AAI3 peer. It supplies no State, Route, worker launch or
@@ -18,7 +18,7 @@ import (
 type documentReadPeer struct {
 	response     []byte
 	destination  string
-	class        connection.OutcomeClass
+	class        endpointstream.OutcomeClass
 	terminal     <-chan struct{}
 	responseSent chan struct{}
 	opens        atomic.Int32
@@ -26,22 +26,22 @@ type documentReadPeer struct {
 }
 
 type refusingDocumentReadPeer struct {
-	outcome connection.Outcome
+	outcome endpointstream.Outcome
 	opens   atomic.Int32
 }
 
-func (peer *refusingDocumentReadPeer) Open(_ context.Context, request connection.Request) (connection.Stream, error) {
-	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+func (peer *refusingDocumentReadPeer) Open(_ context.Context, request endpointstream.Request) (endpointstream.Stream, error) {
+	if request.Destination != endpointstream.TargetLink || request.Value != "fixture-link" {
 		return nil, errors.New("fixture refused destination")
 	}
 	peer.opens.Add(1)
-	return nil, connection.Refuse(peer.outcome)
+	return nil, endpointstream.Refuse(peer.outcome)
 }
 
 type setupBlockingDocumentReadPeer struct{ entered chan struct{} }
 
-func (peer *setupBlockingDocumentReadPeer) Open(ctx context.Context, request connection.Request) (connection.Stream, error) {
-	if request.Destination != connection.TargetLink || request.Value != "fixture-link" {
+func (peer *setupBlockingDocumentReadPeer) Open(ctx context.Context, request endpointstream.Request) (endpointstream.Stream, error) {
+	if request.Destination != endpointstream.TargetLink || request.Value != "fixture-link" {
 		return nil, errors.New("fixture refused destination")
 	}
 	close(peer.entered)
@@ -53,12 +53,12 @@ func documentResponse(body []byte) []byte {
 	return bytes.Clone(body)
 }
 
-func (peer *documentReadPeer) Open(ctx context.Context, request connection.Request) (connection.Stream, error) {
+func (peer *documentReadPeer) Open(ctx context.Context, request endpointstream.Request) (endpointstream.Stream, error) {
 	destination := peer.destination
 	if destination == "" {
 		destination = "fixture-link"
 	}
-	if request.Destination != connection.TargetLink || request.Value != destination {
+	if request.Destination != endpointstream.TargetLink || request.Value != destination {
 		return nil, errors.New("fixture refused destination")
 	}
 	peer.opens.Add(1)
@@ -66,7 +66,7 @@ func (peer *documentReadPeer) Open(ctx context.Context, request connection.Reque
 	response, output := io.Pipe()
 	bounded, cancel := context.WithCancel(ctx)
 	stream := &documentReadStream{request: requestSink, response: response, input: input, output: output,
-		cancel: cancel, finished: make(chan struct{}), done: make(chan connection.Outcome, 1)}
+		cancel: cancel, finished: make(chan struct{}), done: make(chan endpointstream.Outcome, 1)}
 	go func() {
 		defer close(stream.finished)
 		request, err := io.ReadAll(io.LimitReader(input, 513))
@@ -89,9 +89,9 @@ func (peer *documentReadPeer) Open(ctx context.Context, request connection.Reque
 		}
 		class := peer.class
 		if err != nil || bounded.Err() != nil {
-			class = connection.IndeterminateFailure
+			class = endpointstream.IndeterminateFailure
 		}
-		stream.done <- connection.Outcome{Class: class}
+		stream.done <- endpointstream.Outcome{Class: class}
 		close(stream.done)
 	}()
 	return stream, nil
@@ -104,14 +104,14 @@ type documentReadStream struct {
 	output   *io.PipeWriter
 	cancel   context.CancelFunc
 	finished chan struct{}
-	done     chan connection.Outcome
+	done     chan endpointstream.Outcome
 	once     sync.Once
 }
 
-func (stream *documentReadStream) Read(body []byte) (int, error)   { return stream.response.Read(body) }
-func (stream *documentReadStream) Write(body []byte) (int, error)  { return stream.request.Write(body) }
-func (stream *documentReadStream) CloseInput() error               { return stream.request.Close() }
-func (stream *documentReadStream) Done() <-chan connection.Outcome { return stream.done }
+func (stream *documentReadStream) Read(body []byte) (int, error)       { return stream.response.Read(body) }
+func (stream *documentReadStream) Write(body []byte) (int, error)      { return stream.request.Write(body) }
+func (stream *documentReadStream) CloseInput() error                   { return stream.request.Close() }
+func (stream *documentReadStream) Done() <-chan endpointstream.Outcome { return stream.done }
 func (stream *documentReadStream) Close() error {
 	stream.once.Do(func() {
 		stream.cancel()

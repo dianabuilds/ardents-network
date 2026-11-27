@@ -6,7 +6,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 const publisherOpenLimit = 256
@@ -18,7 +18,7 @@ const publisherActiveLimit = 64
 // sender retains streams still waiting there. Closing incoming drains received
 // streams. Cancellation interrupts and joins all received stream I/O.
 // Endpoint still owns current-job/Grant validation and joined cgroup cleanup.
-func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream) (resultErr error) {
+func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream) (resultErr error) {
 	if ctx == nil || attachment == nil || incoming == nil {
 		return errors.New("document Publisher Connections are unavailable")
 	}
@@ -41,7 +41,7 @@ func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, 
 		if incoming == nil && len(owner.streams) == 0 {
 			return nil
 		}
-		var admissions <-chan connection.Stream
+		var admissions <-chan endpointstream.Stream
 		if len(owner.streams) < publisherOpenLimit {
 			admissions = incoming
 		}

@@ -47,13 +47,13 @@ func installedQualificationImport(source, dependency, local string, localImport 
 			}
 		case "internal/domain/endpoint/connection_response_loss_linux_test.go":
 			switch local {
-			case "internal/application/connection", "internal/domain/connection", "internal/domain/endpoint/publisher", "internal/domain/execution/runtime",
+			case "internal/application/endpointstream", "internal/domain/connection", "internal/domain/endpoint/publisher", "internal/domain/execution/runtime",
 				"internal/domain/network", "internal/domain/publication/runtime", "internal/domain/route/transport":
 				return importAllowed
 			}
 		case "internal/domain/endpoint/document_command_installed_linux_test.go":
 			switch local {
-			case "internal/domain/admission", "internal/application/administration", "internal/application/connection", "internal/application/document",
+			case "internal/domain/admission", "internal/application/administration", "internal/application/endpointstream", "internal/application/document",
 				"internal/domain/endpoint/funding", "internal/domain/endpoint/publisher", "internal/domain/endpoint/reader", "internal/domain/execution",
 				"internal/domain/execution/runtime", "internal/domain/hosting", "internal/domain/reachability", "internal/domain/route/selection",
 				"internal/domain/route/transport", "tests/e2e/endpoint":

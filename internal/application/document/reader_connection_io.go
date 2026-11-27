@@ -6,14 +6,14 @@ import (
 	"io"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type readerServiceEvent struct {
 	body     []byte
 	eof      bool
 	terminal bool
-	outcome  connection.Outcome
+	outcome  endpointstream.Outcome
 	err      error
 }
 
@@ -30,7 +30,7 @@ type readerConnectionIO struct {
 	parent        context.Context
 	cancel        context.CancelFunc
 	attachment    io.ReadWriteCloser
-	service       connection.Stream
+	service       endpointstream.Stream
 	frames        chan workerReadResult
 	serviceEvents chan readerServiceEvent
 	permits       chan int
@@ -53,7 +53,7 @@ func startReaderConnectionIO(parent context.Context, attachment io.ReadWriteClos
 	return owner
 }
 
-func (owner *readerConnectionIO) attachService(service connection.Stream) error {
+func (owner *readerConnectionIO) attachService(service endpointstream.Stream) error {
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
 	if owner.closing || owner.ctx.Err() != nil || owner.service != nil || service == nil {

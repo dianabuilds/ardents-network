@@ -9,19 +9,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
-func readTransferredReader(ctx context.Context, worker io.ReadWriteCloser, stream connection.Stream) ([]byte, error) {
-	incoming := make(chan connection.Stream, 1)
+func readTransferredReader(ctx context.Context, worker io.ReadWriteCloser, stream endpointstream.Stream) ([]byte, error) {
+	incoming := make(chan endpointstream.Stream, 1)
 	incoming <- stream
 	return awaitTransferredReader(ctx, worker, incoming)
 }
 
 // These transfer fixtures release completion immediately. They exercise the
 // same retained reader contract used by the real Execution consumer.
-func awaitTransferredReader(ctx context.Context, worker io.ReadWriteCloser, incoming <-chan connection.Stream) ([]byte, error) {
+func awaitTransferredReader(ctx context.Context, worker io.ReadWriteCloser, incoming <-chan endpointstream.Stream) ([]byte, error) {
 	ready := make(chan []byte, 1)
 	release := make(chan struct{})
 	close(release)
@@ -33,10 +33,10 @@ func awaitTransferredReader(ctx context.Context, worker io.ReadWriteCloser, inco
 func TestRetainedReaderResultKeepsOriginalStreamUntilRelease(t *testing.T) {
 	worker, done := startDocumentWorker(t, document.ReaderWorker, nil)
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
-	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
-	stream.done <- connection.Outcome{Class: connection.CleanClose}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan endpointstream.Outcome, 1)}
+	stream.done <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 	close(stream.done)
-	incoming := make(chan connection.Stream, 1)
+	incoming := make(chan endpointstream.Stream, 1)
 	incoming <- stream
 	ready, release := make(chan []byte, 1), make(chan struct{})
 	completed := make(chan error, 1)
@@ -79,10 +79,10 @@ func TestInitializedReaderWaitsForSingleStreamWithSameProtocolReader(t *testing.
 	worker, done := startDocumentWorker(t, document.ReaderWorker, nil)
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
-	stream.done <- connection.Outcome{Class: connection.CleanClose}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan endpointstream.Outcome, 1)}
+	stream.done <- endpointstream.Outcome{Class: endpointstream.CleanClose}
 	close(stream.done)
-	incoming := make(chan connection.Stream)
+	incoming := make(chan endpointstream.Stream)
 	result := make(chan struct {
 		body []byte
 		err  error
@@ -114,7 +114,7 @@ func TestWaitingReaderJoinsWorkerOnMissingTransferAndOriginalCancellation(t *tes
 	for _, closedInput := range []bool{false, true} {
 		worker, done := startDocumentWorker(t, document.ReaderWorker, nil)
 		ctx, cancel := context.WithCancel(t.Context())
-		incoming := make(chan connection.Stream)
+		incoming := make(chan endpointstream.Stream)
 		if closedInput {
 			close(incoming)
 		} else {
@@ -140,7 +140,7 @@ func TestWaitingReaderRefusesUnsolicitedWorkerOutputBeforeStream(t *testing.T) {
 	go func() { _, err := remote.Write([]byte{0xff, 0, 0, 0, 1, 0, 0, 0, 0}); written <- err }()
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	body, err := awaitTransferredReader(ctx, local, make(chan connection.Stream))
+	body, err := awaitTransferredReader(ctx, local, make(chan endpointstream.Stream))
 	if body != nil || err == nil || errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("unsolicited frame did not synchronously refuse before transfer", err)
 	}

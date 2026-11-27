@@ -267,7 +267,7 @@ The local runtime has separate Modules and Interfaces:
 
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
-| internal/application/connection | Carry a typed Target-Link request for the AAI4 byte-stream interface for all content. Refuse reserved Name requests and join terminal and cancellation cleanup. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/endpointstream | Carry a typed Target-Link request for the AAI4 byte-stream interface for all content. Refuse reserved Name requests and join terminal and cancellation cleanup. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/administration | Carry separately authorized document publication and withdrawal requests. The fixed byte-stream publication request upgrades the local attachment to the ordered stream grammar. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/domain/endpoint | Compose the platform-led protected participant over the Connection and Administration interfaces, with joined shutdown of its role owners. | Execution session admission, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |

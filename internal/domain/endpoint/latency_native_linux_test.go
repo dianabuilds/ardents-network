@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
@@ -452,7 +452,7 @@ func (p *latencyParticipant) warmLoop(ctx context.Context, t *testing.T, link st
 		bounded, cancel := context.WithTimeout(ctx, 10*time.Second)
 		defer cancel()
 		began := time.Now()
-		stream, err := p.reader.Open(bounded, application.Request{Destination: application.TargetLink, Value: link})
+		stream, err := p.reader.Open(bounded, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
 		opened := time.Since(began)
 		if err != nil {
 			t.Logf("warm read open refused after %v: %v", opened, err)
@@ -568,7 +568,7 @@ func (p *latencyParticipant) coldAttempt(ctx context.Context, link string, index
 		Authority: p.authority, Holder: holder, Check: bounded.Err,
 	})
 	began := time.Now()
-	stream, err := reader.Open(bounded, application.Request{Destination: application.TargetLink, Value: link})
+	stream, err := reader.Open(bounded, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
 	if err != nil {
 		return time.Since(began), err
 	}
@@ -605,7 +605,7 @@ func (p *latencyParticipant) diagnosticOpenTiming(ctx context.Context, t *testin
 	bounded, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	began := time.Now()
-	stream, err := reader.Open(bounded, application.Request{Destination: application.TargetLink, Value: link})
+	stream, err := reader.Open(bounded, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
 	opened := time.Since(began)
 	if err != nil {
 		t.Logf("open-timing open refused after %v: %v", opened, err)

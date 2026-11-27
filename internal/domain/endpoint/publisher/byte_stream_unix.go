@@ -8,8 +8,8 @@ import (
 	"io"
 	"sync"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 )
@@ -29,7 +29,7 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 		defer stop()
 		ctx = lifetime
 	}
-	contract, err := operation.BindStreamContract(application.ByteStreamDirectionalLimit, application.ByteStreamDirectionalLimit)
+	contract, err := operation.BindStreamContract(endpointstream.ByteStreamDirectionalLimit, endpointstream.ByteStreamDirectionalLimit)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 		_ = stream.Close()
 		operation.RetainCleanup(stream.JoinedCleanup())
 	}()
-	exchange, cancel := context.WithTimeout(ctx, application.ReaderTimeout)
+	exchange, cancel := context.WithTimeout(ctx, endpointstream.ReaderTimeout)
 	defer cancel()
 	phase = "Publisher worker exchange failed"
 	if err := operation.ExchangeByteStream(exchange, contract, port, stream); err != nil {
@@ -53,7 +53,7 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 	phase = "Publisher did not obtain authenticated terminal completion"
 	select {
 	case outcome, open := <-stream.Done():
-		if !open || outcome.Class != application.CleanClose {
+		if !open || outcome.Class != endpointstream.CleanClose {
 			return errors.New("authenticated byte stream did not complete")
 		}
 	case <-exchange.Done():
@@ -76,13 +76,13 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 
 // OpenByteStream retains the operator's local byte attachment only after the
 // Service's ordinary publication acknowledgement.
-func (owner *Publisher) OpenByteStream(ctx context.Context) (application.Stream, error) {
+func (owner *Publisher) OpenByteStream(ctx context.Context) (endpointstream.Stream, error) {
 	lifetime, cancel := context.WithCancel(ctx)
 	in, write := io.Pipe()
 	read, out := io.Pipe()
 	port := &publishedBytePort{
 		ctx: lifetime, cancel: cancel, in: in, out: out,
-		done: make(chan application.Outcome, 1), joined: make(chan struct{}),
+		done: make(chan endpointstream.Outcome, 1), joined: make(chan struct{}),
 	}
 	stream := &publishedByteStream{read: read, write: write, port: port}
 	if err := owner.PublishByteStream(ctx, port); err != nil {
@@ -98,7 +98,7 @@ type publishedBytePort struct {
 	cancel context.CancelFunc
 	in     *io.PipeReader
 	out    *io.PipeWriter
-	done   chan application.Outcome
+	done   chan endpointstream.Outcome
 	joined chan struct{}
 	once   sync.Once
 	err    error
@@ -115,9 +115,9 @@ func (port *publishedBytePort) finish(err error) {
 		defer close(port.joined)
 		port.err = err
 		_ = port.Close()
-		outcome := application.Outcome{Class: application.CleanClose}
+		outcome := endpointstream.Outcome{Class: endpointstream.CleanClose}
 		if err != nil {
-			outcome = application.Outcome{Class: application.IndeterminateFailure, Reason: publishedByteStreamFailureReason(err)}
+			outcome = endpointstream.Outcome{Class: endpointstream.IndeterminateFailure, Reason: publishedByteStreamFailureReason(err)}
 		}
 		port.done <- outcome
 		close(port.done)
@@ -131,10 +131,10 @@ type publishedByteStream struct {
 	port  *publishedBytePort
 }
 
-func (stream *publishedByteStream) Read(body []byte) (int, error)    { return stream.read.Read(body) }
-func (stream *publishedByteStream) Write(body []byte) (int, error)   { return stream.write.Write(body) }
-func (stream *publishedByteStream) CloseInput() error                { return stream.write.Close() }
-func (stream *publishedByteStream) Done() <-chan application.Outcome { return stream.port.done }
+func (stream *publishedByteStream) Read(body []byte) (int, error)       { return stream.read.Read(body) }
+func (stream *publishedByteStream) Write(body []byte) (int, error)      { return stream.write.Write(body) }
+func (stream *publishedByteStream) CloseInput() error                   { return stream.write.Close() }
+func (stream *publishedByteStream) Done() <-chan endpointstream.Outcome { return stream.port.done }
 func (stream *publishedByteStream) Close() error {
 	stream.port.cancel()
 	_ = stream.read.Close()

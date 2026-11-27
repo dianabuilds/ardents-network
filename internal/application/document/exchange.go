@@ -5,14 +5,14 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 const MaximumBytes = 4 << 20
 
 // Read closes the unused sending direction and receives bounded raw file bytes.
 // It returns content after EOF, authenticated success and joined cleanup.
-func Read(ctx context.Context, stream connection.Stream) (body []byte, resultErr error) {
+func Read(ctx context.Context, stream endpointstream.Stream) (body []byte, resultErr error) {
 	if ctx == nil || stream == nil {
 		return nil, errors.New("document read is unavailable")
 	}
@@ -36,7 +36,7 @@ func Read(ctx context.Context, stream connection.Stream) (body []byte, resultErr
 	}
 	select {
 	case outcome, ok := <-stream.Done():
-		if !ok || outcome.Class != connection.CleanClose {
+		if !ok || outcome.Class != endpointstream.CleanClose {
 			return nil, errors.New("document Connection did not complete")
 		}
 	case <-ctx.Done():

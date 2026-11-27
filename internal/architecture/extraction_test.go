@@ -37,7 +37,7 @@ func TestNetworkExtractionRehearsal(t *testing.T) {
 			t.Fatalf("Network extraction retained Application implementation %s", relative)
 		}
 	}
-	runCandidateGo(t, candidate, "test", "./cmd/ardents-next", "./internal/domain/custody/command", "./internal/domain/execution", "./internal/application/administration", "./internal/application/connection")
+	runCandidateGo(t, candidate, "test", "./cmd/ardents-next", "./internal/domain/custody/command", "./internal/domain/execution", "./internal/application/administration", "./internal/application/endpointstream")
 	for command := range strings.FieldsSeq(string(readProjectFile(t, candidate, "tests/profiles/headless-commands.txt"))) {
 		buildCandidateCommand(t, root, candidate, command, filepath.Join(t.TempDir(), filepath.Base(command)))
 	}

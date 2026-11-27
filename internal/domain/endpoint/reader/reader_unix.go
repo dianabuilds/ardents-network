@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
@@ -29,9 +29,9 @@ type Reader struct {
 	route     *funding.Parents
 }
 
-func (owner *Reader) Open(ctx context.Context, request application.Request) (_ application.Stream, result error) {
-	if ctx == nil || owner == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || request.Destination != application.TargetLink {
-		return nil, application.Refuse(application.Outcome{Class: application.ServiceUnavailable})
+func (owner *Reader) Open(ctx context.Context, request endpointstream.Request) (_ endpointstream.Stream, result error) {
+	if ctx == nil || owner == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || request.Destination != endpointstream.TargetLink {
+		return nil, endpointstream.Refuse(endpointstream.Outcome{Class: endpointstream.ServiceUnavailable})
 	}
 	// Operation admission boundary: full-content installed observation. Inner
 	// effect brackets below use the identity-only check.

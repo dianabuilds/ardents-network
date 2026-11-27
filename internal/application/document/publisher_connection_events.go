@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func (owner *publisherConnections) fromService(event publisherEvent) error {
@@ -16,7 +16,7 @@ func (owner *publisherConnections) fromService(event publisherEvent) error {
 		}
 		stream.request, stream.requestReady = event.body, true
 	case 2:
-		if event.err != nil || event.outcome.Class != connection.CleanClose {
+		if event.err != nil || event.outcome.Class != endpointstream.CleanClose {
 			return owner.failStream(stream)
 		}
 		stream.remoteClean = true

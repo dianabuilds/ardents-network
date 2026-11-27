@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
@@ -531,12 +531,12 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 // Connection still performs every effect, final fence and physical join.
 type observedConnectionOutcome struct {
 	*connection.Stream
-	consumer chan application.Outcome
-	observed chan application.Outcome
+	consumer chan endpointstream.Outcome
+	observed chan endpointstream.Outcome
 }
 
 func observeConnectionOutcome(stream *connection.Stream) *observedConnectionOutcome {
-	observer := &observedConnectionOutcome{Stream: stream, consumer: make(chan application.Outcome, 1), observed: make(chan application.Outcome, 1)}
+	observer := &observedConnectionOutcome{Stream: stream, consumer: make(chan endpointstream.Outcome, 1), observed: make(chan endpointstream.Outcome, 1)}
 	go func() {
 		if outcome, ok := <-stream.Done(); ok {
 			observer.consumer <- outcome
@@ -548,14 +548,14 @@ func observeConnectionOutcome(stream *connection.Stream) *observedConnectionOutc
 	return observer
 }
 
-func (observer *observedConnectionOutcome) Done() <-chan application.Outcome {
+func (observer *observedConnectionOutcome) Done() <-chan endpointstream.Outcome {
 	return observer.consumer
 }
 
 func (observer *observedConnectionOutcome) waitClean(ctx context.Context) error {
 	select {
 	case outcome, ok := <-observer.observed:
-		if !ok || outcome.Class != application.CleanClose {
+		if !ok || outcome.Class != endpointstream.CleanClose {
 			return errors.New("original Publisher Terminal outcome is not clean")
 		}
 		return nil
@@ -768,7 +768,7 @@ func assertInstalledConnectionDelayedObservationRetirement(t *testing.T, ctx con
 		t.Fatal("repeated Close changed its original joined result", repeated, closeErr)
 	}
 	for outcome := range stream.Done() {
-		if outcome.Class != application.IndeterminateFailure {
+		if outcome.Class != endpointstream.IndeterminateFailure {
 			t.Fatal("canceled original Stream supplied a successful outcome", outcome.Class)
 		}
 		t.Log("retained canceled Stream outcome", outcome.Class, outcome.Reason)
@@ -815,7 +815,7 @@ type observedConnectionEOF struct {
 	resumeOnce sync.Once
 }
 
-func (observed *observedConnectionEOF) Done() <-chan application.Outcome {
+func (observed *observedConnectionEOF) Done() <-chan endpointstream.Outcome {
 	return observed.outcome.Done()
 }
 

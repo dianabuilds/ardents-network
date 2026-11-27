@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 type publisherFrameObservation struct {
@@ -119,7 +119,7 @@ func TestPublisherWorkerDrainsCancelledStreamWithoutLosingSnapshot(t *testing.T)
 	case <-time.After(5 * time.Second):
 		t.Fatal("failed stream did not start")
 	}
-	failed.finish(connection.IndeterminateFailure)
+	failed.finish(endpointstream.IndeterminateFailure)
 	valid := newPublisherFixture(publisherRequest(), nil)
 	harness.admit(t, valid)
 	harness.drain(t)

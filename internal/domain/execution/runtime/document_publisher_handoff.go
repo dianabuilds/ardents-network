@@ -4,21 +4,21 @@ import (
 	"context"
 	"errors"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // This unbuffered byte boundary belongs to the original document protocol reader.
 // It supplies no Service authority; Connection composition must authenticate
 // and retain the original stream before attempting this local transfer.
 type publisherConnectionInput struct {
-	incoming chan application.Stream
+	incoming chan endpointstream.Stream
 }
 
 // DeliverPublisherStream transfers one already authenticated stream to the
 // exact original qualified snapshot invocation. Waiting remains sender-owned;
 // received streams belong to the sole document reader until their joined Close.
 // transferred stays true if authority loss is observed after the actual send.
-func (operation *Operation) DeliverPublisherStream(ctx context.Context, contract StreamContract, stream application.Stream) (transferred bool, result error) {
+func (operation *Operation) DeliverPublisherStream(ctx context.Context, contract StreamContract, stream endpointstream.Stream) (transferred bool, result error) {
 	if ctx == nil || stream == nil {
 		return false, errors.New("publisher stream handoff is absent")
 	}

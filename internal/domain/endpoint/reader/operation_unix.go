@@ -7,7 +7,7 @@ import (
 	"errors"
 	"sync"
 
-	application "github.com/dianabuilds/ardents-network/internal/application/connection"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
@@ -29,7 +29,7 @@ func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32
 	var worker *executionruntime.Invocation
 	var err error
 	worker, err = local.LaunchByteStreamReader(ctx, principal)
-	send, receive := application.ByteStreamDirectionalLimit, application.ByteStreamDirectionalLimit
+	send, receive := endpointstream.ByteStreamDirectionalLimit, endpointstream.ByteStreamDirectionalLimit
 	if err != nil {
 		return nil, err
 	}

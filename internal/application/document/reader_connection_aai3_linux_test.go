@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 // The AAI3 transfer control uses the selected Linux Connection listener; the
@@ -30,7 +30,7 @@ func TestReaderWorkerTransfersThroughAAI3WithoutSecondOpen(t *testing.T) {
 	body := bytes.Repeat([]byte("closed text\n"), 8192)
 	owner := &snapshotConnectionOwner{snapshot: body}
 	address := filepath.Join(directory, "connection.sock")
-	server, err := connection.Listen(address, owner)
+	server, err := endpointstream.Listen(address, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestReaderWorkerTransfersThroughAAI3WithoutSecondOpen(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	stream, err := connection.Dial(ctx, address, connection.Request{Destination: connection.TargetLink, Value: "fixture-link"})
+	stream, err := endpointstream.Dial(ctx, address, endpointstream.Request{Destination: endpointstream.TargetLink, Value: "fixture-link"})
 	if err != nil {
 		t.Fatal(err)
 	}
