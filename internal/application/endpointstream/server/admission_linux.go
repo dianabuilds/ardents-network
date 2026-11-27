@@ -21,7 +21,7 @@ type setupPeer interface {
 
 // openAuthorizedAttachment ties setup cancellation to the local peer. An early
 // byte or disconnect refuses setup before accepting Application input.
-func (server *Server) openAuthorizedAttachment(local setupPeer, request endpointstream.Request, deadline time.Time) (endpointstream.Stream, context.CancelFunc, error) {
+func (server *server) openAuthorizedAttachment(local setupPeer, request endpointstream.Request, deadline time.Time) (endpointstream.Stream, context.CancelFunc, error) {
 	ctx, cancel := context.WithDeadline(server.ctx, deadline)
 	var mu sync.Mutex
 	finished := false
@@ -70,7 +70,7 @@ type setupCleanupError struct {
 func (failure setupCleanupError) Error() string { return failure.cause.Error() }
 func (failure setupCleanupError) Unwrap() error { return failure.cause }
 
-func (server *Server) closeRefusedAttachment(stream endpointstream.Stream, setupErr error) error {
+func (server *server) closeRefusedAttachment(stream endpointstream.Stream, setupErr error) error {
 	if stream == nil {
 		return setupErr
 	}

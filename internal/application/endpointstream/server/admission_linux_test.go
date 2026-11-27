@@ -88,12 +88,13 @@ func TestServerJoinsCanceledSetupCleanup(t *testing.T) {
 			if len(body) == 0 || body[0] != 0 || !strings.Contains(string(body), string(endpointstream.LocalCancellation)) || strings.Contains(string(body), "private cleanup sentinel") {
 				t.Fatalf("unsafe or incorrect refusal: %q", body)
 			}
+			copied := public
 			closeErr := public.Close()
 			if failure == nil && closeErr != nil || failure != nil && !errors.Is(closeErr, failure) {
 				t.Fatalf("Close lost setup cleanup: %v", closeErr)
 			}
-			if repeated := public.Close(); repeated != closeErr {
-				t.Fatalf("Close changed retained result: %v", repeated)
+			if repeated := copied.Close(); repeated != closeErr {
+				t.Fatalf("copied handle changed joined Close result: %v", repeated)
 			}
 		})
 	}
@@ -140,7 +141,7 @@ func TestSetupRetainsOriginalDeadlineAndEarlierCancellation(t *testing.T) {
 			parent, cancelParent := context.WithDeadline(t.Context(), parentEnd)
 			defer cancelParent()
 			owner := &deadlineSetupOwner{}
-			server := &Server{ctx: parent, owner: owner}
+			server := &server{ctx: parent, owner: owner}
 			peer := &deadlineResetPeer{wake: make(chan struct{})}
 			stream, cancel, err := server.openAuthorizedAttachment(peer, endpointstream.Request{}, deadline)
 			if err != nil {
@@ -170,7 +171,7 @@ func TestSetupDeadlineResetRetainsAndJoinsCleanup(t *testing.T) {
 	setupErr := errors.New("reset sentinel")
 	cleanupErr := errors.New("cleanup sentinel")
 	owner := &cleanupSequenceOwner{failure: cleanupErr}
-	server := &Server{ctx: t.Context(), owner: owner}
+	server := &server{ctx: t.Context(), owner: owner}
 	// This seam injects a deadline reset failure; it is not a real socket failure.
 	attachment, cancel, err := server.openAuthorizedAttachment(&deadlineResetPeer{wake: make(chan struct{}), failure: setupErr}, endpointstream.Request{}, time.Now().Add(endpointstream.ReaderTimeout))
 	if attachment != nil || cancel != nil || !errors.Is(err, setupErr) || !errors.Is(err, cleanupErr) {
@@ -246,7 +247,7 @@ func TestServerCloseWaitsForCanceledSetupStream(t *testing.T) {
 func TestSetupCleanupCannotReclassifyRefusal(t *testing.T) {
 	for _, setupErr := range []error{context.Canceled, endpointstream.Refuse(endpointstream.Outcome{Class: endpointstream.CapacityUnavailable, Reason: "bounded refusal"}), errors.New("setup sentinel")} {
 		for _, cleanupErr := range []error{context.DeadlineExceeded, context.Canceled, errors.New("raw private cleanup")} {
-			server := &Server{}
+			server := &server{}
 			err := server.closeRefusedAttachment(&cleanupSequenceStream{failure: cleanupErr}, setupErr)
 			if !errors.Is(err, setupErr) || !errors.Is(err, cleanupErr) {
 				t.Fatalf("local errors lost: %v", err)

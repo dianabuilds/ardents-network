@@ -46,10 +46,11 @@ func TestServerRetainsOneCleanupFailureAcrossClientTurnover(t *testing.T) {
 	failure := errors.New("first cleanup failed")
 	owner := &cleanupSequenceOwner{failure: failure}
 	path := shortClientSocketPath(t)
-	server, err := Listen(path, owner)
+	public, err := Listen(path, owner)
 	if err != nil {
 		t.Fatal(err)
 	}
+	server := public.(*server)
 	defer server.Close()
 	for index := range 40 {
 		client, err := endpointclient.Dial(t.Context(), path, endpointstream.Request{Destination: endpointstream.TargetLink, Value: "explicit"})
