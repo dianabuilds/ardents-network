@@ -77,7 +77,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if local == "internal/domain/connection/recordio" {
 		switch source {
-		case "internal/domain/connection/initiator_authentication.go", "internal/domain/connection/initiator_response_read_test.go",
+		case "internal/domain/connection/reader_authentication.go", "internal/domain/connection/reader_authentication_test.go",
 			"internal/domain/connection/publisher_authentication.go", "internal/domain/connection/stream_records.go",
 			"internal/domain/connection/stream_retirement_test.go":
 			return true
@@ -88,12 +88,24 @@ func successorImportAllowed(source, dependency string) bool {
 	if path.Dir(source) == "internal/domain/connection/recordio" {
 		return allowedStandardImport(dependency) || local == "internal/domain/connection/wire"
 	}
+	const recipient = "internal/domain/connection/recipient"
+	if local == recipient {
+		switch source {
+		case "internal/domain/connection/recipient_binding.go", "internal/domain/connection/authenticated_attachment_test.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if path.Dir(source) == recipient {
+		return allowedStandardImport(dependency) || local == "internal/domain/connection/wire" || local == "internal/domain/publication"
+	}
 	if local == "internal/domain/connection/transfer" {
 		switch source {
-		case "internal/domain/connection/stream.go", "internal/domain/connection/stream_failure.go",
+		case "internal/domain/connection/stream.go", "internal/domain/connection/stream_retirement.go",
 			"internal/domain/connection/stream_io.go", "internal/domain/connection/stream_records.go",
 			"internal/domain/connection/attachment_records_test.go", "internal/domain/connection/stream_retirement_test.go",
-			"internal/domain/connection/initiator_replacement.go", "internal/domain/connection/publisher_replacement.go",
+			"internal/domain/connection/reader_replacement.go", "internal/domain/connection/publisher_replacement.go",
 			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go":
 			return true
 		default:
@@ -500,7 +512,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/stream_qualification_linux.go" || source == "internal/domain/execution/runtime/stream_qualification_other.go" || source == "internal/domain/execution/runtime/stream_qualification_installed_linux_test.go") && dependency == modulePath+"/internal/application/streamqualification" {
 		return true
 	}
-	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
