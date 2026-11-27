@@ -15,6 +15,12 @@ type floorDocument struct {
 	Floors        []authorityFloor `json:"floors"`
 }
 
+const maximumFloorBytes = 1 << 20
+
+func readSmallFile(path string) ([]byte, error) {
+	return readRegularFile(path, maximumFloorBytes)
+}
+
 type authorityFloor struct {
 	Environment  string        `json:"environment"`
 	Network      string        `json:"network"`

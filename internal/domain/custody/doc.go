@@ -21,34 +21,32 @@
 // each test is listed under its primary responsibility cluster.
 //
 // Responsibility clusters and their tests:
-//   - vault lifecycle and serialized original operation: vault.go,
-//     vault_contract.go, vault_operation.go (Execute dispatch), vault_lock.go,
-//     vault_lock_nonwindows.go, vault_lock_windows.go, vault_purge.go
-//     (original_operation_test.go, record_refusal_test.go,
-//     vault_lock_windows_test.go)
-//   - record durability mechanisms: writeRecordIn, verifyPersistedEnvelope,
-//     reserveRecordSpace and readRegularFile inside vault_operation.go;
-//     writeAtomicPrivate inside authority_floor.go; durability_nonwindows.go,
-//     durability_windows.go (interrupted_publication_test.go,
-//     filesystem_failure_linux_test.go, service_failure_linux_test.go; linux)
+//   - vault lifecycle, Execute dispatch and original operation: vault.go,
+//     vault_contract.go, vault_lock.go and its platform implementations
+//     (original_operation_test.go, vault_lock_windows_test.go)
+//   - encrypted record naming, bounded I/O, no-replace publication and
+//     readback: vault_record.go and durability platform implementations
+//     (record_refusal_test.go, filesystem_failure_linux_test.go,
+//     service_failure_linux_test.go)
+//   - Authority record creation, verification and active/quarantine lookup:
+//     authority_record.go; confirmed removal: vault_purge.go
+//     (recovery_lifecycle_test.go)
 //   - canonical envelope and KDF: canonical_envelope.go
 //     (envelope_vector_test.go, admission_kdf_test.go)
 //   - authority state and recovery floors: authority_state.go,
 //     authority_floor.go (floor rules), record_comparison.go
-//     (admission_recovery_test.go)
+//     (admission_recovery_test.go, interrupted_publication_test.go)
 //   - admission purpose: admission_authority.go (admission_authority_test.go,
 //     admission_allocation_test.go, admission_refusal_test.go,
 //     issuance_time_test.go)
 //   - service purpose: service_authority.go, service_credential.go
 //     (service_issuance_test.go, service_refusal_test.go)
 //   - recovery bundle export, restore and publication: bundle_export.go,
-//     bundle_restore.go (bundle_publication_test.go,
-//     recovery_lifecycle_test.go)
+//     bundle_restore.go (bundle_publication_test.go, recovery_lifecycle_test.go)
 //   - independent root provenance: independent_root.go
-//     (independent_root_refusal_test.go,
-//     independent_root_refusal_linux_test.go)
+//     (independent_root_refusal_test.go)
 //   - post-commit credential delivery: credential_delivery.go
-//     (credential_delivery_linux_test.go; linux)
+//     (credential_delivery_linux_test.go)
 //
 // terminal_input_test.go carries the shared sequenceSecrets input fixture and
 // no behavior of its own.

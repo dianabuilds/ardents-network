@@ -11,7 +11,7 @@ func (vault *Vault) purgeRecord(ctx context.Context, operation Operation, secret
 	if ctx == nil || secrets == nil || !isZeroAuthorityState(operation.authority) || operation.Path != "" || !validRecordID(operation.RecordID) {
 		return Receipt{}, ErrInvalid
 	}
-	raw, state, path, err := vault.exportableRecord(operation.RecordID)
+	raw, state, path, err := vault.readRetainedRecord(operation.RecordID)
 	if err != nil {
 		return Receipt{}, err
 	}

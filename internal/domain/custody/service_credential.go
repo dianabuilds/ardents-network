@@ -9,7 +9,6 @@ import (
 	"errors"
 	"math"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
@@ -35,13 +34,13 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	}
 	successorID := serviceSuccessorRecordID(operation.RecordID, request.Commitment)
 	if expired {
-		existing, readErr := readEnvelopeFile(filepath.Join(vault.records, "record-"+successorID+".json"))
+		existing, readErr := readEnvelopeFile(recordPath(vault.records, successorID))
 		clear(existing)
 		if readErr != nil {
 			return Receipt{}, ErrInvalid
 		}
 	}
-	sourceRaw, err := readEnvelopeFile(filepath.Join(vault.records, "record-"+operation.RecordID+".json"))
+	sourceRaw, err := readEnvelopeFile(recordPath(vault.records, operation.RecordID))
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -216,7 +215,7 @@ func serviceSuccessorRecordID(recordID string, commitment [32]byte) string {
 }
 
 func (vault *Vault) ensureServiceSuccessor(recordID string, expected authorityState, password []byte, allowCreation bool, request publication.RequestView) ([]byte, EnvelopeInfo, error) {
-	path := filepath.Join(vault.records, "record-"+recordID+".json")
+	path := recordPath(vault.records, recordID)
 	raw, err := readEnvelopeFile(path)
 	if err == nil {
 		state, info, openErr := openServiceAuthority(raw, password, expected.Binding)
@@ -251,7 +250,7 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected authoritySt
 		clear(envelope)
 		return nil, EnvelopeInfo{}, ErrInvalid
 	}
-	if err := vault.writeRecord(recordID, envelope); err != nil {
+	if err := vault.publishActiveRecord(recordID, envelope); err != nil {
 		clear(envelope)
 		return nil, EnvelopeInfo{}, err
 	}
