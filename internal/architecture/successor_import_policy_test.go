@@ -92,7 +92,6 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"ardents-next dispatches installed endpoint through its command", "cmd/ardents-next/command.go", modulePath + "/internal/domain/endpoint/command", true},
 		{"ardents-next dispatch does not acquire the installed endpoint", "cmd/ardents-next/command.go", modulePath + "/internal/domain/endpoint", false},
 		{"installed endpoint command uses the participant owner", "internal/domain/endpoint/command/installed_command_linux.go", modulePath + "/internal/domain/endpoint", true},
-		{"only installed participant owns permission exchange", "internal/domain/endpoint/command/installed_command_linux.go", modulePath + "/internal/domain/endpoint/internal/permission", false},
 		{"plan constructor command has no direct Source codec", "internal/domain/endpoint/command/preparation_command_linux.go", modulePath + "/internal/domain/network/source", false},
 		{"installed participant owns Administration listener", "internal/domain/endpoint/participant_linux.go", modulePath + "/internal/application/administration", true},
 		{"installed Publisher retains original worker", "internal/domain/endpoint/publisher/publisher_unix.go", modulePath + "/internal/domain/execution/runtime", true},

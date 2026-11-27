@@ -841,7 +841,7 @@ The local Application listeners keep their original socket entry in
 they retire that entry within the original parent.
 `endpoint` owns the original participant's use of Startup, State, local Execution
 and shared parents. `endpoint/launch` retains the installed Startup observations.
-`endpoint/internal/permission` retains the local file exchange under the
+Endpoint’s `permission_handover_linux.go` retains the local file exchange under the
 participant's original Startup check and the Stock owner's exact response
 admission. Bound Installation declarations also serve offline Source preparation.
 `endpoint/command` handles the installed start and offline preparation arguments
@@ -1010,8 +1010,8 @@ handle. Scope retirement joins all generations before Instance binding retiremen
 cancellation does not seal the Execution generation as failed physical cleanup;
 actual output, close, missing join or resource-return failure still does.
 
-Actual source and imports are in the [package map](package-map.md) and
-[implementation entry point](../../internal/README.md). Component
+The [Go package map](package-map.md) records actual imports. For the original
+Node invocation, start with the [Node source guide](../../internal/domain/node/README.md). Component
 readiness, full issue acceptance, repository integration and qualification are
 different results. [GitHub #497](https://github.com/dianabuilds/ardents-network/issues/497)
 owns their dependency order and live criteria. Exact earlier source hashes,

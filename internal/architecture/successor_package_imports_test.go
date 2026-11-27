@@ -101,8 +101,6 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/endpoint/reader":    {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/connection", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/reachability", "domain/route/prefix", "domain/route/selection"},
 	"internal/domain/endpoint/funding":   {"domain/admission", "domain/admission/stock", "domain/admission/token", "domain/hosting", "domain/network", "domain/network/state", "domain/route", "domain/route/ardp", "domain/route/bootstrap", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathcheck"},
 	"cmd/ardents-next":                   {"canonicaldigest", "pathcheck", "domain/endpoint/session", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
-
-	"internal/domain/endpoint/internal/permission": {"domain/admission/stock", "pathcheck"},
 }
 
 // Apply the exact package edges after the special file-scoped rules.

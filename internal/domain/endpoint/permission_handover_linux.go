@@ -1,6 +1,6 @@
 //go:build linux
 
-package permission
+package endpoint
 
 import (
 	"bytes"
@@ -12,13 +12,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
-// PublishRequest publishes once or resynchronizes an exact retry. A partial or foreign request
+// publishPermissionRequest publishes once or resynchronizes an exact retry. A partial or foreign request
 // is retained as a refusal; it is never replaced with a new holder's request.
-func PublishRequest(path string, raw []byte, check func() error) (err error) {
+func publishPermissionRequest(path string, raw []byte, check func() error) (err error) {
 	if check == nil || len(raw) == 0 || len(raw) > 4096 || !pathcheck.IsCleanAbsolute(path) {
 		return errors.New("invalid installed permission handover")
 	}
@@ -31,7 +32,7 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 		return errors.Join(errors.New("permission parent unavailable"), err)
 	}
 	before, err := os.Lstat(parent)
-	if err != nil || !owned(before, true) {
+	if err != nil || !ownsPrivatePermissionPath(before, true) {
 		return errors.Join(errors.New("permission parent unavailable"), err)
 	}
 	root, err := os.OpenRoot(parent)
@@ -45,7 +46,7 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 		}
 		opened, a := root.Stat(".")
 		linked, b := os.Lstat(parent)
-		if a != nil || b != nil || !os.SameFile(before, opened) || !os.SameFile(before, linked) || !owned(linked, true) {
+		if a != nil || b != nil || !os.SameFile(before, opened) || !os.SameFile(before, linked) || !ownsPrivatePermissionPath(linked, true) {
 			return errors.Join(errors.New("permission parent changed"), a, b)
 		}
 		return nil
@@ -61,7 +62,7 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 			return err
 		}
 		before, err := root.Lstat(name)
-		if err != nil || !owned(before, false) || before.Size() != int64(len(raw)) {
+		if err != nil || !ownsPrivatePermissionPath(before, false) || before.Size() != int64(len(raw)) {
 			return errors.Join(errors.New("permission request changed"), err)
 		}
 		file, err = root.OpenFile(name, os.O_RDWR|syscall.O_NOFOLLOW, 0)
@@ -69,7 +70,7 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 			return err
 		}
 		opened, err := file.Stat()
-		if err != nil || !os.SameFile(before, opened) || !owned(opened, false) {
+		if err != nil || !os.SameFile(before, opened) || !ownsPrivatePermissionPath(opened, false) {
 			return errors.Join(errors.New("permission request changed"), err, file.Close())
 		}
 		retained, err := io.ReadAll(io.LimitReader(file, int64(len(raw))+1))
@@ -102,7 +103,7 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 	}
 	opened, a := file.Stat()
 	linked, b := root.Lstat(name)
-	if a != nil || b != nil || !os.SameFile(opened, linked) || !owned(linked, false) || linked.Size() != int64(len(raw)) {
+	if a != nil || b != nil || !os.SameFile(opened, linked) || !ownsPrivatePermissionPath(linked, false) || linked.Size() != int64(len(raw)) {
 		return errors.Join(errors.New("permission request changed"), a, b)
 	}
 	directory, err := root.Open(".")
@@ -115,7 +116,7 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 	return current()
 }
 
-// Retire removes a prior invocation's permission handover so a
+// retirePermissionHandover removes a prior invocation's permission handover so a
 // fresh platform-led invocation can publish its own fresh holder request. The
 // volatile holder is erased at shutdown, so a restart requires a fresh holder and a
 // fresh external authority approval, never a revival of the preceding allocation.
@@ -125,10 +126,10 @@ func PublishRequest(path string, raw []byte, check func() error) (err error) {
 // refusal and never removed. Retirement grants no authority: the external permission
 // authority must still sign the fresh request, and the durable presentation journal
 // retains every prior spend. The within-invocation publish rule
-// (PublishRequest) is unchanged; this is a distinct bootstrap-phase
+// (publishPermissionRequest) is unchanged; this is a distinct bootstrap-phase
 // lifecycle step, and at bootstrap any existing handover necessarily belongs to a
 // prior invocation because this process has not published yet.
-func Retire(requestPath, responsePath string, check func() error) (err error) {
+func retirePermissionHandover(requestPath, responsePath string, check func() error) (err error) {
 	if check == nil || !pathcheck.IsCleanAbsolute(requestPath) ||
 		!pathcheck.IsCleanAbsolute(responsePath) {
 		return errors.New("invalid installed permission handover")
@@ -142,7 +143,7 @@ func Retire(requestPath, responsePath string, check func() error) (err error) {
 		return errors.Join(errors.New("permission parent unavailable"), err)
 	}
 	before, err := os.Lstat(parent)
-	if err != nil || !owned(before, true) {
+	if err != nil || !ownsPrivatePermissionPath(before, true) {
 		return errors.Join(errors.New("permission parent unavailable"), err)
 	}
 	root, err := os.OpenRoot(parent)
@@ -156,7 +157,7 @@ func Retire(requestPath, responsePath string, check func() error) (err error) {
 		}
 		opened, a := root.Stat(".")
 		linked, b := os.Lstat(parent)
-		if a != nil || b != nil || !os.SameFile(before, opened) || !os.SameFile(before, linked) || !owned(linked, true) {
+		if a != nil || b != nil || !os.SameFile(before, opened) || !os.SameFile(before, linked) || !ownsPrivatePermissionPath(linked, true) {
 			return errors.Join(errors.New("permission parent changed"), a, b)
 		}
 		return nil
@@ -169,7 +170,7 @@ func Retire(requestPath, responsePath string, check func() error) (err error) {
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
-		if err != nil || !owned(linked, false) {
+		if err != nil || !ownsPrivatePermissionPath(linked, false) {
 			return errors.Join(errors.New("permission handover changed"), err)
 		}
 		if err := root.Remove(name); err != nil {
@@ -189,7 +190,7 @@ func Retire(requestPath, responsePath string, check func() error) (err error) {
 	return current()
 }
 
-func readResponse(path string) (raw []byte, err error) {
+func readPermissionResponse(path string) (raw []byte, err error) {
 	if !pathcheck.IsCleanAbsolute(path) {
 		return nil, errors.New("invalid permission response path")
 	}
@@ -199,7 +200,7 @@ func readResponse(path string) (raw []byte, err error) {
 		return nil, errors.Join(errors.New("permission parent unavailable"), err)
 	}
 	before, err := os.Lstat(parent)
-	if err != nil || !owned(before, true) {
+	if err != nil || !ownsPrivatePermissionPath(before, true) {
 		return nil, errors.Join(errors.New("permission parent unavailable"), err)
 	}
 	root, err := os.OpenRoot(parent)
@@ -218,7 +219,7 @@ func readResponse(path string) (raw []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if !owned(linked, false) || linked.Size() != 228 {
+	if !ownsPrivatePermissionPath(linked, false) || linked.Size() != admission.PermissionSize {
 		return nil, errors.New("permission response unavailable")
 	}
 	file, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
@@ -227,23 +228,23 @@ func readResponse(path string) (raw []byte, err error) {
 	}
 	defer func() { err = errors.Join(err, file.Close()) }()
 	opened, err := file.Stat()
-	if err != nil || !os.SameFile(linked, opened) || !owned(opened, false) {
+	if err != nil || !os.SameFile(linked, opened) || !ownsPrivatePermissionPath(opened, false) {
 		return nil, errors.Join(errors.New("permission response changed"), err)
 	}
-	raw, err = io.ReadAll(io.LimitReader(file, 229))
-	if err != nil || len(raw) != 228 {
+	raw, err = io.ReadAll(io.LimitReader(file, admission.PermissionSize+1))
+	if err != nil || len(raw) != admission.PermissionSize {
 		return nil, errors.Join(errors.New("permission response incomplete"), err)
 	}
 	after, a := root.Lstat(name)
 	parentAfter, b := os.Lstat(parent)
 	rootAfter, c := root.Stat(".")
-	if a != nil || b != nil || c != nil || !os.SameFile(opened, after) || !owned(after, false) || !os.SameFile(before, parentAfter) || !os.SameFile(before, rootAfter) || !owned(parentAfter, true) {
+	if a != nil || b != nil || c != nil || !os.SameFile(opened, after) || !ownsPrivatePermissionPath(after, false) || !os.SameFile(before, parentAfter) || !os.SameFile(before, rootAfter) || !ownsPrivatePermissionPath(parentAfter, true) {
 		return nil, errors.Join(errors.New("permission handover changed"), a, b, c)
 	}
 	return raw, nil
 }
 
-func owned(info os.FileInfo, directory bool) bool {
+func ownsPrivatePermissionPath(info os.FileInfo, directory bool) bool {
 	if info == nil {
 		return false
 	}
@@ -257,9 +258,9 @@ func owned(info os.FileInfo, directory bool) bool {
 	return info.Mode() == 0600 && stat.Nlink == 1
 }
 
-// AwaitResponse reads the original response and asks Stock to admit it for
+// awaitPermissionResponse reads the original response and asks Stock to admit it for
 // the exact request digest. The original Startup check brackets that handoff.
-func AwaitResponse(ctx context.Context, path string, digest [32]byte, deadline time.Time, holder *stock.Owner, check func() error) error {
+func awaitPermissionResponse(ctx context.Context, path string, digest [32]byte, deadline time.Time, holder *stock.Owner, check func() error) error {
 	bounded, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 	tick := time.NewTicker(100 * time.Millisecond)
@@ -268,7 +269,7 @@ func AwaitResponse(ctx context.Context, path string, digest [32]byte, deadline t
 		if err := check(); err != nil {
 			return err
 		}
-		raw, err := readResponse(path)
+		raw, err := readPermissionResponse(path)
 		if err == nil {
 			if err := check(); err != nil {
 				clear(raw)

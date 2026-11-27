@@ -389,10 +389,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if dependency == modulePath+"/internal/domain/endpoint/internal/permission" {
-		return source == "internal/domain/endpoint/participant_linux.go" ||
-			source == "internal/domain/endpoint/latency_native_linux_test.go"
-	}
 	if dependency == modulePath+"/internal/domain/endpoint" {
 		switch source {
 		case "internal/domain/endpoint/command/installed_command_linux.go",
