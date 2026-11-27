@@ -37,7 +37,7 @@
 //   - holder idle supervision and observation scheduling: registration.go
 //     (watch, checkOriginal, checkSupervision, observeOriginal)
 //     (registration_supervision_test.go)
-//   - holder Receipt/CheckReceipt public binding: registration_receipt.go
+//   - holder Receipt/CheckReceipt public binding: registration.go
 //     (registration_receipt_test.go)
 //   - holder purpose-5 delivery children: registration_delivery.go
 //     (registration_delivery_test.go)

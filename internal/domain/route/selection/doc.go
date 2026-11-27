@@ -27,7 +27,7 @@
 //     closed_adjacent_domains_test.go. IntroductionDuty has no dedicated
 //     in-package test; it is exercised through route/prefix and cmd
 //     composition tests.
-//   - durable-root: root.go, atomic_files.go, watermark.go, directory_sync.go,
+//   - durable-root: root.go, generation_files.go, watermark.go,
 //     root_lease_unix.go, root_lease_windows.go, root_permissions_unix.go,
 //     root_permissions_windows.go. Tests: root_hardening_linux_test.go,
 //     root_lease_identity_unix_test.go, root_permissions_windows_test.go,

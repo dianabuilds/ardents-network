@@ -24,9 +24,10 @@
 //     timer in prefix.go (observation_test.go)
 //   - sealed borrowing and original Source/Responder pair commits and
 //     acquisitions: borrowing.go (borrowing_test.go)
-//   - retained original Source lifetime: source_lifetime.go,
-//     source_generation.go, source_join.go, source_operations.go,
-//     source_scope.go (Prefix caller/scope rechecks) (source_lifetime_test.go)
+//   - retained original Source: source_scope.go owns the logical scope,
+//     source_generation.go owns each physical generation and handle,
+//     source_join.go transfers the exact JOIN borrow, and source_authority.go
+//     rechecks the original Prefix (source_lifetime_test.go)
 //   - retained Responder scope: responder_scope.go, responder_join.go
 //     (responder_scope_test.go)
 //   - recipient resolution and exact rendezvous verification: recipient.go

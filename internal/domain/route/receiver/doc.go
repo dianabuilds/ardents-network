@@ -13,4 +13,9 @@
 // Reachability Store. Reachability owns validation, durable floors and commit;
 // receiver retains original duty/currentness checks through RESULT and join.
 // Native receiving and Introduction root adapters currently require Linux.
+//
+// Listen in receiver_unix.go owns original listeners and terminal results.
+// receiving_admission_unix.go composes receiving gates before role dispatch.
+// carrier_pool.go lends the exact original Carrier to directed forwarding.
+// Purpose handlers retain physical capacity through the joined channel.
 package receiver

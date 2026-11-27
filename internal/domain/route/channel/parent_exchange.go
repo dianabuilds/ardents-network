@@ -3,6 +3,7 @@ package channel
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
@@ -160,4 +161,18 @@ func (s *Session) AcceptParent(ctx context.Context, witness, remaining uint64) e
 		return err
 	}
 	return s.write(control, accepted, false)
+}
+
+// replaceRemaining commits a verified refill against the usage witnessed after
+// its ADMIT debit. Traffic charged during verification remains charged against
+// the replacement reserve; cumulative usage and child credit never reset.
+func (s *Session) replaceRemaining(witness, remaining uint64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped || s.dedicated || !time.Now().Before(s.end) || remaining == 0 ||
+		witness > s.used || s.used > s.limit || witness > math.MaxUint64-remaining || s.used-witness > remaining {
+		return errors.New("route replenishment transition unavailable")
+	}
+	s.limit = witness + remaining
+	return nil
 }
