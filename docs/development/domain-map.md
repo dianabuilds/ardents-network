@@ -834,6 +834,9 @@ retains live authority; Route retains selection and physical join; Execution
 retains worker admission/results; Publication retains readiness/refresh/replay;
 Connection retains logical bytes and recovery. The original participant joins
 all requests/publications before closing shared parents, Stock and authority.
+The local Application listeners keep their original socket entry in
+`application/internal/socketfile`. After joining their own accepted clients,
+they retire that entry within the original parent.
 `endpoint` owns the original participant's use of Startup, State, local Execution
 and shared parents. `endpoint/launch` retains the installed Startup observations.
 `endpoint/internal/permission` retains the local file exchange under the

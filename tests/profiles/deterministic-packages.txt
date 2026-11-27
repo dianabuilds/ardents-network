@@ -1,6 +1,7 @@
 github.com/dianabuilds/ardents-network/cmd/ardents-custody
 github.com/dianabuilds/ardents-network/internal/domain/custody/command
 github.com/dianabuilds/ardents-network/internal/application/administration
+github.com/dianabuilds/ardents-network/internal/application/internal/socketfile
 github.com/dianabuilds/ardents-network/tests/diagnostics/heapdump
 github.com/dianabuilds/ardents-network/internal/diagnostics/measurement
 github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent
