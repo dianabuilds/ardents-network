@@ -7,11 +7,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"io"
+	"net"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/internal/instancetls"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
@@ -32,13 +34,7 @@ func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physi
 	logicalContext, cancelLogical, child, cancel := initiatorLifetimes(binding.operation.Context(), time.Unix(binding.identity.WorkSafetyNotAfter, 0))
 	attachment := &initiatorAttachment{binding: binding, physical: physical, ctx: child, cancel: cancel, watcherDone: make(chan struct{})}
 	attachment.self = attachment
-	attachment.connection = tls.Client(initiatorTLSBorrow{attachment: attachment}, &tls.Config{
-		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13, CurvePreferences: transport.ClosedProfileKeyExchangeGroups(),
-		InsecureSkipVerify: true, // The independently bound Instance is the sole verifier.
-		VerifyConnection: func(state tls.ConnectionState) error {
-			return verifyInstanceCertificate(state, binding.identity.Instance)
-		},
-	})
+	attachment.connection = newInstanceTLSClient(initiatorTLSBorrow{attachment: attachment}, binding.identity.Instance)
 	owner := &AuthenticatedAttachment{role: wire.RoleInitiator, operation: binding.operation, initiator: attachment,
 		identity: binding.identity, logical: binding.logical, attachment: binding.attachment,
 		logicalContext: logicalContext, cancelLogical: cancelLogical, recipientRevision: binding.revision}
@@ -155,4 +151,17 @@ func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physi
 	}
 	owner.key, owner.exporter = key, exporter
 	return owner, nil
+}
+
+// newInstanceTLSClient binds the Reader's TLS peer to the exact verified Instance key.
+// The Connection caller owns the original transport, handshake and proof lifetime.
+func newInstanceTLSClient(conn net.Conn, expected [32]byte) *tls.Conn {
+	return tls.Client(conn, &tls.Config{
+		MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13,
+		CurvePreferences:   transport.ClosedProfileKeyExchangeGroups(),
+		InsecureSkipVerify: true, // The independently bound Instance is the verifier.
+		VerifyConnection: func(state tls.ConnectionState) error {
+			return instancetls.VerifyPeer(state, expected)
+		},
+	})
 }

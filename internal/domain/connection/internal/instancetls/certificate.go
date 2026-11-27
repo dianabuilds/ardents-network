@@ -1,4 +1,4 @@
-package connection
+package instancetls
 
 import (
 	"crypto/ed25519"
@@ -7,14 +7,14 @@ import (
 	"errors"
 )
 
-// verifyInstanceCertificate is the TLS VerifyConnection check for the exact
+// VerifyPeer is the TLS VerifyConnection check for the exact
 // independently verified Instance public key. TLS itself verifies possession
 // through CertificateVerify. Public PKI, names and peer-supplied roots cannot
 // replace the expected key. This check supplies no Publication authority or
 // established stream receipt; protocol InstanceProof and Continuity, completed
 // handshake and original live owner observations remain separately required.
 // VerifyConnection runs before HandshakeComplete becomes true.
-func verifyInstanceCertificate(state tls.ConnectionState, expected [32]byte) error {
+func VerifyPeer(state tls.ConnectionState, expected [32]byte) error {
 	if expected == [32]byte{} || state.Version != tls.VersionTLS13 || state.DidResume ||
 		len(state.PeerCertificates) != 1 || state.PeerCertificates[0] == nil {
 		return errors.New("service Instance TLS certificate or profile is unavailable")

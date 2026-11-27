@@ -19,46 +19,21 @@
 // Protected Application command consumers use those sources before Application handoff;
 // complete native/installed acceptance remains a separate evidence boundary.
 //
-// Navigation: README.md carries the extended owner contract; the wire
-// subpackage owns the closed v3 grammar and transcript proofs. Test naming
-// follows docs/development/repository-layout.md; all tests are package
-// connection behavior tests, and each test is listed under its primary
-// responsibility cluster.
+// For the Reader, start at initiator_source.go. It binds the original Target
+// and retained Prefix. initiator_authentication.go checks the initial Proof and
+// Continuity. The private instancetls package checks the exact Instance key
+// for both initial and replacement TLS. publisher_authentication.go checks the
+// independently admitted recipient. wire owns the record and transcript bytes.
 //
-// Responsibility clusters and their tests:
-//   - logical stream, attachment records and retirement: stream.go,
-//     stream_records.go, attachment_record_reader.go (stream_test.go,
-//     attachment_records_test.go, attachment_record_reader_test.go,
-//     stream_retirement_seal_test.go, receive_delivery_test.go)
-//   - bounded send replay ledger: send_ledger.go (send_ledger_test.go,
-//     replacement_preflight_test.go)
-//   - ordered receive/replay ledger: receive_ledger.go
-//     (receive_ledger_test.go)
-//   - terminal exchange and control tail: terminal_exchange.go,
-//     terminal_tail.go (terminal_exchange_test.go,
-//     terminal_replay_boundaries_test.go, terminal_tail_test.go)
-//   - initial binding and instance verification: authenticated_attachment.go,
-//     recipient_binding.go, initiator_binding.go, instance_certificate.go,
-//     initial_flight.go, publisher_recipient.go
-//     (authenticated_attachment_test.go, recipient_binding_test.go,
-//     initiator_binding_test.go, instance_certificate_test.go,
-//     initial_flight_test.go, exporter_transcript_test.go)
-//   - two-role authentication and attachment lifetime:
-//     initiator_authentication.go, initiator_attachment.go,
-//     publisher_authentication.go (initiator_setup_test.go,
-//     initiator_lifetime_test.go)
-//   - initiator source seam: initiator_source.go (the sole
-//     network/reachability/route operation seam) (initiator_source_test.go).
-//     The initiator and replacement TLS configurations borrow only the closed
-//     key-exchange group list from route/transport; they gain no Route operation.
-//   - finite recovery and replacement: recovery_episode.go,
-//     publisher_recovery.go, initiator_replacement.go,
-//     initiator_replacement_commit.go, publisher_replacement.go,
-//     publisher_replacement_commit.go (recovery_episode_test.go,
-//     publisher_replacement_commit_test.go,
-//     publisher_replacement_retirement_test.go); the atomic ledger generation
-//     transfer is verified by the replacement cases of send_ledger_test.go
-//     and receive_ledger_test.go
-//   - stream failure reason projection: stream_failure_linux.go
-//     (stream_failure_linux_test.go; linux)
+// stream.go consumes the initial proof once and retains the logical owner.
+// stream_io.go owns caller-memory handoff and ordered writes. send_ledger.go,
+// receive_ledger.go and terminal_exchange.go retain the directional offsets and
+// receipts. stream_records.go serves one exact physical Attachment generation.
+//
+// recovery_episode.go retains the original recovery bound. The initiator and
+// Publisher prepare separate proposals. replacement_commit.go advances all
+// three ledgers only after the original physical actors and setup have joined.
+// stream_retirement.go preserves the original result through terminal_tail.go's
+// separate control tail and physical join. The stream, replacement and
+// terminal tests exercise original, foreign and late paths.
 package connection

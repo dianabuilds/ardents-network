@@ -83,6 +83,7 @@ github.com/dianabuilds/ardents-network/internal/domain/endpoint/generation
 github.com/dianabuilds/ardents-network/internal/domain/endpoint/unit
 github.com/dianabuilds/ardents-network/internal/domain/execution/worker
 github.com/dianabuilds/ardents-network/internal/domain/connection
+github.com/dianabuilds/ardents-network/internal/domain/connection/internal/instancetls
 github.com/dianabuilds/ardents-network/internal/domain/custody
 github.com/dianabuilds/ardents-network/internal/platform/processguard
 github.com/dianabuilds/ardents-network/internal/durablefile

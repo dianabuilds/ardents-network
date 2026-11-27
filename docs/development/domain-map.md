@@ -906,6 +906,10 @@ physical retirement only; neither clean cleanup nor a completed Application
 result supplies accepting authority. Execution retains the original worker's
 protocol reader and cleanup capacity until those borrowers finish. These seams
 do not merge state locks, private roots or domain policy.
+The Connection Reader reuses one TLS profile for the original and replacement
+Attachment. Its private certificate verifier compares only the exact public
+Instance key. Publisher retains its own Instance proof and live lease, and Route
+retains its original transport and physical join.
 Connection stages received bytes privately while its original owners validate
 the final handoff. Bounded caller-memory delivery and clean-outcome publication
 then run under the same local locks, with no foreign I/O or owner observation.

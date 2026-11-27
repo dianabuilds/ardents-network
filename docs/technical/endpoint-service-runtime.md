@@ -958,6 +958,11 @@ The Reader requires exact Instance TLS, signed challenge response and the
 sealed zero-offset Publisher Continuity before transferring setup into Work
 Safety. Both role authentications provide one-use initial state to the logical
 send/receive/Terminal owner with an immutable checked directional byte contract.
+Initial and replacement Reader authentication use the same TLS client profile.
+Its verifier compares the peer certificate with the exact independently
+verified public Instance key. Reachability verifies the original Target proof,
+and Publication retains the Publisher's live Instance borrow. The Connection
+caller retains the original JOIN, proof, Continuity and retirement.
 The initial stream handoff observes original Instance/Route authority before
 locking consumer state. It then uses the exact JOIN's Source-before-Responder
 and Acquisition barriers, followed by the Connection state mutex and the

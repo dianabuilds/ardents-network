@@ -1055,6 +1055,12 @@ func successorImportAllowed(source, dependency string) bool {
 	const retiredSigner = "internal/nodeidentity"
 	const retiredInstallation = "internal/platform/installation"
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	if local == "internal/domain/connection/internal/instancetls" {
+		return source == "internal/domain/connection/initiator_authentication.go"
+	}
+	if path.Dir(source) == "internal/domain/connection/internal/instancetls" && localImport {
+		return false
+	}
 	if local == "internal/domain/admission/console" {
 		switch source {
 		case "cmd/ardents-next/admission_console.go",
@@ -2564,8 +2570,7 @@ func successorImportAllowed(source, dependency string) bool {
 		// proof checks stay with each Service owner; no other file gains the edge.
 		if dependency == modulePath+"/internal/domain/route/transport" {
 			switch source {
-			case "internal/domain/connection/initiator_authentication.go", "internal/domain/connection/initiator_replacement.go",
-				"internal/domain/publication/instance/service_attachment.go":
+			case "internal/domain/connection/initiator_authentication.go", "internal/domain/publication/instance/service_attachment.go":
 				return true
 			}
 		}
@@ -2694,7 +2699,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/stream_qualification_linux.go" || source == "internal/domain/execution/runtime/stream_qualification_other.go" || source == "internal/domain/execution/runtime/stream_qualification_installed_linux_test.go") && dependency == modulePath+"/internal/application/streamqualification" {
 		return true
 	}
-	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_test.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
@@ -3200,12 +3205,16 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint journey native qualification uses actual document exchange", "tests/e2e/endpoint/journey_participant_native_linux_test.go", modulePath + "/internal/application/document", true},
 		{"Endpoint journey native qualification excludes old Endpoint", "internal/domain/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/domain/endpoint", false},
 		{"Endpoint journey native qualification has no Node runtime", "internal/domain/endpoint/endpoint_journey_native_linux_test.go", modulePath + "/internal/domain/node", false},
-		{"Initiator authentication borrows closed key-exchange groups", "internal/domain/connection/initiator_authentication.go", modulePath + "/internal/domain/route/transport", true},
-		{"Initiator replacement borrows closed key-exchange groups", "internal/domain/connection/initiator_replacement.go", modulePath + "/internal/domain/route/transport", true},
+		{"Instance certificate excludes Route", "internal/domain/connection/internal/instancetls/certificate.go", modulePath + "/internal/domain/route/transport", false},
+		{"Initiator authentication uses exact Instance TLS", "internal/domain/connection/initiator_authentication.go", modulePath + "/internal/domain/connection/internal/instancetls", true},
+		{"Shared Instance TLS client borrows closed key-exchange groups", "internal/domain/connection/initiator_authentication.go", modulePath + "/internal/domain/route/transport", true},
+		{"Shared Instance TLS client excludes the Route TLS adapter", "internal/domain/connection/initiator_authentication.go", modulePath + "/internal/domain/route/transport/tls", false},
+		{"Replacement handoff has no direct Route TLS contract", "internal/domain/connection/initiator_replacement.go", modulePath + "/internal/domain/route/transport", false},
+		{"Stream cannot open Instance TLS", "internal/domain/connection/stream.go", modulePath + "/internal/domain/connection/internal/instancetls", false},
 		{"Publisher attachment borrows closed key-exchange groups", "internal/domain/publication/instance/service_attachment.go", modulePath + "/internal/domain/route/transport", true},
 		{"Connection stream has no Route TLS contract", "internal/domain/connection/stream.go", modulePath + "/internal/domain/route/transport", false},
 		{"Initiator Source seam does not widen to the Route TLS contract", "internal/domain/connection/initiator_source.go", modulePath + "/internal/domain/route/transport", false},
-		{"Connection replacement commit has no Route TLS contract", "internal/domain/connection/initiator_replacement_commit.go", modulePath + "/internal/domain/route/transport", false},
+		{"Connection replacement commit has no Route TLS contract", "internal/domain/connection/replacement_commit.go", modulePath + "/internal/domain/route/transport", false},
 		{"Instance capsule opening has no Route TLS contract", "internal/domain/publication/instance/capsule_opening.go", modulePath + "/internal/domain/route/transport", false},
 		{"Instance recipient has no Route TLS contract", "internal/domain/publication/instance/recipient.go", modulePath + "/internal/domain/route/transport", false},
 		{"Instance replacement has no Route TLS contract", "internal/domain/publication/instance/service_replacement.go", modulePath + "/internal/domain/route/transport", false},
