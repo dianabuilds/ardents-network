@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -37,8 +38,8 @@ func sourcePreparationArguments(t *testing.T) (map[string]any, string, string) {
 	if err := errors.Join(ancestors.CheckRootAccess(), ancestors.Close()); err != nil {
 		t.Fatal("invalid environment: root-controlled direct ancestors required", err)
 	}
-	var fs syscall.Statfs_t
-	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", parent).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: native ext4 required", err)
 	}
 	pub := ed25519.NewKeyFromSeed(make([]byte, 32)).Public().(ed25519.PublicKey)

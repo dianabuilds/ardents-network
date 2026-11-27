@@ -6,8 +6,9 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"syscall"
+	"strings"
 	"testing"
 )
 
@@ -19,8 +20,8 @@ func TestReleaseKeySetNativeInterruptedCustody(t *testing.T) {
 	if err := os.Chmod(parent, 0700); err != nil {
 		t.Fatal(err)
 	}
-	var fs syscall.Statfs_t
-	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", parent).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: actual ext4 required", err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())

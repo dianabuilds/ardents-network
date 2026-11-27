@@ -6,10 +6,10 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -188,8 +188,8 @@ func infrastructureNativeWorkspace(t *testing.T) string {
 	if err := errors.Join(chain.CheckRootAccess(), chain.Close()); err != nil {
 		t.Fatal("invalid environment: root-controlled ancestors required", err)
 	}
-	var fs syscall.Statfs_t
-	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", parent).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: native ext4 required", err)
 	}
 	return parent

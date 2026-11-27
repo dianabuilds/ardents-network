@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/ext4"
 )
 
 type outputAccess uint8
@@ -97,8 +99,7 @@ func publish(ctx context.Context, path string, files []Content, maximum int, sec
 		}
 		return errors.Join(parents.Check(), check(), ctx.Err())
 	}
-	var filesystem syscall.Statfs_t
-	if err := syscall.Fstatfs(int(parent.file.Fd()), &filesystem); err != nil || filesystem.Type != 0xef53 {
+	if err := ext4.Require(parent.file); err != nil {
 		return errors.Join(ErrInput, err)
 	}
 	if err := errors.Join(parent.file.Sync(), barrier("before-directory", parent.file)); err != nil {

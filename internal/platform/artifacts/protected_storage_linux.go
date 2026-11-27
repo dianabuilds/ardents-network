@@ -6,11 +6,13 @@ import (
 	"errors"
 	"os"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/platform/ext4"
 )
 
 // CheckProtected adds the Linux ext4 storage floor to the shared
 // original-descriptor checks for offline root preparation/signing. The ext4
-// magic is a genuine Linux storage policy; the macOS floor is a separate
+// identity check is a genuine Linux storage policy; the macOS floor is a separate
 // product decision, so this check keeps its Linux boundary (ADR-0129).
 // Runtime/client input custody keeps its separately admitted caller policy.
 func (in *Inputs) CheckProtected() error {
@@ -25,8 +27,7 @@ func (in *Inputs) CheckProtected() error {
 		if info.IsDir() {
 			continue
 		}
-		var fs syscall.Statfs_t
-		if err := syscall.Fstatfs(int(input.file.Fd()), &fs); err != nil || fs.Type != 0xef53 {
+		if err := ext4.Require(input.file); err != nil {
 			return errors.Join(ErrInput, err)
 		}
 	}

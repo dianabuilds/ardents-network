@@ -2,6 +2,18 @@
   "schema": "ardents-test-profiles-v1",
   "profiles": [
     {
+      "id": "ext4-identity-native-linux",
+      "state": "active",
+      "make_target": "ext4-identity-native-check",
+      "surface": "actual ext2, ext3, ext4 and tmpfs descriptor identity and refusal at protected artifact, participation and State inspection boundaries; no installed or privacy qualification",
+      "prerequisites": [
+        "Linux root, writable genuine ext2/ext3/ext4/tmpfs mounts and findmnt from util-linux",
+        "Go 1.27.4, race-capable C compiler and root-controlled direct ancestors for artifact publication"
+      ],
+      "invalid_environment": "missing or misidentified filesystem, root or tooling fails; no skips",
+      "timeout": "3m"
+    },
+    {
       "id": "descriptor-forward-release-linux",
       "state": "active",
       "make_target": "descriptor-forward-release-check",

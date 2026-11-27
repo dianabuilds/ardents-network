@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/ext4"
 )
 
 // Inspection owns independent read-only descriptors and an existing exclusive
@@ -283,7 +284,7 @@ func (s *Inspection) Check() (err error) {
 func (s *Inspection) nativeRoot() (returned error) {
 	original := s.order[0]
 	var fs syscall.Statfs_t
-	if err := syscall.Fstatfs(int(original.file.Fd()), &fs); err != nil || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+	if err := errors.Join(syscall.Fstatfs(int(original.file.Fd()), &fs), ext4.Require(original.file)); err != nil || fs.Flags&1 != 0 {
 		return errors.Join(errors.New("retained State filesystem differs"), err)
 	}
 	named, err := os.OpenFile(s.root.path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
@@ -296,8 +297,8 @@ func (s *Inspection) nativeRoot() (returned error) {
 		}
 	}()
 	info, err := named.Stat()
-	fsErr := syscall.Fstatfs(int(named.Fd()), &fs)
-	if err != nil || fsErr != nil || !durablefile.SameFileIdentity(original.info, info) || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+	fsErr := errors.Join(syscall.Fstatfs(int(named.Fd()), &fs), ext4.Require(named))
+	if err != nil || fsErr != nil || !durablefile.SameFileIdentity(original.info, info) || fs.Flags&1 != 0 {
 		return errors.Join(errors.New("retained State named filesystem differs"), err, fsErr)
 	}
 	return s.ctx.Err()

@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
+	"github.com/dianabuilds/ardents-network/internal/platform/ext4"
 )
 
 // ProtectedInput retains the original file and every direct ancestor. A later
@@ -145,8 +146,7 @@ var ErrNotExt4 = errors.New("original artifact requires native ext4")
 
 // RequireExt4 checks the filesystem of an already owned original descriptor.
 func RequireExt4(file *os.File) error {
-	var filesystem syscall.Statfs_t
-	if err := syscall.Fstatfs(int(file.Fd()), &filesystem); err != nil || filesystem.Type != 0xef53 {
+	if err := ext4.Require(file); err != nil {
 		return errors.Join(ErrNotExt4, err)
 	}
 	return nil

@@ -15,7 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,8 +62,8 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err = errors.Join(ancestors.CheckRootAccess(), ancestors.Close()); err != nil {
 		t.Fatal("invalid environment: root-controlled direct ancestors required", err)
 	}
-	var fs syscall.Statfs_t
-	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", parent).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: original workspace is not native ext4", err)
 	}
 	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())

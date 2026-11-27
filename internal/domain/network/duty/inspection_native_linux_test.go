@@ -7,7 +7,9 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -22,8 +24,8 @@ func nativeParticipationInspection(t *testing.T) Config {
 		t.Fatal("invalid environment: root participation inspection driver required")
 	}
 	parent := t.TempDir()
-	var fs syscall.Statfs_t
-	if err := syscall.Statfs(parent, &fs); err != nil || fs.Type != 0xef53 {
+	mountType, err := exec.Command("findmnt", "--kernel", "--noheadings", "--output", "FSTYPE", "--target", parent).Output()
+	if err != nil || strings.TrimSpace(string(mountType)) != "ext4" {
 		t.Fatal("invalid environment: private native ext4 TMPDIR required", err)
 	}
 	for path := parent; ; path = filepath.Dir(path) {
