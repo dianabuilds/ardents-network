@@ -1,6 +1,6 @@
 //go:build linux || darwin || windows
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
@@ -16,9 +18,9 @@ func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
 		t.Run(missing, func(t *testing.T) {
 			parent := t.TempDir()
 			root := filepath.Join(parent, "store")
-			config := reachability.StoreConfig{Root: root, Network: [32]byte{1}}
+			config := descriptorstore.Config{Root: root, Network: [32]byte{1}}
 			if missing == "root" {
-				if store, err := reachability.OpenRetainedStore(config); err == nil {
+				if store, err := descriptorstore.OpenRetained(config); err == nil {
 					store.Close()
 					t.Fatal("missing root accepted")
 				}
@@ -27,7 +29,7 @@ func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
 				}
 				return
 			}
-			store, err := reachability.OpenStore(config)
+			store, err := descriptorstore.Open(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -40,7 +42,7 @@ func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
 				if err := os.WriteFile(stage, raw, 0600); err != nil {
 					t.Fatal(err)
 				}
-				if store, err := reachability.OpenRetainedStore(config); err == nil {
+				if store, err := descriptorstore.OpenRetained(config); err == nil {
 					store.Close()
 					t.Fatal("uncertain stage adopted")
 				}
@@ -53,7 +55,7 @@ func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
 				if err := os.Remove(path); err != nil {
 					t.Fatal(err)
 				}
-				if store, err := reachability.OpenRetainedStore(config); err == nil {
+				if store, err := descriptorstore.OpenRetained(config); err == nil {
 					store.Close()
 					t.Fatal("missing history accepted")
 				}
@@ -66,9 +68,9 @@ func TestRetainedStoreMissingHistoryNeverCreatesOrRepairs(t *testing.T) {
 }
 
 func TestRetainedStorePreservesSignedFloorAndStaleRefusal(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
-	config := reachability.StoreConfig{Root: t.TempDir(), Network: network}
-	store, err := reachability.OpenStore(config)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	config := descriptorstore.Config{Root: t.TempDir(), Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +80,7 @@ func TestRetainedStorePreservesSignedFloorAndStaleRefusal(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	retained, err := reachability.OpenRetainedStore(config)
+	retained, err := descriptorstore.OpenRetained(config)
 	if err != nil {
 		t.Fatal(err)
 	}

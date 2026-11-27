@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package reachability
+package store
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func descriptorInspectionNativeEmpty(t *testing.T) StoreConfig {
+func descriptorInspectionNativeEmpty(t *testing.T) Config {
 	t.Helper()
 	if os.Geteuid() != 0 || os.Getenv("ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE") != "1" {
 		t.Fatal("invalid environment: explicit root Store inspection stand required")
@@ -26,8 +26,8 @@ func descriptorInspectionNativeEmpty(t *testing.T) StoreConfig {
 			t.Error(err)
 		}
 	})
-	config := StoreConfig{Root: filepath.Join(parent, "store"), Network: [32]byte{1}}
-	store, err := OpenStore(config)
+	config := Config{Root: filepath.Join(parent, "store"), Network: [32]byte{1}}
+	store, err := Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestDescriptorStoreInspectionNativeCloseJoinsHeldReaderAndRetainsLease(t *t
 	config := descriptorInspectionNativeEmpty(t)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second*10)
 	defer cancel()
-	h, err := OpenStoreInspection(ctx, config, 988, 988)
+	h, err := OpenInspection(ctx, config, 988, 988)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestDescriptorStoreInspectionNativeCloseJoinsHeldReaderAndRetainsLease(t *t
 		t.Fatal("Close returned before original reader", err)
 	default:
 	}
-	if other, err := OpenRetainedStore(config); err == nil {
+	if other, err := OpenRetained(config); err == nil {
 		other.Close()
 		t.Fatal("held original reader lost exclusive lease")
 	}
@@ -115,7 +115,7 @@ func TestDescriptorStoreInspectionNativePhysicalCloseFailureRemainsRetained(t *t
 	config := descriptorInspectionNativeEmpty(t)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second*10)
 	defer cancel()
-	h, err := OpenStoreInspection(ctx, config, 988, 988)
+	h, err := OpenInspection(ctx, config, 988, 988)
 	if err != nil {
 		t.Fatal(err)
 	}

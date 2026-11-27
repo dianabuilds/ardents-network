@@ -26,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
@@ -296,7 +297,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	}
 	plan, target := installedPublisherInstance(t, f.profile.NetworkID)
 	storeRoot := t.TempDir()
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: f.profile.NetworkID})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: f.profile.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -722,7 +723,7 @@ func TestInstalledPublicationElapsedTCP(t *testing.T) {
 	}
 }
 
-func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *networkAdmissionFixture, owner endpointpublisher.Publication, gate *publicationACKGate, store *reachability.Store, target [32]byte, expected string) {
+func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *networkAdmissionFixture, owner endpointpublisher.Publication, gate *publicationACKGate, store *descriptorstore.Store, target [32]byte, expected string) {
 	var first, replacement reachability.Descriptor
 	var started, initialCommit, initialACKLower, switchLower, switchUpper time.Time
 	waitUntil := func(test *testing.T, end time.Time) {

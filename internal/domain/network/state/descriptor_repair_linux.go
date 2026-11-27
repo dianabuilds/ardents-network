@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
@@ -30,7 +30,7 @@ import (
 // no durable fence to remove. A crash mid-Publish can instead leave the reserved
 // uncertain staging name, which a retained opening refuses. After the first
 // stopped-unit proof and while holding both retained leases, this adapter
-// invokes the bounded reachability.RepairRetainedStoreStage to validate every
+// invokes the bounded descriptorstore.RepairStage to validate every
 // committed floor and remove only that staging under the exclusive Store lease,
 // then reobserves quiescence before the one participation commit. It never
 // initializes a missing Store root, resets or evicts a floor, promotes staging
@@ -51,6 +51,6 @@ var descriptorRepairNative = nodeDutyRepairNative{
 	quiesce:   cgroup.CheckDescriptorRecoveryQuiescent,
 	rootCount: 5,
 	storeStage: func(current *epoch.Decision, writableRoots []string) error {
-		return reachability.RepairRetainedStoreStage(reachability.StoreConfig{Root: writableRoots[len(writableRoots)-1], Network: current.Snapshot.NetworkID})
+		return descriptorstore.RepairStage(descriptorstore.Config{Root: writableRoots[len(writableRoots)-1], Network: current.Snapshot.NetworkID})
 	},
 }

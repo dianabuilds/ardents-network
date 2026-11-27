@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -15,6 +15,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 // The separate child changes only its own native file-size limit. No write,
@@ -28,9 +30,9 @@ func TestStoreNativePartialWriteRetainsOriginalFailureAndPriorFloor(t *testing.T
 		}
 		return
 	}
-	raw, target, network, profile, at := signedDescriptor(3)
-	config := reachability.StoreConfig{Root: t.TempDir(), Network: network}
-	store, err := reachability.OpenStore(config)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	config := descriptorstore.Config{Root: t.TempDir(), Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +48,7 @@ func TestStoreNativePartialWriteRetainsOriginalFailureAndPriorFloor(t *testing.T
 	if err != nil || outcome != reachability.Accepted || !bytes.Equal(prior, raw) {
 		t.Fatal("genuine initial commit", outcome, err)
 	}
-	higher := resignDescriptor(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
+	higher := descriptorfixture.ResignFixed(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
 	var original syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_FSIZE, &original); err != nil {
 		t.Fatal(err)
@@ -88,14 +90,14 @@ func TestStoreNativePartialWriteRetainsOriginalFailureAndPriorFloor(t *testing.T
 	if outcome, err := store.Publish(higher, profile, at, check); err != first || outcome != reachability.Invalid {
 		t.Fatal("restored writer revived original", outcome, err)
 	}
-	if duplicate, err := reachability.OpenStore(config); err == nil {
+	if duplicate, err := descriptorstore.Open(config); err == nil {
 		_ = duplicate.Close()
 		t.Fatal("failed original released lease before Close")
 	}
 	if err := store.Close(); err != nil || store.Close() != err {
 		t.Fatal("operational failure counterfeited physical release", err)
 	}
-	fresh, err := reachability.OpenStore(config)
+	fresh, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal("independent validated interrupted-stage recovery", err)
 	}

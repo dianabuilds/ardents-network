@@ -1,4 +1,4 @@
-package reachability
+package store
 
 import (
 	"context"
@@ -8,13 +8,14 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
-// StoreInspection independently retains stopped Store history. It exports no
+// Inspection independently retains stopped Store history. It exports no
 // proof, mutable Store, lease or descriptor, and grants no publication, lookup,
 // ACK, runtime or Installation authority. Copies share denial and joined Close.
-type StoreInspection struct{ original *storeInspection }
+type Inspection struct{ original *storeInspection }
 
 type storeInspection struct {
 	mu, ioMu          sync.Mutex
@@ -40,15 +41,15 @@ type storeInspectionParent struct {
 
 var errStoreInspectionClosed = errors.New("stopped Store inspection closed")
 
-// OpenStoreInspection reads complete existing Linux/ext4 history under a fresh
+// OpenInspection reads complete existing Linux/ext4 history under a fresh
 // read-only exclusive lease and the exact numeric Node principal. It creates,
 // repairs, prunes, synchronizes and publishes nothing. Installation separately
 // proves original domain/native retirement and fresh Release admission.
-func OpenStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint32) (StoreInspection, error) {
+func OpenInspection(ctx context.Context, config Config, uid, gid uint32) (Inspection, error) {
 	return openStoreInspection(ctx, config, uid, gid, nil)
 }
 
-func openStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint32, observe func(string, *os.File)) (result StoreInspection, returned error) {
+func openStoreInspection(ctx context.Context, config Config, uid, gid uint32, observe func(string, *os.File)) (result Inspection, returned error) {
 	if ctx == nil || os.Geteuid() != 0 || uid < 100 || uid > 999 || gid != uid || config.Network == [32]byte{} || !pathcheck.IsCleanAbsolute(config.Root) || config.Root == "/" {
 		return result, errors.New("stopped Store inspection input invalid")
 	}
@@ -116,7 +117,7 @@ func openStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint3
 		s.custody = nil
 		return result, err
 	}
-	floors := make(map[[32]byte]retainedFloor)
+	floors := make(map[[32]byte]reachability.RetainedFloor)
 	if err := restoreStoreFloors(s.custody, config.Network, floors, storeStageRefuse); err != nil {
 		clear(floors)
 		return result, err
@@ -125,7 +126,7 @@ func openStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint3
 	if err := s.check(); err != nil {
 		return result, err
 	}
-	return StoreInspection{original: s}, nil
+	return Inspection{original: s}, nil
 }
 
 func storeInspectionAccess(info os.FileInfo, uid, gid uint32, directory, ancestor bool) bool {
@@ -240,7 +241,7 @@ func (s *storeInspection) nativeRoot() (returned error) {
 
 // Check reobserves complete original history under this inspection's own lease.
 // A definite failure permanently denies the handle even after files are restored.
-func (h StoreInspection) Check() (returned error) {
+func (h Inspection) Check() (returned error) {
 	s := h.original
 	if s == nil {
 		return errStoreInspectionClosed
@@ -273,7 +274,7 @@ func (h StoreInspection) Check() (returned error) {
 
 // Close seals new checks and joins original readers, native closes and the
 // read-only exclusive lease last. Every copy retains the same terminal result.
-func (h StoreInspection) Close() error {
+func (h Inspection) Close() error {
 	if h.original == nil {
 		return nil
 	}

@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package reachability
+package store
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestStoreOriginalLeaseLossAndFirstPhysicalRelease(t *testing.T) {
-	store, err := OpenStore(StoreConfig{Root: t.TempDir(), Network: [32]byte{1}})
+	store, err := Open(Config{Root: t.TempDir(), Network: [32]byte{1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestStoreOriginalLeaseLossAndFirstPhysicalRelease(t *testing.T) {
 
 func TestStoreOriginalLockReplacementCannotRestoreOwner(t *testing.T) {
 	root := t.TempDir()
-	store, err := OpenStore(StoreConfig{Root: root, Network: [32]byte{1}})
+	store, err := Open(Config{Root: root, Network: [32]byte{1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestStoreOriginalLockReplacementCannotRestoreOwner(t *testing.T) {
 	if err := store.Check(); !errors.Is(err, cause) {
 		t.Fatal("restored lock revived original", err)
 	}
-	if other, err := OpenStore(StoreConfig{Root: root, Network: [32]byte{1}}); err == nil {
+	if other, err := Open(Config{Root: root, Network: [32]byte{1}}); err == nil {
 		_ = other.Close()
 		t.Fatal("failed original lease not retained")
 	}

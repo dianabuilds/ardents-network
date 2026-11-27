@@ -69,6 +69,10 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 			switch local {
 			case "internal/domain/admission", "internal/domain/admission/receiving", "internal/domain/admission/spending",
 				"internal/durablefile", "internal/domain/hosting", "internal/domain/network", "internal/domain/network/state", "internal/pathcheck", "internal/domain/reachability":
+			case "internal/domain/reachability/store":
+				if source != "internal/domain/route/receiver/receiver_unix.go" {
+					return false
+				}
 			case "internal/diagnostics/measurement", "internal/diagnostics/runtimeevent":
 				// Explicit Product Owner decision, 2026-11-27: only the
 				// registered numeric channel producers, never the SDK adapter.
@@ -141,6 +145,8 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/domain/route", false},
 		{"new Admission boundary", "internal/domain/route/receiver/admission.go", modulePath + "/internal/domain/admission/receiving", true},
 		{"new Network boundary", "internal/domain/route/prefix/prefix.go", modulePath + "/internal/domain/network/state", true},
+		{"receiver uses the original Descriptor Store", "internal/domain/route/receiver/receiver_unix.go", modulePath + "/internal/domain/reachability/store", true},
+		{"Route prefix has no Descriptor Store root access", "internal/domain/route/prefix/descriptor_exchange.go", modulePath + "/internal/domain/reachability/store", false},
 		{"new Hosting boundary", "internal/domain/route/receiver/reservation.go", modulePath + "/internal/domain/hosting", true},
 		{"migrated Endpoint consumer", "internal/domain/endpoint/history_preparation_linux.go", modulePath + "/internal/domain/route/selection", true},
 		{"unregistered Endpoint subpackage", "internal/domain/endpoint/old/source_linux_test.go", modulePath + "/internal/domain/route/selection", false},

@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	nodeplan "github.com/dianabuilds/ardents-network/internal/domain/node/plan"
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
@@ -79,7 +79,7 @@ type descriptorInvocation struct {
 	nodeLifetime
 	config     DescriptorConfig
 	credential *credentialMaterial
-	store      *reachability.Store
+	store      *descriptorstore.Store
 }
 
 // ListenDescriptor joins every rejected original startup. It cannot adopt a
@@ -147,11 +147,11 @@ func listenDescriptor(ctx context.Context, config DescriptorConfig, retained boo
 	if _, err := f.currentBase(); err != nil {
 		return nil, err
 	}
-	openStore := reachability.OpenStore
+	openStore := descriptorstore.Open
 	if retained {
-		openStore = reachability.OpenRetainedStore
+		openStore = descriptorstore.OpenRetained
 	}
-	f.store, err = openStore(reachability.StoreConfig{Root: config.DescriptorRoot, Network: view.ProfileBinding().Network})
+	f.store, err = openStore(descriptorstore.Config{Root: config.DescriptorRoot, Network: view.ProfileBinding().Network})
 	if err != nil {
 		return nil, err
 	}

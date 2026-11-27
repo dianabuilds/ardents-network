@@ -2107,11 +2107,11 @@ experiment.
 
 ## Reachability audit
 
-Receiving Store native tests in `internal/domain/reachability` exercise actual
+Receiving Store native tests in `internal/domain/reachability/store` exercise actual
 Unix-family/Windows roots and lease/directory sync, independent signed Descriptor
 inputs, full retained conflict/capacity/reopen cases and original operation join.
 The Store lease mechanism is the shared `linux || darwin` flock adapter
-(`store_platform_unix.go`), so the macOS lane executes the same lease code against
+(`store/lease_unix.go`), so the macOS lane executes the same lease code against
 real APFS state: contended flock, `SameFile` identity after lock replacement and
 the actual rlimit partial-write recovery (`store_lease_unix_test.go`,
 `store_write_unix_test.go`).

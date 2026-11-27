@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// MaximumTargets bounds the retained Target history at each Reachability owner.
+const MaximumTargets = 128
+
 // Outcome describes a proof/floor transition; only durable Store completion
 // permits an accepting publication acknowledgement.
 type Outcome string
@@ -17,9 +20,10 @@ const (
 	Invalid        Outcome = "invalid"
 )
 
-type retainedFloor struct {
-	descriptor                            Descriptor
-	publicationConflict, revisionConflict bool
+// RetainedFloor pairs the signed proof with its separately committed conflict bits.
+type RetainedFloor struct {
+	Proof                                 Descriptor
+	PublicationConflict, RevisionConflict bool
 }
 
 // historyFloor carries monotonic facts only. Local history cannot retain proof
@@ -39,11 +43,11 @@ func descriptorFloor(proof Descriptor) historyFloor {
 		notAfter: credential.NotAfter}
 }
 
-// compareFloor proposes a replacement without mutating either retained value.
+// ResolveRetainedFloor proposes a replacement without mutating either retained value.
 // Its caller commits before publishing the replacement, including conflicts.
-func compareFloor(prior, candidate retainedFloor) (Outcome, *retainedFloor, error) {
-	old, next := descriptorFloor(prior.descriptor), descriptorFloor(candidate.descriptor)
-	old.publicationConflict, old.revisionConflict = prior.publicationConflict, prior.revisionConflict
+func ResolveRetainedFloor(prior, candidate RetainedFloor) (Outcome, *RetainedFloor, error) {
+	old, next := descriptorFloor(prior.Proof), descriptorFloor(candidate.Proof)
+	old.publicationConflict, old.revisionConflict = prior.PublicationConflict, prior.RevisionConflict
 	outcome, replacement, err := compareHistoryFloor(old, next)
 	if replacement == nil {
 		return outcome, nil, err
@@ -51,7 +55,7 @@ func compareFloor(prior, candidate retainedFloor) (Outcome, *retainedFloor, erro
 	if replacement.descriptor == next.descriptor {
 		prior = candidate
 	}
-	prior.publicationConflict, prior.revisionConflict = replacement.publicationConflict, replacement.revisionConflict
+	prior.PublicationConflict, prior.RevisionConflict = replacement.publicationConflict, replacement.revisionConflict
 	return outcome, &prior, err
 }
 

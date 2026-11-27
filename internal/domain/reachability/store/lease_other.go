@@ -1,6 +1,6 @@
 //go:build !linux && !darwin && !windows
 
-package reachability
+package store
 
 import (
 	"errors"

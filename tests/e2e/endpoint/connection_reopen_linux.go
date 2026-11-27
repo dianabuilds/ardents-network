@@ -12,11 +12,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/durable"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 )
 
 // VerifyInstalledConnectionReopen checks the original durable roots after joined retirement.
 func VerifyInstalledConnectionReopen(t *testing.T, current func() (network.RuntimeView, error), reopen func(), afterJoin []func() int,
-	store *reachability.Store, storeRoot, publicationRoot, instanceRoot string, networkID, profileDigest, target [32]byte) {
+	store *descriptorstore.Store, storeRoot, publicationRoot, instanceRoot string, networkID, profileDigest, target [32]byte) {
 	t.Helper()
 	before, err := current()
 	if err != nil {
@@ -45,7 +46,7 @@ func VerifyInstalledConnectionReopen(t *testing.T, current func() (network.Runti
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: networkID})
+	reopened, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: networkID})
 	if err != nil {
 		t.Fatal(err)
 	}

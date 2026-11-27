@@ -26,6 +26,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/domain/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
@@ -106,7 +107,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 			loseCaller := len(callerLoss) != 0 && callerLoss[0]
 			holder := descriptorRouteStock(t, fixture, authority, facts, now)
 			storeRoot := t.TempDir()
-			store, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: facts.NetworkID})
+			store, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: facts.NetworkID})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -366,7 +367,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			restored, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: facts.NetworkID})
+			restored, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: facts.NetworkID})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -29,7 +29,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	node "github.com/dianabuilds/ardents-network/internal/domain/node/runtime"
-	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/role"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
@@ -621,7 +621,7 @@ func nativeDescriptorAuthorityChild(t *testing.T, path string) {
 			t.Fatal("late canceled startup lost original cause", err)
 		}
 		processfixture.RequireFailedStartupCleanup(t, plan.Participation, plan.Spend, plan.Hosting, member, binding)
-		store, err := reachability.OpenStore(reachability.StoreConfig{Root: plan.Descriptor, Network: view.Profile().Network})
+		store, err := descriptorstore.Open(descriptorstore.Config{Root: plan.Descriptor, Network: view.Profile().Network})
 		if err != nil {
 			t.Fatal("rejected partial startup retained Store lease", err)
 		}
@@ -788,7 +788,7 @@ func nativeDescriptorAuthorityChild(t *testing.T, path string) {
 	if copy.Done() != original.Done() || copy.Close() != result || copy.JoinedOutcome() != original.JoinedOutcome() {
 		t.Fatal("copied handle replaced original result")
 	}
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: plan.Descriptor, Network: view.Profile().Network})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: plan.Descriptor, Network: view.Profile().Network})
 	if err != nil {
 		t.Fatal("Store not released after actual role join", err)
 	}

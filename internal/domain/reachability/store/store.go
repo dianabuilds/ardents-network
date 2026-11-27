@@ -1,4 +1,4 @@
-package reachability
+package store
 
 import (
 	"errors"
@@ -9,12 +9,11 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/measurement"
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
 )
 
-const MaximumTargets = 128
-
-// StoreConfig identifies one independent receiving history, not Network authority.
-type StoreConfig struct {
+// Config identifies one independent receiving history, not Network authority.
+type Config struct {
 	Root    string
 	Network [32]byte
 }
@@ -31,20 +30,20 @@ type Store struct {
 	root              string
 	network           [32]byte
 	lease             storeLease
-	floors            map[[32]byte]retainedFloor
+	floors            map[[32]byte]reachability.RetainedFloor
 	closed            bool
 	failure, closeErr error
 	denial            error
 }
 
-func OpenStore(config StoreConfig) (*Store, error) { return openStore(config, false) }
+func Open(config Config) (*Store, error) { return openStore(config, false) }
 
-// OpenRetainedStore requires complete existing history. It cannot initialize a
+// OpenRetained requires complete existing history. It cannot initialize a
 // missing root, marker, lock or records directory, nor repair an uncertain stage.
 // Installation independently proves predecessor completion before this opening.
-func OpenRetainedStore(config StoreConfig) (*Store, error) { return openStore(config, true) }
+func OpenRetained(config Config) (*Store, error) { return openStore(config, true) }
 
-func openStore(config StoreConfig, retained bool) (*Store, error) {
+func openStore(config Config, retained bool) (*Store, error) {
 	if !storePlatformSupported || config.Root == "" || config.Network == [32]byte{} {
 		return nil, errors.New("reachability Store configuration or platform unavailable")
 	}
@@ -84,7 +83,7 @@ func openStore(config StoreConfig, retained bool) (*Store, error) {
 	if err != nil {
 		return nil, errors.Join(err, originalRoot.Close(), lease.release())
 	}
-	store := &Store{root: root, network: config.Network, lease: lease, floors: make(map[[32]byte]retainedFloor), done: make(chan struct{})}
+	store := &Store{root: root, network: config.Network, lease: lease, floors: make(map[[32]byte]reachability.RetainedFloor), done: make(chan struct{})}
 	store.custody, err = retainStoreCustody(originalRoot)
 	if err != nil {
 		return nil, errors.Join(err, store.lease.release())
@@ -103,34 +102,34 @@ func openStore(config StoreConfig, retained bool) (*Store, error) {
 // duty/profile/time; it grants no proof authority. Check may inspect original
 // custody without observer recursion; callbacks must not Publish or Close Store.
 // A post-write refusal keeps the committed floor and permits no accepting ACK.
-func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check func() error) (Outcome, error) {
+func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check func() error) (reachability.Outcome, error) {
 	defer measurement.Begin(runtimeevent.ReachabilityPublish).End()
 
 	if store == nil || check == nil {
-		return Invalid, errors.New("reachability publication composition unavailable")
+		return reachability.Invalid, errors.New("reachability publication composition unavailable")
 	}
 	if err := store.borrow(); err != nil {
-		return Invalid, err
+		return reachability.Invalid, err
 	}
 	defer store.users.Done()
 	if err := check(); err != nil {
-		return Invalid, err
+		return reachability.Invalid, err
 	}
-	proof, err := VerifyPublish(raw, store.network, profile, at)
+	proof, err := reachability.VerifyPublish(raw, store.network, profile, at)
 	if err != nil {
-		return Invalid, err
+		return reachability.Invalid, err
 	}
-	candidate := retainedFloor{descriptor: proof}
+	candidate := reachability.RetainedFloor{Proof: proof}
 	// Serialize complete publication transitions independently of state. Foreign
 	// observers and native I/O never run with mu held; Close denies immediately
 	// and waits for this original borrow, including any writer waiter.
 	store.writer.Lock()
 	defer store.writer.Unlock()
 	if err := store.checkCustody(); err != nil {
-		return Invalid, err
+		return reachability.Invalid, err
 	}
 	if err := check(); err != nil {
-		return Invalid, err
+		return reachability.Invalid, err
 	}
 	store.mu.Lock()
 	if store.closed || store.failure != nil || store.denial != nil {
@@ -140,67 +139,68 @@ func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check fu
 		}
 		store.mu.Unlock()
 		if failure != nil {
-			return Invalid, failure
+			return reachability.Invalid, failure
 		}
-		return Invalid, errors.Join(errors.New("reachability Store unavailable"), failure)
+		return reachability.Invalid, errors.Join(errors.New("reachability Store unavailable"), failure)
 	}
-	outcome, next, decisionErr := Accepted, &candidate, error(nil)
+	outcome, next, decisionErr := reachability.Accepted, &candidate, error(nil)
 	if prior, exists := store.floors[proof.Target]; exists {
-		outcome, next, decisionErr = compareFloor(prior, candidate)
-	} else if len(store.floors) >= MaximumTargets {
+		outcome, next, decisionErr = reachability.ResolveRetainedFloor(prior, candidate)
+	} else if len(store.floors) >= reachability.MaximumTargets {
 		store.mu.Unlock()
-		return Invalid, errors.New("reachability Store Target capacity exhausted")
+		return reachability.Invalid, errors.New("reachability Store Target capacity exhausted")
 	}
 	store.mu.Unlock()
 	if next == nil {
 		return outcome, errors.Join(decisionErr, check(), store.checkCustody(), store.localCheck())
 	}
 	if err := store.write(*next); err != nil {
-		return Invalid, errors.Join(decisionErr, err, check())
+		return reachability.Invalid, errors.Join(decisionErr, err, check())
 	}
 	if err := errors.Join(check(), store.checkCustody(), store.localCheck()); err != nil {
-		return Invalid, errors.Join(decisionErr, err)
+		return reachability.Invalid, errors.Join(decisionErr, err)
 	}
 	return outcome, decisionErr
 }
 
 // Lookup rechecks the highest retained proof at the caller's actual profile/time.
 // Expiry or conflict never evicts its floor or reveals a predecessor.
-func (store *Store) Lookup(target, profile [32]byte, at time.Time) ([]byte, Outcome, error) {
+func (store *Store) Lookup(target, profile [32]byte, at time.Time) ([]byte, reachability.Outcome, error) {
 	defer measurement.Begin(runtimeevent.ReachabilityLookup).End()
 
 	if store == nil || target == [32]byte{} || profile == [32]byte{} || at.IsZero() {
-		return nil, Invalid, errors.New("reachability lookup input invalid")
+		return nil, reachability.Invalid, errors.New("reachability lookup input invalid")
 	}
 	if err := store.borrow(); err != nil {
-		return nil, Invalid, err
+		return nil, reachability.Invalid, err
 	}
 	defer store.users.Done()
 	if err := store.checkCustody(); err != nil {
-		return nil, Invalid, err
+		return nil, reachability.Invalid, err
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failure != nil || store.denial != nil {
 		if store.failure != nil {
-			return nil, Invalid, store.failure
+			return nil, reachability.Invalid, store.failure
 		}
 		if store.denial != nil {
-			return nil, Invalid, store.denial
+			return nil, reachability.Invalid, store.denial
 		}
-		return nil, Invalid, errors.Join(errors.New("reachability Store unavailable"), store.failure)
+		return nil, reachability.Invalid, errors.Join(errors.New("reachability Store unavailable"), store.failure)
 	}
 	floor, exists := store.floors[target]
 	if !exists {
-		return nil, Stale, nil
+		return nil, reachability.Stale, nil
 	}
-	if floor.publicationConflict || floor.revisionConflict {
-		return nil, Conflicting, nil
+	if floor.PublicationConflict || floor.RevisionConflict {
+		return nil, reachability.Conflicting, nil
 	}
-	if _, err := Verify(floor.descriptor.raw, target, store.network, profile, at); err != nil {
-		return nil, Stale, err
+	raw := floor.Proof.Bytes()
+	if _, err := reachability.Verify(raw, target, store.network, profile, at); err != nil {
+		return nil, reachability.Stale, err
 	}
-	return floor.descriptor.Bytes(), Accepted, nil
+	return raw, reachability.Accepted, nil
 }
 
 // Check reobserves this original Store's native custody. Request proof/refusal

@@ -27,7 +27,7 @@ const streamWorkerFixture = "./tests/qualification/worker-lifecycle/stream-worke
 
 func TestPackageProfileMembershipIsComplete(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/diagnostics/...", streamWorkerFixture)
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/descriptorfixture", "./tests/diagnostics/...", streamWorkerFixture)
 	deterministic := listedProfilePackages(t, root, "tests/profiles/deterministic-packages.txt")
 	if runtime.GOOS == "linux" {
 		for path := range listedProfilePackages(t, root, "tests/profiles/deterministic-linux-packages.txt") {
@@ -63,7 +63,7 @@ func TestProcessProfileSerializesPackagesSharingLoopbackResources(t *testing.T) 
 
 func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 	root := repositoryRoot(t)
-	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/diagnostics/...", streamWorkerFixture)
+	actual := listedPackages(t, root, "./cmd/...", "./internal/...", "./tests/e2e/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/descriptorfixture", "./tests/diagnostics/...", streamWorkerFixture)
 	for _, path := range []string{
 		"tests/profiles/deterministic-packages.txt",
 		"tests/profiles/process-packages.txt",
@@ -80,7 +80,7 @@ func TestProfilePackageEntriesAreCurrent(t *testing.T) {
 func TestLinuxOnlyProfileNamesActualPlatformPackages(t *testing.T) {
 	root := repositoryRoot(t)
 	// Linux-only owners can belong to any maintained domain, not just Endpoint.
-	command := exec.Command("go", "list", "./cmd/...", "./internal/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture")
+	command := exec.Command("go", "list", "./cmd/...", "./internal/...", "./tests/epochfixture/network", "./tests/releasefixture", "./tests/networkfixture", "./tests/descriptorfixture")
 	command.Dir = root
 	command.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64")
 	body, err := command.Output()

@@ -30,7 +30,12 @@ type Descriptor struct {
 	raw                                                          []byte
 }
 
-func (descriptor Descriptor) Bytes() []byte    { return append([]byte(nil), descriptor.raw...) }
+func (descriptor Descriptor) Bytes() []byte { return descriptor.AppendTo(nil) }
+
+// AppendTo appends the exact canonical signed bytes to caller-owned storage.
+func (descriptor Descriptor) AppendTo(destination []byte) []byte {
+	return append(destination, descriptor.raw...)
+}
 func (descriptor Descriptor) Digest() [32]byte { return sha256.Sum256(descriptor.raw) }
 
 // Current checks the verified recipient interval at the caller's actual effect
@@ -63,6 +68,24 @@ func VerifyPublish(raw []byte, network, profile [32]byte, at time.Time) (Descrip
 	var target [32]byte
 	copy(target[:], raw[34:66])
 	return verifyDescriptor(raw, target, network, profile, at, true)
+}
+
+// VerifyRetainedDescriptor verifies the signed bytes of a stored floor at
+// the end of its signed interval. Callers establish live currentness through
+// Verify with the observed profile and time before yielding any proof.
+func VerifyRetainedDescriptor(raw []byte, network [32]byte) (Descriptor, error) {
+	const profileOffset = 130
+	const expiryOffset = 274
+	if len(raw) < descriptorHeaderSize+ed25519.SignatureSize {
+		return Descriptor{}, errors.New("reachability stored envelope invalid")
+	}
+	seconds := binary.BigEndian.Uint64(raw[expiryOffset : expiryOffset+8])
+	if seconds == 0 || seconds > 1<<63-1 {
+		return Descriptor{}, errors.New("reachability retained expiry invalid")
+	}
+	var profile [32]byte
+	copy(profile[:], raw[profileOffset:profileOffset+len(profile)])
+	return VerifyPublish(raw, network, profile, time.Unix(int64(seconds)-1, 0).UTC())
 }
 
 func verifyDescriptor(raw []byte, target, network, profile [32]byte, at time.Time, publish bool) (Descriptor, error) {

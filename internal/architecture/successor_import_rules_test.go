@@ -23,6 +23,9 @@ func explicitImportResult(allowed bool) importPermission {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if permission := reachabilityImport(source, dependency); permission != importUnspecified {
+		return permission == importAllowed
+	}
 	if domainMeasurementImportAllowed(source, dependency) {
 		return true
 	}
@@ -219,12 +222,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/network/state/source_repair_linux_test.go" || source == "internal/domain/network/state/node_duty_repair_linux_test.go") && dependency == modulePath+"/internal/platform/systemd" {
 		return true
 	}
-	// The bounded Descriptor repair additionally clears an uncertain Store stage
-	// through the existing-only reachability mechanism under the same dead-unit
-	// proofs and retained leases; it grants no publication or runtime authority.
-	if source == "internal/domain/network/state/descriptor_repair_linux.go" && dependency == modulePath+"/internal/domain/reachability" {
-		return true
-	}
 
 	// Network's physical/application adapters consume domain policy through
 	// exact files. Directory nesting does not grant policy or Admission access.
@@ -308,7 +305,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "internal/domain/node/receive/command_linux.go":
-			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/reachability" || local == "internal/domain/route/channel" || local == "internal/domain/route/introduction" {
+			if local == "internal/domain/admission/issuer" || local == "internal/domain/admission/quota" || local == "internal/domain/network/state" || local == "internal/platform/artifacts" || local == "internal/domain/route/channel" || local == "internal/domain/route/introduction" {
 				return true
 			}
 		case "internal/domain/network/state/command/declaration.go":
@@ -533,7 +530,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/execution/worker/peercred_darwin_test.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
-	if source == "internal/domain/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
+	if source == "internal/domain/reachability/store/lease_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	if source == "internal/domain/publication/durable/lease_windows.go" && dependency == "golang.org/x/sys/windows" {

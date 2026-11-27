@@ -32,6 +32,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/hosting"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
 	"github.com/dianabuilds/ardents-network/internal/domain/route"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/prefix"
@@ -188,7 +189,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 	ctx, cancel := context.WithTimeout(t.Context(), 65*time.Second)
 	defer cancel()
 	plan, target := installedPublisherInstance(t, f.profile.NetworkID)
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), Network: f.profile.NetworkID})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: t.TempDir(), Network: f.profile.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -593,7 +594,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	if pendingACK {
 		descriptorCurrent = func() (network.RuntimeView, error) { return descriptorGate.observe(f.current) }
 	}
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: storeRoot, Network: f.profile.NetworkID})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: storeRoot, Network: f.profile.NetworkID})
 	if err != nil {
 		t.Fatal(err)
 	}

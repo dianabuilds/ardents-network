@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 func TestDescriptorDraftMatchesIndependentCanonicalVector(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	length := int(binary.BigEndian.Uint16(raw[282:284]))
 	record := bytes.Clone(raw[284 : 284+length])
 	intro := reachability.Introduction{Revision: 9, Node: [32]byte{0x55}, Slot: [32]byte{0x66}, RecipientKey: [32]byte{0x77}, NotBefore: at, NotAfter: at.Add(600 * time.Second)}
@@ -45,7 +46,7 @@ func TestDescriptorDraftMatchesIndependentCanonicalVector(t *testing.T) {
 }
 
 func TestDescriptorDraftRejectsUnboundedOrUnboundRecipient(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	length := int(binary.BigEndian.Uint16(raw[282:284]))
 	record := raw[284 : 284+length]
 	valid := reachability.Introduction{Revision: 9, Node: [32]byte{0x55}, Slot: [32]byte{0x66}, RecipientKey: [32]byte{0x77}, NotBefore: at, NotAfter: at.Add(600 * time.Second)}
@@ -69,7 +70,7 @@ func TestDescriptorDraftRejectsUnboundedOrUnboundRecipient(t *testing.T) {
 	if _, err := reachability.PrepareDescriptor(record, target, network, [32]byte{}, valid, at); err == nil {
 		t.Fatal("missing profile accepted")
 	}
-	readOnly, _, _, _, _ := signedDescriptor(2)
+	readOnly, _, _, _, _ := descriptorfixture.Fixed(2, 0x11)
 	length = int(binary.BigEndian.Uint16(readOnly[282:284]))
 	if _, err := reachability.PrepareDescriptor(readOnly[284:284+length], target, network, profile, valid, at); err == nil {
 		t.Fatal("Connect-only Credential supplied publication production")

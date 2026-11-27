@@ -1,6 +1,6 @@
 //go:build linux && amd64
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -16,6 +16,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 // This is process-crash evidence on the selected Linux amd64 filesystem, not
@@ -23,9 +25,9 @@ import (
 // write, Sync, successful publication, ACK or recovery result.
 func TestStoreProcessCrashAtActualPersistenceBoundaries(t *testing.T) {
 	if root := os.Getenv("ARDENTS_REACHABILITY_CRASH_ROOT"); root != "" {
-		raw, _, network, profile, at := signedDescriptor(3)
-		higher := resignDescriptor(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
-		store, err := reachability.OpenStore(reachability.StoreConfig{Root: root, Network: network})
+		raw, _, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+		higher := descriptorfixture.ResignFixed(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
+		store, err := descriptorstore.Open(descriptorstore.Config{Root: root, Network: network})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -38,10 +40,10 @@ func TestStoreProcessCrashAtActualPersistenceBoundaries(t *testing.T) {
 	}
 	for _, point := range []string{"stage-written", "stage-synced", "renamed", "directory-synced"} {
 		t.Run(point, func(t *testing.T) {
-			raw, target, network, profile, at := signedDescriptor(3)
-			higher := resignDescriptor(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
-			config := reachability.StoreConfig{Root: t.TempDir(), Network: network}
-			store, err := reachability.OpenStore(config)
+			raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+			higher := descriptorfixture.ResignFixed(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
+			config := descriptorstore.Config{Root: t.TempDir(), Network: network}
+			store, err := descriptorstore.Open(config)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +64,7 @@ func TestStoreProcessCrashAtActualPersistenceBoundaries(t *testing.T) {
 			} else if _, err := os.Lstat(stage); !errors.Is(err, os.ErrNotExist) {
 				t.Fatal("actual rename left stage", err)
 			}
-			fresh, err := reachability.OpenStore(config)
+			fresh, err := descriptorstore.Open(config)
 			if err != nil {
 				t.Fatal("independent full recovery after process crash", err)
 			}

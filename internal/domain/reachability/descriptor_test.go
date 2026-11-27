@@ -2,76 +2,24 @@ package reachability_test
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
-// Construct the accepted transcripts directly, never through production codecs
-// or old domain helpers. This is public signed input, not successful readiness.
-func signedDescriptor(caps uint32) ([]byte, [32]byte, [32]byte, [32]byte, time.Time) {
-	return signedDescriptorForAuthority(caps, 0x11)
-}
-
-func signedDescriptorForAuthority(caps uint32, seed byte) ([]byte, [32]byte, [32]byte, [32]byte, time.Time) {
-	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{seed}, 32))
-	instance := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x22}, 32))
-	public := authority.Public().(ed25519.PublicKey)
-	target := sha256.Sum256(append([]byte("ardents-service-target-v3\x00"), public...))
-	network, profile := [32]byte{0x33}, [32]byte{0x44}
-	at := time.Unix(1900000000, 0).UTC()
-	credential := []byte{0, 3}
-	credential = append(credential, public...)
-	credential = append(credential, target[:]...)
-	credential = append(credential, instance.Public().(ed25519.PublicKey)...)
-	for _, number := range []uint64{7, uint64(at.Unix()), uint64(at.Add(time.Hour).Unix())} {
-		credential = binary.BigEndian.AppendUint64(credential, number)
-	}
-	credential = append(credential, network[:]...)
-	credential = binary.BigEndian.AppendUint32(credential, caps)
-	credential = append(credential, ed25519.Sign(authority, credential)...)
-	record := append([]byte("ardents-service-publication-v3\x00"), credential...)
-	record = append(record, make([]byte, 32)...)
-	commitment := sha256.Sum256(record)
-	record = append(record, ed25519.Sign(instance, commitment[:])...)
-	digest := sha256.Sum256(record)
-	recipient := binary.BigEndian.AppendUint64(nil, 9)
-	for _, key := range [][32]byte{{0x55}, {0x66}, {0x77}} {
-		recipient = append(recipient, key[:]...)
-	}
-	for _, seconds := range []uint64{uint64(at.Unix()), uint64(at.Add(600 * time.Second).Unix())} {
-		recipient = binary.BigEndian.AppendUint64(recipient, seconds)
-	}
-	transcript := []byte("ardents-private-reachability-v3\x00")
-	transcript = append(transcript, network[:]...)
-	transcript = append(transcript, profile[:]...)
-	transcript = append(transcript, digest[:]...)
-	transcript = append(transcript, recipient...)
-	body := []byte{0, 3}
-	body = append(body, network[:]...)
-	body = append(body, target[:]...)
-	body = append(body, public...)
-	body = append(body, digest[:]...)
-	body = append(body, profile[:]...)
-	body = append(body, recipient...)
-	body = binary.BigEndian.AppendUint16(body, uint16(len(record)))
-	body = append(body, record...)
-	return append(body, ed25519.Sign(instance, transcript)...), target, network, profile, at
-}
-
 func TestDescriptorPublicationRejectsConnectOnlySignedInput(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(2)
+	raw, target, network, profile, at := descriptorfixture.Fixed(2, 0x11)
 	if _, err := reachability.Verify(raw, target, network, profile, at); err != nil {
 		t.Fatal("read control refused", err)
 	}
 	if _, err := reachability.VerifyPublish(raw, network, profile, at); err == nil {
 		t.Fatal("publication accepted without delegated Publish")
 	}
-	raw, target, network, profile, at = signedDescriptor(3)
+	raw, target, network, profile, at = descriptorfixture.Fixed(3, 0x11)
 	proof, err := reachability.VerifyPublish(raw, network, profile, at)
 	if err != nil || proof.Target != target || proof.Introduction.Revision != 9 || proof.Introduction.Node != [32]byte{0x55} {
 		t.Fatal("valid independently signed proof differs", proof, err)
@@ -86,7 +34,7 @@ func TestDescriptorPublicationRejectsConnectOnlySignedInput(t *testing.T) {
 }
 
 func TestDescriptorRefusesWrongBindingsTimesAndSignatures(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	for _, test := range []struct {
 		name                     string
 		target, network, profile [32]byte
@@ -124,7 +72,7 @@ func TestDescriptorRefusesWrongBindingsTimesAndSignatures(t *testing.T) {
 }
 
 func TestDescriptorCurrentUsesRetainedSignedInterval(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	proof, err := reachability.Verify(raw, target, network, profile, at)
 	if err != nil {
 		t.Fatal(err)
@@ -152,24 +100,3 @@ func TestDescriptorCurrentUsesRetainedSignedInterval(t *testing.T) {
 
 // Re-sign independently modified public fixture bytes. This never represents a
 // successful live Publisher, recipient or fake storage acknowledgement.
-func resignDescriptor(raw []byte, change func([]byte)) []byte {
-	body := bytes.Clone(raw)
-	change(body)
-	start := 284
-	end := len(body) - 64
-	credentialStart := start + len("ardents-service-publication-v3\x00")
-	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x11}, 32))
-	instance := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x22}, 32))
-	copy(body[credentialStart+158:credentialStart+222], ed25519.Sign(authority, body[credentialStart:credentialStart+158]))
-	commitment := sha256.Sum256(body[start : end-64])
-	copy(body[end-64:end], ed25519.Sign(instance, commitment[:]))
-	digest := sha256.Sum256(body[start:end])
-	copy(body[98:130], digest[:])
-	transcript := []byte("ardents-private-reachability-v3\x00")
-	transcript = append(transcript, body[2:34]...)
-	transcript = append(transcript, body[130:162]...)
-	transcript = append(transcript, body[98:130]...)
-	transcript = append(transcript, body[162:282]...)
-	copy(body[end:], ed25519.Sign(instance, transcript))
-	return body
-}

@@ -1,6 +1,6 @@
 //go:build linux || darwin || windows
 
-package reachability_test
+package store_test
 
 import (
 	"bytes"
@@ -13,14 +13,16 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/reachability"
+	descriptorstore "github.com/dianabuilds/ardents-network/internal/domain/reachability/store"
+	"github.com/dianabuilds/ardents-network/tests/descriptorfixture"
 )
 
 // These tests require the actual Unix-family/Windows lease and directory-sync adapter.
 // Public proof/rule code itself has no native dependency or installed claim.
 func TestStorePublishCapabilityAndOriginalEffectChecks(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(2)
+	raw, target, network, profile, at := descriptorfixture.Fixed(2, 0x11)
 	root := t.TempDir()
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: root, Network: network})
+	store, err := descriptorstore.Open(descriptorstore.Config{Root: root, Network: network})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +31,7 @@ func TestStorePublishCapabilityAndOriginalEffectChecks(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	if _, err := reachability.OpenStore(reachability.StoreConfig{Root: root, Network: network}); err == nil {
+	if _, err := descriptorstore.Open(descriptorstore.Config{Root: root, Network: network}); err == nil {
 		t.Fatal("duplicate Store lease acquired")
 	}
 	if outcome, err := store.Publish(raw, profile, at, func() error { return nil }); err == nil || outcome != reachability.Invalid {
@@ -38,7 +40,7 @@ func TestStorePublishCapabilityAndOriginalEffectChecks(t *testing.T) {
 	if entries, err := os.ReadDir(filepath.Join(root, "records")); err != nil || len(entries) != 0 {
 		t.Fatal("invalid capability touched records", entries, err)
 	}
-	raw, _, _, _, _ = signedDescriptor(3)
+	raw, _, _, _, _ = descriptorfixture.Fixed(3, 0x11)
 	lost := errors.New("original receiving lifetime lost")
 	checks := 0
 	if outcome, err := store.Publish(raw, profile, at, func() error {
@@ -69,7 +71,7 @@ func TestStorePublishCapabilityAndOriginalEffectChecks(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = reachability.OpenStore(reachability.StoreConfig{Root: root, Network: network})
+	store, err = descriptorstore.Open(descriptorstore.Config{Root: root, Network: network})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,10 +81,10 @@ func TestStorePublishCapabilityAndOriginalEffectChecks(t *testing.T) {
 }
 
 func TestStoreRevisionConflictReopenAndHigherRepair(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	root := t.TempDir()
-	config := reachability.StoreConfig{Root: root, Network: network}
-	store, err := reachability.OpenStore(config)
+	config := descriptorstore.Config{Root: root, Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,14 +100,14 @@ func TestStoreRevisionConflictReopenAndHigherRepair(t *testing.T) {
 	if outcome, err := store.Publish(raw, profile, at, check); err != nil || outcome != reachability.AlreadyCurrent {
 		t.Fatal("exact retry differs", outcome, err)
 	}
-	conflict := resignDescriptor(raw, func(b []byte) { b[202] ^= 1 })
+	conflict := descriptorfixture.ResignFixed(raw, func(b []byte) { b[202] ^= 1 })
 	if outcome, err := store.Publish(conflict, profile, at, check); err == nil || outcome != reachability.Conflicting {
 		t.Fatal("same revision conflict accepted", outcome, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = reachability.OpenStore(config)
+	store, err = descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +117,7 @@ func TestStoreRevisionConflictReopenAndHigherRepair(t *testing.T) {
 	if outcome, err := store.Publish(raw, profile, at, check); err == nil || outcome != reachability.Conflicting {
 		t.Fatal("exact old proof repaired conflict", outcome, err)
 	}
-	repaired := resignDescriptor(raw, func(b []byte) {
+	repaired := descriptorfixture.ResignFixed(raw, func(b []byte) {
 		binary.BigEndian.PutUint64(b[162:170], 10)
 		binary.BigEndian.PutUint64(b[274:282], uint64(at.Add(30*time.Second).Unix()))
 	})
@@ -131,11 +133,11 @@ func TestStoreRevisionConflictReopenAndHigherRepair(t *testing.T) {
 }
 
 func TestStoreInterruptedStageRecoveryAndForeignRefusal(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
 	for _, stage := range [][]byte{nil, []byte{3, 0, 0, 3}, append([]byte{3, 0}, raw...)} {
 		root := t.TempDir()
-		config := reachability.StoreConfig{Root: root, Network: network}
-		store, err := reachability.OpenStore(config)
+		config := descriptorstore.Config{Root: root, Network: network}
+		store, err := descriptorstore.Open(config)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +155,7 @@ func TestStoreInterruptedStageRecoveryAndForeignRefusal(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, "records", ".record-stage"), stage, 0600); err != nil {
 			t.Fatal(err)
 		}
-		store, err = reachability.OpenStore(config)
+		store, err = descriptorstore.Open(config)
 		if err != nil {
 			t.Fatal("own interrupted staging refused", err)
 		}
@@ -175,7 +177,7 @@ func TestStoreInterruptedStageRecoveryAndForeignRefusal(t *testing.T) {
 		if err := os.WriteFile(foreign, []byte{1}, 0600); err != nil {
 			t.Fatal(err)
 		}
-		if owner, err := reachability.OpenStore(config); err == nil {
+		if owner, err := descriptorstore.Open(config); err == nil {
 			_ = owner.Close()
 			t.Fatal("foreign entry silently adopted or removed")
 		}
@@ -186,9 +188,9 @@ func TestStoreInterruptedStageRecoveryAndForeignRefusal(t *testing.T) {
 }
 
 func TestStorePublicationConflictRetainsLatestExpiryAcrossReopen(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
-	config := reachability.StoreConfig{Root: t.TempDir(), Network: network}
-	store, err := reachability.OpenStore(config)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	config := descriptorstore.Config{Root: t.TempDir(), Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +205,7 @@ func TestStorePublicationConflictRetainsLatestExpiryAcrossReopen(t *testing.T) {
 	}
 	credential := 284 + len("ardents-service-publication-v3\x00")
 	for _, hours := range []int{2, 3, 1} {
-		conflict := resignDescriptor(raw, func(b []byte) {
+		conflict := descriptorfixture.ResignFixed(raw, func(b []byte) {
 			binary.BigEndian.PutUint64(b[credential+114:credential+122], uint64(at.Add(time.Duration(hours)*time.Hour).Unix()))
 			b[credential+222] = byte(hours)
 		})
@@ -214,7 +216,7 @@ func TestStorePublicationConflictRetainsLatestExpiryAcrossReopen(t *testing.T) {
 		if err := store.Close(); err != nil {
 			t.Fatal(err)
 		}
-		store, err = reachability.OpenStore(config)
+		store, err = descriptorstore.Open(config)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -224,7 +226,7 @@ func TestStorePublicationConflictRetainsLatestExpiryAcrossReopen(t *testing.T) {
 	}
 	for _, hours := range []int{2, 3} {
 		start := at.Add(time.Duration(hours) * time.Hour)
-		successor := resignDescriptor(raw, func(b []byte) {
+		successor := descriptorfixture.ResignFixed(raw, func(b []byte) {
 			binary.BigEndian.PutUint64(b[credential+98:credential+106], 8)
 			binary.BigEndian.PutUint64(b[credential+106:credential+114], uint64(start.Unix()))
 			binary.BigEndian.PutUint64(b[credential+114:credential+122], uint64(start.Add(time.Hour).Unix()))
@@ -248,9 +250,9 @@ func TestStorePublicationConflictRetainsLatestExpiryAcrossReopen(t *testing.T) {
 }
 
 func TestStoreCapacityIncludesRecoveryWithoutEviction(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
-	config := reachability.StoreConfig{Root: t.TempDir(), Network: network}
-	store, err := reachability.OpenStore(config)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	config := descriptorstore.Config{Root: t.TempDir(), Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +263,7 @@ func TestStoreCapacityIncludesRecoveryWithoutEviction(t *testing.T) {
 	}()
 	check := func() error { return nil }
 	for i := 0; i < 128; i++ {
-		proof, _, _, _, _ := signedDescriptorForAuthority(3, byte(0x11+i))
+		proof, _, _, _, _ := descriptorfixture.Fixed(3, byte(0x11+i))
 		if outcome, err := store.Publish(proof, profile, at, check); err != nil || outcome != reachability.Accepted {
 			t.Fatal("Target below capacity refused", i, outcome, err)
 		}
@@ -273,11 +275,11 @@ func TestStoreCapacityIncludesRecoveryWithoutEviction(t *testing.T) {
 	if err := os.WriteFile(stage, append([]byte{3, 0}, raw...), 0600); err != nil {
 		t.Fatal(err)
 	}
-	store, err = reachability.OpenStore(config)
+	store, err = descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal("full committed population cannot recover own stage", err)
 	}
-	extra, extraTarget, _, _, _ := signedDescriptorForAuthority(3, 0xfe)
+	extra, extraTarget, _, _, _ := descriptorfixture.Fixed(3, 0xfe)
 	if outcome, err := store.Publish(extra, profile, at, check); err == nil || outcome != reachability.Invalid {
 		t.Fatal("129th Target accepted", outcome, err)
 	}
@@ -287,19 +289,19 @@ func TestStoreCapacityIncludesRecoveryWithoutEviction(t *testing.T) {
 	if got, outcome, err := store.Lookup(extraTarget, profile, at); err != nil || outcome != reachability.Stale || len(got) != 0 {
 		t.Fatal("refused Target appeared", outcome, err)
 	}
-	revised := resignDescriptor(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
+	revised := descriptorfixture.ResignFixed(raw, func(b []byte) { binary.BigEndian.PutUint64(b[162:170], 10) })
 	if outcome, err := store.Publish(revised, profile, at, check); err != nil || outcome != reachability.Accepted {
 		t.Fatal("existing Target cannot advance at capacity", outcome, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = reachability.OpenStore(config)
+	store, err = descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 128; i++ {
-		proof, key, _, _, _ := signedDescriptorForAuthority(3, byte(0x11+i))
+		proof, key, _, _, _ := descriptorfixture.Fixed(3, byte(0x11+i))
 		if key == target {
 			proof = revised
 		}
@@ -310,9 +312,9 @@ func TestStoreCapacityIncludesRecoveryWithoutEviction(t *testing.T) {
 }
 
 func TestStoreUncertainWriteSealsOwnerAndMalformedRecoveryPreservesEvidence(t *testing.T) {
-	raw, target, network, profile, at := signedDescriptor(3)
-	config := reachability.StoreConfig{Root: t.TempDir(), Network: network}
-	store, err := reachability.OpenStore(config)
+	raw, target, network, profile, at := descriptorfixture.Fixed(3, 0x11)
+	config := descriptorstore.Config{Root: t.TempDir(), Network: network}
+	store, err := descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,14 +339,14 @@ func TestStoreUncertainWriteSealsOwnerAndMalformedRecoveryPreservesEvidence(t *t
 	if proof, outcome, err := store.Lookup(target, profile, at); err == nil || outcome != reachability.Invalid || len(proof) != 0 {
 		t.Fatal("uncertain owner returned proof", outcome, err)
 	}
-	if owner, err := reachability.OpenStore(config); err == nil {
+	if owner, err := descriptorstore.Open(config); err == nil {
 		_ = owner.Close()
 		t.Fatal("uncertain owner released lease before Close")
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = reachability.OpenStore(config)
+	store, err = descriptorstore.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +363,7 @@ func TestStoreUncertainWriteSealsOwnerAndMalformedRecoveryPreservesEvidence(t *t
 	if err := os.WriteFile(stage, []byte{3, 0}, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if owner, err := reachability.OpenStore(config); err == nil {
+	if owner, err := descriptorstore.Open(config); err == nil {
 		_ = owner.Close()
 		t.Fatal("damaged committed floor adopted")
 	}
