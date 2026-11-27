@@ -191,10 +191,8 @@ refusal (the next retained opening refuses before listening; the Store flock
 lease dies with the process and, with no publication in flight, the retained
 Store reopens without an uncertain stage). Its lifecycle legs are single-unit:
 one Descriptor member (id 17, domain 2, subrole 5) owns its own participation
-root, sole node-duty fence and Store root. The readiness oracle is the
-authenticated listener, NOT publication readiness; genuine publish/lookup over
-the Route prefix remains `TestNativeDescriptorPublishLookupAndReopenTCP` in
-`descriptor-process-linux`.
+root, sole node-duty fence and Store root. The process profile separately exercises publish/lookup, retained
+reopen and failure cases over the Route prefix.
 `TestNativeDescriptorPlatformInstalledLifecycle` in `tests/e2e/nodeinstalled` under the
 `descriptor_platform_native` build tag is the installed gate against the real
 platform systemd manager: the mandatory `platform check` ExecStartPre of
@@ -220,6 +218,23 @@ component/acceptance evidence with one operator, not independent participants,
 whole-host privacy qualification or bootstrap acceptance. The transitional
 Descriptor orchestration retired in stage D (#604 FJD stage D, ADR-0125); these
 retained repair/platform gates are independent of the removed package.
+
+The four installed lifecycle gates identify each original launch through the
+manager's InvocationID. Readiness requires an authenticated operation and a
+matching InvocationID on both sides of the exchange. Source uses authenticated
+`latest` and checks the signed `latest` and `by-digest` bytes. Forwarding opens
+and joins a real stocked Prefix through the installed Entry. JOIN checks paired
+duplex bytes and directional EOF through the installed member. Descriptor
+requires a Publish ACK and byte-identical lookup. The three Route gates check
+durable spend at the exact installed receiver. Native peers use separate roots
+and genuine admitted TCP/TLS roles.
+
+A clean stop requires the successful manager result and the complete
+joined-cancellation event from that unit and invocation's trusted journal
+fields. A killed invocation's journal has no joined report. The journal
+oracle separately refuses stale, missing and incomplete records. The native
+Descriptor process owner check also holds a real State borrower to confirm
+that completion and resource release wait for it.
 
 The transitional JOIN orchestration native qualification is retired (#604
 FJD stage D, ADR-0125). The former `join-installed-linux` profile, its

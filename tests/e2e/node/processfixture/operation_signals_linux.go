@@ -3,7 +3,9 @@
 package processfixture
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -73,4 +75,34 @@ func IntroductionRecordCount(t *testing.T, root string) int {
 		t.Fatal("native History snapshot unavailable", err)
 	}
 	return (len(snapshot) - 120) / 40
+}
+
+// StartOperationProcess starts a pinned Node test and joins it on early return.
+func StartOperationProcess(t testing.TB, unit, testName, fixtureEnv, plan, signals string, runtimeSeconds int) *NativeProcess {
+	t.Helper()
+	command := OwnerTestCommand(t, unit, PinnedOwnerTest(t), testName, fixtureEnv, plan, runtimeSeconds)
+	process := &NativeProcess{Unit: unit, Command: command}
+	command.Stdout, command.Stderr = &process.Diagnostic, &process.Diagnostic
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if !process.Joined {
+			for _, marker := range []string{"release", "stop"} {
+				if err := writeOperationMarker(signals, marker); err != nil {
+					t.Error("release original test process", err)
+				}
+			}
+			if err := process.Wait(); err != nil {
+				// Wait can join only systemd-run after its context is canceled.
+				// Stop the unit as well so it cannot survive a failed workload.
+				stopErr := exec.Command("systemctl", "stop", unit).Run()
+				t.Error("original test process cleanup", errors.Join(err, stopErr))
+			}
+		}
+		if t.Failed() {
+			t.Log("original test diagnostics", process.Diagnostic.String())
+		}
+	})
+	return process
 }

@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,21 +52,16 @@ import (
 // and sole node-duty fence plus its own Store root (the fifth writable root).
 // Honest limits: one fixture Release authority and one operator, not independent
 // participants or whole-host privacy qualification. The forward executable is a
-// distinct build of the same checked source. The readiness oracle is the
-// authenticated listener at the signed member Endpoint, NOT publication
-// readiness; genuine publish/lookup is proven by
-// TestNativeDescriptorPublishLookupAndReopenTCP. The transitional Descriptor
-// orchestration is not exercised or retired here.
+// distinct build of the same checked source. Each live phase requires an
+// authenticated Publish ACK, exact Lookup and durable Control spend through
+// the installed Descriptor and native Forwarding peers.
 //
-// The causal mid-Publish-crash leg simulates the uncertain Store stage honestly.
-// A genuine signed publication is first committed through the real Store owner
-// (descriptorstore.Open + Publish, verify-before-mutate/persist-before-expose)
-// while the unit is cleanly stopped, then the installed retained runtime reopens
-// that floor, is SIGKILLed, and the reserved .record-stage name is written
-// directly into the records directory while the unit is failed. The stand cannot
-// deterministically interrupt the serialized network writer mid-Publish (that
-// path needs the full Route-prefix/Forwarding workload, proven separately by
-// TestNativeDescriptorPublishLookupAndReopenTCP), so the staging file is a
+// The causal mid-Publish-crash leg simulates the uncertain Store stage.
+// A separate signed publication is committed through the real Store while the
+// unit is stopped, then the installed retained runtime reopens that floor,
+// is SIGKILLed, and the .record-stage name is written directly while the unit
+// is failed. The stand cannot deterministically interrupt the serialized writer
+// mid-Publish. The staging file is a
 // bounded fixture of exactly the durable shape a crash mid-Publish leaves:
 // staging is never a committed proof. A plain retained start refuses the
 // uncertain stage; the bounded repair validates the committed floor, removes only
@@ -99,7 +94,7 @@ type descriptorPlatformStand struct {
 	uid               int
 	authority         *releasefixture.ReleaseAuthority
 	networkPlan       state.AuthorityDeclaration
-	address           string
+	workload          installedRouteFixture
 	nodeID            [32]byte
 	familyID          [32]byte
 	facts             admission.AuthorityFacts
@@ -119,12 +114,12 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	// provisioned delivery against the loaded manager, then the retained runtime
 	// claims the original node-duty producer and listens.
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "first launch")
+	invocation := waitDescriptorPlatformReady(t, stand, "first launch")
 	descriptorPlatformProducerPresent(t, stand, true, "first launch")
 	if out, err := runAsInstalledNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a live invocation", string(out))
 	}
-	stopDescriptorPlatformUnit(t, "first launch")
+	invocation.stop(t, "first launch")
 	descriptorPlatformProducerPresent(t, stand, false, "first completion")
 	if out, err := runAsInstalledNode(t, stand.program, "node", "descriptor", "repair-retained", stand.planPath); err == nil {
 		t.Fatal("repair accepted a clean root", string(out))
@@ -132,8 +127,8 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 
 	// Retained relaunch over the same histories.
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "relaunch")
-	stopDescriptorPlatformUnit(t, "relaunch")
+	invocation = waitDescriptorPlatformReady(t, stand, "relaunch")
+	invocation.stop(t, "relaunch")
 	descriptorPlatformProducerPresent(t, stand, false, "relaunch completion")
 
 	// Forward program change: a distinct working executable authenticated against
@@ -147,8 +142,8 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "forward launch")
-	stopDescriptorPlatformUnit(t, "forward launch")
+	invocation = waitDescriptorPlatformReady(t, stand, "forward launch")
+	invocation.stop(t, "forward launch")
 	// Rollback to the committed predecessor must refuse before serving.
 	if err := os.RemoveAll(stand.distribution); err != nil {
 		t.Fatal(err)
@@ -172,12 +167,13 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	// live node-duty fence stays retained, a plain start refuses, and the bounded
 	// repair against real manager facts removes exactly that producer.
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "crash launch")
+	crashed := waitDescriptorPlatformReady(t, stand, "crash launch")
 	descriptorPlatformProducerPresent(t, stand, true, "crash launch")
 	if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGKILL", "ardents-descriptor.service").Run(); err != nil {
 		t.Fatal("original crash signal", err)
 	}
 	waitDescriptorPlatformFailed(t)
+	crashed.requireCrashWithoutTerminal(t)
 	descriptorPlatformProducerPresent(t, stand, true, "after crash")
 	// A plain start must refuse the retained producer. Type=exec returns once the
 	// main process forks, so the runtime's asynchronous refusal is observed as the
@@ -191,8 +187,8 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	}
 	descriptorPlatformProducerPresent(t, stand, false, "after repair")
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "post-repair launch")
-	stopDescriptorPlatformUnit(t, "post-repair launch")
+	invocation = waitDescriptorPlatformReady(t, stand, "post-repair launch")
+	invocation.stop(t, "post-repair launch")
 
 	// Causal mid-Publish-crash stage recovery (option A). Commit a genuine signed
 	// floor through the real Store owner while the unit is stopped, reopen it
@@ -205,11 +201,12 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 	// preserved byte-exact.
 	raw, target, profile := commitDescriptorPlatformFloor(t, stand)
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "stage-crash launch")
+	invocation = waitDescriptorPlatformReady(t, stand, "stage-crash launch")
 	if err := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGKILL", "ardents-descriptor.service").Run(); err != nil {
 		t.Fatal("stage-crash signal", err)
 	}
 	waitDescriptorPlatformFailed(t)
+	invocation.requireCrashWithoutTerminal(t)
 	descriptorPlatformProducerPresent(t, stand, true, "after stage crash")
 	stage := filepath.Join(stand.storeRoot, "records", ".record-stage")
 	staged := []byte("uncertain unpublished write left by the killed invocation")
@@ -242,8 +239,8 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal("stage repair changed the committed publication floor", err)
 	}
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "post-stage-repair launch")
-	stopDescriptorPlatformUnit(t, "post-stage-repair launch")
+	invocation = waitDescriptorPlatformReady(t, stand, "post-stage-repair launch")
+	invocation.stop(t, "post-stage-repair launch")
 	// With the unit stopped the exclusive Store lease is free: the committed
 	// publication survived the stage repair and still resolves byte-exact.
 	reopened, err := descriptorstore.OpenRetained(descriptorstore.Config{Root: stand.storeRoot, Network: stand.networkPlan.NetworkID})
@@ -287,8 +284,8 @@ func TestNativeDescriptorPlatformInstalledLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	startDescriptorPlatformUnit(t)
-	waitDescriptorPlatformReady(t, stand, "restored launch")
-	stopDescriptorPlatformUnit(t, "restored launch")
+	invocation = waitDescriptorPlatformReady(t, stand, "restored launch")
+	invocation.stop(t, "restored launch")
 }
 
 func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
@@ -360,7 +357,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	t.Cleanup(func() { close(clockStop); <-clockJoined })
 
 	processfixture.WaitAdmissionHour(t)
-	spec, _, _ := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
+	spec, issuerPlan, inventory := networkinputs.PrepareNetworkGenesis(t, t.TempDir())
 	stand.sockets = make(map[[32]byte]func())
 	certificates := make(map[[32]byte]tls.Certificate)
 	carrier := spec.Nodes[1].Carrier
@@ -370,6 +367,9 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
+	networkinputs.PrepareIssuer(t, &issuerPlan, inventory, spec, bundle.Nodes[0], sha256.Sum256(bundle.Profile))
+	stand.workload = prepareInstalledRouteFixture(t, spec, bundle, issuerPlan, stand.clockPath, stand.sockets, certificates)
+
 	var key [32]byte
 	copy(key[:], spec.Authority.Public().(ed25519.PublicKey))
 	stand.networkPlan = state.AuthorityDeclaration{Root: stand.stateRoot, NetworkID: spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: stand.clockPath}
@@ -405,7 +405,7 @@ func provisionDescriptorPlatformStand(t *testing.T) *descriptorPlatformStand {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stand.address, stand.familyID = member.Endpoint, member.FamilyID
+	stand.familyID = member.FamilyID
 
 	certificate := certificates[stand.nodeID]
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]})
@@ -612,29 +612,6 @@ func startDescriptorPlatformUnit(t *testing.T) {
 	}
 }
 
-func stopDescriptorPlatformUnit(t *testing.T, phase string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
-	defer cancel()
-	if out, err := exec.CommandContext(ctx, "systemctl", "stop", "ardents-descriptor.service").CombinedOutput(); err != nil {
-		t.Fatalf(phase, "installed Descriptor stop", string(out), err)
-	}
-	result, err := exec.Command("systemctl", "show", "ardents-descriptor.service", "-p", "Result", "--value").Output()
-	if err != nil || strings.TrimSpace(string(result)) != "success" {
-		t.Fatal(phase, "clean stop manager result", string(result), err)
-	}
-	var terminal struct{ Phase, Outcome string }
-	found := false
-	for _, line := range strings.Split(descriptorPlatformJournal(t), "\n") {
-		if json.Unmarshal([]byte(line), &terminal) == nil && terminal.Phase != "" {
-			found = true
-		}
-	}
-	if !found || terminal.Phase != "joined" || terminal.Outcome != "canceled" {
-		t.Fatal(phase, "original joined cancellation report", terminal, descriptorPlatformJournal(t))
-	}
-}
-
 func waitDescriptorPlatformFailed(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
@@ -656,23 +633,13 @@ func descriptorPlatformJournal(t *testing.T) string {
 	return string(out)
 }
 
-// waitDescriptorPlatformReady proves the retained runtime opened its shared
-// carrier listener at the signed member Endpoint (receiver.Listen admission).
-func waitDescriptorPlatformReady(t *testing.T, stand *descriptorPlatformStand, phase string) {
+func waitDescriptorPlatformReady(t *testing.T, stand *descriptorPlatformStand, phase string) installedInvocation {
 	t.Helper()
-	deadline := time.Now().Add(30 * time.Second)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", stand.address, 2*time.Second)
-		if err == nil {
-			_ = conn.Close()
-			return
-		}
-		if exec.Command("systemctl", "is-failed", "ardents-descriptor.service").Run() == nil {
-			t.Fatal(phase, "unit failed before listening", descriptorPlatformJournal(t))
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	t.Fatal(phase, "installed Descriptor never listened", descriptorPlatformJournal(t))
+	original := observeInstalledInvocation(t, "ardents-descriptor.service", "node.descriptor")
+	original.waitListening(t, phase)
+	stand.workload.verifyDescriptor(t, stand.program, stand.spendRoot, stand.nodeID, phase)
+	original.requireCurrent(t)
+	return original
 }
 
 func descriptorPlatformProducerPresent(t *testing.T, stand *descriptorPlatformStand, want bool, phase string) {
