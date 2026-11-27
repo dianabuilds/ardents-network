@@ -138,6 +138,13 @@ qualification. Поведение на других ОС определяетс�
 комплекта. Точный Go Interface определяется вместе с реальным consumer;
 не добавлять заранее интерфейсы будущих Installation/Execution.
 
+Linux amd64 Infrastructure Enrollment использует отдельные `InfrastructureBundle`
+и `InfrastructureCandidate`. Корень, физическая идентичность файлов и исходный
+контекст остаются у Enrollment. Pinned Bundle проверяет pin до разбора и связывает
+исполняемый образ с оригиналом через `/proc/self/exe`. Release offline preparation
+и native Enrollment используют общий переносимый `infrastructureinventory` для
+канонической грамматики, имён и пределов companion-файлов.
+
 ## Проверяемая приёмка
 
 `ValidateProtectedGeneration` предоставляет Installation ту же canonical

@@ -25,8 +25,8 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 		switch name {
 		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
 			continue
-		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "descriptor_inventory_linux_test.go", "infrastructure_process_linux.go":
-			// This distinct inventory has no Windows accepting product path.
+		case "infrastructure_snapshot_linux.go", "infrastructure_snapshot_linux_test.go", "infrastructure_process_linux.go":
+			// Infrastructure custody requires the native Linux mechanism.
 			continue
 		}
 		for _, target := range []string{"windows", "linux"} {
@@ -67,15 +67,31 @@ func TestSuccessorStateRetainedOpeningRunsPortableRules(t *testing.T) {
 	}
 }
 
+func TestInfrastructureInventoryGrammarRunsOnPortableProfiles(t *testing.T) {
+	directory := path.Join(repositoryRoot(t), "internal/domain/enrollment/infrastructureinventory")
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{"doc.go", "canonical.go", "files.go", "canonical_test.go"} {
+			selected, err := profile.MatchFile(directory, name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable infrastructure inventory %s excluded on %s", name, target)
+			}
+		}
+	}
+}
+
 func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, target := range []string{"linux", "windows", "darwin"} {
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/domain/enrollment/infrastructure_inventory.go",
-			"internal/domain/enrollment/infrastructure_inventory_test.go",
-			"internal/domain/enrollment/descriptor_inventory_linux_test.go",
+			"internal/domain/enrollment/infrastructure_snapshot_linux.go",
+			"internal/domain/enrollment/infrastructure_snapshot_linux_test.go",
 			"internal/domain/enrollment/infrastructure_process_linux.go",
 			"internal/platform/systemd/infrastructure_prestart_linux.go",
 			"internal/platform/systemd/infrastructure_prestart_linux_test.go",
@@ -427,7 +443,7 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/platform/artifacts/output_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
-			"internal/domain/enrollment/infrastructure_inventory.go",
+			"internal/domain/enrollment/infrastructure_snapshot_linux.go",
 			"internal/domain/enrollment/infrastructure_process_linux.go",
 			"internal/domain/release/infrastructure/preparation_linux.go",
 			"internal/domain/release/infrastructure/admission.go",

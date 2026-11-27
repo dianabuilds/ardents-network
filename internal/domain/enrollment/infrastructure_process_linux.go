@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"syscall"
 )
 
 func infrastructurePlatform() error {
@@ -17,15 +16,6 @@ func infrastructurePlatform() error {
 		return ErrInput
 	}
 	return nil
-}
-
-func sameInfrastructureFile(a, b os.FileInfo) bool {
-	if !sameFileState(a, b) {
-		return false
-	}
-	x, ok := a.Sys().(*syscall.Stat_t)
-	y, yes := b.Sys().(*syscall.Stat_t)
-	return ok && yes && x.Ctim == y.Ctim && x.Uid == y.Uid && x.Gid == y.Gid && x.Nlink == 1 && y.Nlink == 1
 }
 
 func verifyInfrastructureProcess(ctx context.Context, enrolled os.FileInfo, raw []byte) (err error) {
