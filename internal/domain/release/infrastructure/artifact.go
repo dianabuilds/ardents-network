@@ -11,14 +11,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 )
 
-const (
-	ProgramTarget    = "ardents/linux-amd64/node"
-	GenerationTarget = "ardents/linux-amd64/infrastructure/source"
-	ProgramName      = "ardents-node-linux-amd64"
-	DescriptorName   = "infrastructure-source.json"
-	TemplateName     = "ardents-source.service"
-)
-
 var (
 	ErrInput         = errors.New("infrastructure: invalid input")
 	ErrBinding       = errors.New("infrastructure: artifact binding differs")
@@ -92,15 +84,6 @@ func validateResources(raw, program, template []byte, invocation, templateName s
 
 func digest(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
 
-func runtimeNames(role string) (descriptor, template, target string, ok bool) {
-	switch role {
-	case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
-		return "infrastructure-" + role + ".json", "ardents-" + role + ".service", "ardents/linux-amd64/infrastructure/" + role, true
-	default:
-		return "", "", "", false
-	}
-}
-
 // PrepareRuntimeDescriptor is public unsigned preparation for the existing
 // fixed role vocabulary. The platform template is an authenticated resource;
 // operator-specific configuration is separately bound at launch.
@@ -121,4 +104,22 @@ func ValidateRuntimeResources(role string, descriptor, program, template []byte)
 		return Declaration{}, ErrInput
 	}
 	return validateResources(descriptor, program, template, role, name)
+}
+
+// ValidateForwardingResources checks exact public bytes before Release history is
+// opened. It grants no initial provenance, native custody or accepting authority.
+func ValidateForwardingResources(raw, program, template []byte) (Declaration, error) {
+	return validateResources(raw, program, template, "forwarding", ForwardingTemplateName)
+}
+
+// ValidateJoinResources compares exact public bytes before Release history is
+// opened. Its detached declaration supplies no pin, authority or runtime right.
+func ValidateJoinResources(raw, program, template []byte) (Declaration, error) {
+	return validateResources(raw, program, template, "join", JoinTemplateName)
+}
+
+// ValidateDescriptorResources compares exact public bytes before Release history is
+// opened. Its detached declaration supplies no pin, authority or runtime right.
+func ValidateDescriptorResources(raw, program, template []byte) (Declaration, error) {
+	return validateResources(raw, program, template, "descriptor", DescriptorTemplateName)
 }

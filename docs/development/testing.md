@@ -4154,6 +4154,12 @@ static `ARDENTS_FORWARDING_NEXT_PROGRAM`, `ARDENTS_JOIN_NEXT_PROGRAM`,
 unit template is produced by `ardents-next platform template`. They are offline
 signing controls, not installed or independent-builder claims.
 
+The same profile checks `TestReleaseKeySetNativeInterruptedCustody` in the
+private key publication owner. An interrupted directory join retains both the
+original cancellation and the physical failure. The compiled-command receipt
+test separately checks all four fixed roles against the actual private files
+and refuses a second invocation on each occupied output.
+
 The same target also executes
 `TestSourcePreparationNativeInitialNetworkAndNonrootState`
 (`internal/domain/node/provisioning`): genuine initial Source key/plan/Record/Epoch

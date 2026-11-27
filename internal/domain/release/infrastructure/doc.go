@@ -5,7 +5,7 @@
 //
 // Responsibility clusters and their tests:
 //   - public descriptor grammar and role-separated bytes: artifact.go,
-//     descriptor_artifact.go, forwarding_artifact.go, join_artifact.go
+//     artifact_identity.go binds the exact fixed-role descriptor, unit and target names
 //     (artifact_test.go, descriptor_artifact_test.go,
 //     forwarding_artifact_test.go, join_artifact_test.go)
 //   - candidate authorization, outer guards and retained release history:

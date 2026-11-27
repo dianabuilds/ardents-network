@@ -13,12 +13,10 @@
 //     source_release_plan_linux_test.go; linux — the last file also pins the
 //     shared artifactio private-key parser's caller-input retention used by
 //     the key commands)
-//   - release key preparation and ordered public receipt:
-//     descriptor_release_keys_linux.go, forwarding_release_keys_linux.go,
-//     join_release_keys_linux.go, source_release_keys_linux.go,
-//     infrastructure_release_keys_linux.go, release_key_receipt_unix.go
-//     (release_key_receipt_unix_test.go; unix,
-//     release_key_receipt_native_linux_test.go; native)
+//   - release_key_command_linux.go runs the selected ceremony and renders its
+//     public inventory through release_key_receipt_unix.go. internal/keyset
+//     owns original protected file publication, joins and erasure. The Linux
+//     command tests check each receipt against the actual published files.
 //   - Forwarding/JOIN/Descriptor initial and forward Release signing with
 //     predecessor authentication: node_release_linux.go,
 //     node_release_predecessor_linux.go

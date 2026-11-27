@@ -14,7 +14,7 @@ func Run(args []string, out io.Writer) error {
 	if role == "source" {
 		switch operation {
 		case "prepare-release-keys":
-			return runSourceReleaseKeys(operationArgs, out)
+			return runReleaseKeys(role, operationArgs, out)
 		case "sign-initial-release":
 			return runSourceReleaseSigning(operationArgs, out)
 		case "sign-forward-release":
@@ -26,14 +26,7 @@ func Run(args []string, out io.Writer) error {
 	if _, ok := role.artifacts(); ok {
 		switch operation {
 		case "prepare-release-keys":
-			switch role {
-			case forwardingReleaseRole:
-				return runForwardingReleaseKeys(operationArgs, out)
-			case joinReleaseRole:
-				return runJoinReleaseKeys(operationArgs, out)
-			case descriptorReleaseRole:
-				return runDescriptorReleaseKeys(operationArgs, out)
-			}
+			return runReleaseKeys(role, operationArgs, out)
 		case "prepare-release-plan", "prepare-forward-release-plan":
 			return runNodeReleasePlan(role, args[1:], out)
 		case "sign-initial-release":

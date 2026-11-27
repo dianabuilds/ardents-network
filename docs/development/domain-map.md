@@ -298,6 +298,10 @@ schema, exact program/generation targets and genuine predecessor verifier.
 Each operation admits its own original key directory and retains original
 protected inputs and exclusive output. Source Timestamp signing is a separate
 purpose and path.
+Infrastructure retains one fixed artifact vocabulary for the descriptor,
+platform template and generation target. The offline key publication owner
+returns the exact public inventory after joining protected private file output.
+Each role's command renders that inventory with its own operation identity.
 Release verifies signatures/floors and
 Infrastructure retains a distinct opaque JOIN candidate pair for original
 predecessor verification. Forward public metadata cannot supply native
