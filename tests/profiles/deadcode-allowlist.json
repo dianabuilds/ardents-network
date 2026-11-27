@@ -845,8 +845,7 @@
           "internal/domain/hosting.Budget.CoversJoint",
           "internal/domain/hosting.Budget.Reserve",
           "internal/domain/hosting.Budget.ReserveAdditionalJoint",
-          "internal/domain/hosting.Budget.reserveAdditional",
-          "internal/domain/hosting.Reservation.DetachTermination",
+            "internal/domain/hosting.Reservation.DetachTermination",
           "internal/domain/hosting.Reservation.Release",
           "internal/domain/hosting/counters.boundedFile",
           "internal/domain/network/source.ObservePublicTrust",
@@ -2476,8 +2475,7 @@
           "internal/domain/hosting.Budget.CoversJoint",
           "internal/domain/hosting.Budget.Reserve",
           "internal/domain/hosting.Budget.ReserveAdditionalJoint",
-          "internal/domain/hosting.Budget.reserveAdditional",
-          "internal/domain/hosting.Reservation.DetachTermination"
+            "internal/domain/hosting.Reservation.DetachTermination"
         ],
         "classification": "Linux-native hosting reservation composition covered by Linux-tagged tests, no Windows test path (internal/domain/hosting, P1-B batch 1 #781)",
         "rationale": "Batch 1 de-tagged the pure hosting reservation accounting (reservation.go) and bounded read (counter_file.go) to portable. Their fixture-measure behavior tests are now Unix-family (linux || darwin, #865): budget_unix_test.go, reservation_unix_test.go, deadline_unix_test.go, additional_reservation_unix_test.go and snapshot_unix_test.go exercise the Unix-family flock lease (lease_unix.go) and portable durable storage through Budget.transact with an injected fixture measure, so macOS executes them after the lease port; they do not read the Linux /sys counters (the genuine measure adapter stays platform-specific). The bounded read (boundedFile) has a portable behavior test (counter_file_test.go) and is not test-dead on Windows; it remains windows-production-dead in the production allowance. P1-B batch 2 (#787) removed Reservation.Release from this entry: the portable session route-reservation helper test (session/reservation_test.go) reaches Release through ReleaseJoined, so it is no longer test-dead on Windows (it remains windows-production-dead in the batch-1 production allowance). Windows excludes the Unix-family reservation test files and the lease and measure refuse with ErrUnsupportedPlatform (lease_other.go, measure_other.go), so the remaining reservation functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; the portable hosting allowance/joint-traffic tests still execute on Windows and the Linux native-tag test analysis remains empty.",
