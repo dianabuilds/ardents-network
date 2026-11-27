@@ -34,6 +34,20 @@ func successorImportAllowed(source, dependency string) bool {
 		return offlineOperatorImportAllowed(source, dependency)
 	}
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	const socketFile = "internal/application/internal/socketfile"
+	if local == socketFile {
+		switch source {
+		case "internal/application/administration/server.go",
+			"internal/application/administration/server_retirement_test.go",
+			"internal/application/connection/transport.go":
+			return true
+		default:
+			return false
+		}
+	}
+	if path.Dir(source) == socketFile {
+		return allowedStandardImport(dependency)
+	}
 	if local == managerObservationPackage {
 		return managerObservationConsumer(source)
 	}

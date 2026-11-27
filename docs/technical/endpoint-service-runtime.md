@@ -1558,8 +1558,11 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 - Go tests for Broker, Endpoint, Publication, and Service Connection exercise
   the Module Interfaces and failure paths.
 - Document AAI3 Connection and Administration behavior tests exercise
-  framing, typed refusal/outcome, cancellation, join, and exact socket cleanup
-  through their public Interfaces. AAI3 rejects the removed AAI2 request before
+  framing, typed refusal/outcome, cancellation, and join through their public
+  Interfaces. After join each server checks the original socket entry under its
+  retained parent. A different entry remains in place and produces a cleanup
+  refusal. This assumes a caller-controlled private socket directory.
+  AAI3 rejects the removed AAI2 request before
   Application owner I/O. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
 - [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md) selects the

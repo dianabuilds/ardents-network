@@ -8,10 +8,11 @@ import (
 	"errors"
 	"io"
 	"net"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/application/internal/socketfile"
 )
 
 // Server owns the lifecycle of one private local Connection transport.
@@ -20,7 +21,7 @@ type Server interface {
 }
 
 type server struct {
-	path     string
+	entry    *socketfile.Entry
 	listener *net.UnixListener
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -37,21 +38,15 @@ func Listen(path string, owner Interface) (Server, error) {
 	if path == "" || !filepath.IsAbs(path) || owner == nil {
 		return nil, errors.New("local Application Connection configuration is invalid")
 	}
-	if _, err := os.Lstat(path); err == nil || !errors.Is(err, os.ErrNotExist) {
+	listener, entry, err := socketfile.Listen(path)
+	if errors.Is(err, socketfile.ErrOccupied) {
 		return nil, errors.New("local Application Connection attachment already exists")
 	}
-	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
 	if err != nil {
 		return nil, err
 	}
-	listener.SetUnlinkOnClose(false)
-	if err := os.Chmod(path, 0o600); err != nil {
-		_ = listener.Close()
-		_ = os.Remove(path)
-		return nil, err
-	}
 	ctx, cancel := context.WithCancel(context.Background())
-	server := &server{path: path, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
+	server := &server{entry: entry, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
 		clients: make(map[*net.UnixConn]struct{})}
 	server.work.Add(1)
 	go server.serve()
@@ -173,7 +168,7 @@ func (server *server) retainCleanupFailure(err error) {
 }
 
 // Close refuses new clients, cancels active streams, and removes only this
-// server's exact socket path.
+// server's original socket entry.
 func (server *server) Close() error {
 	if server == nil {
 		return nil
@@ -194,7 +189,7 @@ func (server *server) Close() error {
 		}
 		server.mu.Unlock()
 		server.work.Wait()
-		server.err = errors.Join(server.err, os.Remove(server.path))
+		server.err = errors.Join(server.err, server.entry.Retire())
 	})
 	return server.err
 }

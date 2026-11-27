@@ -7,6 +7,8 @@ import (
 	"errors"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -77,6 +79,47 @@ func TestServerJoinsBlockedApplicationOnClose(t *testing.T) {
 	case <-stream.closed:
 	default:
 		t.Fatal("server returned before Application Close")
+	}
+}
+
+func TestConnectionClosePreservesAReplacementListener(t *testing.T) {
+	path := shortSocketPath(t)
+	original, err := connection.Listen(path, &waitingOwner{entered: make(chan context.Context, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer original.Close()
+	oldPath := filepath.Join(filepath.Dir(path), "old-"+filepath.Base(path))
+	if err := os.Rename(path, oldPath); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Remove(oldPath); err != nil {
+			t.Error(err)
+		}
+	})
+
+	outcome := connection.Outcome{Class: connection.ServiceUnavailable, Reason: "replacement listener"}
+	replacement, err := connection.Listen(path, setupRefusalOwner{outcome: outcome})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer replacement.Close()
+	closeErr := original.Close()
+	if closeErr == nil || original.Close() != closeErr {
+		t.Fatal("original Connection did not retain its cleanup refusal", closeErr)
+	}
+	client, err := connection.Dial(t.Context(), path, connection.Request{Destination: connection.TargetLink, Value: "explicit"})
+	if client != nil {
+		_ = client.Close()
+		t.Fatal("replacement accepted an explicitly refused request")
+	}
+	var refusal connection.SetupRefusalError
+	if !errors.As(err, &refusal) || refusal.Outcome() != outcome {
+		t.Fatal("original Connection cleanup interfered with the replacement", err)
+	}
+	if err := replacement.Close(); err != nil {
+		t.Fatal("replacement could not retire its own original socket", err)
 	}
 }
 

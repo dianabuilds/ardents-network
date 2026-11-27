@@ -7,6 +7,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"Administration retains its original socket entry", "internal/application/administration/server.go", modulePath + "/internal/application/internal/socketfile", true},
+		{"Connection retains its original socket entry", "internal/application/connection/transport.go", modulePath + "/internal/application/internal/socketfile", true},
+		{"Application clients cannot admit a socket entry", "internal/application/connection/local_dial.go", modulePath + "/internal/application/internal/socketfile", false},
+		{"socket entries cannot acquire Connection authority", "internal/application/internal/socketfile/listener.go", modulePath + "/internal/application/connection", false},
 		{"public issuer inspection uses new codec", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/admission/issuerprofile", true},
 		{"public issuer inspection excludes old codec", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/admission", false},
 		{"public issuer inspection excludes private issuer", "cmd/ardents-next/offline_profile_inspection.go", modulePath + "/internal/domain/admission/issuer", false},

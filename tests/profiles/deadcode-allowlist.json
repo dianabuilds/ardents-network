@@ -1163,10 +1163,14 @@
           "internal/application/administration.server.handleSnapshot",
           "internal/application/administration.server.serve",
           "internal/application/administration.validPublishedLink",
-          "internal/application/administration.writeResponse"
+          "internal/application/administration.writeResponse",
+          "internal/application/internal/socketfile.Entry.Retire",
+          "internal/application/internal/socketfile.Entry.check",
+          "internal/application/internal/socketfile.Entry.remove",
+          "internal/application/internal/socketfile.Listen"
         ],
         "classification": "selected Linux-only protected text runtime closure",
-        "rationale": "The v1 cross-platform composition previously made this closure appear reachable on Windows. The selected v2 text participant is qualified only on Linux; its command adapter refuses on other platforms before runtime acquisition, while Linux production reaches these symbols. ADR-0106 retired the Windows-visible `entry import` caller of the duty conflict ledger, so only the Linux text runtime reaches ReadConflict and store.Conflict now.",
+        "rationale": "The v1 cross-platform composition previously made this closure appear reachable on Windows. The selected v2 text participant is qualified only on Linux; its command adapter refuses on other platforms before runtime acquisition, while Linux production reaches these symbols and the original Application socket file custody. Portable tests run the Administration listener and its original entry on Windows. ADR-0106 retired the Windows-visible `entry import` caller of the duty conflict ledger, so only the Linux text runtime reaches ReadConflict and store.Conflict now.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove this Windows allowance if a maintained Windows protected runtime is selected, or when the Linux-only runtime and its shared closure are retired or assigned narrower platform build ownership."
       },
