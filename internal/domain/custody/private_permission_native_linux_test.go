@@ -67,7 +67,12 @@ func TestPrivatePermissionMountedFilesystems(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer os.RemoveAll(point)
+		defer func() {
+			// Never recursively remove a mountpoint if unmounting failed.
+			if err := os.Remove(point); err != nil {
+				t.Errorf("remove mountpoint: %v", err)
+			}
+		}()
 		original, err := os.Open(point)
 		if err != nil {
 			t.Fatal(err)
