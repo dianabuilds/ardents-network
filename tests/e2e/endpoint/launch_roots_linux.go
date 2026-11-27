@@ -39,11 +39,7 @@ func PrepareLaunchRoots(t testing.TB, base, program, request, provider string, u
 	bundlePath, profilePath := filepath.Join(bootstrap, "state.bundle"), filepath.Join(bootstrap, "profile.bin")
 	WriteLaunchFile(t, bundlePath, bundleRaw, 0644)
 	WriteLaunchFile(t, profilePath, profile, 0644)
-	prepared := RunStartupCommand(t, program, credential, "prepared", "endpoint", "prepare-history", historyPlan, bundlePath, profilePath)
-	var preparation struct{ Phase string }
-	if err := json.Unmarshal(prepared, &preparation); err != nil || preparation.Phase != "history-preparation" {
-		t.Fatalf("explicit history preparation phase: %v: %s", err, prepared)
-	}
+	prepareEndpointHistory(t, program, credential, historyPlan, bundlePath, profilePath)
 
 	// Hosting provider budget is an explicit input, initialized under the account.
 	period := time.Now().UTC().Truncate(time.Second)

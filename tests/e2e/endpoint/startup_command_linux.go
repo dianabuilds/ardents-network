@@ -14,18 +14,36 @@ import (
 // RunStartupCommand runs the exact CLI operation and checks its declared outcome.
 func RunStartupCommand(t testing.TB, program string, credential *syscall.Credential, outcome string, args ...string) []byte {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), program, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: credential, Pdeathsig: syscall.SIGKILL}
-	var diagnostic bytes.Buffer
-	cmd.Stderr = &diagnostic
-	runtime.LockOSThread()
-	out, err := cmd.Output()
-	runtime.UnlockOSThread()
+	out, diagnostic, err := runStartupCommand(t, program, credential, args...)
 	var response struct{ Outcome string }
 	decodeErr := json.Unmarshal(out, &response)
 	if err != nil || decodeErr != nil || response.Outcome != outcome {
 		t.Fatalf("command %v: exit=%v JSON=%v outcome=%q want=%q stdout=%s stderr=%s",
-			args, err, decodeErr, response.Outcome, outcome, out, diagnostic.String())
+			args, err, decodeErr, response.Outcome, outcome, out, diagnostic)
 	}
 	return out
+}
+
+// The history command publishes its finite result on the diagnostic stream.
+func prepareEndpointHistory(t testing.TB, program string, credential *syscall.Credential, plan, bundle, profile string) {
+	t.Helper()
+	out, diagnostic, err := runStartupCommand(t, program, credential, "endpoint", "prepare-history", plan, bundle, profile)
+	var event struct{ Operation, Phase, Outcome string }
+	decodeErr := json.Unmarshal(diagnostic, &event)
+	if err != nil || len(out) != 0 || decodeErr != nil ||
+		event.Operation != "endpoint.prepare-history" || event.Phase != "history-preparation" || event.Outcome != "prepared" {
+		t.Fatalf("prepare Endpoint history: exit=%v JSON=%v stdout=%s stderr=%s", err, decodeErr, out, diagnostic)
+	}
+}
+
+func runStartupCommand(t testing.TB, program string, credential *syscall.Credential, args ...string) (output, diagnostic []byte, err error) {
+	t.Helper()
+	cmd := exec.CommandContext(t.Context(), program, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: credential, Pdeathsig: syscall.SIGKILL}
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	out, err := cmd.Output()
+	return out, stderr.Bytes(), err
 }
