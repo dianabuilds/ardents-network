@@ -14,7 +14,7 @@ type retainedStateReader interface {
 	ReadControl() (string, []byte, error)
 }
 
-// readRetainedInspection verifies signed chain and security/pending floors only.
+// readRetainedHistory verifies the signed chain and security/pending floors.
 // Each independently instantiated semantic owner brackets these reads with its
 // own native/participation checks and samples trusted time after physical I/O.
 // It never opens a mutable State, recovers pointers or publishes runtime rights.

@@ -4,11 +4,24 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
-func (s *State) loadDistributionState() error {
+// recoverDistributionHistory checks the signed current chain first, then
+// reconciles it with the journal on the same exclusive lease. This runs before
+// State publishes an observation, starts serving, or admits refresh work.
+func (s *State) recoverDistributionHistory() error {
+	current, err := loadCurrent(s.config, s.storage)
+	if err != nil {
+		return err
+	}
+	s.current = current
+	return s.reconcileDistributionJournal()
+}
+
+// reconcileDistributionJournal uses the distribution journal as the accepted
+// floor. Only this mutable opening can repair a stale active pointer.
+func (s *State) reconcileDistributionJournal() error {
 	name, raw, err := s.storage.LoadControl()
 	if err != nil {
 		return fmt.Errorf("load distribution security state: %w", err)
@@ -25,7 +38,7 @@ func (s *State) loadDistributionState() error {
 	}
 	if state.EpochFloor != 0 && (s.current == nil || state.EpochFloor > s.current.Snapshot.Epoch ||
 		state.EpochFloor == s.current.Snapshot.Epoch && state.EpochDigest != s.current.Snapshot.Digest) {
-		if err := s.recoverDistributionActive(state); err != nil {
+		if err := s.repairActiveMirror(state); err != nil {
 			return err
 		}
 	}
@@ -36,7 +49,7 @@ func (s *State) loadDistributionState() error {
 	return s.recoverPendingState()
 }
 
-func (s *State) recoverDistributionActive(state distribution.Record) error {
+func (s *State) repairActiveMirror(state distribution.Record) error {
 	name := fmt.Sprintf("%x", state.EpochDigest)
 	decision, err := loadStoredChain(s.config, s.storage, name)
 	if err != nil {
@@ -56,41 +69,33 @@ func (s *State) recoverDistributionActive(state distribution.Record) error {
 	return nil
 }
 
-func (s *State) commitDistribution(state distribution.Record) error {
-	return s.commitDistributionWithControl(state, s.storage.CommitControl)
-}
-
-func (s *State) commitDistributionWithControl(state distribution.Record, commit func(string, []byte) error) error {
-	if s.closed {
-		return errors.New("network state is closed")
+func (s *State) recoverPendingState() error {
+	state := s.distribution
+	if state.PendingDigest == [32]byte{} {
+		return nil
 	}
-	raw := distribution.Encode(state)
-	if state.Conflicting && !s.distribution.Conflicting {
-		s.invalidateRuntime()
+	if s.current == nil {
+		return errors.New("pending Epoch exists without an active predecessor")
 	}
-	name := distribution.Digest(raw)
-	if err := commit(name, raw); err != nil {
-		if errors.Is(err, durable.ErrPointerSyncUncertain) {
-			s.terminalErr = fmt.Errorf("distribution control commit is uncertain: %w", err)
-			s.retireStateLocked()
-		} else if state.Conflicting && !s.distribution.Conflicting {
-			// The conflict has already been verified. An ordinary
-			// pre-pointer failure cannot make the prior decision safe to serve.
-			s.terminalErr = fmt.Errorf("persist verified network state conflict: %w", err)
-			s.retireStateLocked()
-		}
+	if state.PendingDigest == s.current.Snapshot.Digest {
+		state.PendingDigest = [32]byte{}
+		state.PendingValidFrom = 0
+		state.Sequence++
+		return s.commitDistribution(state)
+	}
+	name := fmt.Sprintf("%x", state.PendingDigest)
+	decision, err := loadNamedGeneration(s.config, s.storage, name, epochPredecessor(s.current))
+	if err != nil {
+		return fmt.Errorf("load pending Epoch: %w", err)
+	}
+	if decision.Header.ValidFrom.Unix() != state.PendingValidFrom {
+		return errors.New("pending Epoch activation time disagrees with durable state")
+	}
+	// A retained old-schema pending generation must never become promotable
+	// by a later Source wave (F-50).
+	if err := classifyRetainedClosedSchema(s.config, decision.Header, "pending"); err != nil {
 		return err
 	}
-	s.distribution = state
+	s.pendingDecision = &decision
 	return nil
-}
-
-// retireStateLocked makes an unsafe publication or lost role guard terminal.
-// Runtime callers hold s.mu; Open may call this before publishing the owner.
-func (s *State) retireStateLocked() {
-	s.closed = true
-	s.invalidateRuntime()
-	if s.workCancel != nil {
-		s.workCancel()
-	}
 }

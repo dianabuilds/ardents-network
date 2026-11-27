@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,16 +50,7 @@ func sourceInspectionNativeFixture(t *testing.T) (state.Config, []byte) {
 	}
 	// Native numeric ownership is observed from actual retained roots, rather
 	// than supplied by a successful neighbor. No runtime user is launched here.
-	for _, root := range []string{cfg.Root, cfg.LocalRoleStateRoot} {
-		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			return os.Chown(path, 61100, 61100)
-		}); err != nil {
-			t.Fatal(err)
-		}
-	}
+	setSourceInspectionNativeOwner(t, cfg)
 	n := &servingdeclaration.ServingNetwork{Root: cfg.Root, NetworkID: cfg.NetworkID, Threshold: cfg.Threshold, ClockObservationFile: cfg.ClockObservationFile}
 	copy(n.ProfileAuthority[:], cfg.ClosedProfileAuthority)
 	for _, public := range cfg.Authorities {
@@ -72,6 +64,71 @@ func sourceInspectionNativeFixture(t *testing.T) (state.Config, []byte) {
 		t.Fatal(err)
 	}
 	return cfg, raw
+}
+
+func setSourceInspectionNativeOwner(t *testing.T, cfg state.Config) {
+	t.Helper()
+	for _, root := range []string{cfg.Root, cfg.LocalRoleStateRoot} {
+		if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			return os.Chown(path, 61100, 61100)
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestSourceInspectionNativeStaleMirrorRefusesWithoutRepair(t *testing.T) {
+	cfg, _ := sourceInspectionNativeFixture(t)
+	genesis := newFixture(t)
+	successor := nextFixture(t, genesis)
+	owner, err := state.OpenRetained(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	if _, err := owner.AcceptEpoch(t.Context(), successor.epoch, successor.inputs, successor.materializations); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
+	defer cancel()
+	setSourceInspectionNativeOwner(t, cfg)
+	inspection, err := state.OpenSourceInspection(ctx, cfg)
+	if err != nil {
+		t.Fatalf("inspection of intact successor: %v", err)
+	}
+	if err := inspection.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	stale := fmt.Sprintf("%x\n", genesis.epochDigest)
+	currentPath := filepath.Join(cfg.Root, "current")
+	if err := os.WriteFile(currentPath, []byte(stale), 0600); err != nil {
+		t.Fatal(err)
+	}
+	before := sourceInspectionNativeImages(t, cfg)
+	refused, err := state.OpenSourceInspection(ctx, cfg)
+	if err == nil {
+		_ = refused.Close()
+	}
+	if err == nil || !strings.Contains(err.Error(), "retained State security history requires explicit recovery") {
+		t.Fatalf("stale mirror inspection: %v", err)
+	}
+	after := sourceInspectionNativeImages(t, cfg)
+	if len(after) != len(before) {
+		t.Fatal("stale mirror inspection changed retained inventory")
+	}
+	for path, original := range before {
+		actual, ok := after[path]
+		if !ok || original.digest != actual.digest || !os.SameFile(original.info, actual.info) {
+			t.Fatalf("stale mirror inspection touched %s", path)
+		}
+	}
 }
 
 func TestSourceInspectionNativeReadOnlyOriginalLifetime(t *testing.T) {

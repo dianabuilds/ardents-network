@@ -24,7 +24,7 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	config.sourceInfo.Exposures = [2][32]byte{{3}, {4}}
 	config.sourceInfo.Families = [2]string{"source-family-one", "source-family-two"}
 	initial := &State{config: config, storage: storage}
-	if err := initial.loadDistributionState(); err != nil {
+	if err := initial.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Unix(1_800_000_100, 0).UTC()
@@ -54,7 +54,7 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	}
 	defer storage.Close()
 	restarted := &State{config: config, storage: storage}
-	if err := restarted.loadDistributionState(); err != nil {
+	if err := restarted.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
 	probe := func() time.Time { return deadline.Add(time.Second) }

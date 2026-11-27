@@ -764,6 +764,12 @@ automatic continuation or cleanup. Platform Artifacts retains and reobserves the
 directories. Both owners and inputs join before the command renders its receipt;
 no Source transport, producer, process Guard or Installation Startup is opened.
 
+The retained opening used by installed Source, Node and Endpoint readers
+reconciles the signed Epoch chain and distribution journal on the original
+State lease. State alone commits acceptance and repairs the active mirror.
+Read-only inspections refuse inconsistencies. The [Network State owner](../technical/successor-network-state.md#boundaries)
+describes the journal, mirror and physical root responsibilities.
+
 Source serving admission claims only an absent State-root-bound participation
 producer. Participation checks absence and commits under the same exclusive
 operation; it does not prune an expired original producer to admit a successor.

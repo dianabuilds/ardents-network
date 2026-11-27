@@ -94,3 +94,13 @@ func (s *State) closeOwned() error {
 	}
 	return result
 }
+
+// retireStateLocked makes an unsafe publication or lost role guard terminal.
+// Runtime callers hold s.mu; Open may call this before publishing the owner.
+func (s *State) retireStateLocked() {
+	s.closed = true
+	s.invalidateRuntime()
+	if s.workCancel != nil {
+		s.workCancel()
+	}
+}

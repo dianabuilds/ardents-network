@@ -31,8 +31,10 @@
 //
 // Start with the operation being traced:
 //   - signed intake: command decodes the operator declaration; Open verifies
-//     retained history; AcceptEpoch and AcceptClosedProfile authenticate and
-//     publish through durable. Internal distribution owns ARDS1D4 bytes.
+//     retained history in distribution_recovery.go; AcceptEpoch and
+//     AcceptClosedProfile authenticate before publishing through durable.
+//     distribution_commit.go orders Epoch and journal writes. Internal
+//     distribution owns ARDS1D4 bytes.
 //   - runtime observation: CurrentRuntimeWitness reads the exact durable
 //     profile under the State lock and samples trusted time afterward.
 //   - Source: source/serving retains original process and input custody.
@@ -52,7 +54,7 @@
 //   - epoch authentication adapter: epoch.go, candidate.go, epoch_intake.go
 //     (the closed AREP-v3 intake schema gate) (epoch_intake_test.go)
 //   - intake and acceptance: offline_accept.go, closed_profile_accept.go,
-//     epoch_history.go, pending.go, active_publication.go
+//     epoch_history.go, distribution_commit.go
 //     (offline_pending_consistency_test.go, closed_profile_store_test.go,
 //     closed_profile_liveness_test.go, closed_profile_role_join_test.go,
 //     golden_test.go, decision_pointer_equivalence_test.go); the pointer
@@ -63,7 +65,8 @@
 //     materialization_index_test.go, source_bootstrap_test.go,
 //     acquisition_closure_test.go, outcomes_test.go, source_wave_guard_test.go,
 //     source_wave_guard_failure_test.go, pending_completion_time_test.go)
-//   - distribution admission and commit: control_state.go
+//   - distribution commit and recovery: distribution_commit.go,
+//     distribution_recovery.go
 //     (control_commit_test.go); internal/distribution owns the canonical bytes,
 //     independent golden-record digest and truncation refusals
 //   - history and recovery: storage.go, recovery.go, retained_history.go;

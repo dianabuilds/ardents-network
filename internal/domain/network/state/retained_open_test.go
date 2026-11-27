@@ -1,9 +1,13 @@
 package state_test
 
 import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -154,5 +158,74 @@ func TestRetainedServingStateDoesNotRecreateEmptiedParticipationHistory(t *testi
 	remaining, err := os.ReadDir(cfg.LocalRoleStateRoot)
 	if err != nil || len(remaining) != 0 {
 		t.Fatal("refused retained Source changed emptied history", remaining, err)
+	}
+}
+
+func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
+	genesis := newFixture(t)
+	successor := nextFixture(t, genesis)
+	clock := advancingVerificationClock(time.Unix(genesis.now, 0))
+	config := state.Config{
+		Root: t.TempDir(), NetworkID: genesis.networkID,
+		Authorities:            map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
+		ClosedProfileAuthority: genesis.authorityPublic,
+		Threshold:              1, Clock: clock, ObserveClock: clock,
+	}
+	store, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	firstReceipt, err := store.AcceptEpoch(context.Background(), genesis.epoch, genesis.inputs, genesis.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := firstReceipt.Snapshot
+	secondReceipt, err := store.AcceptEpoch(context.Background(), successor.epoch, successor.inputs, successor.materializations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := secondReceipt.Snapshot
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	currentPath := filepath.Join(config.Root, "current")
+	controlPath := filepath.Join(config.Root, "distribution", "current")
+	control, err := os.ReadFile(controlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	journalPath := filepath.Join(config.Root, "distribution", "generations", strings.TrimSuffix(string(control), "\n"), "state.bin")
+	journal, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(currentPath, []byte(first.Generation+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := state.OpenRetained(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer restarted.Close()
+	current, err := restarted.Current()
+	if err != nil {
+		t.Fatalf("recover active generation: %v", err)
+	}
+	if current != second || current.Digest != successor.epochDigest {
+		t.Fatalf("recovered active generation=%+v, want %+v", current, second)
+	}
+	if _, err := restarted.AcceptEpoch(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations); err == nil {
+		t.Fatal("retained recovery accepted the signed predecessor")
+	}
+	for path, want := range map[string][]byte{
+		currentPath: []byte(second.Generation + "\n"),
+		controlPath: control,
+		journalPath: journal,
+		filepath.Join(config.Root, "generations", second.Generation, "epoch.bin"): successor.epoch,
+	} {
+		if raw, err := os.ReadFile(path); err != nil || !bytes.Equal(raw, want) {
+			t.Errorf("retained bytes changed at %s: %v", path, err)
+		}
 	}
 }
