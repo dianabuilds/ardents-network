@@ -33,12 +33,12 @@ jobs:
           sudo mount -t tmpfs -o size=64m tmpfs "$root/tmpfs"
           test "$(sudo findmnt -n -o FSTYPE -T "$root/tmpfs")" = tmpfs
           sudo mkdir -p "$root/ext4/tmp"
-          mkdir -p "$RUNNER_TEMP/ext4-go-cache" "$RUNNER_TEMP/ext4-go-mod"
+          mkdir -p "$RUNNER_TEMP/ext4-go-cache" "$RUNNER_TEMP/ext4-go-mod" "$RUNNER_TEMP/ext4-go-tmp"
           export ARDENTS_TEST_EXT2="$root/ext2" ARDENTS_TEST_EXT3="$root/ext3" ARDENTS_TEST_EXT4="$root/ext4" ARDENTS_TEST_TMPFS="$root/tmpfs"
           export GOTOOLCHAIN=local GOCACHE="$RUNNER_TEMP/ext4-go-cache" GOMODCACHE="$RUNNER_TEMP/ext4-go-mod"
           go mod download
-          export TMPDIR="$root/ext4/tmp"
-          env_args=("PATH=$PATH" "ARDENTS_TEST_EXT2=$ARDENTS_TEST_EXT2" "ARDENTS_TEST_EXT3=$ARDENTS_TEST_EXT3" "ARDENTS_TEST_EXT4=$ARDENTS_TEST_EXT4" "ARDENTS_TEST_TMPFS=$ARDENTS_TEST_TMPFS" "GOTOOLCHAIN=$GOTOOLCHAIN" "GOCACHE=$GOCACHE" "GOMODCACHE=$GOMODCACHE" "TMPDIR=$TMPDIR")
+          export TMPDIR="$root/ext4/tmp" GOTMPDIR="$RUNNER_TEMP/ext4-go-tmp"
+          env_args=("PATH=$PATH" "ARDENTS_TEST_EXT2=$ARDENTS_TEST_EXT2" "ARDENTS_TEST_EXT3=$ARDENTS_TEST_EXT3" "ARDENTS_TEST_EXT4=$ARDENTS_TEST_EXT4" "ARDENTS_TEST_TMPFS=$ARDENTS_TEST_TMPFS" "GOTOOLCHAIN=$GOTOOLCHAIN" "GOCACHE=$GOCACHE" "GOMODCACHE=$GOMODCACHE" "TMPDIR=$TMPDIR" "GOTMPDIR=$GOTMPDIR")
           sudo env "${env_args[@]}" make ext4-identity-native-check
           sudo env "${env_args[@]}" make custody-permission-filesystems-check
           sudo env "${env_args[@]}" go test -race -tags network_signing_native ./internal/domain/network/state ./internal/domain/network/duty ./internal/platform/artifacts -run '^(TestSourceInspectionNative|TestNodeInspectionNative|TestSourcePreparationNative)' -count=1 -v -timeout=5m
