@@ -23,8 +23,9 @@ func readBoundedFloorFile(path string, bound int64) ([]byte, error) {
 		return nil, err
 	}
 	after, statErr := file.Stat()
-	if statErr != nil || !after.Mode().IsRegular() || !os.SameFile(before, after) {
-		return nil, errors.Join(errors.New("release: state file changed while it was opened"), statErr, file.Close())
+	securityErr := checkHistoryObject(file, false)
+	if statErr != nil || securityErr != nil || !after.Mode().IsRegular() || !os.SameFile(before, after) {
+		return nil, errors.Join(errors.New("release: state file changed while it was opened"), statErr, securityErr, file.Close())
 	}
 	limited := &io.LimitedReader{R: file, N: bound + 1}
 	buffer, readErr := io.ReadAll(limited)
@@ -57,8 +58,9 @@ func readFloorStoreDirectory(path string, bound int) (result []os.DirEntry, resu
 	}
 	defer func() { resultErr = errors.Join(resultErr, directory.Close()) }()
 	after, statErr := directory.Stat()
-	if statErr != nil || !after.IsDir() || !os.SameFile(before, after) {
-		return nil, errors.Join(errors.New("release: state directory changed while it was opened"), statErr)
+	securityErr := checkHistoryObject(directory, true)
+	if statErr != nil || securityErr != nil || !after.IsDir() || !os.SameFile(before, after) {
+		return nil, errors.Join(errors.New("release: state directory changed while it was opened"), statErr, securityErr)
 	}
 	entries := make([]os.DirEntry, 0, bound)
 	for {

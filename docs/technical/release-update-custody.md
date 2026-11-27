@@ -251,6 +251,20 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
+On Windows the history owner accepts NTFS volumes with persistent ACLs. A new
+root is born with an owner-only protected DACL; an existing root is checked
+without changing its security descriptor. The original parent and root handles
+remain held without delete sharing through the verifier lifetime. Before
+reading or recovering a retained object, the owner checks its original handle,
+owner, DACL, object kind and link/reparse properties; the lease is checked again
+when acquired. An unavailable or broader protection refuses before recovery and
+never recreates retained trust. Windows access checks may bypass directory
+traversal, so the file and child-directory checks are necessary in addition to
+the root check ([Microsoft](https://learn.microsoft.com/en-us/windows/win32/secauthz/privilege-constants)).
+This boundary does not protect against the same account, privileged processes,
+pre-existing privileged handles, kernel compromise or establish crash/power-loss
+qualification.
+
 The verifier admits at most 64 entries in its retained generation directory,
 including staging residue. Under the original exclusive lease it refuses a
 new generation before staging would exceed that same read bound.

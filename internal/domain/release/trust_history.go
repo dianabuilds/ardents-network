@@ -30,6 +30,7 @@ var stagedPointerName = regexp.MustCompile(`^\.current-[0-9]{1,10}$`)
 type floorStore struct {
 	path    string
 	lease   historyLease
+	root    *historyRoot
 	closed  bool
 	failure error
 	flush   func(string) error
@@ -47,11 +48,16 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	if err != nil {
 		return nil, err
 	}
-	if !retained {
-		if err = os.MkdirAll(root, 0700); err != nil {
-			return nil, err
-		}
+	pin, err := openHistoryRoot(root, retained)
+	if err != nil {
+		return nil, err
 	}
+	owned := true
+	defer func() {
+		if owned {
+			resultErr = errors.Join(resultErr, pin.release())
+		}
+	}()
 	info, err := os.Lstat(root)
 	if err != nil {
 		if retained && errors.Is(err, os.ErrNotExist) {
@@ -62,7 +68,7 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return nil, errors.New("release: invalid history root")
 	}
-	if err = checkHistoryRoot(info); err != nil {
+	if err = pin.check(info); err != nil {
 		return nil, err
 	}
 	entries, err := readFloorStoreDirectory(root, 70)
@@ -101,13 +107,14 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	}
 	contents, err := readBoundedFloorFile(lockPath, int64(len(floorStoreLeaseContents)))
 	if err != nil || string(contents) != floorStoreLeaseContents {
-		return nil, errors.New("release: invalid history lease")
+		return nil, errors.Join(errors.New("release: invalid history lease"), err)
 	}
 	lease, err := acquireHistoryLease(root)
 	if err != nil {
 		return nil, err
 	}
-	s := &floorStore{path: root, lease: lease, flush: syncDirectory}
+	s := &floorStore{path: root, lease: lease, root: pin, flush: syncDirectory}
+	owned = false
 	defer func() {
 		if resultErr != nil {
 			resultErr = errors.Join(resultErr, s.Close())
@@ -122,7 +129,7 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 		if err = writeSyncedFile(filepath.Join(root, floorStoreMarkerName), []byte(floorStoreMarker)); err != nil {
 			return nil, err
 		}
-		if err = os.Mkdir(filepath.Join(root, "generations"), 0700); err != nil {
+		if err = createHistoryDirectory(filepath.Join(root, "generations")); err != nil {
 			return nil, err
 		}
 		if err = syncDirectory(root); err != nil {
@@ -231,7 +238,7 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 		return err
 	}
 	if errors.Is(err, os.ErrNotExist) {
-		stage, err := os.MkdirTemp(filepath.Join(s.path, "generations"), ".stage-")
+		stage, err := createHistoryTempDirectory(filepath.Join(s.path, "generations"), ".stage-")
 		if err != nil {
 			return err
 		}
@@ -268,7 +275,7 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 			return errors.New("release: generation conflict")
 		}
 	}
-	file, err := os.CreateTemp(s.path, ".current-")
+	file, err := createHistoryTempFile(s.path, ".current-")
 	if err != nil {
 		return err
 	}
@@ -280,7 +287,10 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 		}
 		resultErr = errors.Join(resultErr, err)
 	}()
-	err = file.Chmod(0600)
+	err = checkHistoryObject(file, false)
+	if err == nil {
+		err = file.Chmod(0600)
+	}
 	if err == nil {
 		_, err = file.WriteString(name + "\n")
 	}
@@ -302,7 +312,7 @@ func (s *floorStore) Close() error {
 		return nil
 	}
 	s.closed = true
-	return errors.Join(s.failure, s.lease.release())
+	return errors.Join(s.failure, s.lease.release(), s.root.release())
 }
 
 func floorGenerationID(payload []byte, roots []rootArchiveEntry) string {

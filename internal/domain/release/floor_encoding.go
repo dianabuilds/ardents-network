@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -219,7 +218,7 @@ func validateRootArchive(chain [][]byte, floors FloorSet) ([]rootArchiveEntry, e
 
 func writeRootArchive(staging string, entries []rootArchiveEntry) error {
 	directory := filepath.Join(staging, "roots")
-	if err := os.Mkdir(directory, 0o700); err != nil {
+	if err := createHistoryDirectory(directory); err != nil {
 		return fmt.Errorf("release: create root archive: %w", err)
 	}
 	for _, entry := range entries {
