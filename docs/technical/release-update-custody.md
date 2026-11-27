@@ -65,8 +65,22 @@ record for one closed Network. `issue-admission-permission` accepts only the
 exact holder-signed `ARDPAR01` request after the operator re-enters its
 independently transferred SHA-256 commitment. It returns a public digest
 receipt and writes the signed 228-byte permission only to the specified
-owner-only, same-directory no-replace output. Linux exact output retry refuses
-group/other access and checks the originally observed file before reading it.
+owner-only, same-directory no-replace output. Private delivery checks that the
+original output is owned by the effective user and that group/other access is
+absent before writing the staged Permission and when admitting an exact retry.
+The current checked Linux mechanism accepts only ext4 and tmpfs, whose POSIX
+ACL mask follows the mode bits; tmpfs is volatile and supplies no persistence
+claim. Other Linux filesystems, macOS and Windows return a typed unavailable
+result before the command opens the Vault or creates a staging file. The API
+rechecks the original file at delivery; command preflight is not a reservation.
+macOS ACLs are evaluated separately from POSIX mode bits, and Windows may
+inherit a DACL from its parent, so `0600` alone does not establish the required
+access boundary ([Apple](https://developer.apple.com/library/archive/documentation/Security/Conceptual/AuthenticationAndAuthorizationGuide/Permissions/Permissions.html),
+[Microsoft](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights)).
+The boundary addresses other unprivileged local users; it does not protect
+against the same UID, privileged processes, compromised kernels, or prove
+crash/power-loss durability. Public Service Credential response delivery keeps
+its separate access contract.
 The [Admission allocation owner](../../internal/domain/admission/allocation/doc.go)
 validates the current-hour request and journal transition. Custody retains the
 key, signing and serialized encrypted persistence. The Vault record advances its
