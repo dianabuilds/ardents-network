@@ -184,6 +184,25 @@ func (attachment attachmentIO) Write(body []byte) (int, error) {
 	}
 	return attachment.service.Write(body)
 }
+func (attachment attachmentIO) decodedPeerClose() error {
+	if attachment.owner == nil || attachment.owner.self != attachment.owner {
+		return errIntegrity
+	}
+	if attachment.initiator != nil {
+		physical := attachment.initiator.physical
+		proof, err := physical.DecodedPeerClose()
+		if err != nil {
+			return err
+		}
+		return proof.CheckOriginal(physical)
+	}
+	if attachment.service != nil {
+		_, err := attachment.service.DecodedPeerClose()
+		return err
+	}
+	return errIntegrity
+}
+
 func (owner *AuthenticatedAttachment) Close() error {
 	if owner == nil {
 		return nil

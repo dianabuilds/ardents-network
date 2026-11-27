@@ -457,8 +457,9 @@ qualified contract to `InitiatorSource.OpenStream`. Publication runtime enters
 through `NextStream` and uses `NextAuthentication` for the initial Responder JOIN.
 Connection's `recordio` bounds physical reads and coalesces the Reader's first
 write. The authenticators keep the original owner checks between wire effects.
-The same `Stream` serializes replacement commit, Terminal state and retirement
-against its record actors. See the [Connection package guide](../../internal/domain/connection/doc.go)
+The same `Stream` serializes replacement commit against its record actors in
+`stream_replacement.go` and owns Terminal settlement and joined completion in
+`stream_retirement.go`. See the [Connection package guide](../../internal/domain/connection/doc.go)
 for the production entries and the tests that exercise each boundary.
 
 The Connection owner implements the successor's coalesced initial

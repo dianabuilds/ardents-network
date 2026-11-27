@@ -33,7 +33,7 @@ Linux `make route-check` включает весь Connection вместе с с
 монотонной revision и исходного continuity key предшествует commit.
 `InitiatorSource.OpenStream` устанавливает исходный Reader replacement source;
 `initiator_replacement.go` удерживает конечный ticket до фактического join,
-а `replacement_commit.go` атомарно переносит все byte/Terminal ledgers.
+а `stream_replacement.go` атомарно переносит все byte/Terminal ledgers.
 Повторный lookup использует прежний Target, History и retained Rendezvous set.
 Текущий Attachment получает свежие JOIN/TLS/capsule факты, но не новую logical
 identity, operation, Work Safety границу или continuity secret. Физическое
@@ -121,11 +121,11 @@ Integrity violation завершает логический поток, а не 
 Неудачный JOIN также расходует предложение и физически завершается до возврата
 ticket. Close ждёт окончательного опубликования подготовки перед join callbacks,
 включая callback, установленный после начала отмены.
-`publisher_recovery.go` удерживает исходный Source и opaque ResponderScope до запуска stream.
-`stream_recovery.go` начинает конечный отсчёт при физической потере с любой
-стороны и дожидается обоих прежних обработчиков записей. `replacement_commit.go` передаёт новый Attachment после этого
-join, проверки прежнего caller и живых владельцев, атомарно меняет три ledgers
-и запускает writer для retained suffix. Отсоединение setup callbacks не снимает
+`publisher_route.go` удерживает исходный Source и opaque ResponderScope до запуска
+Stream. `stream_replacement.go` начинает конечный отсчёт при физической потере с
+любой стороны и дожидается обоих прежних обработчиков записей. Тот же владелец
+передаёт новый Attachment после join, проверки прежнего caller и живых
+владельцев, атомарно меняет три ledgers и запускает writer для retained suffix. Отсоединение setup callbacks не снимает
 проверку исходного caller до commit. Instance отдельно проверяет прежний private
 recipient/cutoff после TLS transfer без native I/O под Source locks.
 Source/Publication dispatch и Reader recovery используют эти механизмы через
@@ -158,6 +158,12 @@ transcript commitments. `publisher_binding.go` хранит эти неизме�
 Поведение проверяется независимыми signed-input/transcript fixtures и отказами
 при подмене, расширении пределов и отсутствии исходной operation. Эти fixtures
 не квалифицируют worker, принимающий Publisher или Service stream.
+
+| Сценарий | Вход и эффект | Проверка |
+| --- | --- | --- |
+| Первое подключение | `endpoint/reader` вызывает `InitiatorSource.OpenStream`. `publication/runtime.NextStream` вызывает `NextAuthentication` и `OpenPublisherStream`. `openStream` потребляет initial state однократно и запускает пару обработчиков. | `initiator_source_test.go` проверяет общий setup, `instance_tls_test.go` — точный Instance. `TestInstalledDocumentCommandsThroughJoinedNetworkTCP` проходит через оба командных адаптера. |
+| Замена Attachment | Reader начинает восстановление при потере своего поколения, Publisher направляет fresh recipient в `PreparePublisherReplacement`. `stream_replacement.go` дожидается прежней пары и меняет поколение и replay под `Stream.mu`. | `recovery_episode_test.go`, `publisher_replacement_test.go` и `transfer/replacement_test.go` проверяют исходный срок, отзыв caller и rollback. `TestInstalledConnectionStreamTCP` проверяет замену после потери настоящего Rendezvous. |
+| Завершение | Reader закрывает Source, Publisher дожидается удерживаемых Connections. `stream_retirement.go` под тем же mutex закрывает вход эффектов и публикует исход после join. | `stream_retirement_test.go` проверяет отзыв, Terminal текущего поколения и неполный хвост. `TestInstalledConnectionWithdrawalTCP` проверяет отзыв через Publisher и физическое завершение обеих ролей. |
 
 **Вопрос домена:** как один аутентифицированный логический поток сохраняет идентичность?
 

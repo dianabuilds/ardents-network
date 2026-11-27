@@ -2,33 +2,38 @@
 // original qualified Execution operation and verified Publication. The Target,
 // Instance and ordered byte contract stay fixed across physical Attachments.
 //
-// For the Reader, endpoint/reader opens an InitiatorSource and calls OpenStream.
-// See initiator_source.go for the retained Source and initiator_initial.go for
-// Descriptor verification, capsule submission, JOIN and the one-use Stream
-// handoff. initiator_authentication.go authenticates the exact Instance over
-// the original JOIN. For the Publisher, publication/runtime.NextStream calls
-// NextAuthentication and then OpenPublisherStream. publisher_binding.go
-// binds the private recipient and publisher_authentication.go authenticates
-// the JOIN using the original non-exporting Instance lease.
+// Initial connection. The Reader calls InitiatorSource.OpenStream from
+// endpoint/reader. initiator_source.go owns the retained Source and shared setup
+// bounds. initiator_initial.go verifies the Descriptor, submits the capsule,
+// opens the JOIN and hands off the initial authenticated Attachment.
+// Publication runtime enters through NextStream and NextAuthentication.
+// publisher_binding.go checks the recipient and publisher_authentication.go
+// authenticates the original Responder JOIN with the non-exporting Instance.
+// Both roles converge on the one-use openStream handoff in stream.go.
 //
-// See recordio for the bounded initial flights and physical Stream reads, wire
-// for the canonical records and transcripts, and transfer for ordered replay
-// and the current Terminal exchange. stream_records.go joins the exact reader
-// and writer for each Attachment and checks their generation before any
-// ledger effect. stream_io.go owns Application buffer handoff.
+// Record exchange. recordio bounds the initial flights and the Stream actor's
+// physical reads. wire owns the canonical records and transcripts. transfer
+// owns ordered replay and Terminal ledgers under Stream.mu. stream_records.go
+// matches each record effect to the exact Attachment's actors and generation.
+// stream_io.go owns Application buffer handoff.
 //
-// After physical loss, stream_recovery.go seals the original actors and starts
-// the deadline in recovery_episode.go. initiator_replacement.go authenticates
-// the Reader's replacement over the fresh JOIN from initiator_replacement_route.go.
-// Publication dispatches a private replacement to PreparePublisherReplacement
-// in publisher_replacement.go. replacement_commit.go handles both sides: the
-// old actors and the new setup must join before replay and Attachment generation
-// advance under Stream.mu. The same lock seals Stop and Close in
-// stream_retirement.go, so retirement and a late proposal cannot both commit.
-// terminal_tail.go checks the original decoded JOIN CLOSE and complete current
-// Terminal proofs before permitting an empty TLS truncation.
+// Replacement. The Reader prepares a fresh JOIN and authenticates it through
+// initiator_replacement_route.go and initiator_replacement.go. Publication
+// dispatches a private replacement to PreparePublisherReplacement in
+// publisher_replacement.go. publisher_route.go retains the exact Source and
+// Responder scopes. stream_replacement.go owns both roles' common transition
+// from failed actor pair to installed generation. Its commit checks the old
+// pair joined before changing the active Attachment and replay state under
+// Stream.mu. recovery_episode.go keeps the original deadline and proposal limit.
 //
-// Setup, recordio, replacement and retirement tests cover the independent
-// mechanics and causal refusals. The Endpoint Connection qualification
-// profiles exercise the actual Reader and Publisher paths over TCP/TLS.
+// Completion. Reader Source retirement and Publisher runtime retirement both
+// reach stream_retirement.go. Stop seals effects immediately. Close joins
+// setup, recovery and the current record actors before publishing the retained
+// cleanup result. Terminal settlement uses the same lock and accepts an empty
+// TLS truncation only after complete current control proofs and the exact
+// decoded JOIN CLOSE from authenticated_attachment.go.
+//
+// Reader setup, Publisher replacement and Stream retirement tests exercise
+// separate refusal and join boundaries. Endpoint's tagged TCP/TLS Connection
+// and document-command profiles exercise the genuine Reader and Publisher.
 package connection

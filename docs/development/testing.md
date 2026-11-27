@@ -772,7 +772,7 @@ record owner waits for both its actors and retains both errors; a sibling's
 completion cannot substitute. Incomplete stale/retiring actor fixtures refuse
 before transport I/O and retain their own refusal without changing replacement
 state. These controls supply no authenticated stream or successful recovery.
-`terminal_tail_test.go` renews actual control-ledger transitions after a settled
+`stream_retirement_test.go` renews actual control-ledger transitions after a settled
 Application result and refuses tail completion at every missing current proof.
 This pure rule test supplies neither authority nor a decoded Route witness.
 The installed delayed-observation refusal fixture retains the exact joined
