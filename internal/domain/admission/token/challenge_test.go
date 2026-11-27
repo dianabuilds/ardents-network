@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"encoding/binary"
+	"encoding/hex"
 	"strings"
 	"testing"
 	"time"
@@ -29,6 +30,29 @@ func TestClosedTokenChallengeBindsOnlyPublicReceiverFacts(t *testing.T) {
 	if err != nil || len(input) != 98 || keyID != sha256.Sum256(spki) || binary.BigEndian.Uint16(input[:2]) != closedTokenType ||
 		!bytes.Equal(input[2:34], nonce[:]) || !bytes.Equal(input[34:66], challengeDigest[:]) {
 		t.Fatalf("closed token challenge = %x / %x / %x / %v", challenge, input, keyID, err)
+	}
+	// These hashes come from the documented redemption transcript using
+	// the same inputs except for ProfileDigest, with a fixed UTC window.
+	for _, vector := range []struct {
+		profile byte
+		want    string
+	}{
+		{2, "1fb1c2ba89f4ca534c122f26667c08fbfa85c0f14c374b2e3ca18f9670069852"},
+		{9, "803318c6a03981711b52eca22daed80a6f135dc2ea269cac88c72eb76d0cc6e5"},
+	} {
+		changed := context
+		changed.ProfileDigest = [32]byte{vector.profile}
+		encoded, _, _, err := ClosedTokenChallenge(changed, spki, nonce)
+		if err != nil || len(encoded) < 4 {
+			t.Fatalf("profile %d challenge unavailable: %v", vector.profile, err)
+		}
+		offset := 4 + int(binary.BigEndian.Uint16(encoded[2:4]))
+		if len(encoded) < offset+33 || encoded[offset] != 32 {
+			t.Fatalf("profile %d challenge lacks its 32-byte redemption context", vector.profile)
+		}
+		if got := hex.EncodeToString(encoded[offset+1 : offset+33]); got != vector.want {
+			t.Errorf("profile %d redemption context = %s, want %s", vector.profile, got, vector.want)
+		}
 	}
 	if _, _, _, err := ClosedTokenChallenge(context, append([]byte(nil), spki[:len(spki)-1]...), nonce); err == nil {
 		t.Fatal("accepted malformed exact State SPKI")
