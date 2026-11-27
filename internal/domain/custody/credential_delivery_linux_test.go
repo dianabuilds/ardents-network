@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
@@ -70,5 +71,32 @@ func TestPrivatePermissionRefusesUnsupportedFilesystemBeforeStaging(t *testing.T
 	receipt := Receipt{Operation: OperationIssueAdmissionPermission, AdmissionPermission: make([]byte, admission.PermissionSize)}
 	if err := receipt.PublishAdmissionPermission("/proc/ardents-private-permission-test"); !errors.Is(err, ErrPrivatePermissionUnavailable) {
 		t.Fatal("unsupported filesystem did not return the typed refusal", err)
+	}
+}
+
+// The kernel mount ID, rather than a path or a shared ext-family magic,
+// decides which filesystem protects the held object.
+func TestPrivatePermissionMountIdentity(t *testing.T) {
+	const ext4 = "12 1 8:1 / /storage rw - ext4 /dev/sda rw\n"
+	const ext3 = "13 1 8:2 / /storage rw - ext3 /dev/sdb rw\n"
+	tests := []struct {
+		name   string
+		mounts string
+		id     uint64
+		want   bool
+	}{
+		{"original ext4 despite another mount at its path", ext4 + ext3, 12, true},
+		{"other ext family refuses", ext4 + ext3, 13, false},
+		{"unmounted original refuses", ext3, 12, false},
+		{"duplicate identity refuses", ext4 + ext4, 12, false},
+		{"malformed table refuses", ext4 + "bad record\n", 12, false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := requireExt4Mount(strings.NewReader(test.mounts), test.id)
+			if (err == nil) != test.want {
+				t.Fatalf("mount acceptance = %v, want %v: %v", err == nil, test.want, err)
+			}
+		})
 	}
 }
