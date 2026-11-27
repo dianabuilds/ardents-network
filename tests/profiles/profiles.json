@@ -20,7 +20,7 @@
       "surface": "live Store retained signed history, refusal of missing or uncertain history without creation, bounded stage repair after committed floors validate, exclusive lease and joined original users; no installed/runtime/Release or original-retirement claim",
       "prerequisites": [
         "Linux root and absolute, canonical root-owned TMPDIR and ancestors with no group/other write access; TMPDIR on writable ext4",
-        "Go 1.27.4, race-capable C compiler and same-source fixtures; no systemd manager or installed role is claimed"
+        "Go 1.27.4, race-capable C compiler, findmnt and same-source fixtures; no systemd manager or installed role is claimed"
       ],
       "invalid_environment": "missing native prerequisites fail; no skips",
       "timeout": "3m"

@@ -533,7 +533,7 @@ descriptor-store-retained-check:
 	@set -eu; \
 	path="$${TMPDIR:-}"; \
 	case "$$path" in /*) ;; *) echo "absolute TMPDIR required"; exit 2;; esac; \
-	if [ "$$(id -u)" -ne 0 ] || [ ! -d "$$path" ] || [ "$$(realpath -e "$$path")" != "$$path" ] || [ "$$(stat -f -c %t "$$path")" != ef53 ]; then \
+	if [ "$$(id -u)" -ne 0 ] || [ ! -d "$$path" ] || [ "$$(realpath -e "$$path")" != "$$path" ] || [ "$$(stat -f -c %t "$$path")" != ef53 ] || [ "$$(findmnt -n -o FSTYPE -T "$$path")" != ext4 ]; then \
 		echo "root and an original ext4 TMPDIR are required"; exit 2; \
 	fi; \
 	while :; do \
