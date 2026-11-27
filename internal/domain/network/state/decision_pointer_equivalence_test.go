@@ -308,6 +308,12 @@ func TestCompleteSourceWavePointerPathPreservesResultFacts(t *testing.T) {
 	for _, serving := range []bool{false, true} {
 		t.Run(map[bool]string{false: "acquiring", true: "serving"}[serving], func(t *testing.T) {
 			s, current := newControlCommitFixture(t, serving)
+			// This fixture verifies committed result facts. Advance both
+			// reference readings from the fixture's original monotonic origin
+			// so disk latency cannot create artificial clock disagreement.
+			wall, origin := s.config.anchorWall, s.config.anchorMono
+			clock := func() time.Time { return wall.Add(time.Since(origin)) }
+			s.config.clock, s.config.observe = clock, clock
 			now := s.config.clock()
 			wave := s.distribution
 			wave.Sequence++

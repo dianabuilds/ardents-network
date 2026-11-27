@@ -20,6 +20,9 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	deadline, _ := ctx.Deadline()
 	type peerResult struct {
 		request string
 		err     error
@@ -36,12 +39,36 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 		}
 		peerReady <- connection
 		// The real server waits for the client to finish writing before replying.
-		raw, readErr := io.ReadAll(io.LimitReader(connection, int64(len("withdraw\n")+1)))
-		var writeErr error
-		if readErr == nil {
-			_, writeErr = connection.Write([]byte("withdrawn\n"))
+		// Re-arm a bounded read while waiting for AF_UNIX EOF on Windows.
+		var raw [len("withdraw\n") + 1]byte
+		used := 0
+		var readErr error
+		for used < len(raw) {
+			poll := time.Now().Add(50 * time.Millisecond)
+			if deadline.Before(poll) {
+				poll = deadline
+			}
+			if readErr = connection.SetReadDeadline(poll); readErr != nil {
+				break
+			}
+			var n int
+			n, readErr = connection.Read(raw[used:])
+			used += n
+			if errors.Is(readErr, os.ErrDeadlineExceeded) && time.Now().Before(deadline) {
+				continue
+			}
+			if readErr != nil {
+				break
+			}
 		}
-		result <- peerResult{request: string(raw), err: errors.Join(readErr, writeErr, connection.Close())}
+		var writeErr error
+		if readErr == io.EOF && used < len(raw) {
+			readErr = nil
+			_, writeErr = connection.Write([]byte("withdrawn\n"))
+		} else if readErr == nil {
+			readErr = errors.New("Administration peer did not receive EOF after the bounded request")
+		}
+		result <- peerResult{request: string(raw[:used]), err: errors.Join(readErr, writeErr, connection.Close())}
 	}()
 	t.Cleanup(func() {
 		if err := listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
@@ -66,13 +93,11 @@ func TestHeadlessAdministrationUsesOnlyTheSelectedLocalOperation(t *testing.T) {
 			t.Errorf("Administration socket residue: %v", err)
 		}
 	})
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
 	var output, diagnostic bytes.Buffer
 	command := exec.CommandContext(ctx, binary, "endpoint", "withdraw", socket)
 	command.Stdout, command.Stderr = &output, &diagnostic
 	if err := command.Run(); err != nil {
-		t.Fatalf("withdraw: %v: %s", err, diagnostic.String())
+		t.Fatalf("withdraw: %v (context %v), stdout %q, stderr %q", err, ctx.Err(), output.String(), diagnostic.String())
 	}
 	var observed peerResult
 	select {

@@ -115,6 +115,36 @@ func WriteFrame(conn net.Conn, frame ardp.Frame) FrameOutput {
 	return result
 }
 
+// WriteJoinRequest emits the one holder setup request on its unpublished TLS
+// lane. Before physical admission cancellation denies output. After admission
+// the exact selected frame joins within its original cleanup bound so local
+// cancellation cannot abort a shared TLS record and retire live siblings.
+func WriteJoinRequest(conn net.Conn, request ardp.JoinRequest) error {
+	lane := lowerFramingLane(conn)
+	if lane == nil {
+		return errors.New("route JOIN request requires its original framing lane")
+	}
+	body, err := ardp.EncodeJoinRequest(request)
+	if err != nil {
+		return err
+	}
+	defer clear(body)
+	raw, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: body})
+	if err != nil {
+		return err
+	}
+	defer clear(raw)
+	lane.s.mu.Lock()
+	lane.joinRequestOutput = true
+	lane.s.mu.Unlock()
+	defer func() {
+		lane.s.mu.Lock()
+		lane.joinRequestOutput = false
+		lane.s.mu.Unlock()
+	}()
+	return writePhysicalOutput(conn, ardp.KindOperation, raw, nil, false).err
+}
+
 // physicalOutput belongs to one complete encoded write, including a deadline
 // refusal before Write. Nested framing alone knows whether it emitted bytes;
 // its private witnesses never leave this physical mechanism.
@@ -295,7 +325,8 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	// An already selected directional EOF is a terminal, not payload. Like
 	// selected CREDIT it must join its actual writer under bounded cleanup;
 	// expiring it inside TLS can poison a healthy multiplexed parent.
-	control := f.Kind == ardp.KindCredit || f.Kind == ardp.KindEOF || l.controlOutput != 0
+	joinRequest := f.Kind == ardp.KindBytes && l.joinRequestOutput
+	control := f.Kind == ardp.KindCredit || f.Kind == ardp.KindEOF || l.controlOutput != 0 || joinRequest
 	s.activeControl = control
 	s.activeEnd = end
 	s.activeDeadline = &outputDeadline{lane: l, end: end, cutoff: end}
@@ -310,7 +341,9 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 		// TLS failure can make that shared writer permanently unusable.
 		// Already selected control retains only its original cleanup bound.
 		s.mu.Lock()
-		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (terminal && l.peerClosed) || (!terminal && l.closed && (!control || f.Kind == ardp.KindEOF)) {
+		requestCanceled := joinRequest && l.caller != nil && l.caller.Err() != nil
+		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || requestCanceled ||
+			(terminal && l.peerClosed) || (!terminal && l.closed && (!control || f.Kind == ardp.KindEOF || joinRequest)) {
 			output.err = &frameRetirement{lane: l, kind: f.Kind}
 			refused = true
 		} else if !time.Now().Before(deadline.end) {

@@ -1261,6 +1261,7 @@
           "internal/domain/route/channel.SendHello",
           "internal/domain/route/channel.WithRequest",
           "internal/domain/route/channel.WriteFrame",
+          "internal/domain/route/channel.WriteJoinRequest",
           "internal/domain/route/introduction.Capacity.Release",
           "internal/domain/route/introduction.History.Check",
           "internal/domain/route/introduction.History.Claim",

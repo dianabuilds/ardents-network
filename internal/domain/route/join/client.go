@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/domain/route/channel"
 )
 
 // Config names an already selected public recipient and one fresh opaque
@@ -98,14 +99,9 @@ func (a *Acquisition) Join(ctx context.Context, config Config) (_ *Joined, resul
 	if _, err := rand.Read(request.Nonce[:]); err != nil {
 		return nil, err
 	}
-	body, err := ardp.EncodeJoinRequest(request)
+	err = framing.WriteJoinRequest(terminal.Stream(), request)
 	clear(request.Secret[:])
 	clear(request.Context[:])
-	if err != nil {
-		return nil, err
-	}
-	err = ardp.WriteFrame(terminal.Stream(), ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: body})
-	clear(body)
 	if err != nil {
 		return nil, err
 	}
