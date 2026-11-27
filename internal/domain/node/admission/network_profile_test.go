@@ -1,6 +1,7 @@
 package admission
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -45,10 +46,19 @@ func TestAuthorityRetainsPublicTokenKeysAfterSourceChanges(t *testing.T) {
 	forwardingKey.SPKI[0], forwardingKey.SPKI[len(forwardingKey.SPKI)-1] = 3, 4
 	keys := []network.TokenKey{controlKey, forwardingKey}
 
+	original := slices.Clone(keys)
 	authority := AuthorityFactsFromProfile(network.ProfileFacts{TokenKeys: keys})
+	if !slices.Equal(keys, original) {
+		t.Fatal("Admission projection changed the original Network keys")
+	}
+	authority.TokenKeys[0].SPKI[0] ^= 0xff
+	if !slices.Equal(keys, original) {
+		t.Fatal("changing projected keys changed the original Network keys")
+	}
+	authority.TokenKeys[0].SPKI[0] ^= 0xff
 	clear(keys)
 
-	if int(authority.TokenKeyCount) != len(keys) ||
+	if int(authority.TokenKeyCount) != len(original) ||
 		authority.TokenKeys[0] != admission.TokenKey(controlKey) ||
 		authority.TokenKeys[1] != admission.TokenKey(forwardingKey) {
 		t.Fatal("Admission lost or reordered the original public token keys")

@@ -31,10 +31,16 @@ func TestOriginalFirstFailureProjectionSurvivesCleanupAndCopies(t *testing.T) {
 	}
 	wrapped := &startupFailure{cause: errors.Join(first, errors.New("cleanup")), fact: later}
 	projected := StartupFailure(wrapped)
-	if !errors.Is(wrapped, first) || projected == nil || projected.Cause != "authority-refusal" {
-		t.Fatal("cleanup erased first logical cause")
+	if !errors.Is(wrapped, first) || projected == nil || projected.Cause != "authority-refusal" || projected.DeadlineRemainingMS == nil {
+		t.Fatal("cleanup erased first logical cause or its deadline")
 	}
-	raw, err := json.Marshal(StartupFailure(wrapped))
+	projected.Cause = "mutated"
+	*projected.DeadlineRemainingMS = 0
+	again := StartupFailure(wrapped)
+	if again == nil || again.Cause != "authority-refusal" || again.DeadlineRemainingMS == nil || *again.DeadlineRemainingMS <= 0 {
+		t.Fatal("public failure changed the original terminal facts", again)
+	}
+	raw, err := json.Marshal(again)
 	if err != nil || strings.Contains(string(raw), "private") || strings.Contains(string(raw), "Target") {
 		t.Fatal("private error material projected", string(raw), err)
 	}
@@ -80,5 +86,17 @@ func TestAuthorityDelayRetainsOriginalProcessMeasurement(t *testing.T) {
 	fact.Resource.Observation.CPUUsec = 0
 	if after := record.snapshot(cause); after == nil || after.Resource == nil || after.Resource.Observation.CPUUsec != 123 {
 		t.Fatal("copy changed original stale evidence")
+	}
+	wrapped := &startupFailure{cause: cause, fact: record.snapshot(cause)}
+	projected := StartupFailure(wrapped)
+	if projected == nil || projected.Resource == nil || projected.Resource.Observation == nil {
+		t.Fatal("public failure lost stale evidence")
+	}
+	projected.Resource.Cause = "mutated"
+	projected.Resource.Observation.CPUUsec = 0
+	again := StartupFailure(wrapped)
+	if again == nil || again.Resource == nil || again.Resource.Cause != "observation-stale" ||
+		again.Resource.Observation == nil || again.Resource.Observation.CPUUsec != 123 {
+		t.Fatal("public failure changed the original stale evidence", again)
 	}
 }

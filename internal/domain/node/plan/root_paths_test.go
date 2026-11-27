@@ -4,22 +4,49 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/pathcheck"
+	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
-func TestOriginalRoleRootsCannotShareOrRebindAPurpose(t *testing.T) {
+func TestDescriptorInvocationRequiresIndependentPurposeRoots(t *testing.T) {
 	parent := t.TempDir()
-	participation, spend, budget := filepath.Join(parent, "participation"), filepath.Join(parent, "spend"), filepath.Join(parent, "budget")
-	if !pathcheck.DisjointRoots(participation, spend, budget) {
+	original := DescriptorPlan{
+		nodePlanCore: nodePlanCore{
+			Network:           &Network{Root: filepath.Join(parent, "network")},
+			ProcessProfile:    processguard.DescriptorProfile,
+			ParticipationRoot: filepath.Join(parent, "participation"),
+			SpendRoot:         filepath.Join(parent, "spend"),
+			HostingRoot:       filepath.Join(parent, "budget"),
+			RetirementWaitMS:  10,
+		},
+		DescriptorRoot: filepath.Join(parent, "descriptor"),
+	}
+	if !original.ValidInvocation() {
 		t.Fatal("independent declared roots refused")
 	}
-	for _, roots := range [][]string{{participation, participation, budget}, {parent, spend, budget}, {spend, parent, budget}, {"relative", spend, budget}, {"", spend, budget}} {
-		if pathcheck.DisjointRoots(roots...) {
-			t.Fatal("shared or undeclared purpose root accepted", roots)
-		}
+	for _, test := range []struct{ name, root string }{
+		{"descriptor", original.DescriptorRoot},
+		{"nested under descriptor", filepath.Join(original.DescriptorRoot, "history")},
+		{"participation", original.ParticipationRoot},
+		{"spend", original.SpendRoot},
+		{"budget", original.HostingRoot},
+		{"parent of all", parent},
+		{"relative", "relative"},
+		{"empty", ""},
+		{"filesystem root", filepath.VolumeName(parent) + string(filepath.Separator)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			changed := original
+			network := *original.Network
+			network.Root = test.root
+			changed.Network = &network
+			if changed.ValidInvocation() {
+				t.Fatalf("Descriptor invocation accepted aliased or invalid Network State root %q", test.root)
+			}
+		})
 	}
-	filesystemRoot := filepath.VolumeName(parent) + string(filepath.Separator)
-	if pathcheck.DisjointRoots(filesystemRoot, spend, budget) {
-		t.Fatal("filesystem root accepted alongside nested purpose roots")
+	changed := original
+	changed.SpendRoot = original.ParticipationRoot
+	if changed.ValidInvocation() {
+		t.Fatal("Descriptor invocation accepted two aliased role roots")
 	}
 }

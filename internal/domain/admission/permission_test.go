@@ -28,8 +28,20 @@ func TestPermissionCanonicalVerification(t *testing.T) {
 	if err := VerifyPermission(decoded, public, permission.NetworkID, permission.IssuerNodeID, permission.DutyGeneration, now); err != nil {
 		t.Fatalf("verify permission: %v", err)
 	}
-	if err := VerifyPermission(decoded, public, permissionIdentifier(9), permission.IssuerNodeID, permission.DutyGeneration, now); err == nil {
-		t.Fatal("accepted wrong network")
+	for _, test := range []struct {
+		name            string
+		network, issuer [32]byte
+		duty            uint64
+	}{
+		{"network", permissionIdentifier(9), permission.IssuerNodeID, permission.DutyGeneration},
+		{"issuer", permission.NetworkID, permissionIdentifier(9), permission.DutyGeneration},
+		{"duty", permission.NetworkID, permission.IssuerNodeID, permission.DutyGeneration + 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := VerifyPermission(decoded, public, test.network, test.issuer, test.duty, now); err == nil {
+				t.Fatalf("signed permission accepted a different expected %s", test.name)
+			}
+		})
 	}
 	changed := append([]byte(nil), raw...)
 	changed[100] ^= 1
