@@ -129,7 +129,7 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 		if err = writeSyncedFile(filepath.Join(root, floorStoreMarkerName), []byte(floorStoreMarker)); err != nil {
 			return nil, err
 		}
-		if err = os.Mkdir(filepath.Join(root, "generations"), 0700); err != nil {
+		if err = createHistoryDirectory(filepath.Join(root, "generations")); err != nil {
 			return nil, err
 		}
 		if err = syncDirectory(root); err != nil {
@@ -238,7 +238,7 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 		return err
 	}
 	if errors.Is(err, os.ErrNotExist) {
-		stage, err := os.MkdirTemp(filepath.Join(s.path, "generations"), ".stage-")
+		stage, err := createHistoryTempDirectory(filepath.Join(s.path, "generations"), ".stage-")
 		if err != nil {
 			return err
 		}
@@ -275,7 +275,7 @@ func (s *floorStore) CommitFloors(next FloorSet, chain [][]byte) (resultErr erro
 			return errors.New("release: generation conflict")
 		}
 	}
-	file, err := os.CreateTemp(s.path, ".current-")
+	file, err := createHistoryTempFile(s.path, ".current-")
 	if err != nil {
 		return err
 	}

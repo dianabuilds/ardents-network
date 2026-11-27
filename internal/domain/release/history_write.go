@@ -95,7 +95,7 @@ func syncRetainedFile(path string, bound int64) error {
 }
 
 func writeSyncedFile(path string, contents []byte) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	file, err := createHistoryFile(path)
 	if err != nil {
 		return fmt.Errorf("release: create %s: %w", filepath.Base(path), err)
 	}

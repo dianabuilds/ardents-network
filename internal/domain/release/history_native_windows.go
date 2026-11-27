@@ -1,11 +1,14 @@
 package release
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"golang.org/x/sys/windows"
@@ -179,6 +182,108 @@ func checkHistoryVolume(handle windows.Handle) error {
 		return fmt.Errorf("release: unsupported history filesystem %q: %w", windows.UTF16ToString(filesystem[:]), ErrTrustUnavailable)
 	}
 	return nil
+}
+
+// New children must name the user explicitly: elevated Windows tokens can
+// otherwise choose the Administrators group as the default owner, even when
+// the parent has an owner-only inherited DACL. Existing objects are never reset.
+func historyCreationSecurity(directory bool) (*windows.SecurityAttributes, error) {
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		return nil, err
+	}
+	sid := user.User.Sid.String()
+	flags := ""
+	if directory {
+		flags = "OICI"
+	}
+	descriptor, err := windows.SecurityDescriptorFromString("O:" + sid + "D:P(A;" + flags + ";GA;;;" + sid + ")")
+	if err != nil {
+		return nil, err
+	}
+	attributes := &windows.SecurityAttributes{SecurityDescriptor: descriptor}
+	attributes.Length = uint32(reflect.TypeOf(*attributes).Size())
+	return attributes, nil
+}
+
+func createHistoryFile(path string) (*os.File, error) {
+	attributes, err := historyCreationSecurity(false)
+	if err != nil {
+		return nil, err
+	}
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+	handle, err := windows.CreateFile(name, windows.GENERIC_WRITE|windows.READ_CONTROL,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, attributes, windows.CREATE_NEW,
+		windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return nil, &os.PathError{Op: "create", Path: path, Err: err}
+	}
+	file := os.NewFile(uintptr(handle), path)
+	if file == nil {
+		return nil, errors.Join(ErrTrustUnavailable, windows.CloseHandle(handle))
+	}
+	return file, nil
+}
+
+func createHistoryDirectory(path string) error {
+	attributes, err := historyCreationSecurity(true)
+	if err != nil {
+		return err
+	}
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	if err := windows.CreateDirectory(name, attributes); err != nil {
+		return &os.PathError{Op: "mkdir", Path: path, Err: err}
+	}
+	return nil
+}
+
+// The persisted recovery grammar accepts decimal suffixes of at most ten
+// digits. Exclusive creation resolves collisions without exposing a file or
+// directory under a default-owner descriptor.
+func historyTempName(parent, prefix string) (string, error) {
+	var random [4]byte
+	if _, err := rand.Read(random[:]); err != nil {
+		return "", err
+	}
+	return filepath.Join(parent, prefix+strconv.FormatUint(uint64(binary.BigEndian.Uint32(random[:])), 10)), nil
+}
+
+func createHistoryTempDirectory(parent, prefix string) (string, error) {
+	for attempt := 0; attempt < 100; attempt++ {
+		path, err := historyTempName(parent, prefix)
+		if err != nil {
+			return "", err
+		}
+		if err = createHistoryDirectory(path); err == nil {
+			return path, nil
+		} else if !errors.Is(err, os.ErrExist) {
+			return "", err
+		}
+	}
+	return "", errors.New("release: cannot create unique staging directory")
+}
+
+func createHistoryTempFile(parent, prefix string) (*os.File, error) {
+	for attempt := 0; attempt < 100; attempt++ {
+		path, err := historyTempName(parent, prefix)
+		if err != nil {
+			return nil, err
+		}
+		file, err := createHistoryFile(path)
+		if err == nil {
+			return file, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, err
+		}
+	}
+	return nil, errors.New("release: cannot create unique staged pointer")
 }
 
 // checkHistoryObject rechecks the opened file, not a path-derived mode bit.
