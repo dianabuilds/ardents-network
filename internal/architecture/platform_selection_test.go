@@ -104,11 +104,9 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/network/state/source_preparation_linux.go",
 			"internal/domain/endpoint/source_trust_preparation_linux.go",
 			"internal/domain/network/state/inspection_state_linux.go",
-			"internal/domain/network/state/node_inspection_linux.go",
 			"internal/domain/network/state/durable/inspection_linux.go",
 			"internal/domain/network/duty/source_inspection_linux.go",
 			"internal/domain/network/duty/inspection_linux.go",
-			"internal/domain/network/duty/node_inspection_linux.go",
 			"internal/domain/node/provisioning/infrastructure/command_linux.go",
 			"internal/domain/network/source/command/prepare_linux.go",
 			"internal/domain/network/source/command/command_linux_test.go",
@@ -201,8 +199,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 				"internal/domain/release/infrastructure/preparation_native_linux_test.go",
 				"internal/domain/release/infrastructure/signing/join_release_native_linux_test.go",
 				"internal/domain/release/infrastructure/signing/join_forward_release_native_linux_test.go",
-				"internal/domain/network/state/node_inspection_native_linux_test.go",
-				"internal/domain/network/duty/inspection_native_linux_test.go",
+				"internal/domain/network/duty/source_inspection_native_linux_test.go",
 			} {
 				selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 				if err != nil {

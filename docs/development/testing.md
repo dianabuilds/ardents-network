@@ -290,12 +290,10 @@ repair-retained`. Retained native evidence is
 the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
 retained `descriptor-forward-release-linux` signing lane and the
 `descriptor-store-retained-linux` live Store history/repair lane remain
-required. The read-only retained-root inspection mechanisms
-(`state.OpenNodeInspection`, `duty.OpenNodeInspection`) lose their last
-production consumer and are retained as
-reviewed mechanism code with genuine native coverage (deadcode allowlist); their
-shared custody/floor/reader helpers remain production-live through
-SourceInspection, the live Store and the bounded repair.
+required. The disconnected read-only Node inspection wrappers retired after
+their last production consumer. Their shared custody, floor and reader checks
+remain production-live through SourceInspection, the live Store and bounded
+repair.
 The unused Spending, Hosting and Store inspections are retired; the active
 receiving owner retains strict existing-history, burn and lease checks. The live
 Hosting owner retains durable reservations and its original lease; Store retains
@@ -1585,25 +1583,14 @@ remain real. These tests establish no native placement, pressure or owner-use
 qualification. Native profiles retain real measurements, including refusal when
 a process disappears during a sample; runtime guards and limits are unchanged.
 
-`TestNodeInspectionNative*` in `network/duty` and `network/state` belongs to the
-existing root/ext4 `network-signing-linux` profile. Its owner selection
-is `go test -race -tags network_signing_native ./internal/domain/network/duty ./internal/domain/network/state -run '^TestNodeInspectionNative' -count=1 -timeout=3m`
-(also run by `make network-signing-check`; E1-2 executed proof restored)
-under the original shared development lock and private native TMPDIR. The State
-fixture binds its State/local-role roots to the production owner-only invariant
-(0700) rather than the toolchain's `t.TempDir` default (0755). Duty uses
-genuine producer operations and original leases: expired live records cannot be
-cleared by inspection, Source exposure policy cannot admit stopped Node history,
-and missing marker/pointer/floor/lease refuses without repair or initialization.
-Held native readers and actual late Close failure retain the original lease.
-State instead uses independently encoded signed Records/Epoch and ordinary intake,
-canonical public profile preparation plus an isolated test signature, and actual
-closed-profile intake. It checks exact Node binding, foreign profile pin, expiry,
-principal, absent history, copied concurrent checks and a held original clock
-callback across cancellation/Close. No substituted authenticated Header supplies
-that successful chain. Original Source native regressions retain their own policy
-coverage. These controls grant no installed retirement, replacement or recovery
-qualification; explicit bound facts in the Duty-only cases remain local fixtures.
+`TestSourceInspectionNative*` in `network/duty` and `network/state` belongs to
+the root/ext4 `network-signing-linux` profile. Duty uses real participation
+history and leases to verify that unjoined Node producers and missing history
+refuse, Source exposure remains intact, and held readers and physical Close
+finish before the lease returns. State uses independently signed history and
+an original held clock read to verify cancellation, synchronous denial and
+joined completion. The tests exercise the production Source inspection; they
+do not establish installed retirement, replacement or recovery qualification.
 
 `TestIntroductionRepairRootsNative` in `network/state` is a separate owner
 selection in the same root/ext4 `network-signing-linux` profile:

@@ -6,11 +6,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -186,6 +188,77 @@ func TestSourceInspectionNativeReadOnlyOriginalLifetime(t *testing.T) {
 		if !ok || original.digest != actual.digest || !os.SameFile(original.info, actual.info) || original.info.Mode() != actual.info.Mode() || original.info.Sys().(*syscall.Stat_t).Ctim != actual.info.Sys().(*syscall.Stat_t).Ctim {
 			t.Fatal("read-only inspection changed retained native history", path)
 		}
+	}
+}
+
+// Cancellation must deny new observations immediately while the exact
+// original clock reader and its leases remain held until physical completion.
+func TestSourceInspectionNativeCancellationJoinsOriginalClockReader(t *testing.T) {
+	cfg, raw := sourceInspectionNativeFixture(t)
+	now := cfg.Now
+	cfg.Now = time.Time{}
+	entered, resume := make(chan struct{}), make(chan struct{})
+	var hold atomic.Bool
+	var release sync.Once
+	defer release.Do(func() { close(resume) })
+	cfg.Clock = func() time.Time {
+		if hold.CompareAndSwap(true, false) {
+			close(entered)
+			<-resume
+		}
+		return now
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	inspection, err := state.OpenSourceInspection(ctx, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = inspection.Close() })
+	hold.Store(true)
+	checked, closed := make(chan error, 1), make(chan error, 1)
+	go func() { checked <- inspection.Check(ctx, raw, 61100, 61100) }()
+	select {
+	case <-entered:
+	case err := <-checked:
+		t.Fatal("signed check did not reach original clock read", err)
+	case <-ctx.Done():
+		t.Fatal("original clock boundary not reached", ctx.Err())
+	}
+	cancel()
+	if err := inspection.Check(ctx, raw, 61100, 61100); !errors.Is(err, context.Canceled) {
+		t.Fatal("cancellation did not seal fresh observation", err)
+	}
+	go func() { closed <- inspection.Close() }()
+	fresh, finish := context.WithTimeout(t.Context(), 5*time.Second)
+	defer finish()
+	foreign, err := state.OpenSourceInspection(fresh, cfg)
+	if err == nil {
+		_ = foreign.Close()
+		t.Fatal("held original reader returned State lease before join")
+	}
+	select {
+	case err := <-closed:
+		t.Fatal("Close returned before original clock callback joined", err)
+	default:
+	}
+	release.Do(func() { close(resume) })
+	if err := <-checked; !errors.Is(err, context.Canceled) {
+		t.Fatal("late observation lost original cancellation", err)
+	}
+	terminal := <-closed
+	if !errors.Is(terminal, context.Canceled) {
+		t.Fatal("Close lost original cancellation", terminal)
+	}
+	if err := inspection.Close(); err != terminal {
+		t.Fatal("copied Close changed original terminal result", err)
+	}
+	next, err := state.OpenSourceInspection(fresh, cfg)
+	if err != nil {
+		t.Fatal("actual joined readers did not return original leases", err)
+	}
+	if err := next.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 

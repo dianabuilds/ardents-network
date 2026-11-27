@@ -79,17 +79,17 @@ func unchangedParticipationInspection(t *testing.T, root string, before map[stri
 	}
 }
 
-func TestNodeInspectionNativeOriginalHistoryAndLease(t *testing.T) {
+func TestSourceInspectionNativeOriginalHistoryAndLease(t *testing.T) {
 	cfg := nativeParticipationInspection(t)
 	before := participationInspectionImages(t, cfg.Root)
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	inspection, err := OpenNodeInspection(ctx, cfg.Root, 0, 0)
+	inspection, err := OpenSourceInspection(ctx, cfg.Root, 0, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer inspection.Close()
-	copy := inspection
+	copy := *inspection
 	if err := copy.Check(); err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestNodeInspectionNativeOriginalHistoryAndLease(t *testing.T) {
 	}
 }
 
-func TestNodeInspectionNativeCannotExpireOriginalProducer(t *testing.T) {
+func TestSourceInspectionNativeCannotExpireOriginalProducer(t *testing.T) {
 	cfg := nativeParticipationInspection(t)
 	now := time.Now().UTC().Truncate(time.Second)
 	cfg.Clock = func() time.Time { return now }
@@ -137,8 +137,8 @@ func TestNodeInspectionNativeCannotExpireOriginalProducer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	for range 2 {
-		inspection, err := OpenNodeInspection(ctx, cfg.Root, 0, 0)
-		if err == nil || inspection.original != nil {
+		inspection, err := OpenSourceInspection(ctx, cfg.Root, 0, 0)
+		if err == nil || inspection != nil {
 			_ = inspection.Close()
 			t.Fatal("clock expiry cleared unknown original join")
 		}
@@ -147,7 +147,7 @@ func TestNodeInspectionNativeCannotExpireOriginalProducer(t *testing.T) {
 	if err := producer.Close(ctx); err != nil {
 		t.Fatal("actual original producer removal", err)
 	}
-	inspection, err := OpenNodeInspection(ctx, cfg.Root, 0, 0)
+	inspection, err := OpenSourceInspection(ctx, cfg.Root, 0, 0)
 	if err != nil {
 		t.Fatal("genuine original removal not inspectable", err)
 	}
@@ -156,7 +156,7 @@ func TestNodeInspectionNativeCannotExpireOriginalProducer(t *testing.T) {
 	}
 }
 
-func TestNodeInspectionNativeCannotBorrowSourceExposurePolicy(t *testing.T) {
+func TestSourceInspectionNativeRetainsOriginalExposure(t *testing.T) {
 	cfg := nativeParticipationInspection(t)
 	store, err := Open(cfg)
 	if err != nil {
@@ -173,20 +173,15 @@ func TestNodeInspectionNativeCannotBorrowSourceExposurePolicy(t *testing.T) {
 	defer cancel()
 	source, err := OpenSourceInspection(ctx, cfg.Root, 0, 0)
 	if err != nil {
-		t.Fatal("Source exposure policy regressed", err)
+		t.Fatal("original Source exposure refused", err)
 	}
 	if err := source.Close(); err != nil {
 		t.Fatal(err)
 	}
-	node, err := OpenNodeInspection(ctx, cfg.Root, 0, 0)
-	if err == nil || node.original != nil {
-		_ = node.Close()
-		t.Fatal("Source exposure became stopped Node history")
-	}
 	unchangedParticipationInspection(t, cfg.Root, before)
 }
 
-func TestNodeInspectionNativeMissingHistoryNeverInitializes(t *testing.T) {
+func TestSourceInspectionNativeMissingHistoryNeverInitializes(t *testing.T) {
 	for _, missing := range []string{rootLockName, rootMarkerName, "current", "watermark"} {
 		t.Run(missing, func(t *testing.T) {
 			cfg := nativeParticipationInspection(t)
@@ -197,8 +192,8 @@ func TestNodeInspectionNativeMissingHistoryNeverInitializes(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
 			for range 2 {
-				inspection, err := OpenNodeInspection(ctx, cfg.Root, 0, 0)
-				if err == nil || inspection.original != nil {
+				inspection, err := OpenSourceInspection(ctx, cfg.Root, 0, 0)
+				if err == nil || inspection != nil {
 					_ = inspection.Close()
 					t.Fatal("missing history became initialized participation")
 				}
@@ -208,13 +203,13 @@ func TestNodeInspectionNativeMissingHistoryNeverInitializes(t *testing.T) {
 	}
 }
 
-func TestNodeInspectionNativeOriginalReadersAndClose(t *testing.T) {
+func TestSourceInspectionNativeOriginalReadersAndClose(t *testing.T) {
 	for _, fault := range []string{"clean", "cancel", "late-close"} {
 		t.Run(fault, func(t *testing.T) {
 			cfg := nativeParticipationInspection(t)
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
-			inspection, err := OpenNodeInspection(ctx, cfg.Root, 0, 0)
+			inspection, err := OpenSourceInspection(ctx, cfg.Root, 0, 0)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -24,10 +24,8 @@
 // CurrentRuntimeWitness additionally retains an opaque, locally checked
 // original-owner refusal projection. It cannot replace the full observation,
 // and synchronous retirement never changes or revives the immutable view.
-// Linux NodeInspection separately authenticates retained signed/time/security
-// history and stopped participation without opening runtime work. Its copied
-// public binding facts grant no RuntimeView, producer or Installation right;
-// original reader and descriptor joins precede returning its existing leases.
+// Linux SourceInspection retains and verifies existing Source State and
+// participation under original leases; it grants no runtime or producer right.
 //
 // Start with the operation being traced:
 //   - signed intake: command decodes the operator declaration; Open verifies
@@ -85,10 +83,9 @@
 //     membership_transition_test.go, selected_profile_test.go)
 //   - clock and time observation: clock_observation.go
 //     (offline_accept_clock_test.go)
-//   - retained inspection (linux): node_inspection_linux.go (retained
-//     test-only), source_inspection_linux.go, inspection_state_linux.go
-//     (node_inspection_native_linux_test.go,
-//     source_inspection_native_linux_test.go, inspection_closure_linux_test.go)
+//   - retained Source inspection (linux): source_inspection_linux.go,
+//     inspection_state_linux.go (source_inspection_native_linux_test.go,
+//     inspection_closure_linux_test.go)
 //   - repair policy: source_repair.go, introduction_repair.go,
 //     forwarding_repair.go, join_repair.go, descriptor_repair.go,
 //     node_duty_repair.go (the shared nodeDutyRepair mechanism and

@@ -102,7 +102,7 @@ func (inspection SourceInspection) Check(ctx context.Context, raw []byte, uid, g
 	if err == nil && (s.closed || s.ctx.Err() != nil) {
 		err = errors.Join(errSourceInspectionClosed, s.parent.Err(), s.ctx.Err())
 	}
-	if err != nil && !(s.closed && s.parent.Err() == nil && inspectionLocalClosure(err, errSourceInspectionClosed)) {
+	if err != nil && !(s.closed && s.parent.Err() == nil && sourceInspectionLocalClosure(err)) {
 		s.terminal = errors.Join(s.terminal, err)
 	}
 	s.mu.Unlock()
@@ -140,7 +140,7 @@ func (s *sourceInspection) inspect() error {
 	if err := s.roles.Check(); err != nil {
 		return err
 	}
-	current, journal, err := readRetainedInspection(s.config, s.state)
+	current, journal, err := readRetainedHistory(s.config, s.state)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (s *sourceInspection) close() error {
 		if s.state != nil {
 			physical = errors.Join(physical, s.state.Close())
 		}
-		if s.parent.Err() == nil && inspectionLocalClosure(physical, errSourceInspectionClosed) {
+		if s.parent.Err() == nil && sourceInspectionLocalClosure(physical) {
 			physical = nil
 		}
 		s.mu.Lock()
