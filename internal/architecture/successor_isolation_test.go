@@ -2009,14 +2009,12 @@ func successorImportAllowed(source, dependency string) bool {
 			return false
 		}
 	}
-	// Only the command composition consumes the Endpoint root from cmd.
+	// The Endpoint command retains the installed and offline effect dispatch.
 	if strings.HasPrefix(source, "cmd/ardents-next/") && localImport && local == "internal/domain/endpoint" {
-		switch source {
-		case "cmd/ardents-next/command.go":
-			return true
-		default:
-			return false
-		}
+		return false
+	}
+	if local == "internal/domain/endpoint/command" {
+		return source == "cmd/ardents-next/command.go"
 	}
 	switch source {
 	case "tests/diagnostics/heapdump/heapdump_role_map_capture_test.go":
@@ -2178,7 +2176,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		case "cmd/ardents-next/command.go":
-			if local == "internal/domain/node" || local == "internal/domain/endpoint" || local == "internal/platform/launch" {
+			if local == "internal/domain/node" || local == "internal/platform/launch" {
 				return true
 			}
 		case "cmd/ardents-next/infrastructure_operator.go":
@@ -2255,7 +2253,7 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 	}
-	if source == "internal/domain/endpoint/preparation_command_linux.go" && dependency == modulePath+"/internal/domain/network/source" {
+	if source == "internal/domain/endpoint/command/preparation_command_linux.go" && dependency == modulePath+"/internal/domain/network/source" {
 		return false
 	}
 	if !inZone {
@@ -2290,6 +2288,25 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if dependency == modulePath+"/internal/domain/network/state/internal/distribution" {
 		return path.Dir(source) == "internal/domain/network/state"
+	}
+	if source == "internal/domain/endpoint/command/preparation_files_linux.go" {
+		switch local {
+		case "internal/domain/network/source", "internal/domain/network/state",
+			"internal/pathcheck", "internal/platform/artifacts":
+			return true
+		}
+	}
+	if dependency == modulePath+"/internal/domain/endpoint/internal/permission" {
+		return source == "internal/domain/endpoint/participant_linux.go" ||
+			source == "internal/domain/endpoint/latency_native_linux_test.go"
+	}
+	if dependency == modulePath+"/internal/domain/endpoint" {
+		switch source {
+		case "internal/domain/endpoint/command/installed_command_linux.go",
+			"internal/domain/endpoint/command/preparation_files_linux.go",
+			"internal/domain/endpoint/command/progress_report_linux_test.go":
+			return true
+		}
 	}
 	if dependency == modulePath+"/internal/domain/network/state/command" {
 		return source == "cmd/ardents-next/network.go"
@@ -2379,7 +2396,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/domain/endpoint/publisher": {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/publication/durable", "domain/publication/instance", "domain/publication/runtime", "domain/route/prefix", "domain/route/selection", "pathcheck"},
 		"internal/domain/endpoint/reader":    {"domain/endpoint/funding", "domain/admission", "domain/admission/stock", "domain/connection", "domain/execution/runtime", "domain/hosting", "domain/network", "domain/reachability", "domain/route/prefix", "domain/route/selection"},
 		"internal/domain/endpoint/funding":   {"domain/admission", "domain/admission/stock", "domain/admission/token", "domain/hosting", "domain/network", "domain/network/state", "domain/route", "domain/route/ardp", "domain/route/bootstrap", "domain/route/prefix", "domain/route/role", "domain/route/selection", "pathcheck"},
-		"cmd/ardents-next":                   {"canonicaldigest", "pathcheck", "domain/endpoint/session", "domain/endpoint", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
+		"cmd/ardents-next":                   {"canonicaldigest", "pathcheck", "domain/endpoint/session", "domain/endpoint/publisher", "domain/endpoint/reader", "domain/endpoint/funding", "domain/route/introduction", "domain/route/prefix", "domain/network", "domain/network/state", "domain/admission/stock", "domain/admission/receiving", "domain/admission/allocation", "domain/admission", "domain/admission/quota", "domain/admission/issuerprofile", "domain/admission/issuance", "domain/admission/issuer", "domain/admission/issuerprofile/signing", "domain/hosting", "domain/route", "domain/route/role", "domain/route/selection", "domain/route/join", "domain/route/receiver", "domain/route/channel", "domain/route/ardp"},
+
+		"internal/domain/endpoint/internal/permission": {"domain/admission/stock", "pathcheck"},
 	}
 	if zoneDependency {
 		if (source == "internal/domain/endpoint/history_preparation_linux.go" || source == "internal/domain/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/domain/route/selection" {
@@ -2388,7 +2407,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/domain/endpoint/history_preparation_linux.go" || source == "internal/domain/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/domain/network/duty" {
 			return true
 		}
-		if (source == "internal/domain/endpoint/preparation_files_linux.go" || source == "internal/domain/endpoint/source_trust_native_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
+		if (source == "internal/domain/endpoint/source_trust_native_linux_test.go") && dependency == modulePath+"/internal/platform/artifacts" {
 			return true
 		}
 		if source == "internal/domain/endpoint/history_preparation_linux_test.go" && dependency == modulePath+"/internal/domain/admission/attempts" {
@@ -2760,9 +2779,9 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/diagnostics/telemetry/observation.go", "internal/diagnostics/telemetry/observation_test.go",
 			"internal/diagnostics/telemetry/delivery.go", "internal/diagnostics/telemetry/delivery_test.go", "internal/diagnostics/telemetry/vocabulary_test.go",
 			"internal/domain/admission/operator/admission.go", "internal/domain/admission/operator/issuance.go",
-			"internal/domain/custody/command/command.go", "internal/domain/endpoint/installed_command_linux.go",
-			"internal/domain/endpoint/installed_command_other.go", "internal/domain/endpoint/preparation_command_linux.go",
-			"internal/domain/endpoint/progress_report_linux_test.go",
+			"internal/domain/custody/command/command.go", "internal/domain/endpoint/command/installed_command_linux.go",
+			"internal/domain/endpoint/command/installed_command_other.go", "internal/domain/endpoint/command/preparation_command_linux.go",
+			"internal/domain/endpoint/command/progress_report_linux_test.go",
 			"internal/diagnostics/timeline/project.go", "scripts/diagnostics/diagnostic-capture.go",
 			"scripts/diagnostics/diagnostic-report.go", "scripts/diagnostics/diagnostic-view.go",
 			"scripts/diagnostics/diagnostic-monitor.go", "scripts/diagnostics/diagnostic-monitor-view.go":
@@ -2878,8 +2897,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"plan constructor cannot initialize participation", "internal/domain/endpoint/plan_construction_linux.go", modulePath + "/internal/domain/network/duty", false},
 		{"plan constructor cannot initialize selection history", "internal/domain/endpoint/plan_construction_linux.go", modulePath + "/internal/domain/route/selection", false},
 		{"plan constructor has no old backend", "internal/domain/endpoint/plan_construction_linux.go", modulePath + "/internal/domain/endpoint", false},
-		{"installed endpoint command uses endpoint owner", "cmd/ardents-next/command.go", modulePath + "/internal/domain/endpoint", true},
-		{"plan constructor command has no direct Source codec", "internal/domain/endpoint/preparation_command_linux.go", modulePath + "/internal/domain/network/source", false},
+		{"ardents-next dispatches installed endpoint through its command", "cmd/ardents-next/command.go", modulePath + "/internal/domain/endpoint/command", true},
+		{"ardents-next dispatch does not acquire the installed endpoint", "cmd/ardents-next/command.go", modulePath + "/internal/domain/endpoint", false},
+		{"installed endpoint command uses the participant owner", "internal/domain/endpoint/command/installed_command_linux.go", modulePath + "/internal/domain/endpoint", true},
+		{"only installed participant owns permission exchange", "internal/domain/endpoint/command/installed_command_linux.go", modulePath + "/internal/domain/endpoint/internal/permission", false},
+		{"plan constructor command has no direct Source codec", "internal/domain/endpoint/command/preparation_command_linux.go", modulePath + "/internal/domain/network/source", false},
 		{"installed participant owns Administration listener", "internal/domain/endpoint/participant_linux.go", modulePath + "/internal/application/administration", true},
 		{"installed Publisher retains original worker", "internal/domain/endpoint/publisher/publisher_unix.go", modulePath + "/internal/domain/execution/runtime", true},
 		{"other installed adapter has no Publisher authority", "cmd/ardents-next/installed_other_linux.go", modulePath + "/internal/domain/execution/runtime", false},

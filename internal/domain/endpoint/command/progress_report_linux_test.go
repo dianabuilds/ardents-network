@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package command
 
 import (
 	"bytes"
@@ -9,12 +9,13 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
+	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
 )
 
 func TestPermissionProgressHasSafeIdentityWithoutLosingLocalExchange(t *testing.T) {
 	for _, phase := range []string{"permission-pending", "permission-accepted"} {
 		var out bytes.Buffer
-		if err := reportInstalledProgress(&out, Progress{Phase: phase, Role: "private-role", Digest: [32]byte{1}}); err != nil {
+		if err := reportInstalledProgress(&out, endpoint.Progress{Phase: phase, Role: "private-role", Digest: [32]byte{1}}); err != nil {
 			t.Fatal(err)
 		}
 		var local map[string]string
@@ -31,7 +32,7 @@ func TestPermissionProgressHasSafeIdentityWithoutLosingLocalExchange(t *testing.
 		}
 	}
 	var out bytes.Buffer
-	if err := reportInstalledProgress(&out, Progress{Phase: "PRIVATE-unknown", Role: "private-role"}); err == nil || out.Len() != 0 {
+	if err := reportInstalledProgress(&out, endpoint.Progress{Phase: "PRIVATE-unknown", Role: "private-role"}); err == nil || out.Len() != 0 {
 		t.Fatal("unknown progress exported")
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/funding"
+	permissionfiles "github.com/dianabuilds/ardents-network/internal/domain/endpoint/internal/permission"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/domain/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/domain/endpoint/reader"
 	"github.com/dianabuilds/ardents-network/internal/domain/execution"
@@ -425,7 +426,7 @@ func latencyDeclarations(root string) ([]byte, []byte, error) {
 // Import handover. The signing key never enters this MainPID; the root driver
 // approves the exact qualified request and writes the signed response.
 func latencyFundPermission(ctx context.Context, holder *stock.Owner, permission PermissionPlan, check func() error) error {
-	if err := installedPermissionRetire(permission.RequestPath, permission.ResponsePath, check); err != nil {
+	if err := permissionfiles.Retire(permission.RequestPath, permission.ResponsePath, check); err != nil {
 		return err
 	}
 	request, digest, err := holder.Request(permission.Maxima)
@@ -436,10 +437,10 @@ func latencyFundPermission(ctx context.Context, holder *stock.Owner, permission 
 	if err != nil {
 		return err
 	}
-	if err := installedPermissionRequest(permission.RequestPath, request, check); err != nil {
+	if err := permissionfiles.PublishRequest(permission.RequestPath, request, check); err != nil {
 		return err
 	}
-	return installedPermissionResponse(ctx, permission.ResponsePath, digest, decoded.Permission.NotAfter, holder, check)
+	return permissionfiles.AwaitResponse(ctx, permission.ResponsePath, digest, decoded.Permission.NotAfter, holder, check)
 }
 
 // warmLoop measures new Connections 1-30 s after the prior read in the same

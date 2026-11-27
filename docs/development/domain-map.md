@@ -821,11 +821,14 @@ retains live authority; Route retains selection and physical join; Execution
 retains worker admission/results; Publication retains readiness/refresh/replay;
 Connection retains logical bytes and recovery. The original participant joins
 all requests/publications before closing shared parents, Stock and authority.
-`endpoint` now owns the original participant Startup, State, local Execution,
-permission file exchange and shared parents. Its bound Installation declarations
-are also consumed by offline Source preparation, without runtime authority.
-Endpoint owns installed startup and preparation command result projection; the command dispatches the selected operation. Splitting these lifetimes
-changes neither accepted persisted/wire bytes nor installed qualification.
+`endpoint` owns the original participant's use of Startup, State, local Execution
+and shared parents. `endpoint/launch` retains the installed Startup observations.
+`endpoint/internal/permission` retains the local file exchange under the
+participant's original Startup check and the Stock owner's exact response
+admission. Bound Installation declarations also serve offline Source preparation.
+`endpoint/command` handles the installed start and offline preparation arguments
+and public command results. Each command runs the existing preparation or
+participant effect with its original owners.
 
 Endpoint's explicit offline first preparation consumes declared trust/roots and
 public signed Epoch/profile through fresh Network State, then initializes empty

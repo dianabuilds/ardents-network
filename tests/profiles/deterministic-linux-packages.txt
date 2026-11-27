@@ -1,1 +1,2 @@
+github.com/dianabuilds/ardents-network/internal/domain/endpoint/internal/permission
 github.com/dianabuilds/ardents-network/internal/domain/node/provisioning/sourcegenesis

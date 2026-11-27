@@ -1,4 +1,4 @@
-package endpoint
+package command
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ func TestInstalledEndpointCancelledBeforeEffects(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	var output, diagnostic bytes.Buffer
-	if code := RunInstalledCommand(ctx, []string{"start-installed", root}, &diagnostic); code != 1 {
+	if code := Run(ctx, []string{"start-installed", root}, &diagnostic); code != 1 {
 		t.Fatal("cancelled installed opening accepted", code)
 	}
 	assertInstalledEndpointCancelledRefusal(t, &output, &diagnostic, "endpoint.start-installed")
@@ -25,14 +25,14 @@ func TestInstalledEndpointCancelledBeforeEffects(t *testing.T) {
 	}
 	output.Reset()
 	diagnostic.Reset()
-	if code := RunInstalledCommand(ctx, []string{"prepare-history", root, root, root}, &diagnostic); code != 1 {
+	if code := Run(ctx, []string{"prepare-history", root, root, root}, &diagnostic); code != 1 {
 		t.Fatal("canceled preparation read inputs or reported success", code)
 	}
 	assertInstalledEndpointCancelledRefusal(t, &output, &diagnostic, "endpoint.prepare-history")
 	for _, args := range [][]string{{"endpoint"}, {"endpoint", "start-installed"}, {"endpoint", "foreign", root}, {"endpoint", "prepare-history", root}} {
 		output.Reset()
 		diagnostic.Reset()
-		if code := RunInstalledCommand(t.Context(), args[1:], &diagnostic); code != 2 {
+		if code := Run(t.Context(), args[1:], &diagnostic); code != 2 {
 			t.Fatal("malformed installed selector admitted", args, code)
 		}
 	}

@@ -1,6 +1,6 @@
 //go:build linux
 
-package endpoint
+package command
 
 import (
 	"context"

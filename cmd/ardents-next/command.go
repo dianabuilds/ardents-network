@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/operator"
-	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
+	endpointcommand "github.com/dianabuilds/ardents-network/internal/domain/endpoint/command"
 	"github.com/dianabuilds/ardents-network/internal/domain/node"
 	platformlaunch "github.com/dianabuilds/ardents-network/internal/platform/launch"
 )
@@ -87,7 +87,7 @@ func run(ctx context.Context, arguments []string, out, diagnostic io.Writer) (co
 
 func runEndpointCommand(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) == 0 || args[0] != "withdraw" {
-		return endpoint.RunInstalledCommand(ctx, args, diagnostic)
+		return endpointcommand.Run(ctx, args, diagnostic)
 	}
 	if len(args) != 2 {
 		fmt.Fprintln(diagnostic, "usage: ardents endpoint withdraw <administration-socket>")
