@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
 	state2 "github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -62,7 +61,8 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 		}
 	}
 	accept(first)
-	checkMembership := func(view networkdomain.RuntimeView) error {
+	checkMembership := func(witness state2.RuntimeWitness) (uint64, error) {
+		view := witness.View()
 		profile := view.Profile()
 		expected := first
 		if profile.Epoch == 2 {
@@ -73,9 +73,9 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 			profile.EpochDigest != expected.Epoch.Digest || profile.Digest != sha256.Sum256(expected.Profile) ||
 			member.RecordDigest != sha256.Sum256(expected.Epoch.Inputs[0]) || member.DutyGeneration != expected.Nodes[0].Generation ||
 			member.PublicKey != [32]byte(expected.Nodes[0].PrivateKey.Public().(ed25519.PublicKey)) || member.Endpoint != expected.Nodes[0].Endpoint {
-			return fmt.Errorf("mixed membership observation for Epoch %d: %v", profile.Epoch, err)
+			return 0, fmt.Errorf("mixed membership observation for Epoch %d: %v", profile.Epoch, err)
 		}
-		return nil
+		return profile.Epoch, nil
 	}
 	stop, done := make(chan struct{}), make(chan struct{})
 	observed := make(chan uint64, 2)
@@ -89,18 +89,18 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 				return
 			default:
 			}
-			view, err := owner.CurrentRuntime()
+			witness, err := owner.CurrentRuntimeWitness()
 			if err != nil {
 				continue
 			} // Epoch/profile publication gap may refuse.
-			profile := view.Profile()
-			if err := checkMembership(view); err != nil {
+			epoch, err := checkMembership(witness)
+			if err != nil {
 				failures <- err
 				return
 			}
-			if !seen[profile.Epoch] {
-				seen[profile.Epoch] = true
-				observed <- profile.Epoch
+			if !seen[epoch] {
+				seen[epoch] = true
+				observed <- epoch
 			}
 		}
 	}()
@@ -143,15 +143,16 @@ func TestMembershipObservationCannotMixPublishedGenerations(t *testing.T) {
 	defer reopened.Close()
 	observeSuccessor := func() {
 		t.Helper()
-		view, err := reopened.CurrentRuntime()
+		witness, err := reopened.CurrentRuntimeWitness()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if view.Profile().Epoch != 2 {
-			t.Fatalf("retained observation Epoch = %d, want 2", view.Profile().Epoch)
-		}
-		if err := checkMembership(view); err != nil {
+		epoch, err := checkMembership(witness)
+		if err != nil {
 			t.Fatal(err)
+		}
+		if epoch != 2 {
+			t.Fatalf("retained observation Epoch = %d, want 2", epoch)
 		}
 	}
 	observeSuccessor()
