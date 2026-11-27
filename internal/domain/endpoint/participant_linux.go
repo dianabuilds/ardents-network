@@ -117,11 +117,13 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	if err != nil {
 		return phase, errors.Join(ErrUnavailable, err)
 	}
+	defer clearSourceClientKey(config)
 	// Source intake has its own State lifetime. Joined preparation provenance
 	// gates permission bootstrap only and cannot stand in for a live worker.
 	config.PermitWork = startup.Check
 	phase = "network-open"
 	network, err := state.OpenRetained(config)
+	clearSourceClientKey(config)
 	if err != nil {
 		return phase, errors.Join(ErrUnavailable, err)
 	}

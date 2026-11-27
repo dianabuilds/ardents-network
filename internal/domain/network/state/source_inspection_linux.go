@@ -48,6 +48,7 @@ func OpenSourceInspection(parent context.Context, input Config) (result SourceIn
 	if err != nil {
 		return result, err
 	}
+	defer resolved.source.Close()
 	if resolved.sourceInfo.Configured || resolved.sourceInfo.Serving || resolved.automatic != 0 || resolved.localRoles == "" || input.ClockObservationFile == "" || input.ObserveClock != nil {
 		return result, errors.New("inspection of Source is retained-history only")
 	}

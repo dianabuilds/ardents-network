@@ -198,6 +198,14 @@ State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application
 owner. State joins only its own Source and refresh work.
+The Source Plan owns its copied client and server Ed25519 key buffers. State
+cancels and joins its transport and refresh users before closing the Plan; the
+Plan denies new borrowers and clears its buffers after admitted calls join.
+Failed construction and validation clear owned copies; offline validation closes
+its temporary Plan. Endpoint clears the parsed client input after State or the
+offline Plan has copied it. This is an observable clearing of those specific Go
+buffers, not proof that TLS internals, compiler copies, snapshots, swap or a
+compromised process contain no key material.
 For the development serving Source, command composition also retains original
 plan/certificate/private-key/CA file and ancestor custody through this same
 PermitWork seam. State reobserves after recovery and exposure I/O, before the
