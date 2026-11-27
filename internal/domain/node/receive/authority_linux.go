@@ -7,7 +7,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
-	nodeadmission "github.com/dianabuilds/ardents-network/internal/domain/node/admission"
 )
 
 // routeAdmissionAuthority obtains each Admission observation from the original
@@ -21,7 +20,7 @@ func (authority routeAdmissionAuthority) observe() (network.RuntimeView, admissi
 	if err != nil {
 		return network.RuntimeView{}, admission.AuthorityFacts{}, time.Time{}, err
 	}
-	facts, now := nodeadmission.AuthorityFactsFromProfile(view.Profile()), view.ObservedAt()
+	facts, now := admission.FactsFromNetworkProfile(view.Profile()), view.ObservedAt()
 	return view, facts, now, facts.ValidateAt(now)
 }
 
