@@ -357,8 +357,9 @@ func testRouteReceiverAdmission(t *testing.T, clockLoss bool) {
 	if err := errors.Join(positive.Close(), blocker.ReleaseJoined(), budgetOwner.Close()); err != nil {
 		t.Fatal("capacity refusal cleanup", err)
 	}
-	// Lose the second response after the real receiver has durably spent the
-	// right. The client deliberately never reads the receiver's response.
+	// Lose the second response after the receiver's commit marker is visible.
+	// The client deliberately never reads the response; the joined restart and
+	// replay below verify the retained spend rather than inferring an fsync.
 	lostHello := bytes.Clone(base)
 	lostHello[16+169] = 2
 	lostAdmit := bytes.Clone(admit)
@@ -367,35 +368,12 @@ func testRouteReceiverAdmission(t *testing.T, clockLoss bool) {
 	if _, err := lost.Write(append(bytes.Clone(lostHello), lostAdmit...)); err != nil {
 		t.Fatal("lost-response presentation", err)
 	}
-	timer := time.NewTimer(3 * time.Second)
-	defer timer.Stop()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	var afterLost []byte
-waitForSpend:
-	for {
-		afterLost, err = os.ReadFile(journalPath)
-		if err != nil {
-			t.Fatal("lost-response spending journal", err)
-		}
-		if !bytes.Equal(afterFirst, afterLost) {
-			break waitForSpend
-		}
-		select {
-		case <-timer.C:
-			t.Fatal("lost-response token was not durably spent")
-		case <-t.Context().Done():
-			t.Fatal("waiting for lost-response spend", t.Context().Err())
-		case <-ticker.C:
-		}
-	}
-	timer.Stop()
-	ticker.Stop()
+	afterLost := waitForCommittedSpend(t, journalPath, afterFirst, lostToken.Token, challenge.WindowStart)
 	if err := lost.Close(); err != nil {
 		t.Fatal("close after lost response", err)
 	}
 	// Open a second real Forwarding parent, then abandon its refill response
-	// only after the receiving owner's durable spend becomes visible.
+	// after its commit marker is visible.
 	refillHello := bytes.Clone(base)
 	refillHello[16+169] = 3
 	secondAdmit := bytes.Clone(admit)
@@ -419,28 +397,7 @@ waitForSpend:
 	if _, err := second.Write(lostRefillAdmit); err != nil {
 		t.Fatal("lost-response refill", err)
 	}
-	refillTimer := time.NewTimer(3 * time.Second)
-	defer refillTimer.Stop()
-	refillTicker := time.NewTicker(10 * time.Millisecond)
-	defer refillTicker.Stop()
-	var afterLostRefill []byte
-waitForRefillSpend:
-	for {
-		afterLostRefill, err = os.ReadFile(journalPath)
-		if err != nil {
-			t.Fatal("lost-refill spending journal", err)
-		}
-		if !bytes.Equal(beforeLostRefill, afterLostRefill) {
-			break waitForRefillSpend
-		}
-		select {
-		case <-refillTimer.C:
-			t.Fatal("lost-response refill was not durably spent")
-		case <-t.Context().Done():
-			t.Fatal("waiting for lost-refill spend", t.Context().Err())
-		case <-refillTicker.C:
-		}
-	}
+	afterLostRefill := waitForCommittedSpend(t, journalPath, beforeLostRefill, lostRefillToken.Token, challenge.WindowStart)
 	if clockLoss {
 		stopClockOnce()
 		if err := os.Remove(clock); err != nil {
@@ -531,6 +488,54 @@ waitForRefillSpend:
 	closeErr = budget.Close()
 	if observeErr != nil || closeErr != nil || observation.ReservedBytes != 0 {
 		t.Fatal("invalid HELLO reserved capacity", observeErr, closeErr, observation.ReservedBytes)
+	}
+}
+
+// waitForCommittedSpend observes one complete ARDSPN01 append: the original
+// bytes followed by the expected token digest, window and commit byte of 1.
+// The marker alone does not prove fsync completion; joined shutdown and replay
+// check the retained spend after the actual receiver has stopped.
+func waitForCommittedSpend(t *testing.T, path string, before, token []byte, window time.Time) []byte {
+	t.Helper()
+	const recordBytes = 32 + 8 + 1
+	var expected [recordBytes]byte
+	digest := sha256.Sum256(token)
+	copy(expected[:32], digest[:])
+	binary.BigEndian.PutUint64(expected[32:40], uint64(window.Unix()))
+	expected[40] = 1
+	timer := time.NewTimer(3 * time.Second)
+	defer timer.Stop()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		journal, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal("read spending journal", err)
+		}
+		if len(journal) < len(before) || len(journal) > len(before)+recordBytes || !bytes.Equal(journal[:len(before)], before) {
+			t.Fatal("spending journal changed outside the expected append")
+		}
+		appendBytes := journal[len(before):]
+		bodyLength := min(len(appendBytes), recordBytes-1)
+		if !bytes.Equal(appendBytes[:bodyLength], expected[:bodyLength]) {
+			t.Fatal("spending journal appended a different token or window")
+		}
+		if len(appendBytes) == recordBytes {
+			switch appendBytes[recordBytes-1] {
+			case 1:
+				return journal
+			case 0: // The first flush has not published the commit marker yet.
+			default:
+				t.Fatal("spending journal has an invalid commit marker")
+			}
+		}
+		select {
+		case <-timer.C:
+			t.Fatal("spend commit marker did not become visible")
+		case <-t.Context().Done():
+			t.Fatal("waiting for spend commit marker", t.Context().Err())
+		case <-ticker.C:
+		}
 	}
 }
 
