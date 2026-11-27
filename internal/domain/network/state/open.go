@@ -96,12 +96,7 @@ func activateState(resolved config, storage *durable.Root, automaticTicks <-chan
 }
 
 func (s *State) recover(workContext context.Context, automaticTicks <-chan time.Time, automaticResults chan<- error) error {
-	current, err := loadCurrent(s.config, s.storage)
-	if err != nil {
-		return err
-	}
-	s.current = current
-	if err := s.loadDistributionState(); err != nil {
+	if err := s.recoverDistributionHistory(); err != nil {
 		return err
 	}
 	if err := s.recoverSourceWaveGuard(); err != nil {

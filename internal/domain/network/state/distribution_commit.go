@@ -93,3 +93,58 @@ func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state 
 	}
 	return persistDecision(s.storage, decision, true)
 }
+
+// commitPendingDecision writes the authenticated generation before the
+// control journal can name it. History reconciliation precedes this operation.
+func (s *State) commitPendingDecision(decision *epoch.Decision, next distribution.Record) error {
+	if decision == nil {
+		// Preserve the historical zero-value staging refusal.
+		decision = &epoch.Decision{}
+	}
+	newPending := s.pendingDecision == nil
+	if newPending {
+		if err := stageGeneration(s.storage, decision); err != nil {
+			return err
+		}
+	}
+	next.PendingDigest, next.PendingValidFrom = decision.Header.Digest, decision.Header.ValidFrom.Unix()
+	if err := s.commitDistribution(next); err != nil {
+		return err
+	}
+	if newPending {
+		// The staged decision is immutable; callers never mutate it after
+		// commit, so the pointer keeps the same owned facts.
+		s.pendingDecision = decision
+	}
+	return nil
+}
+
+// commitDistribution publishes a verified transition on the original State lease.
+func (s *State) commitDistribution(state distribution.Record) error {
+	return s.commitDistributionWithControl(state, s.storage.CommitControl)
+}
+
+func (s *State) commitDistributionWithControl(state distribution.Record, commit func(string, []byte) error) error {
+	if s.closed {
+		return errors.New("network state is closed")
+	}
+	raw := distribution.Encode(state)
+	if state.Conflicting && !s.distribution.Conflicting {
+		s.invalidateRuntime()
+	}
+	name := distribution.Digest(raw)
+	if err := commit(name, raw); err != nil {
+		if errors.Is(err, durable.ErrPointerSyncUncertain) {
+			s.terminalErr = fmt.Errorf("distribution control commit is uncertain: %w", err)
+			s.retireStateLocked()
+		} else if state.Conflicting && !s.distribution.Conflicting {
+			// The conflict has already been verified. An ordinary
+			// pre-pointer failure cannot make the prior decision safe to serve.
+			s.terminalErr = fmt.Errorf("persist verified network state conflict: %w", err)
+			s.retireStateLocked()
+		}
+		return err
+	}
+	s.distribution = state
+	return nil
+}

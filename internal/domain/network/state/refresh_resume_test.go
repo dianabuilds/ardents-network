@@ -68,7 +68,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			}
 			defer storage.Close()
 			resumed := &State{config: initial.config, current: &decision, storage: storage, workContext: context.Background()}
-			if err := resumed.loadDistributionState(); err != nil {
+			if err := resumed.reconcileDistributionJournal(); err != nil {
 				t.Fatal(err)
 			}
 			if err := resumed.recoverSourceWaveGuard(); err != nil {
@@ -160,7 +160,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			}
 			defer storage.Close()
 			reopened := &State{config: resumed.config, current: &decision, storage: storage, workContext: context.Background()}
-			if err := reopened.loadDistributionState(); err != nil {
+			if err := reopened.reconcileDistributionJournal(); err != nil {
 				t.Fatal(err)
 			}
 			if err := reopened.recoverSourceWaveGuard(); err != nil {

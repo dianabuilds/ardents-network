@@ -71,7 +71,7 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 	}
 	defer storage.Close()
 	reopened := &State{config: s.config, storage: storage, current: &current}
-	if err := reopened.loadDistributionState(); err != nil {
+	if err := reopened.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
 	if reopened.distribution.Sequence != next.Sequence || reopened.distribution.TrustedTimeFloor != next.TrustedTimeFloor {
@@ -366,7 +366,7 @@ func TestPersistedConflictKeepsDiagnosticSnapshotButRefusesSource(t *testing.T) 
 	}
 	defer storage.Close()
 	reopened := &State{config: s.config, storage: storage, current: &current}
-	if err := reopened.loadDistributionState(); err != nil {
+	if err := reopened.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
 	if snapshot, err := reopened.Current(); err != nil || !snapshot.Conflicting || snapshot.Freshness != "conflicting" {
