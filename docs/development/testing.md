@@ -3950,7 +3950,8 @@ privileges in a disposable namespace and separate ext2, ext3, ext4 and tmpfs
 mounts supplied through `ARDENTS_TEST_EXT2`, `ARDENTS_TEST_EXT3`,
 `ARDENTS_TEST_EXT4` and `ARDENTS_TEST_TMPFS`. The profile independently checks
 mount types with `findmnt`, then exercises real private delivery, exact retry,
-refusal before staging and a bind-mount replacement against the held object.
+refusal before staging, command refusal before Vault or prompt on real ext2,
+and a bind-mount replacement against the held object.
 Unavailable mounts or mount privileges fail. This is native component evidence,
 not installed, crash or power-loss qualification.
 

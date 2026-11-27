@@ -468,6 +468,7 @@ custody-permission-filesystems-check:
 		[ -n "$$path" ] && [ -d "$$path" ] && [ "$$(findmnt -n -o FSTYPE -T "$$path")" = "$$kind" ] || { echo "missing or wrong $$kind mount"; exit 2; }; \
 	done
 	go test -race -tags custody_private_permission_native ./internal/domain/custody -run '^TestPrivatePermissionMountedFilesystems$$' -count=1 -v -timeout=3m
+	go test -race ./internal/domain/custody/command -run '^TestPrivatePermissionUnavailableBeforeVaultOrPrompt$$' -count=1 -v -timeout=3m
 
 .PHONY: custody-check
 custody-check:
