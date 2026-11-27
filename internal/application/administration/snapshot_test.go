@@ -36,7 +36,7 @@ func snapshotTestServer(t *testing.T, owner Interface) (string, Server) {
 func TestSnapshotAdministrationTransfersOnlyBoundedContent(t *testing.T) {
 	for _, size := range []int{0, 65536, MaximumSnapshotBytes} {
 		t.Run(fmt.Sprint(size), func(t *testing.T) {
-			body := bytes.Repeat([]byte("x"), size)
+			body := bytes.Repeat([]byte{0xff}, size)
 			var calls atomic.Int32
 			path, _ := snapshotTestServer(t, snapshotTestOwner{
 				snapshot: func(_ context.Context, got []byte) error {
@@ -70,7 +70,7 @@ func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 	}
 	for _, raw := range [][]byte{
 		frame(MaximumSnapshotBytes+1, nil), frame(1, nil), frame(0, []byte("extra")),
-		frame(1, []byte{0xff}), []byte(snapshotRequest + "short"),
+		[]byte(snapshotRequest + "short"),
 	} {
 		socket, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
 		if err != nil {
@@ -139,7 +139,6 @@ func TestSnapshotClientRejectsInvalidInputAndWrongSuccess(t *testing.T) {
 		body []byte
 	}{
 		{"nil-context", nil, nil},
-		{"invalid-utf8", t.Context(), []byte{0xff}},
 		{"oversized", t.Context(), make([]byte, MaximumSnapshotBytes+1)},
 	} {
 		t.Run(invalid.name, func(t *testing.T) {

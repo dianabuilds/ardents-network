@@ -805,7 +805,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	if err != nil {
 		t.Fatal(err)
 	}
-	readerContract, err := readerOperation.BindStreamContract(512, (4<<20)+13)
+	readerContract, err := readerOperation.BindStreamContract(4<<20, 4<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1214,7 +1214,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	if smoke != nil {
 		transferred, result, recoveryStarted, err = deliverReaderAfterAcceptedRequestLoss(t, ctx, cancel, readerOperation, readerContract, stream, acceptedObserved, smoke, loseOriginal)
 	} else if timing == "response" || refresh {
-		transferred, result, err = deliverReaderAfterResponseLoss(t, ctx, cancel, readerOperation, readerContract, stream, len(snapshot)+13, loseOriginal)
+		transferred, result, err = deliverReaderAfterResponseLoss(t, ctx, cancel, readerOperation, readerContract, stream, len(snapshot), loseOriginal)
 	} else if timing == "terminal-body" || controlGate != nil {
 		type readerReturn struct {
 			transferred bool

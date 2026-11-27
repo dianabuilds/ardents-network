@@ -196,7 +196,7 @@ func TestByteStreamIPCPreservesPayloadLargerThanOneFrame(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	stream, err := connection.Dial(ctx, path, connection.Request{
-		Application: connection.ByteStream, Destination: connection.TargetLink, Value: "all-byte-conformance",
+		Destination: connection.TargetLink, Value: "all-byte-conformance",
 	})
 	if err != nil {
 		t.Fatal(err)

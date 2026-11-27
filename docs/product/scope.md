@@ -129,7 +129,8 @@ additional C0 implementation slice or a stronger claim for existing bytes.
 [closed Service workload](protected-service-workload.md) with confidential
 control and admission, Target Links and confined Ubuntu workers.
 [ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
-adds the bidirectional Application byte-stream profile alongside documents.
+is superseded by [ADR-0134](../adr/0134-use-one-application-byte-stream.md):
+all files use one bidirectional Application byte stream.
 
 ## C0 Closed Alpha readiness profile
 
@@ -250,7 +251,7 @@ The Network audit candidate is the headless maintained product surface:
 
 - the participant and infrastructure command `ardents`, the offline
   `ardents-custody` command and the signed systemd Application worker for the
-  document and byte-stream profiles;
+  file and interactive byte-stream operations;
 - Network State and Source, Admission, Hosting, Entry, Route and Carrier,
   Node duties, Endpoint, Service Publication, Connection, Instance and
   Reachability, Enrollment, Release, Custody and process resource protection;
@@ -280,11 +281,9 @@ to the selected GitHub ledger. An audit does not qualify public operation.
 ## C0 Application Interface
 
 The local [Connection Interface](../technical/endpoint-service-runtime.md#ownership)
-owns the AAI3 document and AAI4 bidirectional byte-stream requests in
-`internal/application/connection`. The selected Endpoint protects both
-profiles under the same authority and confinement rules. The authenticated
-Service Instance confirms the requested profile before payload effects, and
-Connection continuity retains that binding.
+owns the AAI4 bidirectional byte-stream requests for all content in
+`internal/application/connection`. The Endpoint applies the same authority and confinement rules to all bytes.
+The authenticated Service context and Connection continuity have no content-type selector.
 
 The separately authorized v1 Administration Interface in
 `internal/application/administration` owns publication and withdrawal and the

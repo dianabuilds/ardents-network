@@ -7,7 +7,6 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
-	"unicode/utf8"
 )
 
 const workerCredit = 64 << 10
@@ -129,8 +128,7 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 		}
 		stream := &workerStream{id: frame.id, receiveCredit: workerCredit, sendCredit: workerCredit}
 		if owner.initial.mode == ReaderWorker {
-			stream.output = make([]byte, requestBytes)
-			copy(stream.output, "ARDTXT01\x01")
+			stream.output = nil
 			stream.ready = true
 		}
 		owner.streams[frame.id] = stream
@@ -151,9 +149,9 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 		if stream.rejected {
 			return false, nil
 		}
-		maximum := requestBytes
+		maximum := 0
 		if owner.initial.mode == ReaderWorker {
-			maximum = MaximumBytes + 13
+			maximum = MaximumBytes
 		}
 		if len(stream.input)+len(frame.body) > maximum {
 			if owner.initial.mode == PublisherWorker {
@@ -176,13 +174,11 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 		}
 		stream.receivedEOF = true
 		if owner.initial.mode == PublisherWorker {
-			if stream.rejected || !validDocumentRequest(stream.input) {
+			if stream.rejected || len(stream.input) != 0 {
 				stream.rejected = true
 				stream.input = nil
 				return false, nil
 			}
-			header := documentResponseHeader(len(owner.initial.snapshot))
-			stream.header = header[:]
 			stream.output = owner.initial.snapshot
 			stream.input = nil
 			stream.ready = true
@@ -218,16 +214,13 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 }
 
 func (owner *workerMultiplexer) prepareResult(response []byte) error {
-	if len(response) < 13 || string(response[:8]) != magic {
-		return errors.New("document reader response is invalid")
+	if len(response) > MaximumBytes {
+		return errors.New("file response exceeds its bound")
 	}
-	length := binary.BigEndian.Uint32(response[9:13])
-	if response[8] > 1 || length > MaximumBytes || len(response) != 13+int(length) || (response[8] == 1 && length != 0) || !utf8.Valid(response[13:]) {
-		return errors.New("document reader response is invalid")
-	}
-	body := response[13:]
+	length := uint32(len(response))
+	body := response
 	header := make([]byte, 5)
-	header[0] = response[8]
+	header[0] = 0
 	binary.BigEndian.PutUint32(header[1:], length)
 	owner.streams[2] = &workerStream{id: 2, header: header, output: body, ready: true, sendCredit: workerCredit}
 	owner.order = append(owner.order, 2)

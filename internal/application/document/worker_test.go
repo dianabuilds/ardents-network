@@ -89,11 +89,12 @@ func readWorkerWire(t *testing.T, peer net.Conn) workerWireFrame {
 func TestPublisherWorkerSharesSnapshotAcrossIndependentCreditWindows(t *testing.T) {
 	document := bytes.Repeat([]byte("abcdefgh"), 20<<10)
 	peer, _ := startDocumentWorker(t, documentapp.PublisherWorker, document)
-	request := make([]byte, 512)
-	copy(request, "ARDTXT01\x01")
+	var request []byte
 	for _, id := range []uint32{1, 3} {
 		writeWorkerWire(t, peer, 1, id, nil)
-		writeWorkerWire(t, peer, 2, id, request)
+		if len(request) > 0 {
+			writeWorkerWire(t, peer, 2, id, request)
+		}
 		writeWorkerWire(t, peer, 4, id, nil)
 	}
 	responses := map[uint32][]byte{1: nil, 3: nil}
@@ -120,7 +121,7 @@ func TestPublisherWorkerSharesSnapshotAcrossIndependentCreditWindows(t *testing.
 		}
 	}
 	for id, response := range responses {
-		if len(response) != 13+len(document) || string(response[:8]) != "ARDTXT01" || response[8] != 0 || !bytes.Equal(response[13:], document) {
+		if !bytes.Equal(response, document) {
 			t.Fatalf("stream %d returned different snapshot", id)
 		}
 	}
@@ -129,12 +130,11 @@ func TestPublisherWorkerSharesSnapshotAcrossIndependentCreditWindows(t *testing.
 func TestReaderWorkerWaitsForTerminalBeforeResult(t *testing.T) {
 	peer, done := startDocumentWorker(t, documentapp.ReaderWorker, nil)
 	writeWorkerWire(t, peer, 1, 1, nil)
-	request := readWorkerWire(t, peer)
 	end := readWorkerWire(t, peer)
-	if request.kind != 2 || request.id != 1 || len(request.body) != 512 || string(request.body[:9]) != "ARDTXT01\x01" || end.kind != 4 || end.id != 1 {
-		t.Fatal("reader did not emit one bounded request")
+	if end.kind != 4 || end.id != 1 {
+		t.Fatal("reader did not close its sending direction")
 	}
-	writeWorkerWire(t, peer, 2, 1, []byte("ARDTXT01\x00\x00\x00\x00\x05hello"))
+	writeWorkerWire(t, peer, 2, 1, []byte("hello"))
 	// Consume the replenishment before EOF, then prove EOF is not a result.
 	credit := readWorkerWire(t, peer)
 	if credit.kind != 3 {
@@ -191,10 +191,11 @@ func TestPublisherRejectsOnlyMalformedDocumentStream(t *testing.T) {
 		t.Run(fmt.Sprint(size), func(t *testing.T) {
 			document := bytes.Repeat([]byte("a"), 160<<10)
 			peer, _ := startDocumentWorker(t, documentapp.PublisherWorker, document)
-			request := make([]byte, 512)
-			copy(request, "ARDTXT01\x01")
+			var request []byte
 			writeWorkerWire(t, peer, 1, 1, nil)
-			writeWorkerWire(t, peer, 2, 1, request)
+			if len(request) > 0 {
+				writeWorkerWire(t, peer, 2, 1, request)
+			}
 			writeWorkerWire(t, peer, 4, 1, nil)
 			writeWorkerWire(t, peer, 1, 3, nil)
 			writeWorkerWire(t, peer, 2, 3, bytes.Repeat([]byte("x"), size))
@@ -230,7 +231,7 @@ func TestPublisherRejectsOnlyMalformedDocumentStream(t *testing.T) {
 					t.Fatalf("honest stream terminated: %+v", frame)
 				}
 			}
-			if len(response) != 13+len(document) || !bytes.Equal(response[13:], document) {
+			if !bytes.Equal(response, document) {
 				t.Fatal("malformed neighbor interrupted the honest document")
 			}
 		})

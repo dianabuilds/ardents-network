@@ -19,7 +19,7 @@ func ConnectLocalStream(ctx context.Context, socket, linkFile string) error {
 	}
 	return runConsoleStream(ctx, "local stream admission failed", func() (Client, error) {
 		return Dial(ctx, socket, Request{
-			Application: ByteStream, Destination: TargetLink, Value: link,
+			Destination: TargetLink, Value: link,
 		})
 	})
 }

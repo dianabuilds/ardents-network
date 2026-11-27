@@ -35,6 +35,7 @@ type waitingStream struct {
 	done     chan connection.Outcome
 	once     sync.Once
 	closeErr error
+	terminal connection.OutcomeClass
 }
 
 func (stream *waitingStream) Read([]byte) (int, error)        { <-stream.closed; return 0, io.EOF }
@@ -44,7 +45,11 @@ func (stream *waitingStream) Done() <-chan connection.Outcome { return stream.do
 func (stream *waitingStream) Close() error {
 	stream.once.Do(func() {
 		close(stream.closed)
-		stream.done <- connection.Outcome{Class: connection.LocalCancellation}
+		class := stream.terminal
+		if class == "" {
+			class = connection.LocalCancellation
+		}
+		stream.done <- connection.Outcome{Class: class}
 		close(stream.done)
 	})
 	return stream.closeErr
@@ -189,7 +194,7 @@ func TestDialPreservesRefusedSetupOutcome(t *testing.T) {
 
 func TestServerRefusesCleanTerminalWhenApplicationCleanupFails(t *testing.T) {
 	failure := errors.New("cleanup failed")
-	stream := &waitingStream{closed: make(chan struct{}), done: make(chan connection.Outcome, 1), closeErr: failure}
+	stream := &waitingStream{closed: make(chan struct{}), done: make(chan connection.Outcome, 1), closeErr: failure, terminal: connection.CleanClose}
 	owner := &waitingOwner{entered: make(chan context.Context, 1), stream: stream}
 	path := shortSocketPath(t)
 	server, err := connection.Listen(path, owner)

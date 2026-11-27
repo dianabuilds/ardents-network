@@ -3,8 +3,8 @@
 package document_test
 
 import (
+	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"io"
 	"sync"
@@ -50,10 +50,7 @@ func (peer *setupBlockingDocumentReadPeer) Open(ctx context.Context, request con
 }
 
 func documentResponse(body []byte) []byte {
-	response := make([]byte, 13, 13+len(body))
-	copy(response, "ARDTXT01")
-	binary.BigEndian.PutUint32(response[9:], uint32(len(body)))
-	return append(response, body...)
+	return bytes.Clone(body)
 }
 
 func (peer *documentReadPeer) Open(ctx context.Context, request connection.Request) (connection.Stream, error) {
@@ -74,12 +71,7 @@ func (peer *documentReadPeer) Open(ctx context.Context, request connection.Reque
 		defer close(stream.finished)
 		request, err := io.ReadAll(io.LimitReader(input, 513))
 		peer.requestBytes.Add(int32(len(request)))
-		valid := err == nil && len(request) == 512 && string(request[:9]) == "ARDTXT01\x01"
-		if valid {
-			for _, value := range request[9:] {
-				valid = valid && value == 0
-			}
-		}
+		valid := err == nil && len(request) == 0
 		if !valid {
 			err = errors.New("fixture got invalid or repeated text request")
 		} else {

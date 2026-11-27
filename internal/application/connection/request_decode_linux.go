@@ -15,20 +15,14 @@ func DecodeRequest(raw []byte) (Request, error) {
 	if len(raw) < magicSize+3 {
 		return Request{}, errors.New("local Application Connection request is invalid")
 	}
-	var application Application
-	switch string(raw[:magicSize]) {
-	case localMagic:
-		application = Document
-	case streamMagic:
-		application = ByteStream
-	default:
+	if string(raw[:magicSize]) != localMagic {
 		return Request{}, errors.New("local Application Connection request is invalid")
 	}
 	length := int(binary.BigEndian.Uint16(raw[magicSize+1:]))
 	if length == 0 || length > maximumTarget || len(raw) != magicSize+3+length {
 		return Request{}, errors.New("local Application Connection destination is invalid")
 	}
-	request := Request{Application: application, Destination: DestinationTag(raw[magicSize]), Value: string(raw[magicSize+3:])}
+	request := Request{Destination: DestinationTag(raw[magicSize]), Value: string(raw[magicSize+3:])}
 	if err := validRequest(request); err != nil {
 		return Request{}, err
 	}
@@ -40,7 +34,7 @@ func readRequest(reader io.Reader) (Request, error) {
 	if _, err := io.ReadFull(reader, header[:]); err != nil {
 		return Request{}, errors.New("local Application request is invalid")
 	}
-	if magic := string(header[:4]); magic != localMagic && magic != streamMagic {
+	if magic := string(header[:4]); magic != localMagic {
 		return Request{}, errors.New("local Application request is invalid")
 	}
 	length := int(binary.BigEndian.Uint16(header[5:]))

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"unicode/utf8"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
@@ -137,13 +136,11 @@ func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, releas
 }
 
 type readerConnectionState struct {
-	request         [requestBytes]byte
 	io              *readerConnectionIO
 	sendCredit      uint32
 	receiveCredit   uint32
 	resultCredit    uint32
 	serviceBytes    uint32
-	requestBytes    uint32
 	readOutstanding bool
 	serviceEOF      bool
 	remoteClean     bool
@@ -162,7 +159,7 @@ func (state *readerConnectionState) fromService(event readerServiceEvent) error 
 	}
 	if len(event.body) > 0 {
 		size := uint32(len(event.body))
-		if state.serviceEOF || size > state.sendCredit || size > MaximumBytes+13-state.serviceBytes {
+		if state.serviceEOF || size > state.sendCredit || size > MaximumBytes-state.serviceBytes {
 			return errors.New("document Service response exceeds its bound")
 		}
 		state.readOutstanding = false
@@ -199,13 +196,7 @@ func (state *readerConnectionState) fromWorker(frame workerFrame) (bool, error) 
 	}
 	switch frame.kind {
 	case 2:
-		size := uint32(len(frame.body))
-		if state.requestEOF || size > state.receiveCredit || size > requestBytes-state.requestBytes {
-			return false, errors.New("document worker request exceeds its bound")
-		}
-		state.receiveCredit -= size
-		copy(state.request[state.requestBytes:], frame.body)
-		state.requestBytes += size
+		return false, errors.New("file reader cannot send payload")
 	case 3:
 		credit := binary.BigEndian.Uint32(frame.body)
 		if credit == 0 || credit > workerCredit || state.sendCredit > workerCredit-credit {
@@ -213,17 +204,10 @@ func (state *readerConnectionState) fromWorker(frame workerFrame) (bool, error) 
 		}
 		state.sendCredit += credit
 	case 4:
-		if state.requestEOF || state.requestBytes != requestBytes || !validDocumentRequest(state.request[:]) {
+		if state.requestEOF {
 			return false, errors.New("document worker request EOF is invalid")
 		}
 		state.requestEOF = true
-		// The fixed request fits in 512 bytes. Queue it only after exact EOF;
-		// arbitrarily fragmented BYTES cannot fill mutually dependent I/O queues.
-		select {
-		case state.io.writes <- workerFrame{kind: 2, id: 1, body: state.request[:]}:
-		case <-state.io.ctx.Done():
-			return false, state.io.ctx.Err()
-		}
 		select {
 		case state.io.writes <- frame:
 		case <-state.io.ctx.Done():
@@ -265,7 +249,7 @@ func (state *readerConnectionState) fromResult(frame workerFrame) (bool, error) 
 		}
 		state.resultCredit += size
 	case 4:
-		if !state.resultAnnounced || uint32(len(state.result)) != state.resultLength || !utf8.Valid(state.result) {
+		if !state.resultAnnounced || uint32(len(state.result)) != state.resultLength {
 			return false, errors.New("document worker result is incomplete or invalid")
 		}
 		return true, nil

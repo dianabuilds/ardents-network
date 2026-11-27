@@ -33,7 +33,7 @@ func awaitTransferredReader(ctx context.Context, worker io.ReadWriteCloser, inco
 func TestRetainedReaderResultKeepsOriginalStreamUntilRelease(t *testing.T) {
 	worker, done := startDocumentWorker(t, document.ReaderWorker, nil)
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
-	stream := &responseStream{input: bytes.NewReader([]byte("ARDTXT01\x00\x00\x00\x00\x02ok")), done: make(chan connection.Outcome, 1)}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
 	stream.done <- connection.Outcome{Class: connection.CleanClose}
 	close(stream.done)
 	incoming := make(chan connection.Stream, 1)
@@ -68,7 +68,7 @@ func TestRetainedReaderResultKeepsOriginalStreamUntilRelease(t *testing.T) {
 	close(release)
 	err := <-completed
 	waited = true
-	if err != nil || !stream.closed || !stream.inputClosed || stream.request.Len() != 512 {
+	if err != nil || !stream.closed || !stream.inputClosed || stream.request.Len() != 0 {
 		t.Fatal("release lost original stream completion", err)
 	}
 }
@@ -79,7 +79,7 @@ func TestInitializedReaderWaitsForSingleStreamWithSameProtocolReader(t *testing.
 	worker, done := startDocumentWorker(t, document.ReaderWorker, nil)
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
-	stream := &responseStream{input: bytes.NewReader([]byte("ARDTXT01\x00\x00\x00\x00\x02ok")), done: make(chan connection.Outcome, 1)}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
 	stream.done <- connection.Outcome{Class: connection.CleanClose}
 	close(stream.done)
 	incoming := make(chan connection.Stream)
@@ -100,7 +100,7 @@ func TestInitializedReaderWaitsForSingleStreamWithSameProtocolReader(t *testing.
 		t.Fatal("initialized reader failed to accept its one stream")
 	}
 	completed := <-result
-	if completed.err != nil || string(completed.body) != "ok" || !stream.closed || !stream.inputClosed || stream.request.Len() != 512 {
+	if completed.err != nil || string(completed.body) != "ok" || !stream.closed || !stream.inputClosed || stream.request.Len() != 0 {
 		t.Fatal("single-reader handoff lost request/result or join", completed.err)
 	}
 	select {

@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"unicode/utf8"
 )
 
 // InitializeWorker implements the Endpoint side of the fixed local exchange.
@@ -17,7 +16,7 @@ import (
 func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode, nonce [32]byte, snapshot []byte) (resultErr error) {
 	if ctx == nil || attachment == nil || nonce == [32]byte{} ||
 		(mode != ReaderWorker && mode != PublisherWorker && mode != ByteStreamWorker) || len(snapshot) > MaximumBytes ||
-		!utf8.Valid(snapshot) || mode != PublisherWorker && len(snapshot) != 0 {
+		mode != PublisherWorker && len(snapshot) != 0 {
 		return errors.New("document worker initialization is invalid")
 	}
 	if ctx.Err() != nil {

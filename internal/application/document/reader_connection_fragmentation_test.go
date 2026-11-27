@@ -49,6 +49,9 @@ func (attachment *fragmentedRequestAttachment) Write(body []byte) (int, error) {
 	}
 	if len(attachment.pending) == 9+int(length) {
 		frame := attachment.pending
+		if attachment.alterPadding && frame[0] == 4 && binary.BigEndian.Uint32(frame[1:5]) == 1 {
+			frame = []byte{2, 0, 0, 0, 1, 0, 0, 0, 1, 1}
+		}
 		if frame[0] == 2 && binary.BigEndian.Uint32(frame[1:5]) == 1 {
 			var fragment [10]byte
 			fragment[0] = 2
@@ -90,11 +93,11 @@ func TestReaderWorkerRequestMayUseOneByteFramesWithoutQueueDeadlock(t *testing.T
 	if err := document.InitializeWorker(ctx, endpoint, document.ReaderWorker, [32]byte{1}, nil); err != nil {
 		t.Fatal(err)
 	}
-	stream := &responseStream{input: bytes.NewReader([]byte("ARDTXT01\x00\x00\x00\x00\x02ok")), done: make(chan connection.Outcome, 1)}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
 	stream.done <- connection.Outcome{Class: connection.CleanClose}
 	close(stream.done)
 	body, err := readTransferredReader(ctx, endpoint, stream)
-	if err != nil || string(body) != "ok" || stream.request.Len() != 512 || !stream.inputClosed || !stream.closed {
+	if err != nil || string(body) != "ok" || stream.request.Len() != 0 || !stream.inputClosed || !stream.closed {
 		t.Fatalf("fragmented exchange: %q %v request=%d", body, err, stream.request.Len())
 	}
 }
@@ -118,7 +121,7 @@ func TestReaderWorkerMalformedRequestNeverReachesService(t *testing.T) {
 	if err := document.InitializeWorker(ctx, endpoint, document.ReaderWorker, [32]byte{1}, nil); err != nil {
 		t.Fatal(err)
 	}
-	stream := &responseStream{input: bytes.NewReader([]byte("ARDTXT01\x00\x00\x00\x00\x02ok")), done: make(chan connection.Outcome, 1)}
+	stream := &responseStream{input: bytes.NewReader([]byte("ok")), done: make(chan connection.Outcome, 1)}
 	stream.done <- connection.Outcome{Class: connection.CleanClose}
 	close(stream.done)
 	body, err := readTransferredReader(ctx, endpoint, stream)

@@ -745,8 +745,7 @@
           "internal/application/document.sendWorkerBytes",
           "internal/domain/connection.originalAttachmentFailure.Error",
           "internal/domain/connection.originalAttachmentFailure.Unwrap",
-          "internal/domain/connection.recoveryFailure",
-          "internal/domain/connection/wire.ProfileForOperation"
+          "internal/domain/connection.recoveryFailure"
         ],
         "classification": "portable byte-stream protocol with Ubuntu-only protected composition",
         "rationale": "The fixed worker/application exchange and the authenticated profile binding are used by the real installed Linux Participant. Portable component tests still exercise the buffer, framing and transcript mechanisms. The Windows Administration adapter refuses before any worker or stream effect, and the installed Connection handshake is Linux-only.",
@@ -886,8 +885,6 @@
       {
         "symbols": [
           "internal/domain/endpoint/publisher.DocumentContract",
-          "internal/domain/endpoint/reader.checkedOutput.Write",
-          "internal/domain/endpoint/reader.newResultStream",
           "internal/domain/endpoint/reader.resultStream.Close",
           "internal/domain/endpoint/reader.resultStream.CloseInput",
           "internal/domain/endpoint/reader.resultStream.Done",
@@ -895,7 +892,7 @@
           "internal/domain/endpoint/reader.resultStream.Write"
         ],
         "classification": "P1-B batch 3 de-tagged next unlocked pure leaves with Linux-native genuine consumers (#794, #691)",
-        "rationale": "These exact functions were accidentally Linux-bound pure Go whose composed symbols are already portable: the Publisher fixed document stream contract (contract.go, composes Operation.BindStreamContract/document.MaximumBytes), and the Reader local Text result projection (result.go, composes application/connection.Outcome and application/document.NewSnapshot over io.Pipe). Batch 3 dropped their Linux build constraints after per-file purity verification at origin/dev: each adds no native mechanism. Their genuine production consumers remain Linux- or Unix-family-tagged (publisher/opening_unix.go for DocumentContract, Linux and macOS after #883; reader/reader_unix.go for newResultStream/resultStream (Unix-family, linux || darwin after #885), itself behind the unchanged !linux LaunchReader refusal), so they are production-dead on windows-amd64 only. Portable behavior tests execute on the windows-latest/macos-latest lane and reach the Reader projection (result_test.go) so it is production-dead but not test-dead; DocumentContract has no portable test (their consumers construct a live Operation/RuntimeView only beside the Linux composition) and carry a separate reviewed test_dead allowance. The native worker launch seam stays Linux-tagged with its unchanged !linux typed refusal (reader reader_worker_other.go); the publisher opening_other.go/snapshot_other.go and session route_other.go refusals narrow to Windows (!linux && !darwin) after the Unix-family composition ports (#877, #883), and no weaker accepting path is introduced. Linux production reachability is unchanged and the Linux native-tag test analysis remains empty.",
+        "rationale": "DocumentContract binds the original Publisher to the common 4 MiB directional limit. The portable resultStream owns the local duplex pipes and joined outcome, which its portable tests exercise. Production callers for both are Unix-family only. DocumentContract requires a live qualified Operation and has a separate Windows native-tag test allowance.",
         "owner": "Product Owner and Codex; Endpoint, Publisher and Reader owners",
         "retirement": "Remove each exact Windows entry when a selected genuine portable production consumer reaches it (a later dependency-chain batch unlocks the publisher/reader Open compositions after the runtime native worker seam, route/introduction slot-history and route/selection #793 Windows owner-only fix), or when the owning contract is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -2331,12 +2328,9 @@
           "internal/application/streamqualification.RunConnections",
           "internal/application/document.AwaitRetainedWorkerConnection",
           "internal/application/document.InitializeWorker",
-          "internal/application/document.NewSnapshot",
           "internal/application/document.RunWorker",
           "internal/application/document.ServeWorkerConnections",
-          "internal/application/document.Snapshot.Respond",
           "internal/application/document.awaitWorkerConnection",
-          "internal/application/document.documentResponseHeader",
           "internal/application/document.newPublisherConnections",
           "internal/application/document.publisherConnections.advance",
           "internal/application/document.publisherConnections.close",
@@ -2369,7 +2363,6 @@
           "internal/application/document.readerConnectionState.fromService",
           "internal/application/document.readerConnectionState.fromWorker",
           "internal/application/document.startReaderConnectionIO",
-          "internal/application/document.validDocumentRequest",
           "internal/application/document.workerMultiplexer.nextFrame",
           "internal/application/document.workerMultiplexer.prepareResult",
           "internal/application/document.workerMultiplexer.receive",
@@ -2379,7 +2372,7 @@
           "internal/application/document.writeWorkerReadiness"
         ],
         "classification": "Portable Text/Stream protocol codecs behind Linux-only worker and Endpoint composition (application/document + application/streamqualification)",
-        "rationale": "P1-04/AR-P-01 repair (#691 T10): the pure INIT/READY, frame, snapshot-exchange, reader/Publisher bridge and worker-multiplexer codecs moved from accidental linux build tags to portable files per ADR-0129 decision 2, so the portable deterministic lane compiles and executes their behavior tests on Windows and macOS. Their production consumers remain the selected Linux-only composition: the installed text worker entrypoint reaches RunWorker only through the Linux inherited-descriptor mechanism (the unsupported-platform adapter refuses before it), and InitializeWorker/ServeWorkerConnections/AwaitRetainedWorkerConnection/NewSnapshot/Respond plus the Stream qualification Endpoint bridge are reached only by Linux execution/runtime and Endpoint owners. Windows command adapters refuse before runtime acquisition, so these symbols are production-dead on windows-amd64 only; the native-tag Windows test analysis reaches them through the now-portable behavior tests. The genuine Linux mechanism (worker_process_linux.go) keeps its linux tag and explicit !linux typed refusal; the snapshot import (snapshot_file_unix.go) is Unix-family through the shared durablefile inspection port (#850) with a !linux && !darwin typed refusal. Linux production reachability is unchanged and required.",
+        "rationale": "P1-04/AR-P-01 repair (#691 T10): the pure INIT/READY, frame, reader/Publisher bridge and worker-multiplexer codecs moved from accidental linux build tags to portable files per ADR-0129 decision 2, so the portable deterministic lane compiles and executes their behavior tests on Windows and macOS. Their production consumers remain the selected Linux-only composition: the installed text worker entrypoint reaches RunWorker only through the Linux inherited-descriptor mechanism (the unsupported-platform adapter refuses before it), and InitializeWorker/ServeWorkerConnections/AwaitRetainedWorkerConnection plus the Stream qualification Endpoint bridge are reached only by Linux execution/runtime and Endpoint owners. Windows command adapters refuse before runtime acquisition, so these symbols are production-dead on windows-amd64 only; the native-tag Windows test analysis reaches them through the now-portable behavior tests. The genuine Linux mechanism (worker_process_linux.go) keeps its linux tag and explicit !linux typed refusal; the snapshot import (snapshot_file_unix.go) is Unix-family through the shared durablefile inspection port (#850) with a !linux && !darwin typed refusal. Linux production reachability is unchanged and required.",
         "owner": "Product Owner and Codex; Text Application and Stream qualification protocol owners (#691 T10, P1-04/AR-P-01)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows production composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },

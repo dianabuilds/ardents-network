@@ -267,7 +267,7 @@ The local runtime has separate Modules and Interfaces:
 
 | Module | Interface responsibility | Implementation hidden from callers |
 |---|---|---|
-| internal/application/connection | Carry a typed Target-Link request for the AAI3 document profile or AAI4 byte-stream profile. Refuse reserved Name requests and join terminal and cancellation cleanup. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
+| internal/application/connection | Carry a typed Target-Link request for the AAI4 byte-stream interface for all content. Refuse reserved Name requests and join terminal and cancellation cleanup. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/administration | Carry separately authorized document publication and withdrawal requests. The fixed byte-stream publication request upgrades the local attachment to the ordered stream grammar. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
 | internal/domain/endpoint | Compose the platform-led protected participant over the Connection and Administration interfaces, with joined shutdown of its role owners. | Execution session admission, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
@@ -278,16 +278,14 @@ cannot include Route, Credential, signer, or Application facts, and an outbound
 connection cannot supply a Publisher binding. This keeps publication ownership, local admission, Route
 attachment, and logical-stream recovery out of one mutable request bag.
 
-The AAI3 document caller supplies one explicit Target Link and one fixed
-document request. AAI4 selects the bidirectional byte-stream profile for the
-same explicit destination form. Endpoint retains the local Connection
+The AAI4 caller supplies one explicit Target Link and exchanges arbitrary
+bytes over the sole bidirectional stream. Endpoint retains the local Connection
 principal, authenticated State, Entry, Target authentication, Route inputs,
 the closed token and durable attempt journal, worker qualification, and Broker
 admission input. After Target-Link parsing and Network binding, Endpoint
 activates and consumes the Connection capability before it reads current State, touches Entry
 or private reachability, acquires a closed token, opens Route, or
-sends Introduction. The authenticated Service Instance confirms the selected
-Application profile before admitting payload. The byte-stream profile allows
+sends Introduction. The authenticated Service Instance authenticates the Connection before admitting payload. The stream allows
 up to 4 MiB per direction, supports independent directional EOF, and reports
 success only after authenticated terminal completion and joined cleanup.
 Administration separately authorizes the Publisher's local attachment. A
@@ -313,7 +311,7 @@ protocol does not transmit the caller's context. Other Administration operations
 bootstrap and role bounds remain unchanged.
 `Withdraw` cancels and joins the retained publication. The Connection Interface cannot invoke either operation.
 
-Before attachment handoff, the AAI3 server closes any Stream returned after
+Before attachment handoff, the AAI4 server closes any Stream returned after
 setup cancellation or failure, including a deadline-reset failure. It joins
 that cleanup error with the local setup error and retains the first non-nil
 Stream cleanup failure across client turnover for its joined `Server.Close`
@@ -321,7 +319,7 @@ result. Raw errors stay local; bounded refusal and cancellation precedence
 remain unchanged. Endpoint `readResult.Close` cancels and joins its Service/
 worker work before returning its retained result.
 
-AAI3 Reader setup and its single exchange share one absolute 60-second bound
+AAI4 Reader setup and its single exchange share one absolute 60-second bound
 from socket acceptance. Request input remains limited to 15 seconds from that
 same acceptance; completing input does not renew the operation deadline. Setup
 and stream reads/writes retain the original bound. The trusted document Reader
@@ -364,7 +362,7 @@ durably marked, with no cached permission or refunded right.
 
 The fixed document Reader has these setup outcomes:
 
-| Observed condition | AAI3 caller result | Command presentation |
+| Observed condition | AAI4 caller result | Command presentation |
 |---|---|---|
 | The caller cancels its `Dial` context or reaches its deadline while setup is pending | Raw `context.Canceled` or `context.DeadlineExceeded`; the local caller context takes precedence | The existing cancellation or timeout diagnostic |
 | Server-side setup returns a delivered `LocalCancellation` or `LocalTimeout` refusal | The same bounded class in `connection.SetupRefusalError` | The existing cancellation or timeout diagnostic |
@@ -426,7 +424,7 @@ The Broker mechanism's isolation observation remains generic/unqualified. Its
 receipt or lease makes no statement about sandboxing, hostile same-user
 applications, process-tree confinement, supported host platforms, or
 Application-level Endpoint Location Privacy. The separately verified installed
-document-profile worker launch establishes its local binding under the selected
+Application worker launch establishes its local binding under the selected
 [confinement profile](application-confinement.md); qualification still requires
 that profile's actual installed evidence. Broker admission alone cannot supply
 that proof or a wider privacy claim.
@@ -589,17 +587,13 @@ Network and Target. Pending, withdrawn, expired or disconnected publications
 return unavailable. The request cannot publish, retry or refresh, and the Link
 is not a promise of future availability. The command joins cancellation of its
 bounded output; ordinary runtime diagnostics do not contain the destination.
-The document Connection owner consumes a fresh local Reader lease, launches the
-installed worker, and completes Service authentication before returning its
-AAI3 stream. It then validates the fixed local request, forwards the single
-Service exchange through the confined worker, and joins worker retirement
-before projecting its bounded RESULT through the local document grammar. This
-projection creates no second remote request. Caller or original-context loss
-interrupts both setup and local result I/O; owner shutdown joins the pending
-read. One retained Reader context admits one read through result completion.
-Local network tests exercise this result projection with explicit qualification
-fixtures. The installed two-Endpoint journey also exercises the actual AAI3
-owner and launcher.
+The Connection owner consumes a fresh local Reader lease, launches the
+installed byte-stream worker and completes Service authentication before
+returning its AAI4 stream. All content uses the same relay and authenticated
+terminal completion. A snapshot receiver closes its unused sending direction.
+Caller or original-context loss interrupts setup and I/O; shutdown joins
+the original operation.
+
 The retired `endpoint headless` selector refuses before reading its former
 plan or opening runtime roots. The process regression checks that refusal and
 preserves the plan and State bytes. The platform-led installed command uses
@@ -609,7 +603,7 @@ shutdown. Caller-supplied Targets or context identifiers confer no authority.
 
 Reader-only component checks do not establish the two-Endpoint installed journey.
 The new canonical `ardents-next endpoint start-installed` continuation exposes
-the separate AAI3 and Administration Interfaces after original startup, signed
+the separate AAI4 and Administration Interfaces after original startup, signed
 State and finite Stock handover. Reader-only continuation opens no Publisher
 owner or Administration listener. Dual-role continuation constructs the real
 snapshot Publisher only on an authorized local request; bodyless Publish refuses.
@@ -696,10 +690,7 @@ deadline grants no extension of the earlier local cutoff; it is not itself an
 integrity failure while both original bounds remain live.
 
 Trusted worker composition also supplies one checked directional byte contract
-before the job can receive a Service stream. The document composition
-retains the existing 512-byte reader request and 4 MiB plus 13-byte framing
-response bounds. The bidirectional byte-stream profile admits 4 MiB in each
-direction. The separate fixed qualification composition retains 64 MiB in each
+before the job can receive a Service stream. Every ordinary Application composition admits 4 MiB in each direction. The separate fixed qualification composition retains 64 MiB in each
 direction. Reader and Publisher derive their opposite directions from that one
 contract. The native Service stream therefore neither imports document
 policy nor inspects qualification job input, and recovery continues the same
@@ -1350,7 +1341,7 @@ New Execution has a selected-snapshot launch seam consumed by
 `execution route-holder` with its explicit `snapshot` input. Stable local file
 import belongs to the document Application; the original qualified Administration invocation owns
 INIT/READY, one exact operation and joined cleanup. Its sole post-READY reader
-uses the bounded document protocol instead of the setup consumer's byte/EOF observer.
+uses the same raw byte stream and EOF as every file transfer.
 No Connection stream is fabricated. The installed lifecycle profile includes
 this snapshot operation, and must run on the selected actual native stand before
 it can establish installed execution evidence. This seam alone supplies no
@@ -1395,184 +1386,27 @@ validating or opening any plan-owned path. The unreachable `RunParticipant`
 composition and its exclusive configuration/event wiring have been removed.
 That startup removal did not retire Administration, which remains selected.
 The separately callable AAI2 Connection was removed only after its own caller
-retirement and AAI3 version-refusal evidence.
+retirement and AAI4 version-refusal evidence.
 
 ## Generic Connection command retirement
 
-| Option | Authorizing consumer and finite workload | Product consequence | Decision |
-|---|---|---|---|
-| Preserve through a generic AAI3 caller | None exists. The selected AAI3 caller is the fixed protected document Reader, not an arbitrary byte application. | Would widen the trusted Interface and confinement contract and make an unsupported generic Application a product surface. | Rejected. |
-| Retire generic `endpoint open` | The command refuses at its adapter before effects. | Removes the file-to-file binary CLI contract while preserving the document profile, Target Links, Administration, and shared native stream semantics. | Selected. |
+The former `endpoint open` command is retired. Current Application connections
+use the sole AAI4 byte stream under ADR-0134. The `stream publish` and
+`stream connect` commands exchange arbitrary bytes through pipes. Snapshot
+publication writes file bytes directly; the text viewer consumes the same stream
+and validates text only for local presentation.
 
-The generic `ardents endpoint open <application-socket> <target-link>
-<input-file> <output-file>` command is retired. AAI3 belongs to the document
-profile. [ADR-0132](../adr/0132-admit-protected-bidirectional-application-streams.md)
-selects the AAI4 profile for the separate `ardents stream` commands, with
-standard input and output and a private local Link file for `connect`.
-
-The command's binary input, concurrent binary output, explicit input
-half-close, terminal-class rendering, and output-file commit are therefore
-retired as a caller contract, not translated. The bounded enforcement point is
-the command adapter: a recognized exact `endpoint open` invocation returns a
-deterministic non-success result before validating or opening either file,
-creating an output, dialing the Application socket, or causing Endpoint,
-Route, or Network work. It selects no alternate command, document request, Target,
-or migration path.
-
-This decision preserves four separate facts. Target Links remain the maintained
-destination input; future protected Service Names require a new scoped design
-under ADR-0113. The
-fixed document AAI3 interface remains selected. Service Administration remains a
-separately authorized Interface. The shared native Service Connection retains
-its directional half-close semantics for selected callers. None of those facts
-is a caller for AAI2, and qualification-only or conformance fixtures cannot
-supply one. After both accepting callers closed, the AAI2 codec/server/client,
-vectors, and exclusive Endpoint adapter were removed. AAI3 now rejects a
-complete AAI2 request before calling its Application owner.
-
-The command adapter now implements that refusal with the stable diagnostic
-`endpoint open is retired`. The former accepting file client and its
-success/cancellation fixtures are absent. A command-level regression uses both
-missing and existing files plus an available local socket to prove the refusal
-precedes file validation or mutation and IPC connection. The separately
-callable Administration client and its behavior test remain unchanged.
-
-The removed AAI2 grammar accepted a non-empty Target Link, opaque frames and a
-typed terminal outcome. Those bytes have no maintained decoder, server, client,
-Endpoint adapter, persisted-state reader, or compatibility promise. The
-Service Connection v3 is a separate network identity and is unaffected by
-AAI2 retirement. `internal/application/administration` separately owns
-only `publish` and `withdraw`; it cannot carry Connection data or silently turn
-a failure into another success state. No Browser client is selected in the
-maintained product.
-
-The Administration client owns its Unix socket from successful dial through the
-closed `publish` or `withdraw` response. Caller cancellation immediately
-interrupts that owned request I/O and returns the caller's cancellation or
-deadline error; a completed response wins only when its cancellation callback
-has already been stopped. This aborts local waiting, not a server operation
-already accepted by the peer: the client never invents an outcome, retry, or
-rollback for Publish or Withdraw.
-
-The Administration `ardents-application-interface-v1` identity remains its own
-contract and is not an AAI2 Connection fallback. The historical Alpha corpus
-triple has no accepting runtime adapter: v1 plans are refused before path
-validation or owner startup, and v2 rejects those fields. Existing retained
-bytes require a separately selected reader, recovery, or migration contract;
-this removal creates none.
-
-### Alpha destination retirement
-
-Under
-[ADR-0088](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md),
-the Alpha Service Link transition is an explicit final refusal, not a grace
-period. Fresh `accept-alpha-corpus` intake now returns its stable retirement
-refusal before parsing arguments or opening, creating, or changing either named
-floor. The former accepting adapter and its floor-mutation authority are
-absent. Under
-[ADR-0110](../adr/0110-retire-aca2-corpus-inspection.md), the independent
-`inspect-alpha-corpus` diagnostic is retired the same way: the exact route
-refuses before parsing arguments or opening any file, root, or floor, and its
-ACA2 production verifier is removed; it never conferred Endpoint authority. Every accepting Alpha destination adapter
-is absent. The maintained Target-Link seam recognizes the exact historical
-`ardents-alpha://` prefix only to return `alpha service link is retired`; it
-does so before Target-Link decoding, a corpus-floor read, resolver call,
-Network or Route work, dial, fallback, or conversion.
-
-The transition neither converts an Alpha Link or old Target nor resets or
-deletes existing corpus floor files.
-[ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
-deleted the retained read-only corpus parser and persistent-floor reader
-outright: those floor bytes are byte-for-byte inert evidence — their serial,
-digest, signed withdrawal, rollback, and conflict facts remain on disk, but
-no maintained code can read, convert, or delete them, and the absence of any
-read path is itself the incompatibility. They do not authorize continued
-Alpha resolution, and no successor reader, migration, or grace contract
-exists.
-
-Endpoint is a composition Module, not a second durable domain owner. It owns
-no Namespace, Network State, Release, Update, Custody, or Route-selection
-state. Route Attachments are already authenticated opaque carriers; Namespace
-and State facts arrive only in the typed inputs required for Connection
-binding.
-
-`Stream.CloseInput` remains an orderly directional operation in the selected
-AAI3 transport and native Service Connection, distinct from `Stream.Close`.
-The local transport preserves it through Endpoint as the authenticated native
-Terminal record. Conversely, only a verified matching remote Terminal gives
-the local Application reader EOF. Either transition leaves the opposite
-direction available for a response, is safe to repeat, and rejects later
-writes in its closed input direction. Cancellation, malformed local input,
-carrier loss, and full close remain abort paths, and neither local nor native
-EOF is semantic success without the one typed terminal outcome.
-
-A locally written Terminal is a directional completion obligation, not proof
-of peer receipt. Under the closed Service Connection v3 grammar selected by
-[ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md), marker `1`
-is a Terminal receipt: it names the same generation and offset and is sent only
-after the peer verifies that Terminal. Marker `2` confirms the peer observed
-that receipt; the receiving endpoint retains recovery ownership until it has
-that matching confirmation. If a replacement Attachment completes Continuity
-before either control record, Service Connection owns replay: it first replays
-any unacknowledged Data at the carried offsets, then emits the same Terminal on
-the new generation. The peer still presents only its first verified Terminal as
-Application EOF. This preserves one logical half-close without reissuing an
-Application operation or inventing EOF on a timer. A headless path that did not
-supply an Attachment opener retains its existing orderly half-close and does
-not enable recovery.
-
-The endpoint that sends marker `2` cannot learn from a finite record whether
-the peer received that final confirmation. After a successful `RunBounded`
-outcome, a recovery-enabled Service Connection therefore retains a bounded
-in-memory post-close tail until the operation Context, authenticated Work
-Safety deadline, or no-new-recovery boundary ends it. That tail owns only the
-already-settled Terminal and receipt-control replay; it accepts no Application
-Data and never presents another Application EOF. Thus the caller's completed
-Application operation is released while a returned peer can still recover the
-missing final control proof. The tail adds neither durable recovery state nor a
-headless recovery path. The Endpoint may publish that completed Application
-outcome before the tail ends, but explicit document stream close cancels and joins
-the native tail, its current Attachment and the owning Introduction exchange
-before releasing the stream owner. TLS may map the admitted Route child's
-authenticated `CLOSE(0)` to transport truncation because Service TLS has no
-second close-notify exchange. The exact child exposes that already decoded
-clean retirement to the document Service adapter; only that witness may end a
-peer's already complete tail without recovery. Raw EOF, local close, refusal,
-truncation without the witness and every other Carrier failure retain the
-bounded recovery path.
-
-Explicit publication withdrawal uses a fresh Service Administration capability
-and returns `unpublished` only for the exact Target/generation after retained
-connections drain; an established connection may therefore finish as `clean
-service connection close` while no later publication acquisition is possible.
-A fresh repeated withdrawal must return `service unavailable`; the publication
-owner rejects acquisition as soon as unpublish begins, before retained leases
-finish draining.
-A non-EOF Publisher Application socket failure and an abrupt Publisher Endpoint
-loss are `abrupt connection loss`, never `service unavailable` or clean close.
-An Application may receive a byte prefix before an abrupt failure. The typed
-terminal outcome remains authoritative for the Connection lifecycle; received
-bytes do not prove that an Application operation completed. Interpretation of
-HTTP status, response completeness, or semantic retry belongs to the external
-Application. Endpoint never substitutes another Target or an Internet path.
-
-The Endpoint contains no Browser presentation or Browser Entry state. The
-former Browser implementation and qualification lanes are retired, and
-[ADR-0091](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
-in-tree Firefox compatibility source; it survives only in Git history in
-accordance with [ADR-0061](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
-and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 ## Verification and related decisions
 
 - Go tests for Broker, Endpoint, Publication, and Service Connection exercise
   the Module Interfaces and failure paths.
-- Document AAI3 Connection and Administration behavior tests exercise
+- Document AAI4 Connection and Administration behavior tests exercise
   framing, typed refusal/outcome, cancellation, and join through their public
   Interfaces. After join each server checks the original socket entry under its
   retained parent. A different entry remains in place and produces a cleanup
   refusal. This assumes a caller-controlled private socket directory.
-  AAI3 rejects the removed AAI2 request before
+  AAI4 rejects the removed AAI2 request before
   Application owner I/O. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
 - [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md) selects the

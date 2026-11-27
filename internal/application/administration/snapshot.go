@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"time"
-	"unicode/utf8"
 )
 
 const (
@@ -27,11 +26,11 @@ type SnapshotPublisher interface {
 	PublishSnapshot(context.Context, []byte) error
 }
 
-// RequestSnapshot publishes one already imported, stable UTF-8 snapshot. The
+// RequestSnapshot publishes one already imported, stable binary snapshot. The
 // caller must keep its bytes unchanged until return. There is no retry or
 // fallback to the bodyless Publish operation.
 func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome, error) {
-	if ctx == nil || len(snapshot) > MaximumSnapshotBytes || !utf8.Valid(snapshot) {
+	if ctx == nil || len(snapshot) > MaximumSnapshotBytes {
 		return "", errors.New("local Service snapshot is invalid")
 	}
 	ctx, cancel := context.WithTimeout(ctx, SnapshotTimeout)
@@ -75,7 +74,7 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 	}
 	body := make([]byte, int(length))
 	defer clear(body)
-	if _, err := io.ReadFull(input, body); err != nil || !utf8.Valid(body) {
+	if _, err := io.ReadFull(input, body); err != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
