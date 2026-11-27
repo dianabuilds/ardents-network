@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/canonicalcursor"
 )
 
@@ -208,7 +209,7 @@ func decodeKeys(d *canonicalcursor.Decoder, profile *Profile) error {
 			return errors.New("closed profile keys are not canonical")
 		}
 		keyID := sha256.Sum256(key.SPKI)
-		if !ValidateTokenSPKI(key.SPKI) || seen[keyID] {
+		if !issuerprofile.ValidateTokenSPKI(key.SPKI) || seen[keyID] {
 			return errors.New("closed profile reuses a token key")
 		}
 		seen[keyID] = true

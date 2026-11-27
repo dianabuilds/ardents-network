@@ -9,6 +9,7 @@ github.com/dianabuilds/ardents-network/internal/diagnostics/timeline
 github.com/dianabuilds/ardents-network/internal/architecture
 github.com/dianabuilds/ardents-network/cmd/ardents-next
 github.com/dianabuilds/ardents-network/internal/domain/admission
+github.com/dianabuilds/ardents-network/internal/domain/admission/console
 
 github.com/dianabuilds/ardents-network/internal/application/document/worker
 github.com/dianabuilds/ardents-network/tests/qualification/worker-lifecycle/stream-worker

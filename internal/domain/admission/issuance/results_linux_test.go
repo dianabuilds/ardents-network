@@ -48,8 +48,8 @@ func resultFixture(t *testing.T, v Inventory, class uint8, count uint16, id byte
 	}
 	copy(permission[164:], ed25519.Sign(authority, append([]byte("ardents-issuance-permission-v1\x00"), permission[:164]...)))
 	spki := v.Keys[class-1].SPKI
-	public, ok := issuerprofile.ParseKey(spki)
-	if !ok {
+	public, err := issuerprofile.ParseKey(spki)
+	if err != nil {
 		t.Fatal("SPKI")
 	}
 	client, e := blindrsa.NewClient(blindrsa.SHA384PSSDeterministic, public)

@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/console"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 )
@@ -29,7 +30,7 @@ func RunLocalHolder(ctx context.Context, root, profile string, network *state.Au
 	}
 	conversation := holder.Session
 	defer func() { code = holder.finishConversation(code, diagnostic) }()
-	return admission.RunConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
+	return console.Run(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
 		return conversation.HandleLocalCommand(ctx, raw, preparation != nil)
 	})
 }

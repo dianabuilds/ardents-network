@@ -133,6 +133,12 @@ step, not evidence that this successor is complete.
 
 ## Implemented ownership boundaries
 
+Admission owns the canonical permission and batch bytes. Holder token
+preparation and finalization consume that batch contract directly. Issuerprofile
+owns the exact public RSA-PSS key grammar and its malformed-key refusal. Network
+uses that public predicate when it decodes a closed profile. The signed State,
+currentness, private issuer keys and irreversible effects retain their own checks.
+
 Stock.Owner owns permission and stock; Attempt exposes copied public requests
 and one terminal completion. The application executes and joins transport.
 The former Host and exchange-operation implementation are removed. Failed

@@ -3,7 +3,7 @@ package admission
 import "testing"
 
 func TestClosedTokenBatchResultsShareFixedPlaintextShape(t *testing.T) {
-	signature := make([]byte, closedTokenBlindElementSize)
+	signature := make([]byte, BlindSignatureSize)
 	signature[0] = 1
 	for _, result := range []ClosedTokenBatchResult{
 		{Status: ClosedTokenIssued, Signatures: [][]byte{signature}},

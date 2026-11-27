@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission/issuerprofile"
 )
 
 // PrepareClosedTokenBatch creates one fresh 1..32-token issuance request.
@@ -20,7 +21,7 @@ func PrepareClosedTokenBatch(config ClosedTokenBatchConfig) (*PendingClosedToken
 	if err != nil {
 		return nil, err
 	}
-	public, err := parseClosedTokenPublicKey(key.SPKI[:])
+	public, err := issuerprofile.ParseKey(key.SPKI[:])
 	if err != nil {
 		return nil, err
 	}
@@ -55,11 +56,11 @@ func PrepareClosedTokenBatch(config ClosedTokenBatchConfig) (*PendingClosedToken
 			return nil, errors.New("prepare closed blind token input")
 		}
 		blinded, blindState, err := client.Blind(rand.Reader, prepared)
-		if err != nil || len(blinded) != closedTokenBlindElementSize || !validClosedTokenElement(blinded, public) {
+		if err != nil || len(blinded) != admission.BlindSignatureSize || !admission.ValidTokenElement(blinded, public) {
 			pending.Discard()
 			return nil, errors.New("blind closed token input")
 		}
-		request := make([]byte, closedTokenRequestSize)
+		request := make([]byte, admission.TokenBatchElementSize)
 		binary.BigEndian.PutUint16(request[:2], closedTokenType)
 		request[2] = keyID[len(keyID)-1]
 		copy(request[3:], blinded)
@@ -67,7 +68,7 @@ func PrepareClosedTokenBatch(config ClosedTokenBatchConfig) (*PendingClosedToken
 		pending.states = append(pending.states, blindState)
 		pending.inputs = append(pending.inputs, input)
 	}
-	signature := ed25519.Sign(config.HolderKey, closedTokenBatchTranscript(pending.request))
+	signature := ed25519.Sign(config.HolderKey, admission.TokenBatchTranscript(pending.request))
 	copy(pending.request.Signature[:], signature)
 	pending.raw, err = admission.EncodeClosedTokenBatch(pending.request)
 	if err != nil {
@@ -89,8 +90,8 @@ func (pending *PendingClosedTokenBatch) Request() []byte {
 // Finalize verifies every returned blind signature and returns RFC 9578
 // token bytes only for a complete issued batch. It always drops the opaque
 // CIRCL State, so a failed finalization cannot be retried after this call.
-func (pending *PendingClosedTokenBatch) Finalize(result ClosedTokenBatchResult) ([][]byte, error) {
-	if pending == nil || result.Status != ClosedTokenIssued || len(pending.states) == 0 || len(result.Signatures) != len(pending.states) {
+func (pending *PendingClosedTokenBatch) Finalize(result admission.ClosedTokenBatchResult) ([][]byte, error) {
+	if pending == nil || result.Status != admission.ClosedTokenIssued || len(pending.states) == 0 || len(result.Signatures) != len(pending.states) {
 		if pending != nil {
 			pending.Discard()
 		}
@@ -98,7 +99,7 @@ func (pending *PendingClosedTokenBatch) Finalize(result ClosedTokenBatchResult) 
 	}
 	tokens := make([][]byte, 0, len(pending.states))
 	for index, signature := range result.Signatures {
-		if len(signature) != closedTokenBlindElementSize {
+		if len(signature) != admission.BlindSignatureSize {
 			pending.Discard()
 			return nil, errors.New("closed token blind signature is invalid")
 		}
@@ -149,7 +150,7 @@ func (pending *PendingClosedTokenBatch) Discard() {
 }
 
 func validateClosedTokenBatchConfig(config ClosedTokenBatchConfig) (admission.TokenKey, error) {
-	if len(config.Contexts) < 1 || len(config.Contexts) > MaximumBatchTokens || len(config.HolderKey) != ed25519.PrivateKeySize ||
+	if len(config.Contexts) < 1 || len(config.Contexts) > admission.MaximumBatchTokens || len(config.HolderKey) != ed25519.PrivateKeySize ||
 		config.Now.IsZero() || config.Now != config.Now.UTC() || config.Profile.IssuanceAuthorityKey == [32]byte{} ||
 		config.Profile.IssuerDutyGeneration == 0 || int(config.Profile.TokenKeyCount) > len(config.Profile.TokenKeys) {
 		return admission.TokenKey{}, errors.New("closed token batch configuration is invalid")
@@ -176,7 +177,7 @@ func validateClosedTokenBatchConfig(config ClosedTokenBatchConfig) (admission.To
 			if found {
 				return admission.TokenKey{}, errors.New("closed token key is ambiguous")
 			}
-			if _, err := parseClosedTokenPublicKey(key.SPKI[:]); err != nil {
+			if _, err := issuerprofile.ParseKey(key.SPKI[:]); err != nil {
 				return admission.TokenKey{}, err
 			}
 			selected, found = key, true
@@ -202,7 +203,7 @@ type ClosedTokenBatchConfig struct {
 // current Endpoint process. It must be discarded after a failed exchange or
 // process loss; callers cannot serialize or recreate it.
 type PendingClosedTokenBatch struct {
-	request ClosedTokenBatchRequest
+	request admission.ClosedTokenBatchRequest
 	raw     []byte
 	client  blindrsa.Client
 	states  []blindrsa.State

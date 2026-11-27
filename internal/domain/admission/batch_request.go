@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-
 	"math/big"
 	"time"
 
@@ -15,9 +14,11 @@ import (
 )
 
 const (
-	closedTokenBatchMagic       = "ARDIBR01"
-	closedTokenRequestSize      = 259
-	closedTokenBlindElementSize = 256
+	closedTokenBatchMagic = "ARDIBR01"
+	// BlindSignatureSize is the selected RSA blind-signature width in bytes.
+	BlindSignatureSize = 256
+	// TokenBatchElementSize includes the two-byte type, key hint and blinded value.
+	TokenBatchElementSize       = 2 + 1 + BlindSignatureSize
 	MaximumBatchTokens          = 32
 	maximumClosedTokenBatchSize = 16 << 10
 )
@@ -87,7 +88,7 @@ func UnpadClosedTokenBatch(raw []byte) ([]byte, error) {
 
 func closedTokenBatchSize(raw []byte) (int, error) {
 	base := TokenBatchBaseSize()
-	if len(raw) < base+closedTokenRequestSize || len(raw) > maximumClosedTokenBatchSize || string(raw[:8]) != closedTokenBatchMagic {
+	if len(raw) < base+TokenBatchElementSize || len(raw) > maximumClosedTokenBatchSize || string(raw[:8]) != closedTokenBatchMagic {
 		return 0, errors.New("closed token batch framing is invalid")
 	}
 	countOffset := base - ed25519.SignatureSize - 2
@@ -95,7 +96,7 @@ func closedTokenBatchSize(raw []byte) (int, error) {
 	if count < 1 || count > MaximumBatchTokens {
 		return 0, errors.New("closed token batch count is invalid")
 	}
-	return base + count*closedTokenRequestSize, nil
+	return base + count*TokenBatchElementSize, nil
 }
 
 // InspectClosedTokenBatch preserves permission refusal categories while sharing
@@ -142,13 +143,13 @@ func decodeBatch(raw []byte) (ClosedTokenBatchRequest, error) {
 	offset += len(request.SPKI)
 	count := int(binary.BigEndian.Uint16(raw[offset : offset+2]))
 	offset += 2
-	if count < 1 || count > MaximumBatchTokens || offset+count*closedTokenRequestSize+ed25519.SignatureSize != len(raw) {
+	if count < 1 || count > MaximumBatchTokens || offset+count*TokenBatchElementSize+ed25519.SignatureSize != len(raw) {
 		return ClosedTokenBatchRequest{}, errors.New("closed token batch count is invalid")
 	}
 	request.BlindedRequests = make([][]byte, 0, count)
 	for range count {
-		request.BlindedRequests = append(request.BlindedRequests, append([]byte(nil), raw[offset:offset+closedTokenRequestSize]...))
-		offset += closedTokenRequestSize
+		request.BlindedRequests = append(request.BlindedRequests, append([]byte(nil), raw[offset:offset+TokenBatchElementSize]...))
+		offset += TokenBatchElementSize
 	}
 	copy(request.Signature[:], raw[offset:])
 	return request, nil
@@ -163,13 +164,13 @@ func ValidateTokenBatchRequest(request ClosedTokenBatchRequest) error {
 		request.Permission.Maxima[request.Class-1] < uint32(len(request.BlindedRequests)) {
 		return errors.New("closed token batch facts are invalid")
 	}
-	public, err := parseBatchPublicKey(request.SPKI[:])
+	public, err := issuerprofile.ParseKey(request.SPKI[:])
 	if err != nil {
 		return err
 	}
 	keyID := sha256.Sum256(request.SPKI[:])
 	for _, blinded := range request.BlindedRequests {
-		if len(blinded) != closedTokenRequestSize || binary.BigEndian.Uint16(blinded[:2]) != 2 || blinded[2] != keyID[len(keyID)-1] ||
+		if len(blinded) != TokenBatchElementSize || binary.BigEndian.Uint16(blinded[:2]) != 2 || blinded[2] != keyID[len(keyID)-1] ||
 			!ValidTokenElement(blinded[3:], public) {
 			return errors.New("closed token blinded request is invalid")
 		}
@@ -189,7 +190,7 @@ func TokenBatchTranscript(request ClosedTokenBatchRequest) []byte {
 	transcript = append(transcript, request.Class)
 	transcript = binary.BigEndian.AppendUint64(transcript, uint64(request.WindowStart.Unix()))
 	transcript = binary.BigEndian.AppendUint16(transcript, uint16(len(request.BlindedRequests)))
-	requests := make([]byte, 0, len(request.BlindedRequests)*closedTokenRequestSize)
+	requests := make([]byte, 0, len(request.BlindedRequests)*TokenBatchElementSize)
 	for _, blinded := range request.BlindedRequests {
 		requests = append(requests, blinded...)
 	}
@@ -200,7 +201,7 @@ func TokenBatchTranscript(request ClosedTokenBatchRequest) []byte {
 
 // ValidTokenElement checks the selected blind-request element's range.
 func ValidTokenElement(encoded []byte, public *rsa.PublicKey) bool {
-	if len(encoded) != closedTokenBlindElementSize || public == nil || public.N == nil {
+	if len(encoded) != BlindSignatureSize || public == nil || public.N == nil {
 		return false
 	}
 	value := new(big.Int).SetBytes(encoded)
@@ -212,19 +213,8 @@ func TokenBatchBaseSize() int {
 	return len(closedTokenBatchMagic) + PermissionSize + 32 + 1 + 8 + 346 + 2 + ed25519.SignatureSize
 }
 
-// BlindSignatureSize is the selected RSA blind-signature width.
-const BlindSignatureSize = closedTokenBlindElementSize
-
 // ErrBatchSignature distinguishes holder proof from malformed batch fields.
 var ErrBatchSignature = errors.New("closed token batch holder signature is invalid")
-
-func parseBatchPublicKey(raw []byte) (*rsa.PublicKey, error) {
-	public, valid := issuerprofile.ParseKey(raw)
-	if !valid {
-		return nil, errors.New("closed token SPKI is not canonical")
-	}
-	return public, nil
-}
 
 // EncodeClosedTokenBatch returns the canonical signed issuance batch.
 func EncodeClosedTokenBatch(request ClosedTokenBatchRequest) ([]byte, error) {
@@ -235,7 +225,7 @@ func EncodeClosedTokenBatch(request ClosedTokenBatchRequest) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	raw := make([]byte, 0, TokenBatchBaseSize()+len(request.BlindedRequests)*closedTokenRequestSize)
+	raw := make([]byte, 0, TokenBatchBaseSize()+len(request.BlindedRequests)*TokenBatchElementSize)
 	raw = append(raw, closedTokenBatchMagic...)
 	raw = append(raw, permission...)
 	raw = append(raw, request.RequestID[:]...)

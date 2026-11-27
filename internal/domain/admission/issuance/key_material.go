@@ -79,7 +79,7 @@ func decodeMaterial(raw []byte, b Binding) (Inventory, error) {
 		if err != nil || len(spki) != 346 {
 			return Inventory{}, ErrUnavailable
 		}
-		if _, valid := issuerprofile.ParseKey(spki); !valid {
+		if _, err := issuerprofile.ParseKey(spki); err != nil {
 			return Inventory{}, ErrUnavailable
 		}
 		digest := sha256.Sum256(spki)

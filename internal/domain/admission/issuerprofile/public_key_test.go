@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/asn1"
+	"errors"
 	"math/big"
 	"testing"
 )
@@ -47,8 +48,8 @@ func fixtureSPKI(t testing.TB, id uint8) []byte {
 
 func TestPublicKeyCanonicalBytes(t *testing.T) {
 	raw := fixtureSPKI(t, 1)
-	key, ok := ParseKey(raw)
-	if !ok {
+	key, err := ParseKey(raw)
+	if err != nil {
 		t.Fatal("independent key refused")
 	}
 	encoded, err := EncodeKey(key)
@@ -56,8 +57,8 @@ func TestPublicKeyCanonicalBytes(t *testing.T) {
 		t.Fatal("canonical bytes changed", err)
 	}
 	for _, bad := range [][]byte{nil, append(append([]byte(nil), raw...), 0), raw[1:]} {
-		if _, ok := ParseKey(bad); ok {
-			t.Fatal("invalid DER accepted")
+		if parsed, err := ParseKey(bad); parsed != nil || !errors.Is(err, ErrTokenSPKI) {
+			t.Fatalf("invalid DER did not return its typed refusal: %v", err)
 		}
 	}
 	for _, bad := range []*rsa.PublicKey{nil, {}, {N: big.NewInt(3), E: 65537}, {N: key.N, E: 3}} {
