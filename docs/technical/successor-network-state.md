@@ -1,10 +1,13 @@
 # Network domain
 
-The nearest closed release selects only TCP/TLS under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Historical authenticated
-QUIC identifiers must not be changed or treated as TCP: successful byte/state
-verification grants no current QUIC participation, selection or local duty.
-The owning runtime must refuse deferred QUIC before effects. Existing State,
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), historical
+authenticated QUIC identifiers must not be changed or treated as TCP: successful
+byte/state verification grants no current QUIC participation, selection or local
+duty, and the owning runtime must refuse QUIC before effects. Existing State,
 history, conflicts and durable floors remain intact; no automatic migration is
 authorized. Earlier dual-Carrier evidence below retains its original scope.
 

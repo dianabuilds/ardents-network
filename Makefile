@@ -65,7 +65,7 @@ endif
 # Installed integrity checks freshly compare the whole signed executable. Omit
 # DWARF from distributed commands while retaining symbols for stacks/profiles.
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false -ldflags=-w
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check platform-installed-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check network-signing-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check platform-installed-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check network-signing-compile-check quic-go-source-test
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -88,6 +88,12 @@ vet:
 UNIT_TEST_FLAGS := -short -shuffle=on -count=1 -timeout=15m
 unit:
 	go test -p 1 $(UNIT_PACKAGES) $(UNIT_TEST_FLAGS)
+
+.PHONY: quic-go-source-test
+# third_party/quic-go is the published quic-go module with one retained patch
+# (ADR-0136). The module's own unit tests run inside it as a required check.
+quic-go-source-test:
+	cd third_party/quic-go && go test -count=1 . ./internal/... ./qlog/... ./quicvarint/... ./testutils/...
 
 # Pure launch policy/Release handoff and independently retained Route history.
 # This target starts no system manager, runtime listener or installed process.

@@ -1,10 +1,14 @@
 # Network functional map
 
-For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
-supersedes dual-Carrier selection and qualification with TCP/TLS alone and
-explicit deferred-QUIC refusal without fallback. This changes the bounded release
-scope, not public-product transport goals or any remaining authority, resource,
-privacy, separation, continuity or cleanup requirement in this registry.
+For the nearest closed release, [ADR-0136](../adr/0136-return-quic-from-patched-official-source.md)
+returned QUIC to the Carrier set on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), the release keeps
+TCP/TLS alone and explicit QUIC refusal without fallback. This changes the
+bounded release scope, not public-product transport goals or any remaining
+authority, resource, privacy, separation, continuity or cleanup requirement in
+this registry.
 
 Status: **accepted product requirements registry and C0 boundary input**
 

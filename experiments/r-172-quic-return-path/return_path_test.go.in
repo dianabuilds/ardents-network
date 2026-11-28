@@ -1,0 +1,812 @@
+package returnpath_test
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io"
+	"math/big"
+	"net"
+	"os"
+	"slices"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+	quic "ARDENTS_QUIC_MODULE"
+	"ARDENTS_QUIC_MODULE/qlog"
+	"ARDENTS_QUIC_MODULE/qlogwriter"
+)
+
+// RFC 9000 section 8: until an address is validated, an endpoint sends at
+// most three times the data it received from that address. Section 8.2.1
+// expands a probe to 1200 bytes unless that limit forbids it.
+const (
+	amplificationLimit  = 3
+	minExpandedDatagram = 1200
+	quietPeriod         = 300 * time.Millisecond
+	observation         = 1500 * time.Millisecond
+	originalMapping     = 0
+	reboundMapping      = 1
+	// One 1-RTT packet that carries a single STREAM frame ending the packet:
+	// flags, 4-byte connection ID, 2-byte packet number, STREAM type, stream
+	// ID, and the 16-byte authentication tag.
+	plainStreamPacketBase = 25
+)
+
+func credential(t *testing.T) (tls.Certificate, [32]byte) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { clear(priv) })
+	now := time.Now()
+	cert := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature}
+	der, err := x509.CreateCertificate(rand.Reader, cert, cert, pub, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: priv}, [32]byte(pub)
+}
+
+func listenUDP(t *testing.T) *net.UDPConn {
+	t.Helper()
+	socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { socket.Close() })
+	return socket
+}
+
+// signal is closed once, whether a deadline or a later deadline fires it.
+type signal struct {
+	once sync.Once
+	done chan struct{}
+}
+
+func newSignal() *signal { return &signal{done: make(chan struct{})} }
+func (s *signal) fire()  { s.once.Do(func() { close(s.done) }) }
+
+// deadline is the one read deadline the relay's reader and writer share.
+// Setting a new deadline wakes a current reader; a later reader waits on the
+// new signal.
+type deadline struct {
+	mu    sync.Mutex
+	fired *signal
+	timer *time.Timer
+}
+
+func newDeadline() *deadline { return &deadline{fired: newSignal()} }
+
+func (d *deadline) channel() chan struct{} {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.fired.done
+}
+
+func (d *deadline) set(t time.Time) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.timer != nil {
+		d.timer.Stop()
+		d.timer = nil
+	}
+	d.fired.fire()
+	d.fired = newSignal()
+	if !t.IsZero() {
+		fired := d.fired
+		d.timer = time.AfterFunc(time.Until(t), fired.fire)
+	}
+}
+
+// relay is the user-space NAT of the historical probe, in front of the real
+// client. The client's Transport writes to it. It forwards client datagrams to
+// the server from one of two mapped sockets and returns server datagrams from
+// either mapping to the client. It changes no payload byte. While holding, it
+// keeps client datagrams instead of forwarding them, so the server sees a new
+// peer address that never answers. It counts UDP payload bytes: a QUIC header,
+// its authentication data and padding, without IP and UDP headers.
+type relay struct {
+	t       *testing.T
+	server  *net.UDPAddr
+	socket  [2]*net.UDPConn
+	readers sync.WaitGroup
+
+	mu            sync.Mutex
+	active        int
+	holding       bool
+	held          [][]byte
+	toServer      [2]int
+	toServerSizes [2][]int
+	fromServer    [2][]int
+	// the payload the client had sent from each mapping when the server's
+	// first datagram arrived there
+	receivedBeforeReply [2]int
+	last                time.Time
+	log                 []string
+	deadline            *deadline
+	incoming            chan []byte
+	closed              chan struct{}
+	closeOnce           sync.Once
+}
+
+func newRelay(t *testing.T, server *net.UDPAddr) *relay {
+	t.Helper()
+	r := &relay{t: t, server: server, deadline: newDeadline(), incoming: make(chan []byte, 256), closed: make(chan struct{})}
+	for i := range r.socket {
+		socket, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.socket[i] = socket
+		r.readers.Add(1)
+		go r.receive(i)
+	}
+	t.Cleanup(func() { r.Close() })
+	return r
+}
+
+func (r *relay) address(mapping int) *net.UDPAddr {
+	return r.socket[mapping].LocalAddr().(*net.UDPAddr)
+}
+
+func (r *relay) record(event string, mapping, size int) {
+	r.last = time.Now()
+	r.log = append(r.log, fmt.Sprintf("%s mapping=%s bytes=%d", event, []string{"original", "rebound"}[mapping], size))
+}
+
+func (r *relay) receive(mapping int) {
+	defer r.readers.Done()
+	var buffer [65535]byte
+	for {
+		n, _, err := r.socket[mapping].ReadFromUDPAddrPort(buffer[:])
+		if err != nil {
+			return
+		}
+		data := slices.Clone(buffer[:n])
+		r.mu.Lock()
+		if len(r.fromServer[mapping]) == 0 {
+			r.receivedBeforeReply[mapping] = r.toServer[mapping]
+		}
+		r.fromServer[mapping] = append(r.fromServer[mapping], int(n))
+		r.record("server->client", mapping, int(n))
+		r.mu.Unlock()
+		select {
+		case r.incoming <- data:
+		case <-r.closed:
+			return
+		}
+	}
+}
+
+func (r *relay) ReadFrom(p []byte) (int, net.Addr, error) {
+	select {
+	case data := <-r.incoming:
+		return copy(p, data), r.server, nil
+	case <-r.deadline.channel():
+		return 0, nil, os.ErrDeadlineExceeded
+	case <-r.closed:
+		return 0, nil, net.ErrClosed
+	}
+}
+
+func (r *relay) WriteTo(p []byte, _ net.Addr) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.holding {
+		r.held = append(r.held, slices.Clone(p))
+		r.record("client held", r.active, len(p))
+		return len(p), nil
+	}
+	n, err := r.socket[r.active].WriteToUDP(p, r.server)
+	r.toServer[r.active] += n
+	r.toServerSizes[r.active] = append(r.toServerSizes[r.active], n)
+	r.record("client->server", r.active, n)
+	return n, err
+}
+
+func (r *relay) Close() error {
+	r.closeOnce.Do(func() { close(r.closed) })
+	for _, socket := range r.socket {
+		socket.Close()
+	}
+	return nil
+}
+
+func (r *relay) LocalAddr() net.Addr {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.address(r.active)
+}
+func (r *relay) SetReadDeadline(t time.Time) error { r.deadline.set(t); return nil }
+func (r *relay) SetWriteDeadline(time.Time) error  { return nil }
+func (r *relay) SetDeadline(t time.Time) error     { r.deadline.set(t); return nil }
+
+// rebind moves the client to the second mapping.
+func (r *relay) rebind() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.active != originalMapping {
+		r.t.Fatal("relay was already rebound")
+	}
+	r.active = reboundMapping
+}
+
+// rebindAndHold moves the client to the second mapping and stops forwarding.
+func (r *relay) rebindAndHold() {
+	r.rebind()
+	r.mu.Lock()
+	r.holding = true
+	r.mu.Unlock()
+}
+
+// waitQuiet returns once no datagram crossed the relay for one quiet period.
+func (r *relay) waitQuiet(t *testing.T) {
+	t.Helper()
+	limit := time.Now().Add(5 * time.Second)
+	for time.Now().Before(limit) {
+		r.mu.Lock()
+		quiet := time.Since(r.last)
+		r.mu.Unlock()
+		if quiet >= quietPeriod {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("session did not become quiet")
+}
+
+// awaitHeld waits until the client wrote at least count datagrams while held.
+func (r *relay) awaitHeld(t *testing.T, count int) {
+	t.Helper()
+	limit := time.Now().Add(3 * time.Second)
+	for time.Now().Before(limit) {
+		r.mu.Lock()
+		held := len(r.held)
+		r.mu.Unlock()
+		if held >= count {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("client did not write %d datagrams while held", count)
+}
+
+// heldSizes lists the sizes of the datagrams the client wrote while held.
+func (r *relay) heldSizes() []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var sizes []int
+	for _, data := range r.held {
+		if data != nil {
+			sizes = append(sizes, len(data))
+		}
+	}
+	return sizes
+}
+
+// heldOfSide returns the held datagrams that have exactly this size.
+func (r *relay) heldOfSide(size int) []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var indices []int
+	for i, data := range r.held {
+		if data != nil && len(data) == size {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
+// release delivers one held client datagram from the rebound mapping and
+// forgets it. The server then receives an unchanged datagram the client
+// sealed for it, from a peer address it has not seen before.
+func (r *relay) release(t *testing.T, index int) int {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if index >= len(r.held) || r.held[index] == nil {
+		r.t.Fatalf("held datagram %d is unavailable", index)
+	}
+	n, err := r.socket[r.active].WriteToUDP(r.held[index], r.server)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.toServer[r.active] += n
+	r.toServerSizes[r.active] = append(r.toServerSizes[r.active], n)
+	r.record("client->server (released)", r.active, n)
+	r.held[index] = nil
+	return n
+}
+
+// forward returns to ordinary forwarding and forgets the held datagrams.
+func (r *relay) forward() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.holding = false
+	clear(r.held)
+	r.held = r.held[:0]
+}
+
+// resume forwards the remaining held datagrams in their original order and
+// returns to ordinary forwarding.
+func (r *relay) resume(t *testing.T) {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i, data := range r.held {
+		if data == nil {
+			continue
+		}
+		n, err := r.socket[r.active].WriteToUDP(data, r.server)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.toServer[r.active] += n
+		r.toServerSizes[r.active] = append(r.toServerSizes[r.active], n)
+		r.record("client->server (resumed)", r.active, n)
+		r.held[i] = nil
+	}
+	r.holding = false
+}
+
+// report is the server's reply to the rebound address at one moment, next to
+// everything it sent to the original address.
+type report struct {
+	sent, received int
+	datagrams      []int
+	original       int
+}
+
+// firstReply is the server's first datagram to the rebound mapping and the
+// payload the client had sent there when it arrived.
+func (r *relay) firstReply() (reply, received int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.fromServer[reboundMapping]) == 0 {
+		return 0, 0
+	}
+	return r.fromServer[reboundMapping][0], r.receivedBeforeReply[reboundMapping]
+}
+
+// clientDatagrams lists the sizes of the datagrams the client sent from the
+// rebound mapping.
+func (r *relay) clientDatagrams() []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.toServerSizes[reboundMapping])
+}
+
+func (r *relay) report() report {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var current report
+	current.datagrams = slices.Clone(r.fromServer[reboundMapping])
+	for _, size := range current.datagrams {
+		current.sent += size
+	}
+	current.received = r.toServer[reboundMapping]
+	for _, size := range r.fromServer[originalMapping] {
+		current.original += size
+	}
+	return current
+}
+
+func (r *relay) events() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.log)
+}
+
+func (r *relay) join(t *testing.T) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() { r.readers.Wait(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Error("relay reader did not return")
+	}
+}
+
+// packetTrace is one endpoint's observation of its own packets. It records
+// the full packet length the library reports and the frame types it carries.
+type packetTrace struct {
+	mu     sync.Mutex
+	events []string
+}
+
+func (p *packetTrace) AddProducer() qlogwriter.Recorder { return p }
+func (p *packetTrace) SupportsSchemas(string) bool      { return false }
+func (p *packetTrace) Close() error                     { return nil }
+
+func (p *packetTrace) RecordEvent(e qlogwriter.Event) {
+	var direction string
+	var size int
+	var frames []qlog.Frame
+	switch event := e.(type) {
+	case qlog.PacketReceived:
+		direction, size, frames = "received", event.Raw.Length, event.Frames
+	case qlog.PacketSent:
+		direction, size, frames = "sent", event.Raw.Length, event.Frames
+	default:
+		return
+	}
+	var names []string
+	for _, frame := range frames {
+		// The frame type is identified by its dynamic type, without
+		// importing the implementation's internal wire package.
+		names = append(names, strings.TrimPrefix(fmt.Sprintf("%T", frame.Frame), "*wire."))
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.events = append(p.events, fmt.Sprintf("%s %d bytes [%s]", direction, size, strings.Join(names, " ")))
+}
+
+func (p *packetTrace) reset() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.events = nil
+}
+
+func (p *packetTrace) lines() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return slices.Clone(p.events)
+}
+
+// expandedBeforeResponse lists the sent packets of at least 1200 bytes that
+// preceded the first received PATH_RESPONSE.
+func (p *packetTrace) expandedBeforeResponse() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var early []string
+	for _, event := range p.events {
+		if strings.HasPrefix(event, "received ") && strings.Contains(event, "PathResponseFrame") {
+			break
+		}
+		var size int
+		if strings.HasPrefix(event, "sent ") {
+			fmt.Sscanf(event, "sent %d bytes", &size)
+		}
+		if size >= minExpandedDatagram {
+			early = append(early, event)
+		}
+	}
+	return early
+}
+
+func exchange(ctx context.Context, t *testing.T, conn *quic.Conn, request []byte) {
+	t.Helper()
+	stream, err := conn.OpenStreamSync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Write(request); err != nil {
+		t.Fatal(err)
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reply, err := io.ReadAll(io.LimitReader(stream, int64(len(request)+1)))
+	if err != nil || !bytes.Equal(reply, request) {
+		t.Fatalf("echo %x of %x: %v", reply, request, err)
+	}
+}
+
+// writeStream opens one fresh client stream, writes and closes it, so the
+// client sends one complete small request in exactly one 1-RTT packet.
+func writeStream(ctx context.Context, t *testing.T, conn *quic.Conn, data []byte) {
+	t.Helper()
+	stream, err := conn.OpenStreamSync(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stream.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := stream.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func checkBudget(t *testing.T, nat *relay, stage string) report {
+	t.Helper()
+	current := nat.report()
+	t.Logf("%s: server sent %d bytes in datagrams %v to the rebound address after receiving %d there; %d bytes so far to the original address", stage, current.sent, current.datagrams, current.received, current.original)
+	if current.received == 0 || current.sent == 0 {
+		t.Fatalf("return-path exchange is empty at %s", stage)
+	}
+	if current.sent > amplificationLimit*current.received {
+		t.Fatalf("return-path budget exceeded at %s: server sent %d bytes to the unvalidated rebound address after receiving %d (limit %d); datagrams %v", stage, current.sent, current.received, amplificationLimit*current.received, current.datagrams)
+	}
+	return current
+}
+
+// session is one real server and the implementation's own client, with the
+// current Ardents Node TLS configuration on both sides. The client writes
+// through the relay; the server keeps its own UDP writer. The server echoes
+// every stream it accepts.
+type session struct {
+	t           *testing.T
+	ctx         context.Context
+	cancel      context.CancelFunc
+	nat         *relay
+	server      *quic.Transport
+	client      *quic.Transport
+	listener    *quic.Listener
+	in, out     *quic.Conn
+	serverTrace *packetTrace
+	clientTrace *packetTrace
+	echoes      chan struct{}
+}
+
+// startSession opens one session. A direct role client presents no
+// certificate; a Node client presents one and checks the server's key. With a
+// keep-alive period, both endpoints send a PING whenever they are idle.
+func startSession(t *testing.T, backend string, direct bool, keepAlive time.Duration) *session {
+	t.Helper()
+	serverCertificate, serverKey := credential(t)
+	clientCertificate, clientKey := credential(t)
+	s := &session{t: t, serverTrace: &packetTrace{}, clientTrace: &packetTrace{}, echoes: make(chan struct{})}
+	s.ctx, s.cancel = context.WithTimeout(t.Context(), 90*time.Second)
+	configuration := func(trace *packetTrace) *quic.Config {
+		return &quic.Config{Versions: []quic.Version{quic.Version1}, MaxIdleTimeout: 15 * time.Second, DisablePathMTUDiscovery: true, KeepAlivePeriod: keepAlive,
+			Tracer: func(context.Context, bool, quic.ConnectionID) qlogwriter.Trace { return trace }}
+	}
+	serverSocket := listenUDP(t)
+	var serverConn net.PacketConn = serverSocket
+	if backend == "generic" {
+		// A wrapper hides the *net.UDPConn type, so the server takes its
+		// generic PacketConn writer instead of its native UDP writer.
+		serverConn = struct{ net.PacketConn }{serverSocket}
+	}
+	s.server = &quic.Transport{Conn: serverConn}
+	listener, err := s.server.Listen(transport.SharedServerTLS(serverCertificate), configuration(s.serverTrace))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.listener = listener
+	s.nat = newRelay(t, serverSocket.LocalAddr().(*net.UDPAddr))
+	t.Cleanup(func() {
+		t.Logf("relay events:\n%s\nserver packets:\n%s\nclient packets:\n%s", strings.Join(s.nat.events(), "\n"), strings.Join(s.serverTrace.lines(), "\n"), strings.Join(s.clientTrace.lines(), "\n"))
+	})
+	s.client = &quic.Transport{Conn: s.nat}
+	clientTLS := transport.NodeClientTLS(clientCertificate, serverKey)
+	kind, want := "Node", transport.ClosedSharedNode
+	if direct {
+		clientTLS, kind, want = transport.RoleClientTLS(serverKey), "direct role", transport.ClosedSharedDirect
+	}
+	out, err := s.client.Dial(s.ctx, listener.Addr(), clientTLS, configuration(s.clientTrace))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, err := listener.Accept(s.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.in, s.out = in, out
+	principal, err := transport.ClassifySharedTLS(in.ConnectionState().TLS, func(key [32]byte) bool { return key == clientKey })
+	if err != nil || principal.Kind != want || (kind == "Node" && principal.NodeKey != clientKey) {
+		t.Fatalf("the %s principal was not authenticated: %+v %v", kind, principal, err)
+	}
+	t.Logf("server accepted a %s connection: TLS %x, ALPN %q, negotiated QUIC %s", kind, in.ConnectionState().TLS.Version, in.ConnectionState().TLS.NegotiatedProtocol, in.ConnectionState().Version)
+	go func() {
+		defer close(s.echoes)
+		for {
+			stream, err := in.AcceptStream(s.ctx)
+			if err != nil {
+				return
+			}
+			request, err := io.ReadAll(io.LimitReader(stream, 1<<16))
+			if err == nil && len(request) > 0 {
+				stream.Write(request)
+				stream.Close()
+			}
+		}
+	}()
+	exchange(s.ctx, t, out, []byte("warm-up"))
+	s.nat.waitQuiet(t)
+	if in.RemoteAddr().String() != s.nat.address(originalMapping).String() {
+		t.Fatalf("handshake peer %s is not the original mapping", in.RemoteAddr())
+	}
+	s.serverTrace.reset()
+	s.clientTrace.reset()
+	return s
+}
+
+// close ends the session and joins its sockets and goroutines. Forwarding
+// resumes first, so the client's CONNECTION_CLOSE also reaches the server
+// after a failed withheld-replies check.
+func (s *session) close() {
+	s.t.Helper()
+	s.nat.forward()
+	s.out.CloseWithError(0, "")
+	select {
+	case <-s.in.Context().Done():
+	case <-time.After(5 * time.Second):
+		s.t.Error("server connection did not close")
+	}
+	s.listener.Close()
+	s.client.Close()
+	s.server.Close()
+	s.cancel()
+	select {
+	case <-s.echoes:
+	case <-time.After(5 * time.Second):
+		s.t.Error("echo handler did not return")
+	}
+	s.nat.Close()
+	s.nat.join(s.t)
+}
+
+// peersWithRebound says if the server now sends to the rebound mapping.
+func (s *session) peersWithRebound() bool {
+	return s.nat.mappingName(s.in.RemoteAddr()) == "rebound"
+}
+
+// mappingName names the mapping an address belongs to.
+func (r *relay) mappingName(addr net.Addr) string {
+	for mapping, socket := range r.socket {
+		if socket.LocalAddr().String() == addr.String() {
+			return []string{"original", "rebound"}[mapping]
+		}
+	}
+	return "unknown"
+}
+
+// checkFirstReply compares the server's first datagram to the rebound mapping
+// with the payload the client had sent there when it arrived. The address is
+// unvalidated until the client answers a challenge, so the limit applies.
+func (s *session) checkFirstReply() {
+	s.t.Helper()
+	reply, received := s.nat.firstReply()
+	s.t.Logf("first server datagram to the rebound address: %d bytes after the client sent %d there", reply, received)
+	if received == 0 || reply == 0 {
+		s.t.Fatal("return-path exchange is empty")
+	}
+	if limit := received * amplificationLimit; reply > limit {
+		s.t.Fatalf("return-path budget exceeded: first datagram of %d bytes to the unvalidated rebound address after receiving %d (limit %d)", reply, received, limit)
+	}
+}
+
+// awaitServerDatagram waits until the server sent at least count datagrams to
+// the rebound mapping.
+func (s *session) awaitServerDatagram(count int) {
+	s.t.Helper()
+	limit := time.Now().Add(3 * time.Second)
+	for time.Now().Before(limit) {
+		if len(s.nat.report().datagrams) >= count {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	s.t.Fatalf("server sent %v, want at least %d datagrams to the rebound mapping", s.nat.report().datagrams, count)
+}
+
+// awaitSwitch waits until the server peers with the rebound mapping.
+func (s *session) awaitSwitch() {
+	s.t.Helper()
+	limit := time.Now().Add(10 * time.Second)
+	for time.Now().Before(limit) {
+		if s.peersWithRebound() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	s.t.Fatalf("server did not move to the rebound address: %s", s.in.RemoteAddr())
+}
+
+// TestReturnPathBudget drives real TLS/QUIC sessions through a NAT that rebinds
+// the client. The first datagrams the server receives from the new address are
+// unchanged packets the real client sealed for it. The server's budget, packet
+// packer, send queue and UDP writer are its own. With withheld replies, the new
+// address never answers, as a spoofed victim would not. The same source runs
+// against the candidate and against the official releases.
+func TestReturnPathBudget(t *testing.T) {
+	for _, backend := range []string{"native", "generic"} {
+		t.Run(backend, func(t *testing.T) {
+			t.Run("withheld-replies/repeated-32-byte-packets", func(t *testing.T) { withheldReplies(t, backend, 4, 32) })
+			t.Run("withheld-replies/larger-packet-allows-1200", func(t *testing.T) { withheldReplies(t, backend, 1, 404) })
+			t.Run("ordinary-rebinding", func(t *testing.T) { ordinaryRebinding(t, backend, false) })
+			t.Run("direct-role-rebinding", func(t *testing.T) { ordinaryRebinding(t, backend, true) })
+			t.Run("idle-keepalive-rebinding", func(t *testing.T) { idleKeepaliveRebinding(t, backend) })
+		})
+	}
+}
+
+// withheldReplies delivers genuine client packets one at a time from the
+// rebound mapping and withholds everything the client writes afterwards.
+func withheldReplies(t *testing.T, backend string, datagrams, packetSize int) {
+	t.Helper()
+	s := startSession(t, backend, false, 0)
+	defer s.close()
+	s.nat.rebindAndHold()
+	// Each stream write yields one packet of the wanted size, unless the
+	// client bundles it with another frame. Only packets of exactly that
+	// size are delivered; anything else stays withheld until forwarding
+	// resumes.
+	var chosen []int
+	for len(chosen) < datagrams {
+		if len(s.nat.heldSizes()) > 3*datagrams {
+			t.Fatalf("client wrote datagrams %v, want %d of %d bytes", s.nat.heldSizes(), datagrams, packetSize)
+		}
+		writeStream(s.ctx, t, s.out, bytes.Repeat([]byte{1}, packetSize-plainStreamPacketBase))
+		s.nat.awaitHeld(t, len(s.nat.heldSizes())+1)
+		chosen = s.nat.heldOfSide(packetSize)
+	}
+	t.Logf("client wrote %d datagrams while held: sizes %v; %d of exactly %d bytes are delivered", len(s.nat.heldSizes()), s.nat.heldSizes(), len(chosen), packetSize)
+	expanded := packetSize*amplificationLimit >= minExpandedDatagram
+	for i, index := range chosen {
+		// The first window spans several loss-detection periods; later ones
+		// cover the challenge retry that a further packet can trigger.
+		window := observation
+		if i > 0 {
+			window = observation / 2
+		}
+		s.nat.release(t, index)
+		time.Sleep(window)
+		current := checkBudget(t, s.nat, fmt.Sprintf("after datagram %d", i+1))
+		if expanded && !slices.Contains(current.datagrams, minExpandedDatagram) {
+			// The limit permits 1200 bytes, so section 8.2.1 requires them.
+			t.Fatalf("limit %d permits an expanded probe, server sent %v", packetSize*amplificationLimit, current.datagrams)
+		}
+	}
+	if early := s.serverTrace.expandedBeforeResponse(); !expanded && len(early) > 0 {
+		t.Fatalf("server sent expanded probes before it received a PATH_RESPONSE: %v", early)
+	}
+	t.Logf("server packets before the rebound address was validated: %v", s.serverTrace.lines())
+
+	// Forwarding returns to normal. The application exchange must continue.
+	s.nat.resume(t)
+	exchange(s.ctx, t, s.out, []byte("after-rebinding"))
+	t.Logf("server datagrams to the rebound address after forwarding resumed: %v; server now peers with the %s mapping",
+		s.nat.report().datagrams, s.nat.mappingName(s.in.RemoteAddr()))
+}
+
+// ordinaryRebinding is a NAT that moves the client and keeps forwarding. The
+// first packet from the new address is a genuine 32-byte client packet, the
+// client then answers path validation, and the server moves.
+func ordinaryRebinding(t *testing.T, backend string, direct bool) {
+	t.Helper()
+	s := startSession(t, backend, direct, 0)
+	defer s.close()
+	s.nat.rebind()
+	writeStream(s.ctx, t, s.out, bytes.Repeat([]byte{1}, 32-plainStreamPacketBase))
+	s.awaitServerDatagram(1)
+	s.checkFirstReply()
+	s.awaitSwitch()
+	exchange(s.ctx, t, s.out, []byte("after-rebinding"))
+	if early := s.serverTrace.expandedBeforeResponse(); len(early) > 0 {
+		t.Fatalf("server sent expanded probes before it received a PATH_RESPONSE: %v", early)
+	}
+	t.Logf("server datagrams to the rebound address through validated rebinding: %v", s.nat.report().datagrams)
+}
+
+// idleKeepaliveRebinding moves an idle client that keeps its connection alive
+// with one PING per second, as the retired Ardents QUIC configuration did. Its
+// first packet from the new address is that PING, not an application request.
+func idleKeepaliveRebinding(t *testing.T, backend string) {
+	t.Helper()
+	s := startSession(t, backend, false, time.Second)
+	defer s.close()
+	// The NAT keeps forwarding, so the client answers validation. Only the first
+	// reply is compared on the wire: after a PATH_RESPONSE no limit applies.
+	s.nat.rebind()
+	s.awaitServerDatagram(1)
+	s.checkFirstReply()
+	if early := s.serverTrace.expandedBeforeResponse(); len(early) > 0 {
+		t.Fatalf("server sent expanded probes before it received a PATH_RESPONSE: %v", early)
+	}
+	s.awaitSwitch()
+	exchange(s.ctx, t, s.out, []byte("after-rebinding"))
+	t.Logf("server datagrams to the rebound address through validated rebinding: %v", s.nat.report().datagrams)
+}

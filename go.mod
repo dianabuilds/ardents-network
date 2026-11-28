@@ -45,3 +45,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 )
+
+replace github.com/quic-go/quic-go => ./third_party/quic-go

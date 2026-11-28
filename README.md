@@ -5,7 +5,10 @@ location-independent Services in hostile environments. The selected closed
 contract supports documents and bidirectional streams of arbitrary data on
 Ubuntu, using Target Links and one common protection baseline. TCP/TLS is the
 sole Carrier of the nearest closed release under
-[ADR-0122](docs/adr/0122-select-tcp-only-closed-release.md). QUIC is deferred.
+[ADR-0122](docs/adr/0122-select-tcp-only-closed-release.md).
+[ADR-0136](docs/adr/0136-return-quic-from-patched-official-source.md) returns QUIC
+to that release in stages; until the return is qualified, a QUIC selection is
+still refused before effects.
 Ardents is a closed Alpha candidate. Component results establish no current anonymity, availability,
 censorship-resistance, independent-operation or supported Node-host claim.
 

@@ -3,10 +3,12 @@ package architecture
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"go/ast"
 	"go/format"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -195,6 +197,17 @@ func assertSingleModule(t *testing.T, root string) {
 			modules = append(modules, relativePath(t, root, path))
 		}
 	})
+	// The walker skips the dependency source of ADR-0136, which is a nested
+	// module of one patched dependency and not maintained project code.
+	// TestQuicGoSourceIsPublishedModuleWithOnePatch proves its identity.
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(quicGoSource), "go.mod")); err == nil {
+		modules = append(modules, quicGoSource+"/go.mod")
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatal(err)
+	}
+	if len(modules) == 2 && modules[0] == "go.mod" && modules[1] == quicGoSource+"/go.mod" {
+		return
+	}
 	if len(modules) != 1 || modules[0] != "go.mod" {
 		t.Errorf("project must have exactly one root Go module; found %v", modules)
 	}

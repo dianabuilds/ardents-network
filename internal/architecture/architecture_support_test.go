@@ -27,7 +27,9 @@ func walk(t *testing.T, root string, visit func(string, os.DirEntry)) {
 		}
 		if entry.IsDir() && (entry.Name() == ".git" || entry.Name() == ".idea" ||
 			entry.Name() == ".codex-tmp" || entry.Name() == ".codex-remote-attachments" ||
-			entry.Name() == ".claude") {
+			entry.Name() == ".claude" || entry.Name() == "third_party") {
+			// third_party holds the dependency source of ADR-0136. It is not
+			// project code; TestQuicGoSourceIsPublishedModuleWithOnePatch owns it.
 			return filepath.SkipDir
 		}
 		paths = append(paths, path)

@@ -15,10 +15,14 @@ acceptance does not supply the future Service consumers of this full protocol.
 
 ## Carrier, cryptography and information flow
 
-For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
-supersedes ADR-0048/ADR-0081's dual-Carrier selection: TCP/TLS alone executes.
-QUIC is deferred and explicitly refused before effects, with no fallback.
-Historical QUIC identities keep their bytes and are not reinterpreted as TCP.
+For the nearest closed release, [ADR-0136](../adr/0136-return-quic-from-patched-official-source.md)
+returned QUIC to the Carrier set on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set
+and restoring ADR-0048/ADR-0081's dual-Carrier selection. The return is delivered
+in stages. Until the Carrier selection admits QUIC (#1081) and the both-Carrier
+qualification is accepted (#1082), TCP/TLS alone executes and QUIC is still
+explicitly refused before effects, with no fallback. Historical QUIC identities
+keep their bytes and are not reinterpreted as TCP.
 The original ADR records the historical dependency version; the
 [dependency register](../development/dependencies.md) owns subsequent version
 acceptance and `go.mod` records the candidate's actual version. Historical

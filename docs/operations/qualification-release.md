@@ -1,10 +1,13 @@
 # Operator-prepared qualification release
 
-The nearest closed release uses TCP/TLS alone under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Recognized QUIC
-profiles remain distinct historical signed inputs and receive an explicit
-unsupported outcome before transport or Admission effects. There is no enabling
-switch or TCP fallback. Current positive runs select TCP/TLS; retained dual-Carrier
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), recognized QUIC
+profiles remain distinct signed inputs and receive an explicit unsupported
+outcome before transport or Admission effects, and there is no enabling switch
+or TCP fallback. Current positive runs select TCP/TLS; retained dual-Carrier
 receipts describe their original artifacts and do not qualify this release.
 
 [ADR-0120](../adr/0120-authorize-operator-prepared-qualification-release.md)

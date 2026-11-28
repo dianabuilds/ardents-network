@@ -64,7 +64,7 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 
 - [ADR-0121: Bound installed Connection setup to thirty seconds](0121-bound-installed-connection-setup.md)
 
-- [ADR-0122: Select TCP/TLS alone for the nearest closed release](0122-select-tcp-only-closed-release.md)
+- [ADR-0122: Select TCP/TLS alone for the nearest closed release](0122-select-tcp-only-closed-release.md). ADR-0136 supersedes it for the Carrier set.
 
 - [ADR-0123 — Bind each installed infrastructure invocation to its own generation](0123-bind-installed-infrastructure-generations.md)
   selects the separate infrastructure artifact and installed binding contract.
@@ -98,3 +98,4 @@ Create a new ADR only for a consequential, hard-to-reverse accepted trade-off.
 
 - [ADR-0134 — Use one Application byte stream](0134-use-one-application-byte-stream.md) selects the same raw stream for every file and removes the separate document protocol.
 - [ADR-0135 — Continue byte transfers across admitted connections](0135-continue-byte-transfers-across-admitted-connections.md) keeps one locally authorized transfer across independently admitted finite Service Connections.
+- [ADR-0136 — Return QUIC to the nearest closed release from a patched official source](0136-return-quic-from-patched-official-source.md) supersedes ADR-0122 for the Carrier set. QUIC returns together with TCP/TLS; the reply-budget correction comes from official quic-go v0.66.0 with one retained patch inside the repository until an official release carries it. The product refuses QUIC before any effect until the Carrier selection and the both-Carrier qualification are accepted. Accepted 2026-11-28.

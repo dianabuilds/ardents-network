@@ -8,8 +8,9 @@ defines promotion and retirement.
 
 The closed Ubuntu C0 profile covers document Services and bidirectional
 Application streams by Target Link under one common protection baseline.
-TCP/TLS is the sole Carrier for the nearest closed release under ADR-0122.
-Deferred QUIC selection refuses before effects. Qualification applies to the
+ADR-0136 returns QUIC to the nearest closed release in stages; until the
+return is qualified, TCP/TLS is its sole Carrier and a QUIC selection refuses
+before effects. Qualification applies to the
 exact candidates and scenarios exercised. The scope defines the limits on
 platform support, independent security validation, anonymity and public
 operation.

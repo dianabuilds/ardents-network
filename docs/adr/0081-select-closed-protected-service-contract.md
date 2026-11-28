@@ -8,10 +8,13 @@ date: 2026-09-07
 
 # Select the closed protected text-Service contract
 
-[ADR-0122](0122-select-tcp-only-closed-release.md) supersedes only this decision's
-dual-Carrier selection and qualification for the nearest closed release. TCP/TLS
-retains its existing v2 Carrier identity and v3 binding; QUIC is deferred and
-refused without fallback. All other protection and acceptance obligations remain.
+[ADR-0122](0122-select-tcp-only-closed-release.md) superseded only this decision's
+dual-Carrier selection and qualification for the nearest closed release;
+[ADR-0136](0136-return-quic-from-patched-official-source.md) returned QUIC on
+2026-11-28, and those clauses apply again once the return is delivered and
+qualified. TCP/TLS retains its existing v2 Carrier identity and v3 binding; until
+then QUIC is refused without fallback. All other protection and acceptance
+obligations remain.
 
 [ADR-0126](0126-admit-platform-by-capability-floor.md) amends only this decision's
 platform-selection clause: admission becomes a fail-closed capability floor

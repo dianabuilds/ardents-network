@@ -1,0 +1,188 @@
+package candidate_test
+
+import (
+	"bytes"
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"io"
+	"math/big"
+	"net"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+	quic "github.com/qoke/mp-quic-go"
+)
+
+func credential(t *testing.T) (tls.Certificate, [32]byte) {
+	t.Helper()
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { clear(priv) })
+	now := time.Now()
+	cert := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: now.Add(-time.Minute), NotAfter: now.Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature}
+	der, err := x509.CreateCertificate(rand.Reader, cert, cert, pub, priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: priv}, [32]byte(pub)
+}
+
+func localTransport(t *testing.T) *quic.Transport {
+	t.Helper()
+	udp, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tr := &quic.Transport{Conn: udp}
+	t.Cleanup(func() { tr.Close(); udp.Close() })
+	return tr
+}
+
+// Only the second client socket is metered. The server keeps its native UDP writer.
+// Serialize accounting with WriteTo so a concurrent read cannot observe a reply
+// before the successful local write has been counted.
+type probeMeter struct {
+	net.PacketConn
+	mu             sync.Mutex
+	sent, received int
+	exceeded       bool
+}
+
+func (m *probeMeter) WriteTo(data []byte, addr net.Addr) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n, err := m.PacketConn.WriteTo(data, addr)
+	m.sent += n
+	return n, err
+}
+
+func (m *probeMeter) ReadFrom(data []byte) (int, net.Addr, error) {
+	n, addr, err := m.PacketConn.ReadFrom(data)
+	m.mu.Lock()
+	m.received += n
+	m.exceeded = m.exceeded || m.received > 3*m.sent
+	m.mu.Unlock()
+	return n, addr, err
+}
+
+func (m *probeMeter) checkProbe(t *testing.T) {
+	t.Helper()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	t.Logf("UDP payload bytes through ordinary path validation: client sent %d, received %d", m.sent, m.received)
+	if m.sent == 0 || m.received == 0 || m.exceeded {
+		t.Fatal("empty path exchange or reply exceeded the cumulative allowance")
+	}
+}
+
+func TestArdentsNodeTLS(t *testing.T) {
+	serverCert, serverKey := credential(t)
+	clientCert, clientKey := credential(t)
+	cfg := &quic.Config{Versions: []quic.Version{quic.Version1}, MaxIncomingStreams: 1, MaxIncomingUniStreams: -1,
+		InitialPacketSize: 1200, InitialStreamReceiveWindow: 32 << 10, MaxStreamReceiveWindow: 32 << 10,
+		InitialConnectionReceiveWindow: 64 << 10, MaxConnectionReceiveWindow: 64 << 10,
+		AllowConnectionWindowIncrease: func(*quic.Conn, uint64) bool { return false },
+	}
+	for _, kind := range []string{"node", "direct", "unauthorized-node"} {
+		t.Run(kind, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			defer cancel()
+			server, client, secondPath := localTransport(t), localTransport(t), localTransport(t)
+			listener, err := server.Listen(transport.SharedServerTLS(serverCert), cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer listener.Close()
+			clientTLS := transport.NodeClientTLS(clientCert, serverKey)
+			if kind == "direct" {
+				clientTLS = transport.RoleClientTLS(serverKey)
+			}
+			out, err := client.Dial(ctx, listener.Addr(), clientTLS, cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer out.CloseWithError(0, "")
+			in, err := listener.Accept(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer in.CloseWithError(0, "")
+			verifier := func(key [32]byte) bool { return kind != "unauthorized-node" && key == clientKey }
+			principal, err := transport.ClassifySharedTLS(in.ConnectionState().TLS, verifier)
+			if kind == "unauthorized-node" {
+				if err == nil {
+					t.Fatal("unrecognized Node key accepted")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if kind == "node" && (principal.Kind != transport.ClosedSharedNode || principal.NodeKey != clientKey) {
+				t.Fatal("incorrect Node principal")
+			}
+			if kind == "direct" && (principal.Kind != transport.ClosedSharedDirect || principal.NodeKey != [32]byte{}) {
+				t.Fatal("incorrect direct principal")
+			}
+			meter := &probeMeter{PacketConn: secondPath.Conn}
+			secondPath.Conn = meter
+			path, err := out.AddPath(secondPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := path.Probe(ctx); err != nil {
+				t.Fatal(err)
+			}
+			meter.checkProbe(t)
+			if err := path.Switch(); err != nil {
+				t.Fatal(err)
+			}
+			stream, err := out.OpenStreamSync(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			deadline, _ := ctx.Deadline()
+			if err := stream.SetDeadline(deadline); err != nil {
+				t.Fatal(err)
+			}
+			request, reply := []byte{0, 255, 'n'}, []byte{'r', 0, 128}
+			if _, err := stream.Write(request); err != nil {
+				t.Fatal(err)
+			}
+			if err := stream.Close(); err != nil {
+				t.Fatal(err)
+			}
+			accepted, err := in.AcceptStream(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := accepted.SetDeadline(deadline); err != nil {
+				t.Fatal(err)
+			}
+			got, err := io.ReadAll(io.LimitReader(accepted, int64(len(request)+1)))
+			if err != nil || !bytes.Equal(got, request) {
+				t.Fatalf("request %x: %v", got, err)
+			}
+			if in.RemoteAddr().String() != secondPath.Conn.LocalAddr().String() {
+				t.Fatal("server did not switch to the validated path")
+			}
+			if _, err := accepted.Write(reply); err != nil {
+				t.Fatal(err)
+			}
+			if err := accepted.Close(); err != nil {
+				t.Fatal(err)
+			}
+			got, err = io.ReadAll(io.LimitReader(stream, int64(len(reply)+1)))
+			if err != nil || !bytes.Equal(got, reply) {
+				t.Fatalf("reply %x: %v", got, err)
+			}
+		})
+	}
+}

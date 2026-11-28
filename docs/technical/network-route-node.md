@@ -2,13 +2,16 @@
 
 ## Selected closed-release Carrier
 
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
-for the nearest closed release, superseding dual-Carrier admission and positive
-qualification clauses below. Known QUIC identities retain canonical meaning but
-grant no eligible selection, local duty or transport execution; refuse before
-effects without fallback or signed-State rewriting. Historical both-Carrier
-receipts remain source-specific evidence. All role/authority, capacity, deadline,
-durable floor, process and joined-cleanup requirements remain binding on TCP/TLS.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), known QUIC
+identities retain canonical meaning but grant no eligible selection, local duty
+or transport execution; refuse before effects without fallback or signed-State
+rewriting. Historical both-Carrier receipts remain source-specific evidence. All
+role/authority, capacity, deadline, durable floor, process and joined-cleanup
+requirements remain binding on every Carrier.
 The `route receive` composition checks the authenticated member's Carrier with
 Route before opening Admission or Hosting and before acquiring a listener.
 

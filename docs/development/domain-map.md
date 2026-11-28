@@ -1,12 +1,17 @@
 # Domain ownership map
 
-The nearest closed release selects TCP/TLS alone under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Descriptions below of
-realized dual-Carrier components retain historical source scope; current product
-execution and positive qualification require TCP/TLS plus explicit deferred-QUIC
-refusal, not successful QUIC use. The unresolved QUIC dependency finding remains
-with its owner and future selection. This changes no domain authority or old/new
-isolation boundary; actual implementation and evidence must establish exclusion.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), descriptions
+below of realized dual-Carrier components retain historical source scope, and
+current product execution and positive qualification require TCP/TLS plus
+explicit QUIC refusal, not successful QUIC use. The reply-budget finding is
+removed at the library by the patched official source the ADR names; its
+remaining limits stay with R-172 and the dependency register. This changes no
+domain authority or old/new isolation boundary; actual implementation and
+evidence must establish the return.
 
 This is the maintained semantic map for the DDD transition. The Product Owner
 assigned its upkeep to the orchestrator on 2026-10-04. It records responsibilities,
