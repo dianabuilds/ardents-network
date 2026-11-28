@@ -302,9 +302,10 @@ The Endpoint declaration may bind a distinct Publisher storage root with
 `snapshot_root` and a positive `snapshot_quota_bytes`. The root participates in
 the unit's checked write inventory. It must be disjoint from other local
 state, socket and trust inputs. A reader-only declaration cannot select it.
-These fields reserve a place in the installed configuration for the
-ADR-0135 staging owner. Current snapshot Publication still enforces 4 MiB
-and transfers its snapshot to the worker through initialization.
+When configured, the installed Endpoint reserves this storage and opens an
+anonymous file before acknowledging receipt readiness. The file remains private
+through validation and is read back for the current bounded worker initialization.
+File publication still enforces 4 MiB.
 The document Publisher accepts `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by

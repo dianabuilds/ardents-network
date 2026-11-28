@@ -5,6 +5,7 @@ package endpoint
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -281,6 +282,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			publisherPlan.InteriorRoot = filepath.Join(plan.EntryStateRoot, "introduction-interior")
 			publisherPlan.SourceInteriorRoot = filepath.Join(plan.EntryStateRoot, "publisher-source-interior")
 			publisherPlan.ResponderInteriorRoot = filepath.Join(plan.EntryStateRoot, "responder-interior")
+			var snapshotStorage *endpointpublisher.SnapshotStorage
 			publisherOwner := endpointpublisher.New(endpointpublisher.Config{Context: ctx,
 				Local: owner, Principal: local.Grants[1].Principal,
 				Plan:  endpointpublisher.Plan{InstanceRoot: plan.ServiceInstanceRoot, Root: plan.PublicationRoot},
@@ -289,11 +291,26 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			defer func() {
 				cancel()
 				result = errors.Join(result, publisherOwner.Close())
+				if snapshotStorage != nil {
+					result = errors.Join(result, snapshotStorage.Close())
+				}
 			}()
 			if err := current(); err != nil {
 				return phase, errors.Join(ErrUnavailable, err)
 			}
-			administrationServer, err := administration.Listen(plan.AdministrationSocket, publisherOwner)
+			var administrationServer administration.Server
+			if plan.SnapshotRoot != "" {
+				snapshotStorage, err = endpointpublisher.OpenSnapshotStorage(ctx, plan.SnapshotRoot, plan.SnapshotQuotaBytes)
+				if err != nil {
+					return phase, errors.Join(ErrUnavailable, err)
+				}
+				administrationServer, err = administration.ListenWithSnapshotStaging(plan.AdministrationSocket, publisherOwner,
+					func(caller context.Context, size int64, receive func(io.Writer) error) error {
+						return publisherOwner.StageSnapshot(caller, snapshotStorage, size, receive)
+					})
+			} else {
+				administrationServer, err = administration.Listen(plan.AdministrationSocket, publisherOwner)
+			}
 			if err != nil {
 				return phase, errors.Join(ErrUnavailable, err)
 			}

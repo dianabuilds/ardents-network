@@ -54,6 +54,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return offlineOperatorImportAllowed(source, dependency)
 	}
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	if source == "internal/domain/endpoint/publisher/snapshot_storage_linux.go" && (local == "internal/platform/artifacts" || local == "internal/application/document") {
+		return true
+	}
 	const localSnapshot = "internal/application/localsnapshot"
 	if local == localSnapshot {
 		return source == "internal/application/administration/local_document_publication.go" ||

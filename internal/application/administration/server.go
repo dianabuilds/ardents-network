@@ -3,6 +3,7 @@ package administration
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
 	"path/filepath"
 	"sync"
@@ -17,21 +18,35 @@ type Server interface {
 }
 
 type server struct {
-	entry     *socketfile.Entry
-	listener  *net.UnixListener
-	ctx       context.Context
-	cancel    context.CancelFunc
-	work      sync.WaitGroup
-	mu        sync.Mutex
-	clients   map[*net.UnixConn]struct{}
-	once      sync.Once
-	err       error
-	owner     Interface
-	snapshots chan struct{}
+	entry         *socketfile.Entry
+	listener      *net.UnixListener
+	ctx           context.Context
+	cancel        context.CancelFunc
+	work          sync.WaitGroup
+	mu            sync.Mutex
+	clients       map[*net.UnixConn]struct{}
+	once          sync.Once
+	err           error
+	owner         Interface
+	snapshots     chan struct{}
+	stageSnapshot func(context.Context, int64, func(io.Writer) error) error
 }
 
 // Listen exposes owner on one explicit absolute Unix-socket path.
 func Listen(path string, owner Interface) (Server, error) {
+	return listen(path, owner, nil)
+}
+
+// ListenWithSnapshotStaging receives snapshot input into the owner’s reserved
+// storage. The callback invokes receive only after the reservation succeeds.
+func ListenWithSnapshotStaging(path string, owner Interface, stage func(context.Context, int64, func(io.Writer) error) error) (Server, error) {
+	if stage == nil {
+		return nil, errors.New("local snapshot staging is unavailable")
+	}
+	return listen(path, owner, stage)
+}
+
+func listen(path string, owner Interface, stage func(context.Context, int64, func(io.Writer) error) error) (Server, error) {
 	if path == "" || !filepath.IsAbs(path) || owner == nil {
 		return nil, errors.New("local Service Administration configuration is invalid")
 	}
@@ -44,7 +59,7 @@ func Listen(path string, owner Interface) (Server, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	server := &server{entry: entry, listener: listener, ctx: ctx, cancel: cancel, owner: owner,
-		clients: make(map[*net.UnixConn]struct{}), snapshots: make(chan struct{}, 1)}
+		clients: make(map[*net.UnixConn]struct{}), snapshots: make(chan struct{}, 1), stageSnapshot: stage}
 	server.work.Add(1)
 	go server.serve()
 	return server, nil

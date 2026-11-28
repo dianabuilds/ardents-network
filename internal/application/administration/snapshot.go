@@ -76,7 +76,7 @@ func beginSnapshot(connection io.ReadWriter, size int64) error {
 
 func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, deadline time.Time) {
 	owner, ok := server.owner.(SnapshotPublisher)
-	if !ok {
+	if !ok && server.stageSnapshot == nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
@@ -107,27 +107,41 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 		writeResponse(connection, "unavailable\n")
 		return
 	}
-	body := bytes.NewBuffer(make([]byte, 0, int(length)))
-	defer func() { clear(body.Bytes()) }()
-	if _, err := io.WriteString(connection, snapshotReady); err != nil {
-		return
-	}
-	if !receiveSnapshotBody(ctx, connection, input, body, int64(length)) {
-		return
-	}
-	if err := localRequestError(ctx, nil); err != nil {
-		writeResponse(connection, "unavailable\n")
-		return
-	}
-	if err := connection.SetWriteDeadline(deadline); err != nil {
-		return
-	}
-	if err := owner.PublishSnapshot(ctx, body.Bytes()); err != nil || localRequestError(ctx, nil) != nil {
-		writeResponse(connection, "unavailable\n")
+	if err := server.publishSnapshot(ctx, connection, input, int64(length), owner); err != nil || localRequestError(ctx, nil) != nil {
+		if !errors.Is(err, errSnapshotInput) {
+			writeResponse(connection, "unavailable\n")
+		}
 		return
 	}
 	writeResponse(connection, "published\n")
 }
+
+func (server *server) publishSnapshot(ctx context.Context, connection *net.UnixConn, input io.Reader, length int64, owner SnapshotPublisher) error {
+	receive := func(output io.Writer) error {
+		if _, err := io.WriteString(connection, snapshotReady); err != nil {
+			return err
+		}
+		if !receiveSnapshotBody(ctx, connection, input, output, length) {
+			return errSnapshotInput
+		}
+		if err := localRequestError(ctx, nil); err != nil {
+			return err
+		}
+		deadline, _ := ctx.Deadline()
+		return connection.SetWriteDeadline(deadline)
+	}
+	if server.stageSnapshot != nil {
+		return server.stageSnapshot(ctx, length, receive)
+	}
+	body := bytes.NewBuffer(make([]byte, 0, int(length)))
+	defer func() { clear(body.Bytes()) }()
+	if err := receive(body); err != nil {
+		return err
+	}
+	return owner.PublishSnapshot(ctx, body.Bytes())
+}
+
+var errSnapshotInput = errors.New("local Service snapshot input refused")
 
 // receiveSnapshotBody validates the input before the caller can commit its
 // staged output. The destination must remain private and provisional.

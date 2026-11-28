@@ -301,3 +301,30 @@ func TestSnapshotReceiveCopiesLargeBodyWithoutConsumingConfirmation(t *testing.T
 		t.Fatalf("staged bytes = %d, error %v; want %d exact bytes", len(saved), err, len(body))
 	}
 }
+
+func TestSnapshotClientSendsNoBodyWhenStagingRefuses(t *testing.T) {
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("as-stage-%d.sock", time.Now().UnixNano()))
+	var calls atomic.Int32
+	server, err := ListenWithSnapshotStaging(path, testInterface{},
+		func(context.Context, int64, func(io.Writer) error) error {
+			calls.Add(1)
+			return errors.New("storage reservation refused")
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	var bodySent bool
+	outcome, err := requestSnapshot(t.Context(), path, func(connection io.ReadWriter) error {
+		if err := beginSnapshot(connection, 3); err != nil {
+			return err
+		}
+		bodySent = true
+		_, err := connection.Write([]byte{1, 2, 3})
+		return err
+	})
+	if err == nil || outcome != "" || bodySent || calls.Load() != 1 {
+		t.Fatalf("outcome %q, error %v, sent body %v, staging calls %d", outcome, err, bodySent, calls.Load())
+	}
+}
