@@ -297,6 +297,14 @@ completion.
 Administration and the local Endpoint publisher read the selected file through
 `internal/application/localsnapshot`. Each clears its copy after transferring
 the bytes. The worker receives those bytes through initialization.
+
+The Endpoint declaration may bind a distinct Publisher storage root with
+`snapshot_root` and a positive `snapshot_quota_bytes`. The root participates in
+the unit's checked write inventory. It must be disjoint from other local
+state, socket and trust inputs. A reader-only declaration cannot select it.
+These fields reserve a place in the installed configuration for the
+ADR-0135 staging owner. Current snapshot Publication still enforces 4 MiB
+and transfers its snapshot to the worker through initialization.
 The document Publisher accepts `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by

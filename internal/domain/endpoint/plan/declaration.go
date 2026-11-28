@@ -41,6 +41,8 @@ type Headless struct {
 	ApplicationSocket      string `json:"application_socket"`
 	AdministrationSocket   string `json:"administration_socket"`
 	PublicationRoot        string `json:"publication_root"`
+	SnapshotRoot           string `json:"snapshot_root,omitempty"`
+	SnapshotQuotaBytes     int64  `json:"snapshot_quota_bytes,omitempty"`
 	ServiceInstanceRoot    string `json:"service_instance_root,omitempty"`
 	// These three fields are decoded only so historical v1 input can receive
 	// its bounded retirement refusal. There is no legacy runtime composition;
@@ -256,6 +258,9 @@ func decodeSource(input []byte) (decodedSource, error) {
 }
 
 func validateTextFields(plan Headless) error {
+	if err := validateSnapshotStorage(plan); err != nil {
+		return err
+	}
 	if plan.TransitAcquisitionRoot != "" || plan.BytesEachDirection != 0 || plan.AlphaCorpusStateRoot != "" || plan.AlphaCorpusAuthority != "" || plan.AlphaCohort != "" {
 		return errors.New("endpoint runtime plan cannot select legacy acquisition or interfaces")
 	}
@@ -411,6 +416,9 @@ func MutableRoots(plan Headless) []string {
 	roots := []string{plan.NetworkStateRoot, plan.EntryStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot}
 	if plan.Role == "" {
 		roots = append(roots, plan.PublicationRoot, plan.ServiceInstanceRoot)
+		if plan.SnapshotRoot != "" {
+			roots = append(roots, plan.SnapshotRoot)
+		}
 	}
 	return roots
 }

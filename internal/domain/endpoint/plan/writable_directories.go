@@ -12,6 +12,21 @@ import (
 // socket/permission parent directories, rather than checking only their leaves:
 // a writable parent must not enclose immutable artifacts or retained trust.
 func WritableDirectories(request Declaration) ([]string, error) {
+	if err := validateSnapshotStorage(request.Headless); err != nil {
+		return nil, err
+	}
+	if root := request.Headless.SnapshotRoot; root != "" {
+		for _, input := range []string{request.Source.ClientCertificate, request.Source.ClientKey} {
+			if input != "" && pathsOverlap(root, input) {
+				return nil, errors.New("Endpoint snapshot storage overlaps a Source credential")
+			}
+		}
+		for _, member := range request.Source.Sources {
+			if pathsOverlap(root, member.RootCA) {
+				return nil, errors.New("Endpoint snapshot storage overlaps a Source trust input")
+			}
+		}
+	}
 	paths := MutableRoots(request.Headless)
 	for _, file := range []string{request.Headless.ApplicationSocket, request.Headless.ReaderPermission.RequestPath, request.Headless.ReaderPermission.ResponsePath} {
 		paths = append(paths, path.Dir(file))
