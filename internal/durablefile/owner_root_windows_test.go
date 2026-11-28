@@ -100,6 +100,23 @@ func requireOwnerOnlyDACL(t *testing.T, path string, inheritable, protected bool
 
 func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
 	root := t.TempDir()
+	sd, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual, _, err := sd.Owner()
+	if err != nil {
+		t.Fatal(err)
+	}
+	admins, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("root owner equals user=%t administrators=%t, elevated=%t", actual.Equals(user.User.Sid), actual.Equals(admins), windows.GetCurrentProcessToken().IsElevated())
 	existing := filepath.Join(root, "record")
 	if err := os.WriteFile(existing, []byte("record"), 0o600); err != nil {
 		t.Fatal(err)
