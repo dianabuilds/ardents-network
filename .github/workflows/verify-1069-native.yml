@@ -36,6 +36,12 @@ jobs:
           sudo -n apt-get install --no-install-recommends -y debootstrap systemd-container
           go mod download
           mkdir -p "$RUNNER_TEMP/ardents-build"
+      - name: Keep the diagnostic within one original token hour
+        run: |
+          seconds_until_hour=$((3600 - $(date -u +%s) % 3600))
+          if [ "$seconds_until_hour" -lt 720 ]; then
+            sleep "$((seconds_until_hour + 2))"
+          fi
       - name: Attach numeric failure provenance to the exact candidate
         run: |
           python3 - <<'PYDIAG'
@@ -94,8 +100,40 @@ jobs:
               fmt.Fprintf(os.Stderr, "qualification publisher-serve ms=%d success=%t context=%t flags=%d\\n", time.Now().UnixMilli(), candidate.serveErr == nil, ctx.Err() != nil, flags)
           """.replace('for i, label in range_PLACEHOLDER', 'for i, label := range []string{"admission", "join", "closed", "expired", "deadline", "capacity", "issuer", "clock", "scope", "Source", "publication", "canceled", "retired"}'))
           p.write_text(s)
+          p = Path("internal/domain/connection/transfer_stream.go")
+          s = p.read_text().replace('"errors"', '"errors"\n "fmt"\n "os"\n "strings"')
+          key = 'owner.failure = result'
+          assert s.count(key) == 1
+          s = s.replace(key, """
+              if result != nil {
+                  flags := qualificationTransferFlags(result)
+                  fmt.Fprintf(os.Stderr, "qualification transfer-end role=%d at=%d flags=%d deadline=%t canceled=%t\\n", original.role, time.Now().UnixMilli(), flags, errors.Is(result, context.DeadlineExceeded), errors.Is(result, context.Canceled))
+              }
+          """ + key)
+          s = s.replace('"sync"', '"sync"\n "time"')
+          s += """
+          func qualificationTransferFlags(err error) uint64 {
+              if err == nil { return 0 }
+              var flags uint64
+              for i, label := range []string{"no longer current", "scope", "admission", "stock", "quota", "deadline", "lifetime expired", "expired", "cleanup", "continuation refused", "integrity", "truncated", "recovery", "source", "prefix", "clock confidence", "role lane", "child", "forward", "capacity", "unavailable", "context canceled", "joined", "route", "refused", "authority", "terminal", "EOF"} {
+                  if strings.Contains(err.Error(), label) { flags |= 1 << i }
+              }
+              return flags
+          }
+          """
+          p.write_text(s)
+          p = Path("internal/domain/connection/stream_retirement.go")
+          s = p.read_text().replace('"errors"', '"errors"\n "fmt"')
+          key = 'stream.closeErr = errors.Join(stream.failure, stream.cleanupErr)'
+          assert s.count(key) == 1
+          s = s.replace(key, key + """
+              if stream.closeErr != nil {
+                  fmt.Fprintf(os.Stderr, "qualification stream-end role=%d at=%d work=%d cleanup=%d\\n", stream.owner.role, time.Now().UnixMilli(), qualificationTransferFlags(stream.failure), qualificationTransferFlags(stream.cleanupErr))
+              }
+          """)
+          p.write_text(s)
           PYDIAG
-          gofmt -w internal/domain/publication/runtime/publisher.go internal/domain/connection/stream_replacement.go internal/domain/endpoint/{publisher/publisher_unix.go,endpoint_journey_native_linux_test.go} tests/e2e/endpointinstalled/journey_participant_native_linux_test.go
+          gofmt -w internal/domain/publication/runtime/publisher.go internal/domain/connection/{stream_replacement.go,transfer_stream.go,stream_retirement.go} internal/domain/endpoint/{publisher/publisher_unix.go,endpoint_journey_native_linux_test.go} tests/e2e/endpointinstalled/journey_participant_native_linux_test.go
           git diff --check
       - name: Diagnose the published file failure with a smaller synthetic payload
         run: |
