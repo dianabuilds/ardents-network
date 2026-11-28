@@ -54,7 +54,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./internal/domain/execution/runtime ./internal/domain/execution/worker ./internal/application/document ./internal/domain/endpoint
+INSTALLED_TAG_COMPILE_PACKAGES := ./internal/domain/execution/runtime ./internal/domain/execution/worker ./internal/application/document ./internal/application/document/worker ./internal/domain/endpoint
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"
@@ -577,4 +577,4 @@ descriptor-forward-release-check:
 .PHONY: worker-descriptor-audit-check
 worker-descriptor-audit-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "worker-descriptor-audit-check requires Linux unified cgroup v2"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags document_worker_installed ./internal/application/document -run '^TestVerifyWorkerDescriptors' -count=1 -v -timeout=1m
+	go test -race -trimpath -buildvcs=false -tags document_worker_installed ./internal/application/document/worker -run '^TestVerifyWorkerDescriptors' -count=1 -v -timeout=1m

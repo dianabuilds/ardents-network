@@ -8,7 +8,7 @@ qualification fixtures, not an ordinary Application selection.
 
 Build outside the repository with the selected Linux amd64 toolchain:
 
-    go test -c -tags document_worker_hostile -trimpath -buildvcs=false -o HOSTILE ./internal/application/document
+    go test -c -tags document_worker_hostile -trimpath -buildvcs=false -o HOSTILE ./internal/application/document/worker
     go test -c -tags document_worker_installed -trimpath -buildvcs=false -o RUNTIME ./internal/domain/execution/runtime
 
 Use the admitted Ubuntu24.04/systemd255/cgroup-v2 manager and fixed activation

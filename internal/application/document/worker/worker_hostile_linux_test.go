@@ -1,14 +1,13 @@
 //go:build linux && document_worker_hostile
 
 // The qualification artifact uses the same runtime defaults as the fixed worker.
-//go:debug containermaxprocs=0
-//go:debug updatemaxprocs=0
 
-package document
+package main
 
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"io"
 	"net"
 	"os"
@@ -26,9 +25,9 @@ func TestMain(m *testing.M) {
 	if len(os.Args) == 2 {
 		switch os.Args[1] {
 		case "worker-reader", "worker-publisher":
-			mode := ReaderWorker
+			mode := document.ReaderWorker
 			if os.Args[1] == "worker-publisher" {
-				mode = PublisherWorker
+				mode = document.PublisherWorker
 			}
 			if runHostileTreeWorker(mode) != nil {
 				os.Exit(2)
@@ -44,7 +43,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func runHostileTreeWorker(mode WorkerMode) error {
+func runHostileTreeWorker(mode document.WorkerMode) error {
 	// Audit inherited authority before Go creates poller or descendant pipes.
 	if err := verifyWorkerDescriptors(); err != nil {
 		return err
@@ -58,7 +57,7 @@ func runHostileTreeWorker(mode WorkerMode) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
-	return RunWorker(ctx, &inheritedWorkerAttachment{Conn: connection}, mode)
+	return document.RunWorker(ctx, &inheritedWorkerAttachment{Conn: connection}, mode)
 }
 
 func startHostileDescendant(mode string) error {

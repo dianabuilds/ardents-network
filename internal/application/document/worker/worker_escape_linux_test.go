@@ -2,14 +2,13 @@
 
 // The qualification artifact keeps Go from opening ambient cgroup files before
 // it audits the only inherited attachment.
-//go:debug containermaxprocs=0
-//go:debug updatemaxprocs=0
 
-package document
+package main
 
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"net"
 	"os"
 	"os/signal"
@@ -31,11 +30,11 @@ const (
 // No product command or Application message can select this execution path.
 func TestMain(m *testing.M) {
 	if len(os.Args) == 2 {
-		mode := ReaderWorker
+		mode := document.ReaderWorker
 		switch os.Args[1] {
 		case "worker-reader":
 		case "worker-publisher":
-			mode = PublisherWorker
+			mode = document.PublisherWorker
 		default:
 			os.Exit(m.Run())
 		}
@@ -52,7 +51,7 @@ func TestMain(m *testing.M) {
 // and host-IPC success are immediate failures; UDP is observed independently
 // by the Endpoint-side positive control because a connected datagram socket
 // can report success before a packet reaches a listener.
-func runEscapeProbeWorker(mode WorkerMode) error {
+func runEscapeProbeWorker(mode document.WorkerMode) error {
 	if err := verifyWorkerDescriptors(); err != nil {
 		return err
 	}
@@ -65,7 +64,7 @@ func runEscapeProbeWorker(mode WorkerMode) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
-	return RunWorker(ctx, &inheritedWorkerAttachment{Conn: connection}, mode)
+	return document.RunWorker(ctx, &inheritedWorkerAttachment{Conn: connection}, mode)
 }
 
 func requireEscapeRefusals() error {
