@@ -148,14 +148,29 @@ func TestNativeEndpointRealHostPublication(t *testing.T) {
 // route network and signing authority, and coordinates the publish/link/read/
 // withdraw/restart journey over the local fixture channel.
 func TestNativeEndpointPlatformLedJourney(t *testing.T) {
-	runNativeEndpointPlatformLedJourney(t, false)
+	runNativeEndpointPlatformLedJourney(t, false, nil, false)
 }
 
 func TestNativeInstalledEndpointByteStream(t *testing.T) {
-	runNativeEndpointPlatformLedJourney(t, true)
+	runNativeEndpointPlatformLedJourney(t, true, nil, false)
 }
 
-func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
+func TestNativeEndpointSegmentedInstalledPair(t *testing.T) {
+	payload := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)
+	t.Run("bidirectional", func(t *testing.T) {
+		streams := [2]endpointfixture.JourneyStream{
+			{Bytes: payload, Seed: 1},
+			{Bytes: payload, Seed: 2, BytesPerSecond: 512 << 10},
+		}
+		runNativeEndpointPlatformLedJourney(t, true, &streams, false)
+	})
+	t.Run("published-binary-file", func(t *testing.T) {
+		streams := [2]endpointfixture.JourneyStream{{Bytes: payload, Seed: 3}, {}}
+		runNativeEndpointPlatformLedJourney(t, true, &streams, true)
+	})
+}
+
+func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams *[2]endpointfixture.JourneyStream, filePublication bool) {
 	if os.Geteuid() != 0 {
 		t.Fatal("endpoint platform-led journey qualification requires a root driver")
 	}
@@ -281,7 +296,14 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		publishOperation = "stream-publish"
 		body = bytes.Repeat([]byte{0, 255, 128, 7}, 8192)
 	}
-	publication := exchange(0, endpointfixture.PairMessage{Operation: publishOperation, Body: body})
+	publish := endpointfixture.PairMessage{Operation: publishOperation, Body: body}
+	if streams != nil {
+		publish.Body, publish.Stream = nil, &streams[0]
+		if filePublication {
+			publish.Operation = "file-publish"
+		}
+	}
+	publication := exchange(0, publish)
 	if publication.Link == "" {
 		t.Fatal("installed publisher supplied no Link")
 	}
@@ -296,14 +318,40 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	}
 	if byteStream {
 		sent := bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000)
-		read := exchange(1, endpointfixture.PairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent})
-		received := exchange(0, endpointfixture.PairMessage{Operation: "stream-result"})
-		if read.Failure != "" || received.Failure != "" {
-			t.Fatalf("installed byte stream stopped (received %d/%d bytes): reader %s; publisher %s", len(read.Body), len(received.Body), read.Failure, received.Failure)
+		request := endpointfixture.PairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent}
+		if streams != nil {
+			request.Body, request.Stream = nil, &streams[1]
 		}
-		if read.Original != identities[1] || received.Original != identities[0] ||
-			!bytes.Equal(read.Body, body) || !bytes.Equal(received.Body, sent) {
-			t.Fatal("installed byte-stream exchange changed bytes or original Endpoint identities")
+		started := time.Now()
+		read := exchange(1, request)
+		results := []endpointfixture.PairMessage{read}
+		if filePublication {
+			if withdrawn := exchange(0, endpointfixture.PairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
+				t.Fatal("file was withdrawn by a different invocation")
+			}
+		} else {
+			results = append(results, exchange(0, endpointfixture.PairMessage{Operation: "stream-result"}))
+		}
+		for i, result := range results {
+			if result.Failure != "" || result.Original != identities[1-i] {
+				t.Fatalf("installed stream direction %d failed or changed invocation: %s", i, result.Failure)
+			}
+			if streams == nil {
+				if !bytes.Equal(result.Body, [][]byte{body, sent}[i]) {
+					t.Fatal("installed byte-stream exchange changed bytes")
+				}
+				continue
+			}
+			expected := endpointfixture.NewJourneyStreamOutput()
+			if _, err := io.Copy(expected, streams[i].Reader()); err != nil {
+				t.Fatal(err)
+			}
+			if result.Proof == nil || *result.Proof != expected.Proof() || len(result.Body) != 0 {
+				t.Fatalf("installed stream direction %d differs: observed %+v, expected %+v", i, result.Proof, expected.Proof())
+			}
+		}
+		if duration := time.Since(started); streams != nil && !filePublication && duration <= 60*time.Second {
+			t.Fatalf("installed local-pair stream completed within the old Reader window: %s", duration)
 		}
 		for i := range peers {
 			exchange(i, endpointfixture.PairMessage{Operation: "finish"})
