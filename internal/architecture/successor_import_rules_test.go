@@ -654,6 +654,9 @@ func successorImportAllowed(source, dependency string) bool {
 	// mechanism boundary (#872). The routing-socket if_data64 byte counters wrap
 	// at 2^32 and are deliberately not used; the IFMIB totals preserve per-boot
 	// per-interface continuity.
+	if source == "internal/domain/endpoint/publisher/snapshot_stage_linux.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	if source == "internal/domain/hosting/counters/read_darwin.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
