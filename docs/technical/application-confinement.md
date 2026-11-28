@@ -312,6 +312,10 @@ requires an owner-held copy.
 
 The reader's worker receives only its admitted Connection and bounded
 application bytes. It has no destination authority or ambient network client.
+The trusted Linux terminal adapter receives provisional text into an
+anonymous owner-only file with bounded buffers. It validates all UTF-8 only
+after authenticated completion and joined cleanup, then rewinds the same
+descriptor for presentation. Invalid or incomplete input emits no text.
 The trusted presentation boundary independently escapes control/bidi bytes
 before writing to a human terminal; a compromised worker cannot bypass that
 escaping by emitting its own terminal sequence. No response launches a browser

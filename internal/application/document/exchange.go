@@ -1,6 +1,7 @@
 package document
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -12,35 +13,60 @@ const MaximumBytes = 4 << 20
 
 // Read closes the unused sending direction and receives bounded raw file bytes.
 // It returns content after EOF, authenticated success and joined cleanup.
-func Read(ctx context.Context, stream endpointstream.Stream) (body []byte, resultErr error) {
-	if ctx == nil || stream == nil {
-		return nil, errors.New("document read is unavailable")
+func Read(ctx context.Context, stream endpointstream.Stream) ([]byte, error) {
+	body := bytes.NewBuffer([]byte{})
+	if err := receiveDocument(ctx, stream, body); err != nil {
+		clear(body.Bytes())
+		return nil, err
 	}
-	stop := context.AfterFunc(ctx, func() { _ = stream.Close() })
+	return body.Bytes(), nil
+}
+
+// receiveDocument writes only to provisional output. The caller can expose
+// output after this returns successfully.
+func receiveDocument(ctx context.Context, stream endpointstream.Stream, output io.Writer) (resultErr error) {
+	if ctx == nil || stream == nil {
+		return errors.New("document read is unavailable")
+	}
+	callbackDone := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(callbackDone)
+		_ = stream.Close()
+	})
 	defer func() {
-		stop()
+		stopped := stop()
 		resultErr = errors.Join(resultErr, stream.Close(), ctx.Err())
-		if resultErr != nil {
-			body = nil
+		if !stopped {
+			<-callbackDone
 		}
 	}()
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return err
 	}
 	if err := stream.CloseInput(); err != nil {
-		return nil, err
+		return err
 	}
-	body, err := io.ReadAll(io.LimitReader(stream, MaximumBytes+1))
-	if err != nil || len(body) > MaximumBytes {
-		return nil, errors.New("file transfer is interrupted or exceeds its bound")
+	var scratch [16 << 10]byte
+	defer clear(scratch[:])
+	// Hide ReaderFrom so the copy always uses the caller-owned scratch.
+	plainOutput := struct{ io.Writer }{output}
+	n, err := io.CopyBuffer(plainOutput, io.LimitReader(stream, MaximumBytes), scratch[:])
+	if err != nil {
+		return errors.New("file transfer is interrupted or exceeds its bound")
+	}
+	if n == MaximumBytes {
+		var excess [1]byte
+		if count, err := io.ReadFull(stream, excess[:]); count != 0 || err != io.EOF {
+			return errors.New("file transfer is interrupted or exceeds its bound")
+		}
 	}
 	select {
 	case outcome, ok := <-stream.Done():
 		if !ok || outcome.Class != endpointstream.CleanClose {
-			return nil, errors.New("document Connection did not complete")
+			return errors.New("document Connection did not complete")
 		}
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return ctx.Err()
 	}
-	return body, nil
+	return nil
 }

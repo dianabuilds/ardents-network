@@ -2,6 +2,7 @@ package document
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -53,9 +54,21 @@ func WritePlainText(output io.Writer, body []byte) error {
 	if output == nil || len(body) > MaximumBytes || !utf8.Valid(body) {
 		return errors.New("document presentation is invalid")
 	}
+	return writeEscapedText(context.Background(), output, bytes.NewReader(body))
+}
+
+func writeEscapedText(ctx context.Context, output io.Writer, input io.Reader) error {
 	writer := bufio.NewWriterSize(output, 16<<10)
+	reader := bufio.NewReaderSize(input, 16<<10)
 	const hex = "0123456789abcdef"
-	for _, value := range string(body) {
+	for {
+		value, err := readTextRune(ctx, reader)
+		if err == io.EOF {
+			return writer.Flush()
+		}
+		if err != nil {
+			return err
+		}
 		if (value < 0x20 && value != '\n' && value != '\t') ||
 			(value >= 0x7f && value <= 0x9f) || unicode.Is(unicode.Bidi_Control, value) {
 			escape := [6]byte{'\\', 'u', hex[(value>>12)&15], hex[(value>>8)&15], hex[(value>>4)&15], hex[value&15]}
@@ -66,13 +79,12 @@ func WritePlainText(output io.Writer, body []byte) error {
 			return err
 		}
 	}
-	return writer.Flush()
 }
 
 // PresentLocal opens one bounded local Connection to the supplied Target Link
 // and presents the document after Read joins the exchange. The caller owns
 // interruption and closing of the output, which can outlive the setup bound.
-func PresentLocal(ctx context.Context, socket, link string, output io.Writer) error {
+func PresentLocal(ctx context.Context, socket, link string, output io.Writer) (result error) {
 	if ctx == nil || output == nil {
 		return errors.New("document presentation is invalid")
 	}
@@ -82,13 +94,44 @@ func PresentLocal(ctx context.Context, socket, link string, output io.Writer) er
 	if err != nil {
 		return errors.Join(err, bounded.Err())
 	}
-	body, err := Read(bounded, stream)
-	defer clear(body)
+	stage, err := openPresentationStage()
 	if err != nil {
+		return errors.Join(err, stream.Close())
+	}
+	defer func() { result = errors.Join(result, stage.Close()) }()
+	if err := receiveDocument(bounded, stream, stage); err != nil {
 		return errors.Join(err, bounded.Err())
 	}
-	if err := ctx.Err(); err != nil {
+	if err := validateStagedText(ctx, stage); err != nil {
 		return err
 	}
-	return WritePlainText(output, body)
+	return writeEscapedText(ctx, output, stage)
+}
+
+func validateStagedText(ctx context.Context, stage io.ReadSeeker) error {
+	if _, err := stage.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	reader := bufio.NewReaderSize(stage, 16<<10)
+	for {
+		_, err := readTextRune(ctx, reader)
+		if err == io.EOF {
+			_, err := stage.Seek(0, io.SeekStart)
+			return err
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func readTextRune(ctx context.Context, input *bufio.Reader) (rune, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	value, size, err := input.ReadRune()
+	if value == utf8.RuneError && size == 1 {
+		return 0, errors.New("document presentation is invalid")
+	}
+	return value, err
 }

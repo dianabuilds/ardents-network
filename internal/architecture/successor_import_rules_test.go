@@ -57,6 +57,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/endpoint/publisher/snapshot_storage_linux.go" && (local == "internal/platform/artifacts" || local == "internal/application/document") {
 		return true
 	}
+	if source == "internal/application/document/presentation_stage_linux.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	const localSnapshot = "internal/application/localsnapshot"
 	if local == localSnapshot {
 		return source == "internal/application/administration/local_document_publication.go" ||

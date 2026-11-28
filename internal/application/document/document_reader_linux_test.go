@@ -41,7 +41,7 @@ func TestDocumentReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 	}{
 		{documentResponse([]byte("secret")), endpointstream.LocalFailure},
 		{bytes.Repeat([]byte("x"), document.MaximumBytes+1), endpointstream.CleanClose},
-		{documentResponse([]byte{0xff}), endpointstream.CleanClose},
+		{documentResponse(append(bytes.Repeat([]byte("x"), 48<<10), 0xff)), endpointstream.CleanClose},
 	} {
 		peer := &documentReadPeer{response: scenario.response, class: scenario.class}
 		socket := documentReadSocket(t, peer)
