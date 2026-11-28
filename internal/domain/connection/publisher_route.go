@@ -27,7 +27,7 @@ func (route *publisherRecoveryRoute) check(owner *AuthenticatedAttachment) error
 		return errIntegrity
 	}
 	end := time.Unix(owner.identity.WorkSafetyMaximum, 0).UTC()
-	return route.responder.CheckSource(route.source, owner.operation.Context(), owner.identity.Network, owner.identity.Profile, end)
+	return errors.Join(route.source.CheckSourceCaller(owner.operation.Context(), owner.identity.Network, owner.identity.Profile, end), route.responder.CheckSource(route.source, end))
 }
 
 // OpenPublisherStream retains genuine original replacement Route owners before

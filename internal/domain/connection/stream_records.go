@@ -3,6 +3,8 @@ package connection
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/recordio"
@@ -37,7 +39,12 @@ func (records *attachmentRecords) join() error {
 // move its record to another generation or discard unread logical bytes.
 func (stream *Stream) readRecords(records *attachmentRecords) {
 	var result error
-	defer func() { records.readerResult = result; close(records.readerDone) }()
+	var payload, data, ack uint64
+	defer func() {
+		fmt.Fprintf(os.Stderr, "qualification record counts role=%d inbound data=%d bytes=%d ack=%d\n", stream.owner.role, data, payload, ack)
+		records.readerResult = result
+		close(records.readerDone)
+	}()
 	input := recordio.NewStreamReader(records.physical)
 	if stream.segment != nil {
 		input = recordio.NewSegmentStreamReader(records.physical)
@@ -47,6 +54,13 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 		decoded, received, readErr := input.ReadRecord()
 		record := wire.Record{Data: decoded.Data, Acknowledgement: decoded.Acknowledgement, Terminal: decoded.Terminal, Continuation: decoded.Continuation}
 		result = readErr
+		if decoded.Data != nil {
+			data++
+			payload += uint64(len(decoded.Data.Payload))
+		}
+		if decoded.Acknowledgement != nil {
+			ack++
+		}
 		// The decoded clean CLOSE is an immutable fact of this exact child,
 		// not logical authority. Observe it outside the consumer state lock;
 		// commit still matches the same records and complete Terminal state.
@@ -180,7 +194,12 @@ func (stream *Stream) acceptRecordLocked(record wire.Record) error {
 // retain acknowledgements queued while another physical write is in flight.
 func (stream *Stream) writeRecords(records *attachmentRecords) {
 	var result error
-	defer func() { records.writerResult = result; close(records.writerDone) }()
+	var payload, data, ack uint64
+	defer func() {
+		fmt.Fprintf(os.Stderr, "qualification record counts role=%d outbound data=%d bytes=%d ack=%d\n", stream.owner.role, data, payload, ack)
+		records.writerResult = result
+		close(records.writerDone)
+	}()
 	for {
 		var record wire.Record
 		var ticket *transfer.RecordWrite
@@ -222,6 +241,15 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 		}
 		writeErr := wire.Write(records.physical, record)
 		result = writeErr
+		if writeErr == nil {
+			if record.Data != nil {
+				data++
+				payload += uint64(len(record.Data.Payload))
+			}
+			if record.Acknowledgement != nil {
+				ack++
+			}
+		}
 		err = stream.commitHandoff(func() error {
 			if stream.records != records || stream.transfer.Generation() != records.generation {
 				return errors.Join(errIntegrity, writeErr)

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -54,8 +56,36 @@ func OpenStartup(ctx context.Context, directory string) (*Startup, error) {
 var qualificationStartupChecks atomic.Uint64
 var qualificationStartupWait atomic.Int64
 var qualificationStartupWork atomic.Int64
+var qualificationStartupSites [7]atomic.Uint64
+
+func qualificationStartupSite() int {
+	var pcs [45]uintptr
+	n := runtime.Callers(2, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+	for {
+		f, more := frames.Next()
+		switch {
+		case strings.HasSuffix(f.Function, "route/channel.(*Session).write"):
+			return 1
+		case strings.HasSuffix(f.Function, "connection.(*Stream).commitHandoff"):
+			return 2
+		case strings.HasSuffix(f.Function, "connection.attachmentIO.Read"):
+			return 3
+		case strings.HasSuffix(f.Function, "connection.attachmentIO.Write"):
+			return 4
+		case strings.HasSuffix(f.Function, "route/prefix.(*Prefix).watch"):
+			return 5
+		case strings.Contains(f.Function, "newAdmission") || strings.Contains(f.Function, "PrepareTokens"):
+			return 6
+		}
+		if !more {
+			return 0
+		}
+	}
+}
 
 func (s *Startup) Check() error {
+	site := qualificationStartupSite()
 	start := time.Now()
 	if s == nil || s.lifetime == nil {
 		return ErrInput
@@ -66,9 +96,14 @@ func (s *Startup) Check() error {
 	s.lifetime.mu.Unlock()
 	wait := qualificationStartupWait.Add(int64(acquired.Sub(start)))
 	work := qualificationStartupWork.Add(int64(time.Since(acquired)))
+	qualificationStartupSites[site].Add(1)
 	count := qualificationStartupChecks.Add(1)
-	if count%128 == 0 {
-		fmt.Fprintf(os.Stderr, "qualification startup checks=%d mean-wait=%s mean-observe=%s\n", count, time.Duration(wait/int64(count)), time.Duration(work/int64(count)))
+	if count%256 == 0 {
+		var sites [7]uint64
+		for i := range sites {
+			sites[i] = qualificationStartupSites[i].Load()
+		}
+		fmt.Fprintf(os.Stderr, "qualification startup checks=%d mean-wait=%s mean-observe=%s by-effect=%v\n", count, time.Duration(wait/int64(count)), time.Duration(work/int64(count)), sites)
 	}
 	return err
 }

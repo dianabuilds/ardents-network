@@ -113,14 +113,9 @@ func (r *ResponderScope) Check() error {
 	return r.localLocked()
 }
 
-// CheckSource validates the original Source provenance and observes each
-// live scope once at the enclosing effect boundary.
-func (r *ResponderScope) CheckSource(source *SourceScope, caller context.Context, networkID, profile [32]byte, end time.Time) error {
+func (r *ResponderScope) CheckSource(source *SourceScope, end time.Time) error {
 	if r == nil || r.self != r || r.source != source || end.IsZero() || end.After(r.config.Deadline) || end.After(r.config.Leg.NotAfter) {
 		return errors.New("responder scope original Source or bound differs")
-	}
-	if err := source.matchSourceCaller(caller, networkID, profile, end); err != nil {
-		return err
 	}
 	return r.Check()
 }

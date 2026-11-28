@@ -151,21 +151,14 @@ type attachmentIO struct {
 // owner observation here without observing that same physical attachment twice
 // consecutively. Replacement attachments still retain the original logical owner.
 func (attachment attachmentIO) checkIOOwner() error {
-	owner := attachment.owner
-	if owner != nil && owner.role == wire.RoleInitiator {
+	if err := attachment.owner.checkLogical(); err != nil {
+		return err
+	}
+	if attachment.owner.role == wire.RoleInitiator {
 		if attachment.initiator == nil || attachment.service != nil {
 			return errIntegrity
 		}
-		if attachment.initiator == owner.initiator {
-			// The exact original Reader Attachment checks this same binding
-			// and Source in its live before/after observations. Here retain
-			// the separate original logical seal and caller.
-			return owner.checkLogicalCommit()
-		}
-		return owner.checkLogical()
-	}
-	if err := owner.checkLogical(); err != nil {
-		return err
+		return nil
 	}
 	if attachment.service == nil || attachment.initiator != nil {
 		return errIntegrity
