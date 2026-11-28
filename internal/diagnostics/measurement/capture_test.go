@@ -164,6 +164,12 @@ func TestSinkFailurePreservesOriginalFailureAndNeverEchoesError(t *testing.T) {
 	}
 }
 
+func TestSinkFailureReturnsOneAfterSuccessfulCommand(t *testing.T) {
+	if code := Run(brokenSink{}, func() int { return 0 }, nil); code != 1 {
+		t.Fatalf("capture exit code = %d, want 1 after report write failure", code)
+	}
+}
+
 type heldExporter struct {
 	entered, release chan struct{}
 	once             sync.Once
