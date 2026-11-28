@@ -57,11 +57,8 @@ func (stream *Stream) settleLocked() {
 func (stream *Stream) watchLifetime() {
 	defer close(stream.watcherDone)
 	var boundaryDeadline <-chan time.Time
-	if stream.segment != nil {
-		// Leave the original Route its final physical confirmation and join
-		// interval before the segment's immutable deadline.
-		cut := time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0).Add(-5 * time.Second)
-		timer := time.NewTimer(time.Until(cut))
+	if !stream.plannedDrainAt.IsZero() {
+		timer := time.NewTimer(time.Until(stream.plannedDrainAt))
 		defer timer.Stop()
 		boundaryDeadline = timer.C
 	}
@@ -72,17 +69,7 @@ func (stream *Stream) watchLifetime() {
 			return
 		case <-boundaryDeadline:
 			boundaryDeadline = nil
-			_ = stream.commit(func() error {
-				if stream.settled || stream.segment.draining {
-					return nil
-				}
-				progress := stream.transfer.ReplayOffsets()
-				if progress.SendEnd != 0 || progress.ReceiveNext != 0 {
-					stream.segment.freeze(stream.transfer)
-					stream.signalLocked()
-				}
-				return nil
-			})
+			_ = stream.commit(func() error { return nil })
 		case <-stream.settledDone:
 			remaining := time.Until(time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
 			if remaining > 0 {
@@ -97,6 +84,20 @@ func (stream *Stream) watchLifetime() {
 			stream.retire()
 			return
 		}
+	}
+}
+
+// requestTimedDrainLocked also covers the first bytes admitted after an idle
+// timer. A completed terminal exchange retains its ordinary clean outcome.
+func (stream *Stream) requestTimedDrainLocked(now time.Time) {
+	if stream.plannedDrainAt.IsZero() || now.Before(stream.plannedDrainAt) ||
+		stream.closing || stream.settled || stream.segment.draining {
+		return
+	}
+	progress := stream.transfer.ReplayOffsets()
+	if progress.SendEnd != 0 || progress.ReceiveNext != 0 {
+		stream.segment.freeze(stream.transfer)
+		stream.signalLocked()
 	}
 }
 

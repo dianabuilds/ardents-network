@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
@@ -169,5 +170,30 @@ func TestSegmentDrainIsAnnouncedAheadOfQueuedData(t *testing.T) {
 	record, bytes, control, err = stream.beginRecordWriteLocked()
 	if err != nil || bytes == nil || control != nil || record.Data == nil || string(record.Data.Payload) != "queued" {
 		t.Fatalf("the drain notice displaced admitted bytes: %+v, %v", record, err)
+	}
+}
+
+func TestTimedDrainPreservesIdleUntilFirstAdmittedBytes(t *testing.T) {
+	cut := time.Now()
+	stream := &Stream{transfer: segmentFlow(t), plannedDrainAt: cut}
+	var err error
+	stream.segment, err = newSegmentBoundaryExchange(wire.RoleInitiator, wire.SegmentBoundary{Next: 1}, [32]byte{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stream.requestTimedDrainLocked(cut)
+	if stream.segment.draining {
+		t.Fatal("empty idle segment entered a continuation flight")
+	}
+	if err := stream.transfer.Write([]byte("first")); err != nil {
+		t.Fatal(err)
+	}
+	stream.requestTimedDrainLocked(cut.Add(-time.Nanosecond))
+	if stream.segment.draining {
+		t.Fatal("live cutoff was silently reduced")
+	}
+	stream.requestTimedDrainLocked(cut.Add(time.Nanosecond))
+	if !stream.segment.draining || stream.segment.localEnd != 5 {
+		t.Fatal("first admitted bytes after the timer left the segment unsealed")
 	}
 }

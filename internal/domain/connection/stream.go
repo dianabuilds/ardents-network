@@ -30,6 +30,7 @@ type Stream struct {
 	transfer                  *transfer.State
 	segment                   *segmentBoundaryExchange
 	segmentBoundary           *retiredSegmentBoundary
+	plannedDrainAt            time.Time
 	readerContinuationClaimed bool
 	pendingPublisher          *continuationClaim
 	key                       [32]byte
@@ -135,6 +136,11 @@ func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionru
 		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, segment: segment, publisherRoute: publisherRoute,
 			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan endpointstream.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
 		stream.self = stream
+		if segment != nil {
+			// Reserve a complete bounded control flight before the unchanged
+			// recovery cutoff. Active I/O may still use the original lifetime.
+			stream.plannedDrainAt = time.Unix(owner.identity.NoNewRecoveryAfter, 0).Add(-15 * time.Second)
+		}
 		if initiatorRoute != nil {
 			initiatorRoute.mu.Lock()
 			if err := initiatorRoute.localLocked(); err != nil || initiatorRoute.owner != owner || initiatorRoute.stream != nil || owner.role != wire.RoleInitiator || publisherRoute != nil {
@@ -242,6 +248,7 @@ func (stream *Stream) commitHandoff(action func() error, delivery func()) (resul
 		// Clean outcome is an Application handoff too. It follows the final
 		// original checks and any byte delivery, never an unfinished action.
 		stream.settleLocked()
+		stream.requestTimedDrainLocked(time.Now())
 		return nil
 	}
 	if stream.publisherRoute != nil {
