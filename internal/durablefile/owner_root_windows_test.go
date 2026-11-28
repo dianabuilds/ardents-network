@@ -196,3 +196,29 @@ func TestEnforceOwnerOnlyRootRefusesExternalHardLink(t *testing.T) {
 		t.Error("external target DACL changed")
 	}
 }
+
+func TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory(t *testing.T) {
+	root := t.TempDir()
+	child := filepath.Join(root, "unexpected-directory")
+	if err := os.Mkdir(child, 0700); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(child, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	control, _, err := before.Control()
+	if err != nil || control&windows.SE_DACL_PROTECTED != 0 {
+		t.Fatal("control must be subject to inheritance", err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("unexpected directory was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(child, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Error("root write propagated to an unvalidated child")
+	}
+}
