@@ -60,28 +60,31 @@ func beginSnapshot(connection io.ReadWriter, size int64) error {
 }
 
 func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, deadline time.Time) {
+	// Publish the terminal response only after the reserved operation joins
+	// and releases the admission slot. Receipt permits the next local request.
+	response := "unavailable\n"
+	defer func() {
+		if response != "" {
+			writeResponse(connection, response)
+		}
+	}()
 	owner, ok := server.owner.(SnapshotPublisher)
 	if !ok && server.stageSnapshot == nil {
-		writeResponse(connection, "unavailable\n")
 		return
 	}
-	// One snapshot allocation/transition per server. Ordinary withdrawal remains
-	// reachable while this operation waits on its publication owner.
+	// Ordinary withdrawal remains reachable while staging is in progress.
 	select {
 	case server.snapshots <- struct{}{}:
 		defer func() { <-server.snapshots }()
 	default:
-		writeResponse(connection, "unavailable\n")
 		return
 	}
 	var size [8]byte
 	if _, err := io.ReadFull(input, size[:]); err != nil {
-		writeResponse(connection, "unavailable\n")
 		return
 	}
 	length := binary.BigEndian.Uint64(size[:])
 	if length > math.MaxInt64 || server.stageSnapshot == nil && length > MaximumSnapshotBytes {
-		writeResponse(connection, "unavailable\n")
 		return
 	}
 	// Input keeps its original fifteen-second bound. Publication receives only
@@ -89,16 +92,17 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 	ctx, cancel := context.WithDeadline(server.ctx, deadline)
 	defer cancel()
 	if err := localRequestError(ctx, nil); err != nil {
-		writeResponse(connection, "unavailable\n")
 		return
 	}
-	if err := server.publishSnapshot(ctx, connection, input, int64(length), owner); err != nil || localRequestError(ctx, nil) != nil {
-		if !errors.Is(err, errSnapshotInput) {
-			writeResponse(connection, "unavailable\n")
+	if err := server.publishSnapshot(ctx, connection, input, int64(length), owner); err != nil {
+		if errors.Is(err, errSnapshotUnreadTail) {
+			response = ""
 		}
 		return
 	}
-	writeResponse(connection, "published\n")
+	if localRequestError(ctx, nil) == nil {
+		response = "published\n"
+	}
 }
 
 func (server *server) publishSnapshot(ctx context.Context, connection *net.UnixConn, input io.Reader, length int64, owner SnapshotPublisher) error {
@@ -119,8 +123,8 @@ func (server *server) publishSnapshot(ctx context.Context, connection *net.UnixC
 		if _, err := io.WriteString(connection, snapshotReady); err != nil {
 			return err
 		}
-		if !receiveSnapshotBody(receiveContext, connection, input, output, length) {
-			return errSnapshotInput
+		if err := receiveSnapshotBody(receiveContext, input, output, length); err != nil {
+			return err
 		}
 		if err := localRequestError(receiveContext, nil); err != nil {
 			return err
@@ -139,25 +143,28 @@ func (server *server) publishSnapshot(ctx context.Context, connection *net.UnixC
 	return owner.PublishSnapshot(ctx, body.Bytes())
 }
 
-var errSnapshotInput = errors.New("local Service snapshot input refused")
+var errSnapshotUnreadTail = errors.New("local Service snapshot surplus exceeds its drain bound")
 
 // receiveSnapshotBody validates the input before the caller can commit its
 // staged output. The destination must remain private and provisional.
-func receiveSnapshotBody(ctx context.Context, connection *net.UnixConn, input io.Reader, output io.Writer, length int64) bool {
+func receiveSnapshotBody(ctx context.Context, input io.Reader, output io.Writer, length int64) error {
 	if err := copySnapshotBody(ctx, input, output, length); err != nil {
-		writeResponse(connection, "unavailable\n")
-		return false
+		return err
 	}
 	var ending [1]byte
-	if _, err := io.ReadFull(input, ending[:]); err != nil || ending[0] != snapshotCommit {
-		writeResponse(connection, "unavailable\n")
-		return false
+	if _, err := io.ReadFull(input, ending[:]); err != nil {
+		return err
+	}
+	if ending[0] != snapshotCommit {
+		return errors.New("local Service snapshot commit marker is invalid")
 	}
 	if n, err := input.Read(ending[:]); n != 0 || err != io.EOF {
-		refuseMalformedRequest(connection, input, n, err)
-		return false
+		if !drainMalformedTail(input, n, err) {
+			return errSnapshotUnreadTail
+		}
+		return errors.New("local Service snapshot has an invalid tail")
 	}
-	return true
+	return nil
 }
 
 func copySnapshotBody(ctx context.Context, input io.Reader, output io.Writer, length int64) error {

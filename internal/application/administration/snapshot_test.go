@@ -98,6 +98,64 @@ func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 		t.Fatal("malformed snapshot reached publication owner")
 	}
 }
+func TestSnapshotRefusalWaitsForStagingCleanup(t *testing.T) {
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("as-%d.sock", time.Now().UnixNano()))
+	rejected := make(chan error, 1)
+	release := make(chan struct{})
+	server, err := ListenWithSnapshotStaging(path, testInterface{}, func(ctx context.Context, _ int64, receive func(context.Context, io.Writer) error) error {
+		err := receive(ctx, io.Discard)
+		rejected <- err
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	socket, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socket.Close()
+	if err := socket.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := beginSnapshot(socket, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := socket.Write([]byte{0}); err != nil {
+		t.Fatal(err)
+	}
+	if err := socket.CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-rejected:
+		if err == nil {
+			t.Fatal("bad commit marker reached the staging commit")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("staging did not reject the commit marker")
+	}
+	if err := socket.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	var first [1]byte
+	if n, err := socket.Read(first[:]); n != 0 || !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatalf("terminal response preceded staging cleanup: bytes %d, error %v", n, err)
+	}
+	close(release)
+	if err := socket.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if response, err := io.ReadAll(socket); err != nil || string(response) != "unavailable\n" {
+		t.Fatalf("joined refusal = %q, %v", response, err)
+	}
+}
+
 func TestSnapshotAdministrationDiscardsCompleteBodyAfterClientVerificationFails(t *testing.T) {
 	var calls atomic.Int32
 	path, server := snapshotTestServer(t, snapshotTestOwner{
