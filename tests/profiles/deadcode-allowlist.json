@@ -617,6 +617,7 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/application/administration.drainMalformedTail",
           "internal/application/administration.receiveSnapshotBody",
           "internal/application/administration.server.publishSnapshot",
           "internal/application/document.InitializeSnapshotWorker",
@@ -1795,6 +1796,7 @@
           "internal/domain/connection/transfer.Replacement.Discard",
           "internal/domain/connection/transfer.State.AcceptRecord",
           "internal/domain/connection/transfer.State.BeginRecordWrite",
+          "internal/domain/connection/transfer.State.beginAcknowledgement",
           "internal/domain/connection/transfer.State.CanReplace",
           "internal/domain/connection/transfer.State.CheckReplacement",
           "internal/domain/connection/transfer.State.CheckWrite",
