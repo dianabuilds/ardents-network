@@ -21,18 +21,5 @@ jobs:
           $env:GOTOOLCHAIN = 'local'
           $volume = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($env:TEMP).Substring(0, 1))
           if ($volume.FileSystem -ne 'NTFS') { throw 'Native test requires NTFS' }
-          $original = Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows.go'
-          $source = Join-Path $env:RUNNER_TEMP 'owner-root-diagnostic.go'
-          $text = [IO.File]::ReadAllText($original)
-          $needle = "if err := checkWindowsFileOwner(handle, owner); err != nil {"
-          if (-not $text.Contains($needle)) { throw 'owner-check control not found' }
-          $text = $text.Replace($needle, 'if err := error(nil); err != nil {')
-          $rootWrite = 'if err := setOwnerOnlyDACL(handle, owner, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT); err != nil {'
-          if (-not $text.Contains($rootWrite)) { throw 'root write control not found' }
-          $text = $text.Replace($rootWrite, 'if err := error(nil); err != nil {')
-          [IO.File]::WriteAllText($source, $text)
-          $overlay = @{ Replace = @{ $original = $source }} | ConvertTo-Json
-          $overlayPath = Join-Path $env:RUNNER_TEMP 'diagnostic-overlay.json'
-          [IO.File]::WriteAllText($overlayPath, $overlay)
-          go test -overlay $overlayPath -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory$' -count=1 -v -timeout=8m
+          go test -race ./internal/durablefile -run '^TestProtectedRootAndExistingRecordVerification$' -count=1 -v -timeout=8m
           exit $LASTEXITCODE

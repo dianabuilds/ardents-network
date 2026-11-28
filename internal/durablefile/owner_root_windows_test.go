@@ -5,6 +5,7 @@ package durablefile
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -287,4 +288,37 @@ func TestDiagnosticHardLinkDuringHeldHandle(t *testing.T) {
 	defer windows.CloseHandle(handle)
 	err = os.Link(file, filepath.Join(root, "new-link"))
 	t.Logf("hard link while handle is held: %v", err)
+}
+
+func TestProtectedRootAndExistingRecordVerification(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "protected")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sid := user.User.Sid.String()
+	sd, err := windows.SecurityDescriptorFromString("O:" + sid + "D:P(A;;GA;;;" + sid + ")")
+	if err != nil {
+		t.Fatal(err)
+	}
+	attrs := windows.SecurityAttributes{SecurityDescriptor: sd}
+	attrs.Length = uint32(reflect.TypeOf(attrs).Size())
+	path, err := windows.UTF16PtrFromString(filepath.Join(root, "record"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := windows.CreateFile(path, windows.GENERIC_READ|windows.GENERIC_WRITE,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, &attrs, windows.CREATE_NEW, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.CloseHandle(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
+		t.Fatalf("verify protected root and record: %v", err)
+	}
 }
