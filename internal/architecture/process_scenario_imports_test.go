@@ -199,7 +199,7 @@ func processScenarioImport(source, dependency, local string, localImport bool) i
 		case "tests/e2e/endpointinstalled/journey_participant_native_linux_test.go":
 			return explicitImportResult(local == "tests/e2e/endpoint" || local == "internal/application/administration" || local == "internal/application/endpointstream" || local == "internal/application/document")
 		case "tests/e2e/endpoint/journey_participant_linux.go":
-			return explicitImportResult(local == "internal/domain/network/state" || local == "tests/releasefixture")
+			return explicitImportResult(local == "internal/domain/endpoint/plan" || local == "internal/domain/network/state" || local == "tests/releasefixture")
 		case "tests/e2e/endpoint/connection_reopen_linux.go":
 			return explicitImportResult(local == "internal/domain/network" || local == "internal/domain/publication/durable" || local == "internal/domain/publication/instance" || local == "internal/domain/reachability")
 		case "tests/e2e/endpoint/connection_worker_linux.go":

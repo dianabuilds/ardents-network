@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/domain/endpoint/plan"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	releasefixture "github.com/dianabuilds/ardents-network/tests/releasefixture"
 )
@@ -120,6 +121,17 @@ func RunJourneyParticipant(t *testing.T, binary, base, etcDir string, network Si
 		Network: plan.NetworkID, Authority: authority, Seed: network.Seed, Addresses: sources.Addresses, SourcePins: sources.Pins,
 		ObservedAt: time.Now(), RefreshMilliseconds: 60000,
 	})
+	declaration, err := requestinput.DecodeDeclaration([]byte(request))
+	if err != nil {
+		t.Fatal("decode original journey declaration", err)
+	}
+	declaration.Headless.SnapshotRoot = filepath.Join(base, "snapshot-storage")
+	declaration.Headless.SnapshotQuotaBytes = 32 << 20
+	boundRequest, err := json.Marshal(declaration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request = string(boundRequest) + "\n"
 	requestPath := filepath.Join(etcDir, "request.json")
 	WriteStartupFile(t, requestPath, []byte(request), 0600)
 	uid, gid := StageNativeEndpoint(t, requestPath, initialProgram, pin, candidateBundle, sources.Key)
