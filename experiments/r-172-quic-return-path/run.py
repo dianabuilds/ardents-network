@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 HERE = Path(__file__).resolve().parent
@@ -15,11 +16,15 @@ ARDENTS = "github.com/dianabuilds/ardents-network"
 
 
 def run(*args, cwd, capture=False):
-    return subprocess.run(
-        ["go", *args], cwd=cwd, check=True, text=True,
-        env={**os.environ, "GOWORK": "off", "GOFLAGS": ""},
+    result = subprocess.run(
+        ["go", *args], cwd=cwd, text=True,
+        env={**os.environ, "GOWORK": "off"},
         stdout=subprocess.PIPE if capture else None,
-    ).stdout
+    )
+    if result.returncode and capture:
+        print(result.stdout, file=sys.stderr)
+    result.check_returncode()
+    return result.stdout
 
 
 def main():
