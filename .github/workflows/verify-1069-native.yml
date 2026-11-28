@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 32
     env:
-      CANDIDATE: 55c6d805686de9241e57973ce17124a293c4f666
+      CANDIDATE: 6cb9243a0fd14e3b9b5c050bf05ce36743785216
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: 55c6d805686de9241e57973ce17124a293c4f666
+          ref: 6cb9243a0fd14e3b9b5c050bf05ce36743785216
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -31,9 +31,22 @@ jobs:
           sudo -n apt-get install --no-install-recommends -y debootstrap systemd-container
           go mod download
           mkdir -p "$RUNNER_TEMP/ardents-build"
-      - name: Exercise unmodified Ubuntu artifacts
+      - name: Exercise the parent Endpoint with 512 KiB per direction
         run: |
+          python3 - <<'PYFIXTURE'
+          from pathlib import Path
+          path = Path("internal/domain/endpoint/endpoint_journey_native_linux_test.go")
+          text = path.read_text()
+          for before, after in (
+              ("[]byte{0, 255, 128, 7}, 8192", "[]byte{0, 255, 128, 7}, 128<<10"),
+              ("[]byte{129, 0, 254, 3, 5}, 5000", "[]byte{129, 0, 254, 3}, 128<<10"),
+          ):
+              assert text.count(before) == 1
+              text = text.replace(before, after)
+          path.write_text(text)
+          PYFIXTURE
+          test "$(git diff --name-only)" = internal/domain/endpoint/endpoint_journey_native_linux_test.go
           sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build" \
             "GOTOOLCHAIN=local" GOFLAGS=-buildvcs=false \
             go test -tags endpoint_pair_native,document_worker_installed ./internal/domain/endpoint \
-            -run '^TestNativeEndpointSegmentedInstalledPair$' -count=1 -timeout=25m -v
+            -run '^TestNativeInstalledEndpointByteStream$' -count=1 -timeout=25m -v
