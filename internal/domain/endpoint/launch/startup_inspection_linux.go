@@ -56,6 +56,7 @@ func OpenStartup(ctx context.Context, directory string) (*Startup, error) {
 var qualificationStartupChecks atomic.Uint64
 var qualificationStartupWait atomic.Int64
 var qualificationStartupWork atomic.Int64
+var qualificationStartupManager atomic.Int64
 var qualificationStartupSites [7]atomic.Uint64
 
 func qualificationStartupSite() int {
@@ -103,7 +104,7 @@ func (s *Startup) Check() error {
 		for i := range sites {
 			sites[i] = qualificationStartupSites[i].Load()
 		}
-		fmt.Fprintf(os.Stderr, "qualification startup checks=%d mean-wait=%s mean-observe=%s by-effect=%v\n", count, time.Duration(wait/int64(count)), time.Duration(work/int64(count)), sites)
+		fmt.Fprintf(os.Stderr, "qualification startup checks=%d mean-wait=%s mean-observe=%s mean-manager=%s by-effect=%v\n", count, time.Duration(wait/int64(count)), time.Duration(work/int64(count)), time.Duration(qualificationStartupManager.Load()/int64(count)), sites)
 	}
 	return err
 }
@@ -336,8 +337,13 @@ func (s *startupInspection) observeGranular(full bool) (returnedErr error) {
 	if err := s.invocation.Observe(s.ctx); err != nil {
 		return err
 	}
-	if err := s.observeManager(); err != nil {
-		return err
+	managerStarted := time.Now()
+	managerErr := s.observeManager()
+	if !full {
+		qualificationStartupManager.Add(int64(time.Since(managerStarted)))
+	}
+	if managerErr != nil {
+		return managerErr
 	}
 	if err := s.invocation.Observe(s.ctx); err != nil {
 		return err

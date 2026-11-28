@@ -215,14 +215,22 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 				return errIntegrity
 			}
 			var err error
-			record, ticket, err = stream.transfer.BeginRecordWrite()
-			if ticket == nil && err == nil && stream.segment != nil {
+			if stream.segment != nil {
+				// Announce the sealed send end before draining queued bytes.
+				// The peer stops accepting more input immediately and still
+				// receives all Data through that exact end. Boundary proofs
+				// remain unavailable until both ledgers have drained.
 				segmentTicket, err = stream.segment.beginWrite(stream.transfer)
+				if err != nil {
+					return err
+				}
 				if segmentTicket != nil {
 					record = wire.Record{Continuation: &segmentTicket.record}
+					return nil
 				}
 			}
-			if ticket == nil && segmentTicket == nil && err == nil {
+			record, ticket, err = stream.transfer.BeginRecordWrite()
+			if ticket == nil && err == nil {
 				changed = stream.changeLocked()
 			}
 			return err

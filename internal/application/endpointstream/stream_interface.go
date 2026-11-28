@@ -11,7 +11,7 @@ import (
 const ReaderTimeout = 60 * time.Second
 
 // ByteStreamSegmentDirectionalLimit bounds one Connection segment per direction.
-const ByteStreamSegmentDirectionalLimit uint64 = 64 << 10
+const ByteStreamSegmentDirectionalLimit uint64 = 4 << 20
 
 // Stream is one authenticated opaque Application byte stream. Read and Write
 // may proceed concurrently; the transport splits writes into frames of at

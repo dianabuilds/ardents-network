@@ -156,11 +156,11 @@ func TestNativeInstalledEndpointByteStream(t *testing.T) {
 }
 
 func TestNativeEndpointSegmentedInstalledPair(t *testing.T) {
-	payload := int64(96 << 10)
+	payload := int64(5 << 20)
 	t.Run("bidirectional", func(t *testing.T) {
 		streams := [2]endpointfixture.JourneyStream{
 			{Bytes: payload, Seed: 1},
-			{Bytes: 48 << 10, Seed: 2},
+			{Bytes: payload, Seed: 2, BytesPerSecond: 512 << 10},
 		}
 		runNativeEndpointPlatformLedJourney(t, true, &streams, false)
 	})
