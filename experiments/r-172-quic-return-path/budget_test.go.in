@@ -28,7 +28,7 @@ func budgetSocket(t *testing.T) *net.UDPConn {
 
 func TestArdentsBudgetToSocket(t *testing.T) {
 	for _, backend := range []string{"native", "generic"} {
-		for _, tc := range []struct{ budget, want int }{{1, 0}, {300, 300}, {1200, 1200}, {1500, 1200}} {
+		for _, tc := range []struct{ budget, want int }{{1, 0}, {96, 96}, {300, 300}, {1200, 1200}, {1500, 1200}} {
 			t.Run(fmt.Sprintf("%s/%d", backend, tc.budget), func(t *testing.T) {
 				source, selected, original := budgetSocket(t), budgetSocket(t), budgetSocket(t)
 				var socket net.PacketConn = source

@@ -30,3 +30,11 @@ identify the server's internal address-validation instant.
 For the Linux process control, run
 `go test -count=1 -v -run '^TestRouteRefusesSignedQUICBeforeEffects$' ./tests/e2e/routeprocess`.
 [Measured results and disposition](../../docs/research/records/r-172-quic-return-path-budget.md).
+
+The 96-byte output case corresponds to the RFC allowance for the historical
+32-byte input while the new address is still unvalidated. The native and
+generic writers must deliver exactly 96 bytes to the selected port and zero
+to the original port in this one-response fixture. The runner also executes
+the pinned module's two existing server budget and shared-allowance tests.
+Their mock unpacker and packer isolate the input-side calculation. The
+output case supplies the grant explicitly.

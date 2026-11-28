@@ -43,7 +43,7 @@ def main():
         source.chmod(0o700)
         shutil.copyfile(HERE / "budget_test.go.in", source / "ardents_budget_test.go")
         run("test", "-mod=readonly", "-count=1", "-v",
-            "-run", "^TestArdentsBudgetToSocket$", ".", cwd=source)
+            "-run", "^Test(ArdentsBudgetToSocket|ConnectionServerPathProbeAmplificationLimit|ConnectionServerPathChallengesOnNewPath)$", ".", cwd=source)
         shutil.copyfile(HERE / "node_tls_test.go.in", work / "node_tls_test.go")
         run("test", "-mod=mod", "-count=1", "-v", "-run", "^TestArdentsNodeTLS$", ".", cwd=work)
 
