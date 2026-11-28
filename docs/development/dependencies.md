@@ -1133,7 +1133,12 @@ own module requires an `x/net` version affected by GO-2026-5026, and its
 scheduled vulnerability workflow has failed every day since 2026-11-24 without
 a fix. The Go vulnerability database keys advisories to the upstream module
 path, so no scanner would report a future quic-go advisory against it. It fails
-the maintenance and security-fix condition below. The disposition is unchanged.
+the maintenance and security-fix condition below. The same correction is
+prepared as `quic-go-v0.66.0-probe-budget.patch`, three production files on
+official v0.66.0, and passes the same session test and upstream's own tests on
+macOS arm64 and the Linux x86-64 stands. It is not an admitted source until an
+official release carries it or the Product Owner selects a maintained fork by
+ADR. The disposition is unchanged.
 
 The disposition must be revisited if the module, checksum, source, Go version,
 QUIC configuration, server caller, path-migration behavior, platform/backend,

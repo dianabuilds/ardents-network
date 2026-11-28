@@ -1,7 +1,7 @@
 ---
 id: R-172
 title: QUIC reply budget at the UDP socket and current Node TLS compatibility
-status: deferred
+status: review
 owner: Product Owner and Codex
 started: 2026-10-15
 reviewed: 2026-11-28
@@ -28,7 +28,7 @@ Does the candidate preserve the granted byte allowance and destination through t
 
 ## Measurements on 2026-11-28
 
-**Method.** One real TLS 1.3/QUIC v1 session per case, ALPN `ardents-route-v3`, server with the current `SharedServerTLS`, client with `NodeClientTLS` or `RoleClientTLS`, both classified by `ClassifySharedTLS`. A user-space NAT owns two loopback sockets in front of the implementation's own client. After a quiet handshake and echo it moves the client to the second socket and either withholds the client's later packets or keeps forwarding. Delivered packets are unchanged client packets. The relay reads the server's datagrams at both sockets and counts UDP payload bytes. Each endpoint's tracer reports the sizes and frame types it received and packed. Test source: Ardents `71ef9125e` on `codex/519-quic-return-path`, the last commit that changes the experiment (the cases were introduced by `7b18c4dc7` and `6cab7bb35`); the Linux evidence ran at that commit. Go 1.27.4. macOS arm64 (darwin 27.0.0) locally; Linux x86-64 through [standctl](../../../scripts/standctl/README.md) with the `online` service as container user 10001: lab-1, kernel 6.8.0-149, and lab-2, kernel 5.15.0-203. Both platforms produced the same sizes.
+**Method.** One real TLS 1.3/QUIC v1 session per case, ALPN `ardents-route-v3`, server with the current `SharedServerTLS`, client with `NodeClientTLS` or `RoleClientTLS`, both classified by `ClassifySharedTLS`. A user-space NAT owns two loopback sockets in front of the implementation's own client. After a quiet handshake and echo it moves the client to the second socket and either withholds the client's later packets or keeps forwarding. Delivered packets are unchanged client packets. The relay reads the server's datagrams at both sockets and counts UDP payload bytes. Each endpoint's tracer reports the sizes and frame types it received and packed. Test source: Ardents `cd86ebe5b` on `codex/519-quic-return-path`, the last commit that changes the session test (the cases were introduced by `7b18c4dc7` and `6cab7bb35`); the Linux evidence for the candidate and the patched release ran at that commit and at `15a41ced5`. Go 1.27.4. macOS arm64 (darwin 27.0.0) locally; Linux x86-64 through [standctl](../../../scripts/standctl/README.md) with the `online` service as container user 10001: lab-1, kernel 6.8.0-149, and lab-2, kernel 5.15.0-203. Both platforms produced the same sizes.
 
 | Case | First packet from the new address | Server payload to the new address before validation | Limit |
 | --- | ---: | --- | ---: |
@@ -47,7 +47,7 @@ Does the candidate preserve the granted byte allowance and destination through t
 
 **Candidate observations outside the budget.** When a withheld PATH_RESPONSE let the second challenge expire, the server dropped its path record with the validated flag and answered later packets with unexpanded probes of at most three times their size again. With path MTU discovery disabled, the server sometimes sent one 1366-byte MTU probe after a validated migration, because the migration resets the probe timer without checking the setting. Neither adds bytes before validation.
 
-**Environment failures, no protocol result.** The first `go mod download` of v0.62.0 failed once and succeeded on retry. Runner drafts used an invalid `go fmt -l`, a wrong test package path, a tracer `Close` without an error result, a deadline that could close a channel twice, an echo handler that waited on streams the client never closed, and a fixed packet index that one macOS race run found bundled with another frame. The test now delivers only packets of the intended size. One macOS race run failed on the earlier index assumption after observing 96 bytes within the limit; it is kept as a failed attempt.
+**Environment failures, no protocol result.** The first `go mod download` of v0.62.0 failed once and succeeded on retry. Runner drafts used an invalid `go fmt -l`, a wrong test package path, a tracer `Close` without an error result, a deadline that could close a channel twice, an echo handler that waited on streams the client never closed, and a fixed packet index that one macOS race run found bundled with another frame. The test now delivers only packets of the intended size. One macOS race run failed on the earlier index assumption after observing 96 bytes within the limit; it is kept as a failed attempt. One draft check in the keep-alive case compared all bytes sent after validation with the few bytes of the keep-alive; it failed first against the patched release and was removed, since no limit applies after a PATH_RESPONSE. The upstream test adaptation needed a mock that reports the real probe length.
 
 ## Applicability to the current owners
 
@@ -79,13 +79,23 @@ The candidate corrects the specific finding: in a live authenticated session its
 
 The issue stays open. For #519, the composite evidence now has the actual-component causal regression, the independent oracle and a discriminating control, with exact source and module identities. It lacks a supported source, Windows execution, the retired configuration variants, output paths other than the probe, an Ardents artifact and any installed Node or Service execution. The finding is resolved for no admitted use, because no admitted QUIC use exists.
 
-## Decision by the Product Owner, 2026-11-28
+## Prepared correction on the official release
 
-ADR-0122 and the dependency rule together leave one admissible route to a QUIC Carrier: the correction reaches the official quic-go project and a tagged official release carries it. Ardents would then repeat this experiment and the remaining rows above against that release before any design selection. The Product Owner chose to keep TCP/TLS as the Carrier, to select neither the candidate nor another fork, and not to ask upstream quic-go. #519 remains open as the recorded blocker for any future QUIC selection. The question returns when a QUIC need is selected or when an official quic-go release carries the correction. A private fork, a socket-level counter of first party and a weaker refusal are not proposed.
+**Correction.** [`quic-go-v0.66.0-probe-budget.patch`](../../../experiments/r-172-quic-return-path/quic-go-v0.66.0-probe-budget.patch), SHA-256 `f5573d4c91a971b46a96135e72cae968f90c8fe18352f38f5da9a62c9dde0b9d`, applies to official quic-go v0.66.0 at commit `d08d86670a1b480bb81a216fb59f6a2b23e8d444`. It changes three production files with 104 added and 18 removed lines and adds or adapts the tests. Since v0.64.0 the official server switches paths only after validation; the probe's unconditional padding was the remaining gap. The patch pads the server's path probe to the smaller of 1200 bytes and three times the received datagram. A reply to the client's PATH_CHALLENGE is packed into the same probe. The PATH_RESPONSE to an unexpanded probe marks the address validated, which lifts the limit for that address, and the next packet on the path carries a second PATH_CHALLENGE in a datagram of 1200 bytes. The path is switched only after that second challenge is answered, as before. The client side is unchanged.
+
+**Measurement.** With the patch applied, upstream's own tests pass on macOS arm64: the `quic` package, every package under `internal` and the `integrationtests/self` suite, which includes the NAT rebinding tests over real sockets. The same patch applies to upstream `master` at `220f6c06` with an offset of one line and passes the same suites. The Ardents session test passes every case against the patched release on macOS arm64 and on the Linux stand, with both writers and with the race detector: 32 bytes in, 96 bytes out, cumulative 96, 192, 288 and 384; 404 bytes in, 1200 bytes out; 96 bytes as the first reply to 32 and 75 bytes as the first reply to the 25-byte keep-alive, with 1200 bytes only after a PATH_RESPONSE. The unpatched official releases keep failing with 1200 bytes. The runner applies the patch to a verified copy of the official module with its own context-exact applier, so a run also proves the identity of the base.
+
+**Upstream observations outside the finding.** The official client sends its PATH_RESPONSE on the active path in a regular 37-byte packet, not expanded to 1200 bytes as section 8.2.2 requires. After `Path.Switch` to a path whose socket is a wrapped `net.PacketConn`, official v0.66.0 keeps ECN enabled and panics in `basicConn.WritePacket`, with or without the patch. The Node TLS check with the client's probing API therefore runs against the candidate only. Ardents' sockets are `*net.UDPConn`, and the retired adapter did not use that API.
+
+## Product Owner decisions, 2026-11-28
+
+The Product Owner first chose to keep TCP/TLS as the Carrier, to select neither the candidate nor another fork, and not to ask upstream quic-go. Later the same day the Product Owner stated that a need for QUIC exists. The question is active again. ADR-0122 is unchanged until the Product Owner changes it.
+
+With the correction prepared on the official release, two routes satisfy the dependency rule. Offering the patch to quic-go and adopting a tagged release that carries it keeps maintenance and security fixes upstream, but its timing belongs to the upstream maintainer. Carrying the same patch as a minimal fork of official quic-go until then needs an ADR that accepts the maintenance of one patch of three production files across upstream releases. Which release needs QUIC decides whether the second route is required. A fork of the multipath candidate, a socket-level counter of first party and a weaker refusal are not proposed.
 
 ## Disposition
 
-- Question state: answered for the evaluated candidate and deferred. No research question is active.
-- Accepted follow-ups: none. No ADR was created; no dependency, caller or release contract changed.
+- Question state: active. The Product Owner confirmed a need for QUIC; the route and the release are to be decided.
+- Accepted follow-ups: none yet. No ADR was created; no dependency, caller or release contract changed.
 - Documents changed: this record, the experiment README and the finding section of the dependency register.
-- Experiment code: retained unchanged as the regression to repeat. It lives outside the product module graph and is rendered only when the runner executes.
+- Experiment code: retained. `run.py patched` is the regression for the official release with the patch; `run.py return-path --module candidate` and `run.py controls` keep the candidate and the unpatched controls. Everything lives outside the product module graph and is rendered only when the runner executes.
