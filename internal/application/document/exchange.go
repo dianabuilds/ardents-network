@@ -1,7 +1,6 @@
 package document
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -11,27 +10,10 @@ import (
 
 const MaximumBytes = 4 << 20
 
-// Read closes the unused sending direction and receives bounded raw file bytes.
-// It returns content after EOF, authenticated success and joined cleanup.
-func Read(ctx context.Context, stream endpointstream.Stream) ([]byte, error) {
-	body := bytes.NewBuffer([]byte{})
-	if err := receiveDocument(ctx, stream, body, MaximumBytes); err != nil {
-		clear(body.Bytes())
-		return nil, err
-	}
-	return body.Bytes(), nil
-}
-
 // ReceiveFile writes to a provisional sink. It succeeds after authenticated
 // terminal completion and joined cleanup, without buffering the whole file.
-func ReceiveFile(ctx context.Context, stream endpointstream.Stream, output io.Writer) error {
-	return receiveDocument(ctx, stream, output, -1)
-}
-
-// receiveDocument writes only to provisional output. The caller can expose
-// output after this returns successfully.
-func receiveDocument(ctx context.Context, stream endpointstream.Stream, output io.Writer, maximum int64) (resultErr error) {
-	if ctx == nil || stream == nil {
+func ReceiveFile(ctx context.Context, stream endpointstream.Stream, output io.Writer) (resultErr error) {
+	if ctx == nil || stream == nil || output == nil {
 		return errors.New("document read is unavailable")
 	}
 	callbackDone := make(chan struct{})
@@ -56,19 +38,8 @@ func receiveDocument(ctx context.Context, stream endpointstream.Stream, output i
 	defer clear(scratch[:])
 	// Hide ReaderFrom so the copy always uses the caller-owned scratch.
 	plainOutput := struct{ io.Writer }{output}
-	var input io.Reader = stream
-	if maximum >= 0 {
-		input = io.LimitReader(input, maximum)
-	}
-	n, err := io.CopyBuffer(plainOutput, input, scratch[:])
-	if err != nil {
-		return errors.New("file transfer is interrupted or exceeds its bound")
-	}
-	if n == maximum {
-		var excess [1]byte
-		if count, err := io.ReadFull(stream, excess[:]); count != 0 || err != io.EOF {
-			return errors.New("file transfer is interrupted or exceeds its bound")
-		}
+	if _, err := io.CopyBuffer(plainOutput, stream, scratch[:]); err != nil {
+		return errors.New("file transfer is interrupted")
 	}
 	select {
 	case outcome, ok := <-stream.Done():

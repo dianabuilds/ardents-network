@@ -51,6 +51,15 @@ func (p *Publisher) OpenTransferIntake(ctx context.Context, contract executionru
 // Next serially authenticates new Attachments and dispatches any completed
 // Resume before returning another new Application transfer.
 func (intake *TransferIntake) Next() (*connection.Transfer, error) {
+	publisher := intake.publisher
+	publisher.mu.Lock()
+	if publisher.closed {
+		publisher.mu.Unlock()
+		return nil, publisher.stoppedAcquisition(intake.ctx)
+	}
+	publisher.flights.Add(1)
+	publisher.mu.Unlock()
+	defer publisher.flights.Done()
 	for {
 		owner, err := intake.publisher.NextAuthentication(intake.ctx)
 		if err != nil {
@@ -74,7 +83,10 @@ func (intake *TransferIntake) Next() (*connection.Transfer, error) {
 		}
 		if previous != nil {
 			if err := intake.forward(stream, previous, ticket); err != nil {
-				return nil, errors.Join(err, intake.release(stream))
+				cleanup := intake.release(stream)
+				if cleanup != nil {
+					return nil, errors.Join(err, cleanup)
+				}
 			}
 			continue
 		}

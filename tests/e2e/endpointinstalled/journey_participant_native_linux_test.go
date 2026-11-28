@@ -94,8 +94,12 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				if role != "publisher" {
 					t.Fatal("reader received publication fixture command")
 				}
+				path := filepath.Join(t.TempDir(), "snapshot-input")
+				if err := os.WriteFile(path, command.Body, 0600); err != nil {
+					t.Fatal(err)
+				}
 				ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
-				_, err := administration.RequestSnapshot(ctx, filepath.Join(participant.Base, "administration", "socket"), command.Body)
+				err := administration.PublishLocal(ctx, filepath.Join(participant.Base, "administration", "socket"), path)
 				cancel()
 				if err != nil {
 					endpointfixture.DumpJourneyJournal(t)
@@ -139,7 +143,9 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), endpointstream.ReaderTimeout)
 				stream, err := endpointclient.Dial(ctx, filepath.Join(participant.Base, "application", "reader"), endpointstream.Request{Destination: endpointstream.TargetLink, Value: command.Link})
 				if err == nil {
-					response.Body, err = document.Read(ctx, stream)
+					var output bytes.Buffer
+					err = document.ReceiveFile(ctx, stream, &output)
+					response.Body = output.Bytes()
 				}
 				cancel()
 				if err != nil {

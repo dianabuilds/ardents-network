@@ -106,8 +106,12 @@ func TestNativeEndpointRealHostPublication(t *testing.T) {
 	body := []byte("one platform-led request on a real admitted host manager\n")
 	exercise := func(p endpointfixture.JourneyParticipant) {
 		socket := filepath.Join(p.Base, "administration", "socket")
+		path := filepath.Join(t.TempDir(), "snapshot-input")
+		if err := os.WriteFile(path, body, 0600); err != nil {
+			t.Fatal(err)
+		}
 		ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
-		_, err := administration.RequestSnapshot(ctx, socket, body)
+		err := administration.PublishLocal(ctx, socket, path)
 		cancel()
 		if err != nil {
 			endpointfixture.DumpJourneyJournal(t)

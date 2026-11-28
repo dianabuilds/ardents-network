@@ -77,8 +77,16 @@ func (owner *Transfer) run(current *Stream, release func() error, open SegmentOp
 			break
 		}
 		previous := current
-		current, release, result = open(owner.ctx, previous)
+		continuation, cancel := context.WithTimeout(owner.ctx, endpointstream.ReaderTimeout)
+		current, release, result = open(continuation, previous)
+		if err := continuation.Err(); err != nil {
+			result = errors.Join(result, err)
+		}
+		cancel()
 		if result != nil {
+			if release != nil {
+				result = errors.Join(result, release())
+			}
 			break
 		}
 		if current == nil || current.self != current || current.owner == nil || current.segment == nil ||

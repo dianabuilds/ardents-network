@@ -30,22 +30,6 @@ type SnapshotPublisher interface {
 	PublishSnapshot(context.Context, []byte) error
 }
 
-// RequestSnapshot publishes one already imported, stable binary snapshot. The
-// caller must keep its bytes unchanged until return. There is no retry or
-// fallback to the bodyless Publish operation.
-func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome, error) {
-	if ctx == nil || len(snapshot) > MaximumSnapshotBytes {
-		return "", errors.New("local Service snapshot is invalid")
-	}
-	return requestSnapshot(ctx, path, func(output io.ReadWriter) error {
-		if err := beginSnapshot(output, int64(len(snapshot))); err != nil {
-			return err
-		}
-		_, err := output.Write(snapshot)
-		return err
-	})
-}
-
 func requestSnapshot(ctx context.Context, path string, stage func(io.ReadWriter) error) (Outcome, error) {
 	ctx, cancel := context.WithTimeout(ctx, SnapshotTimeout)
 	defer cancel()

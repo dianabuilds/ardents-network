@@ -47,7 +47,7 @@ func TestSnapshotAdministrationTransfersOnlyBoundedContent(t *testing.T) {
 					return nil
 				},
 			})
-			outcome, err := RequestSnapshot(t.Context(), path, body)
+			outcome, err := requestSnapshotBytes(t.Context(), path, body)
 			if err != nil || outcome != Published || calls.Load() != 1 {
 				t.Fatalf("publication = %q, %v, calls %d", outcome, err, calls.Load())
 			}
@@ -57,7 +57,7 @@ func TestSnapshotAdministrationTransfersOnlyBoundedContent(t *testing.T) {
 func TestSnapshotAdministrationNeverFallsBackToBodylessPublish(t *testing.T) {
 	var calls atomic.Int32
 	path, _ := snapshotTestServer(t, testInterface{publish: func(context.Context) error { calls.Add(1); return nil }})
-	if _, err := RequestSnapshot(t.Context(), path, []byte("private document")); err == nil || calls.Load() != 0 {
+	if _, err := requestSnapshotBytes(t.Context(), path, []byte("private document")); err == nil || calls.Load() != 0 {
 		t.Fatalf("old owner accepted snapshot or bodyless fallback, calls %d", calls.Load())
 	}
 }
@@ -141,13 +141,13 @@ func TestSnapshotAdministrationSerializesAllocationAndJoinsShutdown(t *testing.T
 		},
 	})
 	completed := make(chan error, 1)
-	go func() { _, err := RequestSnapshot(t.Context(), path, []byte("snapshot")); completed <- err }()
+	go func() { _, err := requestSnapshotBytes(t.Context(), path, []byte("snapshot")); completed <- err }()
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
 		t.Fatal("owner did not start")
 	}
-	if _, err := RequestSnapshot(t.Context(), path, []byte("second")); err == nil {
+	if _, err := requestSnapshotBytes(t.Context(), path, []byte("second")); err == nil {
 		t.Fatal("overlapping snapshot accepted")
 	}
 	if outcome, err := Request(t.Context(), path, Withdraw); err != nil || outcome != Withdrawn {
@@ -180,18 +180,18 @@ func TestSnapshotClientRejectsInvalidInputAndWrongSuccess(t *testing.T) {
 		{"oversized", t.Context(), make([]byte, MaximumSnapshotBytes+1)},
 	} {
 		t.Run(invalid.name, func(t *testing.T) {
-			if _, err := RequestSnapshot(invalid.ctx, "", invalid.body); err == nil {
+			if _, err := requestSnapshotBytes(invalid.ctx, "", invalid.body); err == nil {
 				t.Fatal("invalid snapshot accepted")
 			}
 		})
 	}
 	path, _ := snapshotTestServer(t, snapshotTestOwner{snapshot: func(context.Context, []byte) error { return errors.New("not committed") }})
-	if _, err := RequestSnapshot(t.Context(), path, nil); err == nil {
+	if _, err := requestSnapshotBytes(t.Context(), path, nil); err == nil {
 		t.Fatal("owner failure reported success")
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := RequestSnapshot(ctx, path, nil); !errors.Is(err, context.Canceled) {
+	if _, err := requestSnapshotBytes(ctx, path, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled request: %v", err)
 	}
 }
@@ -269,7 +269,7 @@ func TestSnapshotClientPreservesEarlierDeadline(t *testing.T) {
 	}})
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
-	if _, err := RequestSnapshot(ctx, path, nil); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := requestSnapshotBytes(ctx, path, nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("earlier caller deadline = %v", err)
 	}
 	select {
@@ -327,4 +327,20 @@ func TestSnapshotClientSendsNoBodyWhenStagingRefuses(t *testing.T) {
 	if err == nil || outcome != "" || bodySent || calls.Load() != 1 {
 		t.Fatalf("outcome %q, error %v, sent body %v, staging calls %d", outcome, err, bodySent, calls.Load())
 	}
+}
+
+// requestSnapshotBytes publishes one already imported, stable binary snapshot. The
+// caller must keep its bytes unchanged until return. There is no retry or
+// fallback to the bodyless Publish operation.
+func requestSnapshotBytes(ctx context.Context, path string, snapshot []byte) (Outcome, error) {
+	if ctx == nil || len(snapshot) > MaximumSnapshotBytes {
+		return "", errors.New("local Service snapshot is invalid")
+	}
+	return requestSnapshot(ctx, path, func(output io.ReadWriter) error {
+		if err := beginSnapshot(output, int64(len(snapshot))); err != nil {
+			return err
+		}
+		_, err := output.Write(snapshot)
+		return err
+	})
 }

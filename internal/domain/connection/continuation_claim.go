@@ -11,6 +11,12 @@ import (
 
 var errContinuationRefused = errors.New("service Connection continuation refused")
 
+// IsTransferOpeningRefused identifies a failed protected opening before a
+// matching transition was confirmed. Cleanup failures remain caller-owned.
+func IsTransferOpeningRefused(err error) bool {
+	return errors.Is(err, errContinuationRefused)
+}
+
 // continuationClaim owns one confirmed transition within the original
 // transfer. The transfer coordinator retains at most one claim and must gate
 // the new Connection's Application bytes until it confirms the binding.

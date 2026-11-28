@@ -37,20 +37,25 @@ func (p *Publisher) nextStream(ctx context.Context, contract executionruntime.St
 	p.flights.Add(1)
 	p.mu.Unlock()
 	defer p.flights.Done()
-	owner, err := p.NextAuthentication(ctx)
-	if err != nil {
-		return nil, err
-	}
 	var stream *connection.Stream
-	if segmented {
-		stream, err = owner.OpenPublisherSegment(ctx, contract, p.sourceScope, p.responderScope, previous)
-	} else {
-		stream, err = owner.OpenPublisherStream(contract, p.sourceScope, p.responderScope)
-	}
-	if err != nil {
+	for {
+		owner, err := p.NextAuthentication(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if segmented {
+			stream, err = owner.OpenPublisherSegment(ctx, contract, p.sourceScope, p.responderScope, previous)
+		} else {
+			stream, err = owner.OpenPublisherStream(contract, p.sourceScope, p.responderScope)
+		}
+		if err == nil {
+			break
+		}
 		cleanup := owner.Close()
 		p.config.Operation.RetainCleanup(cleanup)
-		return nil, errors.Join(err, cleanup)
+		if !segmented || !connection.IsTransferOpeningRefused(err) || cleanup != nil || ctx.Err() != nil {
+			return nil, errors.Join(err, cleanup)
+		}
 	}
 	defer func() {
 		if result != nil {

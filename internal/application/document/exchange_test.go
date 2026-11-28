@@ -42,7 +42,7 @@ func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 		{"binary", valid, string(endpointstream.CleanClose), nil, true},
 		{"empty", nil, string(endpointstream.CleanClose), nil, true},
 		{"maximum", bytes.Repeat([]byte{0xff}, document.MaximumBytes), string(endpointstream.CleanClose), nil, true},
-		{"oversize", bytes.Repeat([]byte{0xff}, document.MaximumBytes+1), string(endpointstream.CleanClose), nil, false},
+		{"above segment limit", bytes.Repeat([]byte{0xff}, document.MaximumBytes+1), string(endpointstream.CleanClose), nil, true},
 		{"missing terminal", valid, "", nil, false},
 		{"failed terminal", valid, "interrupted", nil, false},
 		{"cleanup failure", valid, string(endpointstream.CleanClose), io.ErrClosedPipe, false},
@@ -53,14 +53,15 @@ func TestReadRequiresExactResponseAndAuthenticatedCompletion(t *testing.T) {
 				stream.done <- endpointstream.Outcome{Class: endpointstream.OutcomeClass(test.outcome)}
 			}
 			close(stream.done)
-			body, err := document.Read(context.Background(), stream)
-			if (err == nil) != test.want || (!test.want && body != nil) {
-				t.Fatalf("read = %q, %v", body, err)
+			var body bytes.Buffer
+			err := document.ReceiveFile(context.Background(), stream, &body)
+			if (err == nil) != test.want {
+				t.Fatalf("read = %d provisional bytes, %v", body.Len(), err)
 			}
 			if !stream.closed || !stream.inputClosed || stream.request.Len() != 0 {
 				t.Fatal("one-request/cleanup contract was lost")
 			}
-			if test.want && string(body) != string(test.response) {
+			if test.want && !bytes.Equal(body.Bytes(), test.response) {
 				t.Fatal("returned different content")
 			}
 		})
@@ -71,7 +72,7 @@ func TestCancelledReadCreatesNoRequest(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	stream := &responseStream{input: bytes.NewReader(nil), done: make(chan endpointstream.Outcome)}
-	_, err := document.Read(ctx, stream)
+	err := document.ReceiveFile(ctx, stream, io.Discard)
 	if !errors.Is(err, context.Canceled) || stream.request.Len() != 0 || !stream.closed {
 		t.Fatalf("cancelled read = %v", err)
 	}
