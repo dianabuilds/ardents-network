@@ -10,7 +10,7 @@ import (
 // sync. The caller retains its own value validation and transition order; the
 // staging file is removed on any failure before the rename.
 func ReplaceFile(root, temporaryPrefix, finalName string, raw []byte) error {
-	temporary, err := os.CreateTemp(root, temporaryPrefix)
+	temporary, err := CreateOwnerOnlyTemp(root, temporaryPrefix)
 	if err != nil {
 		return err
 	}
