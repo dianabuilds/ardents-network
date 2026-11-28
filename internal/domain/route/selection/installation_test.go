@@ -66,7 +66,7 @@ func installationGenerationViewAt(t *testing.T, networkID, generation byte, elap
 }
 
 func TestInstallationSealWaitsForBorrowers(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	config := InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: func() (network.RuntimeView, error) { return view, nil }}
 	installation, err := OpenInstallation(config)
@@ -127,7 +127,7 @@ func TestInstallationSealWaitsForBorrowers(t *testing.T) {
 }
 
 func TestInstallationRootAliasesAndDescendantsRefused(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	entry := filepath.Join(root, "entry")
 	installation, err := OpenInstallation(InstallationConfig{EntryRoot: entry, Current: func() (network.RuntimeView, error) { return view, nil }})
@@ -155,7 +155,7 @@ func TestInstallationRootAliasesAndDescendantsRefused(t *testing.T) {
 func TestInstallationLateBorrowCurrentnessAndSeal(t *testing.T) {
 	for _, loss := range []string{"Network", "seal"} {
 		t.Run(loss, func(t *testing.T) {
-			root := t.TempDir()
+			root := ownedRootFixture(t)
 			first := installationView(t, 1)
 			other := installationView(t, 2)
 			var armed atomic.Bool
@@ -248,7 +248,7 @@ func TestInstallationLateBorrowCurrentnessAndSeal(t *testing.T) {
 }
 
 func TestInstallationRoleExclusionCannotRedrawSharedEntry(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	installation, err := OpenInstallation(InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: func() (network.RuntimeView, error) { return view, nil }})
 	if err != nil {
@@ -286,7 +286,7 @@ func TestInstallationRoleExclusionCannotRedrawSharedEntry(t *testing.T) {
 }
 
 func TestInstallationSharedEntrySeparateRolesRetainedReopen(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	config := InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: func() (network.RuntimeView, error) { return view, nil }}
 	installation, err := OpenInstallation(config)
@@ -346,7 +346,7 @@ func TestInstallationSharedEntrySeparateRolesRetainedReopen(t *testing.T) {
 }
 
 func TestInstallationRetainedLegOwnsAllKnownExclusions(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	installationKnown := []route.Member{{NodeID: [32]byte{250}, PublicKey: [32]byte{250}, FamilyID: [32]byte{250}}}
 	roleKnown := []route.Member{{NodeID: [32]byte{251}, PublicKey: [32]byte{251}, FamilyID: [32]byte{251}}}

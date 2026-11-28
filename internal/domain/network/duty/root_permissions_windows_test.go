@@ -95,7 +95,7 @@ func requireOwnerOnlyDACL(t *testing.T, path string, inheritable, protected bool
 // duty consumes the shared mechanism without behavior change: the same
 // protected owner-only DACL enforcement and the same refusal prose.
 func TestDutyRootEnforcesOwnerOnlyDACL(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	record := filepath.Join(root, "state-record")
 	if err := os.WriteFile(record, []byte("record"), 0o600); err != nil {
 		t.Fatal(err)

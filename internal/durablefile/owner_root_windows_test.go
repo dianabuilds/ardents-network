@@ -5,7 +5,6 @@ package durablefile
 import (
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -100,26 +99,12 @@ func requireOwnerOnlyDACL(t *testing.T, path string, inheritable, protected bool
 }
 
 func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
-	root := t.TempDir()
-	sd, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
-	if err != nil {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
 		t.Fatal(err)
 	}
-	actual, _, err := sd.Owner()
-	if err != nil {
-		t.Fatal(err)
-	}
-	admins, err := windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
-	if err != nil {
-		t.Fatal(err)
-	}
-	user, err := windows.GetCurrentProcessToken().GetTokenUser()
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Logf("root owner equals user=%t administrators=%t, elevated=%t", actual.Equals(user.User.Sid), actual.Equals(admins), windows.GetCurrentProcessToken().IsElevated())
 	existing := filepath.Join(root, "record")
-	if err := os.WriteFile(existing, []byte("record"), 0o600); err != nil {
+	if err := WriteExclusive(existing, []byte("record")); err != nil {
 		t.Fatal(err)
 	}
 	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
@@ -130,13 +115,13 @@ func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
 	// A file created after enforcement inherits the owner-only grant through
 	// the root's inheritable ACE, never the runner temp directory's DACL.
 	inherited := filepath.Join(root, "later")
-	if err := os.WriteFile(inherited, []byte("later"), 0o600); err != nil {
+	if err := WriteExclusive(inherited, []byte("later")); err != nil {
 		t.Fatal(err)
 	}
-	requireOwnerOnlyDACL(t, inherited, false, false)
+	requireOwnerOnlyDACL(t, inherited, false, true)
 }
 
-func TestEnforceOwnerOnlyRootReplacesBroadGrant(t *testing.T) {
+func TestEnforceOwnerOnlyRootRefusesBroadGrantWithoutMutation(t *testing.T) {
 	root := t.TempDir()
 	everyone, err := windows.CreateWellKnownSid(windows.WinWorldSid)
 	if err != nil {
@@ -154,10 +139,20 @@ func TestEnforceOwnerOnlyRootReplacesBroadGrant(t *testing.T) {
 	if err := windows.SetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION, nil, nil, broad, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
-		t.Fatalf("enforce owner-only root: %v", err)
+	before, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
 	}
-	requireOwnerOnlyDACL(t, root, true, true)
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("broad root was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Fatal("refusal changed root security descriptor")
+	}
 }
 
 func TestEnforceOwnerOnlyRootRefusesUnenforceableRoot(t *testing.T) {
@@ -177,7 +172,7 @@ func TestEnforceOwnerOnlyRootRefusesUnenforceableRoot(t *testing.T) {
 func TestEnforceOwnerOnlyRootRefusesExternalHardLink(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "root")
-	if err := os.Mkdir(root, 0700); err != nil {
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
 		t.Fatal(err)
 	}
 	outside := filepath.Join(parent, "outside")
@@ -216,7 +211,10 @@ func TestEnforceOwnerOnlyRootRefusesExternalHardLink(t *testing.T) {
 }
 
 func TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
 	child := filepath.Join(root, "unexpected-directory")
 	if err := os.Mkdir(child, 0700); err != nil {
 		t.Fatal(err)
@@ -244,7 +242,7 @@ func TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory(t *testing.T) {
 func TestEnforceOwnerOnlyRootRefusesRedirectedEntry(t *testing.T) {
 	parent := t.TempDir()
 	root := filepath.Join(parent, "root")
-	if err := os.Mkdir(root, 0700); err != nil {
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
 		t.Fatal(err)
 	}
 	outside := filepath.Join(parent, "outside")
@@ -270,52 +268,12 @@ func TestEnforceOwnerOnlyRootRefusesRedirectedEntry(t *testing.T) {
 	}
 }
 
-func TestDiagnosticHardLinkDuringHeldHandle(t *testing.T) {
-	root := t.TempDir()
-	file := filepath.Join(root, "source")
-	if err := os.WriteFile(file, []byte("source"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	path, err := windows.UTF16PtrFromString(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	handle, err := windows.CreateFile(path, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES,
-		0, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer windows.CloseHandle(handle)
-	err = os.Link(file, filepath.Join(root, "new-link"))
-	t.Logf("hard link while handle is held: %v", err)
-}
-
 func TestProtectedRootAndExistingRecordVerification(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "protected")
 	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
 		t.Fatal(err)
 	}
-	user, err := windows.GetCurrentProcessToken().GetTokenUser()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sid := user.User.Sid.String()
-	sd, err := windows.SecurityDescriptorFromString("O:" + sid + "D:P(A;;GA;;;" + sid + ")")
-	if err != nil {
-		t.Fatal(err)
-	}
-	attrs := windows.SecurityAttributes{SecurityDescriptor: sd}
-	attrs.Length = uint32(reflect.TypeOf(attrs).Size())
-	path, err := windows.UTF16PtrFromString(filepath.Join(root, "record"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	file, err := windows.CreateFile(path, windows.GENERIC_READ|windows.GENERIC_WRITE,
-		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, &attrs, windows.CREATE_NEW, 0, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := windows.CloseHandle(file); err != nil {
+	if err := WriteExclusive(filepath.Join(root, "record"), []byte("record")); err != nil {
 		t.Fatal(err)
 	}
 	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
