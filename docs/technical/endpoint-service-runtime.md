@@ -1463,3 +1463,43 @@ shared parents, Stock, State, local Execution and Startup close. Partial
 construction follows the same reverse ownership order and retains original
 failures. Permission and history bytes, role declarations and qualified-worker
 requirements are unchanged.
+
+## ADR-0135 continuation records
+
+Continuation controls use the existing endpoint-only Service TLS envelope.
+The table specifies the proposed closed encoding for the continuation
+implementation. Every control begins with a nonzero u64 Attachment generation.
+All integers are big endian. A boundary is 25 bytes: next segment u64,
+absolute bytes toward Publisher u64, absolute bytes toward Reader u64, and
+one EOF mask byte. Bits 0 and 1 describe the input EOF at Publisher and
+Reader respectively. All other mask bits are zero. Next segment starts at 2.
+The positions count delivered bytes and must agree with the opposite side's
+confirmed sent positions before a boundary can retire.
+
+| Kind | Direction and original ownership | Body after generation |
+| --- | --- | --- |
+| 7 DrainSegment | Either endpoint asks both sides to stop admitting new bytes to the active segment | Empty |
+| 8 ProposeBoundary | Reader proposes positions and EOF state after draining the original segment | Boundary |
+| 9 OfferContinuation | Publisher confirms the same boundary and assigns an endpoint-only 32-byte ticket on the original segment | Boundary, ticket |
+| 10 ConfirmBoundary | Reader confirms the original offer | Boundary, ticket |
+| 11 ResumeTransfer | Reader presents the exact pending transition on the freshly admitted logical Connection | Boundary, ticket, new 32-byte logical context |
+| 12 AcceptResume | Publisher confirms that transition on the same new logical Connection | Boundary, ticket, new 32-byte logical context |
+
+The fixed field shapes have no trailing data. Empty ticket and context values
+are refused. The verified attachment supplies the current generation and
+logical context. On resume the Publisher rechecks the original Network,
+Target, Instance and generation, Publication and profile against the new
+authenticated facts. Different logical contexts cannot consume one ticket.
+A repeated confirmation in the same logical Connection may repeat the exact
+answer during its existing recovery window. The original boundary controls
+must be confirmed and the original physical work must join before resumed
+payload is admitted. At most one pending transition exists per original
+transfer. Revoke, expiry and failed cleanup refuse further transitions.
+
+The wire decoder only recognizes the fixed representation. The ordinary
+Data/Acknowledgement/Terminal parser refuses these controls. An older peer also
+refuses an unknown kind. The draft emits no new control until a phase-aware
+owner actively selects it. Compatibility, the authority check and the cutover
+are qualified with the actual endpoints. Ticket and boundary fields remain
+inside Service TLS and outside Route-visible fields and diagnostics. Timing
+and byte-volume correlation remain possible across successive admissions.

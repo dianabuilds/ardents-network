@@ -21,6 +21,7 @@ type State struct {
 	terminal   *terminalExchange
 	ackSerial  uint64
 	ackWritten uint64
+	draining   bool
 }
 
 func New(generation, sendLimit, receiveLimit uint64) (*State, error) {
@@ -65,11 +66,24 @@ func (s *State) Progress() Progress {
 
 func (s *State) Peek(body []byte) (int, error) { return s.receive.peek(body) }
 func (s *State) Read(body []byte) (int, error) { return s.receive.read(body) }
-func (s *State) CheckWrite(body []byte) error  { return s.send.checkAccept(body) }
-func (s *State) Write(body []byte) error       { return s.send.accept(body) }
-func (s *State) InputClosed() bool             { return s.send.closed }
+func (s *State) CheckWrite(body []byte) error {
+	if s.draining {
+		return ErrSegmentDraining
+	}
+	return s.send.checkAccept(body)
+}
+func (s *State) Write(body []byte) error {
+	if s.draining {
+		return ErrSegmentDraining
+	}
+	return s.send.accept(body)
+}
+func (s *State) InputClosed() bool { return s.send.closed }
 
 func (s *State) CloseInput() error {
+	if s.draining && !s.send.closed {
+		return ErrSegmentDraining
+	}
 	return s.terminal.closeLocal(s.send.closeInput())
 }
 
