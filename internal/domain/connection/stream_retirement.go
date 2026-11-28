@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"os"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
@@ -73,6 +75,7 @@ func (stream *Stream) watchLifetime() {
 			return
 		case <-boundaryDeadline:
 			boundaryDeadline = nil
+			qualificationStackSummary()
 			_ = stream.commit(func() error {
 				if stream.settled || stream.segment.draining {
 					return nil
@@ -340,4 +343,27 @@ func recoveryFailure(cause, outcome error) error {
 		return outcome
 	}
 	return errors.Join(outcome, originalAttachmentFailure{cause: cause})
+}
+
+// Disposable qualification diagnostics: log selected function names only.
+func qualificationStackSummary() {
+	raw := make([]byte, 1<<20)
+	for block := range strings.SplitSeq(string(raw[:runtime.Stack(raw, true)]), "\n\n") {
+		if !strings.Contains(block, ".writeRecords(") && !strings.Contains(block, ".readRecords(") &&
+			!strings.Contains(block, ".receiveWorkerBytes(") && !strings.Contains(block, ".sendWorkerBytes(") {
+			continue
+		}
+		var names []string
+		for line := range strings.SplitSeq(block, "\n") {
+			if line == "" || line[0] == '\t' || strings.HasPrefix(line, "goroutine ") || strings.HasPrefix(line, "created by ") {
+				continue
+			}
+			if idx := strings.LastIndexByte(line, '('); idx > 0 {
+				line = line[:idx]
+			}
+			line = strings.TrimPrefix(line, "github.com/dianabuilds/ardents-network/internal/")
+			names = append(names, line)
+		}
+		fmt.Fprintln(os.Stderr, "qualification stack", strings.Join(names, " | "))
+	}
 }
