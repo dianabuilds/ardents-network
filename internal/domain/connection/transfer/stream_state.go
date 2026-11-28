@@ -16,12 +16,13 @@ var (
 // State retains both directions and the exact current exchange of Terminal
 // records. The caller serializes all transitions under the logical Stream lock.
 type State struct {
-	send       *sendLedger
-	receive    *receiveLedger
-	terminal   *terminalExchange
-	ackSerial  uint64
-	ackWritten uint64
-	draining   bool
+	send           *sendLedger
+	receive        *receiveLedger
+	terminal       *terminalExchange
+	ackSerial      uint64
+	ackWritten     uint64
+	lastWasDataACK bool
+	draining       bool
 }
 
 func New(generation, sendLimit, receiveLimit uint64) (*State, error) {
