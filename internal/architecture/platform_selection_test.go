@@ -230,8 +230,8 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 			"internal/durablefile/relative_open_unix_test.go",
 			"internal/durablefile/inspection_identity_unix.go",
 			"internal/durablefile/inspection_identity_unix_test.go",
-			"internal/application/document/snapshot_file_unix.go",
-			"internal/application/document/snapshot_file_unix_test.go",
+			"internal/application/localsnapshot/read_unix.go",
+			"internal/application/localsnapshot/read_unix_test.go",
 			"internal/domain/endpoint/generation/file_unix.go",
 			"internal/domain/endpoint/generation/snapshot_unix.go",
 			"internal/domain/endpoint/generation/directory_unix.go",
@@ -255,7 +255,8 @@ func TestCohort0UnixFamilyInspectionPortSelection(t *testing.T) {
 			}
 		}
 		for _, name := range []string{
-			"internal/application/document/snapshot_file_other.go",
+			"internal/application/localsnapshot/read_other.go",
+			"internal/application/localsnapshot/read_other_test.go",
 			"internal/domain/endpoint/plan/custody_other.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
@@ -702,7 +703,7 @@ func TestP1BBatch3PureProductionRunsOnEveryMandatoryTarget(t *testing.T) {
 // launches no native worker itself; publisher launches the native worker
 // (LaunchPublisher/LaunchByteStreamPublisher) BEFORE openPublication, so macOS
 // receives the typed worker refusal before any root state; snapshot imports the
-// caller input read-only (document.ReadSnapshotFile creates no filesystem state or
+// caller input read-only (localsnapshot.Read creates no filesystem state or
 // authority) before the same typed launch refusal; byte_stream composes only the
 // portable application/endpointstream contract, not the Refuse typed-refusal projection.
 // They move to linux || darwin and their opening/snapshot refusals narrow to

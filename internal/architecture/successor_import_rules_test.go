@@ -54,6 +54,17 @@ func successorImportAllowed(source, dependency string) bool {
 		return offlineOperatorImportAllowed(source, dependency)
 	}
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	const localSnapshot = "internal/application/localsnapshot"
+	if local == localSnapshot {
+		return source == "internal/application/administration/local_document_publication.go" ||
+			source == "internal/domain/endpoint/publisher/snapshot_unix.go"
+	}
+	if path.Dir(source) == localSnapshot {
+		if source == localSnapshot+"/read_unix.go" || source == localSnapshot+"/read_unix_test.go" {
+			return allowedStandardImport(dependency) || local == "internal/durablefile" || local == "internal/application/document"
+		}
+		return allowedStandardImport(dependency)
+	}
 	const applicationConsole = "internal/application/console"
 	if local == applicationConsole {
 		switch source {
@@ -385,11 +396,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go" || source == "internal/domain/custody/private_permission_windows.go" || source == "internal/domain/custody/private_permission_windows_test.go" || source == "internal/domain/custody/command/private_permission_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	// The Application document snapshot import composes only the shared
-	// Unix-family inspection mechanism, no Network or Route authority (#850).
-	if (source == "internal/application/document/snapshot_file_unix.go" || source == "internal/application/document/snapshot_file_unix_test.go") && dependency == modulePath+"/internal/durablefile" {
-		return true
-	}
 	// Exact owner edges for the command responsibility transfer.
 	if localImport {
 		switch source {
@@ -624,9 +630,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
-	if source == "internal/domain/endpoint/publisher/snapshot_unix.go" && dependency == modulePath+"/internal/application/document" {
-		return true
-	}
+
 	if (owner == "internal/domain/admission/issuance" || owner == "internal/domain/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}

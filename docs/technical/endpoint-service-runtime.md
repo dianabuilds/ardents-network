@@ -294,7 +294,10 @@ Endpoint verifies an explicit worker completion receipt on its local
 attachment. The authenticated Service terminal outcome covers network
 completion.
 
-The document Publisher imports a bounded snapshot and invokes `PublishSnapshot`; its bodyless
+Administration and the local Endpoint publisher read the selected file through
+`internal/application/localsnapshot`. Each clears its copy after transferring
+the bytes. The worker receives those bytes through initialization.
+The document Publisher accepts `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by
 [ADR-0092](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0092-retire-generic-publisher-transit-chain.md).

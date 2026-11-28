@@ -19,6 +19,7 @@ github.com/dianabuilds/ardents-network/internal/application/endpointstream
 github.com/dianabuilds/ardents-network/internal/application/endpointstream/client
 github.com/dianabuilds/ardents-network/internal/application/endpointstream/targetlink
 github.com/dianabuilds/ardents-network/internal/application/document
+github.com/dianabuilds/ardents-network/internal/application/localsnapshot
 github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network
 github.com/dianabuilds/ardents-network/tests/releasefixture

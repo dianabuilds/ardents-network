@@ -3120,7 +3120,7 @@ launches no native worker itself — the same pattern as the session `Open*` shi
 the coordinator launches the native worker (`LaunchPublisher`/
 `LaunchByteStreamPublisher`) before live Open, so macOS receives the typed worker
 refusal before any root state. `LaunchSnapshotFile` imports the caller input
-read-only (`document.ReadSnapshotFile` opens `O_RDONLY`/`O_NOFOLLOW` into a
+read-only (`localsnapshot.Read` opens `O_RDONLY`/`O_NOFOLLOW` into a
 caller-owned buffer and creates no filesystem state or authority) before the same
 typed launch refusal, so the snapshot-read-before-launch ordering no longer blocks
 the port — reading caller input is not state creation. The byte-stream adapter
@@ -3248,8 +3248,11 @@ durable behavior tests. The other 21 files keep their Linux constraint:
   and `/sys` counters, `platform_other.go` refuses), `admission/stock/retained_open_linux_test.go`
   (the retained-opening test is Linux-selected),
   `admission/issuer/lifecycle_linux_test.go` (issuance `storage_linux.go`/
-  `results_linux.go`), `internal/application/administration/document_publisher_linux_test.go`
-  (`document.ReadSnapshotFile` no-follow Linux importer).
+  `results_linux.go`).
+- The Linux command profile runs `internal/application/administration/document_publisher_linux_test.go`
+  against the Administration socket. The selected file reader itself runs on
+  Linux and macOS, with separate no-follow and byte-stability tests in
+  `internal/application/localsnapshot`.
 - Tests whose exact refusal projection is produced only by the Linux command
   composition; the `!linux` stubs project `unsupported-platform` instead:
   `command/installed_cancellation_linux_test.go`,
