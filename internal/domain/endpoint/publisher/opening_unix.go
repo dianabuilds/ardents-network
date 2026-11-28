@@ -214,6 +214,7 @@ func openPublication(ctx context.Context, plan Plan, routePlan funding.Plan, aut
 				if owner.StreamAcquisitionStopped(err) {
 					// This loop acquired no work. The owning Withdraw/Close
 					// still returns all retained work and physical failures.
+					intake.Drain()
 					return nil
 				}
 				return err

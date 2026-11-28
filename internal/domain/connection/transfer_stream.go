@@ -116,8 +116,8 @@ func (owner *Transfer) run(current *Stream, release func() error, open SegmentOp
 		owner.done <- endpointstream.Outcome{Class: endpointstream.IndeterminateFailure, Reason: "Service transfer did not complete"}
 	}
 	close(owner.done)
-	close(owner.joined)
 	owner.cancel()
+	close(owner.joined)
 }
 
 func (owner *Transfer) segment() (*Stream, <-chan struct{}, error) {

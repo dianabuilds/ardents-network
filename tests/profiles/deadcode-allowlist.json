@@ -698,6 +698,7 @@
           "internal/domain/publication/runtime.Publisher.nextStream",
           "internal/domain/publication/runtime.Publisher.retainStream",
           "internal/domain/publication/runtime.TransferIntake.Close",
+          "internal/domain/publication/runtime.TransferIntake.Drain",
           "internal/domain/publication/runtime.TransferIntake.Next",
           "internal/domain/publication/runtime.TransferIntake.checkCapacity",
           "internal/domain/publication/runtime.TransferIntake.forward",

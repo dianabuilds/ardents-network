@@ -25,6 +25,7 @@ type TransferIntake struct {
 	mu      sync.Mutex
 	slots   map[[32]byte]*publisherTransferSlot
 	closed  bool
+	stopped chan struct{}
 	flights sync.WaitGroup
 }
 
@@ -44,7 +45,7 @@ func (p *Publisher) OpenTransferIntake(ctx context.Context, contract executionru
 	lifetime, cancel := context.WithCancel(ctx)
 	return &TransferIntake{
 		publisher: p, contract: contract, ctx: lifetime, cancel: cancel,
-		slots: make(map[[32]byte]*publisherTransferSlot),
+		slots: make(map[[32]byte]*publisherTransferSlot), stopped: make(chan struct{}),
 	}, nil
 }
 
@@ -150,6 +151,8 @@ func (intake *TransferIntake) start(stream *connection.Stream, ticket [32]byte) 
 		select {
 		case <-ctx.Done():
 			return nil, nil, ctx.Err()
+		case <-intake.stopped:
+			return nil, nil, errTransferUnavailable
 		case next := <-slot.next:
 			return next, func() error { return intake.release(next) }, nil
 		}
@@ -181,10 +184,20 @@ func (intake *TransferIntake) release(stream *connection.Stream) error {
 	return err
 }
 
-func (intake *TransferIntake) Close() {
-	intake.cancel()
+// Drain stops new segment admission after the publication begins withdrawal.
+// The original publication lifetime still governs already admitted work.
+func (intake *TransferIntake) Drain() {
 	intake.mu.Lock()
-	intake.closed = true
+	if !intake.closed {
+		intake.closed = true
+		close(intake.stopped)
+	}
 	intake.mu.Unlock()
 	intake.flights.Wait()
+	intake.cancel()
+}
+
+func (intake *TransferIntake) Close() {
+	intake.cancel()
+	intake.Drain()
 }

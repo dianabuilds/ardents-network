@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -44,6 +45,7 @@ func TestInstalledConnectionAcceptedRequestRecoveryTCP(t *testing.T) {
 
 type installedRecoverySpends struct {
 	presentations processfixture.AdmissionPresentations
+	joinAccepted  atomic.Int64
 	joinBudget    *hosting.Budget
 }
 
@@ -164,6 +166,9 @@ func (proof *installedRecoverySpends) observeAdmission(admit receiver.Admit, id 
 		grant, err := admit(ctx, channel, token)
 		selected := id == installedRecoveryRendezvous && channel.Hello.Purpose == ardp.PurposeDataJoin
 		proof.presentations.Observe(selected, channel.Binding, digest, err)
+		if selected && err == nil {
+			proof.joinAccepted.Add(1)
+		}
 		return grant, err
 	}
 }

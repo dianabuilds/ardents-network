@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -234,6 +235,8 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 					proof := publisherStream.Proof()
 					response.Proof = &proof
 				}
+			case "resources":
+				response.PeakRSSKiB = journeyPeakRSS(t, original[0])
 			case "withdraw":
 				if role != "publisher" {
 					t.Fatal("reader received withdrawal fixture command")
@@ -269,6 +272,34 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 		binary = buildArdentsNext(t)
 	}
 	endpointfixture.RunJourneyParticipant(t, binary, base, etcDir, *input.Network, approve, exercise)
+}
+
+func journeyPeakRSS(t *testing.T, pid string) uint64 {
+	t.Helper()
+	if parsed, err := strconv.ParseUint(pid, 10, 32); err != nil || parsed == 0 {
+		t.Fatal("journey resource sample lost the original Endpoint PID")
+	}
+	raw, err := os.ReadFile(filepath.Join("/proc", pid, "status"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(string(raw), "\n") {
+		value, found := strings.CutPrefix(line, "VmHWM:")
+		if !found {
+			continue
+		}
+		fields := strings.Fields(value)
+		if len(fields) != 2 || fields[1] != "kB" {
+			t.Fatal("invalid Endpoint peak resident memory")
+		}
+		peak, err := strconv.ParseUint(fields[0], 10, 64)
+		if err != nil || peak == 0 {
+			t.Fatal("invalid Endpoint peak resident memory")
+		}
+		return peak
+	}
+	t.Fatal("Endpoint peak resident memory is unavailable")
+	return 0
 }
 
 // journeyRestartContinuity proves a platform-led restart reaches Service
