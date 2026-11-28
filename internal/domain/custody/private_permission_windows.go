@@ -70,7 +70,7 @@ func checkPrivatePermissionDestination(path string) error {
 	} else {
 		validation = checkPrivatePermissionProtection(probe)
 	}
-	if err := errors.Join(validation, closeCredentialStaging(probe, probe.Name(), true), windows.CloseHandle(handle)); err != nil {
+	if err := errors.Join(validation, closeCredentialStaging(probe, probe.Name(), true, true), windows.CloseHandle(handle)); err != nil {
 		return errors.Join(ErrPrivatePermissionUnavailable, err)
 	}
 	return nil
@@ -192,9 +192,14 @@ func createCredentialStaging(parent, prefix string, private bool) (*os.File, err
 	return nil, ErrPrivatePermissionUnavailable
 }
 
-func closeCredentialStaging(file *os.File, path string, private bool) error {
+func retainCredentialStaging(private bool) bool { return private }
+
+func closeCredentialStaging(file *os.File, path string, private, open bool) error {
 	if !private {
-		closeErr := file.Close()
+		var closeErr error
+		if open {
+			closeErr = file.Close()
+		}
 		removeErr := os.Remove(path)
 		if errors.Is(removeErr, os.ErrNotExist) {
 			removeErr = nil

@@ -58,9 +58,9 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 	if err != nil {
 		return fmt.Errorf("create %s staging file: %w", name, err)
 	}
-	stagingPath := staging.Name()
+	stagingPath, stagingOpen := staging.Name(), true
 	defer func() {
-		if err := closeCredentialStaging(staging, stagingPath, private); err != nil {
+		if err := closeCredentialStaging(staging, stagingPath, private, stagingOpen); err != nil {
 			resultErr = errors.Join(resultErr, fmt.Errorf("close and remove %s staging file: %w", name, err))
 		}
 		if err := syncDirectory(parent); err != nil {
@@ -89,11 +89,20 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 	if err := staging.Sync(); err != nil {
 		return fmt.Errorf("flush %s staging file: %w", name, err)
 	}
+	// Windows private delivery retains the original handle through publication;
+	// other deliveries preserve close-before-publication error ordering.
+	if !retainCredentialStaging(private) {
+		err = staging.Close()
+		stagingOpen = false
+		if err != nil {
+			return fmt.Errorf("close %s staging file: %w", name, err)
+		}
+	}
 	linkErr := os.Link(stagingPath, destination)
 	if linkErr != nil && !errors.Is(linkErr, os.ErrExist) {
 		return fmt.Errorf("publish %s: %w", name, linkErr)
 	}
-	if linkErr == nil {
+	if linkErr == nil && stagingOpen {
 		if !sameCredentialFile(staging, destination) {
 			return errors.New(name + " published identity changed")
 		}

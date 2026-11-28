@@ -11,8 +11,13 @@ func createCredentialStaging(parent, prefix string, _ bool) (*os.File, error) {
 	return os.CreateTemp(parent, prefix)
 }
 
-func closeCredentialStaging(file *os.File, path string, _ bool) error {
-	closeErr := file.Close()
+func retainCredentialStaging(_ bool) bool { return false }
+
+func closeCredentialStaging(file *os.File, path string, _, open bool) error {
+	var closeErr error
+	if open {
+		closeErr = file.Close()
+	}
 	removeErr := os.Remove(path)
 	if errors.Is(removeErr, os.ErrNotExist) {
 		removeErr = nil
