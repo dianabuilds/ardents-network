@@ -27,9 +27,12 @@ jobs:
           $needle = "if err := checkWindowsFileOwner(handle, owner); err != nil {"
           if (-not $text.Contains($needle)) { throw 'owner-check control not found' }
           $text = $text.Replace($needle, 'if err := error(nil); err != nil {')
+          $rootWrite = 'if err := setOwnerOnlyDACL(handle, owner, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT); err != nil {'
+          if (-not $text.Contains($rootWrite)) { throw 'root write control not found' }
+          $text = $text.Replace($rootWrite, 'if err := error(nil); err != nil {')
           [IO.File]::WriteAllText($source, $text)
           $overlay = @{ Replace = @{ $original = $source }} | ConvertTo-Json
           $overlayPath = Join-Path $env:RUNNER_TEMP 'diagnostic-overlay.json'
           [IO.File]::WriteAllText($overlayPath, $overlay)
-          go test -overlay $overlayPath -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRoot(RefusesExternalHardLink|DoesNotPropagateToExistingDirectory|RefusesRedirectedEntry)$' -count=1 -v -timeout=8m
+          go test -overlay $overlayPath -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory$' -count=1 -v -timeout=8m
           exit $LASTEXITCODE
