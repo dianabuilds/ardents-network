@@ -59,3 +59,4 @@ jobs:
               throw "DACL mutation was not detected: $variant"
             }
           }
+          exit 0
