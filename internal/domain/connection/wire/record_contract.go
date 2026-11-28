@@ -75,6 +75,7 @@ type Record struct {
 
 // StreamRecord excludes every initial and recovery authentication record.
 type StreamRecord struct {
+	Continuation    *Continuation
 	Data            *Data
 	Acknowledgement *Acknowledgement
 	Terminal        *Terminal

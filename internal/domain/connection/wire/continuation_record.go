@@ -27,6 +27,7 @@ const (
 	ConfirmBoundary   ContinuationKind = 10
 	ResumeTransfer    ContinuationKind = 11
 	AcceptResume      ContinuationKind = 12
+	AcceptBoundary    ContinuationKind = 13
 )
 
 // Continuation carries exact segment controls. Its fields become usable only
@@ -34,16 +35,18 @@ const (
 type Continuation struct {
 	Kind                 ContinuationKind
 	AttachmentGeneration uint64
+	DrainOffset          uint64
 	Boundary             SegmentBoundary
 	Ticket               [32]byte
 	LogicalContext       [32]byte
 }
 
 const (
-	drainPayloadSize    = 8
-	boundaryPayloadSize = drainPayloadSize + 8*3 + 1
-	offerPayloadSize    = boundaryPayloadSize + 32
-	resumePayloadSize   = offerPayloadSize + 32
+	attachmentGenerationSize = 8
+	drainPayloadSize         = attachmentGenerationSize + 8
+	boundaryPayloadSize      = attachmentGenerationSize + 8*3 + 1
+	offerPayloadSize         = boundaryPayloadSize + 32
+	resumePayloadSize        = offerPayloadSize + 32
 )
 
 var errContinuation = errors.New("native Service continuation record is invalid")
@@ -54,7 +57,7 @@ func continuationPayloadSize(kind ContinuationKind) int {
 		return drainPayloadSize
 	case ProposeBoundary:
 		return boundaryPayloadSize
-	case OfferContinuation, ConfirmBoundary:
+	case OfferContinuation, ConfirmBoundary, AcceptBoundary:
 		return offerPayloadSize
 	case ResumeTransfer, AcceptResume:
 		return resumePayloadSize
@@ -68,7 +71,8 @@ func (record Continuation) payloadSize() (int, error) {
 	if size == 0 || record.AttachmentGeneration == 0 {
 		return 0, errContinuation
 	}
-	if size == drainPayloadSize && record.Boundary != (SegmentBoundary{}) || size > drainPayloadSize && !record.Boundary.Valid() {
+	if record.Kind == DrainSegment && record.Boundary != (SegmentBoundary{}) ||
+		record.Kind != DrainSegment && (record.DrainOffset != 0 || !record.Boundary.Valid()) {
 		return 0, errContinuation
 	}
 	if (size >= offerPayloadSize) != (record.Ticket != [32]byte{}) ||
@@ -79,7 +83,11 @@ func (record Continuation) payloadSize() (int, error) {
 }
 
 func (record Continuation) encodePayload(dst []byte) {
-	binary.BigEndian.PutUint64(dst[:drainPayloadSize], record.AttachmentGeneration)
+	binary.BigEndian.PutUint64(dst[:attachmentGenerationSize], record.AttachmentGeneration)
+	if record.Kind == DrainSegment {
+		binary.BigEndian.PutUint64(dst[attachmentGenerationSize:], record.DrainOffset)
+		return
+	}
 	if len(dst) >= boundaryPayloadSize {
 		binary.BigEndian.PutUint64(dst[8:16], record.Boundary.Next)
 		binary.BigEndian.PutUint64(dst[16:24], record.Boundary.ToPublisher)
@@ -100,9 +108,11 @@ func decodeContinuation(kind ContinuationKind, payload []byte) (Record, error) {
 		return Record{}, errContinuation
 	}
 	record := &Continuation{
-		Kind: kind, AttachmentGeneration: binary.BigEndian.Uint64(payload[:drainPayloadSize]),
+		Kind: kind, AttachmentGeneration: binary.BigEndian.Uint64(payload[:attachmentGenerationSize]),
 	}
-	if size >= boundaryPayloadSize {
+	if kind == DrainSegment {
+		record.DrainOffset = binary.BigEndian.Uint64(payload[attachmentGenerationSize:])
+	} else {
 		record.Boundary = SegmentBoundary{
 			Next:        binary.BigEndian.Uint64(payload[8:16]),
 			ToPublisher: binary.BigEndian.Uint64(payload[16:24]),

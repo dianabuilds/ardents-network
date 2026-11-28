@@ -37,7 +37,7 @@ func (stream *Stream) failLocked(err error) {
 }
 
 func (stream *Stream) settleLocked() {
-	if stream.settled || !stream.transfer.DeliveryComplete() {
+	if stream.settled || stream.segment != nil && stream.segment.draining || !stream.transfer.DeliveryComplete() {
 		return
 	}
 	if err := stream.checkLocked(); err != nil {

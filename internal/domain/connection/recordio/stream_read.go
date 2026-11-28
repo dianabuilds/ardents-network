@@ -16,11 +16,18 @@ type StreamReader struct {
 	buffer     [512]byte
 	start, end int
 	failure    error
+	segment    bool
 }
 
 // NewStreamReader binds one record reader to the actor's physical input.
 func NewStreamReader(reader io.Reader) *StreamReader {
 	return &StreamReader{reader: reader}
+}
+
+// NewSegmentStreamReader selects continuation decoding for an original
+// segment actor only. Its caller enforces every control transition.
+func NewSegmentStreamReader(reader io.Reader) *StreamReader {
+	return &StreamReader{reader: reader, segment: true}
 }
 
 // Read supplies plaintext to the wire decoder.
@@ -54,7 +61,11 @@ func (input *StreamReader) consume(body []byte) int {
 // ReadRecord reads one Stream record and reports the plaintext bytes consumed.
 func (input *StreamReader) ReadRecord() (wire.StreamRecord, int, error) {
 	observed := observedRecordRead{reader: input}
-	record, err := wire.ReadStream(&observed)
+	decode := wire.ReadStream
+	if input.segment {
+		decode = wire.ReadSegmentStream
+	}
+	record, err := decode(&observed)
 	if input.failure != nil {
 		// ReadFull can hide an error accompanying enough bytes. A complete
 		// buffered record must not hide that original transport/owner failure.

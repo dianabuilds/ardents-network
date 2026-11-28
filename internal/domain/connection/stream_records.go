@@ -39,10 +39,13 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 	var result error
 	defer func() { records.readerResult = result; close(records.readerDone) }()
 	input := recordio.NewStreamReader(records.physical)
+	if stream.segment != nil {
+		input = recordio.NewSegmentStreamReader(records.physical)
+	}
 	defer input.Discard()
 	for {
 		decoded, received, readErr := input.ReadRecord()
-		record := wire.Record{Data: decoded.Data, Acknowledgement: decoded.Acknowledgement, Terminal: decoded.Terminal}
+		record := wire.Record{Data: decoded.Data, Acknowledgement: decoded.Acknowledgement, Terminal: decoded.Terminal, Continuation: decoded.Continuation}
 		result = readErr
 		// The decoded clean CLOSE is an immutable fact of this exact child,
 		// not logical authority. Observe it outside the consumer state lock;
@@ -130,6 +133,15 @@ func (stream *Stream) failRecord(records *attachmentRecords, cause error) {
 }
 
 func (stream *Stream) acceptRecordLocked(record wire.Record) error {
+	if record.Continuation != nil {
+		if stream.segment == nil {
+			return errIntegrity
+		}
+		return stream.segment.receive(stream.transfer, *record.Continuation)
+	}
+	if stream.segment != nil && record.Data != nil && !stream.segment.acceptsData(*record.Data) {
+		return errIntegrity
+	}
 	if stream.settled && record.Data != nil {
 		return errIntegrity
 	}
@@ -144,6 +156,7 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 	for {
 		var record wire.Record
 		var ticket *transfer.RecordWrite
+		var segmentTicket *segmentControlWrite
 		var changed <-chan struct{}
 		finished := false
 		err := stream.commit(func() error {
@@ -156,7 +169,13 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 			}
 			var err error
 			record, ticket, err = stream.transfer.BeginRecordWrite()
-			if ticket == nil && err == nil {
+			if ticket == nil && err == nil && stream.segment != nil {
+				segmentTicket, err = stream.segment.beginWrite(stream.transfer)
+				if segmentTicket != nil {
+					record = wire.Record{Continuation: &segmentTicket.record}
+				}
+			}
+			if ticket == nil && segmentTicket == nil && err == nil {
 				changed = stream.changeLocked()
 			}
 			return err
@@ -180,7 +199,12 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 				return errors.Join(errIntegrity, writeErr)
 			}
 			before := stream.transfer.Progress()
-			err := stream.transfer.FinishRecordWrite(ticket, writeErr)
+			var err error
+			if segmentTicket != nil {
+				err = stream.segment.finishWrite(segmentTicket, records.generation, writeErr)
+			} else {
+				err = stream.transfer.FinishRecordWrite(ticket, writeErr)
+			}
 			if records.retiring {
 				finished = true
 				return nil

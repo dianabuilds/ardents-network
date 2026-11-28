@@ -39,6 +39,7 @@ func TestContinuationRecordsRefuseMalformedPayload(t *testing.T) {
 		{Kind: wire.ProposeBoundary, AttachmentGeneration: 1, Boundary: boundary},
 		{Kind: wire.OfferContinuation, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket},
 		{Kind: wire.ConfirmBoundary, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket},
+		{Kind: wire.AcceptBoundary, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket},
 		{Kind: wire.ResumeTransfer, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket, LogicalContext: logical},
 		{Kind: wire.AcceptResume, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket, LogicalContext: logical},
 	} {
@@ -69,7 +70,7 @@ func TestContinuationRecordsRefuseMalformedPayload(t *testing.T) {
 		{Kind: wire.ProposeBoundary, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket},
 		{Kind: wire.OfferContinuation, AttachmentGeneration: 1, Boundary: boundary},
 		{Kind: wire.ResumeTransfer, AttachmentGeneration: 1, Boundary: boundary, Ticket: ticket},
-		{Kind: wire.ContinuationKind(13), AttachmentGeneration: 1},
+		{Kind: wire.ContinuationKind(14), AttachmentGeneration: 1},
 	} {
 		var output bytes.Buffer
 		if err := wire.Write(&output, wire.Record{Continuation: &value}); err == nil || output.Len() != 0 {

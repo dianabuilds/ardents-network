@@ -28,6 +28,7 @@ type Stream struct {
 	changed           chan struct{} // Stream.mu owns notification replacement.
 	writeMu           sync.Mutex
 	transfer          *transfer.State
+	segment           *segmentBoundaryExchange
 	key               [32]byte
 	failure           error
 	closing           bool
@@ -61,6 +62,10 @@ func (owner *AuthenticatedAttachment) OpenStream(contract executionruntime.Strea
 }
 
 func (owner *AuthenticatedAttachment) openStream(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource) (*Stream, error) {
+	return owner.openStreamWithSegment(contract, publisherRoute, initiatorRoute, nil)
+}
+
+func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource, segment *segmentBoundaryExchange) (*Stream, error) {
 	if owner == nil || owner.self != owner {
 		return nil, errIntegrity
 	}
@@ -94,7 +99,7 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 			return errors.Join(errIntegrity, err)
 		}
 		ctx, cancel := context.WithCancel(owner.context())
-		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, publisherRoute: publisherRoute,
+		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, segment: segment, publisherRoute: publisherRoute,
 			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan endpointstream.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
 		stream.self = stream
 		if initiatorRoute != nil {

@@ -73,6 +73,16 @@ func Read(reader io.Reader) (Record, error) {
 // fixed authentication and attachment phases. Segment controls also require
 // a separate phase-aware consumer.
 func ReadStream(reader io.Reader) (StreamRecord, error) {
+	return readStream(reader, false)
+}
+
+// ReadSegmentStream reads the same stream grammar with the selected
+// continuation controls. The original Stream must check their phase.
+func ReadSegmentStream(reader io.Reader) (StreamRecord, error) {
+	return readStream(reader, true)
+}
+
+func readStream(reader io.Reader, continuation bool) (StreamRecord, error) {
 	record, err := Read(reader)
 	if err != nil {
 		return StreamRecord{}, err
@@ -84,6 +94,8 @@ func ReadStream(reader io.Reader) (StreamRecord, error) {
 		return StreamRecord{Acknowledgement: record.Acknowledgement}, nil
 	case record.Terminal != nil:
 		return StreamRecord{Terminal: record.Terminal}, nil
+	case continuation && record.Continuation != nil:
+		return StreamRecord{Continuation: record.Continuation}, nil
 	default:
 		return StreamRecord{}, errors.Join(ErrInvalidRecord, errors.New("native connection stream received a non-stream record"))
 	}
@@ -210,7 +222,7 @@ func recordKindSize(record Record) (byte, int, error) {
 // which encodeEnvelope sized exactly. It performs no validation or allocation.
 func appendRecordPayload(record Record, kind byte, dst []byte) {
 	switch kind {
-	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume):
+	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume), byte(AcceptBoundary):
 		record.Continuation.encodePayload(dst)
 	case kindChallenge:
 		value := record.Challenge
@@ -265,7 +277,7 @@ func decodeRecord(body []byte) (Record, error) {
 	}
 	kind, payload := body[2], body[commonHeaderSize:]
 	switch kind {
-	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume):
+	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume), byte(AcceptBoundary):
 		return decodeContinuation(ContinuationKind(kind), payload)
 	case kindChallenge:
 		if len(payload) != 136 {

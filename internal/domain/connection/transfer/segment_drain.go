@@ -15,7 +15,10 @@ type SegmentPositions struct {
 // FreezeSegment stops newly admitted sends without ending the Application
 // direction. Previously accepted sends and incoming bytes still drain.
 // The Stream serializes this operation with all ordinary ledger transitions.
-func (s *State) FreezeSegment() { s.draining = true }
+func (s *State) FreezeSegment() uint64 {
+	s.draining = true
+	return s.send.end
+}
 
 // DrainedSegment reports a candidate boundary after existing physical writes,
 // peer acknowledgements and every local byte delivery have caught up. The

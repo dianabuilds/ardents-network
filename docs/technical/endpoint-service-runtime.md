@@ -1478,12 +1478,13 @@ confirmed sent positions before a boundary can retire.
 
 | Kind | Direction and original ownership | Body after generation |
 | --- | --- | --- |
-| 7 DrainSegment | Either endpoint asks both sides to stop admitting new bytes to the active segment | Empty |
+| 7 DrainSegment | Either endpoint asks both sides to stop admitting new bytes to the active segment and commits its final send offset for that segment | Local send offset u64 |
 | 8 ProposeBoundary | Reader proposes positions and EOF state after draining the original segment | Boundary |
 | 9 OfferContinuation | Publisher confirms the same boundary and assigns an endpoint-only 32-byte ticket on the original segment | Boundary, ticket |
 | 10 ConfirmBoundary | Reader confirms the original offer | Boundary, ticket |
 | 11 ResumeTransfer | Reader presents the exact pending transition on the freshly admitted logical Connection | Boundary, ticket, new 32-byte logical context |
 | 12 AcceptResume | Publisher confirms that transition on the same new logical Connection | Boundary, ticket, new 32-byte logical context |
+| 13 AcceptBoundary | Publisher acknowledges the Reader’s exact confirmation on the original segment | Boundary, ticket |
 
 The fixed field shapes have no trailing data. Empty ticket and context values
 are refused. The verified attachment supplies the current generation and

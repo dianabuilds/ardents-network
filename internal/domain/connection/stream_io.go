@@ -28,6 +28,9 @@ func (stream *Stream) Read(destination []byte) (int, error) {
 		err := stream.commitHandoff(func() error {
 			changed = stream.changeLocked()
 			n, readErr = stream.transfer.Peek(staged)
+			if n == 0 && readErr == nil && stream.segment != nil && stream.segment.complete(stream.transfer.Generation()) {
+				return transfer.ErrSegmentDraining
+			}
 			done = n != 0 || readErr != nil || len(destination) == 0
 			return nil
 		}, func() {
@@ -88,7 +91,9 @@ func (stream *Stream) Write(body []byte) (int, error) {
 				return nil
 			}
 			if err != nil {
-				stream.failLocked(err)
+				if !errors.Is(err, transfer.ErrSegmentDraining) {
+					stream.failLocked(err)
+				}
 				return err
 			}
 			stagedSize = size
@@ -123,7 +128,9 @@ func (stream *Stream) CloseInput() error {
 	defer stream.writeMu.Unlock()
 	return stream.commit(func() error {
 		if err := stream.transfer.CloseInput(); err != nil {
-			stream.failLocked(err)
+			if !errors.Is(err, transfer.ErrSegmentDraining) {
+				stream.failLocked(err)
+			}
 			return err
 		}
 		stream.signalLocked()
