@@ -1,0 +1,67 @@
+name: Verify Custody delivery native boundaries
+on:
+  push:
+    branches: [codex/verify-1089-native]
+permissions:
+  contents: read
+jobs:
+  linux-mounts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.27.4'
+      - name: Verify candidate source
+        run: git diff --exit-code 40c9d73d5d0357e279679e28b1a0cd7682874289 HEAD -- . ":(exclude).github/workflows/verify-1089-native.yml"
+      - name: Exercise original mounts and refusal before Vault
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          root="$(mktemp -d /tmp/ardents-1089-fs.XXXXXX)"
+          cleanup() {
+            status=$?
+            trap - EXIT
+            set +e
+            for kind in tmpfs ext4 ext3 ext2; do
+              if mountpoint -q "$root/$kind"; then
+                sudo umount "$root/$kind" || status=1
+              fi
+            done
+            exit "$status"
+          }
+          trap cleanup EXIT
+          for kind in ext2 ext3 ext4; do
+            mkdir "$root/$kind"
+            truncate -s 256M "$root/$kind.img"
+            "mkfs.$kind" -q -F "$root/$kind.img"
+            sudo mount -o loop "$root/$kind.img" "$root/$kind"
+            test "$(findmnt -n -o FSTYPE -T "$root/$kind")" = "$kind"
+          done
+          mkdir "$root/tmpfs"
+          sudo mount -t tmpfs -o size=128m tmpfs "$root/tmpfs"
+          test "$(findmnt -n -o FSTYPE -T "$root/tmpfs")" = tmpfs
+          mkdir -p "$RUNNER_TEMP/ardents-go-build" "$RUNNER_TEMP/ardents-go-cache" "$RUNNER_TEMP/ardents-go-mod"
+          sudo env PATH="$PATH" HOME="$RUNNER_TEMP" GOCACHE="$RUNNER_TEMP/ardents-go-cache" GOMODCACHE="$RUNNER_TEMP/ardents-go-mod" GOTMPDIR="$RUNNER_TEMP/ardents-go-build" TMPDIR="$root/ext4" ARDENTS_TEST_EXT2="$root/ext2" ARDENTS_TEST_EXT3="$root/ext3" ARDENTS_TEST_EXT4="$root/ext4" ARDENTS_TEST_TMPFS="$root/tmpfs" make custody-permission-filesystems-check
+  windows-dacl:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.27.4'
+      - name: Verify candidate source
+        run: git diff --exit-code 40c9d73d5d0357e279679e28b1a0cd7682874289 HEAD -- . ":(exclude).github/workflows/verify-1089-native.yml"
+      - name: Exercise protected DACL creation, retry and refusal
+        shell: pwsh
+        run: |
+          go test -race ./internal/domain/custody/delivery -run '^TestWindowsPrivatePermission' -count=1 -v -timeout=5m
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          go test -race ./internal/domain/custody/command -run '^TestPrivatePermissionUnavailableBeforeVaultOrPrompt$' -count=1 -v -timeout=5m
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
