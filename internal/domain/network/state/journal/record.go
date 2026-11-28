@@ -1,4 +1,4 @@
-package distribution
+package journal
 
 const MaximumExposures = 2
 

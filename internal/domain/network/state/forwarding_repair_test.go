@@ -18,7 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 // These are domain-admission and durable-commit tests over real signed State and
@@ -176,21 +176,21 @@ func TestForwardingRepairRefusalsPreserveAllOriginalBytes(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				journal := s.distribution
+				record := s.distribution
 				switch failure {
 				case "floor-mismatch":
-					journal.EpochFloor++
+					record.EpochFloor++
 				case "active-cycle":
-					journal.CycleActive = true
+					record.CycleActive = true
 				case "pending":
-					journal.PendingDigest = s.current.Header.Digest
+					record.PendingDigest = s.current.Header.Digest
 				case "exposure-history":
-					journal.History = [][32]byte{{91}}
+					record.History = [][32]byte{{91}}
 				case "conflict":
-					journal.Conflicting = true
+					record.Conflicting = true
 				}
-				raw := distribution.Encode(journal)
-				if err := errors.Join(storage.CommitControl(distribution.Digest(raw), raw), storage.Close()); err != nil {
+				raw := journal.Encode(record)
+				if err := errors.Join(storage.CommitControl(journal.Digest(raw), raw), storage.Close()); err != nil {
 					t.Fatal(err)
 				}
 			}

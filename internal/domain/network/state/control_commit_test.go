@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -55,7 +55,7 @@ func TestUncertainControlCommitRetiresLiveStateAndRetainsFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stored, err := distribution.Decode(raw)
+	stored, err := journal.Decode(raw)
 	if err != nil {
 		t.Fatal("decode visible durable floor:", err)
 	}
@@ -193,12 +193,12 @@ func TestManualSourceVerifiedPendingConflictCommitFailureRetiresOwner(t *testing
 	wave.Sequence++
 	wave.CycleID++
 	wave.CycleActive = true
-	wave.CyclePurpose = distribution.Refresh
+	wave.CyclePurpose = journal.Refresh
 	wave.CycleStarted = s.config.now.Unix()
 	wave.CycleDeadline = s.config.now.Add(15 * time.Second).Unix()
 	wave.CycleSeed = sha256.Sum256([]byte("manual Source conflict cycle"))
 	wave.SourceOrder = [2]byte{0, 1}
-	wave.Attempts[0], wave.Attempts[1] = distribution.AttemptInFlight, distribution.AttemptInFlight
+	wave.Attempts[0], wave.Attempts[1] = journal.AttemptInFlight, journal.AttemptInFlight
 	if err := s.commitDistribution(wave); err != nil {
 		t.Fatal(err)
 	}
@@ -209,8 +209,8 @@ func TestManualSourceVerifiedPendingConflictCommitFailureRetiresOwner(t *testing
 	}
 	s.refreshing = true
 	_, err = s.completeSourceWaveWithConflictCommit(s.config.now, s.current, []sourceResult{
-		{slot: 0, decision: competing, observations: [4]byte{distribution.OutcomeValid}},
-		{slot: 1, decision: competing, observations: [4]byte{0, distribution.OutcomeValid}},
+		{slot: 0, decision: competing, observations: [4]byte{journal.OutcomeValid}},
+		{slot: 1, decision: competing, observations: [4]byte{0, journal.OutcomeValid}},
 	}, func(string, []byte) error { return failure })
 	if !errors.Is(err, failure) || !s.closed || s.refreshing || s.distribution.Sequence != before.Sequence {
 		t.Fatalf("verified Source conflict failure: err=%v closed=%t refreshing=%t state=%+v", err, s.closed, s.refreshing, s.distribution)
@@ -484,7 +484,7 @@ func newControlCommitFixture(t *testing.T, serving bool) (*State, epoch.Decision
 		_ = storage.Close()
 		t.Fatal(err)
 	}
-	initial := distribution.Record{Sequence: 1, EpochFloor: decision.Header.Number, EpochDigest: decision.Header.Digest}
+	initial := journal.Record{Sequence: 1, EpochFloor: decision.Header.Number, EpochDigest: decision.Header.Digest}
 	if err := s.commitDistribution(initial); err != nil {
 		_ = storage.Close()
 		t.Fatal(err)

@@ -31,8 +31,8 @@
 //   - signed intake: command decodes the operator declaration; Open verifies
 //     retained history in distribution_recovery.go; AcceptEpoch and
 //     AcceptClosedProfile authenticate before publishing through durable.
-//     distribution_commit.go orders Epoch and journal writes. Internal
-//     distribution owns ARDS1D4 bytes.
+//     distribution_commit.go orders Epoch and journal writes. The journal
+//     package owns ARDS1D4 bytes.
 //   - runtime observation: CurrentRuntimeWitness reads the exact durable
 //     profile under the State lock and samples trusted time afterward.
 //   - Source: source/serving retains original process and input custody.
@@ -65,7 +65,7 @@
 //     source_wave_guard_failure_test.go, pending_completion_time_test.go)
 //   - distribution commit and recovery: distribution_commit.go,
 //     distribution_recovery.go
-//     (control_commit_test.go); internal/distribution owns the canonical bytes,
+//     (control_commit_test.go); journal owns the canonical bytes,
 //     independent golden-record digest and truncation refusals
 //   - history and recovery: storage.go, recovery.go, retained_history.go;
 //     readRetainedHistory is the shared read seam of repair and inspection

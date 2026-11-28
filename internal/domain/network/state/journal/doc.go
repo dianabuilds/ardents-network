@@ -1,6 +1,8 @@
-// Package distribution owns the canonical ARDS1D4 journal record and digest.
+// Package journal owns the canonical ARDS1D4 journal record and digest.
 // It checks the shape of retained cycle, observation and floor fields. State
 // alone authenticates the retained generations, admits transitions, commits
 // the journal through its durable root and supervises the Source lifetime.
 // Decoding supplies storage facts and confers no runtime authority.
-package distribution
+// The architecture gate limits imports to State; Go's top-level internal
+// boundary alone does not enforce that narrower restriction.
+package journal

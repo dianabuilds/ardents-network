@@ -1,4 +1,4 @@
-package distribution
+package journal
 
 import (
 	"crypto/sha256"

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 // recoverDistributionHistory checks the signed current chain first, then
@@ -32,8 +32,8 @@ func (s *State) reconcileDistributionJournal() error {
 		}
 		return nil
 	}
-	state, err := distribution.Decode(raw)
-	if err != nil || distribution.Digest(raw) != name {
+	state, err := journal.Decode(raw)
+	if err != nil || journal.Digest(raw) != name {
 		return errors.New("distribution generation is invalid")
 	}
 	if state.EpochFloor != 0 && (s.current == nil || state.EpochFloor > s.current.Snapshot.Epoch ||
@@ -49,7 +49,7 @@ func (s *State) reconcileDistributionJournal() error {
 	return s.recoverPendingState()
 }
 
-func (s *State) repairActiveMirror(state distribution.Record) error {
+func (s *State) repairActiveMirror(state journal.Record) error {
 	name := fmt.Sprintf("%x", state.EpochDigest)
 	decision, err := loadStoredChain(s.config, s.storage, name)
 	if err != nil {

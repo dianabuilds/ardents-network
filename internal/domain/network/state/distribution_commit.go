@@ -8,16 +8,16 @@ import (
 	duty2 "github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 // commitActiveDecision coordinates the serving Source duty, immutable Epoch,
 // distribution floor, in-memory decision, and active pointer in that order.
-func (s *State) commitActiveDecision(decision *epoch.Decision, state distribution.Record) error {
+func (s *State) commitActiveDecision(decision *epoch.Decision, state journal.Record) error {
 	return s.commitActiveDecisionWithControl(decision, state, s.storage.CommitControl)
 }
 
-func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state distribution.Record, commit func(string, []byte) error) (result error) {
+func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state journal.Record, commit func(string, []byte) error) (result error) {
 	if decision == nil {
 		// Preserve the historical zero-value path: an unverified decision
 		// reaches the same durable refusal without a nil dereference.
@@ -96,7 +96,7 @@ func (s *State) commitActiveDecisionWithControl(decision *epoch.Decision, state 
 
 // commitPendingDecision writes the authenticated generation before the
 // control journal can name it. History reconciliation precedes this operation.
-func (s *State) commitPendingDecision(decision *epoch.Decision, next distribution.Record) error {
+func (s *State) commitPendingDecision(decision *epoch.Decision, next journal.Record) error {
 	if decision == nil {
 		// Preserve the historical zero-value staging refusal.
 		decision = &epoch.Decision{}
@@ -120,19 +120,19 @@ func (s *State) commitPendingDecision(decision *epoch.Decision, next distributio
 }
 
 // commitDistribution publishes a verified transition on the original State lease.
-func (s *State) commitDistribution(state distribution.Record) error {
+func (s *State) commitDistribution(state journal.Record) error {
 	return s.commitDistributionWithControl(state, s.storage.CommitControl)
 }
 
-func (s *State) commitDistributionWithControl(state distribution.Record, commit func(string, []byte) error) error {
+func (s *State) commitDistributionWithControl(state journal.Record, commit func(string, []byte) error) error {
 	if s.closed {
 		return errors.New("network state is closed")
 	}
-	raw := distribution.Encode(state)
+	raw := journal.Encode(state)
 	if state.Conflicting && !s.distribution.Conflicting {
 		s.invalidateRuntime()
 	}
-	name := distribution.Digest(raw)
+	name := journal.Digest(raw)
 	if err := commit(name, raw); err != nil {
 		if errors.Is(err, durable.ErrPointerSyncUncertain) {
 			s.terminalErr = fmt.Errorf("distribution control commit is uncertain: %w", err)

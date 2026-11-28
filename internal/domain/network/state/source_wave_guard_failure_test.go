@@ -12,7 +12,7 @@ import (
 	duty2 "github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/durable"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 func TestFailedSourceGuardReleaseRetiresState(t *testing.T) {
@@ -53,8 +53,8 @@ func TestUncertainSourceWaveCommitKeepsLiveGuard(t *testing.T) {
 	first := completionEpoch(1, 1, now)
 	second := completionEpoch(1, 2, now)
 	_, err = state.completeSourceWaveWithConflictCommit(now, nil, []sourceResult{
-		{slot: 0, decision: first, observations: [4]byte{distribution.OutcomeValid}},
-		{slot: 1, decision: second, observations: [4]byte{0, distribution.OutcomeValid}},
+		{slot: 0, decision: first, observations: [4]byte{journal.OutcomeValid}},
+		{slot: 1, decision: second, observations: [4]byte{0, journal.OutcomeValid}},
 	}, func(string, []byte) error { return failure })
 	if !errors.Is(err, durable.ErrPointerSyncUncertain) || !state.closed {
 		t.Fatalf("uncertain Source commit did not retire State: closed=%t err=%v", state.closed, err)

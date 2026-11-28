@@ -23,6 +23,9 @@ func explicitImportResult(allowed bool) importPermission {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if dependency == modulePath+"/internal/domain/network/state/journal" {
+		return path.Dir(source) == "internal/domain/network/state"
+	}
 	const ext4Package = "internal/platform/ext4"
 	if dependency == modulePath+"/"+ext4Package {
 		switch source {
@@ -535,9 +538,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if dependency == modulePath+"/internal/domain/network/state/stoppedunit" {
 		return source == "internal/domain/network/state/source_repair_linux.go" ||
 			source == "internal/domain/network/state/node_duty_repair_linux.go"
-	}
-	if dependency == modulePath+"/internal/domain/network/state/internal/distribution" {
-		return path.Dir(source) == "internal/domain/network/state"
 	}
 	if source == "internal/domain/endpoint/command/preparation_files_linux.go" {
 		switch local {
