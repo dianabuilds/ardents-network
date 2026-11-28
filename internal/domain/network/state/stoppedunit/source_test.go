@@ -71,6 +71,8 @@ func TestSourceRepairBindsLoadedRetainedDeclaration(t *testing.T) {
 		{"foreign-plan", program, "/etc/ardents/other.json", "serve-retained", []string{"no-env-expand"}, false},
 		{"fresh", program, plan, "serve", []string{"no-env-expand"}, false},
 		{"foreign-program", "/tmp/program", plan, "serve-retained", []string{"no-env-expand"}, false},
+		{"traversing-program", "/usr/lib/ardents/../foreign", plan, "serve-retained", []string{"no-env-expand"}, false},
+		{"noncanonical-program", "/usr/lib/ardents//worker", plan, "serve-retained", []string{"no-env-expand"}, false},
 		{"privileged", program, plan, "serve-retained", []string{"privileged", "no-env-expand"}, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {

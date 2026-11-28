@@ -2,7 +2,7 @@ package stoppedunit
 
 import (
 	"encoding/json"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
@@ -20,7 +20,7 @@ func NodeDeclaration(service observation.Properties, declaration string, role st
 	if observation.Decode(rows[0][0], &program) != nil || observation.Decode(rows[0][1], &args) != nil || observation.Decode(rows[0][2], &flags) != nil {
 		return false
 	}
-	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 5 || args[0] != program || args[1] != "node" || args[2] != role || args[3] != "--retained-config" || args[4] != declaration {
+	if !strings.HasPrefix(program, "/usr/lib/ardents/") || path.Clean(program) != program || len(args) != 5 || args[0] != program || args[1] != "node" || args[2] != role || args[3] != "--retained-config" || args[4] != declaration {
 		return false
 	}
 	return len(flags) == 1 && flags[0] == "no-env-expand"
