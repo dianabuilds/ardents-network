@@ -90,7 +90,7 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | internal/domain/connection | internal/application/endpointstream | `stream.go`, `stream_retirement.go`, `stream_handoff_test.go` |
 | internal/domain/connection | internal/domain/route/transport | `reader_authentication.go` |
 | internal/domain/custody/command | internal/domain/admission | `admission_permission_client_linux_test.go` |
-| internal/domain/custody/command | internal/domain/custody | `admission_authority.go`, `admission_permission_client_linux_test.go`, `command.go`, `command_test.go`, `purge_record.go`, `recovery_bundle.go`, `service_authority.go`, `terminal_secret.go`, `verify_record.go` |
+| internal/domain/custody/command | internal/domain/custody | `admission_authority.go`, `admission_permission_client_linux_test.go`, `command.go`, `command_test.go`, `private_permission_windows_test.go`, `purge_record.go`, `recovery_bundle.go`, `service_authority.go`, `terminal_secret.go`, `verify_record.go` |
 | internal/domain/custody/command | internal/domain/publication | `command_test.go` |
 | internal/domain/endpoint | internal/domain/network/duty | `history_preparation_linux.go`, `history_preparation_linux_test.go` |
 | internal/domain/endpoint | internal/domain/network/source/servingdeclaration | `source_trust_preparation_linux.go` |
