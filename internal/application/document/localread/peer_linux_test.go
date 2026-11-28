@@ -1,9 +1,8 @@
 //go:build linux
 
-package document_test
+package localread_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -13,8 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
-// This is only a local AAI3 peer. It supplies no State, Route, worker launch or
-// qualified Endpoint. The tests assert the trusted client's wire and UI seam.
+// documentReadPeer serves one local Endpoint stream to the compiled command.
 type documentReadPeer struct {
 	response     []byte
 	destination  string
@@ -47,10 +45,6 @@ func (peer *setupBlockingDocumentReadPeer) Open(ctx context.Context, request end
 	close(peer.entered)
 	<-ctx.Done()
 	return nil, ctx.Err()
-}
-
-func documentResponse(body []byte) []byte {
-	return bytes.Clone(body)
 }
 
 func (peer *documentReadPeer) Open(ctx context.Context, request endpointstream.Request) (endpointstream.Stream, error) {

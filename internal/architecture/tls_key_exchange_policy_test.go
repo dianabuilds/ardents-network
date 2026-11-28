@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	closedTLSKeyExchangeOwner  = "internal/domain/route/transport/key_exchange.go"
-	closedTLSKeyExchangeGroups = "ClosedProfileKeyExchangeGroups"
+	closedTLSKeyExchangeOwner   = "internal/domain/route/transport/key_exchange.go"
+	closedTLSKeyExchangeGroups  = "ClosedProfileKeyExchangeGroups"
+	closedTLSKeyExchangePackage = "github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
 // The closed TLS profile fixes its key-exchange groups in one production owner.
@@ -37,13 +38,16 @@ func TestClosedTLSKeyExchangeGroupsHaveOneProductionOwner(t *testing.T) {
 
 	fixture := t.TempDir()
 	for name, source := range map[string]string{
-		"internal/other/borrowed.go":    "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: transport.ClosedProfileKeyExchangeGroups()}\n",
-		"internal/other/local.go":       "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: ClosedProfileKeyExchangeGroups()}\n",
-		"internal/other/inline.go":      "package other\nimport \"crypto/tls\"\nvar _ = []tls.CurveID{tls.X25519MLKEM768, tls.X25519}\n",
-		"internal/other/aliased.go":     "package other\nimport stdtls \"crypto/tls\"\nvar _ = stdtls.X25519MLKEM768\n",
-		"internal/other/forked.go":      "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: []tls.CurveID{tls.CurveP256}}\n",
-		"internal/other/inline_test.go": "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519}}\n",
-		"scripts/tool.go":               "package main\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: []tls.CurveID{tls.X25519MLKEM768}}\n",
+		"internal/other/borrowed.go":                "package other\nimport (\"crypto/tls\"; \"github.com/dianabuilds/ardents-network/internal/domain/route/transport\")\nvar _ = &tls.Config{CurvePreferences: transport.ClosedProfileKeyExchangeGroups()}\n",
+		"internal/other/renamed.go":                 "package other\nimport (\"crypto/tls\"; owner \"github.com/dianabuilds/ardents-network/internal/domain/route/transport\")\nvar _ = &tls.Config{CurvePreferences: owner.ClosedProfileKeyExchangeGroups()}\n",
+		"internal/other/impostor.go":                "package other\nimport (\"crypto/tls\"; transport \"example.org/other\")\nvar _ = &tls.Config{CurvePreferences: transport.ClosedProfileKeyExchangeGroups()}\n",
+		"internal/domain/route/transport/direct.go": "package transport\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: ClosedProfileKeyExchangeGroups()}\n",
+		"internal/other/local.go":                   "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: ClosedProfileKeyExchangeGroups()}\n",
+		"internal/other/inline.go":                  "package other\nimport \"crypto/tls\"\nvar _ = []tls.CurveID{tls.X25519MLKEM768, tls.X25519}\n",
+		"internal/other/aliased.go":                 "package other\nimport stdtls \"crypto/tls\"\nvar _ = stdtls.X25519MLKEM768\n",
+		"internal/other/forked.go":                  "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: []tls.CurveID{tls.CurveP256}}\n",
+		"internal/other/inline_test.go":             "package other\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: []tls.CurveID{tls.X25519MLKEM768, tls.X25519}}\n",
+		"scripts/tool.go":                           "package main\nimport \"crypto/tls\"\nvar _ = &tls.Config{CurvePreferences: []tls.CurveID{tls.X25519MLKEM768}}\n",
 	} {
 		path := filepath.Join(fixture, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -61,8 +65,9 @@ func TestClosedTLSKeyExchangeGroupsHaveOneProductionOwner(t *testing.T) {
 	if strings.Join(control.owners, ",") != strings.Join(want, ",") {
 		t.Errorf("fixture literal owners = %v, want %v", control.owners, want)
 	}
-	if len(control.forks) != 1 || control.forks[0] != "internal/other/forked.go" {
-		t.Errorf("fixture forks = %v, want exactly the non-owner list", control.forks)
+	wantForks := []string{"internal/other/forked.go", "internal/other/impostor.go", "internal/other/local.go"}
+	if strings.Join(control.forks, ",") != strings.Join(wantForks, ",") {
+		t.Errorf("fixture forks = %v, want %v", control.forks, wantForks)
 	}
 }
 
@@ -127,14 +132,18 @@ func inspectClosedTLSKeyExchange(root string) (closedTLSKeyExchangeInventory, er
 					inventory.forks = append(inventory.forks, relative)
 					return true
 				}
-				var function string
+				owned := false
 				switch callee := call.Fun.(type) {
 				case *ast.Ident:
-					function = callee.Name
+					owned = pathpkg.Dir(relative) == pathpkg.Dir(closedTLSKeyExchangeOwner) &&
+						file.Name.Name == "transport" && callee.Name == closedTLSKeyExchangeGroups &&
+						(callee.Obj == nil || callee.Obj.Kind == ast.Fun)
 				case *ast.SelectorExpr:
-					function = callee.Sel.Name
+					qualifier, ok := callee.X.(*ast.Ident)
+					owned = ok && qualifier.Obj == nil && packages[qualifier.Name] == closedTLSKeyExchangePackage &&
+						callee.Sel.Name == closedTLSKeyExchangeGroups
 				}
-				if function != closedTLSKeyExchangeGroups {
+				if !owned || len(call.Args) != 0 {
 					inventory.forks = append(inventory.forks, relative)
 				}
 			}

@@ -241,7 +241,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 			t.Setenv("GOARCH", "amd64")
 			t.Setenv("CGO_ENABLED", "0")
 			worker := listedDependencies(t, root, "./internal/application/document/worker")
-			for _, trusted := range []string{administration, ardentsModulePath + "/internal/domain/endpoint", ardentsModulePath + "/internal/application/localsnapshot"} {
+			for _, trusted := range []string{administration, ardentsModulePath + "/internal/domain/endpoint", ardentsModulePath + "/internal/application/localsnapshot", ardentsModulePath + "/internal/application/document/localread"} {
 				if worker[trusted] {
 					t.Errorf("worker reaches trusted package %s", trusted)
 				}

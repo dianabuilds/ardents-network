@@ -1,4 +1,4 @@
-package document_test
+package localread_test
 
 import (
 	"bytes"

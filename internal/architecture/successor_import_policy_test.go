@@ -144,6 +144,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Introduction slot-history port composes the shared durable mechanism", "internal/domain/route/introduction/slot_history_unix.go", modulePath + "/internal/durablefile", true},
 		{"local publication imports selected file", "internal/application/administration/local_document_publication.go", modulePath + "/internal/application/localsnapshot", true},
 		{"snapshot verification uses the document transfer limit", "internal/application/localsnapshot/read_unix.go", modulePath + "/internal/application/document", true},
+		{"command opens trusted local reader", "cmd/ardents-next/document_command.go", modulePath + "/internal/application/document/localread", true},
+		{"worker cannot import trusted presentation", "internal/application/document/worker/main.go", modulePath + "/internal/application/document/localread", false},
 		{"worker cannot import a local file", "internal/application/document/worker/main.go", modulePath + "/internal/application/localsnapshot", false},
 		{"document snapshot import composes the shared inspection mechanism", "internal/application/localsnapshot/read_unix.go", modulePath + "/internal/durablefile", true},
 		{"document snapshot import has no Network authority", "internal/application/localsnapshot/read_unix.go", modulePath + "/internal/domain/network/state", false},

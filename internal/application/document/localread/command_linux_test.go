@@ -1,6 +1,6 @@
 //go:build linux
 
-package document_test
+package localread_test
 
 import (
 	"bytes"
@@ -13,19 +13,23 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
-func TestDocumentReadUsesOneAAI3ConnectionAndSafePresentation(t *testing.T) {
+func TestReadCommandPresentsSafeTextAfterOneConnection(t *testing.T) {
 	binary := buildArdentsNext(t)
-	for _, body := range [][]byte{nil, []byte("safe\n\x1b[31m\u202etext\t\u0085"), bytes.Repeat([]byte("x"), document.MaximumBytes)} {
-		peer := &documentReadPeer{response: documentResponse(body), class: endpointstream.CleanClose}
+	maximum := bytes.Repeat([]byte("x"), document.MaximumBytes+1)
+	for _, sample := range []struct {
+		body, output []byte
+	}{
+		{nil, nil},
+		{[]byte("safe\n\x1b[31m\u202etext\t\u0085"), []byte("safe\n\\u001b[31m\\u202etext\t\\u0085")},
+		{maximum, maximum},
+	} {
+		peer := &documentReadPeer{response: sample.body, class: endpointstream.CleanClose}
 		socket := documentReadSocket(t, peer)
-		var want, output, diagnostic bytes.Buffer
-		if err := document.WritePlainText(&want, body); err != nil {
-			t.Fatal(err)
-		}
+		var output, diagnostic bytes.Buffer
 		command := exec.CommandContext(t.Context(), binary, "read", socket)
 		command.Stdin = strings.NewReader("fixture-link\n")
 		command.Stdout, command.Stderr = &output, &diagnostic
-		if err := command.Run(); err != nil || !bytes.Equal(output.Bytes(), want.Bytes()) ||
+		if err := command.Run(); err != nil || !bytes.Equal(output.Bytes(), sample.output) ||
 			diagnostic.String() != `{"operation":"application.read","phase":"command","outcome":"completed"}`+"\n" || peer.opens.Load() != 1 || peer.requestBytes.Load() != 0 {
 			t.Fatalf("document read: %v, output=%q, diagnostic=%q, opens=%d, request=%d",
 				err, &output, &diagnostic, peer.opens.Load(), peer.requestBytes.Load())
@@ -39,9 +43,9 @@ func TestDocumentReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 		response []byte
 		class    endpointstream.OutcomeClass
 	}{
-		{documentResponse([]byte("secret")), endpointstream.LocalFailure},
-		{bytes.Repeat([]byte("x"), document.MaximumBytes+1), endpointstream.CleanClose},
-		{documentResponse(append(bytes.Repeat([]byte("x"), 48<<10), 0xff)), endpointstream.CleanClose},
+		{[]byte("secret"), endpointstream.LocalFailure},
+		{[]byte{0xff}, endpointstream.CleanClose},
+		{append(bytes.Repeat([]byte("x"), 48<<10), 0xff), endpointstream.CleanClose},
 	} {
 		peer := &documentReadPeer{response: scenario.response, class: scenario.class}
 		socket := documentReadSocket(t, peer)
@@ -102,7 +106,7 @@ func TestDocumentDestinationIsBoundedAndNeverRewritten(t *testing.T) {
 		{"preserve-spaces", " first link \nsecond\n", " first link "},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
-			peer := &documentReadPeer{destination: scenario.destination, response: documentResponse([]byte("ok")), class: endpointstream.CleanClose}
+			peer := &documentReadPeer{destination: scenario.destination, response: []byte("ok"), class: endpointstream.CleanClose}
 			command := exec.CommandContext(t.Context(), binary, "read", documentReadSocket(t, peer))
 			command.Stdin = strings.NewReader(scenario.input)
 			var output, diagnostic bytes.Buffer
@@ -113,7 +117,7 @@ func TestDocumentDestinationIsBoundedAndNeverRewritten(t *testing.T) {
 		})
 	}
 	for _, input := range []string{"", "\n", "\r\n", "\xff\n", strings.Repeat("x", 513), strings.Repeat("x", 100000)} {
-		peer := &documentReadPeer{response: documentResponse([]byte("secret")), class: endpointstream.CleanClose}
+		peer := &documentReadPeer{response: []byte("secret"), class: endpointstream.CleanClose}
 		command := exec.CommandContext(t.Context(), binary, "read", documentReadSocket(t, peer))
 		command.Stdin = strings.NewReader(input)
 		var output, diagnostic bytes.Buffer

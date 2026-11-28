@@ -2,6 +2,7 @@ package durablefile
 
 import (
 	"errors"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,5 +34,16 @@ func TestReadBoundedMissingFile(t *testing.T) {
 	_, err := ReadBounded(filepath.Join(t.TempDir(), "absent"), 8, "bound")
 	if !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing read = %v; want not-exist", err)
+	}
+}
+
+func TestReadBoundedAtMaxInt64ReturnsFileBytes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	body, err := ReadBounded(path, math.MaxInt64, "bound refusal")
+	if err != nil || string(body) != "x" {
+		t.Fatalf("read = %q, %v; want x, nil", body, err)
 	}
 }

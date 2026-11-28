@@ -22,6 +22,12 @@ func Read(ctx context.Context, stream endpointstream.Stream) ([]byte, error) {
 	return body.Bytes(), nil
 }
 
+// ReceiveFile writes to a provisional sink. It succeeds after authenticated
+// terminal completion and joined cleanup, without buffering the whole file.
+func ReceiveFile(ctx context.Context, stream endpointstream.Stream, output io.Writer) error {
+	return receiveDocument(ctx, stream, output, -1)
+}
+
 // receiveDocument writes only to provisional output. The caller can expose
 // output after this returns successfully.
 func receiveDocument(ctx context.Context, stream endpointstream.Stream, output io.Writer, maximum int64) (resultErr error) {

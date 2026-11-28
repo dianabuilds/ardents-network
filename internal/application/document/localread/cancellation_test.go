@@ -1,4 +1,4 @@
-package document_test
+package localread_test
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/document/localread"
 )
 
 type documentOutput struct {
@@ -40,7 +40,7 @@ func TestDocumentReadCancelsAndJoinsPendingHumanInput(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	done := make(chan error, 1)
-	go func() { done <- document.ReadLocal(ctx, filepath.Join(t.TempDir(), "absent.sock"), input, output) }()
+	go func() { done <- localread.Run(ctx, filepath.Join(t.TempDir(), "absent.sock"), input, output) }()
 	select {
 	case <-input.entered:
 	case err := <-done:
