@@ -1,6 +1,6 @@
 //go:build linux
 
-package document
+package main
 
 import (
 	"os"

@@ -1,11 +1,12 @@
 //go:build linux
 
-package document
+package main
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"io"
 	"net"
 	"os"
@@ -17,7 +18,7 @@ import (
 	"syscall"
 )
 
-// RunInheritedWorker admits only the installed entrypoint's AF_UNIX stdio
+// runInheritedWorker admits only the installed entrypoint's AF_UNIX stdio
 // attachment and null stderr, plus any resource-control descriptor the system
 // manager passed for the worker's OWN cgroup (systemd 255 hands cpu.max to a
 // resource-limited service without close-on-exec). Each such descriptor is
@@ -26,8 +27,8 @@ import (
 // so no inherited authority survives the audit. This descriptor check does not
 // attest installed confinement: Endpoint independently verifies the unit/root/
 // accepted socket.
-func RunInheritedWorker(mode WorkerMode) error {
-	if mode != ReaderWorker && mode != PublisherWorker {
+func runInheritedWorker(mode document.WorkerMode) error {
+	if mode != document.ReaderWorker && mode != document.PublisherWorker {
 		return errors.New("document worker mode is unavailable")
 	}
 	if err := verifyWorkerDescriptors(); err != nil {
@@ -41,7 +42,7 @@ func RunInheritedWorker(mode WorkerMode) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
-	return RunWorker(ctx, &inheritedWorkerAttachment{Conn: connection}, mode)
+	return document.RunWorker(ctx, &inheritedWorkerAttachment{Conn: connection}, mode)
 }
 
 func verifyWorkerDescriptors() error {
