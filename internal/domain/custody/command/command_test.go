@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody/delivery"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 )
 
@@ -501,7 +502,7 @@ func TestPrivatePermissionUnavailableBeforeVaultOrPrompt(t *testing.T) {
 	var output bytes.Buffer
 	err := run(t.Context(), []string{"issue-admission-permission", "-vault-root", root,
 		"-record", "record", "-request", "absent-request", "-permission-output", destination}, &output, probe)
-	if !errors.Is(err, custody.ErrPrivatePermissionUnavailable) || probe.calls != 0 || output.Len() != 0 {
+	if !errors.Is(err, delivery.ErrPrivatePermissionUnavailable) || probe.calls != 0 || output.Len() != 0 {
 		t.Fatal("unsupported delivery reached private authority or output", err, probe.calls)
 	}
 	if _, err := os.Lstat(root); !errors.Is(err, os.ErrNotExist) {

@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody/delivery"
 )
 
 type serviceRequestCommitmentInput interface {
@@ -88,7 +89,7 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 	if mode == "create-service-authority" {
 		return encodeServiceAuthorityReceipt(output, receipt)
 	}
-	if err := receipt.PublishServiceResponse(responsePath); err != nil {
+	if err := delivery.PublishServiceResponse(responsePath, receipt); err != nil {
 		return err
 	}
 	return encodeServiceCredentialReceipt(output, receipt)

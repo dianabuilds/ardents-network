@@ -24,7 +24,9 @@ owns preparation, protected key files, bounded signing, retained refusals and
 the completed public bootstrap receipt. It changes no runtime verifier policy.
 
 `internal/domain/custody` owns the bounded encrypted-record, Admission and
-Service operations consumed directly by `cmd/ardents-custody`. Pure
+Service operations consumed directly by `cmd/ardents-custody`. The command
+uses `internal/domain/custody/delivery` to publish committed results after the
+Vault closes; destination preflight remains before Vault access. Pure
 `internal/domain/publication` owns Service v3 request/response bytes,
 unsigned fixed-purpose Credential transcript and exact public verification.
 Neither Custody nor its command imports live Publication/Instance for parsing

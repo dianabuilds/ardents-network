@@ -8,6 +8,15 @@ func offlineAuthorityImport(source, dependency, local string, localImport bool) 
 		return explicitImportResult(source == "cmd/ardents-next/admission.go" || source == "cmd/ardents-next/issuance.go" || source == "cmd/ardents-next/command.go")
 	}
 	if strings.HasPrefix(source, "internal/domain/custody/command/") {
+		if dependency == modulePath+"/internal/domain/custody/delivery" {
+			switch source {
+			case "internal/domain/custody/command/admission_authority.go", "internal/domain/custody/command/service_authority.go",
+				"internal/domain/custody/command/command_test.go", "internal/domain/custody/command/private_permission_windows_test.go":
+				return importAllowed
+			default:
+				return importDenied
+			}
+		}
 		// The package map also checks the package-wide import set.
 		if dependency == modulePath+"/internal/domain/custody" {
 			switch source {

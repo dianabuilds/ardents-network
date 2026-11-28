@@ -472,7 +472,7 @@ custody-permission-filesystems-check:
 		kind=$${item%%:*}; path=$${item#*:}; \
 		[ -n "$$path" ] && [ -d "$$path" ] && [ "$$(findmnt -n -o FSTYPE -T "$$path")" = "$$kind" ] || { echo "missing or wrong $$kind mount"; exit 2; }; \
 	done
-	go test -race -tags custody_private_permission_native ./internal/domain/custody -run '^TestPrivatePermissionMountedFilesystems$$' -count=1 -v -timeout=3m
+	go test -race -tags custody_private_permission_native ./internal/domain/custody/delivery -run '^TestPrivatePermissionMountedFilesystems$$' -count=1 -v -timeout=3m
 	go test -race ./internal/domain/custody/command -run '^TestPrivatePermissionUnavailableBeforeVaultOrPrompt$$' -count=1 -v -timeout=3m
 
 .PHONY: ext4-identity-native-check
@@ -486,7 +486,7 @@ ext4-identity-native-check:
 
 .PHONY: custody-check
 custody-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/custody ./internal/domain/custody/command ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/domain/custody ./internal/domain/custody/delivery ./internal/domain/custody/command ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
 	go test golang.org/x/crypto/argon2 -run '^(TestArgon2|TestVectors)$$' -count=1
 
 .PHONY: source-process-check

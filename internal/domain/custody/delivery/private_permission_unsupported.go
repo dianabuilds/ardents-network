@@ -1,6 +1,6 @@
 //go:build !linux && !windows
 
-package custody
+package delivery
 
 import "os"
 
