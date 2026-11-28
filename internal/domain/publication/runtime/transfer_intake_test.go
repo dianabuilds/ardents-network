@@ -31,3 +31,31 @@ func TestTransferIntakeDrainSealsAdmissionBeforeJoiningActiveWork(t *testing.T) 
 		t.Fatal("joined withdrawal retained its admission lifetime")
 	}
 }
+
+func TestInitialDeliveryRefusalIsIsolatedOnlyAfterJoinAndLiveAuthority(t *testing.T) {
+	work := errors.New("candidate refused")
+	cleanup := errors.New("original output failed during cleanup")
+	authority := context.Canceled
+	for _, test := range []struct {
+		name             string
+		cleanup, current error
+		isolated         bool
+	}{
+		{name: "only the candidate failed", isolated: true},
+		{name: "physical cleanup failed", cleanup: cleanup},
+		{name: "original authority revoked", current: authority},
+		{name: "cleanup and authority failed", cleanup: cleanup, current: authority},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := initialDeliveryFailure(work, test.cleanup, test.current)
+			if errors.Is(err, errInitialDeliveryRejected) != test.isolated {
+				t.Fatal("candidate isolation changed the original Publisher lifetime", err)
+			}
+			for _, original := range []error{work, test.cleanup, test.current} {
+				if original != nil && !errors.Is(err, original) {
+					t.Fatal("candidate isolation discarded an original result", err)
+				}
+			}
+		})
+	}
+}

@@ -1506,7 +1506,10 @@ Application Terminal outcome. The new Attachment checks the resume request
 and writes the exact confirmation before starting its stream record actors.
 The Reader must receive the matching confirmation before its actors start.
 A refusal retires that Attachment and cannot fall back to the ordinary
-stream handoff. An inherited EOF closes the corresponding new zero-byte
+stream handoff. A failed incoming authentication may leave intake open for a
+separate admission once the claimed delivery and its physical work have
+joined and the original Publisher authority remains current. A cleanup or
+authority failure stops intake and retains the original failure. An inherited EOF closes the corresponding new zero-byte
 direction and prevents the peer from sending data in that direction. A joined ordinary connection has no boundary
 and cannot establish a continuation. At most one pending transition exists per original
 transfer. Revoke, expiry and failed cleanup refuse further transitions.

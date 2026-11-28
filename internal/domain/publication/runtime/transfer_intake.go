@@ -63,6 +63,9 @@ func (intake *TransferIntake) Next() (*connection.Transfer, error) {
 	defer publisher.flights.Done()
 	for {
 		owner, err := intake.publisher.NextAuthentication(intake.ctx)
+		if errors.Is(err, errInitialDeliveryRejected) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}

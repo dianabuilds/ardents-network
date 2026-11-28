@@ -705,7 +705,8 @@
           "internal/domain/publication/runtime.TransferIntake.forward",
           "internal/domain/publication/runtime.TransferIntake.release",
           "internal/domain/publication/runtime.TransferIntake.resolve",
-          "internal/domain/publication/runtime.TransferIntake.start"
+          "internal/domain/publication/runtime.TransferIntake.start",
+          "internal/domain/publication/runtime.initialDeliveryFailure"
         ],
         "classification": "Protected file and transfer composition behind the supported installed Endpoint",
         "rationale": "The original installed Endpoint on Linux reaches these exact storage, phase-confirmation, connection ledger and publication paths through normal commands. The Windows participant refuses native execution before acquiring a worker or an attachment. Portable tests cover packet representation, original claim refusal and direction state without supplying a Windows native worker. No Linux production exception or native-tag test exception is granted for these product symbols.",

@@ -10,6 +10,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/join"
 )
 
+var errInitialDeliveryRejected = errors.New("publisher initial delivery rejected")
+
+func initialDeliveryFailure(work, cleanup, current error) error {
+	if cleanup == nil && current == nil {
+		return errors.Join(errInitialDeliveryRejected, work)
+	}
+	return errors.Join(work, cleanup, current)
+}
+
 // NextAuthentication consumes a genuinely completed initial delivery and opens
 // its exact original Source-bound Responder JOIN. It returns only the sealed
 // coalesced Service authentication; workload handoff still requires the logical
@@ -62,7 +71,17 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 		}
 	}
 	defer p.flights.Done()
-	defer state.close()
+	var cleanup error
+	defer func() {
+		state.close()
+		if result != nil {
+			// The claimed delivery is consumed and all its owned work has
+			// joined. Only a refusal confined to that candidate permits the
+			// intake to wait for another independently admitted delivery.
+			p.config.Operation.RetainCleanup(cleanup)
+			result = initialDeliveryFailure(result, cleanup, p.check(ctx))
+		}
+	}()
 	// Candidate checks the accepting pair/private request; BorrowJoin checks
 	// the original Responder and Source before retaining the local claim. No
 	// channel opens here. The complete delivery observation below owns the
@@ -101,6 +120,11 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 		joinInterruption()
 		if result != nil {
 			result = errors.Join(result, acquisition.Close())
+			physical, joined := acquisition.CleanupResult()
+			if !joined {
+				physical = errors.Join(physical, errors.New("publisher original candidate cleanup did not join"))
+			}
+			cleanup = errors.Join(cleanup, physical)
 		}
 	}()
 	if err := errors.Join(ctx.Err(), setup.Err(), state.observe()); err != nil {
@@ -120,7 +144,7 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 	}
 	defer func() {
 		if result != nil {
-			result = errors.Join(result, owner.Close())
+			cleanup = errors.Join(cleanup, owner.Close())
 		}
 	}()
 	// Join the attempt callback before publishing transfer. Normal setup
