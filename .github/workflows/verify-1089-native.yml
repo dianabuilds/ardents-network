@@ -12,11 +12,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: '1.27.4'
       - name: Verify candidate source
-        run: git diff --exit-code 40c9d73d5d0357e279679e28b1a0cd7682874289 HEAD -- . ":(exclude).github/workflows/verify-1089-native.yml"
+        run: git diff --exit-code f297a6253a03360743b20161a2772f2ec4c69192 HEAD -- . ":(exclude).github/workflows/verify-1089-native.yml"
       - name: Exercise original mounts and refusal before Vault
         shell: bash
         run: |
@@ -53,11 +54,12 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
           go-version: '1.27.4'
       - name: Verify candidate source
-        run: git diff --exit-code 40c9d73d5d0357e279679e28b1a0cd7682874289 HEAD -- . ":(exclude).github/workflows/verify-1089-native.yml"
+        run: git diff --exit-code f297a6253a03360743b20161a2772f2ec4c69192 HEAD -- . ":(exclude).github/workflows/verify-1089-native.yml"
       - name: Exercise protected DACL creation, retry and refusal
         shell: pwsh
         run: |
