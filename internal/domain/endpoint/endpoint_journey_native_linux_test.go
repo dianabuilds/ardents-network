@@ -156,6 +156,10 @@ func TestNativeInstalledEndpointByteStream(t *testing.T) {
 	runNativeEndpointPlatformLedJourney(t, true, nil, false)
 }
 
+// Both installed drivers allow the original ten-minute publication to report
+// its own outcome, plus setup and joined cleanup outside that product lifetime.
+const fullInstalledJourneyParticipantTimeout = 12 * time.Minute
+
 func TestNativeEndpointSegmentedInstalledPair(t *testing.T) {
 	payload := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)
 	t.Run("bidirectional", func(t *testing.T) {
@@ -200,6 +204,13 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams 
 	// do not repeat Go builds under shared-host load; the publication deadlines
 	// are finite and must not be weakened to absorb build contention.
 	nextBinary, workerBinary := journeyPrebuildBinaries(t, repoRoot)
+	participantTimeout := 6 * time.Minute
+	if streams != nil {
+		participantTimeout = fullInstalledJourneyParticipantTimeout
+		if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
+			t.Fatal("invalid environment: full installed transfer needs sixteen minutes in the original token hour")
+		}
+	}
 	runID := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 	var guests [2]*endpointfixture.PairGuest
 	for i, label := range []string{"pub", "read"} {
@@ -250,7 +261,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams 
 		// Keep the mutable root short: the application/administration Unix socket
 		// paths below it must fit the kernel sun_path bound (108 bytes).
 		guestRoot := filepath.Join("/var/lib/ardents", "journey-"+hex.EncodeToString(nonce[:6]))
-		script := fmt.Sprintf("cd %s/tests/e2e/endpointinstalled && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=6m", repoRoot)
+		script := fmt.Sprintf("cd %s/tests/e2e/endpointinstalled && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=%s", repoRoot, participantTimeout)
 		command := exec.Command("systemd-run", "-M", guest.Name(), "--pipe", "--quiet",
 			"--setenv=PATH=/usr/local/go/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"--setenv=GOTOOLCHAIN=local",
@@ -277,7 +288,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams 
 			t.Fatalf("journey participant %s did not connect: %v\n%s", role, err, outputs[i].String())
 		}
 		peers[i] = conn
-		_ = conn.SetDeadline(time.Now().Add(6 * time.Minute))
+		_ = conn.SetDeadline(time.Now().Add(participantTimeout))
 		hello := endpointfixture.ReceivePairMessage(t, conn)
 		if hello.Operation != "hello" || hello.Role != role || hello.Nonce != hex.EncodeToString(nonce[:]) {
 			t.Fatal("foreign journey fixture client")
@@ -343,7 +354,11 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams 
 		}
 		for i, result := range results {
 			if result.Failure != "" || result.Original != identities[1-i] {
-				t.Fatalf("installed stream direction %d failed or changed invocation: %s", i, result.Failure)
+				var received int64
+				if result.Proof != nil {
+					received = result.Proof.Bytes
+				}
+				t.Fatalf("installed stream direction %d failed or changed invocation after %d bytes: %s", i, received, result.Failure)
 			}
 			if streams == nil {
 				if !bytes.Equal(result.Body, [][]byte{body, sent}[i]) {
@@ -549,7 +564,7 @@ func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture
 
 	repoRoot := endpointfixture.RepositoryRoot(t)
 	participantBinary, nextBinary, workerBinary := journeyCrossHostBinaries(t, repoRoot)
-	const participantTimeout = 12 * time.Minute
+	const participantTimeout = fullInstalledJourneyParticipantTimeout
 	// The existing refresh oracle needs the original token hour throughout the
 	// refresh and signed-predecessor overlap. Check after the cold build.
 	if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
