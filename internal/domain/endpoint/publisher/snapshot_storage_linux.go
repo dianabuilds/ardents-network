@@ -44,7 +44,8 @@ func OpenSnapshotStorage(ctx context.Context, path string, quota int64) (*Snapsh
 func (storage *SnapshotStorage) Close() error { return storage.root.Close() }
 
 // StageSnapshot reserves the declared size before opening the provisional
-// input. The reservation is released only after the file descriptors close.
+// input. A committed Publication owns the reservation through worker and
+// stream retirement. An aborted receive releases it after cleanup.
 func (owner *Publisher) StageSnapshot(ctx context.Context, storage *SnapshotStorage, size int64, receive func(io.Writer) error) (result error) {
 	if owner == nil || owner.boundary == nil || ctx == nil || storage == nil || receive == nil || size < 0 || size > storage.quota || size > document.MaximumBytes {
 		return errSnapshotStage
@@ -83,14 +84,8 @@ func (owner *Publisher) StageSnapshot(ctx context.Context, storage *SnapshotStor
 		canRelease = false
 		return err
 	}
-	defer func() { cleanupErr = errors.Join(cleanupErr, source.Close()) }()
-
-	// The existing worker initialization consumes a bounded slice. The
-	// Administration ceiling applies until the streaming worker is wired.
-	body := make([]byte, int(size))
-	defer clear(body)
-	if _, err := io.ReadFull(source, body); err != nil {
-		return err
-	}
-	return owner.PublishSnapshot(ctx, body)
+	// publish consumes the finished source even when handoff fails.
+	canRelease = false
+	owned := &snapshotSource{file: source, size: size, release: func() { storage.busy.Store(false) }}
+	return owner.publish(ctx, nil, nil, owned)
 }

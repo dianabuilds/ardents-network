@@ -5,6 +5,7 @@ package publisher
 import (
 	"context"
 	"errors"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,6 +50,7 @@ type published struct {
 	handle    Publication
 	operation *executionruntime.Operation
 	worker    *executionruntime.Invocation
+	snapshot  *snapshotSource
 	cancel    context.CancelFunc
 	served    chan struct{}
 	serveErr  error
@@ -63,7 +65,7 @@ func (owner *Publisher) Publish(context.Context) error {
 }
 
 func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte) error {
-	return owner.publish(caller, snapshot, nil)
+	return owner.publish(caller, snapshot, nil, nil)
 }
 
 // PublishByteStream exposes one authenticated exchange with a locally supplied
@@ -72,10 +74,17 @@ func (owner *Publisher) PublishByteStream(caller context.Context, port document.
 	if port == nil {
 		return errors.New("local byte-stream Application is unavailable")
 	}
-	return owner.publish(caller, nil, port)
+	return owner.publish(caller, nil, port, nil)
 }
 
-func (owner *Publisher) publish(caller context.Context, snapshot []byte, port document.ByteStreamPort) (result error) {
+func (owner *Publisher) publish(caller context.Context, snapshot []byte, port document.ByteStreamPort, source *snapshotSource) (result error) {
+	if source != nil {
+		defer func() {
+			if result != nil {
+				result = errors.Join(result, source.close())
+			}
+		}()
+	}
 	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || !owner.routes.Matches(owner.routePlan) {
 		return errors.New("installed Publisher is unavailable")
 	}
@@ -135,6 +144,15 @@ func (owner *Publisher) publish(caller context.Context, snapshot []byte, port do
 	ctx, deadlineCancel := context.WithDeadline(ctx, plan.Deadline)
 	candidate.cancel = func() { setupCancel(); deadlineCancel() }
 	if port == nil {
+		if source != nil {
+			// The qualified worker still expects one bounded initialization.
+			// A later streaming bridge can open independent source readers.
+			snapshot = make([]byte, int(source.size))
+			defer clear(snapshot)
+			if _, err := io.ReadFull(source.openReader(), snapshot); err != nil {
+				return err
+			}
+		}
 		candidate.worker, err = owner.local.LaunchPublisher(ctx, owner.principal, snapshot)
 	} else {
 		candidate.worker, err = owner.local.LaunchByteStreamPublisher(ctx, owner.principal)
@@ -181,6 +199,7 @@ func (owner *Publisher) publish(caller context.Context, snapshot []byte, port do
 		owner.mu.Unlock()
 		return errors.New("installed Publication retired before handoff")
 	}
+	candidate.snapshot = source
 	owner.active = candidate
 	owner.pendingCancel, owner.pendingDone = nil, nil
 	candidate.started = true
@@ -303,6 +322,9 @@ func (publication *published) Close() error {
 		if publication.started {
 			<-publication.served
 			publication.result = errors.Join(publication.result, publication.serveErr)
+		}
+		if publication.snapshot != nil {
+			publication.result = errors.Join(publication.result, publication.snapshot.close())
 		}
 	})
 	return publication.result

@@ -42,4 +42,13 @@ func TestSnapshotStorageReservesBeforeReceiveAndReleasesOnAbort(t *testing.T) {
 	if err := owner.StageSnapshot(t.Context(), storage, 2, func(io.Writer) error { return aborted }); !errors.Is(err, aborted) {
 		t.Fatalf("reservation was not reusable after joined abort: %v", err)
 	}
+	if err := owner.StageSnapshot(t.Context(), storage, 2, func(output io.Writer) error {
+		_, err := output.Write([]byte{0x00, 0xff})
+		return err
+	}); err == nil {
+		t.Fatal("unqualified Publisher accepted a confirmed snapshot")
+	}
+	if err := owner.StageSnapshot(t.Context(), storage, 2, func(io.Writer) error { return aborted }); !errors.Is(err, aborted) {
+		t.Fatalf("failed Publisher handoff retained the reservation: %v", err)
+	}
 }

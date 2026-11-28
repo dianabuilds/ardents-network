@@ -304,8 +304,10 @@ the unit's checked write inventory. It must be disjoint from other local
 state, socket and trust inputs. A reader-only declaration cannot select it.
 When configured, the installed Endpoint reserves this storage and opens an
 anonymous file before acknowledging receipt readiness. The file remains private
-through validation and is read back for the current bounded worker initialization.
-File publication still enforces 4 MiB.
+through validation. The Publication retains the read-only source and its
+reservation until its worker and stream borrowers join. The current worker
+initialization reads that source into a bounded slice. File publication
+still enforces 4 MiB.
 The document Publisher accepts `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by
