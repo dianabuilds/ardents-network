@@ -73,12 +73,16 @@ mode bits; tmpfs is volatile and supplies no persistence claim. Since Linux
 uses the same filesystem magic for ext2, ext3 and ext4, ext4 is identified by
 the held object’s mount ID and the kernel mount table, never by magic or a
 path lookup alone. If the mount ID or trusted procfs table is unavailable,
-private delivery refuses. Other Linux filesystems, macOS and Windows return a typed unavailable
-result before the command opens the Vault or creates a staging file. The API
-rechecks the original file at delivery; command preflight is not a reservation.
-macOS ACLs are evaluated separately from POSIX mode bits, and Windows may
-inherit a DACL from its parent, so `0600` alone does not establish the required
-access boundary ([Apple](https://developer.apple.com/library/archive/documentation/Security/Conceptual/AuthenticationAndAuthorizationGuide/Permissions/Permissions.html),
+private delivery refuses. On Windows, NTFS with persistent ACLs and hard links
+is required. The staging file is created with an explicit protected owner-only
+DACL and held through no-replace publication; exact retries check the existing
+object without changing its DACL. Windows preflight checks an empty temporary
+object before opening the Vault, and delivery rechecks the original object.
+Other Linux filesystems, macOS and unsupported Windows volumes return typed
+unavailable before opening the Vault or writing sensitive bytes. Preflight is
+not a reservation. macOS ACLs are evaluated separately from POSIX mode bits,
+and Windows may inherit a DACL from its parent, so `0600` alone does not
+establish the required access boundary ([Apple](https://developer.apple.com/library/archive/documentation/Security/Conceptual/AuthenticationAndAuthorizationGuide/Permissions/Permissions.html),
 [Microsoft](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights)).
 The boundary addresses other unprivileged local users; it does not protect
 against the same UID, privileged processes, compromised kernels, or prove
