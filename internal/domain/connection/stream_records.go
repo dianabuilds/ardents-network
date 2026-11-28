@@ -57,7 +57,8 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 		for {
 			var changed <-chan struct{}
 			finished, retireTail := false, false
-			err := stream.commit(func() error {
+			var boundary *retiredSegmentBoundary
+			err := stream.commitHandoff(func() error {
 				if records.retiring {
 					finished = true
 					return nil
@@ -66,9 +67,21 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 					return errIntegrity
 				}
 				if readErr != nil {
-					if stream.terminalTailCompleteLocked() && terminalTruncation(readErr, received) && peerCloseErr == nil {
-						finished, retireTail = true, true
-						return nil
+					if terminalTruncation(readErr, received) && peerCloseErr == nil {
+						if stream.terminalTailCompleteLocked() {
+							finished, retireTail = true, true
+							return nil
+						}
+						if boundary = stream.confirmedSegmentBoundaryLocked(records.generation); boundary != nil {
+							finished = true
+							return nil
+						}
+						// The peer may close after reading the final control
+						// while the original writer is still returning.
+						if segment := stream.segment; segment != nil && segment.awaitingFinalWrite(records.generation) {
+							changed = stream.changeLocked()
+							return nil
+						}
 					}
 					if !errors.Is(readErr, wire.ErrInvalidRecord) && (stream.publisherRoute != nil || stream.initiatorRoute != nil) {
 						if err := stream.startRecoveryLocked(records, readErr); err != nil {
@@ -90,6 +103,14 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 				stream.noteRecordProgressLocked(before)
 				stream.signalLocked()
 				return nil
+			}, func() {
+				if boundary == nil && !finished && changed == nil {
+					boundary = stream.readerSegmentBoundaryLocked(records)
+				}
+				if boundary != nil {
+					finished = true
+					stream.retireSegmentLocked(boundary)
+				}
 			})
 			if err != nil {
 				result = errors.Join(readErr, err)
@@ -97,8 +118,10 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 				return
 			}
 			if retireTail {
-				result = nil // Exact decoded clean CLOSE after authenticated Terminal.
 				stream.sealRetirement()
+			}
+			if retireTail || boundary != nil {
+				result = nil // The completed boundary or Terminal authorized retirement.
 			}
 			if finished {
 				return
@@ -139,8 +162,13 @@ func (stream *Stream) acceptRecordLocked(record wire.Record) error {
 		}
 		return stream.segment.receive(stream.transfer, *record.Continuation)
 	}
-	if stream.segment != nil && record.Data != nil && !stream.segment.acceptsData(*record.Data) {
-		return errIntegrity
+	if stream.segment != nil {
+		if record.Data != nil && !stream.segment.acceptsData(*record.Data) {
+			return errIntegrity
+		}
+		if record.Terminal != nil && !stream.segment.acceptsTerminal(*record.Terminal) {
+			return errIntegrity
+		}
 	}
 	if stream.settled && record.Data != nil {
 		return errIntegrity
@@ -194,7 +222,7 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 		}
 		writeErr := wire.Write(records.physical, record)
 		result = writeErr
-		err = stream.commit(func() error {
+		err = stream.commitHandoff(func() error {
 			if stream.records != records || stream.transfer.Generation() != records.generation {
 				return errors.Join(errIntegrity, writeErr)
 			}
@@ -222,6 +250,14 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 			stream.noteRecordProgressLocked(before)
 			stream.signalLocked()
 			return nil
+		}, func() {
+			if finished {
+				return
+			}
+			if boundary := stream.readerSegmentBoundaryLocked(records); boundary != nil {
+				finished = true
+				stream.retireSegmentLocked(boundary)
+			}
 		})
 		if err != nil {
 			result = errors.Join(writeErr, err)

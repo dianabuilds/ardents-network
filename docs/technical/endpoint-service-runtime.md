@@ -1494,7 +1494,13 @@ authenticated facts. Different logical contexts cannot consume one ticket.
 A repeated confirmation in the same logical Connection may repeat the exact
 answer during its existing recovery window. The original boundary controls
 must be confirmed and the original physical work must join before resumed
-payload is admitted. At most one pending transition exists per original
+payload is admitted. The Reader starts physical retirement after its final
+write succeeds and it receives the Publisher’s confirmation. The Publisher
+waits for the decoded clean peer CLOSE. Both handoffs check the exact
+retiring Attachment, the current generation’s written and received controls,
+and live original authority. It retains the boundary separately from the
+Application Terminal outcome. A joined ordinary connection has no boundary
+and cannot establish a continuation. At most one pending transition exists per original
 transfer. Revoke, expiry and failed cleanup refuse further transitions.
 
 The wire decoder only recognizes the fixed representation. The ordinary

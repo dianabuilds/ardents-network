@@ -57,7 +57,9 @@ func (claim *continuationClaim) bindVerified(identity wire.LogicalIdentity, logi
 		return wire.Continuation{}, errContinuationRefused
 	}
 	original := previous.owner
+	retired := previous.segmentBoundary
 	if claim.ctx.Err() != nil || previous.JoinedCleanup() != nil || previous.closeErr != nil ||
+		retired == nil || retired.boundary != claim.boundary || retired.ticket != claim.ticket ||
 		request.Kind != wire.ResumeTransfer || generation == 0 || request.AttachmentGeneration != generation ||
 		request.Boundary != claim.boundary || logical == [32]byte{} || logical == original.logical ||
 		request.LogicalContext != logical || !sameContinuationService(original.identity, identity) ||

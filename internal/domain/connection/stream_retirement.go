@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 )
 
 func (stream *Stream) Done() <-chan endpointstream.Outcome {
@@ -79,8 +80,12 @@ func (stream *Stream) watchLifetime() {
 func (stream *Stream) sealRetirement() {
 	stream.mu.Lock()
 	defer stream.mu.Unlock()
+	stream.sealRetirementLocked()
+}
+
+func (stream *Stream) sealRetirementLocked() {
 	stream.closing = true
-	if stream.failure == nil && !stream.settled {
+	if stream.failure == nil && !stream.settled && stream.segmentBoundary == nil {
 		stream.failure = context.Cause(stream.ctx)
 		if stream.failure == nil {
 			stream.failure = context.Canceled
@@ -93,7 +98,7 @@ func (stream *Stream) sealRetirement() {
 func (stream *Stream) retire() {
 	stream.stop.Do(func() {
 		stream.mu.Lock()
-		if stream.failure == nil && !stream.settled {
+		if stream.failure == nil && !stream.settled && stream.segmentBoundary == nil {
 			stream.failure = context.Cause(stream.ctx)
 		}
 		stream.closing = true
@@ -130,7 +135,9 @@ func (stream *Stream) retire() {
 		stream.closeErr = errors.Join(stream.failure, stream.cleanupErr)
 		clear(stream.key[:])
 		if !stream.settled {
-			stream.outcome <- endpointstream.Outcome{Class: endpointstream.IndeterminateFailure, Reason: "Service Connection did not complete authenticated Terminal exchange"}
+			if stream.segmentBoundary == nil || stream.closeErr != nil {
+				stream.outcome <- endpointstream.Outcome{Class: endpointstream.IndeterminateFailure, Reason: "Service Connection did not complete authenticated Terminal exchange"}
+			}
 			close(stream.outcome)
 		}
 		stream.mu.Unlock()
@@ -188,6 +195,35 @@ func (stream *Stream) Stop() {
 	stream.cancel()
 	stream.signalLocked()
 	stream.mu.Unlock()
+}
+
+// retiredSegmentBoundary retains the exact result of retiring one segment.
+// It is separate from Application settlement and is unusable before joined cleanup.
+type retiredSegmentBoundary struct {
+	boundary wire.SegmentBoundary
+	ticket   [32]byte
+}
+
+func (stream *Stream) confirmedSegmentBoundaryLocked(generation uint64) *retiredSegmentBoundary {
+	segment := stream.segment
+	if stream.settled || segment == nil || !segment.complete(generation) {
+		return nil
+	}
+	return &retiredSegmentBoundary{boundary: segment.proposal, ticket: segment.ticket}
+}
+
+// Reader starts retirement only after its received AcceptBoundary and final
+// physical write have both committed. Publisher waits for the exact peer CLOSE.
+func (stream *Stream) readerSegmentBoundaryLocked(records *attachmentRecords) *retiredSegmentBoundary {
+	if stream.segment == nil || stream.segment.role != wire.RoleInitiator || records.retiring {
+		return nil
+	}
+	return stream.confirmedSegmentBoundaryLocked(records.generation)
+}
+
+func (stream *Stream) retireSegmentLocked(boundary *retiredSegmentBoundary) {
+	stream.segmentBoundary = boundary
+	stream.sealRetirementLocked()
 }
 
 // Application settlement survives replacement, but the new Attachment must

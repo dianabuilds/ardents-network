@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -57,6 +58,9 @@ func TestSegmentBoundaryRequiresPeerFinalOffsetBeforeProposal(t *testing.T) {
 	if reader.acceptsData(wire.Data{Offset: 2, Payload: []byte{1, 2}}) {
 		t.Fatal("peer extended its declared cut")
 	}
+	if reader.acceptsTerminal(wire.Terminal{Offset: 2}) {
+		t.Fatal("peer declared EOF before its committed cut")
+	}
 	if err := flow.AcceptRecord(wire.Record{Data: &wire.Data{AttachmentGeneration: 1, Payload: []byte{1, 2, 3}}}); err != nil {
 		t.Fatal(err)
 	}
@@ -74,6 +78,9 @@ func TestSegmentBoundaryRequiresPeerFinalOffsetBeforeProposal(t *testing.T) {
 	proposal := segmentWrite(t, reader, flow, wire.ProposeBoundary)
 	if proposal.record.Boundary != (wire.SegmentBoundary{Next: 2, ToReader: 3}) {
 		t.Fatalf("proposal = %+v", proposal.record.Boundary)
+	}
+	if reader.acceptsTerminal(wire.Terminal{Offset: 3}) {
+		t.Fatal("peer introduced EOF after the original proposal omitted it")
 	}
 }
 
@@ -101,7 +108,8 @@ func TestSegmentBoundaryCompletesOnlyAfterCurrentPhysicalConfirmation(t *testing
 	if err := reader.receive(readFlow, answer.record); err != nil {
 		t.Fatal(err)
 	}
-	if reader.complete(1) || publisher.complete(1) {
+	if reader.complete(1) || publisher.complete(1) ||
+		!reader.awaitingFinalWrite(1) || !publisher.awaitingFinalWrite(1) || publisher.awaitingFinalWrite(2) {
 		t.Fatal("boundary completed before original write returned")
 	}
 	if err := reader.finishWrite(confirm, 1, nil); err != nil {
@@ -121,5 +129,20 @@ func TestSegmentBoundaryCompletesOnlyAfterCurrentPhysicalConfirmation(t *testing
 	want := wire.SegmentBoundary{Next: 3, ToPublisher: 6, ToReader: 11, EOF: 1}
 	if retry.record.Boundary != want || retry.record != answer.record {
 		t.Fatalf("replayed result = %+v; want boundary %+v", retry.record, want)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	stream := &Stream{ctx: ctx, cancel: cancel, segment: publisher, transfer: publishFlow}
+	if stream.confirmedSegmentBoundaryLocked(2) != nil {
+		t.Fatal("replacement inherited the previous Attachment's retirement")
+	}
+	stream.segmentBoundary = stream.confirmedSegmentBoundaryLocked(1)
+	if stream.segmentBoundary == nil || stream.segmentBoundary.boundary != want || stream.segmentBoundary.ticket != answer.record.Ticket {
+		t.Fatalf("wrong retirement boundary: %+v", stream.segmentBoundary)
+	}
+	stream.sealRetirementLocked()
+	if stream.failure != nil || stream.settled || !stream.closing || ctx.Err() == nil {
+		t.Fatal("segment retirement did not seal only segment effects")
 	}
 }

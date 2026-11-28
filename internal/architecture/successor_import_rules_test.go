@@ -229,7 +229,9 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/domain/connection/stream_io.go", "internal/domain/connection/stream_records.go",
 			"internal/domain/connection/attachment_records_test.go", "internal/domain/connection/stream_retirement_test.go",
 			"internal/domain/connection/reader_replacement.go", "internal/domain/connection/publisher_replacement.go",
-			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go":
+			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go",
+			"internal/domain/connection/segment_boundary_exchange.go", "internal/domain/connection/segment_boundary_exchange_test.go",
+			"internal/domain/connection/transfer/segment_drain_test.go":
 			return true
 		default:
 			return false

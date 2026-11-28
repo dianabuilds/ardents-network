@@ -101,7 +101,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 	records := parse("internal/domain/connection/stream_records.go")
 	for _, site := range []struct{ call, constant string }{
 		{"ReadRecord", "connectionProgressReadLine"},
-		{"commit", "connectionProgressCommitLine"},
+		{"commitHandoff", "connectionProgressCommitLine"},
 	} {
 		matches := 0
 		for _, declaration := range records.Decls {

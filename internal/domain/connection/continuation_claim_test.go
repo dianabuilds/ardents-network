@@ -45,6 +45,14 @@ func TestContinuationClaimRequiresJoinedOriginalAndExactResume(t *testing.T) {
 		t.Fatalf("before retirement watcher join: %v", err)
 	}
 	close(previous.watcherDone)
+	if err := attempt(request, identity); !errors.Is(err, errContinuationRefused) {
+		t.Fatalf("ordinary joined closure resumed: %v", err)
+	}
+	previous.segmentBoundary = &retiredSegmentBoundary{boundary: request.Boundary, ticket: [32]byte{99}}
+	if err := attempt(request, identity); !errors.Is(err, errContinuationRefused) {
+		t.Fatalf("resume did not match the retired segment ticket: %v", err)
+	}
+	previous.segmentBoundary.ticket = request.Ticket
 	previous.cleanupErr = errors.New("failed original physical cleanup")
 	if err := attempt(request, identity); !errors.Is(err, errContinuationRefused) {
 		t.Fatalf("original cleanup failure: %v", err)
@@ -97,6 +105,7 @@ func TestContinuationClaimRequiresJoinedOriginalAndExactResume(t *testing.T) {
 
 func TestContinuationClaimBindsExactlyOneLogicalConnection(t *testing.T) {
 	previous, claim, request := continuationFixture(t)
+	previous.segmentBoundary = &retiredSegmentBoundary{boundary: request.Boundary, ticket: request.Ticket}
 	close(previous.joined)
 	close(previous.watcherDone)
 	start := make(chan struct{})

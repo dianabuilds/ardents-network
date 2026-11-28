@@ -29,6 +29,7 @@ type Stream struct {
 	writeMu           sync.Mutex
 	transfer          *transfer.State
 	segment           *segmentBoundaryExchange
+	segmentBoundary   *retiredSegmentBoundary
 	key               [32]byte
 	failure           error
 	closing           bool

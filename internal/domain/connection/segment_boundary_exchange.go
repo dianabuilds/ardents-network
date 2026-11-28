@@ -193,6 +193,20 @@ func (exchange *segmentBoundaryExchange) finishWrite(ticket *segmentControlWrite
 	return physicalErr
 }
 
+func (exchange *segmentBoundaryExchange) awaitingFinalWrite(generation uint64) bool {
+	if exchange.generation != generation || exchange.active == nil {
+		return false
+	}
+	switch exchange.active.record.Kind {
+	case wire.ConfirmBoundary:
+		return exchange.received[wire.AcceptBoundary]
+	case wire.AcceptBoundary:
+		return exchange.received[wire.ConfirmBoundary]
+	default:
+		return false
+	}
+}
+
 func (exchange *segmentBoundaryExchange) complete(generation uint64) bool {
 	if exchange.generation != generation || exchange.active != nil {
 		return false
@@ -243,4 +257,20 @@ func (exchange *segmentBoundaryExchange) acceptsData(record wire.Data) bool {
 		base, limit = exchange.base.ToPublisher, exchange.proposal.ToPublisher
 	}
 	return limit >= base && record.Offset <= limit-base && uint64(len(record.Payload)) <= limit-base-record.Offset
+}
+
+// Terminal is an Application effect. A peer may repeat an authenticated EOF
+// during replay, but cannot introduce one after positions have been agreed.
+func (exchange *segmentBoundaryExchange) acceptsTerminal(record wire.Terminal) bool {
+	if exchange.peerEndSet && record.Offset != exchange.peerEnd {
+		return false
+	}
+	if !exchange.proposal.Valid() {
+		return true
+	}
+	eof := byte(2)
+	if exchange.role == wire.RolePublisher {
+		eof = 1
+	}
+	return exchange.proposal.EOF&eof != 0
 }
