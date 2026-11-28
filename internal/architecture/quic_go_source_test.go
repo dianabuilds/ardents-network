@@ -105,15 +105,23 @@ func publishedQuicGoZip(t *testing.T) string {
 		t.Fatal(err)
 	}
 
-	scratch := t.TempDir()
+	// The download runs in a scratch module without a go.sum entry, so Go would
+	// ask the checksum database and cache the answer under GOPATH. GOPATH can be
+	// read-only here (the Linux stand runs as an unprivileged user), and this
+	// test verifies the archive against the pinned sum itself.
+	scratch, gopath := t.TempDir(), t.TempDir()
 	if err := os.WriteFile(filepath.Join(scratch, "go.mod"), []byte("module quic-go-source\n\ngo 1.21\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command("go", "mod", "download", "-json", quicGoModule+"@"+quicGoVersion)
 	command.Dir = scratch
-	command.Env = append(externalEnvironment(os.Environ()), "GOWORK=off")
-	output, err := command.CombinedOutput()
+	command.Env = append(externalEnvironment(os.Environ()), "GOWORK=off", "GOPATH="+gopath, "GOFLAGS=-mod=mod", "GONOSUMDB="+quicGoModule)
+	output, err := command.Output()
 	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			output = exit.Stderr
+		}
 		t.Fatalf("download %s@%s for the dependency source check: %v\n%s", quicGoModule, quicGoVersion, err, output)
 	}
 	var downloaded struct {
