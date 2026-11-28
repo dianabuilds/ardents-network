@@ -24,13 +24,14 @@ jobs:
           $original = Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows.go'
           $source = Join-Path $env:RUNNER_TEMP 'owner-root-diagnostic.go'
           $text = [IO.File]::ReadAllText($original)
-          $needle = @'
-	if err := checkWindowsFileOwner(handle, owner); err != nil {
-		return errors.Join(errors.New(refusal.RootDACL), err)
-	}
-'@
+          $pattern = '(?m)^	if err := checkWindowsFileOwner\(handle, owner\); err != nil \{?
+		return errors.Join\(errors.New\("refusal.RootDACL"\), err\)?
+	\}?
+'
+          $needle = "if err := checkWindowsFileOwner(handle, owner); err != nil {"
           if (-not $text.Contains($needle)) { throw 'owner-check control not found' }
-          [IO.File]::WriteAllText($source, $text.Replace($needle, ''))
+          $text = $text.Replace($needle, 'if false {')
+          [IO.File]::WriteAllText($source, $text)
           $overlay = @{ Replace = @{ $original = $source }} | ConvertTo-Json
           $overlayPath = Join-Path $env:RUNNER_TEMP 'diagnostic-overlay.json'
           [IO.File]::WriteAllText($overlayPath, $overlay)
