@@ -4,11 +4,15 @@
   run.py return-path     one return-path run; --module selects the implementation
   run.py controls        the return-path run against each pinned official release
 
+The implementation named "patched" is official quic-go v0.66.0 with the
+retained quic-go-v0.66.0-probe-budget.patch applied to a temporary copy.
+
 Every run verifies the published module checksum, renders the tests into a
 temporary module that imports the current Ardents transport owners, and keeps
 builds and caches outside the repository.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -24,6 +28,7 @@ ARDENTS = "github.com/dianabuilds/ardents-network"
 TOKEN = "ARDENTS_QUIC_MODULE"
 MODULES = {
     "candidate": ("github.com/qoke/mp-quic-go", "v0.3.1", "h1:dz9LkG+QZr2DY/voKFZuNdlmDY4HbrKHrg2jA5DGiNM="),
+    "patched": ("github.com/quic-go/quic-go", "v0.66.0", "h1:NCsBBGZrI2HZC6aKt4I89T5i4Crt39EYNqkh0w2Wgmg="),
     "v0.62.0": ("github.com/quic-go/quic-go", "v0.62.0", "h1:ZHDjCk5OacATwGvs8PWE97CTvX7AqZiVoW7++ZOXTf8="),
     "v0.63.0": ("github.com/quic-go/quic-go", "v0.63.0", "h1:LIFGHI4PFUhhw2dDD1ARHdCff143ffMHwZtbnbuJ78A="),
     "v0.66.0": ("github.com/quic-go/quic-go", "v0.66.0", "h1:NCsBBGZrI2HZC6aKt4I89T5i4Crt39EYNqkh0w2Wgmg="),
@@ -63,6 +68,58 @@ def fetch(work, module, version, checksum):
     return dep
 
 
+def apply_patch(root, patch):
+    """Apply a unified Git diff to the files below root. Every hunk must match
+    its context exactly, so the patch also proves the identity of the base."""
+    files, path, hunk = {}, None, None
+    for line in patch.splitlines(keepends=True):
+        if line.startswith("diff --git "):
+            path, hunk = None, None
+        elif line.startswith("+++ ") and path is None:
+            if not line[4:].strip().startswith("b/"):
+                raise ValueError("unexpected patch target")
+            path = line[6:].strip()
+            files[path] = []
+        elif line.startswith("@@") and path is not None:
+            header = re.match(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
+            hunk = {"start": int(header[1]), "count": int(header[2] or 1), "lines": []}
+            files[path].append(hunk)
+        elif hunk is not None and not line.startswith("\\"):
+            hunk["lines"].append(line)
+    for name, hunks in files.items():
+        target = root / name
+        lines = target.read_text().splitlines(keepends=True)
+        result, done = [], 0
+        for h in hunks:
+            old = [line[1:] for line in h["lines"] if line[0] in " -"]
+            new = [line[1:] for line in h["lines"] if line[0] in " +"]
+            start = h["start"] - 1 if h["count"] else h["start"]
+            if lines[start:start + len(old)] != old:
+                raise ValueError(f"the patch does not apply to {name} at line {h['start']}")
+            result += lines[done:start] + new
+            done = start + len(old)
+        target.write_text("".join(result + lines[done:]))
+    return sorted(files)
+
+
+def patched_official(work, checksum):
+    """Copy the verified official module, apply the retained patch, and point
+    the temporary module at the copy. The module path stays the official one."""
+    module, version, _ = MODULES["patched"]
+    dep = fetch(work, module, version, checksum)
+    source = work / "quic-go-patched"
+    shutil.copytree(dep["Dir"], source)
+    for path in source.rglob("*"):
+        path.chmod(0o700 if path.is_dir() else 0o600)
+    patch = (HERE / "quic-go-v0.66.0-probe-budget.patch").read_text()
+    apply_patch(source, patch)
+    with (work / "go.mod").open("a") as manifest:
+        manifest.write(f"\nreplace {module} => {json.dumps(str(source))}\n")
+    digest = hashlib.sha256(patch.encode()).hexdigest()
+    print(f"== {module}@{version} {checksum} + quic-go-v0.66.0-probe-budget.patch sha256 {digest} ==", flush=True)
+    return dep["Origin"]["Hash"]
+
+
 def render_return_path(work, module):
     target = work / "returnpath"
     target.mkdir()
@@ -84,7 +141,10 @@ def return_path(name, flags, pattern):
         write_module(work, module, version)
         fetch(work, module, version, checksum)
         target = render_return_path(work, module)
-        print(f"== {module}@{version} {checksum} ==", flush=True)
+        if name == "patched":
+            patched_official(work, checksum)
+        else:
+            print(f"== {module}@{version} {checksum} ==", flush=True)
         result = run("test", "-mod=mod", "-count=1", "-v", *flags, "-run", pattern, "./returnpath", cwd=work, check=False)
     print(result.stdout, result.stderr, sep="", end="", flush=True)
     return result.returncode, result.stdout + result.stderr

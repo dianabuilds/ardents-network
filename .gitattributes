@@ -6,3 +6,6 @@
 *.toml text eol=lf
 *.sh text eol=lf
 *.ps1 text eol=crlf
+# Unified diffs carry a space before the tab of each context line and a bare
+# space on an empty context line.
+experiments/r-172-quic-return-path/*.patch whitespace=-space-before-tab,-trailing-space

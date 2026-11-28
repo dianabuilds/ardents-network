@@ -798,12 +798,11 @@ func idleKeepaliveRebinding(t *testing.T, backend string) {
 	t.Helper()
 	s := startSession(t, backend, false, time.Second)
 	defer s.close()
+	// The NAT keeps forwarding, so the client answers validation. Only the first
+	// reply is compared on the wire: after a PATH_RESPONSE no limit applies.
 	s.nat.rebind()
 	s.awaitServerDatagram(1)
 	s.checkFirstReply()
-	time.Sleep(observation / 2)
-	checkBudget(t, s.nat, "after the first keep-alive from the rebound mapping")
-	t.Logf("client datagrams from the rebound mapping: %v", s.nat.clientDatagrams())
 	if early := s.serverTrace.expandedBeforeResponse(); len(early) > 0 {
 		t.Fatalf("server sent expanded probes before it received a PATH_RESPONSE: %v", early)
 	}
