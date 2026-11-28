@@ -86,16 +86,12 @@
 //   - retained Source inspection (linux): source_inspection_linux.go,
 //     inspection_state_linux.go (source_inspection_native_linux_test.go,
 //     inspection_closure_linux_test.go)
-//   - repair policy: source_repair.go, introduction_repair.go,
-//     forwarding_repair.go, join_repair.go, descriptor_repair.go,
-//     node_duty_repair.go (the shared nodeDutyRepair mechanism and
+//   - repair policy: source_repair.go, node_duty_roles.go, node_duty_repair.go (the shared nodeDutyRepair mechanism and
 //     nodeDutyMember binding) (source_repair_test.go,
 //     introduction_repair_test.go, forwarding_repair_test.go,
 //     join_repair_test.go, descriptor_repair_test.go,
 //     node_duty_repair_test.go)
-//   - repair adapters (linux): source_repair_linux.go,
-//     introduction_repair_linux.go, forwarding_repair_linux.go,
-//     join_repair_linux.go, descriptor_repair_linux.go,
+//   - repair adapters (linux): source_repair_linux.go, node_duty_roles_linux.go,
 //     node_duty_repair_linux.go (source_repair_linux_test.go,
 //     introduction_repair_native_linux_test.go,
 //     node_duty_repair_linux_test.go)

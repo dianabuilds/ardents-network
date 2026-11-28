@@ -373,7 +373,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/network/state/source_repair_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/process") {
 		return true
 	}
-	if (source == "internal/domain/network/state/introduction_repair_linux.go" || source == "internal/domain/network/state/forwarding_repair_linux.go" || source == "internal/domain/network/state/join_repair_linux.go" || source == "internal/domain/network/state/descriptor_repair_linux.go") && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
+	if source == "internal/domain/network/state/node_duty_roles_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
 		return true
 	}
 	// The refusal controls pass only missing or unbound original handles.

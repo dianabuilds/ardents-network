@@ -114,11 +114,11 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | internal/domain/network/duty | internal/domain/network | `participation_policy.go` |
 | internal/domain/network/epoch | internal/domain/network | `assignment.go`, `candidate_evaluation.go` |
 | internal/domain/network/state | internal/domain/network | `acquisition_history.go`, `clock_observation.go`, `closed_profile_accept.go`, `closed_profile_role_join_test.go`, `closed_runtime_view_test.go`, `epoch_history.go`, `membership.go`, `runtime_observation.go`, `runtime_witness.go` |
-| internal/domain/network/state | internal/platform/cgroup | `descriptor_repair_linux.go`, `forwarding_repair_linux.go`, `introduction_repair_linux.go`, `join_repair_linux.go`, `source_repair_linux.go` |
+| internal/domain/network/state | internal/platform/cgroup | `node_duty_roles_linux.go`, `source_repair_linux.go` |
 | internal/domain/network/state | internal/platform/process | `source_repair_linux.go`, `source_state_files_linux.go` |
-| internal/domain/network/state | internal/platform/systemd | `descriptor_repair_linux.go`, `forwarding_repair_linux.go`, `introduction_repair_linux.go`, `join_repair_linux.go`, `node_duty_repair_linux_test.go`, `source_repair_linux.go`, `source_repair_linux_test.go` |
-| internal/domain/network/state | internal/platform/systemd/observation | `descriptor_repair_linux.go`, `forwarding_repair_linux.go`, `introduction_repair_linux.go`, `join_repair_linux.go`, `node_duty_repair_linux.go`, `node_duty_repair_linux_test.go`, `source_repair_linux.go`, `source_repair_linux_test.go` |
-| internal/domain/network/state | internal/domain/reachability/store | `descriptor_repair_linux.go` |
+| internal/domain/network/state | internal/platform/systemd | `node_duty_roles_linux.go`, `node_duty_repair_linux_test.go`, `source_repair_linux.go`, `source_repair_linux_test.go` |
+| internal/domain/network/state | internal/platform/systemd/observation | `node_duty_roles_linux.go`, `node_duty_repair_linux.go`, `node_duty_repair_linux_test.go`, `source_repair_linux.go`, `source_repair_linux_test.go` |
+| internal/domain/network/state | internal/domain/reachability/store | `node_duty_roles_linux.go` |
 | internal/domain/node/receive | internal/domain/publication | `publication_registration_linux_test.go` |
 | internal/domain/node/receive | internal/domain/publication/durable | `publication_registration_linux_test.go` |
 | internal/domain/node/receive | internal/domain/publication/instance | `publication_registration_linux_test.go` |
@@ -387,11 +387,11 @@ ONE parameterized mechanism within package state (W4, #711; audit AR-N-01/E1-5).
 Portable `state/node_duty_repair.go` owns the shared `nodeDutyRepair`
 open/checkHistory/close mechanism and the `nodeDutyMember` binding, consuming
 only `network/duty`, `network/epoch` and `network/state/durable`; the role's
-portable `state/introduction_repair.go` carries only its refusal sentinel and
-`nodeDutyRepairRole` descriptor. The shared Linux skeleton
+portable `state/node_duty_roles.go` carries the four refusal sentinels and
+`nodeDutyRepairRole` descriptors. The shared Linux skeleton
 `state/node_duty_repair_linux.go` consumes `network/epoch` and
-`platform/systemd/observation`; the role's Linux wrapper
-`state/introduction_repair_linux.go` additionally consumes exactly
+`platform/systemd/observation`; the role bindings in
+`state/node_duty_roles_linux.go` consume
 `platform/systemd`, `platform/systemd/observation` and `platform/cgroup`, supplying its original read-only
 manager observe closure and per-unit quiescence. The detached cross-role policy
 tests (`state/node_duty_repair_linux_test.go`) consume exactly
@@ -409,16 +409,14 @@ It grants neither installed admission nor domain/native join. No old Introductio
 
 Explicit Forwarding, JOIN and Descriptor repair stay with Network State and
 participation as the same shared node-duty mechanism, mirroring Introduction.
-Their portable role files (`state/forwarding_repair.go`, `state/join_repair.go`,
-`state/descriptor_repair.go`) carry only the role sentinel and descriptor; the
+Their shared role file `state/node_duty_roles.go` carries the sentinels and descriptors; the
 shared `state/node_duty_repair.go` mechanism consumes `network/duty`,
 `network/epoch` and `network/state/durable` and owns the `nodeDutyMember`
 binding that ties the discovered sole live `node-duty` fence to an accepted
 Candidate of the current generation with the exact authenticated family digest.
 The shared Linux skeleton `state/node_duty_repair_linux.go` consumes
-`network/epoch` and `platform/systemd/observation`; the role wrappers
-(`state/forwarding_repair_linux.go`, `state/join_repair_linux.go`,
-`state/descriptor_repair_linux.go`) additionally consume exactly
+`network/epoch` and `platform/systemd/observation`; the role bindings in
+`state/node_duty_roles_linux.go` consume
 `platform/systemd`, `platform/systemd/observation` and `platform/cgroup`; the Descriptor wrapper
 additionally consumes `network/epoch` and `reachability` for the bounded
 existing-only Store uncertain-stage recovery (`RepairRetainedStoreStage`) under
@@ -463,10 +461,7 @@ remain. No old Forwarding, JOIN or Descriptor runtime is used.
 | File `internal/domain/network/state/source_repair_linux_test.go` | File `internal/platform/systemd/observation`; `internal/platform/systemd` for missing or unbound original handles |
 | File `internal/domain/network/state/node_duty_repair_linux.go` | File `internal/domain/network/epoch`; `internal/platform/systemd/observation` (shared node-duty repair skeleton, W4 #711) |
 | File `internal/domain/network/state/node_duty_repair_linux_test.go` | File `internal/platform/systemd/observation`; `internal/platform/systemd` for missing or unbound original handles |
-| File `internal/domain/network/state/introduction_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/systemd/observation`; `internal/platform/cgroup` |
-| File `internal/domain/network/state/forwarding_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/systemd/observation`; `internal/platform/cgroup` |
-| File `internal/domain/network/state/join_repair_linux.go` | File `internal/platform/systemd`; `internal/platform/systemd/observation`; `internal/platform/cgroup` |
-| File `internal/domain/network/state/descriptor_repair_linux.go` | File `internal/domain/network/epoch`; `internal/platform/systemd`; `internal/platform/systemd/observation`; `internal/platform/cgroup`; `internal/domain/reachability` (bounded existing-only Store stage recovery) |
+| File `internal/domain/network/state/node_duty_roles_linux.go` | `internal/domain/network/epoch`; `internal/platform/systemd`; `internal/platform/systemd/observation`; `internal/platform/cgroup`; `internal/domain/reachability/store` for bounded Store stage recovery |
 | File `cmd/ardents-next/platform_linux.go` | `internal/domain/release/infrastructure/launch` for retained infrastructure launch. The native command also opens and closes the shared `internal/platform/artifacts` input owner. |
 | File `cmd/ardents-next/release.go` | Files `internal/domain/enrollment` and `internal/domain/release` for initial and candidate Release inputs used by both software delivery paths |
 | File `cmd/ardents-next/platform_endpoint_staging_linux.go` | File `internal/domain/enrollment`; `internal/domain/release/endpoint`; `internal/domain/endpoint/launch`; `internal/domain/release` for first-delivery floor verification and signed successor staging under the retained Release lease |
