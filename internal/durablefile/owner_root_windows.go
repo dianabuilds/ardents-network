@@ -44,7 +44,10 @@ func EnforceOwnerOnlyRoot(root string, refusal OwnerOnlyRootRefusal) error {
 		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING,
 		windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
 	if err != nil {
-		return errors.New(refusal.RootDACL)
+		if errors.Is(err, windows.ERROR_FILE_NOT_FOUND) || errors.Is(err, windows.ERROR_PATH_NOT_FOUND) {
+			return errors.New(refusal.RootDACL)
+		}
+		return errors.Join(errors.New(refusal.RootDACL), err)
 	}
 	directory := os.NewFile(uintptr(handle), root)
 	if directory == nil {
@@ -60,8 +63,11 @@ func enforceHeldRoot(directory *os.File, handle windows.Handle, owner *windows.S
 		info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
 		return errors.New(refusal.ReadRoot)
 	}
-	if !ownedWindowsFile(handle, owner) || setOwnerOnlyDACL(handle, owner, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT) != nil {
-		return errors.New(refusal.RootDACL)
+	if !ownedWindowsFile(handle, owner) {
+		return errors.Join(errors.New(refusal.RootDACL), errors.New("directory is not owned by the current user"))
+	}
+	if err := setOwnerOnlyDACL(handle, owner, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT); err != nil {
+		return errors.Join(errors.New(refusal.RootDACL), err)
 	}
 	names, err := directory.Readdirnames(-1)
 	if err != nil {
