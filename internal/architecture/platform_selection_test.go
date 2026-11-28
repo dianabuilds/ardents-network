@@ -101,7 +101,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/release/infrastructure/preparation_linux.go",
 			"internal/platform/cgroup/quiescence_linux.go",
 			"internal/domain/network/state/source_inspection_linux.go",
-			"internal/domain/network/state/source_preparation_linux.go",
+			"internal/domain/network/source/preparation/state_config_linux.go",
 			"internal/domain/endpoint/source_trust_preparation_linux.go",
 			"internal/domain/network/state/inspection_state_linux.go",
 			"internal/domain/network/state/durable/inspection_linux.go",
@@ -110,8 +110,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/node/provisioning/infrastructure/command_linux.go",
 			"internal/domain/network/source/command/prepare_linux.go",
 			"internal/domain/network/source/command/command_linux_test.go",
-			"internal/domain/network/state/source_state_files_linux.go",
-			"internal/domain/network/state/source_state_files_linux_test.go",
+			"internal/domain/network/source/preparation/state_files_linux.go",
+			"internal/domain/network/source/preparation/state_files_linux_test.go",
 			"internal/platform/artifacts/protected_input_linux.go",
 			"internal/platform/artifacts/protected_storage_linux.go",
 			"internal/domain/network/source/command/inspect_linux.go",
@@ -528,7 +528,7 @@ func TestCohort1N2IntroductionUnixPortSelection(t *testing.T) {
 // bounded-report seams they borrow are themselves Unix-generic and join the
 // Unix family. Every other platform receives the same explicit typed refusal:
 // serving and the Node runtime refuse outside Linux and macOS, while the
-// Linux-only Source inspection (it composes state.SourcePreparationConfig)
+// Linux-only Source inspection (it composes preparation.StateConfig)
 // refuses on every non-Linux platform. The genuine Linux native role tests and
 // the Source inspection mechanism keep their Linux boundary.
 func TestCohort2aDomainDetagSelection(t *testing.T) {

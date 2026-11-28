@@ -13,7 +13,7 @@ import (
 // the installation borrowers. These supplied-fact openings establish no
 // authenticated intake or successful Route transport evidence.
 func TestOwnerOpenRetainsChoiceAndReleasesPrivateInstallation(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	config := Config{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), Domain: 3, Current: func() (network.RuntimeView, error) { return view, nil }}
 	owner, err := Open(config)
@@ -55,7 +55,7 @@ func TestOwnerOpenRetainsChoiceAndReleasesPrivateInstallation(t *testing.T) {
 }
 
 func TestOwnerOpenRefusesOverlapAndIncompleteSetupWithoutCreation(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	current := func() (network.RuntimeView, error) { return view, nil }
 	entry := filepath.Join(root, "entry")

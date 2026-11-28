@@ -18,7 +18,7 @@ func offlineOperatorFile(source string) bool {
 		"internal/domain/release/infrastructure/preparation_linux.go",
 		"internal/domain/release/infrastructure/preparation_native_linux_test.go",
 		"internal/domain/endpoint/source_trust_preparation_linux.go",
-		"internal/domain/network/state/source_state_files_linux.go",
+		"internal/domain/network/source/preparation/state_files_linux.go",
 		"cmd/ardents-next/source_inspection_linux.go", "tests/e2e/source/inspection_linux_test.go",
 		"cmd/ardents-next/offline_profile_inspection.go", "tests/e2e/admissioncli/offline_profile_inspection_test.go":
 		return true
@@ -114,9 +114,9 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	}
 
 	switch source {
-	case "internal/domain/network/state/source_state_files_linux.go":
+	case "internal/domain/network/source/preparation/state_files_linux.go":
 		switch dependency {
-		case modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/source/servingdeclaration", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/process", modulePath + "/internal/platform/processguard":
+		case modulePath + "/internal/domain/network/duty", modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/source/servingdeclaration", modulePath + "/internal/domain/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/process", modulePath + "/internal/platform/processguard":
 			return true
 		}
 	case "internal/domain/endpoint/source_trust_preparation_linux.go":
@@ -153,7 +153,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/platform/artifacts"
 	case "internal/domain/network/source/inspection/inspection_linux.go":
 		switch dependency {
-		case modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/source/servingdeclaration", modulePath + "/internal/domain/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/processguard":
+		case modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/source/servingdeclaration", modulePath + "/internal/domain/network/source/preparation", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/processguard":
 			return true
 		}
 	case "internal/domain/network/source/inspection/inspection_other.go", "internal/domain/network/source/inspection/inspection_other_test.go":

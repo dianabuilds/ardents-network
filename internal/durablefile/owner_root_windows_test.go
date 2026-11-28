@@ -99,9 +99,12 @@ func requireOwnerOnlyDACL(t *testing.T, path string, inheritable, protected bool
 }
 
 func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
 	existing := filepath.Join(root, "record")
-	if err := os.WriteFile(existing, []byte("record"), 0o600); err != nil {
+	if err := WriteExclusive(existing, []byte("record")); err != nil {
 		t.Fatal(err)
 	}
 	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
@@ -109,17 +112,19 @@ func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
 	}
 	requireOwnerOnlyDACL(t, root, true, true)
 	requireOwnerOnlyDACL(t, existing, false, true)
-	// A file created after enforcement inherits the owner-only grant through
-	// the root's inheritable ACE, never the runner temp directory's DACL.
+	// A later record receives an explicit protected descriptor at creation.
 	inherited := filepath.Join(root, "later")
-	if err := os.WriteFile(inherited, []byte("later"), 0o600); err != nil {
+	if err := WriteExclusive(inherited, []byte("later")); err != nil {
 		t.Fatal(err)
 	}
-	requireOwnerOnlyDACL(t, inherited, false, false)
+	requireOwnerOnlyDACL(t, inherited, false, true)
 }
 
-func TestEnforceOwnerOnlyRootReplacesBroadGrant(t *testing.T) {
-	root := t.TempDir()
+func TestEnforceOwnerOnlyRootRefusesBroadGrantWithoutMutation(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
 	everyone, err := windows.CreateWellKnownSid(windows.WinWorldSid)
 	if err != nil {
 		t.Fatal(err)
@@ -136,10 +141,20 @@ func TestEnforceOwnerOnlyRootReplacesBroadGrant(t *testing.T) {
 	if err := windows.SetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION, nil, nil, broad, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
-		t.Fatalf("enforce owner-only root: %v", err)
+	before, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
 	}
-	requireOwnerOnlyDACL(t, root, true, true)
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("broad root was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Fatal("refusal changed root security descriptor")
+	}
 }
 
 func TestEnforceOwnerOnlyRootRefusesUnenforceableRoot(t *testing.T) {
@@ -153,5 +168,156 @@ func TestEnforceOwnerOnlyRootRefusesUnenforceableRoot(t *testing.T) {
 	}
 	if err := EnforceOwnerOnlyRoot(file, testRootRefusal); err == nil || err.Error() != testRootRefusal.ReadRoot {
 		t.Fatalf("file root = %v, want read-root refusal", err)
+	}
+}
+
+func TestEnforceOwnerOnlyRootRefusesExternalHardLink(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "outside")
+	if err := os.WriteFile(outside, []byte("outside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := windows.SecurityDescriptorFromString("D:P(A;;GA;;;WD)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl, _, err := descriptor.DACL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT,
+		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(outside, filepath.Join(root, "record")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Error("external hard link was not refused")
+	}
+	after, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Error("external target DACL changed")
+	}
+}
+
+func TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	child := filepath.Join(root, "unexpected-directory")
+	if err := os.Mkdir(child, 0700); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(child, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	control, _, err := before.Control()
+	if err != nil || control&windows.SE_DACL_PROTECTED != 0 {
+		t.Fatal("control must be subject to inheritance", err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("unexpected directory was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(child, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Error("root write propagated to an unvalidated child")
+	}
+}
+
+func TestEnforceOwnerOnlyRootRefusesRedirectedEntry(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "outside")
+	if err := os.WriteFile(outside, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "record")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("redirected entry was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Error("redirected target DACL changed")
+	}
+}
+
+func TestProtectedRootAndExistingRecordVerification(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "protected")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteExclusive(filepath.Join(root, "record"), []byte("record")); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
+		t.Fatalf("verify protected root and record: %v", err)
+	}
+}
+
+func TestEnforceOwnerOnlyRootRefusesBroadFileWithoutMutation(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	record := filepath.Join(root, "record")
+	if err := WriteExclusive(record, []byte("record")); err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := windows.SecurityDescriptorFromString("D:P(A;;GA;;;WD)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl, _, err := descriptor.DACL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(record, windows.SE_FILE_OBJECT,
+		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(record, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("broad file was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(record, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Fatal("refusal changed file security descriptor")
 	}
 }

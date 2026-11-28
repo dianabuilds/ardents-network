@@ -56,9 +56,11 @@ github.com/dianabuilds/ardents-network/internal/domain/network/epoch
 github.com/dianabuilds/ardents-network/internal/domain/network/source
 github.com/dianabuilds/ardents-network/internal/domain/network/source/command
 github.com/dianabuilds/ardents-network/internal/domain/network/source/inspection
+github.com/dianabuilds/ardents-network/internal/domain/network/source/preparation
 github.com/dianabuilds/ardents-network/internal/domain/network/source/serving
 github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration
 github.com/dianabuilds/ardents-network/internal/domain/network/state
+github.com/dianabuilds/ardents-network/internal/domain/network/state/stoppedunit
 github.com/dianabuilds/ardents-network/internal/domain/network/state/command
 github.com/dianabuilds/ardents-network/internal/domain/network/state/durable
 github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution

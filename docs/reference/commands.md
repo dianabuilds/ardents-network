@@ -1030,6 +1030,14 @@ peer reason.
 
 ## Process and support limits
 
+On Windows, an existing participation or Route Selection root must already be
+owned by the current user and carry a protected DACL granting that user full
+control and no other principal. Existing files must have the same owner and an
+owner-only DACL. Opening refuses insufficient protection without changing the
+root or its files. A missing root created through the ordinary store creation
+path receives its protected descriptor at creation; a command requiring an
+existing fresh root requires it to be securely provisioned before invocation.
+
 All maintained commands return a non-zero process status when their bounded input or
 owned lifecycle fails. The repository's current process tests cover retained
 source and Node lifecycles; they do not qualify public deployment, platform

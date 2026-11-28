@@ -4,7 +4,7 @@
 // generation pruning, the watermark floor codec, owned-root inspection,
 // directory synchronization, the exclusive root lease with its strict
 // regular-file/single-link identity check and the Windows owner-only root
-// DACL enforcement.
+// DACL creation and read-only validation.
 //
 // Each consuming package owns its root, marker, lock name and lifetime,
 // record schema, authorization policy, and refusal text. The shared lease
@@ -21,7 +21,8 @@
 //   - owned-root inspection: root_inspect.go (root_inspect_test.go)
 //   - directory sync and root lease: directory_sync_unix.go,
 //     directory_sync_windows.go, lease_unix.go (lease_unix_test.go)
-//   - Windows owner-only root DACL enforcement: owner_root_windows.go
+//   - Windows owner-only root and file creation: root_creation_windows.go,
+//     owner_file_windows.go; existing root and file validation: owner_root_windows.go
 //     (owner_root_windows_test.go)
 //   - Unix-family (Linux and macOS) inspection port: relative_open_unix.go
 //     (relative_open_unix_test.go) owns the directory-relative open;

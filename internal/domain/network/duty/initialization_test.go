@@ -11,7 +11,7 @@ import (
 )
 
 func TestInitializeCreatesOnlyFreshParticipationHistory(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestInitializeCreatesOnlyFreshParticipationHistory(t *testing.T) {
 func TestInitializeRefusesPartialParticipationWithoutRepair(t *testing.T) {
 	for _, name := range []string{rootLockName, rootMarkerName, ".stage-original", "watermark"} {
 		t.Run(name, func(t *testing.T) {
-			root := t.TempDir()
+			root := ownedRootFixture(t)
 			if err := os.Chmod(root, 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -65,7 +65,7 @@ func TestInitializeRefusesPartialParticipationWithoutRepair(t *testing.T) {
 			}
 		})
 	}
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestInitializeRefusesPartialParticipationWithoutRepair(t *testing.T) {
 }
 
 func TestConcurrentInitializationHasOnlyOneParticipationCreator(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}

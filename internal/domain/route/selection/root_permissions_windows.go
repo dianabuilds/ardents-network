@@ -8,13 +8,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
-// validateOwnerOnlyRoot enforces the owner-only permission floor on Windows
-// through the shared protected owner-only DACL mechanism (#793). Go
-// synthesizes Windows mode bits from FILE_ATTRIBUTE_READONLY rather than the
-// DACL, so a permission-bit check can never observe the floor; enforcement by
-// mutation is the established Windows pattern (duty). The Unix sibling
-// additionally binds the root to the endpoint user's UID (audit SW-9); the
-// DACL grant binds the root to the current process owner SID.
+// validateOwnerOnlyRoot checks the original Windows root and entries without
+// changing their owners or DACLs.
 func validateOwnerOnlyRoot(root string, _ os.FileInfo) error {
 	return durablefile.EnforceOwnerOnlyRoot(root, durablefile.OwnerOnlyRootRefusal{
 		OwnerSID: "read entry state owner SID",

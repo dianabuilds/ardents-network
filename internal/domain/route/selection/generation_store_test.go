@@ -57,7 +57,7 @@ func TestInteriorCommitGuardsRetainedGenerationExhaustion(t *testing.T) {
 // owners accept exactly one JSON object and refuse trailing data through the
 // shared errors.Is(io.EOF) check (the interior previously used a bare != io.EOF).
 func TestGenerationReadRefusesTrailingDataUniformly(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	write := func(raw []byte) string {
 		name := sha256Hex(raw)
 		if err := os.WriteFile(filepath.Join(root, "state-"+name), raw, 0o600); err != nil {
