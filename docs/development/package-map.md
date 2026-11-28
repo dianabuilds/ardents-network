@@ -86,8 +86,6 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | cmd/ardents-next | internal/domain/release/infrastructure | `infrastructure_operator.go` |
 | cmd/ardents-next | internal/domain/release/infrastructure/launch | `node.go`, `source_command.go` |
 | cmd/ardents-next | internal/domain/release/infrastructure/signing | `infrastructure_operator.go` |
-| internal/domain/release/infrastructure/signing | internal/domain/release/infrastructure/signing/internal/keyset | `release_key_command_linux.go`, `release_key_receipt_unix.go`, `release_key_receipt_unix_test.go` |
-| internal/domain/release/infrastructure/signing/internal/keyset | internal/platform/artifacts | `prepare_linux.go` |
 | internal/domain/admission/issuance | internal/platform/artifacts | `artifact_export_unix.go`, `result_declaration.go` |
 | internal/domain/connection | internal/application/endpointstream | `stream.go`, `stream_retirement.go`, `stream_handoff_test.go` |
 | internal/domain/connection | internal/domain/route/transport | `reader_authentication.go` |
@@ -222,10 +220,12 @@ public receipt. Record, Epoch, profile and Release signing retain their
 purpose-specific inputs and checks.
 
 `release_key_command_linux.go` selects the fixed Source, Forwarding, JOIN or
-Descriptor operation and its refusal. The private `signing/internal/keyset`
-owner publishes an original five-file set through Platform Artifacts and joins
+Descriptor operation and its refusal. The private `release_key_birth_linux.go` operation publishes an original five-file set through Platform Artifacts and joins
 that custody before returning the exact public inventory. The command renders
-it through `release_key_receipt_unix.go`. All four roles use the same typed
+it through `release_key_receipt_unix.go`. A CI source check restricts the
+producer to its detached inventory and the command as sole production caller;
+this replaces the earlier helper-to-signer Go package restriction and is not a
+compiler restriction between files in the signing package. All four roles use the same typed
 wrong-argument refusal and preserve their existing preparation diagnostics.
 
 Provisioning's `networksigning/certificate_unix.go` owns the exact Node transport
@@ -887,8 +887,7 @@ Git history; no current package may import or start a lab Module.
 | `internal/domain/node/provisioning/networkdraft` | `package networkdraft` | Class: supporting mechanism. Parses public Record, Epoch and Closed Profile declarations into canonical unsigned bytes and typed public facts. The original preparation and signing operations verify and use them without moving private keys or output custody. | `internal/canonicaldigest`, `internal/domain/network/epoch`, `internal/domain/network/closedprofile`, `internal/platform/artifacts` for declaration validation, standard library. |
 | `internal/domain/node/provisioning/sourcegenesis` | `package sourcegenesis` | Class: composition. Offline Source genesis prepares the original plan, distinct keys and one signed Record/Epoch bundle. The Linux infrastructure provision command dispatches. | `internal/canonicaldigest`, `internal/domain/network/epoch`, `internal/domain/network/source`, `internal/platform/artifacts`, standard library. |
 | `internal/domain/node/provisioning/runtimeplan` | `package runtimeplan` | Class: composition. Prepares one exact offline Node role declaration. Caller: ardents-next node prepare-plan. Node plan owns the declaration codecs. The command writes a new output file and opens no live authority. | `internal/canonicaldigest`, `internal/domain/admission/issuance`, `internal/domain/hosting`, `internal/domain/network/state`, `internal/domain/node/plan`, `internal/pathcheck`, `internal/platform/artifacts`, `internal/platform/processguard`, standard library. |
-| `internal/domain/release/infrastructure/signing` | `package signing` | Class: domain. Produce original initial/forward infrastructure Release artifacts and the separate Source Timestamp operation. Each closed role binds the original program, generation, template and protected key set. | `internal/domain/enrollment`; `internal/platform/artifacts`; `internal/platform/systemd`; `internal/domain/release`; `internal/domain/release/infrastructure`; stdlib and recorded dependencies. Exact file imports are enforced by the offline operator isolation check.; `internal/domain/release/infrastructure/signing/internal/keyset` for key preparation and public receipt. |
-| `internal/domain/release/infrastructure/signing/internal/keyset` | `package keyset` | Class: supporting mechanism. Holds protected original Linux publication of the exact five freshly generated Release key files through join and erasure. Returns detached public file inventory for the command receipt. | `internal/platform/artifacts` only for exclusive protected output. Standard library. |
+| `internal/domain/release/infrastructure/signing` | `package signing` | Class: domain. Produce original initial/forward infrastructure Release artifacts and the separate Source Timestamp operation. Each closed role binds the original program, generation, template and protected key set. | `internal/domain/enrollment`; `internal/platform/artifacts`; `internal/platform/systemd`; `internal/domain/release`; `internal/domain/release/infrastructure`; stdlib and recorded dependencies. Exact file imports are enforced by the offline operator isolation check. |
 | `tests/e2e/admissioncli` | `package admissioncli` with external `admissioncli_test` cases | Class: engineering check. Compiled offline Admission and Issuance commands, retained roots, console interruption, strict inputs, independent public pins and bounded telemetry. Launches the same `ardents-next` command through the shared build fixture. | `internal/domain/admission`, `internal/domain/admission/issuance`, `internal/domain/admission/issuerprofile`, `internal/domain/admission/issuerprofile/signing`, `internal/domain/admission/quota`, `internal/domain/admission/receiving`, `internal/domain/network/closedprofile`, `internal/domain/network/state`, `tests/e2e/node` for the independent signed Admission request, `tests/e2e/node/processfixture` for compiled process inputs and lifecycle. Standard library, CIRCL blind signature client and OTLP protobuf readers. |
 | `tests/e2e/endpoint` | `package endpoint` with external `endpoint_test` cases | Class: engineering check. Native Endpoint qualification driver shared by installed lifecycle scenarios and Endpoint owner tests. Owns signed Release fixture inputs, dedicated UID/GID and immutable resources, staged platform delivery, distinct manager setup and joined guest cleanup. Also owns independent scope, worker, permission, proof and observation fixtures. | `internal/application/administration`, `internal/application/endpointstream`, `internal/domain/admission`, `internal/domain/admission/allocation`, `internal/domain/connection`, `internal/domain/endpoint/plan`, `internal/domain/execution/runtime`, `internal/domain/hosting`, `internal/domain/network`, `internal/domain/network/source`, `internal/domain/network/state`, `internal/domain/publication`, `internal/domain/publication/durable`, `internal/domain/publication/instance`, `internal/domain/reachability`, `internal/domain/reachability/store`, `internal/domain/release/infrastructure/launch`, `internal/platform/cgroup`, `internal/platform/systemd`, `internal/platform/systemd/observation`, `tests/e2e/node/processfixture`, `tests/e2e/source`, `tests/epochfixture/network`, `tests/releasefixture`. Standard library. Existing registered external dependencies. |
 | `tests/e2e/endpointcli` | `package endpointcli` with external `endpointcli_test` cases | Class: engineering check. Compiled Endpoint plan/history commands, read-only Enrollment and Release verification, before-effect refusal and Ubuntu package contents. Uses the same artifact environment precedence and compiled command as installed Endpoint scenarios. | `internal/domain/network/source`, `internal/domain/network/state`, `tests/e2e/node/processfixture`, `tests/e2e/source`, `tests/epochfixture/network`, `tests/networkfixture`, `tests/releasefixture`. Standard library. Existing Release verification fixture dependencies. |
@@ -1129,8 +1128,8 @@ former initial admission entry point and detached inventory accessors retired.
 - `internal/platform/systemd/descriptor_manager_linux.go`: `github.com/godbus/dbus/v5`.
 
 `release_key_command_linux.go` selects the fixed Descriptor key ceremony and
-reports its public inventory, while `signing/internal/keyset` retains the
-original file publication.
+reports its public inventory, while the private `release_key_birth_linux.go`
+operation retains the original file publication.
 Fixed initial/forward key/plan/signing commands share native key/input/output
 codecs, never Source/JOIN signing purposes. Descriptor uses the fixed role
 in `ardents-next infrastructure` for public artifact preparation. The former

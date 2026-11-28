@@ -1,7 +1,6 @@
 package architecture
 
 import (
-	"path"
 	"strings"
 )
 
@@ -33,18 +32,8 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	if allowedStandardImport(dependency) {
 		return true
 	}
-	if dependency == modulePath+"/internal/domain/release/infrastructure/signing/internal/keyset" {
-		switch source {
-		case "internal/domain/release/infrastructure/signing/release_key_command_linux.go",
-			"internal/domain/release/infrastructure/signing/release_key_receipt_unix.go",
-			"internal/domain/release/infrastructure/signing/release_key_receipt_unix_test.go":
-			return true
-		}
-		return false
-	}
-	if path.Dir(source) == "internal/domain/release/infrastructure/signing/internal/keyset" {
-		return source == "internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go" &&
-			dependency == modulePath+"/internal/platform/artifacts"
+	if source == "internal/domain/release/infrastructure/signing/release_key_birth_linux.go" {
+		return dependency == modulePath+"/internal/platform/artifacts"
 	}
 	if dependency == modulePath+"/internal/domain/node/provisioning/sourcegenesis" {
 		return source == "internal/domain/node/provisioning/infrastructure/command_linux.go"

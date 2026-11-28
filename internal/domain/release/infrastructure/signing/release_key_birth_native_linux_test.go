@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package keyset
+package signing
 
 import (
 	"context"
@@ -28,7 +28,7 @@ func TestReleaseKeySetNativeInterruptedCustody(t *testing.T) {
 	defer cancel()
 	output := filepath.Join(parent, "failed-keys")
 	reached := false
-	public, err := prepare(ctx, output, func(stage string, file *os.File) {
+	public, err := prepareReleaseKeys(ctx, output, func(stage string, file *os.File) {
 		if stage == "before-directory" {
 			reached = true
 			cancel()
@@ -40,7 +40,7 @@ func TestReleaseKeySetNativeInterruptedCustody(t *testing.T) {
 	if !reached {
 		t.Fatal("invalid environment: protected original parent required", err)
 	}
-	if public != (Inventory{}) || !errors.Is(err, context.Canceled) || !errors.Is(err, os.ErrClosed) {
+	if public != (releaseKeyInventory{}) || !errors.Is(err, context.Canceled) || !errors.Is(err, os.ErrClosed) {
 		t.Fatal("failed key custody returned public inventory or lost the physical failure", err)
 	}
 	if _, err := os.Lstat(output); !errors.Is(err, os.ErrNotExist) {

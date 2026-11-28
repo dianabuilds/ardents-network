@@ -121,7 +121,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/domain/release/infrastructure/command_linux.go",
 			"internal/domain/release/infrastructure/signing/command_linux.go",
 			"internal/domain/release/infrastructure/signing/release_key_command_linux.go",
-			"internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go",
+			"internal/domain/release/infrastructure/signing/release_key_birth_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_arguments_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_linux.go",
@@ -438,7 +438,7 @@ func TestCohort2bReleaseProvisioningUnixPortSelection(t *testing.T) {
 			"internal/domain/release/infrastructure/signing/source_release_linux.go",
 			"internal/domain/release/infrastructure/signing/node_release_plan_linux.go",
 			"internal/domain/release/infrastructure/signing/source_release_plan_linux.go",
-			"internal/domain/release/infrastructure/signing/internal/keyset/prepare_linux.go",
+			"internal/domain/release/infrastructure/signing/release_key_birth_linux.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {

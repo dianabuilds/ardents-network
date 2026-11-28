@@ -9,22 +9,20 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-
-	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing/internal/keyset"
 )
 
 func TestReleaseKeyReceiptReportsOnlyOrderedPublicSlots(t *testing.T) {
-	public := keyset.Inventory{
-		{File: "release-key-1.pem", Public: [32]byte{6}},
-		{File: "release-key-2.pem", Public: [32]byte{5}},
-		{File: "release-key-3.pem", Public: [32]byte{4}},
-		{File: "release-key-4.pem", Public: [32]byte{3}},
-		{File: "release-key-5.pem", Public: [32]byte{2}},
+	public := releaseKeyInventory{
+		{file: "release-key-1.pem", public: [32]byte{6}},
+		{file: "release-key-2.pem", public: [32]byte{5}},
+		{file: "release-key-3.pem", public: [32]byte{4}},
+		{file: "release-key-4.pem", public: [32]byte{3}},
+		{file: "release-key-5.pem", public: [32]byte{2}},
 	}
 	var want bytes.Buffer
 	want.WriteString(`{"operation":"source.prepare-release-keys","ordinary_threshold":3,"independent_custody":false,"keys":[`)
 	for i, slot := range public {
-		key := slot.Public
+		key := slot.public
 		if i != 0 {
 			want.WriteByte(',')
 		}
