@@ -242,9 +242,24 @@ func (exchange *segmentBoundaryExchange) absoluteBoundary(positions transfer.Seg
 	return boundary, nil
 }
 
-// After observing the peer's committed cut, replay may include already
-// admitted bytes but cannot extend that cut's Application range.
+func (exchange *segmentBoundaryExchange) localInputEnded() bool {
+	mask := byte(1)
+	if exchange.role == wire.RolePublisher {
+		mask = 2
+	}
+	return exchange.base.EOF&mask != 0
+}
+
+// The transfer cannot reopen an ended direction. Within a segment, replay
+// may include admitted bytes but cannot extend the peer's committed cut.
 func (exchange *segmentBoundaryExchange) acceptsData(record wire.Data) bool {
+	mask := byte(2)
+	if exchange.role == wire.RolePublisher {
+		mask = 1
+	}
+	if exchange.base.EOF&mask != 0 {
+		return false
+	}
 	if exchange.peerEndSet && (record.Offset > exchange.peerEnd ||
 		uint64(len(record.Payload)) > exchange.peerEnd-record.Offset) {
 		return false

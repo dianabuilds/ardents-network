@@ -1499,7 +1499,12 @@ write succeeds and it receives the Publisher’s confirmation. The Publisher
 waits for the decoded clean peer CLOSE. Both handoffs check the exact
 retiring Attachment, the current generation’s written and received controls,
 and live original authority. It retains the boundary separately from the
-Application Terminal outcome. A joined ordinary connection has no boundary
+Application Terminal outcome. The new Attachment checks the resume request
+and writes the exact confirmation before starting its stream record actors.
+The Reader must receive the matching confirmation before its actors start.
+A refusal retires that Attachment and cannot fall back to the ordinary
+stream handoff. An inherited EOF closes the corresponding new zero-byte
+direction and prevents the peer from sending data in that direction. A joined ordinary connection has no boundary
 and cannot establish a continuation. At most one pending transition exists per original
 transfer. Revoke, expiry and failed cleanup refuse further transitions.
 

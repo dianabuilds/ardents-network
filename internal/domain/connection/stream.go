@@ -63,18 +63,35 @@ func (owner *AuthenticatedAttachment) OpenStream(contract executionruntime.Strea
 }
 
 func (owner *AuthenticatedAttachment) openStream(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource) (*Stream, error) {
-	return owner.openStreamWithSegment(contract, publisherRoute, initiatorRoute, nil)
+	return owner.openStreamWithSegment(contract, publisherRoute, initiatorRoute, nil, nil)
 }
 
-func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource, segment *segmentBoundaryExchange) (*Stream, error) {
-	if owner == nil || owner.self != owner {
+func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource, segment *segmentBoundaryExchange, resume *segmentResume) (_ *Stream, result error) {
+	if owner == nil || owner.self != owner || segment != nil && resume != nil {
 		return nil, errIntegrity
+	}
+	owner.streamStart.Lock()
+	defer owner.streamStart.Unlock()
+	owner.mu.Lock()
+	unavailable := owner.closed || owner.consumed || owner.key == [32]byte{}
+	owner.mu.Unlock()
+	if unavailable {
+		return nil, errIntegrity
+	}
+	if resume != nil {
+		// A refused or incomplete Resume retires the same Attachment. A
+		// subsequent ordinary OpenStream cannot consume the rejected flight.
+		defer func() {
+			if result != nil {
+				result = errors.Join(result, owner.Close())
+			}
+		}()
 	}
 	sendLimit, receiveLimit, err := contract.Limits(owner.operation)
 	if err != nil {
 		return nil, err
 	}
-	flow, err := transfer.New(1, sendLimit, receiveLimit)
+	flow, err := transfer.New(initialAttachmentGeneration, sendLimit, receiveLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +99,19 @@ func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionru
 	// handoff barrier and the consumer's state mutex.
 	if err := errors.Join(owner.check(), publisherRoute.check(owner)); err != nil {
 		return nil, err
+	}
+	if resume != nil {
+		segment, err = resume.confirm(owner)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if segment != nil && segment.localInputEnded() {
+		// The new Connection authenticates its zero-byte direction as closed.
+		// The original Application input cannot reopen at a segment boundary.
+		if err := flow.CloseInput(); err != nil {
+			return nil, err
+		}
 	}
 	var stream *Stream
 	handoff := func(checkOriginal func() error) error {
@@ -115,7 +145,7 @@ func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionru
 		}
 		owner.consumed = true
 		clear(owner.key[:])
-		stream.records = &attachmentRecords{generation: 1,
+		stream.records = &attachmentRecords{generation: initialAttachmentGeneration,
 			physical:   attachmentIO{owner: owner, initiator: owner.initiator, service: owner.service, context: owner.attachment},
 			readerDone: make(chan struct{}), writerDone: make(chan struct{}), retired: make(chan struct{}), replaced: make(chan struct{})}
 		go stream.readRecords(stream.records)
