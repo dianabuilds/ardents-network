@@ -1,18 +1,82 @@
 # Dependency register
 
-## Closed-release Carrier exclusion
+## Closed-release Carrier selection and source
 
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
-for the nearest closed release. QUIC and R-172 are deferred; the finding below
-is unresolved, not fixed or waived. Remove the quic-go runtime dependency after
-its last maintained import and registered use are retired in the owning change,
-or establish complete pre-effect exclusion in the actual product/artifact closure.
-No private fork or experimental patch is selected. Preserve canonical historical
-identities and the finding's evidence/limitations. Test/build uses, if any remain,
-require separate normal applicability and support assessment. A changed graph
-must pass module integrity/tidiness, current vulnerability and repository gates.
-The earlier dual-Carrier selection/removal obligations below are superseded for
-this release only; unverified exclusion is not release admission.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned
+QUIC to the Carrier set of the nearest closed release on 2026-11-28 and
+supersedes [ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the
+Carrier set. The return is delivered in stages (#1080, #1081, #1082). Until the
+Carrier selection admits QUIC and the both-Carrier qualification is accepted,
+the product keeps refusing QUIC before any effect, canonical historical
+identities stay recognizable, and no fallback between Carriers is selected.
+Selection is not qualification, and unverified exclusion is not release
+admission. A changed graph must pass module integrity/tidiness, current
+vulnerability and repository gates.
+
+### Dependency source: quic-go v0.66.0 with the retained reply-budget patch
+
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) selects this
+source for the returning Carrier. It is reviewed here on 2026-11-28; the
+responsible owner is the Route transport adapter and this register.
+
+- **Identity.** `github.com/quic-go/quic-go v0.66.0`, module sum
+  `h1:NCsBBGZrI2HZC6aKt4I89T5i4Crt39EYNqkh0w2Wgmg=`, source commit
+  `d08d86670a1b480bb81a216fb59f6a2b23e8d444`, rechecked against the Go module
+  proxy and checksum database. `go.mod` replaces the module with
+  `third_party/quic-go`: the module's root Go files, `go.mod`, `go.sum`,
+  `LICENSE`, and the packages `internal`, `qlog`, `qlogwriter`, `quicvarint`
+  and `testutils`, byte for byte, with
+  `experiments/r-172-quic-return-path/quic-go-v0.66.0-probe-budget.patch`
+  (SHA-256 `f5573d4c91a971b46a96135e72cae968f90c8fe18352f38f5da9a62c9dde0b9d`)
+  applied. That is 173 production and 157 test Go files. The patch changes
+  three production files (`connection.go`, `packet_packer.go`,
+  `path_manager.go`) and four test files.
+- **Integrity check.** `TestQuicGoSourceIsPublishedModuleWithOnePatch` in
+  `internal/architecture` downloads the published archive when the module cache
+  is cold, verifies its sum and commit, rebuilds the selected files with the
+  patch and fails on any other byte in the directory.
+  `TestQuicGoImportsAreRegistered` lets only the directory import the library
+  until #1081 registers the adapter. `make quic-go-source-test` runs the
+  module's own unit tests inside the copy; it belongs to `make quick-check`
+  and `make check`.
+- **Why a copy.** No official release carries the correction on this date:
+  upstream `master` at `220f6c06007ad87ed8efa7746052f6aab8137fa6` still pads
+  every path probe to 1200 bytes. The public fork `qoke/mp-quic-go` fails the
+  rule below. ADR-0136 admits the copy as a time-bounded exception to the
+  no-vendor-tree rule and to the one-root-module rule.
+- **License.** MIT; the module's `LICENSE` file is kept, copyright the quic-go
+  authors and Google.
+- **Closure.** The copy keeps the published `go.mod`: `x/crypto v0.54.0`,
+  `x/net v0.56.0`, `x/sync v0.22.0`, `x/sys v0.47.0`, and `testify`,
+  `go.uber.org/mock`, `qpack` and `go-ossfuzz-seeds` for its own tests. The
+  root module selects its newer pins. Nothing in the product imports the module
+  until #1081 restores the adapter.
+- **Exposure.** A UDP transport library: it parses untrusted packets, holds
+  session keys and writes to the network. Its production code imports `unsafe`
+  in six files, calls `panic` in 41 and defines `init` in nine; it has no cgo.
+  It is admitted as third-party code by this review. The first-party rules for
+  these constructs, file ownership and package registration do not reach the
+  directory: the shared repository walker in `internal/architecture` skips
+  `third_party`. The three files under `internal/testdata` are the module's
+  public localhost test certificate and key, published in the module archive;
+  the key-material patterns of `.gitignore` except exactly that directory for
+  them.
+- **Vulnerabilities.** The Go vulnerability database lists eight advisories for
+  the module; the latest is fixed in v0.59.1, so the version contains every
+  published fix. The module keeps its official path, so `govulncheck` maps a
+  future advisory to it; each review repeats that check by hand.
+- **Update.** On a new upstream release, replace the directory with the
+  selected files of that release, apply the patch again with the experiment
+  runner's context-exact applier (a conflict fails loudly), update the version,
+  sum, commit and selection in this section and the integrity test, then run the
+  session test of R-172 and the module's tests.
+- **Removal.** On the first official release that carries the correction,
+  verified by the session test of R-172, drop the patch and the copy and
+  require that release. The module itself leaves after its last maintained
+  caller is retired.
+- **Invalidation.** A changed patch, a different selection, a new advisory, a
+  loss of upstream support or a change to the correction invalidates this
+  section.
 
 ## Native Source preflight dependency renewal
 
@@ -977,11 +1041,12 @@ use requires the fixing release and normal dependency admission first.
 | `golang.org/x/net` | `v0.62.0` | BSD-3-Clause; reviewed network/HTTP support closure, fixing renewal and exact source identities above |
 | `golang.org/x/text` | `v0.44.0` | BSD-3-Clause; transitive Go text support in the reviewed library graph; version required by the current x/net closure |
 
-The former quic-go v0.63.0 pin and runtime adapters are removed under ADR-0122.
-The earlier v0.62.0 finding below remains unresolved for deferred QUIC. Current
-release admission requires actual source and delivered-artifact exclusion, not
-an assumption based on module removal or a quiet scanner. This retirement
-selects no fix, new probe, fork or gate waiver.
+The former quic-go v0.63.0 pin and runtime adapters were removed under ADR-0122.
+ADR-0136 selects v0.66.0 with the retained patch as the source of the returning
+Carrier; the adapter returns with #1081. Until then current release admission
+requires actual source and delivered-artifact exclusion of QUIC, not an
+assumption based on module removal or a quiet scanner. The earlier v0.62.0
+finding below stays the historical observation.
 The separately reviewed OTel, Release, test-only PTY and development tool
 closures are enumerated at their owners below/above.
 
@@ -1030,13 +1095,14 @@ Earlier OHTTP and Go/compiler scan snapshots remain provenance in the archive.
 CIRCL's optimized assembly behind portable APIs does not select custom
 cryptography. First-party cgo and `unsafe` remain forbidden by project policy.
 
-**Deferred QUIC use:** ADR-0122 selects TCP/TLS alone for the nearest closed
-release. Historical QUIC records remain recognizable, with explicit refusal
-before selected-role, socket, output or token effects and no fallback. Returning
-QUIC requires a future explicit selection, supported dependency disposition and
-source/artifact-matched hostile-network, lifetime and resource qualification.
-Earlier v0.61.0/v0.62.0 trials and the removed v0.63.0 pin qualify no replacement.
-The unresolved local finding below retains its original observations and limits.
+**Returning QUIC use:** ADR-0136 returned QUIC to the nearest closed release.
+Historical QUIC records remain recognizable. Until the Carrier selection admits
+QUIC (#1081), it is still refused before selected-role, socket, output or token
+effects, with no fallback. The use is qualified per Carrier by
+source/artifact-matched hostile-network, lifetime and resource evidence (#1082).
+Earlier v0.61.0/v0.62.0 trials and the removed v0.63.0 pin qualify no
+replacement. The local finding below retains its original observations and
+limits.
 
 ### Existing QUIC finding: return-path reply budget
 
@@ -1103,12 +1169,15 @@ turn the server disposition into qualified use nor replace the missing
 profile-specific measurement. The removed `ListenNodeCarrier` is not a current
 server caller.
 
-**Current disposition:** the unresolved applicability/qualification of the
-affected QUIC server use blocks its admission under the maintenance and
-vulnerability acceptance rule. Removing a historical caller, a quiet advisory
-scan, or passing adapter tests does not close that blocker. No fix, replacement,
-private fork, upstream report, or network experiment is selected by this
-record.
+**Current disposition, 2026-11-28:** the library defect is corrected by the
+retained patch on official v0.66.0, measured in
+[R-172](../research/records/r-172-quic-return-path-budget.md) and recorded at
+the top of this register. The affected QUIC server use is not admitted until the
+adapter returns (#1081) and the both-Carrier qualification is accepted (#1082);
+rows of R-172 that are still unmeasured stay open. The fork
+`qoke/mp-quic-go` is rejected. Removing a historical caller, a quiet advisory
+scan, or passing adapter tests does not close those steps. A private report to
+the upstream project is drafted and not yet submitted.
 
 **Upstream/advisory review (accessed 2026-09-23):** the official release and
 GitHub advisory records were checked. The published identifiers
@@ -1134,11 +1203,10 @@ scheduled vulnerability workflow has failed every day since 2026-11-24 without
 a fix. The Go vulnerability database keys advisories to the upstream module
 path, so no scanner would report a future quic-go advisory against it. It fails
 the maintenance and security-fix condition below. The same correction is
-prepared as `quic-go-v0.66.0-probe-budget.patch`, three production files on
+retained as `quic-go-v0.66.0-probe-budget.patch`, three production files on
 official v0.66.0, and passes the same session test and upstream's own tests on
-macOS arm64 and the Linux x86-64 stands. It is not an admitted source until an
-official release carries it or the Product Owner selects a maintained fork by
-ADR. The disposition is unchanged.
+macOS arm64 and the Linux x86-64 stands. ADR-0136 selects that patched official
+release as the dependency source, recorded at the top of this register.
 
 The disposition must be revisited if the module, checksum, source, Go version,
 QUIC configuration, server caller, path-migration behavior, platform/backend,
@@ -1163,14 +1231,18 @@ document's normal review and qualification requirements.
 
 **Offline supply:** an explicit preparation step runs `go mod download` and
 `go mod verify` outside the repository, then supplies a temporary vendor context
-to a Docker build with `--network=none`. No vendor tree, module cache, generated
-dependency, or Gateway key is committed.
+to a Docker build with `--network=none`. No module cache, generated dependency,
+or Gateway key is committed. The dependency source `third_party/quic-go` is the
+one committed source copy (ADR-0136); its preparation additionally downloads
+the published `github.com/quic-go/quic-go@v0.66.0` archive for the integrity
+test and the modules of its own tests with `go mod download` inside the copy.
 
 **Removal plan:** a dependency leaves after its last maintained caller and
-registered-use obligation are retired or replaced. ADR-0122 retires the current
-QUIC runtime obligation while preserving historical identity recognition and
-refusal. The module is removed after its last maintained import; actual release
-closure remains independently checked. A changed version or dependency graph repeats the affected current-owner checks. An exploitable or unresolved
+registered-use obligation are retired or replaced. ADR-0122 retired the QUIC
+runtime obligation; ADR-0136 returns it from the patched official source, and
+the copy leaves with the first official release that carries the correction.
+The module is removed after its last maintained import; actual release closure
+remains independently checked. A changed version or dependency graph repeats the affected current-owner checks. An exploitable or unresolved
 vulnerability of any severity, loss of support, unacceptable license,
 offline-build failure or broken role split stops admission under the
 [acceptance rule](#maintenance-and-vulnerability-acceptance). The selection

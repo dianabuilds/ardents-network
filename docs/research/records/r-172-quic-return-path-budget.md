@@ -1,7 +1,7 @@
 ---
 id: R-172
 title: QUIC reply budget at the UDP socket and current Node TLS compatibility
-status: review
+status: decided
 owner: Product Owner and Codex
 started: 2026-10-15
 reviewed: 2026-11-28
@@ -89,13 +89,13 @@ The issue stays open. For #519, the composite evidence now has the actual-compon
 
 ## Product Owner decisions, 2026-11-28
 
-The Product Owner first chose to keep TCP/TLS as the Carrier, to select neither the candidate nor another fork, and not to ask upstream quic-go. Later the same day the Product Owner stated that a need for QUIC exists. The question is active again. ADR-0122 is unchanged until the Product Owner changes it.
+The Product Owner first chose to keep TCP/TLS as the Carrier, to select neither the candidate nor another fork, and not to ask upstream quic-go. Later the same day the Product Owner stated that a need for QUIC exists, preferably in the nearest closed release, and allowed the correction to be offered upstream. The Product Owner then accepted [ADR-0136](../../adr/0136-return-quic-from-patched-official-source.md): QUIC returns to the Carrier set of the nearest closed release together with TCP/TLS, and the correction comes from official quic-go v0.66.0 with the retained patch inside the repository until an official release carries it. The multipath candidate, a socket-level counter of first party and a weaker refusal stay rejected.
 
-With the correction prepared on the official release, two routes satisfy the dependency rule. Offering the patch to quic-go and adopting a tagged release that carries it keeps maintenance and security fixes upstream, but its timing belongs to the upstream maintainer. Carrying the same patch as a minimal fork of official quic-go until then needs an ADR that accepts the maintenance of one patch of three production files across upstream releases. Which release needs QUIC decides whether the second route is required. A fork of the multipath candidate, a socket-level counter of first party and a weaker refusal are not proposed.
+The upstream project's security policy asks for exploitable production issues to be reported privately, and its AI policy asks the submitting person to review the text and to understand every line of a proposed change. The private report is drafted and waits for the Product Owner; nothing has been submitted.
 
 ## Disposition
 
-- Question state: active. The Product Owner confirmed a need for QUIC; the route and the release are to be decided.
-- Accepted follow-ups: none yet. No ADR was created; no dependency, caller or release contract changed.
-- Documents changed: this record, the experiment README and the finding section of the dependency register.
-- Experiment code: retained. `run.py patched` is the regression for the official release with the patch; `run.py return-path --module candidate` and `run.py controls` keep the candidate and the unpatched controls. Everything lives outside the product module graph and is rendered only when the runner executes.
+- Question state: answered for the selected source. #519 stays open for the staged return: the source (#1080), the adapter and Carrier selection (#1081), and the both-Carrier qualification (#1082).
+- Accepted follow-ups: ADR-0136; #1080, #1081 and #1082 in that order.
+- Documents changed: this record, the experiment README, ADR-0136 and its index, the dependency register, the testing owner, the Route migration contract, the execution owner and every owner that named ADR-0122.
+- Experiment code: retained. `run.py patched` is the regression for the official release with the patch; `run.py return-path --module candidate` and `run.py controls` keep the candidate and the unpatched controls. Everything lives outside the product module graph and is rendered only when the runner executes. #1081 moves the session test into the checked repository profile.

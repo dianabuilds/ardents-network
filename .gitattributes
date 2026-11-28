@@ -9,3 +9,6 @@
 # Unified diffs carry a space before the tab of each context line and a bare
 # space on an empty context line.
 experiments/r-172-quic-return-path/*.patch whitespace=-space-before-tab,-trailing-space
+# third_party/quic-go is the published quic-go module with one retained patch.
+# Its bytes are verbatim; a repository test compares them with the module.
+third_party/quic-go/** whitespace=-trailing-space

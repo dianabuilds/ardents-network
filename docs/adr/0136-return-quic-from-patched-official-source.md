@@ -47,8 +47,9 @@ and the mandatory gates.
 - This is a time-bounded exception to the register's rule that no vendor tree
   is committed and to the repository's one root Go module, which still covers
   all maintained code. The directory is a dependency source, not project code,
-  and the first-party rules for `panic`, implicit `init`, `unsafe` and file
-  ownership do not apply inside it. It covers one dependency and one patch.
+  and the first-party rules for `panic`, implicit `init`, `unsafe`, file
+  ownership and the key-material file patterns do not apply inside it. It
+  covers one dependency and one patch.
 
 ## Required behavior
 

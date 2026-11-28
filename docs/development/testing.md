@@ -16,6 +16,9 @@ Select the registered Go toolchain and GNU Make on PATH before running
 checks the staged diff and does not invoke the full build.
 The architecture helper tests also require Python 3.11 or newer for
 `ExceptionGroup`/`BaseExceptionGroup` and the registered PowerShell release.
+The dependency source of ADR-0136, `third_party/quic-go`, is compared with the
+published quic-go v0.66.0 archive; a cold module cache needs module proxy
+access for that archive and for the modules of the copy's own tests.
 On macOS, put the registered GNU Make on PATH ahead of the system `make`.
 The system version cannot read the package inventories. Put the chosen Python
 installation's `libexec/bin` and the explicitly installed
@@ -1862,7 +1865,10 @@ selected Carriers.
   input preparation.
 - `make quick-check` runs the unit inventory, including architecture and
   formatting checks, plus vet, the four named command builds, module tidiness,
-  and the canonical artifact representation proof. `make format-check` remains
+  the canonical artifact representation proof and `quic-go-source-test`, the
+  unit tests of the dependency source `third_party/quic-go` (ADR-0136). The
+  architecture suite proves that the source equals the published module with the
+  retained patch. `make format-check` remains
   available as a focused architecture and formatting check.
   On Linux, run ordinary `unit`, `quick-check` and `check` as an unprivileged
   user: caller-owned enrollment and chmod-denial controls require that identity.

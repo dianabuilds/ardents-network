@@ -10,6 +10,10 @@ Thumbs.db
 !.env.example
 *.key
 *.pem
+# The public localhost test certificate of the quic-go module, kept verbatim in
+# the dependency source of ADR-0136 for the module's own tests.
+!third_party/quic-go/internal/testdata/*.key
+!third_party/quic-go/internal/testdata/*.pem
 
 # Dependencies and build outputs
 node_modules/
