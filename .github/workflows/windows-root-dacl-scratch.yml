@@ -1,4 +1,4 @@
-name: Temporary Windows root DACL reproduction
+name: Temporary Windows root DACL verification
 on:
   push:
     branches: [codex/948-windows-root-dacl]
@@ -13,14 +13,11 @@ jobs:
         with:
           go-version: 1.27.4
           cache: false
-      - name: Reproduce external hard-link DACL mutation
+      - name: Verify Windows owner-only store roots and their consumers
         shell: pwsh
         run: |
           $env:GOTOOLCHAIN = 'local'
-          $output = go test ./internal/durablefile -run '^TestEnforceOwnerOnlyRootRefusesExternalHardLink$' -count=1 -v 2>&1 | Out-String
-          $status = $LASTEXITCODE
-          Write-Output $output
-          if ($status -eq 0 -or -not $output.Contains('external target DACL changed') -or -not $output.Contains('external hard link was not refused')) {
-            throw 'Expected both external mutation and missing refusal to reproduce'
-          }
-          exit 0
+          $volume = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($env:TEMP).Substring(0, 1))
+          if ($volume.FileSystem -ne 'NTFS') { throw 'Native test requires NTFS' }
+          go test -race ./internal/durablefile ./internal/domain/route/selection ./internal/domain/network/duty -count=1 -timeout=8m
+          exit $LASTEXITCODE

@@ -5,7 +5,7 @@ package durablefile
 import (
 	"errors"
 	"os"
-	"path/filepath"
+	"reflect"
 
 	"golang.org/x/sys/windows"
 )
@@ -31,28 +31,92 @@ type OwnerOnlyRootRefusal struct {
 // mechanism; the Unix siblings keep their read-only permission-bit checks.
 func EnforceOwnerOnlyRoot(root string, refusal OwnerOnlyRootRefusal) error {
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
-	if err != nil {
+	if err != nil || user == nil || user.User.Sid == nil {
 		return errors.New(refusal.OwnerSID)
 	}
-	if err := setOwnerOnlyDACL(root, user.User.Sid, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT); err != nil {
+	name, err := windows.UTF16PtrFromString(root)
+	if err != nil {
 		return errors.New(refusal.RootDACL)
 	}
-	entries, err := os.ReadDir(root)
+	// MAXIMUM_ALLOWED suppresses SetSecurityInfo's recursive propagation.
+	// Existing entries are handled explicitly after the directory is sealed.
+	handle, err := windows.CreateFile(name, windows.MAXIMUM_ALLOWED,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING,
+		windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return errors.New(refusal.RootDACL)
+	}
+	directory := os.NewFile(uintptr(handle), root)
+	if directory == nil {
+		return errors.Join(errors.New(refusal.ReadRoot), windows.CloseHandle(handle))
+	}
+	return errors.Join(enforceHeldRoot(directory, handle, user.User.Sid, refusal), directory.Close())
+}
+
+func enforceHeldRoot(directory *os.File, handle windows.Handle, owner *windows.SID, refusal OwnerOnlyRootRefusal) error {
+	var info windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(handle, &info); err != nil ||
+		info.FileAttributes&windows.FILE_ATTRIBUTE_DIRECTORY == 0 ||
+		info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+		return errors.New(refusal.ReadRoot)
+	}
+	if !ownedWindowsFile(handle, owner) || setOwnerOnlyDACL(handle, owner, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT) != nil {
+		return errors.New(refusal.RootDACL)
+	}
+	names, err := directory.Readdirnames(-1)
 	if err != nil {
 		return errors.New(refusal.ReadRoot)
 	}
-	for _, entry := range entries {
-		if entry.IsDir() || setOwnerOnlyDACL(filepath.Join(root, entry.Name()), user.User.Sid, windows.NO_INHERITANCE) != nil {
-			return errors.New(refusal.FileDACL)
+	for _, name := range names {
+		if err := sealRootFile(handle, name, owner); err != nil {
+			return errors.Join(errors.New(refusal.FileDACL), err)
 		}
 	}
 	return nil
 }
 
+func sealRootFile(root windows.Handle, name string, owner *windows.SID) (resultErr error) {
+	childName, err := windows.NewNTUnicodeString(name)
+	if err != nil {
+		return err
+	}
+	attributes := windows.OBJECT_ATTRIBUTES{
+		RootDirectory: root,
+		ObjectName:    childName,
+		Attributes:    windows.OBJ_DONT_REPARSE,
+	}
+	attributes.Length = uint32(reflect.TypeOf(attributes).Size())
+	var file windows.Handle
+	var status windows.IO_STATUS_BLOCK
+	if err := windows.NtCreateFile(&file, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES,
+		&attributes, &status, nil, 0, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE,
+		windows.FILE_OPEN, windows.FILE_NON_DIRECTORY_FILE|windows.FILE_OPEN_REPARSE_POINT, 0, 0); err != nil {
+		return err
+	}
+	defer func() { resultErr = errors.Join(resultErr, windows.CloseHandle(file)) }()
+	var info windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(file, &info); err != nil {
+		return err
+	}
+	if info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || info.NumberOfLinks != 1 || !ownedWindowsFile(file, owner) {
+		return errors.New("entry must be an owner-held regular file with exactly one link")
+	}
+	return setOwnerOnlyDACL(file, owner, windows.NO_INHERITANCE)
+}
+
+func ownedWindowsFile(file windows.Handle, owner *windows.SID) bool {
+	security, err := windows.GetSecurityInfo(file, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
+	if err != nil || security == nil {
+		return false
+	}
+	actual, _, err := security.Owner()
+	return err == nil && actual != nil && actual.Equals(owner)
+}
+
 // setOwnerOnlyDACL replaces the target DACL with one explicit grant to the
 // owner SID. PROTECTED_DACL_SECURITY_INFORMATION stops inheritance from the
 // parent, so a broad parent DACL can never re-enter the store root.
-func setOwnerOnlyDACL(path string, sid *windows.SID, inheritance uint32) error {
+func setOwnerOnlyDACL(file windows.Handle, sid *windows.SID, inheritance uint32) error {
 	acl, err := windows.ACLFromEntries([]windows.EXPLICIT_ACCESS{{
 		AccessPermissions: windows.GENERIC_ALL,
 		AccessMode:        windows.GRANT_ACCESS,
@@ -63,6 +127,6 @@ func setOwnerOnlyDACL(path string, sid *windows.SID, inheritance uint32) error {
 	if err != nil {
 		return err
 	}
-	return windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT,
+	return windows.SetSecurityInfo(file, windows.SE_FILE_OBJECT,
 		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil)
 }
