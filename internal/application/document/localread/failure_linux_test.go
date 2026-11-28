@@ -1,13 +1,14 @@
 //go:build linux
 
-package document_test
+package localread_test
 
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
-	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/document/localread"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func TestDocumentReadLocalContextDiagnosticPrecedesDeliveredRefusal(t *testing.T) {
@@ -19,7 +20,7 @@ func TestDocumentReadLocalContextDiagnosticPrecedesDeliveredRefusal(t *testing.T
 		{context.Canceled, "read cancelled"},
 		{context.DeadlineExceeded, "read timed out"},
 	} {
-		if got := document.Failure(errors.Join(refusal, test.contextErr)); got != test.want {
+		if got := localread.Failure(errors.Join(refusal, test.contextErr)); got != test.want {
 			t.Fatalf("local context diagnostic = %q, want %q", got, test.want)
 		}
 	}

@@ -1,5 +1,5 @@
 // Package document owns the bounded file transfer over the common Service byte stream
-// and safe UTF-8 presentation.
+// and its confined worker protocol. The localread package owns terminal output.
 // The historical package name also covers binary file snapshots. No text
 // protocol or network content-type selection is implemented here.
 // It owns no destination or publication authority. Its worker entrypoints have
@@ -7,9 +7,6 @@
 //
 // Responsibility clusters and their tests:
 //   - bounded client document read: exchange.go (exchange_test.go)
-//   - safe UTF-8 presentation: presentation.go (presentation_test.go)
-//   - safe read failure messages: read_failure_message.go
-//     (read_failure_message_test.go, read_failure_message_linux_test.go)
 //   - worker initialization and readiness binding:
 //     worker_attachment_initialization.go, readWorkerInitialization and
 //     writeWorkerReadiness in worker_initialization.go

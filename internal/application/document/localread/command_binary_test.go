@@ -1,4 +1,4 @@
-package document_test
+package localread_test
 
 import (
 	"os"
@@ -28,7 +28,7 @@ func buildArdentsNext(t *testing.T) string {
 	}
 	path := filepath.Join(t.TempDir(), name)
 	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", path, "./cmd/ardents-next")
-	build.Dir = filepath.Join("..", "..", "..")
+	build.Dir = filepath.Join("..", "..", "..", "..")
 	build.Env = append(os.Environ(), "GOTOOLCHAIN=local")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build Ardents Next command: %v\n%s", err, output)
