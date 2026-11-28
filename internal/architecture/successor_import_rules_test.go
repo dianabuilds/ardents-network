@@ -395,7 +395,7 @@ func successorImportAllowed(source, dependency string) bool {
 			switch sourceAdapter {
 			case "internal/domain/network/state/closed_profile_role_join_test.go", "internal/domain/network/state/closed_runtime_view_test.go":
 				return inZone
-			case "internal/domain/network/state/acquisition_history.go":
+			case "internal/domain/network/state/source_acquisition.go":
 				return true
 			case "internal/domain/network/epoch/candidate_evaluation.go", "internal/domain/network/epoch/assignment.go":
 				return true
