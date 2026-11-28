@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	"github.com/dianabuilds/ardents-network/internal/application/localsnapshot"
 )
 
 // PublishLocal imports an explicit snapshot and transfers its bytes through the
@@ -17,7 +17,7 @@ func PublishLocal(ctx context.Context, socket, path string) error {
 	if ctx == nil || !filepath.IsAbs(socket) || !filepath.IsAbs(path) {
 		return endpointstream.ErrInvalidLocalInput
 	}
-	snapshot, err := document.ReadSnapshotFile(ctx, path)
+	snapshot, err := localsnapshot.Read(ctx, path)
 	if err != nil {
 		return err
 	}

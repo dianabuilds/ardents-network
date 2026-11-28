@@ -10,7 +10,7 @@ import (
 )
 
 // On macOS the native worker launch is a typed refusal (#883). LaunchSnapshotFile
-// imports the caller's explicitly selected input read-only (document.ReadSnapshotFile
+// imports the caller's explicitly selected input read-only (localsnapshot.Read
 // creates no filesystem state or authority) and then refuses at the native launch,
 // so no temporary copy or other state is created and no unconfined worker is spawned.
 // The root is resolved past the system /var symlink per the established portable
