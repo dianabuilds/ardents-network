@@ -2,13 +2,18 @@
 
 ## Current closed-release transport boundary
 
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
-for the nearest closed release. Dual-Carrier selection/qualification wording
-below is superseded for this release; the threat model and all other protection
-obligations remain. Deferred QUIC requires actual runtime exclusion and explicit
-pre-effect refusal, including retained callers. No fallback or lower security
-mode is selected. Its unresolved dependency finding is preserved, not waived;
-neither transport exclusion nor passing tests establishes anonymity or availability.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), the product keeps
+its current behavior: QUIC requires actual runtime exclusion and explicit
+pre-effect refusal, including retained callers, and there is no fallback or lower
+security mode. The reply-budget finding is removed at the library by the patched
+official source the ADR names; the remaining limits of R-172 are preserved, not
+waived. Neither transport exclusion nor passing tests establishes anonymity or
+availability. The dual-Carrier wording below applies again once the return is
+qualified; the threat model and all other protection obligations remain.
 
 Status: **accepted claim registry and C0 audit input.** Qualification evidence
 applies to its exact artifact, profile and scenario.

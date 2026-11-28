@@ -1,11 +1,15 @@
 # Privacy and anonymity implementation path
 
-For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
-selects TCP/TLS alone. Dual-Carrier acceptance wording below is superseded by
-TCP/TLS coverage and explicit pre-effect deferred-QUIC refusal, without fallback.
-Historical both-Carrier receipts keep their source-specific limits. Every other
-privacy, authority, separation, confinement and resource gate remains; the scope
-decision neither fixes QUIC nor qualifies an anonymity claim.
+For the nearest closed release, [ADR-0136](../adr/0136-return-quic-from-patched-official-source.md)
+returned QUIC to the Carrier set on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), dual-Carrier
+acceptance wording below stays superseded by TCP/TLS coverage and explicit
+pre-effect QUIC refusal, without fallback. Historical both-Carrier receipts keep
+their source-specific limits. Every other privacy, authority, separation,
+confinement and resource gate remains; the scope decision alone neither restores
+QUIC nor qualifies an anonymity claim.
 
 Status: **selected closed design and component coverage map** under
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) and its
@@ -59,7 +63,7 @@ register. Historical exact-version receipts cannot qualify changed inputs.
 
 | Component or obligation | Selected disposition |
 |---|---|
-| Go toolchain, standard TLS/RSA/Ed25519, CIRCL and quic-go | Use the current admitted baseline and reviewed HPKE/blind-token uses from the dependency and technical owners; qualify the inner composition on the admitted TCP/TLS Carrier (ADR-0122 selects TCP/TLS alone for the nearest closed release; QUIC is deferred and refused pre-effect, and quic-go is removed from the module graph). No generic cryptographic framework or private fork. |
+| Go toolchain, standard TLS/RSA/Ed25519, CIRCL and quic-go | Use the current admitted baseline and reviewed HPKE/blind-token uses from the dependency and technical owners; qualify the inner composition on each admitted Carrier (ADR-0136 returns QUIC to the nearest closed release in stages; until the return is qualified, QUIC is refused pre-effect, and quic-go enters the module graph only as the patched official source of ADR-0136). No generic cryptographic framework or private fork. |
 | Other runtime modules and build/test tools | Review the actual dependency closure and current advisories under the register's acceptance rule. Removed Naming/OHTTP dependencies do not remain obligations of the selected Link-first path. |
 | Ubuntu/kernel/systemd | Use the selected supported family and required mechanisms; record exact security-updated package inventory and installed-artifact tests for each candidate. WSL is mechanism evidence only. |
 | Source, State, time, Enrollment and Custody | Preserve independently pinned authorities and monotonic floors. Current authenticated owners, not caller-made validity flags, supply accepted facts. |
@@ -117,7 +121,7 @@ control is disclosed even when synthetic role facts exercise a positive path.
 Use deterministic parsers/ledger tests for receiving boundaries, process tests
 for actual command composition, and the exact Ubuntu installed-artifact profile
 for confinement and the final journey. Exercise the admitted TCP/TLS Carrier
-(QUIC is deferred under ADR-0122).
+until the QUIC return of ADR-0136 is qualified; then exercise QUIC as well.
 Cold/warm trials preserve durable quotas and authority floors; long workloads
 retain NET-14AD and the complete NET-14 capacity/recovery requirements.
 The easier no-loss latency cell cannot replace the retained normal cell.

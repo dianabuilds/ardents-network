@@ -655,13 +655,18 @@ deadcode allowances. The native process/cgroup observation mechanism stays Linux
 (`native_linux.go`) with its unchanged `!linux` typed refusal (`native_other.go`);
 unsupported-platform commands refuse acquisition.
 
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
-for the nearest closed release. The QUIC adapter and its import grants retire;
-historical signed profile identifiers stay distinguishable but grant no runtime
-execution or fallback. Route owns current Carrier admissibility, Network retains
-canonical signed facts, and each retained/new runtime enforces its own boundary
-without an old/new bridge. Historical both-Carrier descriptions are not an import
-grant or current qualification of a removed mechanism.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. `third_party/quic-go` is the dependency source
+the ADR names: the official module with one retained patch, not a project package
+and outside the root module. Until the Carrier selection admits QUIC (#1081),
+the QUIC adapter and its import grants stay retired; historical signed profile
+identifiers stay distinguishable but grant no runtime execution or fallback.
+Route owns current Carrier admissibility, Network retains canonical signed facts,
+and each retained/new runtime enforces its own boundary without an old/new
+bridge. Historical both-Carrier descriptions are not an import grant or current
+qualification of a removed mechanism.
 
 The installed exchange scenario in `internal/domain/endpoint/endpoint_journey_native_linux_test.go`
 consumes `internal/application/administration`, `internal/application/endpointstream`

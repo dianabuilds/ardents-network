@@ -1,11 +1,15 @@
 # Closed privacy successor: parameters, integration and acceptance
 
-For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
-supersedes dual-Carrier qualification below with TCP/TLS positive coverage and
-explicit pre-effect deferred-QUIC refusal, without fallback. All other finite
-workloads, observers, resource/protection/lifetime gates and limits remain.
-Historical both-Carrier receipts do not qualify changed candidates; this scope
-decision is not installed or privacy qualification.
+For the nearest closed release, [ADR-0136](../adr/0136-return-quic-from-patched-official-source.md)
+returned QUIC to the Carrier set on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), qualification
+below stays TCP/TLS positive coverage and explicit pre-effect QUIC refusal,
+without fallback. All other finite workloads, observers,
+resource/protection/lifetime gates and limits remain. Historical both-Carrier
+receipts do not qualify changed candidates; this scope decision is not installed
+or privacy qualification.
 
 Status: **design and acceptance contract**, not a task ledger or passing
 qualification. Owners are the [workload](../product/protected-service-workload.md),
@@ -106,8 +110,8 @@ Provision hour-scoped permissions before their windows and keep issuance
 within the real 4,096/16,384/65,536 limits. Refresh public State/profile normally
 across long runs. No test-only issuer, unlimited quota, clock rollback or
 ledger reset may manufacture enough successful samples. Failures count even
-when a later retry succeeds. Run each seed on the admitted TCP/TLS Carrier
-(QUIC is deferred under ADR-0122).
+when a later retry succeeds. Run each seed on each admitted Carrier: TCP/TLS
+now, and QUIC once its return under ADR-0136 is qualified.
 
 The bounded NET-32 component measurement uses a declared ten-minute observation and conservative 24-hour projection; this component measurement is not a 24-hour campaign. The receipt states both durations and cannot be treated as an observed-day result. Before effects, the idle runner reserves floor(window × 1,000,000,000 / 24 h) + 1 bytes per direction (6,944,445 for ten minutes), plus a separate 8 MiB termination reserve per direction. The shared Hosting owner applies the provider's tx, rx, or tx+rx accounting to both reserves.
 
@@ -281,8 +285,8 @@ is gated by retained binary-stream, fragmentation, half-close, cancellation
 and terminal cases through AAI4 with strict version refusal before Application
 owner I/O.
 
-Final qualification separates ordinary installed TCP/TLS journeys (QUIC is
-deferred under ADR-0122),
+Final qualification separates ordinary installed Carrier journeys (TCP/TLS
+now; QUIC once its return under ADR-0136 is qualified),
 durable admission/adoption failures (P5/P7/P10), wire/volatile lifecycle (P2/P7),
 resource cost and floods (P5/P8), confinement/worker loss (P6/P7), complete role
 observations and honest correlation diagnostics (P3/P9), cryptographic bindings

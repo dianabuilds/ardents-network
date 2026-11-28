@@ -2,12 +2,15 @@
 
 ## Selected release Carrier scope
 
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
-for the nearest closed release and supersedes dual-Carrier requirements here
-and in the linked workload for that release. QUIC is deferred, with explicit
-pre-effect refusal and no transport fallback. Historical both-Carrier evidence
-qualifies only its original candidate. All other behavior, protection, installed
-journey and privacy limits remain binding; selection is not implementation proof.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), QUIC stays
+deferred, with explicit pre-effect refusal and no transport fallback. Historical
+both-Carrier evidence qualifies only its original candidate. All other behavior,
+protection, installed journey and privacy limits remain binding on both Carriers;
+selection is not implementation proof.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects one authenticated protected Endpoint distribution and one independently

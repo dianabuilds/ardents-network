@@ -1,10 +1,14 @@
 # Protected Service workload
 
-The nearest closed release uses only TCP/TLS under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). A QUIC selection
-refuses before effects without a transport fallback. Every Application, authority,
-confinement, resource, recovery and joined-cleanup obligation remains required
-on TCP/TLS; historical dual-Carrier receipts do not qualify changed artifacts.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), a QUIC selection
+still refuses before effects without a transport fallback, and every Application,
+authority, confinement, resource, recovery and joined-cleanup obligation is
+required on TCP/TLS; historical dual-Carrier receipts do not qualify changed
+artifacts.
 
 Status: **selected closed workload** under ADR-0134.
 The [common architecture](../technical/common-privacy-architecture.md) provides

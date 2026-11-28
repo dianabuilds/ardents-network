@@ -1,10 +1,13 @@
 # Agent execution and handoff
 
-For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
-supersedes dual-Carrier execution/qualification wording in this workflow.
-Current work requires positive TCP/TLS integration and explicit deferred-QUIC
-pre-effect refusal without fallback. All other ownership, review and delivery
-obligations remain. Historical both-Carrier receipts retain their original scope.
+For the nearest closed release, [ADR-0136](../adr/0136-return-quic-from-patched-official-source.md)
+returned QUIC to the Carrier set on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages (#1080, #1081, #1082). Until the Carrier
+selection admits QUIC and the both-Carrier qualification is accepted, current
+work requires positive TCP/TLS integration and explicit QUIC pre-effect refusal
+without fallback. All other ownership, review and delivery obligations remain.
+Historical both-Carrier receipts retain their original scope.
 
 This engineering workflow applies to the authorized closed Alpha Service work.
 It changes neither the product contract nor the repository authority order.

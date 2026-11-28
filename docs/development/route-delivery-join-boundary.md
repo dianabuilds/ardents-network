@@ -1,13 +1,17 @@
 # Route integration: terminal transport, opaque delivery and Rendezvous JOIN
 
-The nearest closed release uses TCP/TLS alone under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Dual-Carrier receipts
-below remain historical evidence; final integration requires exact-source TCP
-consumers and explicit QUIC pre-effect refusal with no fallback. All genuine
-Publication, Reachability, Connection, Execution, Admission and Hosting seams,
-authority/spend ordering, durable floors and joined completion stay required.
-The unresolved QUIC finding is deferred; runtime exclusion must be proved before
-this release can be accepted and is not a claim that the dependency was fixed.
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), dual-Carrier
+receipts below remain historical evidence and final integration requires
+exact-source TCP consumers and explicit QUIC pre-effect refusal with no
+fallback. All genuine Publication, Reachability, Connection, Execution,
+Admission and Hosting seams, authority/spend ordering, durable floors and joined
+completion stay required. The reply-budget finding is removed at the library by
+the patched official source the ADR names; that is not yet installed
+qualification of QUIC.
 
 Maintained integration and acceptance contract. Prefix/channel, registration,
 JOIN, parent refill, issuer/Descriptor Control and opaque transport have actual
@@ -590,8 +594,9 @@ Dependency admission is a separate required check of these actual consumers.
 The [unresolved QUIC return-path finding](dependencies.md#existing-quic-finding-return-path-reply-budget)
 still blocks future admission of the affected QUIC server use. Successful Carrier
 exchanges, native profiles and a clean advisory scan do not resolve that finding.
-For the TCP/TLS-only release selected by ADR-0122, acceptance instead requires
-verified exclusion of QUIC from actual product and delivered-artifact execution,
-explicit pre-effect refusal and every other applicable Route obligation above.
-This exclusion neither fixes nor qualifies the deferred QUIC dependency.
+While the QUIC return of ADR-0136 is not yet qualified, acceptance instead
+requires verified exclusion of QUIC from actual product and delivered-artifact
+execution, explicit pre-effect refusal and every other applicable Route
+obligation above. The library correction of the reply budget does not by itself
+qualify QUIC.
 

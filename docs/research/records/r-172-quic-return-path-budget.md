@@ -12,7 +12,7 @@ reviewed: 2026-11-28
 The branch evaluates the public single-path Go candidate for [#519](https://github.com/dianabuilds/ardents-network/issues/519).
 The [October research](https://github.com/dianabuilds/ardents-network/blob/8e64f4bc8f9f65f5eb9bdcf68656fce6c1b928b8/docs/research/records/r-172-quic-return-path-budget.md)
 and the [dependency finding](../../development/dependencies.md#existing-quic-finding-return-path-reply-budget) retain the historical observations.
-[ADR-0122](../../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS for the closed release.
+[ADR-0136](../../adr/0136-return-quic-from-patched-official-source.md) returned QUIC to the Carrier set of the closed release on 2026-11-28 and supersedes [ADR-0122](../../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
 
 ## Question and evidence
 

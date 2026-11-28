@@ -39,10 +39,11 @@ header kind/lane/length before body allocation or reads. The lower `transport`
 owns the portable stream/exporter contract, exact accepted profile identities,
 literal endpoint validation and shared authentication/error classification.
 `transport/tls` owns the actual exact-key TCP/TLS implementation, direct/Node
-classification and finite handshakes. [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
-defers QUIC for the nearest closed release. Route rejects its recognized signed
-profile before selection, activation, socket or token effects; canonical Network
-bytes remain unchanged. The QUIC runtime adapter is removed. Prefix and receiving composition select the actual adapter directly
+classification and finite handshakes. [ADR-0136](../adr/0136-return-quic-from-patched-official-source.md)
+returns QUIC to the nearest closed release in stages. Until the Carrier selection
+admits it (#1081), Route rejects its recognized signed profile before selection,
+activation, socket or token effects; canonical Network bytes remain unchanged,
+and the QUIC runtime adapter stays removed. Prefix and receiving composition select the actual adapter directly
 from the already selected profile, without fallback. The former `carrier`
 package is removed; shared actual-adapter behavior tests belong to the actual opening/composition
 owner and exercise TCP/TLS plus deferred-QUIC refusal of the lower contract. Lower transport

@@ -744,14 +744,18 @@ write failure and requires that original cause in both lower and upper physical
 results. Existing raw partial-write, deadline, close and late-failure controls
 remain required; this mechanism fixture supplies no successful domain authority.
 
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
-for the nearest closed release. Current positive Carrier/native/Service profiles
-must execute TCP/TLS with all applicable causal refusal, lifetime, resource,
-persistence and cleanup cases. Deferred QUIC requires explicit pre-effect refusal
-and no TCP fallback; remove obsolete positive QUIC dispatch from checked profile
-inventories rather than using skips or ignoring failures. Update discovery and
-runner assertions together with their owning tests. Historical both-Carrier receipts describe their original candidate; current
-implementation descriptions below cover the selected TCP/TLS release. Mandatory quick/full gates remain enabled. A changed source, profile
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), current positive
+Carrier/native/Service profiles must execute TCP/TLS with all applicable causal
+refusal, lifetime, resource, persistence and cleanup cases, deferred QUIC requires
+explicit pre-effect refusal and no TCP fallback, and obsolete positive QUIC
+dispatch stays out of checked profile inventories rather than being skipped or
+ignored. Update discovery and runner assertions together with their owning tests.
+Historical both-Carrier receipts describe their original candidate; current
+implementation descriptions below cover the selected TCP/TLS release until then. Mandatory quick/full gates remain enabled. A changed source, profile
 or canonical artifact requires new affected evidence; exclusion is not QUIC
 security qualification or permission to change other protection parameters.
 

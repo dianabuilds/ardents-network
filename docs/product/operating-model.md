@@ -1,9 +1,12 @@
 # Product operating model
 
-The nearest closed release selects TCP/TLS alone under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Dual-Carrier obligations
-below are superseded for that release; QUIC is deferred and explicitly refused
-before effects with no automatic fallback. This supplies no public transport,
+[ADR-0136](../adr/0136-return-quic-from-patched-official-source.md) returned QUIC
+to the Carrier set of the nearest closed release on 2026-11-28, superseding
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) for the Carrier set.
+The return is delivered in stages. Until the Carrier selection admits QUIC
+(#1081) and the both-Carrier qualification is accepted (#1082), dual-Carrier
+obligations below stay superseded and QUIC is still explicitly refused before
+effects with no automatic fallback. This supplies no public transport,
 availability, censorship resistance or privacy claim and changes no other gate.
 
 For the selected protected closed Ubuntu successor,
