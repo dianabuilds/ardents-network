@@ -4,7 +4,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"os/user"
@@ -14,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/retiredservice"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
@@ -180,73 +180,13 @@ func checkNodeDutyRepairQuiescence(ctx context.Context, native nodeDutyRepairNat
 	if err != nil {
 		return err
 	}
-	if err := nodeDutyRepairStoppedPolicy(unit, service, writableRoots, native.role); err != nil {
-		return err
+	if !retiredservice.NodeStopped(unit, service, writableRoots, native.role.name) {
+		return native.role.unavailable
 	}
-	if !nodeDutyRepairDeclaration(service, declaration, native.role) {
+	if !retiredservice.NodeDeclaration(service, declaration, native.role.name) {
 		return native.role.unavailable
 	}
 	// Per-unit cgroup only: the shared ardents-node account forbids an account-wide
 	// process scan (sibling Node roles legitimately run under the same principal).
 	return native.quiesce(ctx)
-}
-
-func nodeDutyRepairDeclaration(service observation.Properties, declaration string, role nodeDutyRepairRole) bool {
-	value := service["ExecStartEx"]
-	var rows [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
-		return false
-	}
-	var program string
-	var args, flags []string
-	if observation.Decode(rows[0][0], &program) != nil || observation.Decode(rows[0][1], &args) != nil || observation.Decode(rows[0][2], &flags) != nil {
-		return false
-	}
-	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 5 || args[0] != program || args[1] != "node" || args[2] != role.name || args[3] != "--retained-config" || args[4] != declaration {
-		return false
-	}
-	return len(flags) == 1 && flags[0] == "no-env-expand"
-}
-
-func nodeDutyRepairStoppedPolicy(unit, service observation.Properties, writableRoots []string, role nodeDutyRepairRole) error {
-	unitName := "ardents-" + role.name + ".service"
-	for name, value := range map[string]string{"Id": unitName, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + unitName} {
-		if !observation.Matches(unit, name, "s", value) {
-			return role.unavailable
-		}
-	}
-	if !(observation.Matches(unit, "ActiveState", "s", "inactive") && observation.Matches(unit, "SubState", "s", "dead")) &&
-		!(observation.Matches(unit, "ActiveState", "s", "failed") && observation.Matches(unit, "SubState", "s", "failed")) {
-		return role.unavailable
-	}
-	if !observation.Matches(unit, "DropInPaths", "as", []string{}) || !observation.Matches(unit, "TriggeredBy", "as", []string{}) {
-		return role.unavailable
-	}
-	for name, value := range map[string]string{"User": "ardents-node", "Group": "ardents-node", "KillMode": "control-group", "Restart": "no", "ProtectSystem": "strict"} {
-		if !observation.Matches(service, name, "s", value) {
-			return role.unavailable
-		}
-	}
-	for _, name := range []string{"MainPID", "ControlPID"} {
-		if !observation.Matches(service, name, "u", uint32(0)) {
-			return role.unavailable
-		}
-	}
-	for _, name := range []string{"NoNewPrivileges", "ProtectControlGroups"} {
-		if !observation.Matches(service, name, "b", true) {
-			return role.unavailable
-		}
-	}
-	for _, name := range []string{"SendSIGKILL", "DynamicUser", "Delegate"} {
-		if !observation.Matches(service, name, "b", false) {
-			return role.unavailable
-		}
-	}
-	if !observation.Matches(service, "ReadWritePaths", "as", writableRoots) {
-		return role.unavailable
-	}
-	if !observation.Matches(service, "ControlGroup", "s", "") && !observation.Matches(service, "ControlGroup", "s", "/system.slice/"+unitName) {
-		return role.unavailable
-	}
-	return nil
 }

@@ -59,6 +59,7 @@ github.com/dianabuilds/ardents-network/internal/domain/network/source/inspection
 github.com/dianabuilds/ardents-network/internal/domain/network/source/serving
 github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration
 github.com/dianabuilds/ardents-network/internal/domain/network/state
+github.com/dianabuilds/ardents-network/internal/domain/network/state/retiredservice
 github.com/dianabuilds/ardents-network/internal/domain/network/state/command
 github.com/dianabuilds/ardents-network/internal/domain/network/state/durable
 github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution
