@@ -278,3 +278,26 @@ func TestSnapshotClientPreservesEarlierDeadline(t *testing.T) {
 		t.Fatal("request did not reach owner before caller deadline")
 	}
 }
+
+func TestSnapshotReceiveCopiesLargeBodyWithoutConsumingConfirmation(t *testing.T) {
+	body := bytes.Repeat([]byte{0x00, 0x80, 0xff}, MaximumSnapshotBytes/3+1)
+	input := io.MultiReader(bytes.NewReader(body), bytes.NewReader([]byte{snapshotCommit}))
+	staged, err := os.CreateTemp(t.TempDir(), "staged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staged.Close()
+	if err := copySnapshotBody(t.Context(), input, staged, int64(len(body))); err != nil {
+		t.Fatal(err)
+	}
+	var confirmation [1]byte
+	if _, err := io.ReadFull(input, confirmation[:]); err != nil || confirmation[0] != snapshotCommit {
+		t.Fatalf("confirmation was not retained: %v, %v", confirmation, err)
+	}
+	if _, err := staged.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	if saved, err := io.ReadAll(staged); err != nil || !bytes.Equal(saved, body) {
+		t.Fatalf("staged bytes = %d, error %v; want %d exact bytes", len(saved), err, len(body))
+	}
+}

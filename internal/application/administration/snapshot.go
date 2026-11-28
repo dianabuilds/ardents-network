@@ -1,6 +1,7 @@
 package administration
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -106,22 +107,12 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 		writeResponse(connection, "unavailable\n")
 		return
 	}
-	body := make([]byte, int(length))
-	defer clear(body)
+	body := bytes.NewBuffer(make([]byte, 0, int(length)))
+	defer func() { clear(body.Bytes()) }()
 	if _, err := io.WriteString(connection, snapshotReady); err != nil {
 		return
 	}
-	if _, err := io.ReadFull(input, body); err != nil {
-		writeResponse(connection, "unavailable\n")
-		return
-	}
-	var ending [1]byte
-	if _, err := io.ReadFull(input, ending[:]); err != nil || ending[0] != snapshotCommit {
-		writeResponse(connection, "unavailable\n")
-		return
-	}
-	if n, err := input.Read(ending[:]); n != 0 || err != io.EOF {
-		refuseMalformedRequest(connection, input, n, err)
+	if !receiveSnapshotBody(ctx, connection, input, body, int64(length)) {
 		return
 	}
 	if err := localRequestError(ctx, nil); err != nil {
@@ -131,9 +122,51 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 	if err := connection.SetWriteDeadline(deadline); err != nil {
 		return
 	}
-	if err := owner.PublishSnapshot(ctx, body); err != nil || localRequestError(ctx, nil) != nil {
+	if err := owner.PublishSnapshot(ctx, body.Bytes()); err != nil || localRequestError(ctx, nil) != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
 	writeResponse(connection, "published\n")
+}
+
+// receiveSnapshotBody validates the input before the caller can commit its
+// staged output. The destination must remain private and provisional.
+func receiveSnapshotBody(ctx context.Context, connection *net.UnixConn, input io.Reader, output io.Writer, length int64) bool {
+	if err := copySnapshotBody(ctx, input, output, length); err != nil {
+		writeResponse(connection, "unavailable\n")
+		return false
+	}
+	var ending [1]byte
+	if _, err := io.ReadFull(input, ending[:]); err != nil || ending[0] != snapshotCommit {
+		writeResponse(connection, "unavailable\n")
+		return false
+	}
+	if n, err := input.Read(ending[:]); n != 0 || err != io.EOF {
+		refuseMalformedRequest(connection, input, n, err)
+		return false
+	}
+	return true
+}
+
+func copySnapshotBody(ctx context.Context, input io.Reader, output io.Writer, length int64) error {
+	var scratch [16 << 10]byte
+	defer clear(scratch[:])
+	for remaining := length; remaining > 0; {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		block := scratch[:min(int64(len(scratch)), remaining)]
+		if _, err := io.ReadFull(input, block); err != nil {
+			return err
+		}
+		n, err := output.Write(block)
+		if err != nil {
+			return err
+		}
+		if n != len(block) {
+			return io.ErrShortWrite
+		}
+		remaining -= int64(n)
+	}
+	return ctx.Err()
 }
