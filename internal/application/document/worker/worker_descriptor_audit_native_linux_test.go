@@ -1,6 +1,6 @@
 //go:build linux && document_worker_installed
 
-package document
+package main
 
 import (
 	"os"

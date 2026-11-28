@@ -42,13 +42,13 @@
 //   - reader refusal and cancellation join: fromWorker/fromResult guards in
 //     reader_connection.go, readerConnectionIO.close in reader_connection_io.go
 //     (reader_connection_refusal_test.go)
-//   - installed worker inherited-descriptor audit: worker_process_linux.go
+//   - installed worker inherited-descriptor audit: worker/worker_process_linux.go
 //     (verifyWorkerDescriptors, managerCgroupControlTarget,
-//     descriptorSurvivedExec), worker_process_other.go
+//     descriptorSurvivedExec), worker/worker_process_other.go
 //     (worker_descriptor_audit_linux_test.go; linux,
 //     worker_descriptor_audit_native_linux_test.go; native linux)
-//   - installed worker confinement qualification: RunInheritedWorker in
-//     worker_process_linux.go, RunWorker in worker.go
+//   - installed worker confinement qualification: runInheritedWorker in
+//     worker/worker_process_linux.go, RunWorker in worker.go
 //     (worker_escape_linux_test.go, worker_hostile_linux_test.go;
 //     native linux TestMain-only pinned artifacts)
 //

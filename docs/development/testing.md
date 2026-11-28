@@ -4247,7 +4247,7 @@ qualification.
 
 `make worker-descriptor-audit-check` (`worker-descriptor-audit-linux`) executes
 `TestVerifyWorkerDescriptors{ClosesManagerCgroupControl,IgnoresCloseOnExecForeign,RefusesForeignAuthority}`
-(`internal/application/document`, `document_worker_installed`) against a real
+(`internal/application/document/worker`, `document_worker_installed`) against a real
 unified cgroup v2. The audit replaces process stdio with the fixed worker's
 inherited socket/null shape, opens the caller's own-cgroup `cpu.max`, and proves
 the manager-passed resource control is verified and closed, foreign authority
