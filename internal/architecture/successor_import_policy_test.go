@@ -305,7 +305,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"issuance public grammar", "internal/domain/admission/issuance/profile.go", modulePath + "/internal/domain/admission/issuerprofile", true},
 		{"no inherited nested imports", "internal/domain/admission/issuance/nested/file.go", modulePath + "/internal/domain/admission", false},
 		{"no inherited nested third party", "internal/domain/admission/issuance/nested/file.go", "github.com/cloudflare/circl/blindsign/blindrsa", false},
-		{"custody checks original ext4 mount", "internal/domain/custody/private_permission_linux.go", modulePath + "/internal/platform/ext4", true},
+		{"custody checks original ext4 mount", "internal/domain/custody/delivery/private_permission_linux.go", modulePath + "/internal/platform/ext4", true},
 		{"State checks original ext4 mount", "internal/domain/network/state/durable/inspection_linux.go", modulePath + "/internal/platform/ext4", true},
 		{"unrelated domain cannot use ext4 port", "internal/domain/custody/vault.go", modulePath + "/internal/platform/ext4", false},
 		{"custody allocation owner", "internal/domain/custody/admission_authority.go", modulePath + "/internal/domain/admission/allocation", true},

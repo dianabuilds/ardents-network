@@ -1,6 +1,6 @@
 //go:build !windows
 
-package custody
+package delivery
 
 import (
 	"errors"
@@ -33,4 +33,17 @@ func sameCredentialFile(file *os.File, path string) bool {
 	opened, openErr := file.Stat()
 	named, nameErr := os.Lstat(path)
 	return openErr == nil && nameErr == nil && os.SameFile(opened, named)
+}
+
+func syncDirectory(path string) error {
+	directory, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	syncErr := directory.Sync()
+	closeErr := directory.Close()
+	if syncErr != nil {
+		return syncErr
+	}
+	return closeErr
 }

@@ -1,4 +1,4 @@
-package custody
+package delivery
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 	"golang.org/x/sys/windows"
 )
 
@@ -57,9 +58,9 @@ func TestWindowsPrivatePermissionProtectedCreationAndRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := bytes.Repeat([]byte{7}, admission.PermissionSize)
-	receipt := Receipt{Operation: OperationIssueAdmissionPermission, AdmissionPermission: body}
+	receipt := custody.Receipt{Operation: custody.OperationIssueAdmissionPermission, AdmissionPermission: body}
 	path := filepath.Join(directory, "permission")
-	if err := receipt.PublishAdmissionPermission(path); err != nil {
+	if err := PublishAdmissionPermission(path, receipt); err != nil {
 		t.Fatal("protected first delivery", err)
 	}
 	before, err := os.Stat(path)
@@ -73,7 +74,7 @@ func TestWindowsPrivatePermissionProtectedCreationAndRetry(t *testing.T) {
 	if err := errors.Join(checkPrivatePermissionProtection(file), file.Close()); err != nil {
 		t.Fatal("published DACL is not owner-only", err)
 	}
-	if err := receipt.PublishAdmissionPermission(path); err != nil {
+	if err := PublishAdmissionPermission(path, receipt); err != nil {
 		t.Fatal("exact protected retry", err)
 	}
 	after, err := os.Stat(path)
@@ -102,8 +103,8 @@ func TestWindowsPrivatePermissionRefusesExistingBroadDACL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	receipt := Receipt{Operation: OperationIssueAdmissionPermission, AdmissionPermission: body}
-	if err := receipt.PublishAdmissionPermission(path); !errors.Is(err, ErrPrivatePermissionUnavailable) {
+	receipt := custody.Receipt{Operation: custody.OperationIssueAdmissionPermission, AdmissionPermission: body}
+	if err := PublishAdmissionPermission(path, receipt); !errors.Is(err, ErrPrivatePermissionUnavailable) {
 		t.Fatal("unsafe existing permission was accepted", err)
 	}
 	after, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)

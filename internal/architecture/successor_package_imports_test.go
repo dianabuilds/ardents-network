@@ -43,6 +43,7 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/admission/issuerprofile":             {},
 	"internal/domain/admission/allocation":                {"domain/admission"},
 	"internal/domain/custody":                             {"domain/admission", "domain/admission/allocation", "domain/publication"},
+	"internal/domain/custody/delivery":                    {"domain/admission", "domain/custody"},
 	"internal/domain/admission/attempts":                  {"pathcheck"},
 	"internal/domain/admission/spending":                  {"pathcheck"},
 	"internal/domain/admission/token":                     {"domain/admission", "domain/admission/issuerprofile"},

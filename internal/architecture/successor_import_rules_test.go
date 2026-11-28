@@ -26,7 +26,7 @@ func successorImportAllowed(source, dependency string) bool {
 	const ext4Package = "internal/platform/ext4"
 	if dependency == modulePath+"/"+ext4Package {
 		switch source {
-		case "internal/domain/custody/private_permission_linux.go",
+		case "internal/domain/custody/delivery/private_permission_linux.go",
 			"internal/domain/network/duty/inspection_linux.go",
 			"internal/domain/network/state/durable/inspection_linux.go",
 			"internal/platform/artifacts/protected_input_linux.go",
@@ -407,7 +407,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
 		return true
 	}
-	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go" || source == "internal/domain/custody/private_permission_windows.go" || source == "internal/domain/custody/private_permission_windows_test.go" || source == "internal/domain/custody/command/private_permission_windows_test.go") && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go" || source == "internal/domain/custody/delivery/private_permission_windows.go" || source == "internal/domain/custody/delivery/private_permission_windows_test.go" || source == "internal/domain/custody/command/private_permission_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	// Exact owner edges for the command responsibility transfer.

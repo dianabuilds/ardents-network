@@ -1,6 +1,6 @@
 //go:build !linux && !windows
 
-package custody
+package delivery
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 )
 
 func TestPrivatePermissionUnavailableBeforeStaging(t *testing.T) {
@@ -33,8 +34,8 @@ func TestPrivatePermissionUnavailableBeforeStaging(t *testing.T) {
 			t.Fatalf("fixture did not inherit the ACL: %v: %s", err, output)
 		}
 	}
-	receipt := Receipt{Operation: OperationIssueAdmissionPermission, AdmissionPermission: body}
-	if err := receipt.PublishAdmissionPermission(path); !errors.Is(err, ErrPrivatePermissionUnavailable) {
+	receipt := custody.Receipt{Operation: custody.OperationIssueAdmissionPermission, AdmissionPermission: body}
+	if err := PublishAdmissionPermission(path, receipt); !errors.Is(err, ErrPrivatePermissionUnavailable) {
 		t.Fatal("unverified private output was accepted", err)
 	}
 	got, err := os.ReadFile(path)
