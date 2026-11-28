@@ -1,7 +1,7 @@
 ---
 id: R-172
 title: QUIC reply budget at the UDP socket and current Node TLS compatibility
-status: review
+status: deferred
 owner: Product Owner and Codex
 started: 2026-10-15
 reviewed: 2026-11-28
@@ -79,6 +79,13 @@ The candidate corrects the specific finding: in a live authenticated session its
 
 The issue stays open. For #519, the composite evidence now has the actual-component causal regression, the independent oracle and a discriminating control, with exact source and module identities. It lacks a supported source, Windows execution, the retired configuration variants, output paths other than the probe, an Ardents artifact and any installed Node or Service execution. The finding is resolved for no admitted use, because no admitted QUIC use exists.
 
-## Proposal for the Product Owner
+## Decision by the Product Owner, 2026-11-28
 
-ADR-0122 and the dependency rule together leave one admissible route to a QUIC Carrier: the correction reaches the official quic-go project and a tagged official release carries it. Ardents would then repeat this experiment and the remaining rows above against that release before any design selection. The decision is whether to ask upstream at all, since #519 selects no upstream message. Until then TCP/TLS remains the Carrier and #519 records the blocker. A private fork, a socket-level counter of first party and a weaker refusal are not proposed.
+ADR-0122 and the dependency rule together leave one admissible route to a QUIC Carrier: the correction reaches the official quic-go project and a tagged official release carries it. Ardents would then repeat this experiment and the remaining rows above against that release before any design selection. The Product Owner chose to keep TCP/TLS as the Carrier, to select neither the candidate nor another fork, and not to ask upstream quic-go. #519 remains open as the recorded blocker for any future QUIC selection. The question returns when a QUIC need is selected or when an official quic-go release carries the correction. A private fork, a socket-level counter of first party and a weaker refusal are not proposed.
+
+## Disposition
+
+- Question state: answered for the evaluated candidate and deferred. No research question is active.
+- Accepted follow-ups: none. No ADR was created; no dependency, caller or release contract changed.
+- Documents changed: this record, the experiment README and the finding section of the dependency register.
+- Experiment code: retained unchanged as the regression to repeat. It lives outside the product module graph and is rendered only when the runner executes.

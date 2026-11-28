@@ -45,4 +45,4 @@ Nothing in the return-path test replaces an implementation part. The server is t
 
 ## Disposition
 
-The candidate passes E1–E6 on macOS arm64 and on the Linux x86-64 stands; each official release fails E1, E4 and E5 there with a 1200-byte reply. The candidate corrects the specific finding and is not a library Ardents can select: its maintenance and support record fails the dependency acceptance rule. The experiment is retained as the regression to repeat against any official release that adopts the correction.
+The candidate passes E1–E6 on macOS arm64 and on the Linux x86-64 stands; each official release fails E1, E4 and E5 there with a 1200-byte reply. The candidate corrects the specific finding and is not a library Ardents can select: its maintenance and support record fails the dependency acceptance rule. On 2026-11-28 the Product Owner kept TCP/TLS as the Carrier, selected neither the candidate nor an upstream request, and left #519 open as the recorded blocker. The experiment is retained as the regression to repeat against any official release that adopts the correction.
