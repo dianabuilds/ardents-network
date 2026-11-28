@@ -24,9 +24,9 @@ func run(arguments []string) error {
 	if len(arguments) == 1 {
 		switch arguments[0] {
 		case "worker-reader":
-			return document.RunInheritedWorker(document.ReaderWorker)
+			return runInheritedWorker(document.ReaderWorker)
 		case "worker-publisher":
-			return document.RunInheritedWorker(document.PublisherWorker)
+			return runInheritedWorker(document.PublisherWorker)
 		}
 	}
 	return errors.New("document worker entrypoint is invalid")
