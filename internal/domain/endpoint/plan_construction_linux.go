@@ -30,6 +30,8 @@ type PlanDeclaration struct {
 	ApplicationTokenRoot    string         `json:"text_token_root"`
 	EntryStateRoot          string         `json:"entry_state_root"`
 	PublicationRoot         string         `json:"publication_root"`
+	SnapshotRoot            string         `json:"snapshot_root,omitempty"`
+	SnapshotQuotaBytes      int64          `json:"snapshot_quota_bytes,omitempty"`
 	ServiceInstanceRoot     string         `json:"service_instance_root"`
 	TimeConfidenceFile      string         `json:"time_confidence_file"`
 	ApplicationSocket       string         `json:"application_socket"`
@@ -131,6 +133,7 @@ func declaredPlan(network state.Config, declaration PlanDeclaration) (HeadlessPl
 		NetworkStateRoot: declaration.NetworkStateRoot, LocalRoleStateRoot: declaration.LocalRoleStateRoot,
 		ApplicationTokenRoot: declaration.ApplicationTokenRoot, EntryStateRoot: declaration.EntryStateRoot,
 		PublicationRoot: declaration.PublicationRoot, ServiceInstanceRoot: declaration.ServiceInstanceRoot,
+		SnapshotRoot: declaration.SnapshotRoot, SnapshotQuotaBytes: declaration.SnapshotQuotaBytes,
 		TimeConfidenceFile: declaration.TimeConfidenceFile, ApplicationSocket: declaration.ApplicationSocket,
 		AdministrationSocket: declaration.AdministrationSocket,
 		NetworkID:            hex.EncodeToString(network.NetworkID[:]), NetworkAuthorities: authorities,
@@ -168,6 +171,16 @@ func declaredLocalPaths(plan HeadlessPlan) error {
 			plan.PublisherPermission.RequestPath, plan.PublisherPermission.ResponsePath)
 		permissions = append(permissions, plan.PublisherPermission)
 	}
+	if plan.SnapshotRoot != "" || plan.SnapshotQuotaBytes != 0 {
+		if plan.Role != "" || plan.SnapshotQuotaBytes <= 0 || plan.SnapshotRoot == "/" || !pathcheck.LiteralPOSIXPath(plan.SnapshotRoot) {
+			return errors.New("declared snapshot storage is invalid")
+		}
+		for _, path := range paths {
+			if !pathcheck.DisjointRoots(plan.SnapshotRoot, path) {
+				return errors.New("declared snapshot storage overlaps another local path")
+			}
+		}
+	}
 	seen := make(map[string]bool, len(paths))
 	for _, path := range paths {
 		if path == "/" || !pathcheck.IsCleanAbsolute(path) || seen[path] {
@@ -192,6 +205,9 @@ func isolatedConstructionRoots(plan HeadlessPlan, reference string) error {
 		return errors.New("reference State root is not canonical")
 	}
 	isolated := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.ApplicationTokenRoot, plan.EntryStateRoot, plan.TimeConfidenceFile}
+	if plan.SnapshotRoot != "" {
+		isolated = append(isolated, plan.SnapshotRoot)
+	}
 	for i, path := range isolated {
 		for _, previous := range isolated[:i] {
 			if path == previous || strings.HasPrefix(path, previous+"/") || strings.HasPrefix(previous, path+"/") {

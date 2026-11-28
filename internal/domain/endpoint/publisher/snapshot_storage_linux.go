@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -46,13 +45,44 @@ func (storage *SnapshotStorage) Close() error { return storage.root.Close() }
 // StageSnapshot reserves the declared size before opening the provisional
 // input. A committed Publication owns the reservation through worker and
 // stream retirement. An aborted receive releases it after cleanup.
-func (owner *Publisher) StageSnapshot(ctx context.Context, storage *SnapshotStorage, size int64, receive func(io.Writer) error) (result error) {
-	if owner == nil || owner.boundary == nil || ctx == nil || storage == nil || receive == nil || size < 0 || size > storage.quota || size > document.MaximumBytes {
+func (owner *Publisher) StageSnapshot(ctx context.Context, storage *SnapshotStorage, size int64, receive func(context.Context, io.Writer) error) (result error) {
+	if owner == nil || owner.boundary == nil || ctx == nil || storage == nil || receive == nil || size < 0 || size > storage.quota {
 		return errSnapshotStage
 	}
 	if err := errors.Join(ctx.Err(), owner.ctx.Err(), owner.boundary()); err != nil {
 		return err
 	}
+	request, err := owner.local.AdmitAdministration(ctx, owner.principal)
+	if err != nil {
+		return err
+	}
+	var staging *snapshotStaging
+	defer func() {
+		result = errors.Join(result, request.Close())
+		if staging != nil {
+			owner.mu.Lock()
+			owner.staging = nil
+			close(staging.done)
+			owner.mu.Unlock()
+			owner.flights.Done()
+		}
+	}()
+	ctx, cancel := context.WithCancel(request.Context())
+	defer cancel()
+	stopOwner := context.AfterFunc(owner.ctx, cancel)
+	defer stopOwner()
+	if err := errors.Join(request.Check(), ctx.Err()); err != nil {
+		return err
+	}
+	owner.mu.Lock()
+	if owner.closed || owner.busy || owner.withdrawing || owner.active != nil || owner.staging != nil {
+		owner.mu.Unlock()
+		return errSnapshotStage
+	}
+	staging = &snapshotStaging{cancel: cancel, done: make(chan struct{})}
+	owner.staging = staging
+	owner.flights.Add(1)
+	owner.mu.Unlock()
 	if !storage.busy.CompareAndSwap(false, true) {
 		return errSnapshotStage
 	}
@@ -72,10 +102,10 @@ func (owner *Publisher) StageSnapshot(ctx context.Context, storage *SnapshotStor
 		return err
 	}
 	defer func() { cleanupErr = errors.Join(cleanupErr, stage.Close()) }()
-	if err := receive(stage); err != nil {
+	if err := receive(ctx, stage); err != nil {
 		return err
 	}
-	if err := errors.Join(ctx.Err(), storage.root.CheckOriginalAccess()); err != nil {
+	if err := errors.Join(ctx.Err(), request.Check(), storage.root.CheckOriginalAccess()); err != nil {
 		return err
 	}
 	source, err := stage.finish()
@@ -86,6 +116,6 @@ func (owner *Publisher) StageSnapshot(ctx context.Context, storage *SnapshotStor
 	}
 	// publish consumes the finished source even when handoff fails.
 	canRelease = false
-	owned := &snapshotSource{file: source, size: size, release: func() { storage.busy.Store(false) }}
+	owned := &snapshotSource{file: source, size: size, staging: staging, release: func() { storage.busy.Store(false) }}
 	return owner.publish(ctx, nil, nil, owned)
 }

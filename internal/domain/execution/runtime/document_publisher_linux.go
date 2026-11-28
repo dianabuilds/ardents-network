@@ -28,7 +28,7 @@ func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, sna
 // LaunchSnapshotPublisher uses the qualified Publisher attachment to serve
 // bounded reads from the original source. The caller retains it through Close.
 func (owner *Owner) LaunchSnapshotPublisher(ctx context.Context, principal [32]byte, source io.ReaderAt, size int64) (*Invocation, error) {
-	if source == nil || size < 0 || size > document.MaximumBytes {
+	if source == nil || size < 0 {
 		return nil, errors.New("document snapshot source is invalid")
 	}
 	return owner.launchApplicationInvocation(ctx, principal, execution.Administration, documentProtocol{

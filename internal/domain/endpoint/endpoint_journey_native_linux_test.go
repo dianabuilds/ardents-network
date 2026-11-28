@@ -419,7 +419,7 @@ const (
 // privacy qualification. The transitional guarded-start/ACK/recovery
 // orchestration is neither exercised nor retired (ADR-0125 D6).
 func TestNativeEndpointCrossHostJourney(t *testing.T) {
-	runNativeEndpointCrossHostJourney(t, nil)
+	runNativeEndpointCrossHostJourney(t, nil, false)
 }
 
 func TestNativeInstalledEndpointByteStreamContinuation(t *testing.T) {
@@ -428,10 +428,18 @@ func TestNativeInstalledEndpointByteStreamContinuation(t *testing.T) {
 		{Bytes: bytesPerDirection, Seed: 1},
 		{Bytes: bytesPerDirection, Seed: 2, BytesPerSecond: 512 << 10},
 	}
-	runNativeEndpointCrossHostJourney(t, &streams)
+	runNativeEndpointCrossHostJourney(t, &streams, false)
 }
 
-func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture.JourneyStream) {
+func TestNativeInstalledEndpointBinaryFileContinuation(t *testing.T) {
+	streams := [2]endpointfixture.JourneyStream{
+		{Bytes: int64(admission.ForwardClass.ByteLimit()) + (1 << 20), Seed: 3},
+		{},
+	}
+	runNativeEndpointCrossHostJourney(t, &streams, true)
+}
+
+func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture.JourneyStream, filePublication bool) {
 	if os.Geteuid() != 0 {
 		t.Fatal("cross-host journey qualification requires a root driver on the controller host")
 	}
@@ -660,14 +668,26 @@ func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture
 		}
 	}
 	if streams != nil {
-		published := exchange(0, endpointfixture.PairMessage{Operation: "stream-publish", Stream: &streams[0]})
+
+		publicationCommand := "stream-publish"
+		if filePublication {
+			publicationCommand = "file-publish"
+		}
+		published := exchange(0, endpointfixture.PairMessage{Operation: publicationCommand, Stream: &streams[0]})
 		if published.Link == "" || published.Original != identities[0] {
 			t.Fatal("installed stream publisher supplied no Link for its original invocation")
 		}
 		started := time.Now()
 		read := exchange(1, endpointfixture.PairMessage{Operation: "stream-connect", Link: published.Link, Stream: &streams[1]})
-		publisher := exchange(0, endpointfixture.PairMessage{Operation: "stream-result"})
-		for i, result := range []endpointfixture.PairMessage{read, publisher} {
+		results := []endpointfixture.PairMessage{read}
+		if filePublication {
+			if withdrawn := exchange(0, endpointfixture.PairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
+				t.Fatal("file was withdrawn by a different invocation")
+			}
+		} else {
+			results = append(results, exchange(0, endpointfixture.PairMessage{Operation: "stream-result"}))
+		}
+		for i, result := range results {
 			if result.Failure != "" || result.Original != identities[1-i] {
 				t.Fatalf("installed stream direction %d failed or changed invocation: %s", i, result.Failure)
 			}
@@ -679,7 +699,7 @@ func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture
 				t.Fatalf("installed stream direction %d differs: observed %+v, expected %+v", i, result.Proof, expected.Proof())
 			}
 		}
-		if duration := time.Since(started); duration <= 60*time.Second {
+		if duration := time.Since(started); !filePublication && duration <= 60*time.Second {
 			t.Fatalf("installed stream completed within the old Reader window: %s", duration)
 		}
 		for i := range peers {
@@ -693,7 +713,7 @@ func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture
 				t.Fatal("installed stream participant did not join", waitErr)
 			}
 		}
-		t.Logf("two real admitted host managers exchanged %d bytes in each direction", streams[0].Bytes)
+		t.Logf("two real admitted host managers verified %d published bytes and %d reply bytes", streams[0].Bytes, streams[1].Bytes)
 		return
 	}
 	publishStarted := time.Now()

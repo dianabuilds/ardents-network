@@ -126,7 +126,7 @@ func RunJourneyParticipant(t *testing.T, binary, base, etcDir string, network Si
 		t.Fatal("decode original journey declaration", err)
 	}
 	declaration.Headless.SnapshotRoot = filepath.Join(base, "snapshot-storage")
-	declaration.Headless.SnapshotQuotaBytes = 32 << 20
+	declaration.Headless.SnapshotQuotaBytes = 64 << 20
 	boundRequest, err := json.Marshal(declaration)
 	if err != nil {
 		t.Fatal(err)

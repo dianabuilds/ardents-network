@@ -15,7 +15,7 @@ const MaximumBytes = 4 << 20
 // It returns content after EOF, authenticated success and joined cleanup.
 func Read(ctx context.Context, stream endpointstream.Stream) ([]byte, error) {
 	body := bytes.NewBuffer([]byte{})
-	if err := receiveDocument(ctx, stream, body); err != nil {
+	if err := receiveDocument(ctx, stream, body, MaximumBytes); err != nil {
 		clear(body.Bytes())
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func Read(ctx context.Context, stream endpointstream.Stream) ([]byte, error) {
 
 // receiveDocument writes only to provisional output. The caller can expose
 // output after this returns successfully.
-func receiveDocument(ctx context.Context, stream endpointstream.Stream, output io.Writer) (resultErr error) {
+func receiveDocument(ctx context.Context, stream endpointstream.Stream, output io.Writer, maximum int64) (resultErr error) {
 	if ctx == nil || stream == nil {
 		return errors.New("document read is unavailable")
 	}
@@ -50,11 +50,15 @@ func receiveDocument(ctx context.Context, stream endpointstream.Stream, output i
 	defer clear(scratch[:])
 	// Hide ReaderFrom so the copy always uses the caller-owned scratch.
 	plainOutput := struct{ io.Writer }{output}
-	n, err := io.CopyBuffer(plainOutput, io.LimitReader(stream, MaximumBytes), scratch[:])
+	var input io.Reader = stream
+	if maximum >= 0 {
+		input = io.LimitReader(input, maximum)
+	}
+	n, err := io.CopyBuffer(plainOutput, input, scratch[:])
 	if err != nil {
 		return errors.New("file transfer is interrupted or exceeds its bound")
 	}
-	if n == MaximumBytes {
+	if n == maximum {
 		var excess [1]byte
 		if count, err := io.ReadFull(stream, excess[:]); count != 0 || err != io.EOF {
 			return errors.New("file transfer is interrupted or exceeds its bound")

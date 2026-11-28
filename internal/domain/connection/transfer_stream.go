@@ -218,6 +218,9 @@ func (owner *Transfer) CloseInput() error {
 
 func (owner *Transfer) Done() <-chan endpointstream.Outcome { return owner.done }
 
+// Joined closes after the last segment and all continuation work have joined.
+func (owner *Transfer) Joined() <-chan struct{} { return owner.joined }
+
 func (owner *Transfer) Close() error {
 	owner.cancel()
 	<-owner.joined

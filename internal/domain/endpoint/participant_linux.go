@@ -305,7 +305,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 					return phase, errors.Join(ErrUnavailable, err)
 				}
 				administrationServer, err = administration.ListenWithSnapshotStaging(plan.AdministrationSocket, publisherOwner,
-					func(caller context.Context, size int64, receive func(io.Writer) error) error {
+					func(caller context.Context, size int64, receive func(context.Context, io.Writer) error) error {
 						return publisherOwner.StageSnapshot(caller, snapshotStorage, size, receive)
 					})
 			} else {

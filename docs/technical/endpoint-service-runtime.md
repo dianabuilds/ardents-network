@@ -1467,8 +1467,7 @@ requirements are unchanged.
 ## ADR-0135 continuation records
 
 Continuation controls use the existing endpoint-only Service TLS envelope.
-The table specifies the proposed closed encoding for the continuation
-implementation. Every control begins with a nonzero u64 Attachment generation.
+The table specifies the closed encoding for the continuation flight. Every control begins with a nonzero u64 Attachment generation.
 All integers are big endian. A boundary is 25 bytes: next segment u64,
 absolute bytes toward Publisher u64, absolute bytes toward Reader u64, and
 one EOF mask byte. Bits 0 and 1 describe the input EOF at Publisher and
@@ -1485,6 +1484,8 @@ confirmed sent positions before a boundary can retire.
 | 11 ResumeTransfer | Reader presents the exact pending transition on the freshly admitted logical Connection | Boundary, ticket, new 32-byte logical context |
 | 12 AcceptResume | Publisher confirms that transition on the same new logical Connection | Boundary, ticket, new 32-byte logical context |
 | 13 AcceptBoundary | Publisher acknowledges the Reader’s exact confirmation on the original segment | Boundary, ticket |
+| 14 StartTransfer | Reader starts a new Application transfer on the first authenticated Connection | 32-byte logical context |
+| 15 AcceptTransfer | Publisher confirms the same new transfer before record actors start | 32-byte logical context |
 
 The fixed field shapes have no trailing data. Empty ticket and context values
 are refused. The verified attachment supplies the current generation and
@@ -1509,9 +1510,11 @@ and cannot establish a continuation. At most one pending transition exists per o
 transfer. Revoke, expiry and failed cleanup refuse further transitions.
 
 The wire decoder only recognizes the fixed representation. The ordinary
-Data/Acknowledgement/Terminal parser refuses these controls. An older peer also
-refuses an unknown kind. The draft emits no new control until a phase-aware
-owner actively selects it. Compatibility, the authority check and the cutover
+Data/Acknowledgement/Terminal parser refuses these controls. The installed
+transfer owner requires the explicit opening phase on the initial and every
+fresh independent Connection. A peer using the previous stream grammar cannot
+confirm a Start or Resume exchange. Neither new endpoint hands its Application
+a stream on an ambiguous or incompatible response. Compatibility, the authority check and the cutover
 are qualified with the actual endpoints. The bidirectional Application transfer retains the same worker reservation
 across confirmed segments. Its finite worker credit bounds queued bytes and
 its Connection contract bounds each segment. The initial Reader setup has

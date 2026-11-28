@@ -203,8 +203,13 @@ func openPublication(ctx context.Context, plan Plan, routePlan funding.Plan, aut
 		if err != nil {
 			return err
 		}
+		intake, err := owner.OpenTransferIntake(caller, contract)
+		if err != nil {
+			return err
+		}
+		defer intake.Close()
 		for {
-			stream, err := owner.NextStream(caller, contract)
+			stream, err := intake.Next()
 			if err != nil {
 				if owner.StreamAcquisitionStopped(err) {
 					// This loop acquired no work. The owning Withdraw/Close
@@ -215,8 +220,7 @@ func openPublication(ctx context.Context, plan Plan, routePlan funding.Plan, aut
 			}
 			transferred, err := operation.DeliverPublisherStream(caller, contract, stream)
 			if !transferred {
-				_ = stream.Close()
-				operation.RetainCleanup(stream.JoinedCleanup())
+				err = errors.Join(err, stream.Close())
 			}
 			if err != nil {
 				return err

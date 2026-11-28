@@ -6,12 +6,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"time"
 )
 
 const (
-	// MaximumSnapshotBytes is the selected immutable document publication limit.
+	// MaximumSnapshotBytes bounds the in-memory compatibility adapter.
 	MaximumSnapshotBytes = 4 << 20
 	// SnapshotTimeout bounds the entire Snapshot request, without renewal after input.
 	SnapshotTimeout      = 45 * time.Second
@@ -95,7 +96,7 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 		return
 	}
 	length := binary.BigEndian.Uint64(size[:])
-	if length > MaximumSnapshotBytes {
+	if length > math.MaxInt64 || server.stageSnapshot == nil && length > MaximumSnapshotBytes {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
@@ -117,14 +118,27 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 }
 
 func (server *server) publishSnapshot(ctx context.Context, connection *net.UnixConn, input io.Reader, length int64, owner SnapshotPublisher) error {
-	receive := func(output io.Writer) error {
+	receive := func(receiveContext context.Context, output io.Writer) error {
+		interrupted := make(chan struct{})
+		stop := context.AfterFunc(receiveContext, func() {
+			defer close(interrupted)
+			_ = connection.CloseRead()
+		})
+		defer func() {
+			if !stop() {
+				<-interrupted
+			}
+		}()
+		if err := receiveContext.Err(); err != nil {
+			return err
+		}
 		if _, err := io.WriteString(connection, snapshotReady); err != nil {
 			return err
 		}
-		if !receiveSnapshotBody(ctx, connection, input, output, length) {
+		if !receiveSnapshotBody(receiveContext, connection, input, output, length) {
 			return errSnapshotInput
 		}
-		if err := localRequestError(ctx, nil); err != nil {
+		if err := localRequestError(receiveContext, nil); err != nil {
 			return err
 		}
 		deadline, _ := ctx.Deadline()
@@ -135,7 +149,7 @@ func (server *server) publishSnapshot(ctx context.Context, connection *net.UnixC
 	}
 	body := bytes.NewBuffer(make([]byte, 0, int(length)))
 	defer func() { clear(body.Bytes()) }()
-	if err := receive(body); err != nil {
+	if err := receive(ctx, body); err != nil {
 		return err
 	}
 	return owner.PublishSnapshot(ctx, body.Bytes())

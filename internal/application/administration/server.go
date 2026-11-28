@@ -29,7 +29,7 @@ type server struct {
 	err           error
 	owner         Interface
 	snapshots     chan struct{}
-	stageSnapshot func(context.Context, int64, func(io.Writer) error) error
+	stageSnapshot func(context.Context, int64, func(context.Context, io.Writer) error) error
 }
 
 // Listen exposes owner on one explicit absolute Unix-socket path.
@@ -39,14 +39,14 @@ func Listen(path string, owner Interface) (Server, error) {
 
 // ListenWithSnapshotStaging receives snapshot input into the owner’s reserved
 // storage. The callback invokes receive only after the reservation succeeds.
-func ListenWithSnapshotStaging(path string, owner Interface, stage func(context.Context, int64, func(io.Writer) error) error) (Server, error) {
+func ListenWithSnapshotStaging(path string, owner Interface, stage func(context.Context, int64, func(context.Context, io.Writer) error) error) (Server, error) {
 	if stage == nil {
 		return nil, errors.New("local snapshot staging is unavailable")
 	}
 	return listen(path, owner, stage)
 }
 
-func listen(path string, owner Interface, stage func(context.Context, int64, func(io.Writer) error) error) (Server, error) {
+func listen(path string, owner Interface, stage func(context.Context, int64, func(context.Context, io.Writer) error) error) (Server, error) {
 	if path == "" || !filepath.IsAbs(path) || owner == nil {
 		return nil, errors.New("local Service Administration configuration is invalid")
 	}

@@ -39,6 +39,7 @@ type Publisher struct {
 	withdrawing   bool
 	pendingCancel context.CancelFunc
 	pendingDone   chan struct{}
+	staging       *snapshotStaging
 	active        *published
 	flights       sync.WaitGroup
 	once          sync.Once
@@ -92,7 +93,8 @@ func (owner *Publisher) publish(caller context.Context, snapshot []byte, port do
 	}
 	ctx, setupCancel := context.WithCancel(owner.ctx)
 	owner.mu.Lock()
-	if owner.closed || owner.busy || owner.withdrawing || owner.active != nil {
+	if owner.closed || owner.busy || owner.withdrawing || owner.active != nil ||
+		owner.staging != nil && (source == nil || source.staging != owner.staging) {
 		owner.mu.Unlock()
 		setupCancel()
 		return errors.New("installed Publication transition is unavailable")
@@ -270,7 +272,7 @@ func (owner *Publisher) Withdraw(caller context.Context) (result error) {
 		return errors.New("installed Publication transition is unavailable")
 	}
 	owner.withdrawing = true
-	pendingCancel, pendingDone := owner.pendingCancel, owner.pendingDone
+	pendingCancel, pendingDone, staging := owner.pendingCancel, owner.pendingDone, owner.staging
 	owner.flights.Add(1)
 	owner.mu.Unlock()
 	defer func() {
@@ -280,9 +282,15 @@ func (owner *Publisher) Withdraw(caller context.Context) (result error) {
 		owner.mu.Unlock()
 		owner.flights.Done()
 	}()
+	if staging != nil {
+		staging.cancel()
+	}
 	if pendingCancel != nil {
 		pendingCancel()
 		<-pendingDone
+	}
+	if staging != nil {
+		<-staging.done
 	}
 	owner.mu.Lock()
 	active := owner.active

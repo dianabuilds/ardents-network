@@ -75,3 +75,31 @@ func TestResumedSegmentCannotReopenAnEndedDirection(t *testing.T) {
 		t.Fatal("continued segment changed the directional EOF state")
 	}
 }
+
+func TestReaderStartsTransferOnlyWithExactOpeningConfirmation(t *testing.T) {
+	request := wire.Continuation{
+		Kind: wire.StartTransfer, AttachmentGeneration: initialAttachmentGeneration,
+		LogicalContext: [32]byte{7},
+	}
+	answer := request
+	answer.Kind = wire.AcceptTransfer
+
+	var flight resumeFlight
+	if err := wire.Write(&flight.input, wire.Record{Continuation: &answer}); err != nil {
+		t.Fatal(err)
+	}
+	if err := exchangeTransferOpening(&flight, request, wire.AcceptTransfer); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wire.ReadStream(&flight.output); !errors.Is(err, wire.ErrInvalidRecord) {
+		t.Fatalf("ordinary stream grammar accepted the transfer opening: %v", err)
+	}
+
+	answer.LogicalContext[0]++
+	if err := wire.Write(&flight.input, wire.Record{Continuation: &answer}); err != nil {
+		t.Fatal(err)
+	}
+	if err := exchangeTransferOpening(&flight, request, wire.AcceptTransfer); !errors.Is(err, errContinuationRefused) {
+		t.Fatalf("accepted a confirmation for a different logical context: %v", err)
+	}
+}

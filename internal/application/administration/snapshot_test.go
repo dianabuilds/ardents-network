@@ -306,7 +306,7 @@ func TestSnapshotClientSendsNoBodyWhenStagingRefuses(t *testing.T) {
 	path := filepath.Join(os.TempDir(), fmt.Sprintf("as-stage-%d.sock", time.Now().UnixNano()))
 	var calls atomic.Int32
 	server, err := ListenWithSnapshotStaging(path, testInterface{},
-		func(context.Context, int64, func(io.Writer) error) error {
+		func(context.Context, int64, func(context.Context, io.Writer) error) error {
 			calls.Add(1)
 			return errors.New("storage reservation refused")
 		})

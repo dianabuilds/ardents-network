@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"path/filepath"
 	"time"
 
@@ -21,7 +22,7 @@ func PublishLocal(ctx context.Context, socket, path string) error {
 	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	outcome, err := requestSnapshot(bounded, socket, func(output io.ReadWriter) error {
-		return localsnapshot.CopyVerified(bounded, path, MaximumSnapshotBytes, func(size int64) (io.Writer, error) {
+		return localsnapshot.CopyVerified(bounded, path, math.MaxInt64, func(size int64) (io.Writer, error) {
 			if err := beginSnapshot(output, size); err != nil {
 				return nil, err
 			}

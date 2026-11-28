@@ -105,6 +105,7 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | internal/domain/endpoint/plan | internal/pathcheck | `platform_launch.go` |
 | internal/domain/endpoint/publisher | internal/application/endpointstream | `byte_stream_unix.go` |
 | internal/domain/endpoint/publisher | internal/domain/connection | `byte_stream_unix.go` owns the original Application transfer and requests each fresh admitted Publisher segment |
+| internal/domain/endpoint/publisher | internal/domain/execution | `snapshot_storage_linux_test.go` exercises real grant refusal before storage preparation |
 | internal/domain/endpoint/unit | internal/pathcheck | `platform_rendering.go` |
 | internal/domain/execution/runtime | internal/application/endpointstream | `hostile_snapshot_installed_linux_test.go`, `document_publisher_handoff.go`, `document_publisher_linux.go`, `document_reader_handoff.go`, `document_reader_linux.go`, `stream_contract.go`, `stream_contract_test.go` |
 | internal/domain/execution/runtime | internal/application/streamqualification | `stream_qualification_installed_linux_test.go`, `stream_qualification_linux.go`, `stream_qualification_other.go` |

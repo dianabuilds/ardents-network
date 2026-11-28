@@ -68,8 +68,8 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 	return owner.openStreamWithSegment(contract, publisherRoute, initiatorRoute, nil, nil)
 }
 
-func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource, segment *segmentBoundaryExchange, resume *segmentResume) (_ *Stream, result error) {
-	if owner == nil || owner.self != owner || segment != nil && resume != nil {
+func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource, segment *segmentBoundaryExchange, opening *segmentOpening) (_ *Stream, result error) {
+	if owner == nil || owner.self != owner || segment != nil && opening != nil {
 		return nil, errIntegrity
 	}
 	owner.streamStart.Lock()
@@ -80,7 +80,7 @@ func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionru
 	if unavailable {
 		return nil, errIntegrity
 	}
-	if resume != nil {
+	if opening != nil {
 		// A refused or incomplete Resume retires the same Attachment. A
 		// subsequent ordinary OpenStream cannot consume the rejected flight.
 		defer func() {
@@ -102,8 +102,8 @@ func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionru
 	if err := errors.Join(owner.check(), publisherRoute.check(owner)); err != nil {
 		return nil, err
 	}
-	if resume != nil {
-		segment, err = resume.confirm(owner)
+	if opening != nil {
+		segment, err = opening.confirm(owner)
 		if err != nil {
 			return nil, err
 		}

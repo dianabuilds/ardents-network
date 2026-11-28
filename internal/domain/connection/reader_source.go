@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/domain/network"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
@@ -517,19 +516,11 @@ func (source *InitiatorSource) openStream(contract executionruntime.StreamContra
 			return nil, err
 		}
 	}
-	var segment *segmentBoundaryExchange
-	var resume *segmentResume
-	switch {
-	case previous != nil:
-		resume = &segmentResume{reader: previous}
-	case segmented:
-		var err error
-		segment, err = newSegmentBoundaryExchange(wire.RoleInitiator, wire.SegmentBoundary{Next: 1}, [32]byte{})
-		if err != nil {
-			return nil, err
-		}
+	var opening *segmentOpening
+	if segmented {
+		opening = &segmentOpening{reader: previous, start: previous == nil}
 	}
-	stream, err := owner.openStreamWithSegment(contract, nil, source, segment, resume)
+	stream, err := owner.openStreamWithSegment(contract, nil, source, nil, opening)
 	if err != nil {
 		return nil, err
 	}

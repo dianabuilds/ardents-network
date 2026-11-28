@@ -3,6 +3,7 @@
 package publisher
 
 import (
+	"context"
 	"io"
 	"os"
 )
@@ -10,6 +11,7 @@ import (
 type snapshotSource struct {
 	file    *os.File
 	size    int64
+	staging *snapshotStaging
 	release func()
 }
 
@@ -25,4 +27,9 @@ func (source *snapshotSource) close() error {
 	}
 	source.release()
 	return nil
+}
+
+type snapshotStaging struct {
+	cancel context.CancelFunc
+	done   chan struct{}
 }

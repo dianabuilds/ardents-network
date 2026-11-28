@@ -222,7 +222,7 @@ func recordKindSize(record Record) (byte, int, error) {
 // which encodeEnvelope sized exactly. It performs no validation or allocation.
 func appendRecordPayload(record Record, kind byte, dst []byte) {
 	switch kind {
-	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume), byte(AcceptBoundary):
+	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume), byte(AcceptBoundary), byte(StartTransfer), byte(AcceptTransfer):
 		record.Continuation.encodePayload(dst)
 	case kindChallenge:
 		value := record.Challenge
@@ -277,7 +277,7 @@ func decodeRecord(body []byte) (Record, error) {
 	}
 	kind, payload := body[2], body[commonHeaderSize:]
 	switch kind {
-	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume), byte(AcceptBoundary):
+	case byte(DrainSegment), byte(ProposeBoundary), byte(OfferContinuation), byte(ConfirmBoundary), byte(ResumeTransfer), byte(AcceptResume), byte(AcceptBoundary), byte(StartTransfer), byte(AcceptTransfer):
 		return decodeContinuation(ContinuationKind(kind), payload)
 	case kindChallenge:
 		if len(payload) != 136 {

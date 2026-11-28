@@ -58,12 +58,19 @@ func (p *Publisher) nextStream(ctx context.Context, contract executionruntime.St
 			p.config.Operation.RetainCleanup(stream.JoinedCleanup())
 		}
 	}()
-	logical, err := stream.PublisherContext()
-	if err != nil {
+	if err := p.retainStream(ctx, stream); err != nil {
 		return nil, err
 	}
+	return stream, nil
+}
+
+func (p *Publisher) retainStream(ctx context.Context, stream *connection.Stream) error {
+	logical, err := stream.PublisherContext()
+	if err != nil {
+		return err
+	}
 	if err := p.check(ctx); err != nil {
-		return nil, err
+		return err
 	}
 	if err := p.responderScope.Commit(func(checkOriginal func() error) error {
 		p.mu.Lock()
@@ -78,10 +85,10 @@ func (p *Publisher) nextStream(ctx context.Context, contract executionruntime.St
 		p.connectionUsers.Add(1)
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 	go p.watchConnection(logical, stream)
-	return stream, nil
+	return nil
 }
 
 // stoppedAcquisition identifies only this owner's idle acquisition retirement.

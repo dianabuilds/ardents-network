@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -105,6 +106,31 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				cancel()
 				if err != nil {
 					t.Fatal("journey installed Link", err)
+				}
+			case "file-publish":
+				if role != "publisher" || command.Stream == nil || publisherProcess != nil {
+					t.Fatal("invalid binary file publication command")
+				}
+				input, err := os.CreateTemp(t.TempDir(), "binary-input-")
+				if err != nil {
+					t.Fatal(err)
+				}
+				_, writeErr := io.Copy(input, command.Stream.Reader())
+				closeErr := input.Close()
+				if writeErr != nil || closeErr != nil {
+					t.Fatalf("prepare binary file: copy %v, close %v", writeErr, closeErr)
+				}
+				socket := filepath.Join(participant.Base, "administration", "socket")
+				process := exec.CommandContext(t.Context(), os.Getenv("ARDENTS_PREBUILT_NEXT"), "publish", socket, input.Name())
+				if output, err := process.CombinedOutput(); err != nil {
+					endpointfixture.DumpJourneyJournal(t)
+					t.Fatalf("installed binary file publication: %v: %s", err, output)
+				}
+				ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+				response.Link, err = administration.RequestPublishedLink(ctx, socket)
+				cancel()
+				if err != nil {
+					t.Fatal("journey installed binary file Link", err)
 				}
 			case "read":
 				if role != "reader" {

@@ -88,19 +88,17 @@ func PresentLocal(ctx context.Context, socket, link string, output io.Writer) (r
 	if ctx == nil || output == nil {
 		return errors.New("document presentation is invalid")
 	}
-	bounded, cancel := context.WithTimeout(ctx, endpointstream.ReaderTimeout)
-	defer cancel()
-	stream, err := endpointclient.Dial(bounded, socket, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
+	stream, err := endpointclient.Dial(ctx, socket, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
 	if err != nil {
-		return errors.Join(err, bounded.Err())
+		return errors.Join(err, ctx.Err())
 	}
 	stage, err := openPresentationStage()
 	if err != nil {
 		return errors.Join(err, stream.Close())
 	}
 	defer func() { result = errors.Join(result, stage.Close()) }()
-	if err := receiveDocument(bounded, stream, stage); err != nil {
-		return errors.Join(err, bounded.Err())
+	if err := receiveDocument(ctx, stream, stage, -1); err != nil {
+		return errors.Join(err, ctx.Err())
 	}
 	if err := validateStagedText(ctx, stage); err != nil {
 		return err
