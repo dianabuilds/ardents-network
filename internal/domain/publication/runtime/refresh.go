@@ -2,6 +2,9 @@ package runtime
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -76,7 +79,18 @@ func (p *Publisher) schedule() {
 			p.stop()
 			return
 		}
-		if _, err := p.Refresh(p.ctx); err != nil {
+		fmt.Fprintf(os.Stderr, "qualification publication refresh-start ms=%d\n", time.Now().UnixMilli())
+		_, err := p.Refresh(p.ctx)
+		var flags uint64
+		if err != nil {
+			for i, label := range []string{"context deadline", "registration", "recipient", "issuance", "stock", "predecessor", "Source", "window", "expired", "active", "closed", "already", "refused"} {
+				if strings.Contains(err.Error(), label) {
+					flags |= 1 << i
+				}
+			}
+		}
+		fmt.Fprintf(os.Stderr, "qualification publication refresh-result ms=%d success=%t flags=%d\n", time.Now().UnixMilli(), err == nil, flags)
+		if err != nil {
 			if errors.Is(err, errFlight) || errors.Is(err, errPredecessor) {
 				continue
 			}

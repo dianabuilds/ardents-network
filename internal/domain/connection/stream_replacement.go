@@ -2,6 +2,9 @@ package connection
 
 import (
 	"errors"
+	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
@@ -29,6 +32,7 @@ func (stream *Stream) startRecoveryLocked(records *attachmentRecords, cause erro
 	if err := stream.recovery.Start(records.generation, time.Now()); err != nil {
 		return err
 	}
+	fmt.Fprintf(os.Stderr, "qualification recovery-start role=%d ms=%d eof=%t short=%t\n", stream.owner.role, time.Now().UnixMilli(), errors.Is(cause, io.EOF), errors.Is(cause, io.ErrUnexpectedEOF))
 	records.recoveryCause = cause
 	records.retiring = true
 	deadline := stream.recovery.Deadline()
