@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 // The four node-duty participation repairs are one shared mechanism bound to a
@@ -124,17 +124,17 @@ func TestNodeDutyRepairSharedMechanismRefusalEquivalence(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					journal := s.distribution
+					record := s.distribution
 					switch failure {
 					case "active-cycle":
-						journal.CycleActive = true
+						record.CycleActive = true
 					case "pending":
-						journal.PendingDigest = s.current.Header.Digest
+						record.PendingDigest = s.current.Header.Digest
 					case "exposure-history":
-						journal.History = [][32]byte{{91}}
+						record.History = [][32]byte{{91}}
 					}
-					raw := distribution.Encode(journal)
-					if err := errors.Join(storage.CommitControl(distribution.Digest(raw), raw), storage.Close()); err != nil {
+					raw := journal.Encode(record)
+					if err := errors.Join(storage.CommitControl(journal.Digest(raw), raw), storage.Close()); err != nil {
 						t.Fatal(err)
 					}
 				case "expired":

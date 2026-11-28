@@ -8,7 +8,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
@@ -37,7 +37,7 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	}
 	// The BY_DIGEST transport response finished, but the wave had not yet
 	// verified its object or recorded an outcome when the process stopped.
-	digestSlot := distribution.ByDigestSlot(order[1])
+	digestSlot := journal.ByDigestSlot(order[1])
 	if err := initial.beginDigestAttempt(order[1], [32]byte{9}); err != nil {
 		t.Fatal(err)
 	}
@@ -77,21 +77,21 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	if err != nil || recoveredOrder != order || !recoveredDeadline.Equal(deadline) {
 		t.Fatalf("resume order=%v deadline=%v err=%v", recoveredOrder, recoveredDeadline, err)
 	}
-	if started, outcome, err := restarted.beginLatestAttempt(order[0]); err != nil || started || outcome != distribution.OutcomeInterrupted {
+	if started, outcome, err := restarted.beginLatestAttempt(order[0]); err != nil || started || outcome != journal.OutcomeInterrupted {
 		t.Fatalf("repeated started attempt: started=%t outcome=%d err=%v", started, outcome, err)
 	}
-	if restarted.distribution.Attempts[order[1]] != distribution.AttemptNotStarted {
+	if restarted.distribution.Attempts[order[1]] != journal.AttemptNotStarted {
 		t.Fatal("unstarted LATEST attempt was consumed during recovery")
 	}
-	if restarted.distribution.Attempts[digestSlot] != distribution.AttemptFailed ||
-		restarted.distribution.Outcomes[digestSlot] != distribution.OutcomeInterrupted {
+	if restarted.distribution.Attempts[digestSlot] != journal.AttemptFailed ||
+		restarted.distribution.Outcomes[digestSlot] != journal.OutcomeInterrupted {
 		t.Fatal("completed but unverified BY_DIGEST attempt has no interrupted recovery outcome")
 	}
 
 	// The deadline path must resolve the same incomplete persisted stage.
 	expired := restarted.distribution
 	expired.Sequence++
-	expired.Attempts[digestSlot] = distribution.AttemptCompleted
+	expired.Attempts[digestSlot] = journal.AttemptCompleted
 	expired.Outcomes[digestSlot] = 0
 	if err := restarted.commitDistribution(expired); err != nil {
 		t.Fatal(err)
@@ -99,8 +99,8 @@ func TestSourceCycleInterruptedAttemptRecovery(t *testing.T) {
 	if _, _, err := restarted.startSourceWave(deadline.Add(time.Second)); err == nil {
 		t.Fatal("expired cycle was resumed")
 	}
-	if restarted.distribution.CycleActive || restarted.distribution.Attempts[digestSlot] != distribution.AttemptFailed ||
-		restarted.distribution.Outcomes[digestSlot] != distribution.OutcomeInterrupted {
+	if restarted.distribution.CycleActive || restarted.distribution.Attempts[digestSlot] != journal.AttemptFailed ||
+		restarted.distribution.Outcomes[digestSlot] != journal.OutcomeInterrupted {
 		t.Fatal("expired cycle left completed BY_DIGEST without an interrupted outcome")
 	}
 }

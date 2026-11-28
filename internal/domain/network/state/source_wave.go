@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 func (s *State) startSourceWave(now time.Time) ([2]int, time.Time, error) {
@@ -126,7 +126,7 @@ type sourceWaveSummary struct {
 	collisionErr    error
 }
 
-func summarizeSourceWave(state distribution.Record, results []sourceResult) sourceWaveSummary {
+func summarizeSourceWave(state journal.Record, results []sourceResult) sourceWaveSummary {
 	// Start from the same durable cycle: a consumed selector has no new result
 	// on resume, but its recorded outcome and evidence still belong to this wave.
 	summary := sourceWaveSummary{valid: make([]*epoch.Decision, 0, 2), outcomes: state.Outcomes,

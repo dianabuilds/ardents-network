@@ -7,6 +7,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"State commits its journal", "internal/domain/network/state/distribution_commit.go", modulePath + "/internal/domain/network/state/journal", true},
+		{"State tests inspect journal records", "internal/domain/network/state/control_commit_test.go", modulePath + "/internal/domain/network/state/journal", true},
+		{"State command cannot bypass State for journal", "internal/domain/network/state/command/operation.go", modulePath + "/internal/domain/network/state/journal", false},
+		{"another domain cannot use the State journal", "internal/domain/node/runtime/start.go", modulePath + "/internal/domain/network/state/journal", false},
+		{"Application cannot use the State journal", "internal/application/administration/server.go", modulePath + "/internal/domain/network/state/journal", false},
+		{"test fixtures cannot use the State journal", "tests/networkfixture/provisioning_plans.go", modulePath + "/internal/domain/network/state/journal", false},
 		{"Admission converts public Network facts", "internal/domain/admission/authority.go", modulePath + "/internal/domain/network", true},
 		{"other Admission code cannot import Network", "internal/domain/admission/permission.go", modulePath + "/internal/domain/network", false},
 		{"Admission projection cannot open Network State", "internal/domain/admission/authority.go", modulePath + "/internal/domain/network/state", false},

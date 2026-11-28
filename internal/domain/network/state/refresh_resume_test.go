@@ -8,7 +8,7 @@ import (
 	"time"
 
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
@@ -17,11 +17,11 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 		status, outcome byte
 		elapsed         bool
 	}{
-		{"completed-unverified", distribution.AttemptCompleted, 0, false},
-		{"in-flight", distribution.AttemptInFlight, 0, false},
-		{"failed-recorded", distribution.AttemptFailed, distribution.OutcomeAuthentication, false},
-		{"completed-recorded", distribution.AttemptCompleted, distribution.OutcomeValid, false},
-		{"completed-recorded-elapsed", distribution.AttemptCompleted, distribution.OutcomeValid, true},
+		{"completed-unverified", journal.AttemptCompleted, 0, false},
+		{"in-flight", journal.AttemptInFlight, 0, false},
+		{"failed-recorded", journal.AttemptFailed, journal.OutcomeAuthentication, false},
+		{"completed-recorded", journal.AttemptCompleted, journal.OutcomeValid, false},
+		{"completed-recorded-elapsed", journal.AttemptCompleted, journal.OutcomeValid, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			initial, decision := newControlCommitFixture(t, false)
@@ -38,12 +38,12 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			if started, _, err := initial.beginLatestAttempt(order[0]); err != nil || !started {
 				t.Fatalf("first latest: %t %v", started, err)
 			}
-			digestSlot := distribution.ByDigestSlot(order[1])
+			digestSlot := journal.ByDigestSlot(order[1])
 			requested := [32]byte{9}
 			if err := initial.beginDigestAttempt(order[1], requested); err != nil {
 				t.Fatal(err)
 			}
-			if test.status == distribution.AttemptCompleted {
+			if test.status == journal.AttemptCompleted {
 				if err := initial.finishDigestAttempt(order[1], true); err != nil {
 					t.Fatal(err)
 				}
@@ -116,7 +116,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			retainedNext := resumed.distribution.NextAutomatic
 			want := test.outcome
 			if want == 0 {
-				want = distribution.OutcomeInterrupted
+				want = journal.OutcomeInterrupted
 			}
 			check := func(s *State) {
 				t.Helper()
@@ -124,13 +124,13 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				if d.Outcomes[digestSlot] != want {
 					t.Errorf("digest outcome=%s; want %s", sourceOutcomeName(d.Outcomes[digestSlot]), sourceOutcomeName(want))
 				}
-				if d.Outcomes[order[0]] != distribution.OutcomeInterrupted || d.Outcomes[order[1]] != distribution.OutcomeBusy {
+				if d.Outcomes[order[0]] != journal.OutcomeInterrupted || d.Outcomes[order[1]] != journal.OutcomeBusy {
 					t.Errorf("LATEST outcomes=%v", d.Outcomes)
 				}
 				if d.CycleActive || d.SourceOrder != [2]byte{byte(order[0]), byte(order[1])} || d.CycleDeadline != deadline.Unix() {
 					t.Errorf("cycle identity changed at completion: %+v", d)
 				}
-				if d.RequestedDigests[order[1]] != requested || d.Attempts[digestSlot] == distribution.AttemptNotStarted {
+				if d.RequestedDigests[order[1]] != requested || d.Attempts[digestSlot] == journal.AttemptNotStarted {
 					t.Error("consumed digest selector lost")
 				}
 				if test.outcome != 0 && (d.ObservedEpochs[digestSlot] != 7 || d.ObservedDigests[digestSlot] != requested) {

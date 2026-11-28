@@ -6,7 +6,7 @@ import (
 	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 var sourceStatusErrors = [...]error{
@@ -39,40 +39,40 @@ func sourceStatusError(status string) error {
 
 func classifySourceOutcome(err error) byte {
 	if err == nil {
-		return distribution.OutcomeValid
+		return journal.OutcomeValid
 	}
 	if errors.Is(err, context.Canceled) {
-		return distribution.OutcomeCanceled
+		return journal.OutcomeCanceled
 	}
 	for status := byte(1); status < byte(len(sourceStatusErrors)); status++ {
 		if errors.Is(err, sourceStatusErrors[status]) {
-			return [...]byte{distribution.OutcomeValid, distribution.OutcomeNotFound, distribution.OutcomeBusy, distribution.OutcomeBadRequest, distribution.OutcomeInternal}[status]
+			return [...]byte{journal.OutcomeValid, journal.OutcomeNotFound, journal.OutcomeBusy, journal.OutcomeBadRequest, journal.OutcomeInternal}[status]
 		}
 	}
 	var networkError net.Error
 	if errors.Is(err, context.DeadlineExceeded) || errors.As(err, &networkError) && networkError.Timeout() {
-		return distribution.OutcomeTimeout
+		return journal.OutcomeTimeout
 	}
 	switch {
 	case errors.Is(err, source.ErrAuthentication):
-		return distribution.OutcomeAuthentication
+		return journal.OutcomeAuthentication
 	case errors.Is(err, source.ErrUnavailable):
-		return distribution.OutcomeUnavailable
+		return journal.OutcomeUnavailable
 	case errors.Is(err, source.ErrFraming), errors.Is(err, errSourceObjectMismatch):
-		return distribution.OutcomeFraming
+		return journal.OutcomeFraming
 	default:
-		return distribution.OutcomeInvalidState
+		return journal.OutcomeInvalidState
 	}
 }
 
 var sourceOutcomeNames = map[byte]string{
-	0: "not-attempted", distribution.OutcomeValid: "valid", distribution.OutcomeUnavailable: "unavailable",
-	distribution.OutcomeAuthentication: "authentication-failed", distribution.OutcomeTimeout: "timeout",
-	distribution.OutcomeFraming: "framing-failed", distribution.OutcomeResource: "resource-failed",
-	distribution.OutcomeCanceled: "canceled", distribution.OutcomeInvalidState: "invalid-state",
-	distribution.OutcomeInterrupted: "interrupted",
-	distribution.OutcomeNotFound:    "not-found", distribution.OutcomeBusy: "busy",
-	distribution.OutcomeBadRequest: "bad-request", distribution.OutcomeInternal: "source-internal",
+	0: "not-attempted", journal.OutcomeValid: "valid", journal.OutcomeUnavailable: "unavailable",
+	journal.OutcomeAuthentication: "authentication-failed", journal.OutcomeTimeout: "timeout",
+	journal.OutcomeFraming: "framing-failed", journal.OutcomeResource: "resource-failed",
+	journal.OutcomeCanceled: "canceled", journal.OutcomeInvalidState: "invalid-state",
+	journal.OutcomeInterrupted: "interrupted",
+	journal.OutcomeNotFound:    "not-found", journal.OutcomeBusy: "busy",
+	journal.OutcomeBadRequest: "bad-request", journal.OutcomeInternal: "source-internal",
 }
 
 func sourceOutcomeName(outcome byte) string {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	epoch2 "github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing.T) {
@@ -29,7 +29,7 @@ func TestCompleteSourceWaveRechecksTrustedTimeBeforeActivatingPending(t *testing
 	opened.distribution.EpochDigest = opened.current.Snapshot.Digest
 	opened.distribution.PendingDigest = pending.Header.Digest
 	opened.distribution.PendingValidFrom = pending.Header.ValidFrom.Unix()
-	if _, err := opened.completeSourceWave(beforeExpiry, current, []sourceResult{{slot: 0, decision: pending, observations: [4]byte{distribution.OutcomeValid}}}); err == nil || !strings.Contains(err.Error(), "expired before source wave completed") {
+	if _, err := opened.completeSourceWave(beforeExpiry, current, []sourceResult{{slot: 0, decision: pending, observations: [4]byte{journal.OutcomeValid}}}); err == nil || !strings.Contains(err.Error(), "expired before source wave completed") {
 		t.Fatalf("late pending activation returned %v", err)
 	}
 	if opened.current == nil || opened.current.Snapshot.Digest != current.Snapshot.Digest || opened.pendingDecision == nil ||
@@ -54,8 +54,8 @@ func TestCompleteSourceWaveRecordsConflictBeforeCompletionClockFailure(t *testin
 	first := completionEpoch(2, 2, started)
 	second := completionEpoch(2, 3, started)
 	if _, err := opened.completeSourceWave(started, opened.current, []sourceResult{
-		{slot: 0, decision: first, observations: [4]byte{distribution.OutcomeValid}},
-		{slot: 1, decision: second, observations: [4]byte{0, distribution.OutcomeValid}},
+		{slot: 0, decision: first, observations: [4]byte{journal.OutcomeValid}},
+		{slot: 1, decision: second, observations: [4]byte{0, journal.OutcomeValid}},
 	}); err == nil || !strings.Contains(err.Error(), "conflicting") {
 		t.Fatalf("conflicting wave returned %v", err)
 	}
@@ -82,8 +82,8 @@ func TestCompleteSourceWaveRecordsPendingConflictBeforeCompletionClockFailure(t 
 	opened.distribution.EpochDigest = opened.current.Snapshot.Digest
 	opened.distribution.PendingDigest = pending.Header.Digest
 	if _, err := opened.completeSourceWave(started, opened.current, []sourceResult{
-		{slot: 0, decision: competing, observations: [4]byte{distribution.OutcomeValid}},
-		{slot: 1, decision: competing, observations: [4]byte{0, distribution.OutcomeValid}},
+		{slot: 0, decision: competing, observations: [4]byte{journal.OutcomeValid}},
+		{slot: 1, decision: competing, observations: [4]byte{0, journal.OutcomeValid}},
 	}); err == nil || !strings.Contains(err.Error(), "pending") {
 		t.Fatalf("pending conflict wave returned %v", err)
 	}

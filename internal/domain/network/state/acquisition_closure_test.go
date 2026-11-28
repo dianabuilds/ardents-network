@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
@@ -35,7 +35,7 @@ func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
 	if err := owner.commitSourceFailure(now.Add(time.Second), [4]byte{}, [4]uint64{}, [4][32]byte{}); err != nil {
 		t.Fatal(err)
 	}
-	if owner.distribution.Outcomes[order[0]] != distribution.OutcomeInterrupted || owner.distribution.ConsecutiveFailures != 1 || owner.distribution.CycleActive {
+	if owner.distribution.Outcomes[order[0]] != journal.OutcomeInterrupted || owner.distribution.ConsecutiveFailures != 1 || owner.distribution.CycleActive {
 		t.Fatal("closure erased the consumed attempt or cleared backoff")
 	}
 	if err := owner.releaseSourceWaveLocked(); err != nil {
@@ -53,7 +53,7 @@ func TestSourceCycleClosurePersistsMissingResultAsInterrupted(t *testing.T) {
 	if err := reopened.reconcileDistributionJournal(); err != nil {
 		t.Fatal(err)
 	}
-	if reopened.distribution.Outcomes[order[0]] != distribution.OutcomeInterrupted || reopened.distribution.Attempts[order[0]] != distribution.AttemptFailed || reopened.distribution.CycleDeadline != deadline.Unix() {
+	if reopened.distribution.Outcomes[order[0]] != journal.OutcomeInterrupted || reopened.distribution.Attempts[order[0]] != journal.AttemptFailed || reopened.distribution.CycleDeadline != deadline.Unix() {
 		t.Fatal("reopening lost interruption or original deadline")
 	}
 	if _, _, err := reopened.startSourceWave(now.Add(2 * time.Second)); err == nil {

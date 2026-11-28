@@ -310,13 +310,18 @@ The State application cannot import token debit, private signing or Hosting.
 The adapters have independent reasons to change: `epoch` owns authenticated
 Epoch/View grammar and proofs, `closedprofile` the signed role profile grammar,
 `source` the finite TLS protocol, `state/durable` the global root transaction
-mechanics, `state/internal/distribution` the canonical ARDS1D4 distribution
+mechanics, `state/journal` the canonical ARDS1D4 distribution
 journal bytes, and `duty` the distinct local restriction journal. The two physical
 roots cannot be collapsed into one lifetime or transaction. Keeping these
 byte mechanisms preserves recovery obligations; it does not preserve their
 former ownership of Network policy. New command composition exercises the new
 owner. Future Node, Endpoint and Route replacements consume explicit observations
 and retained-duty contracts; they do not require changes to old consumers now.
+
+The architecture gate permits only the State package to import its journal.
+The journal holds neither the durable root nor authority to accept a generation.
+Unlike the former nested Go `internal` boundary, this restriction is checked
+by CI rather than by the compiler.
 
 Within State, `distribution_commit.go` orders the verified Epoch write,
 distribution journal commit, and active pointer mirror. The journal is the

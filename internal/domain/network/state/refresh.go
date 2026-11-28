@@ -9,7 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/runtimeevent"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	source2 "github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 type sourceResult struct {
@@ -123,7 +123,7 @@ func (s *State) fetchAndVerify(ctx context.Context, index int, current *epoch.De
 			return failedSourceResult(index, outcomeIndex, observations, startErr)
 		}
 		requestedDigest := response.ObjectDigest
-		resultIndex, outcomeIndex = fallback, distribution.ByDigestSlot(fallback)
+		resultIndex, outcomeIndex = fallback, journal.ByDigestSlot(fallback)
 		response, err = s.fetchSource(ctx, fallback, source2.Message{
 			Operation: "by-digest", NetworkDigest: source2.NetworkDigest(s.config.networkID), ObjectDigest: response.ObjectDigest,
 			MaterialIndex: s.config.sourceInfo.MaterialIndex,
@@ -153,7 +153,7 @@ func (s *State) fetchAndVerify(ctx context.Context, index int, current *epoch.De
 		return failedSourceResult(resultIndex, outcomeIndex, observations,
 			fmt.Errorf("%w: source header digest disagrees with its authenticated Epoch", errSourceObjectMismatch))
 	}
-	observations[outcomeIndex] = distribution.OutcomeValid
+	observations[outcomeIndex] = journal.OutcomeValid
 	return sourceResult{index: resultIndex, slot: outcomeIndex, decision: decision, observations: observations}
 }
 

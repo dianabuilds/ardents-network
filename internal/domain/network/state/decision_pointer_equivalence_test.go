@@ -12,7 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 // These units prove the NW-7 pointer wave path preserves the historical
@@ -173,7 +173,7 @@ func TestSelectEpochHistoryPointerPreservesFacts(t *testing.T) {
 	predecessor := completionEpoch(1, 1, now)
 	successor := completionEpoch(2, 2, now)
 	s := &State{current: &predecessor,
-		distribution: distribution.Record{EpochFloor: 1, EpochDigest: predecessor.Header.Digest}}
+		distribution: journal.Record{EpochFloor: 1, EpochDigest: predecessor.Header.Digest}}
 	candidates := []*epoch.Decision{&successor}
 	selected, selection, err := s.selectEpochHistory(candidates)
 	if err != nil {
@@ -319,19 +319,19 @@ func TestCompleteSourceWavePointerPathPreservesResultFacts(t *testing.T) {
 			wave.Sequence++
 			wave.CycleID++
 			wave.CycleActive = true
-			wave.CyclePurpose = distribution.Refresh
+			wave.CyclePurpose = journal.Refresh
 			wave.CycleStarted = now.Unix()
 			wave.CycleDeadline = now.Add(15 * time.Second).Unix()
 			wave.CycleSeed = sha256.Sum256([]byte("nw7 pointer wave cycle"))
 			wave.SourceOrder = [2]byte{0, 1}
-			wave.Attempts[0], wave.Attempts[1] = distribution.AttemptInFlight, distribution.AttemptInFlight
+			wave.Attempts[0], wave.Attempts[1] = journal.AttemptInFlight, journal.AttemptInFlight
 			if err := s.commitDistribution(wave); err != nil {
 				t.Fatal(err)
 			}
 			successor := nw7Successor(t, current, "nw7-wave-successor")
 			results := []sourceResult{
-				{index: 0, slot: 0, decision: successor, observations: [4]byte{distribution.OutcomeValid}},
-				{index: 1, slot: 1, decision: successor, observations: [4]byte{0, distribution.OutcomeValid}},
+				{index: 0, slot: 0, decision: successor, observations: [4]byte{journal.OutcomeValid}},
+				{index: 1, slot: 1, decision: successor, observations: [4]byte{0, journal.OutcomeValid}},
 			}
 			beforeFirst := cloneDecisionForOracle(results[0].decision)
 			beforeSecond := cloneDecisionForOracle(results[1].decision)
@@ -375,17 +375,17 @@ func TestNilDecisionCommitHelpersMatchZeroValue(t *testing.T) {
 		wave.Sequence++
 		wave.CycleID++
 		wave.CycleActive = true
-		wave.CyclePurpose = distribution.Refresh
+		wave.CyclePurpose = journal.Refresh
 		wave.CycleStarted = now.Unix()
 		wave.CycleDeadline = now.Add(15 * time.Second).Unix()
 		wave.CycleSeed = sha256.Sum256([]byte("nw7 nil equivalence cycle"))
 		wave.SourceOrder = [2]byte{0, 1}
-		wave.Attempts[0], wave.Attempts[1] = distribution.AttemptInFlight, distribution.AttemptInFlight
+		wave.Attempts[0], wave.Attempts[1] = journal.AttemptInFlight, journal.AttemptInFlight
 		if err := s.commitDistribution(wave); err != nil {
 			t.Fatal(err)
 		}
 	}
-	summary := sourceWaveSummary{outcomes: [4]byte{distribution.OutcomeValid, distribution.OutcomeValid}}
+	summary := sourceWaveSummary{outcomes: [4]byte{journal.OutcomeValid, journal.OutcomeValid}}
 
 	t.Run("active commit", func(t *testing.T) {
 		nilState, _ := newControlCommitFixture(t, false)

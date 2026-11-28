@@ -5,7 +5,7 @@ import (
 	"time"
 
 	networkdomain "github.com/dianabuilds/ardents-network/internal/domain/network"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/journal"
 )
 
 // checkSourceExposureCapacity refuses a changed plan before its first contact
@@ -58,7 +58,7 @@ func (s *State) finishDigestAttempt(source int, responseCompleted bool) error {
 
 // Acquisition and Epoch/profile floors share this application's commit. These
 // translations publish no independent authority and retain the journal bytes.
-func acquisitionHistory(state distribution.Record) (networkdomain.Acquisition, error) {
+func acquisitionHistory(state journal.Record) (networkdomain.Acquisition, error) {
 	return networkdomain.RestoreAcquisition(networkdomain.AcquisitionFacts{Cycle: state.CycleID, Active: state.CycleActive,
 		Purpose: state.CyclePurpose, Started: state.CycleStarted, Deadline: state.CycleDeadline, Seed: state.CycleSeed, Order: state.SourceOrder,
 		Attempts: state.Attempts, Outcomes: state.Outcomes, RequestedDigests: state.RequestedDigests,
@@ -66,7 +66,7 @@ func acquisitionHistory(state distribution.Record) (networkdomain.Acquisition, e
 		Failures: state.ConsecutiveFailures, Backoff: state.BackoffLevel, NextAttempt: state.NextAutomatic})
 }
 
-func applyAcquisition(state *distribution.Record, acquisition networkdomain.Acquisition) {
+func applyAcquisition(state *journal.Record, acquisition networkdomain.Acquisition) {
 	facts := acquisition.Facts()
 	state.CycleID, state.CycleActive, state.CyclePurpose = facts.Cycle, facts.Active, facts.Purpose
 	state.CycleStarted, state.CycleDeadline, state.CycleSeed, state.SourceOrder = facts.Started, facts.Deadline, facts.Seed, facts.Order
@@ -75,7 +75,7 @@ func applyAcquisition(state *distribution.Record, acquisition networkdomain.Acqu
 	state.ConsecutiveFailures, state.BackoffLevel, state.NextAutomatic = facts.Failures, facts.Backoff, facts.NextAttempt
 }
 
-func sourceExposureCapacity(state distribution.Record, exposures [2][32]byte) error {
+func sourceExposureCapacity(state journal.Record, exposures [2][32]byte) error {
 	history, err := acquisitionHistory(state)
 	if err != nil {
 		return err
@@ -83,14 +83,14 @@ func sourceExposureCapacity(state distribution.Record, exposures [2][32]byte) er
 	return history.CheckExposures(exposures)
 }
 
-func proposeLatestAttempt(state distribution.Record, source int, exposure [32]byte) (distribution.Record, bool, byte, error) {
+func proposeLatestAttempt(state journal.Record, source int, exposure [32]byte) (journal.Record, bool, byte, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distribution.Record{}, false, 0, err
+		return journal.Record{}, false, 0, err
 	}
 	next, disposition, err := history.BeginLatest(source, exposure)
 	if err != nil {
-		return distribution.Record{}, false, 0, err
+		return journal.Record{}, false, 0, err
 	}
 	if disposition.Changed {
 		applyAcquisition(&state, next)
@@ -99,45 +99,45 @@ func proposeLatestAttempt(state distribution.Record, source int, exposure [32]by
 	return state, disposition.Contact, disposition.Outcome, nil
 }
 
-func proposeDigestAttempt(state distribution.Record, source int, digest, exposure [32]byte) (distribution.Record, error) {
+func proposeDigestAttempt(state journal.Record, source int, digest, exposure [32]byte) (journal.Record, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distribution.Record{}, err
+		return journal.Record{}, err
 	}
 	next, err := history.BeginDigest(source, digest, exposure)
 	if err != nil {
-		return distribution.Record{}, err
+		return journal.Record{}, err
 	}
 	applyAcquisition(&state, next)
 	state.Sequence++
 	return state, nil
 }
 
-func proposeDigestCompletion(state distribution.Record, source int, responseCompleted bool) (distribution.Record, error) {
+func proposeDigestCompletion(state journal.Record, source int, responseCompleted bool) (journal.Record, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distribution.Record{}, err
+		return journal.Record{}, err
 	}
 	next, err := history.CompleteDigest(source, responseCompleted)
 	if err != nil {
-		return distribution.Record{}, err
+		return journal.Record{}, err
 	}
 	applyAcquisition(&state, next)
 	state.Sequence++
 	return state, nil
 }
 
-func proposeSourceCycle(state distribution.Record, now time.Time, seed [32]byte) (distribution.Record, bool, error) {
+func proposeSourceCycle(state journal.Record, now time.Time, seed [32]byte) (journal.Record, bool, error) {
 	history, err := acquisitionHistory(state)
 	if err != nil {
-		return distribution.Record{}, false, err
+		return journal.Record{}, false, err
 	}
 	next, changed, expired, err := history.Start(now, seed)
 	if err != nil {
 		if errors.Is(err, networkdomain.ErrAcquisitionBackoff) {
-			return distribution.Record{}, false, errors.Join(errRefreshUnavailable, err)
+			return journal.Record{}, false, errors.Join(errRefreshUnavailable, err)
 		}
-		return distribution.Record{}, false, err
+		return journal.Record{}, false, err
 	}
 	if changed {
 		applyAcquisition(&state, next)
@@ -151,7 +151,7 @@ func proposeSourceCycle(state distribution.Record, now time.Time, seed [32]byte)
 
 // finishWaveState translates a Network transition into the same copied journal.
 // No outcome becomes visible until the application commits it.
-func finishWaveState(state *distribution.Record, now time.Time, outcomes [4]byte) error {
+func finishWaveState(state *journal.Record, now time.Time, outcomes [4]byte) error {
 	history, err := acquisitionHistory(*state)
 	if err != nil {
 		return err
