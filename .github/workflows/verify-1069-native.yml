@@ -1,0 +1,35 @@
+name: Verify installed Endpoint transfer
+on:
+  push:
+    branches: [codex/verify-1069-native]
+
+permissions:
+  contents: read
+
+jobs:
+  installed-pair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    env:
+      CANDIDATE: d9d60e866fdb596f3238f4b2935428f8eadf544a
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: d9d60e866fdb596f3238f4b2935428f8eadf544a
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: false
+      - name: Prepare the admitted Ubuntu manager
+        run: |
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test "$(cat /proc/1/comm)" = systemd
+          test "$(systemd-detect-virt --container)" = none
+          sudo -n apt-get update
+          sudo -n apt-get install --no-install-recommends -y debootstrap systemd-container
+          go mod download
+          mkdir -p "$RUNNER_TEMP/ardents-build"
+      - name: Exercise the installed TCP/TLS pair
+        run: |
+          sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build"             "GOTOOLCHAIN=local" "GOFLAGS=-buildvcs=false" go test -tags endpoint_pair_native,document_worker_installed             ./internal/domain/endpoint -run '^TestNativeInstalledEndpointByteStream$' -count=1 -timeout=18m -v
