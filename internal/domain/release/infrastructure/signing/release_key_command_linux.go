@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/release/infrastructure/signing/internal/keyset"
 	artifactio "github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
 
@@ -32,7 +31,7 @@ func runReleaseKeys(role nodeReleaseRole, args []string, out io.Writer) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	public, err := keyset.Prepare(ctx, args[0])
+	public, err := prepareReleaseKeys(ctx, args[0], nil)
 	if err != nil {
 		return artifactio.Refuse(err, refusal)
 	}
