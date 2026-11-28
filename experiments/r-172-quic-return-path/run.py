@@ -36,13 +36,14 @@ EVIDENCE = re.compile(
 )
 
 
-def run(*args, cwd, check=True):
+def run(*args, cwd, check=True, show=False):
     result = subprocess.run(
         ["go", *args], cwd=cwd, text=True, capture_output=True,
         env={**os.environ, "GOWORK": "off"},
     )
-    if check and result.returncode:
-        print(result.stdout, result.stderr, sep="", file=sys.stderr)
+    if show or (check and result.returncode):
+        print(result.stdout, result.stderr, sep="", end="", flush=True)
+    if check:
         result.check_returncode()
     return result
 
@@ -97,10 +98,10 @@ def candidate(work):
     source.chmod(0o700)
     shutil.copyfile(HERE / "budget_test.go.in", source / "ardents_budget_test.go")
     run("test", "-mod=readonly", "-count=1", "-v",
-        "-run", "^Test(ArdentsBudgetToSocket|ConnectionServerPathProbeAmplificationLimit|ConnectionServerPathChallengesOnNewPath)$", ".", cwd=source)
+        "-run", "^Test(ArdentsBudgetToSocket|ConnectionServerPathProbeAmplificationLimit|ConnectionServerPathChallengesOnNewPath)$", ".", cwd=source, show=True)
     write_module(work, module, version)
     shutil.copyfile(HERE / "node_tls_test.go.in", work / "node_tls_test.go")
-    run("test", "-mod=mod", "-count=1", "-v", "-run", "^TestArdentsNodeTLS$", ".", cwd=work)
+    run("test", "-mod=mod", "-count=1", "-v", "-run", "^TestArdentsNodeTLS$", ".", cwd=work, show=True)
     code, _ = return_path("candidate", [], "^TestReturnPathBudget$")
     return code
 
