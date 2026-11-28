@@ -517,7 +517,8 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/endpoint -run '^TestSourcePreparationNative(CommitmentsAndCustody|OriginalProcessCuts|PartialWrite|ReferenceExpiry|Child)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/release/infrastructure -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./tests/e2e/node -run '^Test(NetworkSigning(NodeCertificate(Command|Receipt)|StaticNativeRefusals|CommandsGenuineStateChain|Infrastructure(Preparation|RoleInventories)|InitialKeys(Command|StateChain|ReceiptFailure|BlockedReceipt|StaticRefusals))|SourcePreparationNative(PublicOnlyCommand|ReceiptFailure))$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/state -run '^TestSource(InspectionNative|PreparationNativeStateCommand)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/source/preparation -run '^TestSourcePreparationNativeStateCommand$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/domain/network/duty -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false ./internal/domain/admission/spending -run '^TestRetained(OpeningRefusesEmptiedOriginalHistory|OpeningPreservesDamagedHistoryAndReturnsOwnLease|EmptyHeaderHasNoCreationFactAndKeepsExclusiveLease)$$' -count=1 -v -timeout=3m
@@ -548,6 +549,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/domain/release/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/domain/network/state
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-preparation.test" ./internal/domain/network/source/preparation
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-trust-owner.test" ./internal/domain/endpoint
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-public-preparation.test" ./tests/e2e/node
 

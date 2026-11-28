@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"os"
 	"os/user"
@@ -11,10 +10,10 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/stoppedunit"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
-	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
 // RepairRetainedSourceProducer explicitly abandons a dead platform Source's
@@ -130,73 +129,14 @@ func checkSourceRepairQuiescence(ctx context.Context, original *systemd.SourceRu
 	if err != nil {
 		return err
 	}
-	if err := sourceRepairStoppedPolicy(facts.Unit, facts.Service, cfg.root, cfg.localRoles); err != nil {
-		return err
+	if !stoppedunit.SourceStopped(facts.Unit, facts.Service, cfg.root, cfg.localRoles) {
+		return ErrSourceRepairUnavailable
 	}
-	if !sourceRepairDeclaration(facts.Service, declaration) {
+	if !stoppedunit.SourceDeclaration(facts.Service, declaration) {
 		return ErrSourceRepairUnavailable
 	}
 	if err := cgroup.CheckSourceRecoveryQuiescent(ctx); err != nil {
 		return err
 	}
 	return process.CheckSourceRecoveryQuiescent(ctx)
-}
-
-func sourceRepairDeclaration(service observation.Properties, declaration string) bool {
-	value := service["ExecStartEx"]
-	var rows [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
-		return false
-	}
-	var program string
-	var args, flags []string
-	if observation.Decode(rows[0][0], &program) != nil || observation.Decode(rows[0][1], &args) != nil || observation.Decode(rows[0][2], &flags) != nil {
-		return false
-	}
-	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 4 || args[0] != program || args[1] != "source" || args[2] != "serve-retained" || args[3] != declaration {
-		return false
-	}
-	return len(flags) == 1 && flags[0] == "no-env-expand"
-}
-
-func sourceRepairStoppedPolicy(unit, service observation.Properties, stateRoot, participation string) error {
-	for name, value := range map[string]string{"Id": "ardents-source.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-source.service"} {
-		if !observation.Matches(unit, name, "s", value) {
-			return ErrSourceRepairUnavailable
-		}
-	}
-	if !(observation.Matches(unit, "ActiveState", "s", "inactive") && observation.Matches(unit, "SubState", "s", "dead")) &&
-		!(observation.Matches(unit, "ActiveState", "s", "failed") && observation.Matches(unit, "SubState", "s", "failed")) {
-		return ErrSourceRepairUnavailable
-	}
-	if !observation.Matches(unit, "DropInPaths", "as", []string{}) || !observation.Matches(unit, "TriggeredBy", "as", []string{}) {
-		return ErrSourceRepairUnavailable
-	}
-	for name, value := range map[string]string{"User": "ardents-source", "Group": "ardents-source", "KillMode": "control-group", "Restart": "no", "ProtectSystem": "strict"} {
-		if !observation.Matches(service, name, "s", value) {
-			return ErrSourceRepairUnavailable
-		}
-	}
-	for _, name := range []string{"MainPID", "ControlPID"} {
-		if !observation.Matches(service, name, "u", uint32(0)) {
-			return ErrSourceRepairUnavailable
-		}
-	}
-	for _, name := range []string{"NoNewPrivileges", "ProtectControlGroups"} {
-		if !observation.Matches(service, name, "b", true) {
-			return ErrSourceRepairUnavailable
-		}
-	}
-	for _, name := range []string{"SendSIGKILL", "DynamicUser", "Delegate"} {
-		if !observation.Matches(service, name, "b", false) {
-			return ErrSourceRepairUnavailable
-		}
-	}
-	if !observation.Matches(service, "ReadWritePaths", "as", []string{stateRoot, participation}) {
-		return ErrSourceRepairUnavailable
-	}
-	if !observation.Matches(service, "ControlGroup", "s", "") && !observation.Matches(service, "ControlGroup", "s", "/system.slice/ardents-source.service") {
-		return ErrSourceRepairUnavailable
-	}
-	return nil
 }

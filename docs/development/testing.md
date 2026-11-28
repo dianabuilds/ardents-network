@@ -3196,8 +3196,9 @@ late-borrow currentness, role exclusion and shared-entry retention
 (`installation_test.go`), and retained-installation history-loss refusals
 (`installation_history_test.go`). They open real stores and execute in the
 portable deterministic inventory on Windows and macOS; on Windows the shared
-mechanism enforces the owner-only protected DACL instead of checking mode bits
-synthesized from the read-only attribute. A new portable standalone-owner test
+mechanism creates new roots and files with owner-only descriptors, and checks
+existing descriptors without mutation instead of checking mode bits synthesized
+from the read-only attribute. A new portable standalone-owner test
 (`selection_owner_test.go`) covers `Open` choice retention, private-installation
 release and overlap/incomplete-setup refusal without root creation. The
 remaining 10 windows-test-dead selection allowances are retired EXACT both ways

@@ -20,7 +20,7 @@ func writeGeneration(root, name string, raw []byte) error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	temporary, err := os.CreateTemp(root, ".stage-")
+	temporary, err := durablefile.CreateOwnerOnlyTemp(root, ".stage-")
 	if err != nil {
 		return err
 	}

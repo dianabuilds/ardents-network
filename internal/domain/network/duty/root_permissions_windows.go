@@ -8,8 +8,7 @@ import (
 )
 
 func validateRetainedRootPermissions(string) error {
-	// Ordinary opening currently enforces DACLs by mutation. Explicit recovery
-	// must not reuse it before refusal; no Windows recovery path is selected.
+	// No Windows retained participation recovery path is selected.
 	return errors.New("retained participation repair is unavailable on Windows")
 }
 

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 // The Windows lease holds exclusive access to the same fixed lock file through
@@ -29,20 +31,15 @@ func acquireRetainedRootLease(root string) (rootLease, error) {
 }
 
 func openRootLease(root string, disposition uint32) (rootLease, error) {
-	path, err := syscall.UTF16PtrFromString(filepath.Join(root, rootLockName))
-	if err != nil {
-		return rootLease{}, err
-	}
-	handle, err := syscall.CreateFile(path, syscall.GENERIC_READ|syscall.GENERIC_WRITE, 0, nil,
-		disposition, syscall.FILE_ATTRIBUTE_NORMAL|syscall.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	handle, err := durablefile.OpenOwnerOnlyLease(filepath.Join(root, rootLockName), disposition)
 	if err != nil {
 		return rootLease{}, fmt.Errorf("acquire exclusive Entry state lease: %w", err)
 	}
 	var info syscall.ByHandleFileInformation
-	if err := syscall.GetFileInformationByHandle(handle, &info); err != nil || info.FileAttributes&(syscall.FILE_ATTRIBUTE_REPARSE_POINT|syscall.FILE_ATTRIBUTE_DIRECTORY) != 0 || info.NumberOfLinks != 1 {
-		return rootLease{}, errors.Join(errors.New("Entry state lease is not a regular file"), err, syscall.CloseHandle(handle))
+	if err := syscall.GetFileInformationByHandle(syscall.Handle(handle), &info); err != nil || info.FileAttributes&(syscall.FILE_ATTRIBUTE_REPARSE_POINT|syscall.FILE_ATTRIBUTE_DIRECTORY) != 0 || info.NumberOfLinks != 1 {
+		return rootLease{}, errors.Join(errors.New("Entry state lease is not a regular file"), err, syscall.CloseHandle(syscall.Handle(handle)))
 	}
-	return rootLease{handle: handle}, nil
+	return rootLease{handle: syscall.Handle(handle)}, nil
 }
 
 func (lease rootLease) release() error {

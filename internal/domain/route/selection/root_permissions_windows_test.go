@@ -99,7 +99,7 @@ func requireOwnerOnlyDACL(t *testing.T, path string, inheritable, protected bool
 func TestSelectionStoresOpenOnWindowsOwnerOnlyRoots(t *testing.T) {
 	networkID := [32]byte{1}
 	view := ClosedSetView{NetworkID: networkID, Now: time.Unix(1_800_000_000, 0).UTC()}
-	entryRoot := t.TempDir()
+	entryRoot := ownedRootFixture(t)
 	entries, err := openClosedSets(ClosedSetConfig{Root: entryRoot, NetworkID: networkID,
 		Current: func() (ClosedSetView, error) { return view, nil }})
 	if err != nil {
@@ -128,7 +128,7 @@ func TestSelectionStoresOpenOnWindowsOwnerOnlyRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	interiorRoot := t.TempDir()
+	interiorRoot := ownedRootFixture(t)
 	interior, err := openInteriorStoreMode(interiorRoot, networkID, 1, closedSetFresh)
 	if err != nil {
 		t.Fatalf("open Interior store on Windows: %v", err)

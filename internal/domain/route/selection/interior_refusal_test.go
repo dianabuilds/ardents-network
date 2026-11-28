@@ -14,7 +14,7 @@ func TestInteriorBorrowRefusesWithoutChangingRetainedRoot(t *testing.T) {
 		t.Run(scenario, func(t *testing.T) {
 			base := t.TempDir()
 			root := filepath.Join(base, "interior")
-			if err := os.Mkdir(root, 0700); err != nil {
+			if err := inspectRoot(root); err != nil {
 				t.Fatal(err)
 			}
 			write := func(name, value string) {

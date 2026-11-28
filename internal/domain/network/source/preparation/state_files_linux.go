@@ -1,6 +1,6 @@
 //go:build linux
 
-package state
+package preparation
 
 import (
 	"context"
@@ -10,23 +10,26 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
-// ErrSourcePreparationPrincipal identifies refusal before opening any input.
-var ErrSourcePreparationPrincipal = errors.New("source State preparation requires the fixed service principal")
+// ErrPrincipal identifies refusal before opening any input.
+var ErrPrincipal = errors.New("source State preparation requires the fixed service principal")
 
-// PrepareSourceStateFiles initializes signed State and empty participation as
+// PrepareState initializes signed State and empty participation as
 // the fixed service principal. Original files and both directories are held
 // through the State and participation operations and checked before closure.
-func PrepareSourceStateFiles(ctx context.Context, planPath, bundlePath string) error {
+func PrepareState(ctx context.Context, planPath, bundlePath string) error {
 	if err := process.RequireFixedServicePrincipal(); err != nil {
-		return errors.Join(ErrSourcePreparationPrincipal, err)
+		return errors.Join(ErrPrincipal, err)
 	}
 	return prepareSourceStateFiles(ctx, planPath, bundlePath)
 }
@@ -48,7 +51,7 @@ func prepareSourceStateFiles(ctx context.Context, planPath, bundlePath string) (
 }
 
 type sourceStatePreparation struct {
-	config        Config
+	config        state.Config
 	participation string
 	bundle        source.Bundle
 }
@@ -74,7 +77,7 @@ func readSourceStateInputs(originals *artifacts.Inputs, planPath, bundlePath str
 	if err != nil || plan.ProcessProfile != processguard.SourceProfile {
 		return result, errors.Join(errSourcePreparation, err)
 	}
-	result.config, err = SourcePreparationConfig(plan)
+	result.config, err = StateConfig(plan)
 	if err != nil {
 		return result, err
 	}
@@ -102,4 +105,31 @@ func readSourceStateInputs(originals *artifacts.Inputs, planPath, bundlePath str
 	}
 	result.bundle, err = source.DecodeBundle(bundleBytes)
 	return result, err
+}
+
+// prepare authenticates the first Epoch before initializing empty participation.
+func (preparation sourceStatePreparation) prepare(ctx context.Context, check func() error) (result error) {
+	config := preparation.config
+	config.PermitWork = check
+	if err := check(); err != nil {
+		return err
+	}
+	owner, err := state.OpenFresh(config)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, owner.Close(), check()) }()
+	if _, err := owner.Current(); !errors.Is(err, state.ErrNoCurrentGeneration) {
+		return errors.Join(errSourcePreparation, err)
+	}
+	if _, err := owner.AcceptEpoch(ctx, preparation.bundle.Epoch, preparation.bundle.Inputs, preparation.bundle.Materials); err != nil {
+		return err
+	}
+	if err := check(); err != nil {
+		return err
+	}
+	if err := duty.Initialize(ctx, duty.Config{Root: preparation.participation, Clock: time.Now}); err != nil {
+		return err
+	}
+	return check()
 }

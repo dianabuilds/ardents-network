@@ -25,7 +25,7 @@ func readBounded(path string, maximum int64) ([]byte, error) {
 }
 
 func writeGeneration(root, final string, raw []byte) error {
-	temporary, err := os.CreateTemp(root, ".stage-")
+	temporary, err := durablefile.CreateOwnerOnlyTemp(root, ".stage-")
 	if err != nil {
 		return err
 	}

@@ -30,7 +30,7 @@ func TestRootEntryClaimAndCandidateClauses(t *testing.T) {
 		{"directory-entry", []string{rootMarkerName, "state-1"}, true, false, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
+			root := ownedRootFixture(t)
 			if tc.marker {
 				if err := os.WriteFile(filepath.Join(root, rootMarkerName), []byte(rootMarker), 0o600); err != nil {
 					t.Fatal(err)

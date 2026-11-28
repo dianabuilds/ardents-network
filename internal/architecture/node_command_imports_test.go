@@ -55,7 +55,7 @@ func nodeAndSourceCommandImport(source, dependency, local string, localImport bo
 	if strings.HasPrefix(source, "internal/domain/network/source/command/") && localImport {
 		switch source {
 		case "internal/domain/network/source/command/prepare_linux.go":
-			return explicitImportResult(local == "internal/domain/endpoint" || local == "internal/domain/network/state" || local == "internal/pathcheck" || local == "internal/platform/artifacts")
+			return explicitImportResult(local == "internal/domain/endpoint" || local == "internal/domain/network/source/preparation" || local == "internal/pathcheck" || local == "internal/platform/artifacts")
 		case "internal/domain/network/source/command/inspect_linux.go":
 			return explicitImportResult(local == "internal/domain/network/source/inspection" || local == "internal/platform/artifacts" || local == "internal/canonicaldigest")
 		case "internal/domain/network/source/command/serve_linux.go":

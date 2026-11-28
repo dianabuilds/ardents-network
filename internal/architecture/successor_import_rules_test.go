@@ -381,7 +381,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/network/state/source_repair_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/process") {
 		return true
 	}
-	if (source == "internal/domain/network/state/introduction_repair_linux.go" || source == "internal/domain/network/state/forwarding_repair_linux.go" || source == "internal/domain/network/state/join_repair_linux.go" || source == "internal/domain/network/state/descriptor_repair_linux.go") && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
+	if source == "internal/domain/network/state/node_duty_roles_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
 		return true
 	}
 	// The refusal controls pass only missing or unbound original handles.
@@ -540,6 +540,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
 	}
+	if dependency == modulePath+"/internal/domain/network/state/stoppedunit" {
+		return source == "internal/domain/network/state/source_repair_linux.go" ||
+			source == "internal/domain/network/state/node_duty_repair_linux.go"
+	}
 	if dependency == modulePath+"/internal/domain/network/state/internal/distribution" {
 		return path.Dir(source) == "internal/domain/network/state"
 	}
@@ -662,7 +666,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/domain/admission/spending" || owner == "internal/domain/network/duty" || owner == "internal/domain/network/state/durable") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/domain/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/durablefile/root_creation_windows.go" || source == "internal/durablefile/owner_file_windows.go" || source == "internal/domain/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	// The Unix-family inspection port admits the reviewed x/sys/unix
@@ -716,7 +720,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/domain/release/infrastructure/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || source == "internal/domain/network/state/command/cancellation_test.go" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
+		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || source == "internal/domain/network/source/preparation/state_files_linux_test.go" || source == "internal/domain/network/state/command/cancellation_test.go" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
 			return true
 		}
 		if owner == "internal/domain/network/epoch" && dependency == modulePath+"/tests/epochfixture/assignment" {
