@@ -1,7 +1,7 @@
 name: Temporary Windows root DACL verification
 on:
   push:
-    branches: [codex/948-windows-root-dacl]
+    branches: [codex/948-resume]
 permissions:
   contents: read
 jobs:

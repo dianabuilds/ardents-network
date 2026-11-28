@@ -63,8 +63,8 @@ func enforceHeldRoot(directory *os.File, handle windows.Handle, owner *windows.S
 		info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
 		return errors.New(refusal.ReadRoot)
 	}
-	if !ownedWindowsFile(handle, owner) {
-		return errors.Join(errors.New(refusal.RootDACL), errors.New("directory is not owned by the current user"))
+	if err := checkWindowsFileOwner(handle, owner); err != nil {
+		return errors.Join(errors.New(refusal.RootDACL), err)
 	}
 	if err := setOwnerOnlyDACL(handle, owner, windows.SUB_CONTAINERS_AND_OBJECTS_INHERIT); err != nil {
 		return errors.Join(errors.New(refusal.RootDACL), err)
@@ -104,19 +104,31 @@ func sealRootFile(root windows.Handle, name string, owner *windows.SID) (resultE
 	if err := windows.GetFileInformationByHandle(file, &info); err != nil {
 		return err
 	}
-	if info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || info.NumberOfLinks != 1 || !ownedWindowsFile(file, owner) {
-		return errors.New("entry must be an owner-held regular file with exactly one link")
+	if info.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 || info.NumberOfLinks != 1 {
+		return errors.New("entry must be a regular file with exactly one link")
+	}
+	if err := checkWindowsFileOwner(file, owner); err != nil {
+		return err
 	}
 	return setOwnerOnlyDACL(file, owner, windows.NO_INHERITANCE)
 }
 
-func ownedWindowsFile(file windows.Handle, owner *windows.SID) bool {
+func checkWindowsFileOwner(file windows.Handle, owner *windows.SID) error {
 	security, err := windows.GetSecurityInfo(file, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
-	if err != nil || security == nil {
-		return false
+	if err != nil {
+		return errors.Join(errors.New("query file owner"), err)
+	}
+	if security == nil {
+		return errors.New("file security descriptor is absent")
 	}
 	actual, _, err := security.Owner()
-	return err == nil && actual != nil && actual.Equals(owner)
+	if err != nil {
+		return errors.Join(errors.New("read file owner"), err)
+	}
+	if actual == nil || !actual.Equals(owner) {
+		return errors.New("file owner differs from process user")
+	}
+	return nil
 }
 
 // setOwnerOnlyDACL replaces the target DACL with one explicit grant to the
