@@ -19,5 +19,15 @@ jobs:
           $env:GOTOOLCHAIN = 'local'
           $volume = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($env:TEMP).Substring(0, 1))
           if ($volume.FileSystem -ne 'NTFS') { throw 'Native test requires NTFS' }
-          go test -race ./internal/durablefile -run '^TestDiagnosticHardLinkDuringHeldHandle$' -count=1 -v -timeout=8m
+          $source = Join-Path $env:RUNNER_TEMP 'owner-root-baseline.go'
+          $testSource = Join-Path $env:RUNNER_TEMP 'owner-root-baseline-test.go'
+          git show c759189ec:internal/durablefile/owner_root_windows.go | Set-Content -Encoding utf8 $source
+          git show c759189ec:internal/durablefile/owner_root_windows_test.go | Set-Content -Encoding utf8 $testSource
+          $overlay = @{ Replace = @{
+            (Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows.go') = $source
+            (Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows_test.go') = $testSource
+          }} | ConvertTo-Json
+          $overlayPath = Join-Path $env:RUNNER_TEMP 'baseline-overlay.json'
+          [IO.File]::WriteAllText($overlayPath, $overlay)
+          go test -overlay $overlayPath -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRootGrantsOnlyOwner$' -count=1 -v -timeout=8m
           exit $LASTEXITCODE
