@@ -1,11 +1,12 @@
-package document_test
+package localread_test
 
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
-	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/application/document/localread"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 )
 
 func TestDocumentDiagnosticsContainOnlyLocalClass(t *testing.T) {
@@ -19,7 +20,7 @@ func TestDocumentDiagnosticsContainOnlyLocalClass(t *testing.T) {
 		{errors.Join(secret, context.DeadlineExceeded), "read timed out"},
 		{errors.Join(secret, endpointstream.ErrInvalidLocalInput), "document destination or local input is invalid"},
 	} {
-		if got := document.Failure(test.err); got != test.want {
+		if got := localread.Failure(test.err); got != test.want {
 			t.Fatal("diagnostic leaked remote or local input")
 		}
 	}

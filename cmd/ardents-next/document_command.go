@@ -9,7 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	appconsole "github.com/dianabuilds/ardents-network/internal/application/console"
-	"github.com/dianabuilds/ardents-network/internal/application/document"
+	"github.com/dianabuilds/ardents-network/internal/application/document/localread"
 )
 
 var errDocumentUsage = errors.New("invalid document command arguments")
@@ -33,7 +33,7 @@ func executeDocumentCommand(ctx context.Context, arguments []string) error {
 		if err != nil {
 			return err
 		}
-		return document.ReadLocal(ctx, arguments[1], input, output)
+		return localread.Run(ctx, arguments[1], input, output)
 	default:
 		return errDocumentUsage
 	}
@@ -43,5 +43,5 @@ func documentFailure(err error) string {
 	if errors.Is(err, errDocumentUsage) {
 		return participantUsage
 	}
-	return document.Failure(err)
+	return localread.Failure(err)
 }
