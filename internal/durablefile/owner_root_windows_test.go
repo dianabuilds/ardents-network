@@ -268,3 +268,23 @@ func TestEnforceOwnerOnlyRootRefusesRedirectedEntry(t *testing.T) {
 		t.Error("redirected target DACL changed")
 	}
 }
+
+func TestDiagnosticHardLinkDuringHeldHandle(t *testing.T) {
+	root := t.TempDir()
+	file := filepath.Join(root, "source")
+	if err := os.WriteFile(file, []byte("source"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	path, err := windows.UTF16PtrFromString(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := windows.CreateFile(path, windows.READ_CONTROL|windows.WRITE_DAC|windows.FILE_READ_ATTRIBUTES,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE, nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(handle)
+	err = os.Link(file, filepath.Join(root, "new-link"))
+	t.Logf("hard link while handle is held: %v", err)
+}

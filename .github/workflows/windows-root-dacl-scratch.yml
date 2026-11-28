@@ -19,5 +19,5 @@ jobs:
           $env:GOTOOLCHAIN = 'local'
           $volume = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($env:TEMP).Substring(0, 1))
           if ($volume.FileSystem -ne 'NTFS') { throw 'Native test requires NTFS' }
-          go test -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRootGrantsOnlyOwner$' -count=1 -v -timeout=8m
+          go test -race ./internal/durablefile -run '^TestDiagnosticHardLinkDuringHeldHandle$' -count=1 -v -timeout=8m
           exit $LASTEXITCODE
