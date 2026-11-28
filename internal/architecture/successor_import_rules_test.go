@@ -373,7 +373,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/network/state/source_repair_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup" || dependency == modulePath+"/internal/platform/process") {
 		return true
 	}
-	if (source == "internal/domain/network/state/introduction_repair_linux.go" || source == "internal/domain/network/state/forwarding_repair_linux.go" || source == "internal/domain/network/state/join_repair_linux.go" || source == "internal/domain/network/state/descriptor_repair_linux.go") && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
+	if source == "internal/domain/network/state/node_duty_roles_linux.go" && (dependency == modulePath+"/internal/platform/systemd" || dependency == modulePath+"/internal/platform/cgroup") {
 		return true
 	}
 	// The refusal controls pass only missing or unbound original handles.
@@ -531,6 +531,10 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
+	}
+	if dependency == modulePath+"/internal/domain/network/state/stoppedunit" {
+		return source == "internal/domain/network/state/source_repair_linux.go" ||
+			source == "internal/domain/network/state/node_duty_repair_linux.go"
 	}
 	if dependency == modulePath+"/internal/domain/network/state/internal/distribution" {
 		return path.Dir(source) == "internal/domain/network/state"
