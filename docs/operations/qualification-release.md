@@ -41,6 +41,12 @@ complete read-only
 source manifest records each file's `sha256` and Git `mode` (`100644` or
 `100755`). The tool checks both bytes and modes, the selected Go1.27.4
 Linux-amd64 toolchain, module integrity and actual compiled dependency closure.
+When the compiled closure contains the selected local QUIC dependency, the
+builder admits only the registered module path, version and source directory.
+It runs the source integrity test against the cached published archive and
+retained patch with network access disabled. The cache must already contain the
+published archive. The module record binds the published checksum, selected
+source-file manifest and patch digest. Other module replacements refuse.
 It retains both executions, canonical build inputs and a scoped SBOM; matching
 output grants no independent-builder or installed qualification claim. An
 unfinished output is preserved and cannot be adopted. A dirty preliminary

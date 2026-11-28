@@ -23,6 +23,12 @@ import sys
 COMMAND_PACKAGES = {"ardents-node": "ardents-next"}
 COMMANDS = tuple(COMMAND_PACKAGES)
 FLAGS = ["-trimpath", "-buildvcs=false", "-ldflags=-w"]
+QUIC_MODULE = "github.com/quic-go/quic-go"
+QUIC_VERSION = "v0.66.0"
+QUIC_SUM = "h1:NCsBBGZrI2HZC6aKt4I89T5i4Crt39EYNqkh0w2Wgmg="
+QUIC_SOURCE = "third_party/quic-go"
+QUIC_REPLACE = "./" + QUIC_SOURCE
+QUIC_PATCH = "experiments/r-172-quic-return-path/quic-go-v0.66.0-probe-budget.patch"
 
 
 def canonical(value):
@@ -100,7 +106,7 @@ def command(args, root, env):
     return subprocess.check_output(args, cwd=root, env=env)
 
 
-def compiled_dependencies(raw):
+def compiled_dependencies(raw, root=None, manifest=None):
     decoder, remaining, found, packages = json.JSONDecoder(), raw.decode(), {}, set()
     while remaining.strip():
         item, end = decoder.raw_decode(remaining.lstrip())
@@ -113,15 +119,41 @@ def compiled_dependencies(raw):
             if not item.get("Standard"):
                 raise RuntimeError("nonstandard package has no module provenance")
             continue
-        if module.get("Replace") or module.get("Error"):
-            raise RuntimeError("replaced or unavailable compiled module refused")
+        if module.get("Error"):
+            raise RuntimeError("unavailable compiled module refused")
         record = {key: module[key] for key in ("Path", "Version", "Sum", "GoModSum", "Main") if key in module}
+        if "Replace" in module:
+            replacement = module["Replace"]
+            expected = root / QUIC_SOURCE if isinstance(root, Path) else None
+            if (module.get("Path") != QUIC_MODULE or module.get("Version") != QUIC_VERSION
+                    or not isinstance(replacement, dict) or replacement.get("Path") != QUIC_REPLACE
+                    or replacement.get("Version") or replacement.get("Error") or expected is None
+                    or replacement.get("Dir") != str(expected) or module.get("Dir") != str(expected)
+                    or replacement.get("GoMod") != str(expected / "go.mod")
+                    or module.get("GoMod") != str(expected / "go.mod")
+                    or not isinstance(manifest, dict) or not isinstance(manifest.get("files"), dict)):
+                raise RuntimeError("unapproved compiled module replacement")
+            direct(expected, True)
+            files = manifest["files"]
+            selected = {name: value for name, value in files.items() if name.startswith(QUIC_SOURCE + "/")}
+            if not selected or QUIC_SOURCE + "/go.mod" not in selected or QUIC_PATCH not in files:
+                raise RuntimeError("replacement source or patch missing from pinned manifest")
+            record["Replace"] = {"Path": QUIC_REPLACE, "PublishedSum": QUIC_SUM,
+                                 "SourceManifestSHA256": digest(canonical(selected)),
+                                 "PatchSHA256": files[QUIC_PATCH]["sha256"]}
         if record["Path"] in found and found[record["Path"]] != record:
             raise RuntimeError("conflicting compiled module provenance")
         found[record["Path"]] = record
     if not found or not packages:
         raise RuntimeError("empty dependency inventory")
     return sorted(found.values(), key=lambda item: item["Path"]), sorted(packages)
+
+
+def verify_quic_source(root, env):
+    output = command(["go", "test", "-count=1", "-v", "-run",
+                      "^TestQuicGoSourceIsPublishedModuleWithOnePatch$", "./internal/architecture"], root, env)
+    if not re.search(rb"(?m)^--- PASS: TestQuicGoSourceIsPublishedModuleWithOnePatch \([0-9.]+s\)$", output):
+        raise RuntimeError("published QUIC source and retained patch were not verified")
 
 
 def main():
@@ -155,7 +187,11 @@ def main():
     if command(["go", "version"], root, env) != b"go version go1.27.4 linux/amd64\n":
         raise RuntimeError("selected Go1.27.4 Linux-amd64 toolchain required")
     command(["go", "mod", "verify"], root, env)
-    used_modules, used_packages = compiled_dependencies(command(["go", "list", "-deps", "-json", *["./cmd/" + package for package in COMMAND_PACKAGES.values()]], root, env))
+    used_modules, used_packages = compiled_dependencies(
+        command(["go", "list", "-deps", "-json", *["./cmd/" + package for package in COMMAND_PACKAGES.values()]], root, env),
+        root, manifest)
+    if any(module.get("Path") == QUIC_MODULE and "Replace" in module for module in used_modules):
+        verify_quic_source(root, env)
     dependency = canonical(used_modules)
     write_new(p.output / "modules.json", dependency)
     sbom = canonical({"schema": "ardents-forwarding-build-sbom-v1", "source_revision": p.source_revision,

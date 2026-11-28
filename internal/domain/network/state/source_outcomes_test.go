@@ -13,6 +13,11 @@ import (
 
 func TestMalformedBundleLengthPersistsFramingOutcome(t *testing.T) {
 	s, current := newControlCommitFixture(t, false)
+	// The fixture performs durable I/O before this assertion. Keep its synthetic
+	// wall observation aligned with elapsed time on slower filesystems.
+	s.config.anchorMono = time.Now()
+	clock := func() time.Time { return s.config.anchorWall.Add(time.Since(s.config.anchorMono)) }
+	s.config.clock, s.config.observe = clock, clock
 	_, decodeErr := source2.DecodeBundle([]byte("ARDH3B1\x00\x00\x00\x00\x00"))
 	if decodeErr == nil {
 		t.Fatal("malformed member length decoded")
