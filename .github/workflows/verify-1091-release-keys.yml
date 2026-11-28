@@ -42,7 +42,7 @@ jobs:
           }
           trap cleanup EXIT
           sudo mkdir "$root/fs"
-          sudo truncate -s 512M "$root/ext4.img"
+          sudo truncate -s 3G "$root/ext4.img"
           sudo mkfs.ext4 -q -F "$root/ext4.img"
           sudo mount -o loop "$root/ext4.img" "$root/fs"
           test "$(sudo findmnt -n -o FSTYPE -T "$root/fs")" = ext4
@@ -52,4 +52,4 @@ jobs:
           pin="$(sha256sum "$RUNNER_TEMP/ardents-next" | cut -d' ' -f1)"
           sudo sha256sum "$root/ardents-next"
           mkdir -p "$RUNNER_TEMP/ardents-go-build" "$RUNNER_TEMP/ardents-go-cache" "$RUNNER_TEMP/ardents-go-mod"
-          sudo env PATH="$PATH" HOME="$RUNNER_TEMP" GOCACHE="$RUNNER_TEMP/ardents-go-cache" GOMODCACHE="$RUNNER_TEMP/ardents-go-mod" GOTMPDIR="$RUNNER_TEMP/ardents-go-build" TMPDIR="$root/fs/test-tmp" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM="$root/ardents-next" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM_SHA256="$pin" go test -race -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^Test(ReleaseKeySetNativeInterruptedCustody|ControlReleaseKeyReceiptsNative)$' -count=1 -v -timeout=5m
+          sudo env PATH="$PATH" HOME="$RUNNER_TEMP" GOCACHE="$RUNNER_TEMP/ardents-go-cache" GOMODCACHE="$RUNNER_TEMP/ardents-go-mod" GOTMPDIR="$root/fs/test-tmp" TMPDIR="$root/fs/test-tmp" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM="$root/ardents-next" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM_SHA256="$pin" go test -race -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^Test(ReleaseKeySetNativeInterruptedCustody|ControlReleaseKeyReceiptsNative)$' -count=1 -v -timeout=5m
