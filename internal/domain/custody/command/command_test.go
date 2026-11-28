@@ -494,6 +494,9 @@ func TestPrivatePermissionUnavailableBeforeVaultOrPrompt(t *testing.T) {
 			destination = filepath.Join(directory, "permission")
 		}
 	}
+	if runtime.GOOS == "windows" {
+		destination = filepath.Join(t.TempDir(), "missing-parent", "permission")
+	}
 	probe := &privateDeliveryProbe{}
 	var output bytes.Buffer
 	err := run(t.Context(), []string{"issue-admission-permission", "-vault-root", root,

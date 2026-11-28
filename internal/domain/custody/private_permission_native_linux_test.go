@@ -86,7 +86,7 @@ func TestPrivatePermissionMountedFilesystems(t *testing.T) {
 				t.Errorf("unmount replacement: %v", err)
 			}
 		}()
-		if err = checkPrivatePermissionFilesystem(original); err != nil {
+		if err = checkPrivatePermissionProtection(original); err != nil {
 			t.Fatalf("held ext4 object changed after replacement: %v", err)
 		}
 		replacement, err := os.Open(point)
@@ -94,7 +94,7 @@ func TestPrivatePermissionMountedFilesystems(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer replacement.Close()
-		if err = checkPrivatePermissionFilesystem(replacement); !errors.Is(err, ErrPrivatePermissionUnavailable) {
+		if err = checkPrivatePermissionProtection(replacement); !errors.Is(err, ErrPrivatePermissionUnavailable) {
 			t.Fatalf("replacement ext2 object must refuse: %v", err)
 		}
 	})

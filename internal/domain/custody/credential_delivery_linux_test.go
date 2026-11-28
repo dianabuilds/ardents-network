@@ -46,7 +46,7 @@ func TestPrivatePermissionFirstDeliveryAndExactRetry(t *testing.T) {
 		t.Fatal("first private delivery", err)
 	}
 	original, err := os.Stat(path)
-	if err != nil || !privatePermissionFile(original) {
+	if err != nil || !privatePermissionMetadata(original) {
 		t.Fatal("published file lacks owner-only access", err)
 	}
 	if err := receipt.PublishAdmissionPermission(path); err != nil {

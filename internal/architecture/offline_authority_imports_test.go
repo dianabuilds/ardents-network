@@ -15,7 +15,8 @@ func offlineAuthorityImport(source, dependency, local string, localImport bool) 
 				"internal/domain/custody/command/command_test.go", "internal/domain/custody/command/service_authority.go",
 				"internal/domain/custody/command/admission_authority.go", "internal/domain/custody/command/verify_record.go",
 				"internal/domain/custody/command/recovery_bundle.go", "internal/domain/custody/command/purge_record.go",
-				"internal/domain/custody/command/admission_permission_client_linux_test.go":
+				"internal/domain/custody/command/admission_permission_client_linux_test.go",
+				"internal/domain/custody/command/private_permission_windows_test.go":
 				return importAllowed
 			}
 		}

@@ -54,18 +54,14 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 		return fmt.Errorf("resolve %s destination: %w", name, err)
 	}
 	parent := filepath.Dir(destination)
-	staging, err := os.CreateTemp(parent, stagingPrefix)
+	staging, err := createCredentialStaging(parent, stagingPrefix, private)
 	if err != nil {
 		return fmt.Errorf("create %s staging file: %w", name, err)
 	}
 	stagingPath, stagingOpen := staging.Name(), true
 	defer func() {
-		if stagingOpen {
-			resultErr = errors.Join(resultErr, staging.Close())
-		}
-		if err := os.Remove(stagingPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			resultErr = errors.Join(resultErr, fmt.Errorf("remove %s staging file: %w", name, err))
-			return
+		if err := closeCredentialStaging(staging, stagingPath, private, stagingOpen); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("close and remove %s staging file: %w", name, err))
 		}
 		if err := syncDirectory(parent); err != nil {
 			resultErr = errors.Join(resultErr, fmt.Errorf("flush %s directory: %w", name, err))
@@ -76,12 +72,10 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 	}
 	if private {
 		opened, statErr := staging.Stat()
-		named, nameErr := os.Lstat(stagingPath)
-		if statErr != nil || nameErr != nil || !privatePermissionFile(opened) ||
-			!privatePermissionFile(named) || !os.SameFile(opened, named) {
-			return errors.Join(ErrPrivatePermissionUnavailable, statErr, nameErr)
+		if statErr != nil || !privatePermissionMetadata(opened) || !sameCredentialFile(staging, stagingPath) {
+			return errors.Join(ErrPrivatePermissionUnavailable, statErr)
 		}
-		if err := checkPrivatePermissionFilesystem(staging); err != nil {
+		if err := checkPrivatePermissionProtection(staging); err != nil {
 			return err
 		}
 	}
@@ -95,13 +89,23 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 	if err := staging.Sync(); err != nil {
 		return fmt.Errorf("flush %s staging file: %w", name, err)
 	}
-	err = staging.Close()
-	stagingOpen = false
-	if err != nil {
-		return fmt.Errorf("close %s staging file: %w", name, err)
+	// Windows private delivery retains the original handle through publication;
+	// other deliveries preserve close-before-publication error ordering.
+	if !retainCredentialStaging(private) {
+		err = staging.Close()
+		stagingOpen = false
+		if err != nil {
+			return fmt.Errorf("close %s staging file: %w", name, err)
+		}
 	}
-	if err := os.Link(stagingPath, destination); err != nil && !errors.Is(err, os.ErrExist) {
-		return fmt.Errorf("publish %s: %w", name, err)
+	linkErr := os.Link(stagingPath, destination)
+	if linkErr != nil && !errors.Is(linkErr, os.ErrExist) {
+		return fmt.Errorf("publish %s: %w", name, linkErr)
+	}
+	if linkErr == nil && stagingOpen {
+		if !sameCredentialFile(staging, destination) {
+			return errors.New(name + " published identity changed")
+		}
 	}
 	if !credentialMatches(destination, body, private) {
 		return errors.New(name + " destination conflicts")
@@ -112,31 +116,28 @@ func publishCredential(path, name, stagingPrefix string, body []byte, private bo
 func credentialMatches(path string, expected []byte, private bool) bool {
 	accepts := func(info os.FileInfo) bool {
 		return info.Mode().IsRegular() && info.Size() == int64(len(expected)) &&
-			(!private || privatePermissionFile(info))
+			(!private || privatePermissionMetadata(info))
 	}
-	named, err := os.Lstat(path)
-	if err != nil || !accepts(named) {
-		return false
-	}
-	file, err := os.Open(path)
+	file, err := openCredentialFile(path, private)
 	if err != nil {
 		return false
 	}
 	opened, err := file.Stat()
-	if private && checkPrivatePermissionFilesystem(file) != nil {
+	if err != nil || !accepts(opened) || !sameCredentialFile(file, path) {
 		_ = file.Close()
 		return false
 	}
-	if err != nil || !accepts(opened) || !os.SameFile(named, opened) {
+	if private && checkPrivatePermissionProtection(file) != nil {
 		_ = file.Close()
 		return false
 	}
 	body, readErr := io.ReadAll(io.LimitReader(file, int64(len(expected))+1))
 	defer clear(body)
 	final, statErr := file.Stat()
+	unchanged := statErr == nil && accepts(final) && os.SameFile(opened, final) && sameCredentialFile(file, path)
+	if private && checkPrivatePermissionProtection(file) != nil {
+		unchanged = false
+	}
 	closeErr := file.Close()
-	named, namedErr := os.Lstat(path)
-	return readErr == nil && statErr == nil && closeErr == nil && namedErr == nil &&
-		accepts(final) && accepts(named) && os.SameFile(opened, final) && os.SameFile(opened, named) &&
-		bytes.Equal(body, expected)
+	return readErr == nil && closeErr == nil && unchanged && bytes.Equal(body, expected)
 }

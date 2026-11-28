@@ -382,7 +382,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
 		return true
 	}
-	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go" || source == "internal/domain/custody/private_permission_windows.go" || source == "internal/domain/custody/private_permission_windows_test.go" || source == "internal/domain/custody/command/private_permission_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	// The Application document snapshot import composes only the shared
