@@ -5,10 +5,13 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/canonicaldigest"
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint/generation"
@@ -48,13 +51,26 @@ func OpenStartup(ctx context.Context, directory string) (*Startup, error) {
 // in-place root rewrite with forged timestamps between boundaries is detected at
 // the next CheckFull; that root-tamper latency bound (the operation cadence) is
 // the admitted trade of the identity-only inner granularity.
+var qualificationStartupChecks atomic.Uint64
+var qualificationStartupWait atomic.Int64
+var qualificationStartupWork atomic.Int64
+
 func (s *Startup) Check() error {
+	start := time.Now()
 	if s == nil || s.lifetime == nil {
 		return ErrInput
 	}
 	s.lifetime.mu.Lock()
-	defer s.lifetime.mu.Unlock()
-	return s.lifetime.checkLocked(s.lifetime.inspection.observeIdentity)
+	acquired := time.Now()
+	err := s.lifetime.checkLocked(s.lifetime.inspection.observeIdentity)
+	s.lifetime.mu.Unlock()
+	wait := qualificationStartupWait.Add(int64(acquired.Sub(start)))
+	work := qualificationStartupWork.Add(int64(time.Since(acquired)))
+	count := qualificationStartupChecks.Add(1)
+	if count%128 == 0 {
+		fmt.Fprintf(os.Stderr, "qualification startup checks=%d mean-wait=%s mean-observe=%s\n", count, time.Duration(wait/int64(count)), time.Duration(work/int64(count)))
+	}
+	return err
 }
 
 // CheckFull reobserves the retained installed invocation with FULL content at an
