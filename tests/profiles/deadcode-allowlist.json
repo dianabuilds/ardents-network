@@ -1812,6 +1812,7 @@
           "internal/domain/connection/transfer.State.beginAcknowledgement",
           "internal/domain/connection/transfer.State.CanReplace",
           "internal/domain/connection/transfer.State.CheckReplacement",
+          "internal/domain/connection/transfer.State.CheckSegmentWrite",
           "internal/domain/connection/transfer.State.CheckWrite",
           "internal/domain/connection/transfer.State.CloseInput",
           "internal/domain/connection/transfer.State.DeliveryComplete",

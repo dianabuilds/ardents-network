@@ -93,7 +93,11 @@ func (stream *Stream) Write(body []byte) (int, error) {
 					return nil
 				}
 			}
-			err := stream.transfer.CheckWrite(body[accepted : accepted+size])
+			checkWrite := stream.transfer.CheckWrite
+			if stream.segment != nil {
+				checkWrite = stream.transfer.CheckSegmentWrite
+			}
+			err := checkWrite(body[accepted : accepted+size])
 			if errors.Is(err, transfer.ErrBackpressure) {
 				changed = stream.changeLocked()
 				return nil
