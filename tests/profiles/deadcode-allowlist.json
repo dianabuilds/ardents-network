@@ -603,6 +603,18 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/domain/network/state/stoppedunit.NodeDeclaration",
+          "internal/domain/network/state/stoppedunit.NodeStopped",
+          "internal/domain/network/state/stoppedunit.SourceDeclaration",
+          "internal/domain/network/state/stoppedunit.SourceStopped"
+        ],
+        "classification": "Portable stopped-unit policy used by Linux repair",
+        "rationale": "State's retained repair opens original systemd managers and verifies Linux cgroup quiescence only in Linux adapters. The extracted policy is platform-independent and its declaration and refusal tests run on Windows and macOS; it cannot independently open a manager, acquire a lease or mutate State. Linux production reaches all four checks through the original Source and Node repair operations. No Windows accepting repair is added.",
+        "owner": "Network State retained repair",
+        "retirement": "Remove each entry when a genuine Windows production consumer reaches the check or the corresponding repair operation is retired."
+      },
+      {
+        "symbols": [
           "internal/domain/enrollment/infrastructureinventory.Files",
           "internal/domain/enrollment/infrastructureinventory.Parse",
           "internal/domain/enrollment/infrastructureinventory.Prepare",
