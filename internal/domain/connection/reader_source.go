@@ -59,6 +59,7 @@ type InitiatorSource struct {
 	flights           sync.WaitGroup
 	owner             *AuthenticatedAttachment
 	stream            *Stream
+	previous          *Stream
 	failure           error
 	once              sync.Once
 	closeErr          error
@@ -70,6 +71,19 @@ type InitiatorSource struct {
 // claim precedes ownership transfer and every lookup/presentation effect;
 // failed construction never closes a caller-owned or sibling Source.
 func NewInitiatorSource(config InitiatorSourceConfig) (*InitiatorSource, error) {
+	return newInitiatorSource(config, nil)
+}
+
+// NewContinuedInitiatorSource owns an independently funded Source for the
+// one already confirmed next segment of the original Reader operation.
+func NewContinuedInitiatorSource(config InitiatorSourceConfig, continuation *ReaderContinuation) (*InitiatorSource, error) {
+	if continuation == nil {
+		return nil, errContinuationRefused
+	}
+	return newInitiatorSource(config, continuation)
+}
+
+func newInitiatorSource(config InitiatorSourceConfig, continuation *ReaderContinuation) (*InitiatorSource, error) {
 	if config.Operation == nil || config.Source == nil || config.History == nil || config.Rendezvous == nil {
 		return nil, errIntegrity
 	}
@@ -113,6 +127,14 @@ func NewInitiatorSource(config InitiatorSourceConfig) (*InitiatorSource, error) 
 	err = config.Source.CommitPair(nil, func(checkOriginal func() error) error {
 		if err := errors.Join(checkOriginal(), ctx.Err(), config.Operation.CheckReader()); err != nil {
 			return err
+		}
+		if continuation != nil {
+			previous, err := continuation.consume(config, target)
+			if err != nil {
+				return err
+			}
+			source.previous = previous
+			return nil
 		}
 		return config.Operation.ClaimConnection(localContext)
 	})
@@ -459,7 +481,17 @@ func (source *InitiatorSource) AuthenticateInitial() (_ *AuthenticatedAttachment
 // OpenStream installs this genuine original replacement source before record
 // actors start. It consumes only the same original initial authentication;
 // replacement never constructs another Application operation or byte contract.
-func (source *InitiatorSource) OpenStream(contract executionruntime.StreamContract) (_ *Stream, result error) {
+func (source *InitiatorSource) OpenStream(contract executionruntime.StreamContract) (*Stream, error) {
+	return source.openStream(contract, false)
+}
+
+// OpenSegment opens the first Connection in a continuing transfer or resumes
+// the exact confirmed transition retained by a fresh continued Source.
+func (source *InitiatorSource) OpenSegment(contract executionruntime.StreamContract) (*Stream, error) {
+	return source.openStream(contract, true)
+}
+
+func (source *InitiatorSource) openStream(contract executionruntime.StreamContract, segmented bool) (_ *Stream, result error) {
 	if err := source.check(); err != nil {
 		return nil, err
 	}
@@ -467,6 +499,11 @@ func (source *InitiatorSource) OpenStream(contract executionruntime.StreamContra
 	if err := source.localLocked(); err != nil || source.stream != nil {
 		source.mu.Unlock()
 		return nil, errors.Join(errIntegrity, err)
+	}
+	previous := source.previous
+	if previous != nil && !segmented {
+		source.mu.Unlock()
+		return nil, errContinuationRefused
 	}
 	source.flights.Add(1)
 	owner := source.owner
@@ -479,7 +516,11 @@ func (source *InitiatorSource) OpenStream(contract executionruntime.StreamContra
 			return nil, err
 		}
 	}
-	stream, err := owner.openStream(contract, nil, source)
+	var opening *segmentOpening
+	if segmented {
+		opening = &segmentOpening{reader: previous, start: previous == nil}
+	}
+	stream, err := owner.openStreamWithSegment(contract, nil, source, nil, opening)
 	if err != nil {
 		return nil, err
 	}

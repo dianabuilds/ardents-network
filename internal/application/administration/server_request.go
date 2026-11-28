@@ -88,12 +88,17 @@ func (server *server) handle(connection *net.UnixConn, started time.Time) {
 // Closing a Windows Unix socket with unread inbound bytes can reset the peer
 // before it receives the refusal. Requests beyond this bound are closed.
 func refuseMalformedRequest(connection *net.UnixConn, input io.Reader, surplusRead int, surplusErr error) {
-	if surplusRead != 0 && surplusErr == nil {
-		if _, err := io.CopyN(io.Discard, input, 4096); !errors.Is(err, io.EOF) {
-			return
-		}
+	if drainMalformedTail(input, surplusRead, surplusErr) {
+		writeResponse(connection, "unavailable\n")
 	}
-	writeResponse(connection, "unavailable\n")
+}
+
+func drainMalformedTail(input io.Reader, surplusRead int, surplusErr error) bool {
+	if surplusRead == 0 || surplusErr != nil {
+		return true
+	}
+	_, err := io.CopyN(io.Discard, input, 4096)
+	return errors.Is(err, io.EOF)
 }
 
 func writeResponse(connection *net.UnixConn, response string) {

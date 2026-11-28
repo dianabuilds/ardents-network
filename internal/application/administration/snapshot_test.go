@@ -47,7 +47,7 @@ func TestSnapshotAdministrationTransfersOnlyBoundedContent(t *testing.T) {
 					return nil
 				},
 			})
-			outcome, err := RequestSnapshot(t.Context(), path, body)
+			outcome, err := requestSnapshotBytes(t.Context(), path, body)
 			if err != nil || outcome != Published || calls.Load() != 1 {
 				t.Fatalf("publication = %q, %v, calls %d", outcome, err, calls.Load())
 			}
@@ -57,32 +57,40 @@ func TestSnapshotAdministrationTransfersOnlyBoundedContent(t *testing.T) {
 func TestSnapshotAdministrationNeverFallsBackToBodylessPublish(t *testing.T) {
 	var calls atomic.Int32
 	path, _ := snapshotTestServer(t, testInterface{publish: func(context.Context) error { calls.Add(1); return nil }})
-	if _, err := RequestSnapshot(t.Context(), path, []byte("private document")); err == nil || calls.Load() != 0 {
+	if _, err := requestSnapshotBytes(t.Context(), path, []byte("private document")); err == nil || calls.Load() != 0 {
 		t.Fatalf("old owner accepted snapshot or bodyless fallback, calls %d", calls.Load())
 	}
 }
 func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 	var calls atomic.Int32
 	path, _ := snapshotTestServer(t, snapshotTestOwner{snapshot: func(context.Context, []byte) error { calls.Add(1); return nil }})
-	frame := func(length uint32, body []byte) []byte {
-		raw := append([]byte(snapshotRequest), binary.BigEndian.AppendUint32(nil, length)...)
+	frame := func(length uint64, body []byte) []byte {
+		raw := append([]byte(snapshotRequest), binary.BigEndian.AppendUint64(nil, length)...)
 		return append(raw, body...)
 	}
-	for _, raw := range [][]byte{
-		frame(MaximumSnapshotBytes+1, nil), frame(1, nil), frame(0, []byte("extra")),
-		[]byte(snapshotRequest + "short"),
+	for _, test := range []struct {
+		raw      []byte
+		response string
+	}{
+		{frame(MaximumSnapshotBytes+1, nil), "unavailable\n"},
+		{frame(1<<32, nil), "unavailable\n"},
+		{[]byte("snapshot\n\x00\x00\x00\x00"), "unavailable\n"},
+		{[]byte(snapshotRequest + "short"), "unavailable\n"},
+		{frame(1, nil), "ready\nunavailable\n"},
+		{frame(1, []byte{0xff}), "ready\nunavailable\n"},
+		{frame(0, []byte{0}), "ready\nunavailable\n"},
+		{frame(0, []byte{1, 0}), "ready\nunavailable\n"},
 	} {
 		socket, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		_ = socket.SetDeadline(time.Now().Add(time.Second))
-		_, _ = socket.Write(raw)
+		_, _ = socket.Write(test.raw)
 		_ = socket.CloseWrite()
-		response := make([]byte, len("unavailable\n"))
-		_, err = io.ReadFull(socket, response)
+		response, err := io.ReadAll(socket)
 		_ = socket.Close()
-		if err != nil || string(response) != "unavailable\n" {
+		if err != nil || string(response) != test.response {
 			t.Fatalf("refusal = %q, %v", response, err)
 		}
 	}
@@ -90,6 +98,94 @@ func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 		t.Fatal("malformed snapshot reached publication owner")
 	}
 }
+func TestSnapshotRefusalWaitsForStagingCleanup(t *testing.T) {
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("as-%d.sock", time.Now().UnixNano()))
+	rejected := make(chan error, 1)
+	release := make(chan struct{})
+	server, err := ListenWithSnapshotStaging(path, testInterface{}, func(ctx context.Context, _ int64, receive func(context.Context, io.Writer) error) error {
+		err := receive(ctx, io.Discard)
+		rejected <- err
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = server.Close() })
+	socket, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer socket.Close()
+	if err := socket.SetDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if err := beginSnapshot(socket, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := socket.Write([]byte{0}); err != nil {
+		t.Fatal(err)
+	}
+	if err := socket.CloseWrite(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-rejected:
+		if err == nil {
+			t.Fatal("bad commit marker reached the staging commit")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("staging did not reject the commit marker")
+	}
+	if err := socket.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	var first [1]byte
+	if n, err := socket.Read(first[:]); n != 0 || !errors.Is(err, os.ErrDeadlineExceeded) {
+		t.Fatalf("terminal response preceded staging cleanup: bytes %d, error %v", n, err)
+	}
+	close(release)
+	if err := socket.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if response, err := io.ReadAll(socket); err != nil || string(response) != "unavailable\n" {
+		t.Fatalf("joined refusal = %q, %v", response, err)
+	}
+}
+
+func TestSnapshotAdministrationDiscardsCompleteBodyAfterClientVerificationFails(t *testing.T) {
+	var calls atomic.Int32
+	path, server := snapshotTestServer(t, snapshotTestOwner{
+		snapshot: func(context.Context, []byte) error {
+			calls.Add(1)
+			return nil
+		},
+	})
+	unstable := errors.New("source changed during verification")
+	body := []byte{0x00, 0x80, 0xff}
+	outcome, err := requestSnapshot(t.Context(), path, func(output io.ReadWriter) error {
+		if err := beginSnapshot(output, int64(len(body))); err != nil {
+			return err
+		}
+		if _, err := output.Write(body); err != nil {
+			return err
+		}
+		return unstable
+	})
+	if outcome != "" || !errors.Is(err, unstable) {
+		t.Fatalf("publication = %q, %v; want verification failure", outcome, err)
+	}
+	if err := server.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 0 {
+		t.Fatal("unconfirmed bytes reached the publication owner")
+	}
+}
+
 func TestSnapshotAdministrationSerializesAllocationAndJoinsShutdown(t *testing.T) {
 	entered := make(chan struct{})
 	joined := make(chan struct{})
@@ -103,13 +199,13 @@ func TestSnapshotAdministrationSerializesAllocationAndJoinsShutdown(t *testing.T
 		},
 	})
 	completed := make(chan error, 1)
-	go func() { _, err := RequestSnapshot(t.Context(), path, []byte("snapshot")); completed <- err }()
+	go func() { _, err := requestSnapshotBytes(t.Context(), path, []byte("snapshot")); completed <- err }()
 	select {
 	case <-entered:
 	case <-time.After(time.Second):
 		t.Fatal("owner did not start")
 	}
-	if _, err := RequestSnapshot(t.Context(), path, []byte("second")); err == nil {
+	if _, err := requestSnapshotBytes(t.Context(), path, []byte("second")); err == nil {
 		t.Fatal("overlapping snapshot accepted")
 	}
 	if outcome, err := Request(t.Context(), path, Withdraw); err != nil || outcome != Withdrawn {
@@ -142,18 +238,18 @@ func TestSnapshotClientRejectsInvalidInputAndWrongSuccess(t *testing.T) {
 		{"oversized", t.Context(), make([]byte, MaximumSnapshotBytes+1)},
 	} {
 		t.Run(invalid.name, func(t *testing.T) {
-			if _, err := RequestSnapshot(invalid.ctx, "", invalid.body); err == nil {
+			if _, err := requestSnapshotBytes(invalid.ctx, "", invalid.body); err == nil {
 				t.Fatal("invalid snapshot accepted")
 			}
 		})
 	}
 	path, _ := snapshotTestServer(t, snapshotTestOwner{snapshot: func(context.Context, []byte) error { return errors.New("not committed") }})
-	if _, err := RequestSnapshot(t.Context(), path, nil); err == nil {
+	if _, err := requestSnapshotBytes(t.Context(), path, nil); err == nil {
 		t.Fatal("owner failure reported success")
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := RequestSnapshot(ctx, path, nil); !errors.Is(err, context.Canceled) {
+	if _, err := requestSnapshotBytes(ctx, path, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled request: %v", err)
 	}
 }
@@ -205,13 +301,14 @@ func TestSnapshotAdministrationRetainsOriginalDeadline(t *testing.T) {
 					return nil
 				},
 			}}
-			owner.handleSnapshot(connection, bytes.NewReader([]byte{0, 0, 0, 0}), deadline)
+			owner.handleSnapshot(connection, bytes.NewReader([]byte{0, 0, 0, 0, 0, 0, 0, 0, 1}), deadline)
 			response, err := io.ReadAll(client)
-			want, wantCalls := "published\n", 1
-			if condition == "expired" || condition == "late-success" {
-				want = "unavailable\n"
+			want, wantCalls := "ready\npublished\n", 1
+			if condition == "late-success" {
+				want = "ready\nunavailable\n"
 			}
 			if condition == "expired" {
+				want = "unavailable\n"
 				wantCalls = 0
 			}
 			if err != nil || string(response) != want || calls != wantCalls {
@@ -230,7 +327,7 @@ func TestSnapshotClientPreservesEarlierDeadline(t *testing.T) {
 	}})
 	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
-	if _, err := RequestSnapshot(ctx, path, nil); !errors.Is(err, context.DeadlineExceeded) {
+	if _, err := requestSnapshotBytes(ctx, path, nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("earlier caller deadline = %v", err)
 	}
 	select {
@@ -238,4 +335,70 @@ func TestSnapshotClientPreservesEarlierDeadline(t *testing.T) {
 	default:
 		t.Fatal("request did not reach owner before caller deadline")
 	}
+}
+
+func TestSnapshotReceiveCopiesLargeBodyWithoutConsumingConfirmation(t *testing.T) {
+	body := bytes.Repeat([]byte{0x00, 0x80, 0xff}, MaximumSnapshotBytes/3+1)
+	input := io.MultiReader(bytes.NewReader(body), bytes.NewReader([]byte{snapshotCommit}))
+	staged, err := os.CreateTemp(t.TempDir(), "staged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer staged.Close()
+	if err := copySnapshotBody(t.Context(), input, staged, int64(len(body))); err != nil {
+		t.Fatal(err)
+	}
+	var confirmation [1]byte
+	if _, err := io.ReadFull(input, confirmation[:]); err != nil || confirmation[0] != snapshotCommit {
+		t.Fatalf("confirmation was not retained: %v, %v", confirmation, err)
+	}
+	if _, err := staged.Seek(0, io.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	if saved, err := io.ReadAll(staged); err != nil || !bytes.Equal(saved, body) {
+		t.Fatalf("staged bytes = %d, error %v; want %d exact bytes", len(saved), err, len(body))
+	}
+}
+
+func TestSnapshotClientSendsNoBodyWhenStagingRefuses(t *testing.T) {
+	path := filepath.Join(os.TempDir(), fmt.Sprintf("as-stage-%d.sock", time.Now().UnixNano()))
+	var calls atomic.Int32
+	server, err := ListenWithSnapshotStaging(path, testInterface{},
+		func(context.Context, int64, func(context.Context, io.Writer) error) error {
+			calls.Add(1)
+			return errors.New("storage reservation refused")
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+
+	var bodySent bool
+	outcome, err := requestSnapshot(t.Context(), path, func(connection io.ReadWriter) error {
+		if err := beginSnapshot(connection, 3); err != nil {
+			return err
+		}
+		bodySent = true
+		_, err := connection.Write([]byte{1, 2, 3})
+		return err
+	})
+	if err == nil || outcome != "" || bodySent || calls.Load() != 1 {
+		t.Fatalf("outcome %q, error %v, sent body %v, staging calls %d", outcome, err, bodySent, calls.Load())
+	}
+}
+
+// requestSnapshotBytes publishes one already imported, stable binary snapshot. The
+// caller must keep its bytes unchanged until return. There is no retry or
+// fallback to the bodyless Publish operation.
+func requestSnapshotBytes(ctx context.Context, path string, snapshot []byte) (Outcome, error) {
+	if ctx == nil || len(snapshot) > MaximumSnapshotBytes {
+		return "", errors.New("local Service snapshot is invalid")
+	}
+	return requestSnapshot(ctx, path, func(output io.ReadWriter) error {
+		if err := beginSnapshot(output, int64(len(snapshot))); err != nil {
+			return err
+		}
+		_, err := output.Write(snapshot)
+		return err
+	})
 }

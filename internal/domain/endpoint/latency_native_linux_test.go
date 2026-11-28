@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -459,10 +460,9 @@ func (p *latencyParticipant) warmLoop(ctx context.Context, t *testing.T, link st
 			return opened, err
 		}
 		readBegan := time.Now()
-		body, readErr := document.Read(bounded, stream)
+		readErr := document.ReceiveFile(bounded, stream, io.Discard)
 		elapsed := time.Since(began)
 		t.Logf("warm read open=%v exchange=%v total=%v err=%v", opened, time.Since(readBegan), elapsed, readErr)
-		clear(body)
 		return elapsed, errors.Join(readErr, stream.Close())
 	}
 	if _, err := readOnce(); err != nil {
@@ -572,9 +572,8 @@ func (p *latencyParticipant) coldAttempt(ctx context.Context, link string, index
 	if err != nil {
 		return time.Since(began), err
 	}
-	body, readErr := document.Read(bounded, stream)
+	readErr := document.ReceiveFile(bounded, stream, io.Discard)
 	elapsed := time.Since(began)
-	clear(body)
 	return elapsed, errors.Join(readErr, stream.Close())
 }
 
@@ -612,9 +611,8 @@ func (p *latencyParticipant) diagnosticOpenTiming(ctx context.Context, t *testin
 		return
 	}
 	readBegan := time.Now()
-	body, readErr := document.Read(bounded, stream)
+	readErr := document.ReceiveFile(bounded, stream, io.Discard)
 	t.Logf("open-timing open=%v exchange=%v total=%v currents=%d err=%v", opened, time.Since(readBegan), time.Since(began), calls, readErr)
-	clear(body)
 	_ = stream.Close()
 }
 

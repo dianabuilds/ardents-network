@@ -31,6 +31,7 @@ func (textWorkerInventory) role(surface execution.Surface) string {
 type documentProtocol struct {
 	textWorkerInventory
 	snapshot []byte
+	sourced  bool
 	start    func(*Invocation)
 }
 

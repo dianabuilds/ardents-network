@@ -5,6 +5,7 @@ package localsnapshot
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
+const snapshotChunkBytes = 16 << 10
+
 var errSnapshotFile = errors.New("document snapshot input is unavailable or unstable")
 
 // Read imports one explicitly selected local file in the trusted
@@ -23,25 +26,52 @@ var errSnapshotFile = errors.New("document snapshot input is unavailable or unst
 // Only a bounded regular file is read, and its identity, size and change
 // timestamps must remain stable. The returned copy is caller-owned and must be
 // cleared after transfer. No path or filesystem handle goes to the worker.
-func Read(ctx context.Context, path string) (body []byte, resultErr error) {
-	if ctx == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
-		return nil, errSnapshotFile
+func Read(ctx context.Context, path string) ([]byte, error) {
+	var output *bytes.Buffer
+	err := CopyVerified(ctx, path, document.MaximumBytes, func(size int64) (io.Writer, error) {
+		output = bytes.NewBuffer(make([]byte, 0, int(size)))
+		return output, nil
+	})
+	if err != nil {
+		if output != nil {
+			clear(output.Bytes())
+		}
+		return nil, err
+	}
+	return output.Bytes(), nil
+}
+
+// CopyVerified transfers a selected regular file to the supplied writer after
+// the caller admits its observed size. Output remains provisional until this
+// call succeeds, including comparison against a second read and file close.
+func CopyVerified(ctx context.Context, path string, maximum int64, destination func(int64) (io.Writer, error)) (resultErr error) {
+	if ctx == nil || destination == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
+		return errSnapshotFile
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return err
 	}
 	file, err := openSnapshotFile(path)
 	if err != nil {
-		return nil, errSnapshotFile
+		return errSnapshotFile
 	}
-	defer func() {
-		resultErr = errors.Join(resultErr, file.Close(), ctx.Err())
-		if resultErr != nil {
-			clear(body)
-			body = nil
-		}
-	}()
-	return readStableSnapshot(ctx, file)
+	defer func() { resultErr = errors.Join(resultErr, file.Close(), ctx.Err()) }()
+	before, err := file.Stat()
+	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > maximum {
+		return errSnapshotFile
+	}
+	output, err := destination(before.Size())
+	if err != nil {
+		return err
+	}
+	if output == nil {
+		return errSnapshotFile
+	}
+	digest := sha256.New()
+	if err := copySnapshotPass(ctx, file, io.MultiWriter(output, digest), before.Size()); err != nil {
+		return err
+	}
+	return verifySnapshotFile(ctx, file, before, digest.Sum(nil))
 }
 
 func openSnapshotFile(path string) (*os.File, error) {
@@ -75,57 +105,48 @@ func openSnapshotFile(path string) (*os.File, error) {
 	return os.NewFile(uintptr(fd), "selected document snapshot"), nil
 }
 
-func readStableSnapshot(ctx context.Context, file *os.File) ([]byte, error) {
-	before, err := file.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > document.MaximumBytes {
-		return nil, errSnapshotFile
-	}
-	body := make([]byte, int(before.Size()))
-	for offset := 0; offset < len(body); {
-		if err := ctx.Err(); err != nil {
-			clear(body)
-			return nil, err
-		}
-		end := min(offset+16384, len(body))
-		n, err := io.ReadFull(file, body[offset:end])
-		offset += n
-		if err != nil {
-			clear(body)
-			return nil, errSnapshotFile
-		}
-	}
-	if err := verifySnapshotFile(ctx, file, before, body); err != nil {
-		clear(body)
-		return nil, err
-	}
-	return body, nil
-}
-
-// Compare a second bounded pass as well as metadata. Filesystem change times
-// can have coarse granularity; equal timestamps alone do not prove stability.
-func verifySnapshotFile(ctx context.Context, file *os.File, before os.FileInfo, body []byte) error {
-	var excess [1]byte
-	if n, err := file.Read(excess[:]); n != 0 || err != io.EOF {
-		return errSnapshotFile
-	}
-	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return errSnapshotFile
-	}
-	var scratch [16384]byte
+// copySnapshotPass copies exactly the observed size in fixed-size chunks.
+// The caller must discard output if the pass or later verification fails.
+func copySnapshotPass(ctx context.Context, input io.Reader, output io.Writer, size int64) error {
+	var scratch [snapshotChunkBytes]byte
 	defer clear(scratch[:])
-	for offset := 0; offset < len(body); {
+	for remaining := size; remaining > 0; {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		length := min(len(scratch), len(body)-offset)
-		if _, err := io.ReadFull(file, scratch[:length]); err != nil || !bytes.Equal(scratch[:length], body[offset:offset+length]) {
+		chunk := scratch[:min(int64(len(scratch)), remaining)]
+		if _, err := io.ReadFull(input, chunk); err != nil {
 			return errSnapshotFile
 		}
-		offset += length
+		n, err := output.Write(chunk)
+		if err != nil {
+			return err
+		}
+		if n != len(chunk) {
+			return io.ErrShortWrite
+		}
+		remaining -= int64(n)
 	}
-	n, readErr := file.Read(excess[:])
-	after, statErr := file.Stat()
-	if n != 0 || readErr != io.EOF || statErr != nil || !durablefile.SameFileIdentity(before, after) {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if n, err := input.Read(scratch[:1]); n != 0 || err != io.EOF {
+		return errSnapshotFile
+	}
+	return ctx.Err()
+}
+
+// A second read detects content changes even when the metadata is unchanged.
+func verifySnapshotFile(ctx context.Context, file *os.File, before os.FileInfo, firstDigest []byte) error {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return errSnapshotFile
+	}
+	digest := sha256.New()
+	if err := copySnapshotPass(ctx, file, digest, before.Size()); err != nil {
+		return err
+	}
+	after, err := file.Stat()
+	if err != nil || !durablefile.SameFileIdentity(before, after) || !bytes.Equal(firstDigest, digest.Sum(nil)) {
 		return errSnapshotFile
 	}
 	return ctx.Err()

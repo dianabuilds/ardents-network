@@ -14,14 +14,14 @@ type RecordWrite struct {
 }
 
 // BeginRecordWrite chooses the next ACK, Data or Terminal control record.
+// An ACK cannot take two consecutive turns ahead of queued Data or Terminal.
+// A continuously receiving direction must still let the other direction send.
 func (s *State) BeginRecordWrite() (wire.Record, *RecordWrite, error) {
 	ticket := &RecordWrite{owner: s, generation: s.Generation()}
 	ticket.self = ticket
-	if s.ackWritten != s.ackSerial {
-		ticket.ackSerial = s.ackSerial
-		return wire.Record{Acknowledgement: &wire.Acknowledgement{
-			AttachmentGeneration: s.receive.generation, Offset: s.receive.next,
-		}}, ticket, nil
+	ackPending := s.ackWritten != s.ackSerial
+	if ackPending && !s.lastWasDataACK {
+		return s.beginAcknowledgement(ticket), ticket, nil
 	}
 	if s.send.next != s.send.end {
 		data, err := s.send.beginWrite()
@@ -32,11 +32,24 @@ func (s *State) BeginRecordWrite() (wire.Record, *RecordWrite, error) {
 		return wire.Record{Data: &data.record}, ticket, nil
 	}
 	control, err := s.terminal.beginWrite(s.send.next)
-	if control == nil || err != nil {
+	if err != nil {
 		return wire.Record{}, nil, err
 	}
-	ticket.control = control
-	return wire.Record{Terminal: control.record.Terminal, Acknowledgement: control.record.Acknowledgement}, ticket, nil
+	if control != nil {
+		ticket.control = control
+		return wire.Record{Terminal: control.record.Terminal, Acknowledgement: control.record.Acknowledgement}, ticket, nil
+	}
+	if ackPending {
+		return s.beginAcknowledgement(ticket), ticket, nil
+	}
+	return wire.Record{}, nil, nil
+}
+
+func (s *State) beginAcknowledgement(ticket *RecordWrite) wire.Record {
+	ticket.ackSerial = s.ackSerial
+	return wire.Record{Acknowledgement: &wire.Acknowledgement{
+		AttachmentGeneration: s.receive.generation, Offset: s.receive.next,
+	}}
 }
 
 // FinishRecordWrite retains the result of the same original physical writer.
@@ -47,14 +60,21 @@ func (s *State) FinishRecordWrite(ticket *RecordWrite, physicalErr error) error 
 	ticket.consumed = true
 	if ticket.data != nil {
 		_, err := s.send.finishWrite(ticket.data, physicalErr)
+		if err == nil {
+			s.lastWasDataACK = false
+		}
 		return err
 	}
 	if ticket.control != nil {
 		_, err := s.terminal.finishWrite(ticket.control, physicalErr)
+		if err == nil {
+			s.lastWasDataACK = false
+		}
 		return err
 	}
 	if physicalErr == nil {
 		s.ackWritten = ticket.ackSerial
+		s.lastWasDataACK = true
 	}
 	return physicalErr
 }

@@ -54,6 +54,12 @@ func successorImportAllowed(source, dependency string) bool {
 		return offlineOperatorImportAllowed(source, dependency)
 	}
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	if source == "internal/domain/endpoint/publisher/snapshot_storage_linux.go" && (local == "internal/platform/artifacts" || local == "internal/application/document") {
+		return true
+	}
+	if source == "internal/application/document/localread/presentation_stage_linux.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	const localSnapshot = "internal/application/localsnapshot"
 	if local == localSnapshot {
 		return source == "internal/application/administration/local_document_publication.go" ||
@@ -76,7 +82,7 @@ func successorImportAllowed(source, dependency string) bool {
 		switch path.Base(source) {
 		case "read.go":
 			return local == "internal/application/document" || local == "internal/application/endpointstream" || local == "internal/application/endpointstream/client" || local == "internal/application/endpointstream/targetlink"
-		case "plain_text.go", "plain_text_test.go":
+		case "plain_text_test.go":
 			return local == "internal/application/document"
 		case "command_linux_test.go", "command_process_linux_test.go":
 			return local == "internal/application/document" || local == "internal/application/endpointstream"
@@ -237,7 +243,9 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/domain/connection/stream_io.go", "internal/domain/connection/stream_records.go",
 			"internal/domain/connection/attachment_records_test.go", "internal/domain/connection/stream_retirement_test.go",
 			"internal/domain/connection/reader_replacement.go", "internal/domain/connection/publisher_replacement.go",
-			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go":
+			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go",
+			"internal/domain/connection/segment_boundary_exchange.go", "internal/domain/connection/segment_boundary_exchange_test.go",
+			"internal/domain/connection/transfer/segment_drain_test.go", "internal/domain/connection/transfer_stream.go":
 			return true
 		default:
 			return false
@@ -642,7 +650,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/stream_qualification_linux.go" || source == "internal/domain/execution/runtime/stream_qualification_other.go" || source == "internal/domain/execution/runtime/stream_qualification_installed_linux_test.go") && dependency == modulePath+"/internal/application/streamqualification" {
 		return true
 	}
-	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
+	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go" || source == "internal/domain/connection/transfer_stream.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
@@ -672,6 +680,9 @@ func successorImportAllowed(source, dependency string) bool {
 	// mechanism boundary (#872). The routing-socket if_data64 byte counters wrap
 	// at 2^32 and are deliberately not used; the IFMIB totals preserve per-boot
 	// per-interface continuity.
+	if source == "internal/domain/endpoint/publisher/snapshot_stage_linux.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	if source == "internal/domain/hosting/counters/read_darwin.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}

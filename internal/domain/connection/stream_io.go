@@ -28,6 +28,9 @@ func (stream *Stream) Read(destination []byte) (int, error) {
 		err := stream.commitHandoff(func() error {
 			changed = stream.changeLocked()
 			n, readErr = stream.transfer.Peek(staged)
+			if n == 0 && readErr == nil && stream.segment != nil && stream.segment.complete(stream.transfer.Generation()) {
+				return transfer.ErrSegmentDraining
+			}
 			done = n != 0 || readErr != nil || len(destination) == 0
 			return nil
 		}, func() {
@@ -38,7 +41,7 @@ func (stream *Stream) Read(destination []byte) (int, error) {
 			}
 		})
 		if err != nil {
-			return deliverRead(destination, staged, n, readErr, err)
+			return deliverRead(destination, staged, n, readErr, stream.segmentTransitionError(err))
 		}
 		if done {
 			// Preserve the exact authenticated EOF sentinel for io.Reader.
@@ -73,6 +76,7 @@ func (stream *Stream) Write(body []byte) (int, error) {
 	for {
 		var changed <-chan struct{}
 		var stagedSize int
+		var rotate bool
 		var deliveryErr error
 		err := stream.commitHandoff(func() error {
 			if stream.settled || stream.transfer.InputClosed() {
@@ -82,18 +86,37 @@ func (stream *Stream) Write(body []byte) (int, error) {
 				return nil
 			}
 			size := min(len(body)-accepted, wire.MaximumDataBytes)
-			err := stream.transfer.CheckWrite(body[accepted : accepted+size])
+			if stream.segment != nil {
+				size = int(min(uint64(size), stream.transfer.SegmentSendRemaining()))
+				if size == 0 {
+					rotate = true
+					return nil
+				}
+			}
+			checkWrite := stream.transfer.CheckWrite
+			if stream.segment != nil {
+				checkWrite = stream.transfer.CheckSegmentWrite
+			}
+			err := checkWrite(body[accepted : accepted+size])
 			if errors.Is(err, transfer.ErrBackpressure) {
 				changed = stream.changeLocked()
 				return nil
 			}
 			if err != nil {
-				stream.failLocked(err)
+				if !errors.Is(err, transfer.ErrSegmentDraining) {
+					stream.failLocked(err)
+				}
 				return err
 			}
 			stagedSize = size
 			return nil
 		}, func() {
+			if rotate {
+				stream.segment.freeze(stream.transfer)
+				stream.signalLocked()
+				deliveryErr = transfer.ErrSegmentDraining
+				return
+			}
 			if stagedSize == 0 {
 				return
 			}
@@ -107,7 +130,7 @@ func (stream *Stream) Write(body []byte) (int, error) {
 		})
 		err = errors.Join(err, deliveryErr)
 		if err != nil || accepted == len(body) {
-			return accepted, err
+			return accepted, stream.segmentTransitionError(err)
 		}
 		if changed != nil {
 			stream.waitChange(changed)
@@ -121,12 +144,29 @@ func (stream *Stream) CloseInput() error {
 	}
 	stream.writeMu.Lock()
 	defer stream.writeMu.Unlock()
-	return stream.commit(func() error {
+	err := stream.commit(func() error {
 		if err := stream.transfer.CloseInput(); err != nil {
-			stream.failLocked(err)
+			if !errors.Is(err, transfer.ErrSegmentDraining) {
+				stream.failLocked(err)
+			}
 			return err
 		}
 		stream.signalLocked()
 		return nil
 	})
+	return stream.segmentTransitionError(err)
+}
+
+// Only a confirmed boundary can replace a physical closure with a signal to
+// continue. The transfer owner still waits for joined cleanup before resuming.
+func (stream *Stream) segmentTransitionError(err error) error {
+	if err == nil || errors.Is(err, transfer.ErrSegmentDraining) {
+		return err
+	}
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	if stream.segmentBoundary != nil && stream.failure == nil {
+		return transfer.ErrSegmentDraining
+	}
+	return err
 }

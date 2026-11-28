@@ -19,7 +19,11 @@ func PublishAndFindSnapshotWorker(t testing.TB, administrationSocket, endpointPI
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
 	defer cancel()
-	if _, err := administration.RequestSnapshot(ctx, administrationSocket, []byte("Endpoint replacement snapshot\n")); err != nil {
+	path := filepath.Join(t.TempDir(), "snapshot-input")
+	if err := os.WriteFile(path, []byte("Endpoint replacement snapshot\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := administration.PublishLocal(ctx, administrationSocket, path); err != nil {
 		t.Fatal("publish before replacement:", err)
 	}
 	if link, err := administration.RequestPublishedLink(ctx, administrationSocket); err != nil || link == "" {

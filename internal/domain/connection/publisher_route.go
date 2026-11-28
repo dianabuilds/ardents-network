@@ -34,6 +34,47 @@ func (route *publisherRecoveryRoute) check(owner *AuthenticatedAttachment) error
 // starting record actors. Publication must separately route private replacement
 // openings to this exact stream; this constructor grants no incoming acceptance.
 func (owner *AuthenticatedAttachment) OpenPublisherStream(contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope) (*Stream, error) {
+	return owner.openPublisherStream(contract, source, responder, nil, nil)
+}
+
+// OpenPublisherSegment admits a first segment or the exact next transition
+// under the original live publication. Its independently admitted Attachment
+// must authenticate the pending Resume before either record actor starts.
+func (owner *AuthenticatedAttachment) OpenPublisherSegment(ctx context.Context, contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope, previous *Stream) (*Stream, error) {
+	if ctx == nil || ctx.Err() != nil {
+		return nil, errContinuationRefused
+	}
+	opening := &segmentOpening{ctx: ctx, start: previous == nil}
+	if previous != nil {
+		opening.resolve = func(ticket [32]byte) (*Stream, error) {
+			if previous.segment == nil || previous.segment.ticket != ticket {
+				return nil, errContinuationRefused
+			}
+			return previous, nil
+		}
+	}
+	return owner.openPublisherStream(contract, source, responder, nil, opening)
+}
+
+// OpenPublisherTransferSegment resolves only endpoint-local tickets on an
+// already authenticated Attachment. The publisher runtime owns accepting slots.
+func (owner *AuthenticatedAttachment) OpenPublisherTransferSegment(ctx context.Context, contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope, allowStart func() error, resolve func([32]byte) (*Stream, error)) (*Stream, *Stream, error) {
+	opening := &segmentOpening{ctx: ctx, start: true, allowStart: allowStart, resolve: resolve}
+	stream, err := owner.openPublisherStream(contract, source, responder, nil, opening)
+	return stream, opening.selected, err
+}
+
+// PublisherTransferTicket is private to endpoint transfer dispatch. It is
+// never a Route identifier, diagnostic value, or admission credential.
+func (stream *Stream) PublisherTransferTicket() ([32]byte, error) {
+	if stream == nil || stream.self != stream || stream.owner == nil || stream.owner.role != wire.RolePublisher || stream.segment == nil ||
+		stream.segment.ticket == [32]byte{} {
+		return [32]byte{}, errContinuationRefused
+	}
+	return stream.segment.ticket, nil
+}
+
+func (owner *AuthenticatedAttachment) openPublisherStream(contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope, segment *segmentBoundaryExchange, opening *segmentOpening) (*Stream, error) {
 	route := &publisherRecoveryRoute{source: source, responder: responder}
 	if err := route.check(owner); err != nil {
 		return nil, err
@@ -47,7 +88,7 @@ func (owner *AuthenticatedAttachment) OpenPublisherStream(contract executionrunt
 	if err := responder.Commit(func(checkOriginal func() error) error { return checkOriginal() }); err != nil {
 		return nil, err
 	}
-	return owner.openStream(contract, route, nil)
+	return owner.openStreamWithSegment(contract, route, nil, segment, opening)
 }
 
 // The physical handle is acquired only after Connection reserves its finite

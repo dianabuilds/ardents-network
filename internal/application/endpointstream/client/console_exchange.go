@@ -15,8 +15,6 @@ func ConnectLocalStream(ctx context.Context, socket, linkFile string) error {
 	if err := checkHost(); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(ctx, endpointstream.ReaderTimeout)
-	defer cancel()
 	link, err := targetlink.ReadPrivate(linkFile)
 	if err != nil {
 		return err

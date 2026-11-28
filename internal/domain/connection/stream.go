@@ -19,38 +19,43 @@ import (
 // Recovery source composition and replacement are additional admission work,
 // not permission to expose an incompletely composed ordinary Service path.
 type Stream struct {
-	self              *Stream
-	owner             *AuthenticatedAttachment
-	contract          executionruntime.StreamContract
-	ctx               context.Context
-	cancel            context.CancelFunc
-	mu                sync.Mutex
-	changed           chan struct{} // Stream.mu owns notification replacement.
-	writeMu           sync.Mutex
-	transfer          *transfer.State
-	key               [32]byte
-	failure           error
-	closing           bool
-	settled           bool
-	outcome           chan endpointstream.Outcome
-	records           *attachmentRecords
-	publisherRoute    *publisherRecoveryRoute
-	initiatorRoute    *InitiatorSource
-	recipientRevision uint64
-	recoveryUsers     sync.WaitGroup
-	joined            chan struct{}
-	settledDone       chan struct{}
-	watcherDone       chan struct{}
-	stop              sync.Once
-	closeErr          error
-	cleanupErr        error
-	lastProgress      time.Time
-	recovery          *transfer.RecoveryEpisode
-	publisherProposal *PublisherReplacement
-	initiatorProposal *initiatorReplacement
-	prepareUsers      sync.WaitGroup
-	recoveryCleanup   error
-	recoveryLoss      error // First retired Attachment work failure, not logical permission.
+	self                      *Stream
+	owner                     *AuthenticatedAttachment
+	contract                  executionruntime.StreamContract
+	ctx                       context.Context
+	cancel                    context.CancelFunc
+	mu                        sync.Mutex
+	changed                   chan struct{} // Stream.mu owns notification replacement.
+	writeMu                   sync.Mutex
+	transfer                  *transfer.State
+	segment                   *segmentBoundaryExchange
+	segmentBoundary           *retiredSegmentBoundary
+	plannedDrainAt            time.Time
+	readerContinuationClaimed bool
+	pendingPublisher          *continuationClaim
+	key                       [32]byte
+	failure                   error
+	closing                   bool
+	settled                   bool
+	outcome                   chan endpointstream.Outcome
+	records                   *attachmentRecords
+	publisherRoute            *publisherRecoveryRoute
+	initiatorRoute            *InitiatorSource
+	recipientRevision         uint64
+	recoveryUsers             sync.WaitGroup
+	joined                    chan struct{}
+	settledDone               chan struct{}
+	watcherDone               chan struct{}
+	stop                      sync.Once
+	closeErr                  error
+	cleanupErr                error
+	lastProgress              time.Time
+	recovery                  *transfer.RecoveryEpisode
+	publisherProposal         *PublisherReplacement
+	initiatorProposal         *initiatorReplacement
+	prepareUsers              sync.WaitGroup
+	recoveryCleanup           error
+	recoveryLoss              error // First retired Attachment work failure, not logical permission.
 }
 
 // OpenStream consumes the exact completed initial authentication once and
@@ -61,14 +66,35 @@ func (owner *AuthenticatedAttachment) OpenStream(contract executionruntime.Strea
 }
 
 func (owner *AuthenticatedAttachment) openStream(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource) (*Stream, error) {
-	if owner == nil || owner.self != owner {
+	return owner.openStreamWithSegment(contract, publisherRoute, initiatorRoute, nil, nil)
+}
+
+func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionruntime.StreamContract, publisherRoute *publisherRecoveryRoute, initiatorRoute *InitiatorSource, segment *segmentBoundaryExchange, opening *segmentOpening) (_ *Stream, result error) {
+	if owner == nil || owner.self != owner || segment != nil && opening != nil {
 		return nil, errIntegrity
+	}
+	owner.streamStart.Lock()
+	defer owner.streamStart.Unlock()
+	owner.mu.Lock()
+	unavailable := owner.closed || owner.consumed || owner.key == [32]byte{}
+	owner.mu.Unlock()
+	if unavailable {
+		return nil, errIntegrity
+	}
+	if opening != nil {
+		// A refused or incomplete Resume retires the same Attachment. A
+		// subsequent ordinary OpenStream cannot consume the rejected flight.
+		defer func() {
+			if result != nil {
+				result = errors.Join(result, owner.Close())
+			}
+		}()
 	}
 	sendLimit, receiveLimit, err := contract.Limits(owner.operation)
 	if err != nil {
 		return nil, err
 	}
-	flow, err := transfer.New(1, sendLimit, receiveLimit)
+	flow, err := transfer.New(initialAttachmentGeneration, sendLimit, receiveLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +102,19 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 	// handoff barrier and the consumer's state mutex.
 	if err := errors.Join(owner.check(), publisherRoute.check(owner)); err != nil {
 		return nil, err
+	}
+	if opening != nil {
+		segment, err = opening.confirm(owner)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if segment != nil && segment.localInputEnded() {
+		// The new Connection authenticates its zero-byte direction as closed.
+		// The original Application input cannot reopen at a segment boundary.
+		if err := flow.CloseInput(); err != nil {
+			return nil, err
+		}
 	}
 	var stream *Stream
 	handoff := func(checkOriginal func() error) error {
@@ -94,9 +133,14 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 			return errors.Join(errIntegrity, err)
 		}
 		ctx, cancel := context.WithCancel(owner.context())
-		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, publisherRoute: publisherRoute,
+		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, transfer: flow, segment: segment, publisherRoute: publisherRoute,
 			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan endpointstream.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
 		stream.self = stream
+		if segment != nil {
+			// Reserve a complete bounded control flight before the unchanged
+			// recovery cutoff. Active I/O may still use the original lifetime.
+			stream.plannedDrainAt = time.Unix(owner.identity.NoNewRecoveryAfter, 0).Add(-15 * time.Second)
+		}
 		if initiatorRoute != nil {
 			initiatorRoute.mu.Lock()
 			if err := initiatorRoute.localLocked(); err != nil || initiatorRoute.owner != owner || initiatorRoute.stream != nil || owner.role != wire.RoleInitiator || publisherRoute != nil {
@@ -105,11 +149,14 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 				return errors.Join(errIntegrity, err)
 			}
 			initiatorRoute.stream = stream
+			// The live segment retains only absolute positions and its own
+			// current ticket, never a chain of retired Connections.
+			initiatorRoute.previous = nil
 			initiatorRoute.mu.Unlock()
 		}
 		owner.consumed = true
 		clear(owner.key[:])
-		stream.records = &attachmentRecords{generation: 1,
+		stream.records = &attachmentRecords{generation: initialAttachmentGeneration,
 			physical:   attachmentIO{owner: owner, initiator: owner.initiator, service: owner.service, context: owner.attachment},
 			readerDone: make(chan struct{}), writerDone: make(chan struct{}), retired: make(chan struct{}), replaced: make(chan struct{})}
 		go stream.readRecords(stream.records)
@@ -201,6 +248,7 @@ func (stream *Stream) commitHandoff(action func() error, delivery func()) (resul
 		// Clean outcome is an Application handoff too. It follows the final
 		// original checks and any byte delivery, never an unfinished action.
 		stream.settleLocked()
+		stream.requestTimedDrainLocked(time.Now())
 		return nil
 	}
 	if stream.publisherRoute != nil {

@@ -23,6 +23,8 @@ type HeadlessPlan struct {
 	ApplicationSocket       string         `json:"application_socket"`
 	AdministrationSocket    string         `json:"administration_socket"`
 	PublicationRoot         string         `json:"publication_root"`
+	SnapshotRoot            string         `json:"snapshot_root,omitempty"`
+	SnapshotQuotaBytes      int64          `json:"snapshot_quota_bytes,omitempty"`
 	ServiceInstanceRoot     string         `json:"service_instance_root"`
 	NetworkID               string         `json:"network_id"`
 	NetworkAuthorities      []string       `json:"network_authorities"`

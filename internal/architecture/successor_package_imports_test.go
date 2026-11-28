@@ -111,6 +111,12 @@ var successorPackageImports = map[string][]string{
 
 // Apply the exact package edges after the special file-scoped rules.
 func successorDomainPackageImport(source, dependency, owner string) bool {
+	if source == "internal/domain/endpoint/publisher/snapshot_storage_linux_test.go" && dependency == modulePath+"/internal/domain/execution" {
+		return true
+	}
+	if source == "internal/domain/endpoint/publisher/byte_stream_unix.go" && dependency == modulePath+"/internal/domain/connection" {
+		return true
+	}
 	// Only the public facts projection may consume Network's value vocabulary;
 	// State, its witness and other Admission files remain outside this edge.
 	if owner == "internal/domain/admission" && dependency == modulePath+"/internal/domain/network" {

@@ -20,8 +20,8 @@ import (
 
 // Histories, selection and shared Hosting remain Reader-owned through the
 // original Connection's joined retirement. No failed opening redraws a set.
-func openSource(operation *executionruntime.Operation, plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared *funding.Parents) (_ *connection.InitiatorSource, closeSource func() error, result error) {
-	if operation == nil || operation.CheckReader() != nil || plan.Domain != 1 || !authority.Available() || holder == nil {
+func openSource(ctx context.Context, operation *executionruntime.Operation, plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared *funding.Parents, continuation *connection.ReaderContinuation) (_ *connection.InitiatorSource, closeSource func() error, result error) {
+	if ctx == nil || ctx.Err() != nil || operation == nil || operation.CheckReader() != nil || plan.Domain != 1 || !authority.Available() || holder == nil {
 		return nil, nil, errors.New("original document Reader composition is unavailable")
 	}
 	if shared != nil && !shared.Matches(plan) {
@@ -97,13 +97,18 @@ func openSource(operation *executionruntime.Operation, plan funding.Plan, author
 	if err != nil {
 		return nil, nil, err
 	}
-	source, err = connection.NewInitiatorSource(connection.InitiatorSourceConfig{Operation: operation, Source: physical,
+	config := connection.InitiatorSourceConfig{Operation: operation, Source: physical,
 		PrepareRoute: flow.PrepareRoute,
 		PrepareSource: func(caller context.Context) (prefix.Config, error) {
 			return funding.PrepareSelectedPrefix(caller, plan, leg, budget, authority, holder)
 		},
 		History: history, Rendezvous: choice, TargetLink: target, Network: leg.Profile.Network, Profile: leg.Profile.Digest,
-		WorkSafetyNotAfter: plan.Deadline, WorkSafetyMaximum: plan.Deadline, NoNewRecoveryAfter: plan.Deadline.Add(-5 * time.Second), Exclusions: plan.Exclusions})
+		WorkSafetyNotAfter: plan.Deadline, WorkSafetyMaximum: plan.Deadline, NoNewRecoveryAfter: plan.Deadline.Add(-5 * time.Second), Exclusions: plan.Exclusions}
+	if continuation == nil {
+		source, err = connection.NewInitiatorSource(config)
+	} else {
+		source, err = connection.NewContinuedInitiatorSource(config, continuation)
+	}
 	if err != nil {
 		return nil, nil, err
 	}

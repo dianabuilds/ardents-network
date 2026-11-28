@@ -22,6 +22,7 @@ type AuthenticatedAttachment struct {
 	identity                           wire.LogicalIdentity
 	logical, attachment, key, exporter [32]byte
 	mu                                 sync.Mutex
+	streamStart                        sync.Mutex // Serializes the initial flight before record actors.
 	consumed, closed                   bool
 	once                               sync.Once
 	closeErr                           error

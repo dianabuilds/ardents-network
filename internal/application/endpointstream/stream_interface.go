@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// ReaderTimeout bounds one local Reader setup and exchange. It is measured
-// once before dialing or at server acceptance, never renewed between phases.
+// ReaderTimeout bounds the initial local Reader setup. An accepted transfer
+// retains the original caller lifetime and separately bounded Connections.
 const ReaderTimeout = 60 * time.Second
 
-// ByteStreamDirectionalLimit is the total bytes admitted per direction.
-const ByteStreamDirectionalLimit uint64 = 4 << 20
+// ByteStreamSegmentDirectionalLimit bounds one Connection segment per direction.
+const ByteStreamSegmentDirectionalLimit uint64 = 4 << 20
 
 // Stream is one authenticated opaque Application byte stream. Read and Write
 // may proceed concurrently; the transport splits writes into frames of at

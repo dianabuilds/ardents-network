@@ -15,7 +15,17 @@ import (
 // NextStream consumes one initial authentication and retains its original
 // Source/Responder replacement scope before handing the stream to Execution.
 // Publication retains physical retirement even after the Application completes.
-func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.StreamContract) (_ *connection.Stream, result error) {
+func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.StreamContract) (*connection.Stream, error) {
+	return p.nextStream(ctx, contract, false, nil)
+}
+
+// NextSegment authenticates a new independent opening for the original
+// publication, then admits exactly the specified confirmed transfer boundary.
+func (p *Publisher) NextSegment(ctx context.Context, contract executionruntime.StreamContract, previous *connection.Stream) (*connection.Stream, error) {
+	return p.nextStream(ctx, contract, true, previous)
+}
+
+func (p *Publisher) nextStream(ctx context.Context, contract executionruntime.StreamContract, segmented bool, previous *connection.Stream) (_ *connection.Stream, result error) {
 	if p == nil || p.self != p || ctx == nil {
 		return nil, errors.New("publisher stream caller is absent")
 	}
@@ -27,15 +37,25 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 	p.flights.Add(1)
 	p.mu.Unlock()
 	defer p.flights.Done()
-	owner, err := p.NextAuthentication(ctx)
-	if err != nil {
-		return nil, err
-	}
-	stream, err := owner.OpenPublisherStream(contract, p.sourceScope, p.responderScope)
-	if err != nil {
+	var stream *connection.Stream
+	for {
+		owner, err := p.NextAuthentication(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if segmented {
+			stream, err = owner.OpenPublisherSegment(ctx, contract, p.sourceScope, p.responderScope, previous)
+		} else {
+			stream, err = owner.OpenPublisherStream(contract, p.sourceScope, p.responderScope)
+		}
+		if err == nil {
+			break
+		}
 		cleanup := owner.Close()
 		p.config.Operation.RetainCleanup(cleanup)
-		return nil, errors.Join(err, cleanup)
+		if !segmented || !connection.IsTransferOpeningRefused(err) || cleanup != nil || ctx.Err() != nil {
+			return nil, errors.Join(err, cleanup)
+		}
 	}
 	defer func() {
 		if result != nil {
@@ -43,12 +63,19 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 			p.config.Operation.RetainCleanup(stream.JoinedCleanup())
 		}
 	}()
-	logical, err := stream.PublisherContext()
-	if err != nil {
+	if err := p.retainStream(ctx, stream); err != nil {
 		return nil, err
 	}
+	return stream, nil
+}
+
+func (p *Publisher) retainStream(ctx context.Context, stream *connection.Stream) error {
+	logical, err := stream.PublisherContext()
+	if err != nil {
+		return err
+	}
 	if err := p.check(ctx); err != nil {
-		return nil, err
+		return err
 	}
 	if err := p.responderScope.Commit(func(checkOriginal func() error) error {
 		p.mu.Lock()
@@ -63,10 +90,10 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 		p.connectionUsers.Add(1)
 		return nil
 	}); err != nil {
-		return nil, err
+		return err
 	}
 	go p.watchConnection(logical, stream)
-	return stream, nil
+	return nil
 }
 
 // stoppedAcquisition identifies only this owner's idle acquisition retirement.

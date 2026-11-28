@@ -26,6 +26,12 @@ func (owner *workerMultiplexer) nextFrame() (workerFrame, bool) {
 		if !stream.ready || stream.sentEOF {
 			continue
 		}
+		if owner.initial.sourced && len(stream.output) == 0 && !stream.sourceEnded {
+			if stream.sendCredit > 0 && !stream.sourceWaiting {
+				return workerFrame{kind: sourceRequestFrame, id: stream.id, current: stream}, true
+			}
+			continue
+		}
 		if stream.offset == len(stream.header)+len(stream.output) {
 			return workerFrame{kind: 4, id: stream.id, current: stream}, true
 		}
@@ -50,12 +56,19 @@ func (owner *workerMultiplexer) sent(frame workerFrame) {
 	case 2:
 		stream.offset += len(frame.body)
 		stream.sendCredit -= uint32(len(frame.body))
+		if owner.initial.sourced && stream.offset == len(stream.output) {
+			// The frame writer may still own this block. Drop our reference.
+			stream.output = nil
+			stream.offset = 0
+		}
 	case 3:
 		stream.receiveCredit += binary.BigEndian.Uint32(frame.body)
 	case 4:
 		stream.sentEOF = true
 	case 5:
 		stream.closeSent = true
+	case sourceRequestFrame:
+		stream.sourceWaiting = true
 	case 6:
 		owner.resultAnnounced = true
 		stream.header = nil

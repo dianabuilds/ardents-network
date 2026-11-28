@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/domain/publication/runtime"
 )
@@ -29,25 +30,36 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 		defer stop()
 		ctx = lifetime
 	}
-	contract, err := operation.BindStreamContract(endpointstream.ByteStreamDirectionalLimit, endpointstream.ByteStreamDirectionalLimit)
+	contract, err := operation.BindStreamContract(endpointstream.ByteStreamSegmentDirectionalLimit, endpointstream.ByteStreamSegmentDirectionalLimit)
 	if err != nil {
 		return err
 	}
-	stream, err := publisher.NextStream(ctx, contract)
+	open := func(ctx context.Context, previous *connection.Stream) (*connection.Stream, func() error, error) {
+		segment, err := publisher.NextSegment(ctx, contract, previous)
+		if err != nil {
+			return nil, nil, err
+		}
+		release := func() error {
+			err := segment.Close()
+			operation.RetainCleanup(segment.JoinedCleanup())
+			return err
+		}
+		return segment, release, nil
+	}
+	first, release, err := open(ctx, nil)
 	if err != nil {
 		if publisher.StreamAcquisitionStopped(err) {
 			return nil
 		}
 		return err
 	}
-	defer func() {
-		_ = stream.Close()
-		operation.RetainCleanup(stream.JoinedCleanup())
-	}()
-	exchange, cancel := context.WithTimeout(ctx, endpointstream.ReaderTimeout)
-	defer cancel()
+	stream, err := connection.OpenTransfer(ctx, first, release, open)
+	if err != nil {
+		return errors.Join(err, release())
+	}
+	defer stream.Close()
 	phase = "Publisher worker exchange failed"
-	if err := operation.ExchangeByteStream(exchange, contract, port, stream); err != nil {
+	if err := operation.ExchangeByteStream(ctx, contract, port, stream); err != nil {
 		return err
 	}
 	phase = "Publisher did not obtain authenticated terminal completion"
@@ -56,19 +68,8 @@ func serveByteStream(ctx context.Context, publisher *publicationruntime.Publishe
 		if !open || outcome.Class != endpointstream.CleanClose {
 			return errors.New("authenticated byte stream did not complete")
 		}
-	case <-exchange.Done():
-		return exchange.Err()
-	}
-	phase = "Publisher could not join the original stream"
-	// The initiator can still be exchanging final authenticated controls.
-	// Keep the original Publication and Instance until that attachment joins.
-	select {
-	case <-stream.Joined():
-		if err := stream.JoinedCleanup(); err != nil {
-			return err
-		}
-	case <-exchange.Done():
-		return exchange.Err()
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 	phase = "Publisher could not withdraw the completed stream"
 	return publisher.Withdraw(ctx)

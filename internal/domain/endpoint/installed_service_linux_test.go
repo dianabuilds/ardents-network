@@ -13,7 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
 )
 
-func installedServiceNetwork(t *testing.T, carrier string) (*networkAdmissionFixture, *descriptorstore.Store) {
+func installedServiceNetwork(t *testing.T, carrier string, evidence ...*installedReceiverEvidence) (*networkAdmissionFixture, *descriptorstore.Store) {
 	f, reservations, certificates := publicationRouteNetwork(t, transport.CarrierProfile(carrier), true)
 	store, err := descriptorstore.Open(descriptorstore.Config{Root: t.TempDir(), Network: f.profile.NetworkID})
 	if err != nil {
@@ -24,7 +24,11 @@ func installedServiceNetwork(t *testing.T, carrier string) (*networkAdmissionFix
 			t.Error(err)
 		}
 	})
-	installedPublisherReceivers(t, f, reservations, certificates, store)
+	var observed *installedReceiverEvidence
+	if len(evidence) == 1 {
+		observed = evidence[0]
+	}
+	installedPublisherReceiversObserved(t, f, reservations, certificates, store, observed, nil, nil)
 	return f, store
 }
 

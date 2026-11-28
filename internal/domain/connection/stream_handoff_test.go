@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/domain/execution/runtime"
 )
 
@@ -95,5 +96,71 @@ func TestReadDeliveryPreservesAcceptedBytesAndExactEOF(t *testing.T) {
 	}
 	if count, err := deliverRead(destination, nil, 0, io.EOF, context.Canceled); count != 0 || !errors.Is(err, io.EOF) || !errors.Is(err, context.Canceled) {
 		t.Fatal("failed final fence lost original causes", count, err)
+	}
+}
+
+func TestApplicationTransferRetainsFinalSegmentUntilJoined(t *testing.T) {
+	segment := &Stream{
+		owner:   &AuthenticatedAttachment{},
+		segment: &segmentBoundaryExchange{base: wire.SegmentBoundary{Next: 1}},
+		outcome: make(chan endpointstream.Outcome),
+		joined:  make(chan struct{}),
+	}
+	segment.self = segment
+	released := false
+	transfer, err := OpenTransfer(t.Context(), segment, func() error {
+		released = true
+		return nil
+	}, func(context.Context, *Stream) (*Stream, func() error, error) {
+		t.Error("final Application outcome reopened a segment")
+		return nil, nil, errIntegrity
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	segment.outcome <- endpointstream.Outcome{Class: endpointstream.CleanClose}
+	select {
+	case <-transfer.Done():
+		t.Fatal("Application outcome escaped before final segment joined")
+	default:
+	}
+	close(segment.joined)
+	if got := <-transfer.Done(); got.Class != endpointstream.CleanClose || !released {
+		t.Fatalf("final outcome %v before clean release: %v", got.Class, released)
+	}
+	if err := transfer.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestApplicationTransferRefusesNextSegmentWithoutConfirmedBoundary(t *testing.T) {
+	segment := &Stream{
+		owner:   &AuthenticatedAttachment{},
+		segment: &segmentBoundaryExchange{base: wire.SegmentBoundary{Next: 1}},
+		outcome: make(chan endpointstream.Outcome),
+		joined:  make(chan struct{}),
+	}
+	segment.self = segment
+	close(segment.joined)
+	close(segment.outcome)
+	transfer, err := OpenTransfer(t.Context(), segment, func() error { return nil },
+		func(context.Context, *Stream) (*Stream, func() error, error) {
+			t.Error("a physically closed segment authorized an unconfirmed continuation")
+			return nil, nil, errIntegrity
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := <-transfer.Done(); got.Class != endpointstream.IndeterminateFailure {
+		t.Fatalf("unconfirmed close outcome = %v", got.Class)
+	}
+	if err := transfer.Close(); !errors.Is(err, errContinuationRefused) {
+		t.Fatalf("terminal error = %v", err)
+	}
+}
+
+func TestContinuedSourceRequiresOriginalClaimBeforeOpening(t *testing.T) {
+	if source, err := NewContinuedInitiatorSource(InitiatorSourceConfig{}, nil); source != nil || !errors.Is(err, errContinuationRefused) {
+		t.Fatalf("unclaimed continuation supplied a Source: %v", err)
 	}
 }

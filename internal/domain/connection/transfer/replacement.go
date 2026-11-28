@@ -56,6 +56,7 @@ func (p *Replacement) Commit() {
 	p.owner.send.finishReplacement(p.send)
 	p.owner.send, p.owner.receive, p.owner.terminal = p.send, p.receive, p.terminal
 	p.owner.ackWritten = p.owner.ackSerial
+	p.owner.lastWasDataACK = false
 	p.owner = nil
 }
 

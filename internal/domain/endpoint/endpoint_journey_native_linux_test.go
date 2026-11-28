@@ -8,7 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -20,8 +20,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
+	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 
 // This native qualification proves the two-Endpoint platform-led document journey
@@ -104,8 +107,12 @@ func TestNativeEndpointRealHostPublication(t *testing.T) {
 	body := []byte("one platform-led request on a real admitted host manager\n")
 	exercise := func(p endpointfixture.JourneyParticipant) {
 		socket := filepath.Join(p.Base, "administration", "socket")
+		path := filepath.Join(t.TempDir(), "snapshot-input")
+		if err := os.WriteFile(path, body, 0600); err != nil {
+			t.Fatal(err)
+		}
 		ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
-		_, err := administration.RequestSnapshot(ctx, socket, body)
+		err := administration.PublishLocal(ctx, socket, path)
 		cancel()
 		if err != nil {
 			endpointfixture.DumpJourneyJournal(t)
@@ -142,14 +149,33 @@ func TestNativeEndpointRealHostPublication(t *testing.T) {
 // route network and signing authority, and coordinates the publish/link/read/
 // withdraw/restart journey over the local fixture channel.
 func TestNativeEndpointPlatformLedJourney(t *testing.T) {
-	runNativeEndpointPlatformLedJourney(t, false)
+	runNativeEndpointPlatformLedJourney(t, false, nil, false)
 }
 
 func TestNativeInstalledEndpointByteStream(t *testing.T) {
-	runNativeEndpointPlatformLedJourney(t, true)
+	runNativeEndpointPlatformLedJourney(t, true, nil, false)
 }
 
-func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
+// Both installed drivers allow the original ten-minute publication to report
+// its own outcome, plus setup and joined cleanup outside that product lifetime.
+const fullInstalledJourneyParticipantTimeout = 12 * time.Minute
+
+func TestNativeEndpointSegmentedInstalledPair(t *testing.T) {
+	payload := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)
+	t.Run("bidirectional", func(t *testing.T) {
+		streams := [2]endpointfixture.JourneyStream{
+			{Bytes: payload, Seed: 1},
+			{Bytes: payload, Seed: 2, BytesPerSecond: 512 << 10},
+		}
+		runNativeEndpointPlatformLedJourney(t, true, &streams, false)
+	})
+	t.Run("published-binary-file", func(t *testing.T) {
+		streams := [2]endpointfixture.JourneyStream{{Bytes: payload, Seed: 3}, {}}
+		runNativeEndpointPlatformLedJourney(t, true, &streams, true)
+	})
+}
+
+func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams *[2]endpointfixture.JourneyStream, filePublication bool) {
 	if os.Geteuid() != 0 {
 		t.Fatal("endpoint platform-led journey qualification requires a root driver")
 	}
@@ -167,13 +193,24 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	buildCache := endpointfixture.GoEnv(t, "GOCACHE")
 	base := endpointfixture.EnsurePairBaseRootfs(t)
 	carrier := string(transport.ClosedCarrierTCP)
-	f, _ := installedServiceNetwork(t, carrier)
+	var spends *installedRecoverySpends
+	if streams != nil {
+		spends = &installedRecoverySpends{}
+	}
+	f, _ := installedServiceNetwork(t, carrier, &installedReceiverEvidence{recovery: spends})
 	network := endpointfixture.BuildSignedNetwork(t, f.spec)
 	guestBinary := journeyCompileParticipant(t, repoRoot)
 	// Prebuild the canonical consumer and static worker on the host so the guests
 	// do not repeat Go builds under shared-host load; the publication deadlines
 	// are finite and must not be weakened to absorb build contention.
 	nextBinary, workerBinary := journeyPrebuildBinaries(t, repoRoot)
+	participantTimeout := 6 * time.Minute
+	if streams != nil {
+		participantTimeout = fullInstalledJourneyParticipantTimeout
+		if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
+			t.Fatal("invalid environment: full installed transfer needs sixteen minutes in the original token hour")
+		}
+	}
 	runID := fmt.Sprintf("%d-%d", os.Getpid(), time.Now().UnixNano())
 	var guests [2]*endpointfixture.PairGuest
 	for i, label := range []string{"pub", "read"} {
@@ -224,7 +261,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		// Keep the mutable root short: the application/administration Unix socket
 		// paths below it must fit the kernel sun_path bound (108 bytes).
 		guestRoot := filepath.Join("/var/lib/ardents", "journey-"+hex.EncodeToString(nonce[:6]))
-		script := fmt.Sprintf("cd %s/tests/e2e/endpointinstalled && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=6m", repoRoot)
+		script := fmt.Sprintf("cd %s/tests/e2e/endpointinstalled && /root/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=%s", repoRoot, participantTimeout)
 		command := exec.Command("systemd-run", "-M", guest.Name(), "--pipe", "--quiet",
 			"--setenv=PATH=/usr/local/go/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"--setenv=GOTOOLCHAIN=local",
@@ -251,7 +288,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			t.Fatalf("journey participant %s did not connect: %v\n%s", role, err, outputs[i].String())
 		}
 		peers[i] = conn
-		_ = conn.SetDeadline(time.Now().Add(6 * time.Minute))
+		_ = conn.SetDeadline(time.Now().Add(participantTimeout))
 		hello := endpointfixture.ReceivePairMessage(t, conn)
 		if hello.Operation != "hello" || hello.Role != role || hello.Nonce != hex.EncodeToString(nonce[:]) {
 			t.Fatal("foreign journey fixture client")
@@ -275,7 +312,14 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 		publishOperation = "stream-publish"
 		body = bytes.Repeat([]byte{0, 255, 128, 7}, 8192)
 	}
-	publication := exchange(0, endpointfixture.PairMessage{Operation: publishOperation, Body: body})
+	publish := endpointfixture.PairMessage{Operation: publishOperation, Body: body}
+	if streams != nil {
+		publish.Body, publish.Stream = nil, &streams[0]
+		if filePublication {
+			publish.Operation = "file-publish"
+		}
+	}
+	publication := exchange(0, publish)
 	if publication.Link == "" {
 		t.Fatal("installed publisher supplied no Link")
 	}
@@ -290,14 +334,51 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 	}
 	if byteStream {
 		sent := bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000)
-		read := exchange(1, endpointfixture.PairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent})
-		received := exchange(0, endpointfixture.PairMessage{Operation: "stream-result"})
-		if read.Failure != "" || received.Failure != "" {
-			t.Fatalf("installed byte stream stopped (received %d/%d bytes): reader %s; publisher %s", len(read.Body), len(received.Body), read.Failure, received.Failure)
+		request := endpointfixture.PairMessage{Operation: "stream-connect", Link: publication.Link, Body: sent}
+		if streams != nil {
+			request.Body, request.Stream = nil, &streams[1]
 		}
-		if read.Original != identities[1] || received.Original != identities[0] ||
-			!bytes.Equal(read.Body, body) || !bytes.Equal(received.Body, sent) {
-			t.Fatal("installed byte-stream exchange changed bytes or original Endpoint identities")
+		var before [2]uint64
+		if streams != nil {
+			before = sampleTransferRSS(t, exchange, identities)
+		}
+		started := time.Now()
+		read := exchange(1, request)
+		results := []endpointfixture.PairMessage{read}
+		if filePublication {
+			if withdrawn := exchange(0, endpointfixture.PairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
+				t.Fatal("file was withdrawn by a different invocation")
+			}
+		} else {
+			results = append(results, exchange(0, endpointfixture.PairMessage{Operation: "stream-result"}))
+		}
+		for i, result := range results {
+			if result.Failure != "" || result.Original != identities[1-i] {
+				var received int64
+				if result.Proof != nil {
+					received = result.Proof.Bytes
+				}
+				t.Fatalf("installed stream direction %d failed or changed invocation after %d bytes: %s", i, received, result.Failure)
+			}
+			if streams == nil {
+				if !bytes.Equal(result.Body, [][]byte{body, sent}[i]) {
+					t.Fatal("installed byte-stream exchange changed bytes")
+				}
+				continue
+			}
+			expected := endpointfixture.NewJourneyStreamOutput()
+			if _, err := io.Copy(expected, streams[i].Reader()); err != nil {
+				t.Fatal(err)
+			}
+			if result.Proof == nil || *result.Proof != expected.Proof() || len(result.Body) != 0 {
+				t.Fatalf("installed stream direction %d differs: observed %+v, expected %+v", i, result.Proof, expected.Proof())
+			}
+		}
+		if duration := time.Since(started); streams != nil && !filePublication && duration <= 60*time.Second {
+			t.Fatalf("installed local-pair stream completed within the old Reader window: %s", duration)
+		}
+		if streams != nil {
+			logTransferRSS(t, before, sampleTransferRSS(t, exchange, identities))
 		}
 		for i := range peers {
 			exchange(i, endpointfixture.PairMessage{Operation: "finish"})
@@ -306,6 +387,9 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool) {
 			if err != nil {
 				t.Fatalf("byte-stream participant did not join: %v: %s", err, &outputs[i])
 			}
+		}
+		if spends != nil {
+			requireTransferAccounting(t, spends, streams[0].Bytes)
 		}
 		t.Log("two independently admitted installed Endpoints exchanged byte-equal data in both directions via the public CLI")
 		return
@@ -417,6 +501,27 @@ const (
 // privacy qualification. The transitional guarded-start/ACK/recovery
 // orchestration is neither exercised nor retired (ADR-0125 D6).
 func TestNativeEndpointCrossHostJourney(t *testing.T) {
+	runNativeEndpointCrossHostJourney(t, nil, false)
+}
+
+func TestNativeInstalledEndpointByteStreamContinuation(t *testing.T) {
+	bytesPerDirection := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)
+	streams := [2]endpointfixture.JourneyStream{
+		{Bytes: bytesPerDirection, Seed: 1},
+		{Bytes: bytesPerDirection, Seed: 2, BytesPerSecond: 512 << 10},
+	}
+	runNativeEndpointCrossHostJourney(t, &streams, false)
+}
+
+func TestNativeInstalledEndpointBinaryFileContinuation(t *testing.T) {
+	streams := [2]endpointfixture.JourneyStream{
+		{Bytes: int64(admission.ForwardClass.ByteLimit()) + (1 << 20), Seed: 3},
+		{},
+	}
+	runNativeEndpointCrossHostJourney(t, &streams, true)
+}
+
+func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture.JourneyStream, filePublication bool) {
 	if os.Geteuid() != 0 {
 		t.Fatal("cross-host journey qualification requires a root driver on the controller host")
 	}
@@ -440,7 +545,11 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 	t.Cleanup(func() { routeFixtureBindHost = previousBind })
 
 	carrier := string(transport.ClosedCarrierTCP)
-	f, store := installedServiceNetwork(t, carrier)
+	var spends *installedRecoverySpends
+	if streams != nil {
+		spends = &installedRecoverySpends{}
+	}
+	f, store := installedServiceNetwork(t, carrier, &installedReceiverEvidence{recovery: spends})
 	network := endpointfixture.BuildSignedNetwork(t, f.spec)
 	for _, node := range f.spec.Nodes {
 		t.Logf("fixture route node %d endpoint %s", node.NodeID[0], node.Endpoint)
@@ -455,7 +564,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 
 	repoRoot := endpointfixture.RepositoryRoot(t)
 	participantBinary, nextBinary, workerBinary := journeyCrossHostBinaries(t, repoRoot)
-	const participantTimeout = 12 * time.Minute
+	const participantTimeout = fullInstalledJourneyParticipantTimeout
 	// The existing refresh oracle needs the original token hour throughout the
 	// refresh and signed-predecessor overlap. Check after the cold build.
 	if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
@@ -644,6 +753,58 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			t.Fatal("participants share a declared principal")
 		}
 	}
+	if streams != nil {
+
+		before := sampleTransferRSS(t, exchange, identities)
+		publicationCommand := "stream-publish"
+		if filePublication {
+			publicationCommand = "file-publish"
+		}
+		published := exchange(0, endpointfixture.PairMessage{Operation: publicationCommand, Stream: &streams[0]})
+		if published.Link == "" || published.Original != identities[0] {
+			t.Fatal("installed stream publisher supplied no Link for its original invocation")
+		}
+		started := time.Now()
+		read := exchange(1, endpointfixture.PairMessage{Operation: "stream-connect", Link: published.Link, Stream: &streams[1]})
+		results := []endpointfixture.PairMessage{read}
+		if filePublication {
+			if withdrawn := exchange(0, endpointfixture.PairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
+				t.Fatal("file was withdrawn by a different invocation")
+			}
+		} else {
+			results = append(results, exchange(0, endpointfixture.PairMessage{Operation: "stream-result"}))
+		}
+		for i, result := range results {
+			if result.Failure != "" || result.Original != identities[1-i] {
+				t.Fatalf("installed stream direction %d failed or changed invocation: %s", i, result.Failure)
+			}
+			expected := endpointfixture.NewJourneyStreamOutput()
+			if _, err := io.Copy(expected, streams[i].Reader()); err != nil {
+				t.Fatal(err)
+			}
+			if result.Proof == nil || *result.Proof != expected.Proof() || len(result.Body) != 0 {
+				t.Fatalf("installed stream direction %d differs: observed %+v, expected %+v", i, result.Proof, expected.Proof())
+			}
+		}
+		if duration := time.Since(started); !filePublication && duration <= 60*time.Second {
+			t.Fatalf("installed stream completed within the old Reader window: %s", duration)
+		}
+		logTransferRSS(t, before, sampleTransferRSS(t, exchange, identities))
+		for i := range peers {
+			exchange(i, endpointfixture.PairMessage{Operation: "finish"})
+			_ = peers[i].Close()
+			peers[i] = nil
+			waitErr := commands[i].Wait()
+			joined[i] = true
+			t.Log(outputs[i].String())
+			if waitErr != nil {
+				t.Fatal("installed stream participant did not join", waitErr)
+			}
+		}
+		requireTransferAccounting(t, spends, streams[0].Bytes)
+		t.Logf("two real admitted host managers verified %d published bytes and %d reply bytes", streams[0].Bytes, streams[1].Bytes)
+		return
+	}
 	publishStarted := time.Now()
 	published := exchange(0, endpointfixture.PairMessage{Operation: "publish", Body: body})
 	if published.Link == "" || published.Original != identities[0] {
@@ -710,6 +871,52 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		}
 	}
 	t.Log("two real admitted host managers: platform-led publish/link, exact cross-host read, owning withdrawal and restart continuity completed")
+}
+
+func sampleTransferRSS(t *testing.T, exchange func(int, endpointfixture.PairMessage) endpointfixture.PairMessage, identities [2][3]string) [2]uint64 {
+	t.Helper()
+	var peaks [2]uint64
+	for i := range peaks {
+		result := exchange(i, endpointfixture.PairMessage{Operation: "resources"})
+		if result.Original != identities[i] || result.PeakRSSKiB == 0 {
+			t.Fatal("peak resident memory sample lost the original Endpoint")
+		}
+		peaks[i] = result.PeakRSSKiB
+	}
+	return peaks
+}
+
+func logTransferRSS(t *testing.T, before, after [2]uint64) {
+	t.Helper()
+	for i, peak := range after {
+		if peak < before[i] {
+			t.Fatal("Endpoint peak resident memory regressed")
+		}
+		t.Logf("Endpoint %d peak RSS KiB before=%d after=%d growth=%d", i, before[i], peak, peak-before[i])
+	}
+}
+
+// Each segmented transfer requires two fresh Rendezvous admissions per
+// Connection. Related controls can add traffic but cannot reuse a token or role
+// channel. Check the genuine Receiving and Hosting owners after both users join.
+func requireTransferAccounting(t *testing.T, proof *installedRecoverySpends, payload int64) {
+	t.Helper()
+	limit := int64(endpointstream.ByteStreamSegmentDirectionalLimit)
+	minimum := 2 * ((payload + limit - 1) / limit)
+	actual := proof.joinAccepted.Load()
+	if actual < minimum || actual%2 != 0 {
+		t.Fatalf("accepted %d JOIN roles, need at least %d complete fresh pairs", actual, minimum)
+	}
+	if err := proof.presentations.Check(int(actual)); err != nil {
+		t.Fatal(err)
+	}
+	proof.requireJoinBudgetReleased(t, t.Context())
+	observation, err := proof.joinBudget.Observe(t.Context())
+	if err != nil || observation.UsedBytes == 0 {
+		t.Fatalf("JOIN Hosting usage was not retained: %+v, %v", observation, err)
+	}
+	t.Logf("fresh JOIN admissions=%d, JOIN Hosting used bytes=%d, retained reserve bytes=%d",
+		actual, observation.UsedBytes, observation.ReservedBytes)
 }
 
 // crossHostSSHArgs keeps the publisher transport non-interactive: a missing key

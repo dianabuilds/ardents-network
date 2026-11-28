@@ -214,6 +214,26 @@ func TestConstructPlansRendersReaderRole(t *testing.T) {
 	}
 }
 
+func TestConstructPlansRendersPrivateSnapshotStorage(t *testing.T) {
+	config, _, _ := constructionReferenceState(t, true)
+	base := t.TempDir()
+	declaration := constructionDeclaration(base)
+	declaration.SnapshotRoot = filepath.Join(base, "snapshot-storage")
+	declaration.SnapshotQuotaBytes = 8 << 20
+	_, raw, sourceRaw, err := ConstructPlans(t.Context(), config, declaration, constructionSourcePlan(t, base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := Declarations(raw, sourceRaw)
+	if err != nil || got.SnapshotRoot != declaration.SnapshotRoot || got.SnapshotQuotaBytes != declaration.SnapshotQuotaBytes {
+		t.Fatalf("constructed snapshot root/quota = %q/%d, %v", got.SnapshotRoot, got.SnapshotQuotaBytes, err)
+	}
+	declaration.SnapshotRoot = filepath.Join(declaration.PublicationRoot, "nested")
+	if _, raw, _, err := ConstructPlans(t.Context(), config, declaration, SourcePlan{}); err == nil || raw != nil {
+		t.Fatal("overlapping snapshot root produced a plan")
+	}
+}
+
 // Every refusal is causal and happens before any byte is rendered.
 func TestConstructPlansRefusesUnauthenticatedOrInvalidInput(t *testing.T) {
 	config, _, _ := constructionReferenceState(t, true)

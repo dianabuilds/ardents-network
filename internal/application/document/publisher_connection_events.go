@@ -1,6 +1,7 @@
 package document
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 
@@ -68,13 +69,24 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 		return errors.New("document Publisher worker emitted an unsolicited stream")
 	}
 	switch frame.kind {
+	case sourceRequestFrame:
+		return owner.supplySnapshotBlock(stream)
 	case 2:
+		if owner.source != nil {
+			if len(frame.body) != len(stream.sourcePending) || !bytes.Equal(frame.body, stream.sourcePending) {
+				return errors.New("publisher worker output differs from the selected source block")
+			}
+			clear(stream.sourcePending)
+			stream.sourcePending = nil
+		}
 		size := uint32(len(frame.body))
-		if size > stream.receiveCredit || size > MaximumBytes-stream.responseBytes {
+		if size > stream.receiveCredit || owner.source == nil && size > MaximumBytes-stream.responseBytes {
 			return errors.New("document Publisher response exceeds its bound")
 		}
 		stream.receiveCredit -= size
-		stream.responseBytes += size
+		if owner.source == nil {
+			stream.responseBytes += size
+		}
 		if stream.failed {
 			// The failed Service no longer consumes output. Drain only this
 			// already-authorized bounded response to its worker terminal barrier.
@@ -94,6 +106,9 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 		}
 		stream.sendCredit += credit
 	case 4:
+		if owner.source != nil && (!stream.sourceEOF || len(stream.sourcePending) != 0) {
+			return errors.New("publisher worker ended before its selected source")
+		}
 		stream.workerEOF = true
 	case 5:
 		if frame.body[0] > 6 {

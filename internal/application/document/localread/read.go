@@ -40,19 +40,17 @@ func Run(ctx context.Context, socket string, input io.ReadCloser, output io.Writ
 	if err != nil {
 		return err
 	}
-	bounded, cancel := context.WithTimeout(ctx, endpointstream.ReaderTimeout)
-	defer cancel()
-	stream, err := endpointclient.Dial(bounded, socket, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
+	stage, err := openPresentationStage()
 	if err != nil {
-		return errors.Join(err, bounded.Err())
-	}
-	body, err := document.Read(bounded, stream)
-	defer clear(body)
-	if err != nil {
-		return errors.Join(err, bounded.Err())
-	}
-	if err := ctx.Err(); err != nil {
 		return err
 	}
-	return writePlainText(output, body)
+	defer func() { outcome = errors.Join(outcome, stage.Close()) }()
+	stream, err := endpointclient.Dial(ctx, socket, endpointstream.Request{Destination: endpointstream.TargetLink, Value: link})
+	if err != nil {
+		return err
+	}
+	if err := document.ReceiveFile(ctx, stream, stage); err != nil {
+		return err
+	}
+	return presentStaged(ctx, output, stage)
 }

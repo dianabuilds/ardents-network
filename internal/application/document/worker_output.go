@@ -19,7 +19,7 @@ func readWorkerOutput(input io.Reader) (workerFrame, error) {
 		return workerFrame{}, err
 	}
 	kind, id, size := header[0], binary.BigEndian.Uint32(header[1:5]), binary.BigEndian.Uint32(header[5:])
-	valid := id != 0 && (kind == 2 && size > 0 && size <= workerFrameLimit || kind == 3 && size == 4 || kind == 4 && size == 0 || kind == 5 && size == 1 || kind == 6 && size == 5)
+	valid := id != 0 && (kind == 2 && size > 0 && size <= workerFrameLimit || kind == 3 && size == 4 || kind == 4 && size == 0 || kind == 5 && size == 1 || kind == 6 && size == 5 || kind == sourceRequestFrame && size == 0)
 	if !valid {
 		return workerFrame{}, errors.New("document worker output frame is invalid")
 	}

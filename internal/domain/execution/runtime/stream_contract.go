@@ -61,7 +61,7 @@ func (contract StreamContract) Limits(operation *Operation) (uint64, uint64, err
 
 func validStreamLimits(byteStream bool, send, receive uint64) bool {
 	if byteStream {
-		return send == endpointstream.ByteStreamDirectionalLimit && receive == endpointstream.ByteStreamDirectionalLimit
+		return send == endpointstream.ByteStreamSegmentDirectionalLimit && receive == endpointstream.ByteStreamSegmentDirectionalLimit
 	}
 	return send > 0 && receive > 0 && send <= qualificationDirectionalLimit && receive <= qualificationDirectionalLimit
 }

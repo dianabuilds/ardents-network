@@ -26,7 +26,7 @@ func requireHostilePublisherSnapshot(t *testing.T, parent context.Context, opera
 		terminal: make(chan endpointstream.Outcome, 1), closedSignal: make(chan struct{}),
 	}
 	t.Cleanup(func() { _ = stream.Close() })
-	contract, err := operation.BindStreamContract(endpointstream.ByteStreamDirectionalLimit, endpointstream.ByteStreamDirectionalLimit)
+	contract, err := operation.BindStreamContract(endpointstream.ByteStreamSegmentDirectionalLimit, endpointstream.ByteStreamSegmentDirectionalLimit)
 	if err != nil {
 		t.Fatal(err)
 	}

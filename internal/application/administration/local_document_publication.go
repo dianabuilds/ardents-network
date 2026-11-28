@@ -3,6 +3,8 @@ package administration
 import (
 	"context"
 	"errors"
+	"io"
+	"math"
 	"path/filepath"
 	"time"
 
@@ -11,20 +13,22 @@ import (
 )
 
 // PublishLocal imports an explicit snapshot and transfers its bytes through the
-// separately authorized Administration connection. It clears the local copy
-// after the bounded request and returns only once the publication commits.
+// separately authorized Administration connection. It confirms the input after
+// two reads and returns only once the publication commits.
 func PublishLocal(ctx context.Context, socket, path string) error {
 	if ctx == nil || !filepath.IsAbs(socket) || !filepath.IsAbs(path) {
 		return endpointstream.ErrInvalidLocalInput
 	}
-	snapshot, err := localsnapshot.Read(ctx, path)
-	if err != nil {
-		return err
-	}
-	defer clear(snapshot)
 	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	outcome, err := RequestSnapshot(bounded, socket, snapshot)
+	outcome, err := requestSnapshot(bounded, socket, func(output io.ReadWriter) error {
+		return localsnapshot.CopyVerified(bounded, path, math.MaxInt64, func(size int64) (io.Writer, error) {
+			if err := beginSnapshot(output, size); err != nil {
+				return nil, err
+			}
+			return output, nil
+		})
+	})
 	if err != nil {
 		return errors.Join(err, bounded.Err())
 	}

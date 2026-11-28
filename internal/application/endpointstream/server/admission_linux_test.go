@@ -111,7 +111,7 @@ func (peer *deadlineResetPeer) Read([]byte) (int, error) {
 	return 0, &net.DNSError{IsTimeout: true}
 }
 func (peer *deadlineResetPeer) SetReadDeadline(deadline time.Time) error {
-	if deadline.After(time.Now()) {
+	if deadline.IsZero() || deadline.After(time.Now()) {
 		peer.restored = deadline
 		return peer.failure
 	}
@@ -129,7 +129,7 @@ func (owner *deadlineSetupOwner) Open(ctx context.Context, _ endpointstream.Requ
 	return &cleanupSequenceStream{}, nil
 }
 
-func TestSetupRetainsOriginalDeadlineAndEarlierCancellation(t *testing.T) {
+func TestSetupRetainsParentLifetimeWithoutRenewingIt(t *testing.T) {
 	for _, earlier := range []bool{false, true} {
 		t.Run(map[bool]string{false: "original", true: "earlier-parent"}[earlier], func(t *testing.T) {
 			// Simulate time already spent receiving the header without sleeping.
@@ -149,15 +149,11 @@ func TestSetupRetainsOriginalDeadlineAndEarlierCancellation(t *testing.T) {
 			}
 			defer cancel()
 			defer stream.Close()
-			want := deadline
-			if earlier {
-				want = parentEnd
+			if got, ok := owner.ctx.Deadline(); !ok || !got.Equal(parentEnd) {
+				t.Fatalf("setup changed original transfer lifetime: %v, want %v", got, parentEnd)
 			}
-			if got, ok := owner.ctx.Deadline(); !ok || !got.Equal(want) {
-				t.Fatalf("setup renewed/lost original deadline: %v, want %v", got, want)
-			}
-			if !peer.restored.Equal(deadline) {
-				t.Fatalf("socket deadline was cleared or renewed: %v", peer.restored)
+			if !peer.restored.Equal(parentEnd) {
+				t.Fatalf("socket lifetime differs from the original parent: %v", peer.restored)
 			}
 			cancelParent()
 			if !errors.Is(owner.ctx.Err(), context.Canceled) {

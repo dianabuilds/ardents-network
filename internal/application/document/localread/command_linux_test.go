@@ -15,7 +15,7 @@ import (
 
 func TestReadCommandPresentsSafeTextAfterOneConnection(t *testing.T) {
 	binary := buildArdentsNext(t)
-	maximum := bytes.Repeat([]byte("x"), document.MaximumBytes)
+	maximum := bytes.Repeat([]byte("x"), document.MaximumBytes+1)
 	for _, sample := range []struct {
 		body, output []byte
 	}{
@@ -44,8 +44,8 @@ func TestDocumentReadNeverPresentsPartialOrFailedConnection(t *testing.T) {
 		class    endpointstream.OutcomeClass
 	}{
 		{[]byte("secret"), endpointstream.LocalFailure},
-		{bytes.Repeat([]byte("x"), document.MaximumBytes+1), endpointstream.CleanClose},
 		{[]byte{0xff}, endpointstream.CleanClose},
+		{append(bytes.Repeat([]byte("x"), 48<<10), 0xff), endpointstream.CleanClose},
 	} {
 		peer := &documentReadPeer{response: scenario.response, class: scenario.class}
 		socket := documentReadSocket(t, peer)

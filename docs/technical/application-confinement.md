@@ -295,8 +295,11 @@ background event or ordinary diagnostic containing the destination. Retrieval
 cannot publish, refresh, retry or resurrect a Service and promises no future
 availability. Existing Publish, snapshot and Withdraw response bytes are unchanged.
 The trusted publication client uses the existing private Administration socket.
-Its bounded extension is ASCII `snapshot\n`[9], a big-endian u32 byte length,
-exact file bytes (0 through 4 MiB), then directional EOF. There is no path,
+Its bounded extension is ASCII `stage-v1\n`[9], a big-endian u64 byte length,
+then the server sends `ready\n` after assigning the input slot and buffer.
+The client sends exact file bytes (0 through 4 MiB), one confirmation byte
+(value 1), and directional EOF. The trusted client sends confirmation after the second
+read verifies the original file. The previous snapshot request format refuses. There is no path,
 Target, key, Principal or Grant in this request. The transport admits at most
 one snapshot allocation/transition at a time and retains the existing finite
 receive deadline. Withdrawal remains a separate operation. Only a publication
@@ -309,6 +312,10 @@ requires an owner-held copy.
 
 The reader's worker receives only its admitted Connection and bounded
 application bytes. It has no destination authority or ambient network client.
+The trusted Linux terminal adapter receives provisional text into an
+anonymous owner-only file with bounded buffers. It validates all UTF-8 only
+after authenticated completion and joined cleanup, then rewinds the same
+descriptor for presentation. Invalid or incomplete input emits no text.
 The trusted presentation boundary independently escapes control/bidi bytes
 before writing to a human terminal; a compromised worker cannot bypass that
 escaping by emitting its own terminal sequence. No response launches a browser
@@ -469,6 +476,16 @@ has zero snapshot length; a Publisher has at most 4 MiB. The worker returns
 ARDTWR01[8], the exact nonce[32] and snapshot digest[32] only after bounded
 validation. This is a readiness acknowledgement under the verified launch,
 never evidence establishing the launch's own authority.
+
+For a retained file source, Publisher INIT uses ASCII ARDSRC01[8], mode 2,
+the same nonce and empty-payload framing. The reader of the original
+attachment retains the private source. Once an admitted stream has received
+its input EOF, the worker can request one source block with kind 7 and an
+empty payload. Endpoint replies on that stream with kind 8 and up to 16 KiB
+within the available credit. An empty kind 8 ends the source. Endpoint
+chooses the position and checks the returned bytes before forwarding them.
+A stream can hold one unreturned source block. It cannot read a different
+position or ask for a filesystem path.
 
 Subsequent frames are kind u8, stream-ID u32, length u32 and exact payload.
 Endpoint allocates increasing odd IDs for already admitted Service streams;
