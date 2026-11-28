@@ -155,3 +155,44 @@ func TestEnforceOwnerOnlyRootRefusesUnenforceableRoot(t *testing.T) {
 		t.Fatalf("file root = %v, want read-root refusal", err)
 	}
 }
+
+func TestEnforceOwnerOnlyRootRefusesExternalHardLink(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "root")
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "outside")
+	if err := os.WriteFile(outside, []byte("outside"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := windows.SecurityDescriptorFromString("D:P(A;;GA;;;WD)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl, _, err := descriptor.DACL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT,
+		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(outside, filepath.Join(root, "record")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Error("external hard link was not refused")
+	}
+	after, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Error("external target DACL changed")
+	}
+}

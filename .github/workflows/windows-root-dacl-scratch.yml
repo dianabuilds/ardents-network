@@ -1,0 +1,26 @@
+name: Temporary Windows root DACL reproduction
+on:
+  push:
+    branches: [codex/948-windows-root-dacl]
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: 1.27.4
+          cache: false
+      - name: Reproduce external hard-link DACL mutation
+        shell: pwsh
+        run: |
+          $env:GOTOOLCHAIN = 'local'
+          $output = go test ./internal/durablefile -run '^TestEnforceOwnerOnlyRootRefusesExternalHardLink$' -count=1 -v 2>&1 | Out-String
+          $status = $LASTEXITCODE
+          Write-Output $output
+          if ($status -eq 0 -or -not $output.Contains('external target DACL changed') -or -not $output.Contains('external hard link was not refused')) {
+            throw 'Expected both external mutation and missing refusal to reproduce'
+          }
+          exit 0
