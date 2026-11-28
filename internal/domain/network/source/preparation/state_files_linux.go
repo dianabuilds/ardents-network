@@ -10,7 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
@@ -103,4 +105,31 @@ func readSourceStateInputs(originals *artifacts.Inputs, planPath, bundlePath str
 	}
 	result.bundle, err = source.DecodeBundle(bundleBytes)
 	return result, err
+}
+
+// prepare authenticates the first Epoch before initializing empty participation.
+func (preparation sourceStatePreparation) prepare(ctx context.Context, check func() error) (result error) {
+	config := preparation.config
+	config.PermitWork = check
+	if err := check(); err != nil {
+		return err
+	}
+	owner, err := state.OpenFresh(config)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, owner.Close(), check()) }()
+	if _, err := owner.Current(); !errors.Is(err, state.ErrNoCurrentGeneration) {
+		return errors.Join(errSourcePreparation, err)
+	}
+	if _, err := owner.AcceptEpoch(ctx, preparation.bundle.Epoch, preparation.bundle.Inputs, preparation.bundle.Materials); err != nil {
+		return err
+	}
+	if err := check(); err != nil {
+		return err
+	}
+	if err := duty.Initialize(ctx, duty.Config{Root: preparation.participation, Clock: time.Now}); err != nil {
+		return err
+	}
+	return check()
 }

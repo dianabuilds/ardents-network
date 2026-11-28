@@ -116,7 +116,7 @@ func offlineOperatorImportAllowed(source, dependency string) bool {
 	switch source {
 	case "internal/domain/network/source/preparation/state_files_linux.go":
 		switch dependency {
-		case modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/source/servingdeclaration", modulePath + "/internal/domain/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/process", modulePath + "/internal/platform/processguard":
+		case modulePath + "/internal/domain/network/duty", modulePath + "/internal/domain/network/source", modulePath + "/internal/domain/network/source/servingdeclaration", modulePath + "/internal/domain/network/state", modulePath + "/internal/platform/artifacts", modulePath + "/internal/platform/process", modulePath + "/internal/platform/processguard":
 			return true
 		}
 	case "internal/domain/endpoint/source_trust_preparation_linux.go":
