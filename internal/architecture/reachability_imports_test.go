@@ -7,7 +7,7 @@ func reachabilityImport(source, dependency string) importPermission {
 		switch source {
 		case "internal/domain/endpoint/connection_installed_linux_test.go", "internal/domain/endpoint/installed_service_linux_test.go",
 			"internal/domain/endpoint/publication_ack_installed_linux_test.go", "internal/domain/endpoint/publication_installed_linux_test.go",
-			"internal/domain/network/state/descriptor_repair_linux.go", "internal/domain/node/receive/command_linux.go",
+			"internal/domain/network/state/node_duty_roles_linux.go", "internal/domain/node/receive/command_linux.go",
 			"internal/domain/node/receive/descriptor_retirement_linux_test.go", "internal/domain/node/runtime/authority_process_native_linux_test.go",
 			"internal/domain/node/runtime/descriptor_unix.go", "internal/domain/node/runtime/operation_workload_native_linux_test.go",
 			"internal/domain/route/receiver/receiver_unix.go", "tests/e2e/endpoint/connection_reopen_linux.go",
