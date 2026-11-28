@@ -1,6 +1,6 @@
 //go:build linux && custody_private_permission_native
 
-package custody
+package delivery
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 )
 
 // This selected native profile requires four real mounts prepared outside the
@@ -21,7 +22,7 @@ func TestPrivatePermissionMountedFilesystems(t *testing.T) {
 		"ext4":  os.Getenv("ARDENTS_TEST_EXT4"),
 		"tmpfs": os.Getenv("ARDENTS_TEST_TMPFS"),
 	}
-	receipt := Receipt{Operation: OperationIssueAdmissionPermission, AdmissionPermission: make([]byte, admission.PermissionSize)}
+	receipt := custody.Receipt{Operation: custody.OperationIssueAdmissionPermission, AdmissionPermission: make([]byte, admission.PermissionSize)}
 	for _, kind := range []string{"ext2", "ext3", "ext4", "tmpfs"} {
 		t.Run(kind, func(t *testing.T) {
 			root := roots[kind]
@@ -34,7 +35,7 @@ func TestPrivatePermissionMountedFilesystems(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = os.RemoveAll(dir) })
 			path := filepath.Join(dir, "permission")
-			err = receipt.PublishAdmissionPermission(path)
+			err = PublishAdmissionPermission(path, receipt)
 			if kind == "ext2" || kind == "ext3" {
 				if !errors.Is(err, ErrPrivatePermissionUnavailable) {
 					t.Fatalf("unsupported filesystem must refuse before staging: %v", err)
@@ -52,7 +53,7 @@ func TestPrivatePermissionMountedFilesystems(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = receipt.PublishAdmissionPermission(path); err != nil {
+			if err = PublishAdmissionPermission(path, receipt); err != nil {
 				t.Fatalf("exact retry: %v", err)
 			}
 			after, err := os.Stat(path)

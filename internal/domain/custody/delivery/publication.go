@@ -1,4 +1,4 @@
-package custody
+package delivery
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/admission"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody"
 )
 
 // ErrPrivatePermissionUnavailable means that owner-only Permission delivery
@@ -22,21 +23,23 @@ func CheckAdmissionPermissionDestination(path string) error {
 	return checkPrivatePermissionDestination(path)
 }
 
-// PublishServiceResponse delivers the public response from a committed
-// Service Credential operation. An exact existing response permits retry.
-func (receipt Receipt) PublishServiceResponse(path string) error {
+// PublishServiceResponse publishes the public response in a Service Credential
+// receipt. The caller supplies the original committed result; the receipt type
+// alone does not establish its provenance. An exact existing response permits retry.
+func PublishServiceResponse(path string, receipt custody.Receipt) error {
 	const maximumResponseBytes = 1024
-	if receipt.Operation != OperationIssueServiceCredential ||
+	if receipt.Operation != custody.OperationIssueServiceCredential ||
 		len(receipt.ServiceResponse) == 0 || len(receipt.ServiceResponse) > maximumResponseBytes {
 		return errors.New("service Credential response is invalid")
 	}
 	return publishCredential(path, "service Credential response", ".ardents-service-credential-response-", receipt.ServiceResponse, false)
 }
 
-// PublishAdmissionPermission delivers the owner-only Permission from a committed
-// Admission operation. An exact existing Permission permits retry.
-func (receipt Receipt) PublishAdmissionPermission(path string) error {
-	if receipt.Operation != OperationIssueAdmissionPermission || len(receipt.AdmissionPermission) != admission.PermissionSize {
+// PublishAdmissionPermission publishes the owner-only Permission in an Admission
+// receipt. The caller supplies the original committed result; the receipt type
+// alone does not establish its provenance. An exact existing Permission permits retry.
+func PublishAdmissionPermission(path string, receipt custody.Receipt) error {
+	if receipt.Operation != custody.OperationIssueAdmissionPermission || len(receipt.AdmissionPermission) != admission.PermissionSize {
 		return errors.New("admission permission is invalid")
 	}
 	if err := CheckAdmissionPermissionDestination(path); err != nil {

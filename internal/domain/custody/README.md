@@ -30,8 +30,9 @@ State locks never cover foreign terminal I/O or physical join. The accepted
 single authenticated pending successor can finish its floor on a fresh reopen;
 malformed, missing or skipped state cannot reconstruct fresh allocation history.
 
-`doc.go`, implementation responsibilities and behavior tests form one cohesive
-package. Canonical envelope encoding, floor grammar and native file/lease
+The Vault and its tests remain one serialized owner. The separate `delivery`
+package publishes committed results after the operation closes and carries the
+platform-specific destination checks. Canonical envelope encoding, floor grammar and native file/lease
 mechanisms were inspected from the retained predecessor source at
 `e269c74744df91588f77c90b14d4e81b3908b472` and adapted
 without imports or backend delegation. Admission policy and ownership use the

@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/custody"
+	"github.com/dianabuilds/ardents-network/internal/domain/custody/delivery"
 )
 
 type admissionRequestCommitmentInput interface {
@@ -50,7 +51,7 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 		if record == "" || requestPath == "" || permissionPath == "" {
 			return errors.New("issue-admission-permission requires record, request, and permission-output")
 		}
-		if err := custody.CheckAdmissionPermissionDestination(permissionPath); err != nil {
+		if err := delivery.CheckAdmissionPermissionDestination(permissionPath); err != nil {
 			return err
 		}
 		binding, err := commandBinding(environment, network, authorityRoot, kind, identity)
@@ -95,7 +96,7 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 			IDCommitment:    hex.EncodeToString(receipt.Authority.Binding.IDCommitment[:]),
 			AuthorityPublic: hex.EncodeToString(receipt.AdmissionAuthority.Public[:])})
 	}
-	if err := receipt.PublishAdmissionPermission(permissionPath); err != nil {
+	if err := delivery.PublishAdmissionPermission(permissionPath, receipt); err != nil {
 		return err
 	}
 	digest := sha256.Sum256(receipt.AdmissionPermission)

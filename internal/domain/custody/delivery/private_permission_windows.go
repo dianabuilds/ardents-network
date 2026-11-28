@@ -1,4 +1,4 @@
-package custody
+package delivery
 
 import (
 	"crypto/rand"
@@ -251,3 +251,7 @@ func sameCredentialFile(file *os.File, path string) bool {
 	return originalErr == nil && namedErr == nil && closeErr == nil && named.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT == 0 &&
 		original.VolumeSerialNumber == named.VolumeSerialNumber && original.FileIndexHigh == named.FileIndexHigh && original.FileIndexLow == named.FileIndexLow
 }
+
+// Preserve Custody's existing Windows publication ordering. Files are flushed
+// before publication; this operation claims no directory-sync guarantee.
+func syncDirectory(string) error { return nil }

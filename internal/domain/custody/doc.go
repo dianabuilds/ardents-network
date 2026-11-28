@@ -45,12 +45,8 @@
 //     bundle_restore.go (bundle_publication_test.go, recovery_lifecycle_test.go)
 //   - independent root provenance: independent_root.go
 //     (independent_root_refusal_test.go)
-//   - post-commit credential delivery: credential_delivery.go and
-//     private_permission_linux.go/private_permission_windows.go and the
-//     unsupported-platform refusal. Linux admits owner-only ext4/tmpfs files;
-//     Windows admits protected owner-only NTFS DACLs. Other platforms refuse
-//     private delivery before sensitive bytes (credential_delivery_linux_test.go,
-//     private_permission_windows_test.go). Public responses remain separate.
+//   - post-commit Credential and Permission delivery: delivery/ owns the
+//     separate platform checks, publication and original destination custody.
 //
 // terminal_input_test.go carries the shared sequenceSecrets input fixture and
 // no behavior of its own.
