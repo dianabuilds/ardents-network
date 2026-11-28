@@ -3,6 +3,7 @@
   run.py                 candidate: socket, library, Node TLS and return-path checks
   run.py return-path     one return-path run; --module selects the implementation
   run.py controls        the return-path run against each pinned official release
+  run.py patched         the return path against the patched official release
 
 The implementation named "patched" is official quic-go v0.66.0 with the
 retained quic-go-v0.66.0-probe-budget.patch applied to a temporary copy.
@@ -168,7 +169,7 @@ def candidate(work):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("command", nargs="?", default="candidate", choices=["candidate", "return-path", "controls"])
+    parser.add_argument("command", nargs="?", default="candidate", choices=["candidate", "return-path", "controls", "patched"])
     parser.add_argument("--module", default="candidate", choices=sorted(MODULES))
     parser.add_argument("--race", action="store_true")
     parser.add_argument("--backend", choices=["native", "generic"])
@@ -179,7 +180,7 @@ def main():
     if args.command == "candidate":
         with tempfile.TemporaryDirectory(prefix="ardents-r172-") as tmp:
             raise SystemExit(candidate(Path(tmp)))
-    names = ["v0.62.0", "v0.63.0", "v0.66.0"] if args.command == "controls" else [args.module]
+    names = {"controls": ["v0.62.0", "v0.63.0", "v0.66.0"], "patched": ["patched"]}.get(args.command, [args.module])
     failures = 0
     for name in names:
         code, output = return_path(name, flags, pattern)
