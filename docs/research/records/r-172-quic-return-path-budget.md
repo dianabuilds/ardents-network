@@ -22,6 +22,25 @@ Does the candidate preserve the granted byte allowance and destination through t
 
 **Earlier evidence, 2026-11-26.** Seven library checks and six historical adapter tests passed on Linux and macOS. The historical adapter also passed with race detection on macOS and cross-compiled for Windows amd64. Official quic-go v0.66.0 retained unconditional minimum-size probe padding. Quinn's fixed-address server setting was a viable component alternative, with a Rust integration and loss of connection continuity on NAT rebinding. [Official packer](https://github.com/quic-go/quic-go/blob/v0.66.0/packet_packer.go#L893-L913) and [Quinn setting](https://docs.rs/quinn-proto/0.11.19/quinn_proto/struct.ServerConfig.html#method.migration).
 
+## Measurements on 2026-11-28
+
+The source was Ardents `7d399ef3f38f84a65038fe4dddd9cc6721226ebf`. The experiment at `2c3c249e70384f67a4c43b36f1f0ae74d323a84d` ran on macOS arm64 and the project Linux x86-64 stand. Both completed with the same observations.
+
+| Supplied probe allowance (bytes) | UDP payload delivered to selected port | Payload delivered to original port |
+| ---: | ---: | ---: |
+| 1 | 0 | 0 |
+| 300 | 300 | 0 |
+| 1200 | 1200 | 0 |
+| 1500 | 1200 | 0 |
+
+**Measurement.** Each OS passed all four cases with the native UDP writer and all four with the generic PacketConn writer. The recipient counted complete UDP payload bytes including padding. This covers a real packet buffer, send queue, destination and kernel write. The test supplies the grant and uses the upstream sealer and packet-number fixtures. It does not drive the changed-address receive logic.
+
+**Measurement.** A separate real TLS/QUIC session ran for each of the Node and direct principals using Ardents' current `SharedServerTLS`, appropriate client configuration and `ClassifySharedTLS`. In each run the candidate's ordinary path probe on the new port sent 2400 and received 1200 UDP payload bytes in aggregate through probe completion. The client meter checked each observed receive against three times its cumulative sends. Both clients switched ports and exchanged byte-exact request and reply data. The unauthorized Node key was rejected at classification before application exchange. This uses fixture keys, a local verifier and normal padded path probes. The counts are observations of these runs, not a required wire transcript or a measurement with a small inbound datagram.
+
+**Measurement.** The separate existing Linux process test `TestRouteRefusesSignedQUICBeforeEffects` passed for the actual `ardents-next` CLI built from the base revision. It authenticated the signed QUIC profile, observed refusal, checked spend and socket effects, and checked for TCP fallback. A separate Linux/amd64 production dependency listing for `./cmd/ardents-next` excluded both the candidate and official quic-go. The candidate was present only in the research builds. No Windows execution or installed positive QUIC Node/Service run was made.
+
+**Environment.** The first offline stand process run lacked the required x/sys module. The first local runner draft attempted a Go overlay inside the module cache and Go rejected it. The first online stand candidate run stopped during module retrieval; its captured error body was unavailable. The successful process run used a writable module cache and the successful candidate run used a verified temporary source copy and writable GOPATH and module cache. These earlier setup failures supplied no protocol results.
+
 ## Decision
 
 Prefer the Go candidate for further qualification. Its public fork derives from quic-go v0.63.0. The inspection on November 26 found that the later upstream send-queue wakeup correction was absent from both corresponding send branches of this tag. Establish the applicable backports and ongoing maintenance before adoption. [Upstream correction](https://github.com/quic-go/quic-go/pull/6223).
