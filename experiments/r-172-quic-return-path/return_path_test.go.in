@@ -286,9 +286,24 @@ func (r *relay) heldSizes() []int {
 	defer r.mu.Unlock()
 	var sizes []int
 	for _, data := range r.held {
-		sizes = append(sizes, len(data))
+		if data != nil {
+			sizes = append(sizes, len(data))
+		}
 	}
 	return sizes
+}
+
+// heldOfSide returns the held datagrams that have exactly this size.
+func (r *relay) heldOfSide(size int) []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var indices []int
+	for i, data := range r.held {
+		if data != nil && len(data) == size {
+			indices = append(indices, i)
+		}
+	}
+	return indices
 }
 
 // release delivers one held client datagram from the rebound mapping and
@@ -715,29 +730,29 @@ func withheldReplies(t *testing.T, backend string, datagrams, packetSize int) {
 	s := startSession(t, backend, false, 0)
 	defer s.close()
 	s.nat.rebindAndHold()
-	for i := range datagrams {
-		writeStream(s.ctx, t, s.out, bytes.Repeat([]byte{1}, packetSize-plainStreamPacketBase))
-		s.nat.awaitHeld(t, i+1)
-	}
-	inbound := s.nat.heldSizes()
-	t.Logf("client wrote %d datagrams while held: sizes %v", len(inbound), inbound)
-	if len(inbound) != datagrams {
-		t.Fatalf("client wrote %d datagrams, want %d", len(inbound), datagrams)
-	}
-	for i, size := range inbound {
-		if size != packetSize {
-			t.Fatalf("client datagram %d is %d bytes, want %d", i, size, packetSize)
+	// Each stream write yields one packet of the wanted size, unless the
+	// client bundles it with another frame. Only packets of exactly that
+	// size are delivered; anything else stays withheld until forwarding
+	// resumes.
+	var chosen []int
+	for len(chosen) < datagrams {
+		if len(s.nat.heldSizes()) > 3*datagrams {
+			t.Fatalf("client wrote datagrams %v, want %d of %d bytes", s.nat.heldSizes(), datagrams, packetSize)
 		}
+		writeStream(s.ctx, t, s.out, bytes.Repeat([]byte{1}, packetSize-plainStreamPacketBase))
+		s.nat.awaitHeld(t, len(s.nat.heldSizes())+1)
+		chosen = s.nat.heldOfSide(packetSize)
 	}
+	t.Logf("client wrote %d datagrams while held: sizes %v; %d of exactly %d bytes are delivered", len(s.nat.heldSizes()), s.nat.heldSizes(), len(chosen), packetSize)
 	expanded := packetSize*amplificationLimit >= minExpandedDatagram
-	for i := range inbound {
+	for i, index := range chosen {
 		// The first window spans several loss-detection periods; later ones
 		// cover the challenge retry that a further packet can trigger.
 		window := observation
 		if i > 0 {
 			window = observation / 2
 		}
-		s.nat.release(t, i)
+		s.nat.release(t, index)
 		time.Sleep(window)
 		current := checkBudget(t, s.nat, fmt.Sprintf("after datagram %d", i+1))
 		if expanded && !slices.Contains(current.datagrams, minExpandedDatagram) {
