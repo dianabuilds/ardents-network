@@ -222,3 +222,32 @@ func TestEnforceOwnerOnlyRootDoesNotPropagateToExistingDirectory(t *testing.T) {
 		t.Error("root write propagated to an unvalidated child")
 	}
 }
+
+func TestEnforceOwnerOnlyRootRefusesRedirectedEntry(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "root")
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(parent, "outside")
+	if err := os.WriteFile(outside, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "record")); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("redirected entry was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(outside, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Error("redirected target DACL changed")
+	}
+}
