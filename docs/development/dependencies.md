@@ -1011,11 +1011,13 @@ consumers. No dependency version, first-party unsafe or cgo is introduced; this
 is a capability port under ADR-0125/ADR-0129, not a new platform commitment.
 
 **Windows platform use:** current platform-specific owners use
-`golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
-current process owner full control and nobody else. The owner-only store-root
-enforcement is the shared `internal/durablefile` mechanism
-(`owner_root_windows.go`, #793), consumed by `internal/domain/route/selection` and
-`internal/domain/network/duty`; the Windows lease owners keep their own lock handles.
+`golang.org/x/sys/windows` on Windows to create owner-only roots and files
+with explicit security descriptors and to inspect existing roots and files by
+handle. The shared `internal/durablefile` mechanism (`owner_root_windows.go`,
+`root_creation_windows.go` and `owner_file_windows.go`) is consumed by
+`internal/domain/route/selection` and `internal/domain/network/duty`; their
+Windows lease owners retain their own lock handles. Existing security descriptors
+are checked without mutation.
 The module is a direct platform-specific product dependency. It avoids a child
 PowerShell process and avoids first-party `unsafe`. Unix builds retain the
 standard-library permission implementation.

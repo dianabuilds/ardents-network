@@ -112,8 +112,7 @@ func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
 	}
 	requireOwnerOnlyDACL(t, root, true, true)
 	requireOwnerOnlyDACL(t, existing, false, true)
-	// A file created after enforcement inherits the owner-only grant through
-	// the root's inheritable ACE, never the runner temp directory's DACL.
+	// A later record receives an explicit protected descriptor at creation.
 	inherited := filepath.Join(root, "later")
 	if err := WriteExclusive(inherited, []byte("later")); err != nil {
 		t.Fatal(err)
@@ -122,7 +121,10 @@ func TestEnforceOwnerOnlyRootGrantsOnlyOwner(t *testing.T) {
 }
 
 func TestEnforceOwnerOnlyRootRefusesBroadGrantWithoutMutation(t *testing.T) {
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
 	everyone, err := windows.CreateWellKnownSid(windows.WinWorldSid)
 	if err != nil {
 		t.Fatal(err)
@@ -278,5 +280,44 @@ func TestProtectedRootAndExistingRecordVerification(t *testing.T) {
 	}
 	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err != nil {
 		t.Fatalf("verify protected root and record: %v", err)
+	}
+}
+
+func TestEnforceOwnerOnlyRootRefusesBroadFileWithoutMutation(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "root")
+	if err := InspectRoot(root, true, "missing", "invalid"); err != nil {
+		t.Fatal(err)
+	}
+	record := filepath.Join(root, "record")
+	if err := WriteExclusive(record, []byte("record")); err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := windows.SecurityDescriptorFromString("D:P(A;;GA;;;WD)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl, _, err := descriptor.DACL()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := windows.SetNamedSecurityInfo(record, windows.SE_FILE_OBJECT,
+		windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, acl, nil); err != nil {
+		t.Fatal(err)
+	}
+	before, err := windows.GetNamedSecurityInfo(record, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := EnforceOwnerOnlyRoot(root, testRootRefusal); err == nil {
+		t.Fatal("broad file was accepted")
+	}
+	after, err := windows.GetNamedSecurityInfo(record, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.String() != after.String() {
+		t.Fatal("refusal changed file security descriptor")
 	}
 }
