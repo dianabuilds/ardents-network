@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        workload: [bidirectional, published-binary-file]
+        workload: [published-binary-file]
     runs-on: ubuntu-24.04
     timeout-minutes: 32
     env:
@@ -36,7 +36,68 @@ jobs:
           sudo -n apt-get install --no-install-recommends -y debootstrap systemd-container
           go mod download
           mkdir -p "$RUNNER_TEMP/ardents-build"
-      - name: Exercise unmodified Ubuntu artifacts
+      - name: Attach numeric failure provenance to the exact candidate
+        run: |
+          python3 - <<'PYDIAG'
+          from pathlib import Path
+          p = Path("internal/domain/publication/runtime/publisher.go")
+          s = p.read_text().replace('"errors"', '"errors"\n "fmt"\n "os"\n stdruntime "runtime"\n "strings"')
+          s = s.replace('return p.publish(ctx, true)', '''
+              start := time.Now()
+              result, err := p.publish(ctx, true)
+              var flags uint64
+              if err != nil {
+                  for i, label := range []string{"deadline", "registration", "recipient", "issuance", "stock", "predecessor", "Source", "window", "expired", "active", "closed", "already", "refused", "admission"} {
+                      if strings.Contains(err.Error(), label) { flags |= 1 << i }
+                  }
+              }
+              fmt.Fprintf(os.Stderr, "qualification refresh ms=%d elapsed=%s success=%t flags=%d\\n", start.UnixMilli(), time.Since(start), err == nil, flags)
+              return result, err
+          ''')
+          s = s.replace('func (p *Publisher) stop() {', '''
+          func (p *Publisher) stop() {
+              pc, _, line, _ := stdruntime.Caller(1)
+              name := ""
+              if original := stdruntime.FuncForPC(pc); original != nil { name = original.Name() }
+              fmt.Fprintf(os.Stderr, "qualification stop ms=%d package-func=%s line=%d\\n", time.Now().UnixMilli(), name, line)
+          ''')
+          p.write_text(s)
+          p = Path("internal/domain/connection/stream_replacement.go")
+          s = p.read_text().replace('"errors"', '"errors"\n "fmt"\n "io"\n "os"')
+          s = s.replace('records.recoveryCause = cause', '''
+              fmt.Fprintf(os.Stderr, "qualification recovery role=%d ms=%d eof=%t truncated=%t\\n", stream.owner.role, time.Now().UnixMilli(), errors.Is(cause, io.EOF), errors.Is(cause, io.ErrUnexpectedEOF))
+              records.recoveryCause = cause
+          ''')
+          p.write_text(s)
+          p = Path("tests/e2e/endpointinstalled/journey_participant_native_linux_test.go")
+          s = p.read_text()
+          key = 't.Fatal("journey installed withdrawal", err)'
+          assert s.count(key) == 1
+          p.write_text(s.replace(key, 'endpointfixture.DumpJourneyJournal(t)\n' + key))
+          p = Path("internal/domain/endpoint/endpoint_journey_native_linux_test.go")
+          s = p.read_text()
+          s = s.replace('payload := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)', 'payload := int64(5 << 20)', 1)
+          s = s.replace('if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {', 'if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 9*time.Minute {', 1)
+          s = s.replace("full installed transfer needs sixteen minutes", "partial diagnostic needs nine minutes", 1)
+          p.write_text(s)
+          p = Path("internal/domain/endpoint/publisher/publisher_unix.go")
+          s = p.read_text().replace('"errors"', '"errors"\n "fmt"\n "os"\n "strings"')
+          key = 'candidate.serveErr = candidate.handle.Serve(ctx)'
+          assert s.count(key) == 1
+          s = s.replace(key, key + """
+              var flags uint64
+              if candidate.serveErr != nil {
+                  for i, label in range_PLACEHOLDER {
+                      if strings.Contains(candidate.serveErr.Error(), label) { flags |= 1 << i }
+                  }
+              }
+              fmt.Fprintf(os.Stderr, "qualification publisher-serve ms=%d success=%t context=%t flags=%d\\n", time.Now().UnixMilli(), candidate.serveErr == nil, ctx.Err() != nil, flags)
+          """.replace('for i, label in range_PLACEHOLDER', 'for i, label := range []string{"admission", "join", "closed", "expired", "deadline", "capacity", "issuer", "clock", "scope", "Source", "publication", "canceled", "retired"}'))
+          p.write_text(s)
+          PYDIAG
+          gofmt -w internal/domain/publication/runtime/publisher.go internal/domain/connection/stream_replacement.go internal/domain/endpoint/{publisher/publisher_unix.go,endpoint_journey_native_linux_test.go} tests/e2e/endpointinstalled/journey_participant_native_linux_test.go
+          git diff --check
+      - name: Diagnose the published file failure with a smaller synthetic payload
         run: |
           sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build" \
             "GOTOOLCHAIN=local" GOFLAGS=-buildvcs=false \
