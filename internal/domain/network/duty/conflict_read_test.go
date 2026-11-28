@@ -1,7 +1,6 @@
 package duty
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -33,7 +32,7 @@ func TestReadConflictReleasesLease(t *testing.T) {
 func localRoleFixtureRoot(t *testing.T) string {
 	t.Helper()
 	root := filepath.Join(t.TempDir(), "local-roles")
-	if err := os.Mkdir(root, 0o700); err != nil {
+	if err := inspectRoot(root, true); err != nil {
 		t.Fatal(err)
 	}
 	return root

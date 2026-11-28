@@ -12,7 +12,7 @@ import (
 )
 
 func TestSelectionObservesNetworkOutsideBothStateLocks(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	view := installationView(t, 1)
 	var owner *Owner
 	var observations int
@@ -54,7 +54,7 @@ func TestSelectionRefusesSuccessorNetworkGenerationMidSelection(t *testing.T) {
 		{name: "during final Entry observation", changeAt: 4, interiorGeneration: 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
+			root := ownedRootFixture(t)
 			original := installationGenerationView(t, 1, 2)
 			successor := installationGenerationView(t, 1, 9)
 			var started bool
@@ -97,7 +97,7 @@ func TestSelectionRefusesSuccessorNetworkGenerationMidSelection(t *testing.T) {
 }
 
 func TestSelectionFinalObservationCannotIssueExpiredInterior(t *testing.T) {
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	original := installationView(t, 1)
 	afterInteriorExpiry := installationGenerationViewAt(t, 1, 2, 30*time.Minute)
 	var started bool
@@ -138,7 +138,7 @@ func TestSelectionCloseJoinsObservationAndPreservesCommittedFloors(t *testing.T)
 		{name: "after both writes", held: 4, entryGeneration: 2, interiorGeneration: 2},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
+			root := ownedRootFixture(t)
 			view := installationView(t, 1)
 			reached, resume := make(chan struct{}), make(chan struct{})
 			unblock := sync.OnceFunc(func() { close(resume) })

@@ -1,7 +1,6 @@
 package state
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -12,9 +11,6 @@ import (
 
 func TestSourceExposureRetentionWaitsForConflictReader(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "roles")
-	if err := os.Mkdir(root, 0700); err != nil {
-		t.Fatal(err)
-	}
 	reader, err := duty2.Open(duty2.Config{Root: root, Clock: time.Now, Create: true})
 	if err != nil {
 		t.Fatal(err)

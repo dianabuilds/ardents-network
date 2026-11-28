@@ -15,7 +15,7 @@ func InspectRoot(root string, create bool, missingRefusal, notDirRefusal string)
 		if !create {
 			return errors.New(missingRefusal)
 		}
-		if err := os.MkdirAll(root, 0o700); err != nil {
+		if err := createOwnedRoot(root); err != nil {
 			return err
 		}
 		info, err = os.Lstat(root)

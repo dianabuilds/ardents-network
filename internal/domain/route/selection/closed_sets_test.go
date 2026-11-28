@@ -21,7 +21,7 @@ func closedEntryFixture(t *testing.T) (ClosedSetConfig, *ClosedSetView) {
 		view.Candidates = append(view.Candidates, ClosedSetMember{NodeID: [32]byte{index}, PublicKey: [32]byte{index + 10}, FamilyID: [32]byte{index + 20}, RecordDigest: [32]byte{index + 30},
 			DutyGeneration: uint64(index), Domain: 1, NotAfter: now.Add(12 * time.Hour)})
 	}
-	root := t.TempDir()
+	root := ownedRootFixture(t)
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestClosedEntrySetRefusesConflictsAndIncompleteCreation(t *testing.T) {
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	config.Root = t.TempDir()
+	config.Root = ownedRootFixture(t)
 	if err := os.Chmod(config.Root, 0o700); err != nil {
 		t.Fatal(err)
 	}

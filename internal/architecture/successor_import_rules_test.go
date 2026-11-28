@@ -658,7 +658,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/domain/admission/spending" || owner == "internal/domain/network/duty" || owner == "internal/domain/network/state/durable") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/domain/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
+	if (source == "internal/durablefile/owner_root_windows.go" || source == "internal/durablefile/owner_root_windows_test.go" || source == "internal/durablefile/root_creation_windows.go" || source == "internal/durablefile/owner_file_windows.go" || source == "internal/domain/route/selection/root_permissions_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	// The Unix-family inspection port admits the reviewed x/sys/unix
