@@ -64,12 +64,14 @@ func TestSnapshotAdministrationNeverFallsBackToBodylessPublish(t *testing.T) {
 func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 	var calls atomic.Int32
 	path, _ := snapshotTestServer(t, snapshotTestOwner{snapshot: func(context.Context, []byte) error { calls.Add(1); return nil }})
-	frame := func(length uint32, body []byte) []byte {
-		raw := append([]byte(snapshotRequest), binary.BigEndian.AppendUint32(nil, length)...)
+	frame := func(length uint64, body []byte) []byte {
+		raw := append([]byte(snapshotRequest), binary.BigEndian.AppendUint64(nil, length)...)
 		return append(raw, body...)
 	}
 	for _, raw := range [][]byte{
 		frame(MaximumSnapshotBytes+1, nil), frame(1, nil), frame(0, []byte("extra")),
+		frame(1, []byte{0xff}), frame(0, []byte{1, 0}), frame(0, []byte{0}),
+		frame(1<<32, nil), []byte("snapshot\n\x00\x00\x00\x00"),
 		[]byte(snapshotRequest + "short"),
 	} {
 		socket, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
@@ -90,6 +92,36 @@ func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 		t.Fatal("malformed snapshot reached publication owner")
 	}
 }
+func TestSnapshotAdministrationDiscardsCompleteBodyAfterClientVerificationFails(t *testing.T) {
+	var calls atomic.Int32
+	path, server := snapshotTestServer(t, snapshotTestOwner{
+		snapshot: func(context.Context, []byte) error {
+			calls.Add(1)
+			return nil
+		},
+	})
+	unstable := errors.New("source changed during verification")
+	body := []byte{0x00, 0x80, 0xff}
+	outcome, err := requestSnapshot(t.Context(), path, func(output io.Writer) error {
+		if err := writeSnapshotHeader(output, int64(len(body))); err != nil {
+			return err
+		}
+		if _, err := output.Write(body); err != nil {
+			return err
+		}
+		return unstable
+	})
+	if outcome != "" || !errors.Is(err, unstable) {
+		t.Fatalf("publication = %q, %v; want verification failure", outcome, err)
+	}
+	if err := server.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 0 {
+		t.Fatal("unconfirmed bytes reached the publication owner")
+	}
+}
+
 func TestSnapshotAdministrationSerializesAllocationAndJoinsShutdown(t *testing.T) {
 	entered := make(chan struct{})
 	joined := make(chan struct{})
@@ -205,7 +237,7 @@ func TestSnapshotAdministrationRetainsOriginalDeadline(t *testing.T) {
 					return nil
 				},
 			}}
-			owner.handleSnapshot(connection, bytes.NewReader([]byte{0, 0, 0, 0}), deadline)
+			owner.handleSnapshot(connection, bytes.NewReader([]byte{0, 0, 0, 0, 0, 0, 0, 0, 1}), deadline)
 			response, err := io.ReadAll(client)
 			want, wantCalls := "published\n", 1
 			if condition == "expired" || condition == "late-success" {

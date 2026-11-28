@@ -295,8 +295,10 @@ background event or ordinary diagnostic containing the destination. Retrieval
 cannot publish, refresh, retry or resurrect a Service and promises no future
 availability. Existing Publish, snapshot and Withdraw response bytes are unchanged.
 The trusted publication client uses the existing private Administration socket.
-Its bounded extension is ASCII `snapshot\n`[9], a big-endian u32 byte length,
-exact file bytes (0 through 4 MiB), then directional EOF. There is no path,
+Its bounded extension is ASCII `stage-v1\n`[9], a big-endian u64 byte length,
+exact file bytes (0 through 4 MiB), one confirmation byte (value 1),
+and directional EOF. The trusted client sends confirmation after the second
+read verifies the original file. The previous snapshot request format refuses. There is no path,
 Target, key, Principal or Grant in this request. The transport admits at most
 one snapshot allocation/transition at a time and retains the existing finite
 receive deadline. Withdrawal remains a separate operation. Only a publication

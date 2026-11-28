@@ -26,25 +26,52 @@ var errSnapshotFile = errors.New("document snapshot input is unavailable or unst
 // Only a bounded regular file is read, and its identity, size and change
 // timestamps must remain stable. The returned copy is caller-owned and must be
 // cleared after transfer. No path or filesystem handle goes to the worker.
-func Read(ctx context.Context, path string) (body []byte, resultErr error) {
-	if ctx == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
-		return nil, errSnapshotFile
+func Read(ctx context.Context, path string) ([]byte, error) {
+	var output *bytes.Buffer
+	err := CopyVerified(ctx, path, document.MaximumBytes, func(size int64) (io.Writer, error) {
+		output = bytes.NewBuffer(make([]byte, 0, int(size)))
+		return output, nil
+	})
+	if err != nil {
+		if output != nil {
+			clear(output.Bytes())
+		}
+		return nil, err
+	}
+	return output.Bytes(), nil
+}
+
+// CopyVerified transfers a selected regular file to the supplied writer after
+// the caller admits its observed size. Output remains provisional until this
+// call succeeds, including comparison against a second read and file close.
+func CopyVerified(ctx context.Context, path string, maximum int64, destination func(int64) (io.Writer, error)) (resultErr error) {
+	if ctx == nil || destination == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
+		return errSnapshotFile
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, err
+		return err
 	}
 	file, err := openSnapshotFile(path)
 	if err != nil {
-		return nil, errSnapshotFile
+		return errSnapshotFile
 	}
-	defer func() {
-		resultErr = errors.Join(resultErr, file.Close(), ctx.Err())
-		if resultErr != nil {
-			clear(body)
-			body = nil
-		}
-	}()
-	return readStableSnapshot(ctx, file)
+	defer func() { resultErr = errors.Join(resultErr, file.Close(), ctx.Err()) }()
+	before, err := file.Stat()
+	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > maximum {
+		return errSnapshotFile
+	}
+	output, err := destination(before.Size())
+	if err != nil {
+		return err
+	}
+	if output == nil {
+		return errSnapshotFile
+	}
+	digest := sha256.New()
+	if err := copySnapshotPass(ctx, file, io.MultiWriter(output, digest), before.Size()); err != nil {
+		return err
+	}
+	return verifySnapshotFile(ctx, file, before, digest.Sum(nil))
 }
 
 func openSnapshotFile(path string) (*os.File, error) {
@@ -76,24 +103,6 @@ func openSnapshotFile(path string) (*os.File, error) {
 		return nil, closeErr
 	}
 	return os.NewFile(uintptr(fd), "selected document snapshot"), nil
-}
-
-func readStableSnapshot(ctx context.Context, file *os.File) ([]byte, error) {
-	before, err := file.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > document.MaximumBytes {
-		return nil, errSnapshotFile
-	}
-	body := bytes.NewBuffer(make([]byte, 0, int(before.Size())))
-	digest := sha256.New()
-	if err := copySnapshotPass(ctx, file, io.MultiWriter(body, digest), before.Size()); err != nil {
-		clear(body.Bytes())
-		return nil, err
-	}
-	if err := verifySnapshotFile(ctx, file, before, digest.Sum(nil)); err != nil {
-		clear(body.Bytes())
-		return nil, err
-	}
-	return body.Bytes(), nil
 }
 
 // copySnapshotPass copies exactly the observed size in fixed-size chunks.

@@ -13,8 +13,9 @@ const (
 	// MaximumSnapshotBytes is the selected immutable document publication limit.
 	MaximumSnapshotBytes = 4 << 20
 	// SnapshotTimeout bounds the entire Snapshot request, without renewal after input.
-	SnapshotTimeout = 45 * time.Second
-	snapshotRequest = "snapshot\n"
+	SnapshotTimeout      = 45 * time.Second
+	snapshotRequest      = "stage-v1\n"
+	snapshotCommit  byte = 1
 )
 
 // SnapshotPublisher extends the existing owner-authorized Administration
@@ -33,18 +34,33 @@ func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome
 	if ctx == nil || len(snapshot) > MaximumSnapshotBytes {
 		return "", errors.New("local Service snapshot is invalid")
 	}
-	ctx, cancel := context.WithTimeout(ctx, SnapshotTimeout)
-	defer cancel()
-	return requestOperation(ctx, path, func(output io.Writer) error {
-		var header [len(snapshotRequest) + 4]byte
-		copy(header[:], snapshotRequest)
-		binary.BigEndian.PutUint32(header[len(snapshotRequest):], uint32(len(snapshot)))
-		if _, err := output.Write(header[:]); err != nil {
+	return requestSnapshot(ctx, path, func(output io.Writer) error {
+		if err := writeSnapshotHeader(output, int64(len(snapshot))); err != nil {
 			return err
 		}
 		_, err := output.Write(snapshot)
 		return err
+	})
+}
+
+func requestSnapshot(ctx context.Context, path string, stage func(io.Writer) error) (Outcome, error) {
+	ctx, cancel := context.WithTimeout(ctx, SnapshotTimeout)
+	defer cancel()
+	return requestOperation(ctx, path, func(output io.Writer) error {
+		if err := stage(output); err != nil {
+			return err
+		}
+		_, err := output.Write([]byte{snapshotCommit})
+		return err
 	}, Published)
+}
+
+func writeSnapshotHeader(output io.Writer, size int64) error {
+	var header [len(snapshotRequest) + 8]byte
+	copy(header[:], snapshotRequest)
+	binary.BigEndian.PutUint64(header[len(snapshotRequest):], uint64(size))
+	_, err := output.Write(header[:])
+	return err
 }
 
 func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, deadline time.Time) {
@@ -62,12 +78,12 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 		writeResponse(connection, "unavailable\n")
 		return
 	}
-	var size [4]byte
+	var size [8]byte
 	if _, err := io.ReadFull(input, size[:]); err != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}
-	length := binary.BigEndian.Uint32(size[:])
+	length := binary.BigEndian.Uint64(size[:])
 	if length > MaximumSnapshotBytes {
 		writeResponse(connection, "unavailable\n")
 		return
@@ -78,8 +94,12 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, 
 		writeResponse(connection, "unavailable\n")
 		return
 	}
-	var trailing [1]byte
-	if n, err := input.Read(trailing[:]); n != 0 || err != io.EOF {
+	var ending [1]byte
+	if _, err := io.ReadFull(input, ending[:]); err != nil || ending[0] != snapshotCommit {
+		writeResponse(connection, "unavailable\n")
+		return
+	}
+	if n, err := input.Read(ending[:]); n != 0 || err != io.EOF {
 		refuseMalformedRequest(connection, input, n, err)
 		return
 	}
