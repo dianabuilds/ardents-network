@@ -1119,6 +1119,27 @@ published affected ranges end before v0.62.0. They do not identify this local
 finding. This review is not an assertion that no other advisory exists or that
 the component is free of vulnerabilities.
 
+**Candidate review (accessed 2026-11-28):** the public fork
+`github.com/qoke/mp-quic-go v0.3.1`
+(`h1:dz9LkG+QZr2DY/voKFZuNdlmDY4HbrKHrg2jA5DGiNM=`) answers a 32-byte packet
+from an unvalidated address with 96 bytes in live sessions that use the current
+Node TLS profile, on macOS arm64 and the Linux x86-64 stands, where official
+quic-go v0.62.0, v0.63.0 and v0.66.0 answer with 1200 bytes.
+[R-172](../research/records/r-172-quic-return-path-budget.md) holds the
+measurements, the controls and their limits. It is not an admitted fix. The tag
+is one unsigned merge commit by a single author in a fork of a fork. Upstream is
+284 commits ahead of its base, including transport security corrections. Its
+own module requires an `x/net` version affected by GO-2026-5026, and its
+scheduled vulnerability workflow has failed every day since 2026-11-24 without
+a fix. The Go vulnerability database keys advisories to the upstream module
+path, so no scanner would report a future quic-go advisory against it. It fails
+the maintenance and security-fix condition below. The same correction is
+prepared as `quic-go-v0.66.0-probe-budget.patch`, three production files on
+official v0.66.0, and passes the same session test and upstream's own tests on
+macOS arm64 and the Linux x86-64 stands. It is not an admitted source until an
+official release carries it or the Product Owner selects a maintained fork by
+ADR. The disposition is unchanged.
+
 The disposition must be revisited if the module, checksum, source, Go version,
 QUIC configuration, server caller, path-migration behavior, platform/backend,
 or an upstream/advisory record changes. Closure requires preserved evidence
