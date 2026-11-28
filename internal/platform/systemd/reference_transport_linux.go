@@ -8,26 +8,29 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall"
 )
 
 // The client decoder is never given an unchecked frame or auth line. In
 // particular a finite outer frame alone does not bound nested length fields.
 type referenceTransport struct {
-	socket     *net.UnixConn
-	mu         sync.Mutex
-	closed     bool
-	active     sync.WaitGroup
-	closeOnce  sync.Once
-	closeErr   error
-	readMu     sync.Mutex
-	writeMu    sync.Mutex
-	binary     atomic.Bool
-	owner      atomic.Value // original manager unique bus name, never rebound
-	line       int
-	pending    []byte
-	reader     *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
-	properties bool             // closed read-only Startup replies; references keep scalar admission
-	unitReply  managerUnitReply // immutable before the decoder starts
+	socket             *net.UnixConn
+	mu                 sync.Mutex
+	closed             bool
+	active             sync.WaitGroup
+	closeOnce          sync.Once
+	closeErr           error
+	readMu             sync.Mutex
+	writeMu            sync.Mutex
+	binary             atomic.Bool
+	owner              atomic.Value // original manager unique bus name, never rebound
+	line               int
+	auth               [128]byte
+	authStart, authEnd int
+	pending            []byte
+	reader             *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
+	properties         bool             // closed read-only Startup replies; references keep scalar admission
+	unitReply          managerUnitReply // immutable before the decoder starts
 }
 
 func (t *referenceTransport) begin() bool {
@@ -63,7 +66,7 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 		return 0, nil
 	}
 	if !t.binary.Load() {
-		n, err := t.socket.Read(p[:1]) // no bufio readahead across BEGIN
+		n, err := t.readAuthByte(p[:1])
 		if n != 0 {
 			t.line++
 			if p[0] == '\n' {
@@ -120,6 +123,47 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 	n := copy(p, t.pending)
 	t.pending = t.pending[n:]
 	return n, nil
+}
+
+// readAuthByte supplies the original bytewise authentication interface while
+// consuming each available line prefix in one socket read. Peek observes only
+// length and the first newline. There is no buffered binary read before BEGIN.
+func (t *referenceTransport) readAuthByte(p []byte) (int, error) {
+	if t.authStart == t.authEnd {
+		limit := min(len(t.auth), 4096-t.line+1)
+		raw, err := t.socket.SyscallConn()
+		if err != nil {
+			return 0, err
+		}
+		var available int
+		var receiveErr error
+		if err := raw.Read(func(fd uintptr) bool {
+			for {
+				available, _, receiveErr = syscall.Recvfrom(int(fd), t.auth[:limit], syscall.MSG_PEEK|syscall.MSG_DONTWAIT)
+				if receiveErr != syscall.EINTR {
+					return receiveErr != syscall.EAGAIN
+				}
+			}
+		}); err != nil {
+			return 0, err
+		}
+		if receiveErr != nil {
+			return 0, receiveErr
+		}
+		if available == 0 {
+			return 0, io.EOF
+		}
+		if end := bytes.IndexByte(t.auth[:available], '\n'); end >= 0 {
+			available = end + 1
+		}
+		if _, err := io.ReadFull(t.socket, t.auth[:available]); err != nil {
+			return 0, err
+		}
+		t.authStart, t.authEnd = 0, available
+	}
+	p[0] = t.auth[t.authStart]
+	t.authStart++
+	return 1, nil
 }
 
 func (t *referenceTransport) Write(p []byte) (int, error) {

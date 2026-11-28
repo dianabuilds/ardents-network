@@ -1,6 +1,10 @@
 package transfer
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
+)
 
 // ErrSegmentDraining means new local input must wait for the next segment.
 var ErrSegmentDraining = errors.New("service Connection segment is draining")
@@ -16,6 +20,20 @@ type SegmentPositions struct {
 // direction. The surrounding Stream uses it before copying a bounded frame.
 func (s *State) SegmentSendRemaining() uint64 {
 	return s.send.limit - s.send.end
+}
+
+// CheckSegmentWrite bounds bytes awaiting the first physical write to a single
+// record. The replay window still retains physically written unacknowledged
+// bytes independently. Backpressure keeps later bytes in the Application
+// instead of committing a replay-window-sized backlog just before rotation.
+func (s *State) CheckSegmentWrite(body []byte) error {
+	if err := s.CheckWrite(body); err != nil {
+		return err
+	}
+	if s.send.end-s.send.next+uint64(len(body)) > wire.MaximumDataBytes {
+		return ErrBackpressure
+	}
+	return nil
 }
 
 // FreezeSegment stops newly admitted sends without ending the Application

@@ -115,3 +115,39 @@ func TestDrainPreservesOnlyConfirmedDirectionalEOF(t *testing.T) {
 		t.Fatalf("drain results = %+v, %t; expected only the outgoing EOF", got, ok)
 	}
 }
+
+func TestSegmentBackpressureRetainsOneUnwrittenRecord(t *testing.T) {
+	state, err := transfer.New(1, 4*wire.MaximumDataBytes, 4*wire.MaximumDataBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := make([]byte, wire.MaximumDataBytes)
+	if err := state.CheckSegmentWrite(data); err != nil {
+		t.Fatal(err)
+	}
+	if err := state.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	_, ticket, err := state.BeginRecordWrite()
+	if err != nil || ticket == nil {
+		t.Fatal("original data record unavailable", err)
+	}
+	if err := state.CheckSegmentWrite(data[:1]); !errors.Is(err, transfer.ErrBackpressure) {
+		t.Fatal("unsent data escaped the physical write bound", err)
+	}
+	if err := state.FinishRecordWrite(ticket, nil); err != nil {
+		t.Fatal(err)
+	}
+	if offsets := state.ReplayOffsets(); offsets.SendBase != 0 || offsets.SendEnd != wire.MaximumDataBytes {
+		t.Fatalf("physical write advanced the authenticated replay floor: %+v", offsets)
+	}
+	if err := state.CheckSegmentWrite(data); err != nil {
+		t.Fatal("write waited for a peer ACK with physical capacity available", err)
+	}
+	if end := state.FreezeSegment(); end != wire.MaximumDataBytes {
+		t.Fatalf("local backpressure changed the agreed cut: %d", end)
+	}
+	if err := state.CheckSegmentWrite(data[:1]); !errors.Is(err, transfer.ErrSegmentDraining) {
+		t.Fatal("frozen segment admitted further bytes", err)
+	}
+}
