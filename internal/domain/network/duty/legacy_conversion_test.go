@@ -26,13 +26,13 @@ func writeSchemaGeneration(t *testing.T, root string, version uint8, generation 
 		t.Fatal(err)
 	}
 	name := sha256Hex(raw)
-	if err := os.WriteFile(filepath.Join(root, "state-"+name), raw, 0o600); err != nil {
+	if err := writeOwnedFixture(filepath.Join(root, "state-"+name), raw); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "watermark"), []byte(fmt.Sprintf("%d %s\n", generation, name)), 0o600); err != nil {
+	if err := writeOwnedFixture(filepath.Join(root, "watermark"), []byte(fmt.Sprintf("%d %s\n", generation, name))); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "current"), []byte(name+"\n"), 0o600); err != nil {
+	if err := writeOwnedFixture(filepath.Join(root, "current"), []byte(name+"\n")); err != nil {
 		t.Fatal(err)
 	}
 	return name

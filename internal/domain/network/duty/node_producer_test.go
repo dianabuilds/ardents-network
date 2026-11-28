@@ -188,7 +188,7 @@ func TestNodeProducerReopenCannotRollbackOrForkObservedGeneration(t *testing.T) 
 		}
 	}
 	for name, raw := range prior {
-		if err := os.WriteFile(filepath.Join(config.Root, name), raw, 0600); err != nil {
+		if err := writeOwnedFixture(filepath.Join(config.Root, name), raw); err != nil {
 			t.Fatal(err)
 		}
 	}

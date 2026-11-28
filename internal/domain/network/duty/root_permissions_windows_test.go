@@ -97,7 +97,7 @@ func requireOwnerOnlyDACL(t *testing.T, path string, inheritable, protected bool
 func TestDutyRootEnforcesOwnerOnlyDACL(t *testing.T) {
 	root := ownedRootFixture(t)
 	record := filepath.Join(root, "state-record")
-	if err := os.WriteFile(record, []byte("record"), 0o600); err != nil {
+	if err := writeOwnedFixture(record, []byte("record")); err != nil {
 		t.Fatal(err)
 	}
 	if err := validateRootPermissions(root); err != nil {

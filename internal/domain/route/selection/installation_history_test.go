@@ -78,10 +78,7 @@ func TestRetainedInstallationRefusesLostHistoryWithoutMutation(t *testing.T) {
 	for _, lost := range []string{"root", "contents", "lease", "marker", "watermark"} {
 		t.Run(lost, func(t *testing.T) {
 			view := installationView(t, 1)
-			root := filepath.Join(t.TempDir(), "entry")
-			if err := os.Mkdir(root, 0700); err != nil {
-				t.Fatal(err)
-			}
+			root := ownedRootFixture(t)
 			config := InstallationConfig{EntryRoot: root, Current: func() (network.RuntimeView, error) { return view, nil }}
 			if err := InitializeInstallation(config); err != nil {
 				t.Fatal(err)
@@ -183,7 +180,7 @@ func TestRetainedInstallationCannotRecreateRoleHistory(t *testing.T) {
 			root := ownedRootFixture(t)
 			entry, interior := filepath.Join(root, "entry"), filepath.Join(root, "interior")
 			for _, path := range []string{entry, interior} {
-				if err := os.Mkdir(path, 0700); err != nil {
+				if err := inspectRoot(path); err != nil {
 					t.Fatal(err)
 				}
 			}
