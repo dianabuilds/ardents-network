@@ -37,6 +37,8 @@ type publisherConnections struct {
 	lastID         uint32
 	active         int
 	cleanupErr     error
+	source         io.ReaderAt
+	sourceSize     int64
 	closers        sync.WaitGroup
 }
 
@@ -77,6 +79,7 @@ func (owner *publisherConnections) close() error {
 		<-stream.io.closed
 		owner.cleanupErr = errors.Join(owner.cleanupErr, stream.io.cleanupErr)
 		clear(stream.queue)
+		clear(stream.sourcePending)
 	}
 	owner.closers.Wait()
 	<-owner.workerDone

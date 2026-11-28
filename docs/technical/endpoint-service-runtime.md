@@ -296,7 +296,7 @@ completion.
 
 Administration and the local Endpoint publisher read the selected file through
 `internal/application/localsnapshot`. Each clears its copy after transferring
-the bytes. The worker receives those bytes through initialization.
+the bytes.
 
 The Endpoint declaration may bind a distinct Publisher storage root with
 `snapshot_root` and a positive `snapshot_quota_bytes`. The root participates in
@@ -305,9 +305,10 @@ state, socket and trust inputs. A reader-only declaration cannot select it.
 When configured, the installed Endpoint reserves this storage and opens an
 anonymous file before acknowledging receipt readiness. The file remains private
 through validation. The Publication retains the read-only source and its
-reservation until its worker and stream borrowers join. The current worker
-initialization reads that source into a bounded slice. File publication
-still enforces 4 MiB.
+reservation until its worker and stream borrowers join. Initialization of a
+file-backed Publisher sends no snapshot payload. The original attachment
+supplies credit-bounded blocks for each admitted stream. File publication
+still enforces 4 MiB until Service continuation is available.
 The document Publisher accepts `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by

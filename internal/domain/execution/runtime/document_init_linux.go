@@ -19,5 +19,11 @@ func (protocol documentProtocol) initialize(ctx context.Context, attachment *wor
 	} else if role != "reader" {
 		return errors.New("execution worker role is invalid")
 	}
+	if protocol.sourced {
+		if mode != document.PublisherWorker {
+			return errors.New("snapshot source requires a Publisher worker")
+		}
+		return document.InitializeSnapshotWorker(ctx, attachment, nonce)
+	}
 	return document.InitializeWorker(ctx, attachment, mode, nonce, protocol.snapshot)
 }

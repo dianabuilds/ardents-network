@@ -13,7 +13,17 @@ import (
 // The caller must establish the installed worker and accepted socket before
 // sending a snapshot. Readiness is only nonce/digest acknowledgement, never an
 // isolation assertion or authority to issue a Principal or Grant.
-func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode, nonce [32]byte, snapshot []byte) (resultErr error) {
+func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode, nonce [32]byte, snapshot []byte) error {
+	return initializeWorker(ctx, attachment, mode, nonce, snapshot, false)
+}
+
+// InitializeSnapshotWorker starts the qualified Publisher with source requests
+// over its existing attachment. Initialization carries no file contents.
+func InitializeSnapshotWorker(ctx context.Context, attachment io.ReadWriteCloser, nonce [32]byte) error {
+	return initializeWorker(ctx, attachment, PublisherWorker, nonce, nil, true)
+}
+
+func initializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode WorkerMode, nonce [32]byte, snapshot []byte, sourced bool) (resultErr error) {
 	if ctx == nil || attachment == nil || nonce == [32]byte{} ||
 		(mode != ReaderWorker && mode != PublisherWorker && mode != ByteStreamWorker) || len(snapshot) > MaximumBytes ||
 		mode != PublisherWorker && len(snapshot) != 0 {
@@ -37,7 +47,9 @@ func InitializeWorker(ctx context.Context, attachment io.ReadWriteCloser, mode W
 	defer clear(body)
 	digest := sha256.Sum256(body)
 	var header [77]byte
-	if mode == ByteStreamWorker {
+	if sourced {
+		copy(header[:8], snapshotWorkerInit)
+	} else if mode == ByteStreamWorker {
 		copy(header[:8], "ARDSWP01")
 	} else {
 		copy(header[:8], "ARDTWP01")

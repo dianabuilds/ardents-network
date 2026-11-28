@@ -473,6 +473,16 @@ ARDTWR01[8], the exact nonce[32] and snapshot digest[32] only after bounded
 validation. This is a readiness acknowledgement under the verified launch,
 never evidence establishing the launch's own authority.
 
+For a retained file source, Publisher INIT uses ASCII ARDSRC01[8], mode 2,
+the same nonce and empty-payload framing. The reader of the original
+attachment retains the private source. Once an admitted stream has received
+its input EOF, the worker can request one source block with kind 7 and an
+empty payload. Endpoint replies on that stream with kind 8 and up to 16 KiB
+within the available credit. An empty kind 8 ends the source. Endpoint
+chooses the position and checks the returned bytes before forwarding them.
+A stream can hold one unreturned source block. It cannot read a different
+position or ask for a filesystem path.
+
 Subsequent frames are kind u8, stream-ID u32, length u32 and exact payload.
 Endpoint allocates increasing odd IDs for already admitted Service streams;
 the Publisher has at most 256, and stores one immutable snapshot for the

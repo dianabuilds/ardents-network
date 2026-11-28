@@ -25,6 +25,8 @@ type workerStream struct {
 	header        []byte
 	offset        int
 	ready         bool
+	sourceWaiting bool
+	sourceEnded   bool
 }
 
 type workerMultiplexer struct {
@@ -183,6 +185,14 @@ func (owner *workerMultiplexer) receive(frame workerFrame) (bool, error) {
 			stream.input = nil
 			stream.ready = true
 		}
+	case sourceBlockFrame:
+		if !owner.initial.sourced || stream.rejected || !stream.sourceWaiting ||
+			stream.sourceEnded || len(stream.output) != 0 || uint32(len(frame.body)) > stream.sendCredit {
+			return false, errors.New("snapshot source reply is unsolicited or over credit")
+		}
+		stream.sourceWaiting = false
+		stream.sourceEnded = len(frame.body) == 0
+		stream.output = frame.body
 	case 5:
 		if frame.body[0] > 6 {
 			return false, errors.New("document worker terminal class is invalid")

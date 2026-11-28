@@ -5,7 +5,6 @@ package publisher
 import (
 	"context"
 	"errors"
-	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -143,16 +142,9 @@ func (owner *Publisher) publish(caller context.Context, snapshot []byte, port do
 	}
 	ctx, deadlineCancel := context.WithDeadline(ctx, plan.Deadline)
 	candidate.cancel = func() { setupCancel(); deadlineCancel() }
-	if port == nil {
-		if source != nil {
-			// The qualified worker still expects one bounded initialization.
-			// A later streaming bridge can open independent source readers.
-			snapshot = make([]byte, int(source.size))
-			defer clear(snapshot)
-			if _, err := io.ReadFull(source.openReader(), snapshot); err != nil {
-				return err
-			}
-		}
+	if source != nil {
+		candidate.worker, err = owner.local.LaunchSnapshotPublisher(ctx, owner.principal, source.openReader(), source.size)
+	} else if port == nil {
 		candidate.worker, err = owner.local.LaunchPublisher(ctx, owner.principal, snapshot)
 	} else {
 		candidate.worker, err = owner.local.LaunchByteStreamPublisher(ctx, owner.principal)

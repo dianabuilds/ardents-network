@@ -18,7 +18,20 @@ const publisherActiveLimit = 64
 // sender retains streams still waiting there. Closing incoming drains received
 // streams. Cancellation interrupts and joins all received stream I/O.
 // Endpoint still owns current-job/Grant validation and joined cgroup cleanup.
-func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream) (resultErr error) {
+func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream) error {
+	return serveWorkerConnections(ctx, attachment, incoming, nil, 0)
+}
+
+// ServeWorkerSnapshot supplies an already retained immutable source to the
+// qualified worker. Each admitted Connection starts at its own position.
+func ServeWorkerSnapshot(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream, source io.ReaderAt, size int64) error {
+	if source == nil || size < 0 {
+		return errors.New("Publisher snapshot source is unavailable")
+	}
+	return serveWorkerConnections(ctx, attachment, incoming, source, size)
+}
+
+func serveWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream, source io.ReaderAt, size int64) (resultErr error) {
 	if ctx == nil || attachment == nil || incoming == nil {
 		return errors.New("document Publisher Connections are unavailable")
 	}
@@ -26,6 +39,7 @@ func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, 
 		return errors.Join(ctx.Err(), attachment.Close())
 	}
 	owner := newPublisherConnections(ctx, attachment)
+	owner.source, owner.sourceSize = source, size
 	callbackDone := make(chan struct{})
 	stop := context.AfterFunc(owner.ctx, func() { defer close(callbackDone); _ = owner.closeAttachment() })
 	defer func() {
@@ -88,6 +102,9 @@ type publisherStream struct {
 	receiveCredit uint32
 	sendCredit    uint32
 	responseBytes uint32
+	sourceOffset  int64
+	sourcePending []byte
+	sourceEOF     bool
 	queue         []byte
 	head          int
 	queued        int
@@ -105,6 +122,7 @@ func (owner *publisherConnections) advance() error {
 				owner.active--
 			}
 			clear(stream.queue)
+			clear(stream.sourcePending)
 			owner.streams = append(owner.streams[:index], owner.streams[index+1:]...)
 			continue
 		}

@@ -9,6 +9,12 @@ import (
 
 const workerFrameLimit = 16 << 10
 
+const (
+	snapshotWorkerInit = "ARDSRC01"
+	sourceRequestFrame = 7
+	sourceBlockFrame   = 8
+)
+
 // workerInitialization is volatile, destination-free input. Its nonce is a
 // job correlation guard, never evidence that a launch is confined.
 type workerInitialization struct {
@@ -16,6 +22,7 @@ type workerInitialization struct {
 	nonce    [32]byte
 	digest   [32]byte
 	snapshot []byte
+	sourced  bool
 }
 
 func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerInitialization, error) {
@@ -33,6 +40,10 @@ func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerIniti
 		if mode != expected || mode == ByteStreamWorker || length > MaximumBytes || (mode != PublisherWorker && length != 0) {
 			return workerInitialization{}, errors.New("document worker initialization is invalid")
 		}
+	case snapshotWorkerInit:
+		if mode != PublisherWorker || expected != PublisherWorker || length != 0 {
+			return workerInitialization{}, errors.New("snapshot source worker initialization is invalid")
+		}
 	case "ARDSWP01":
 		if mode != ByteStreamWorker || length != 0 {
 			return workerInitialization{}, errors.New("byte-stream worker initialization is invalid")
@@ -40,7 +51,7 @@ func readWorkerInitialization(input io.Reader, expected WorkerMode) (workerIniti
 	default:
 		return workerInitialization{}, errors.New("worker initialization is invalid")
 	}
-	initial := workerInitialization{mode: mode}
+	initial := workerInitialization{mode: mode, sourced: string(header[:8]) == snapshotWorkerInit}
 	copy(initial.nonce[:], header[9:41])
 	copy(initial.digest[:], header[45:77])
 	if initial.nonce == [32]byte{} {
@@ -77,7 +88,7 @@ func readWorkerFrame(input io.Reader) (workerFrame, error) {
 		return workerFrame{}, err
 	}
 	kind, id, size := header[0], binary.BigEndian.Uint32(header[1:5]), binary.BigEndian.Uint32(header[5:])
-	valid := id != 0 && ((kind == 1 || kind == 4) && size == 0 || kind == 2 && size > 0 && size <= workerFrameLimit || kind == 3 && size == 4 || kind == 5 && size == 1)
+	valid := id != 0 && ((kind == 1 || kind == 4) && size == 0 || kind == 2 && size > 0 && size <= workerFrameLimit || kind == 3 && size == 4 || kind == 5 && size == 1 || kind == sourceBlockFrame && size <= workerFrameLimit)
 	if !valid {
 		return workerFrame{}, errors.New("document worker frame is invalid")
 	}
