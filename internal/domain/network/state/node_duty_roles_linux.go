@@ -12,17 +12,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
-// RepairRetainedForwardingProducer explicitly abandons a dead platform
-// Forwarding's sole node-duty participation fence. It does not attest successful
-// original completion. The original read-only manager connection, actual empty
-// kernel scope and both exclusive retained leases are mandatory. No caller-supplied
-// proof callback or boolean can authorize the removal. A new invocation rechecks
-// normal admission. Spend obligations are never repaired here.
-//
-// Forwarding shares the ardents-node account with sibling Node role units, so
-// quiescence is per-unit cgroup only — never an account-wide process scan that
-// would refuse legitimate siblings. writableRoots are the exact ordered platform
-// write paths (network, participation, spend, hosting).
+// RepairRetainedForwardingProducer abandons one stopped Forwarding duty after
+// checking its original manager, empty cgroup and both retained leases.
 func RepairRetainedForwardingProducer(ctx context.Context, input Config, original *systemd.ForwardingRuntime, declaration string, writableRoots []string) error {
 	native := forwardingRepairNative
 	if original != nil {
@@ -39,19 +30,8 @@ var forwardingRepairNative = nodeDutyRepairNative{
 	quiesce: cgroup.CheckForwardingRecoveryQuiescent,
 }
 
-// RepairRetainedJoinProducer explicitly abandons a dead platform JOIN's sole
-// node-duty participation fence. It does not attest successful original
-// completion. The original read-only manager connection, actual empty kernel
-// scope and both exclusive retained leases are mandatory. No caller-supplied
-// proof callback or boolean can authorize the removal. A new invocation
-// rechecks normal admission. Spend obligations are never repaired here.
-//
-// JOIN shares the ardents-node account with sibling Node role units, so
-// quiescence is per-unit cgroup only — never an account-wide process scan that
-// would refuse legitimate siblings. writableRoots are the exact ordered platform
-// write paths (network, participation, spend, hosting). Each JOIN pair
-// participant owns a separate participation root and fence; this repairs one
-// invocation's sole fence, never the pair.
+// RepairRetainedJoinProducer abandons one stopped JOIN participant duty.
+// Each participant retains its own root and fence.
 func RepairRetainedJoinProducer(ctx context.Context, input Config, original *systemd.JoinRuntime, declaration string, writableRoots []string) error {
 	native := joinRepairNative
 	if original != nil {
@@ -68,17 +48,8 @@ var joinRepairNative = nodeDutyRepairNative{
 	quiesce: cgroup.CheckJoinRecoveryQuiescent,
 }
 
-// RepairRetainedIntroductionProducer explicitly abandons a dead platform
-// Introduction's sole node-duty participation fence. It does not attest successful
-// original completion. The original read-only manager connection, actual empty
-// kernel scope and both exclusive retained leases are mandatory. No caller-supplied
-// proof callback or boolean can authorize the removal. A new invocation rechecks
-// normal admission. Slot claims and spend obligations are never repaired here.
-//
-// Unlike Source, Introduction shares the ardents-node account with sibling Node
-// role units, so quiescence is per-unit cgroup only — never an account-wide process
-// scan that would refuse legitimate siblings. writableRoots are the exact ordered
-// platform write paths (network, participation, spend, hosting, introduction).
+// RepairRetainedIntroductionProducer abandons one stopped Introduction duty.
+// Slot claims and spend obligations remain outside this repair.
 func RepairRetainedIntroductionProducer(ctx context.Context, input Config, original *systemd.IntroductionRuntime, declaration string, writableRoots []string) error {
 	native := introductionRepairNative
 	if original != nil {
@@ -95,29 +66,10 @@ var introductionRepairNative = nodeDutyRepairNative{
 	quiesce: cgroup.CheckIntroductionRecoveryQuiescent,
 }
 
-// RepairRetainedDescriptorProducer explicitly abandons a dead platform
-// Descriptor's sole node-duty participation fence. It does not attest successful
-// original completion. The original read-only manager connection, actual empty
-// kernel scope and both exclusive retained leases are mandatory. No
-// caller-supplied proof callback or boolean can authorize the removal. A new
-// invocation rechecks normal admission. Spend obligations and publication floors
-// are never repaired here.
-//
-// Descriptor shares the ardents-node account with sibling Node role units, so
-// quiescence is per-unit cgroup only — never an account-wide process scan that
-// would refuse legitimate siblings. writableRoots are the exact ordered platform
-// write paths (network, participation, spend, hosting, descriptor); the fifth
-// entry is the Store root.
-//
-// The Store lease is flock and dies with the process, so the Store root carries
-// no durable fence to remove. A crash mid-Publish can instead leave the reserved
-// uncertain staging name, which a retained opening refuses. After the first
-// stopped-unit proof and while holding both retained leases, this adapter
-// invokes the bounded descriptorstore.RepairStage to validate every
-// committed floor and remove only that staging under the exclusive Store lease,
-// then reobserves quiescence before the one participation commit. It never
-// initializes a missing Store root, resets or evicts a floor, promotes staging
-// or deletes foreign entries.
+// RepairRetainedDescriptorProducer abandons one stopped Descriptor duty.
+// While both retained leases are held, it validates and removes only an
+// uncertain Store stage between the two original quiescence observations.
+// The fifth writable root is the Descriptor Store.
 func RepairRetainedDescriptorProducer(ctx context.Context, input Config, original *systemd.DescriptorRuntime, declaration string, writableRoots []string) error {
 	native := descriptorRepairNative
 	if original != nil {
