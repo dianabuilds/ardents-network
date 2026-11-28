@@ -12,7 +12,7 @@ import (
 // errInspectionPlatformUnavailable is the explicit typed unavailable outcome
 // for the authenticated Direct-Origin Source contact on platforms without the
 // Linux Source preparation mechanism (ADR-0129). InspectLatest composes
-// state.SourcePreparationConfig, which remains Linux-only; a missing required
+// preparation.StateConfig, which remains Linux-only; a missing required
 // protection yields the same explicit refusal on every other platform and never
 // supplies a weaker accepting path.
 var errInspectionPlatformUnavailable = errors.New("source inspection platform unavailable")

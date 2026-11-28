@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package state
+package preparation
 
 import (
 	"bytes"
@@ -32,7 +32,7 @@ func TestSourcePreparationNativeStateCommand(t *testing.T) {
 	}
 	program := filepath.Join(root, "ardents-next")
 	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", program, "./cmd/ardents-next")
-	build.Dir = "../../../.."
+	build.Dir = "../../../../.."
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build canonical Source command: %v %s", err, out)
 	}

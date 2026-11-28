@@ -709,7 +709,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/domain/release/infrastructure/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || source == "internal/domain/network/state/command/cancellation_test.go" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
+		if (owner == "internal/domain/network/epoch" || owner == "internal/domain/network/state" || source == "internal/domain/network/source/preparation/state_files_linux_test.go" || source == "internal/domain/network/state/command/cancellation_test.go" || owner == "cmd/ardents-next" || source == "internal/domain/endpoint/history_preparation_linux_test.go" || source == "internal/domain/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
 			return true
 		}
 		if owner == "internal/domain/network/epoch" && dependency == modulePath+"/tests/epochfixture/assignment" {

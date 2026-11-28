@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source/preparation"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 )
@@ -52,9 +52,9 @@ func runSourceStatePreparation(ctx context.Context, args []string, out, diagnost
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	if err := state.PrepareSourceStateFiles(ctx, args[0], args[1]); err != nil {
+	if err := preparation.PrepareState(ctx, args[0], args[1]); err != nil {
 		owner := "state"
-		if errors.Is(err, state.ErrSourcePreparationPrincipal) {
+		if errors.Is(err, preparation.ErrPrincipal) {
 			owner = "input"
 		}
 		return sourceStartupFailure(diagnostic, owner, err, nil)

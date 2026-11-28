@@ -32,6 +32,7 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/network/duty":                        {"durablefile", "pathcheck"},
 	"internal/domain/network/epoch":                       {"domain/network/canonicalcursor"},
 	"internal/domain/network/source":                      {"domain/network/canonicalcursor", "domain/network/epoch"},
+	"internal/domain/network/source/preparation":          {"domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/processguard"},
 	"internal/domain/network/source/serving":              {"domain/network/source/servingdeclaration", "domain/network/state", "pathcheck", "platform/artifacts", "platform/processguard"},
 	"internal/domain/network/source/servingdeclaration":   {},
 	"internal/domain/network/state":                       {"canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathcheck"},
@@ -127,6 +128,9 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 		return true
 	}
 
+	if source == "internal/domain/network/source/preparation/state_files_linux.go" && dependency == modulePath+"/internal/platform/process" {
+		return true
+	}
 	if source == "internal/domain/network/source/command/serve_linux.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
 	}
@@ -134,7 +138,7 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 		switch source {
 		case "cmd/ardents-next/inputs.go", "cmd/ardents-next/hosting_config.go", "cmd/ardents-next/publication.go", "cmd/ardents-next/route_linux.go",
 			"internal/domain/network/source/command/serve_linux.go", "internal/domain/network/source/command/prepare_linux.go",
-			"internal/domain/network/state/source_state_files_linux_test.go":
+			"internal/domain/network/source/preparation/state_files_linux_test.go":
 			return true
 		}
 	}
@@ -269,7 +273,7 @@ func successorDomainPackageImport(source, dependency, owner string) bool {
 		}
 	}
 	if dependency == modulePath+"/internal/domain/network/source/servingdeclaration" &&
-		source == "internal/domain/network/state/source_state_files_linux_test.go" {
+		source == "internal/domain/network/source/preparation/state_files_linux_test.go" {
 		return true
 	}
 
