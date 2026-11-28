@@ -34,7 +34,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ardents-build"
       - name: Exercise native authentication and verified frame boundaries
         run: |
-          ARDENTS_INSTALLATION_NATIVE_ROOT="$(mktemp -d)" go test -tags installation_native ./internal/platform/systemd \
+          sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build" \
+            ARDENTS_INSTALLATION_NATIVE_ROOT="$(mktemp -d)" GOTOOLCHAIN=local go test -tags installation_native ./internal/platform/systemd \
             -run '^TestInstallationNative(Reference|StartupInterruption)' -count=1 -v
       - name: Exercise the installed TCP/TLS pair
         run: |
