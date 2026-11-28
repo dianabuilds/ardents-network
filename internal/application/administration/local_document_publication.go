@@ -20,9 +20,9 @@ func PublishLocal(ctx context.Context, socket, path string) error {
 	}
 	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	outcome, err := requestSnapshot(bounded, socket, func(output io.Writer) error {
+	outcome, err := requestSnapshot(bounded, socket, func(output io.ReadWriter) error {
 		return localsnapshot.CopyVerified(bounded, path, MaximumSnapshotBytes, func(size int64) (io.Writer, error) {
-			if err := writeSnapshotHeader(output, size); err != nil {
+			if err := beginSnapshot(output, size); err != nil {
 				return nil, err
 			}
 			return output, nil

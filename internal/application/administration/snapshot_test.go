@@ -68,23 +68,29 @@ func TestSnapshotAdministrationRefusesMalformedWireBeforeOwner(t *testing.T) {
 		raw := append([]byte(snapshotRequest), binary.BigEndian.AppendUint64(nil, length)...)
 		return append(raw, body...)
 	}
-	for _, raw := range [][]byte{
-		frame(MaximumSnapshotBytes+1, nil), frame(1, nil), frame(0, []byte("extra")),
-		frame(1, []byte{0xff}), frame(0, []byte{1, 0}), frame(0, []byte{0}),
-		frame(1<<32, nil), []byte("snapshot\n\x00\x00\x00\x00"),
-		[]byte(snapshotRequest + "short"),
+	for _, test := range []struct {
+		raw      []byte
+		response string
+	}{
+		{frame(MaximumSnapshotBytes+1, nil), "unavailable\n"},
+		{frame(1<<32, nil), "unavailable\n"},
+		{[]byte("snapshot\n\x00\x00\x00\x00"), "unavailable\n"},
+		{[]byte(snapshotRequest + "short"), "unavailable\n"},
+		{frame(1, nil), "ready\nunavailable\n"},
+		{frame(1, []byte{0xff}), "ready\nunavailable\n"},
+		{frame(0, []byte{0}), "ready\nunavailable\n"},
+		{frame(0, []byte{1, 0}), "ready\nunavailable\n"},
 	} {
 		socket, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: path, Net: "unix"})
 		if err != nil {
 			t.Fatal(err)
 		}
 		_ = socket.SetDeadline(time.Now().Add(time.Second))
-		_, _ = socket.Write(raw)
+		_, _ = socket.Write(test.raw)
 		_ = socket.CloseWrite()
-		response := make([]byte, len("unavailable\n"))
-		_, err = io.ReadFull(socket, response)
+		response, err := io.ReadAll(socket)
 		_ = socket.Close()
-		if err != nil || string(response) != "unavailable\n" {
+		if err != nil || string(response) != test.response {
 			t.Fatalf("refusal = %q, %v", response, err)
 		}
 	}
@@ -102,8 +108,8 @@ func TestSnapshotAdministrationDiscardsCompleteBodyAfterClientVerificationFails(
 	})
 	unstable := errors.New("source changed during verification")
 	body := []byte{0x00, 0x80, 0xff}
-	outcome, err := requestSnapshot(t.Context(), path, func(output io.Writer) error {
-		if err := writeSnapshotHeader(output, int64(len(body))); err != nil {
+	outcome, err := requestSnapshot(t.Context(), path, func(output io.ReadWriter) error {
+		if err := beginSnapshot(output, int64(len(body))); err != nil {
 			return err
 		}
 		if _, err := output.Write(body); err != nil {
@@ -239,11 +245,12 @@ func TestSnapshotAdministrationRetainsOriginalDeadline(t *testing.T) {
 			}}
 			owner.handleSnapshot(connection, bytes.NewReader([]byte{0, 0, 0, 0, 0, 0, 0, 0, 1}), deadline)
 			response, err := io.ReadAll(client)
-			want, wantCalls := "published\n", 1
-			if condition == "expired" || condition == "late-success" {
-				want = "unavailable\n"
+			want, wantCalls := "ready\npublished\n", 1
+			if condition == "late-success" {
+				want = "ready\nunavailable\n"
 			}
 			if condition == "expired" {
+				want = "unavailable\n"
 				wantCalls = 0
 			}
 			if err != nil || string(response) != want || calls != wantCalls {

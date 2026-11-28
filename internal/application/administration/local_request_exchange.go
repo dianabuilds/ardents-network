@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func exchangeLocalRequest(ctx context.Context, path string, write func(io.Writer) error, maximum int64) ([]byte, error) {
+func exchangeLocalRequest(ctx context.Context, path string, write func(io.ReadWriter) error, maximum int64) ([]byte, error) {
 	if ctx == nil || path == "" || write == nil {
 		return nil, errors.New("local Service Administration request is invalid")
 	}

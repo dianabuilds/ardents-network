@@ -296,8 +296,9 @@ cannot publish, refresh, retry or resurrect a Service and promises no future
 availability. Existing Publish, snapshot and Withdraw response bytes are unchanged.
 The trusted publication client uses the existing private Administration socket.
 Its bounded extension is ASCII `stage-v1\n`[9], a big-endian u64 byte length,
-exact file bytes (0 through 4 MiB), one confirmation byte (value 1),
-and directional EOF. The trusted client sends confirmation after the second
+then the server sends `ready\n` after assigning the input slot and buffer.
+The client sends exact file bytes (0 through 4 MiB), one confirmation byte
+(value 1), and directional EOF. The trusted client sends confirmation after the second
 read verifies the original file. The previous snapshot request format refuses. There is no path,
 Target, key, Principal or Grant in this request. The transport admits at most
 one snapshot allocation/transition at a time and retains the existing finite

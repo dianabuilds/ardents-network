@@ -45,7 +45,7 @@ func PresentPublishedLink(ctx context.Context, socket string, output io.WriteClo
 // RequestPublishedLink performs one bounded read-only local operation. It
 // sends no Target or authority fields and never retries publication.
 func RequestPublishedLink(ctx context.Context, path string) (string, error) {
-	raw, err := exchangeLocalRequest(ctx, path, func(output io.Writer) error { _, err := io.WriteString(output, "link\n"); return err }, maximumPublishedLink+8)
+	raw, err := exchangeLocalRequest(ctx, path, func(output io.ReadWriter) error { _, err := io.WriteString(output, "link\n"); return err }, maximumPublishedLink+8)
 	if err != nil {
 		return "", err
 	}
