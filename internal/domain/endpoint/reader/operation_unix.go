@@ -5,6 +5,9 @@ package reader
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,7 +77,22 @@ func (read *readerOperation) prepare(plan funding.Plan, authority funding.Author
 			result = errors.Join(result, pending.close())
 		}
 	}()
-	open := func(ctx context.Context, previous *connection.Stream) (*connection.Stream, func() error, error) {
+	open := func(ctx context.Context, previous *connection.Stream) (_ *connection.Stream, _ func() error, openErr error) {
+		phase := 1
+		defer func() {
+			if openErr == nil {
+				return
+			}
+			reason := openErr.Error()
+			labels := []string{"cold Source bootstrap allowance", "scope caller or bounds differ", "continuation refused", "logical Connection", "class quota", "bootstrap", "stock", "retired", "horizon", "network", "admission", "deadline", "acquisition", "canceled", "quota", "refused"}
+			var flags uint64
+			for i, label := range labels {
+				if strings.Contains(reason, label) {
+					flags |= 1 << i
+				}
+			}
+			fmt.Fprintf(os.Stderr, "qualification continuation opening phase=%d cause-flags=%d bootstrap-remaining=%d deadline=%t\n", phase, flags, holder.Status().BootstrapRemaining, errors.Is(openErr, context.DeadlineExceeded))
+		}()
 		var continuation *connection.ReaderContinuation
 		if previous != nil {
 			var err error
@@ -83,6 +101,7 @@ func (read *readerOperation) prepare(plan funding.Plan, authority funding.Author
 				return nil, nil, err
 			}
 		}
+		phase = 2
 		segmentPlan := plan
 		end := time.Now().Add(endpointstream.ReaderTimeout).UTC().Truncate(time.Second)
 		if end.Before(segmentPlan.Deadline) {
@@ -92,6 +111,7 @@ func (read *readerOperation) prepare(plan funding.Plan, authority funding.Author
 		if err != nil {
 			return nil, nil, err
 		}
+		phase = 3
 		stop := context.AfterFunc(ctx, func() { _ = closeSource() })
 		segment, err := source.OpenSegment(read.contract)
 		stop()
