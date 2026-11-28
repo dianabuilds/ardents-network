@@ -26,7 +26,7 @@ func ServeWorkerConnections(ctx context.Context, attachment io.ReadWriteCloser, 
 // qualified worker. Each admitted Connection starts at its own position.
 func ServeWorkerSnapshot(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan endpointstream.Stream, source io.ReaderAt, size int64) error {
 	if source == nil || size < 0 {
-		return errors.New("Publisher snapshot source is unavailable")
+		return errors.New("publisher snapshot source is unavailable")
 	}
 	return serveWorkerConnections(ctx, attachment, incoming, source, size)
 }

@@ -18,12 +18,12 @@ func WritableDirectories(request Declaration) ([]string, error) {
 	if root := request.Headless.SnapshotRoot; root != "" {
 		for _, input := range []string{request.Source.ClientCertificate, request.Source.ClientKey} {
 			if input != "" && pathsOverlap(root, input) {
-				return nil, errors.New("Endpoint snapshot storage overlaps a Source credential")
+				return nil, errors.New("endpoint snapshot storage overlaps a Source credential")
 			}
 		}
 		for _, member := range request.Source.Sources {
 			if pathsOverlap(root, member.RootCA) {
-				return nil, errors.New("Endpoint snapshot storage overlaps a Source trust input")
+				return nil, errors.New("endpoint snapshot storage overlaps a Source trust input")
 			}
 		}
 	}

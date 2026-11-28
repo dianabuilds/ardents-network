@@ -74,7 +74,7 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 	case 2:
 		if owner.source != nil {
 			if len(frame.body) != len(stream.sourcePending) || !bytes.Equal(frame.body, stream.sourcePending) {
-				return errors.New("Publisher worker output differs from the selected source block")
+				return errors.New("publisher worker output differs from the selected source block")
 			}
 			clear(stream.sourcePending)
 			stream.sourcePending = nil
@@ -105,7 +105,7 @@ func (owner *publisherConnections) fromWorker(frame workerFrame) error {
 		stream.sendCredit += credit
 	case 4:
 		if owner.source != nil && (!stream.sourceEOF || len(stream.sourcePending) != 0) {
-			return errors.New("Publisher worker ended before its selected source")
+			return errors.New("publisher worker ended before its selected source")
 		}
 		stream.workerEOF = true
 	case 5:

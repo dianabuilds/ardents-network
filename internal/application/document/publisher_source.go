@@ -7,7 +7,7 @@ import (
 
 func (owner *publisherConnections) supplySnapshotBlock(stream *publisherStream) error {
 	if owner.source == nil || stream.sourceEOF || len(stream.sourcePending) != 0 || stream.receiveCredit == 0 {
-		return errors.New("Publisher worker requested an unsolicited snapshot block")
+		return errors.New("publisher worker requested an unsolicited snapshot block")
 	}
 	remaining := owner.sourceSize - stream.sourceOffset
 	if stream.failed || remaining == 0 {

@@ -20,7 +20,7 @@ func validateSnapshotStorage(plan Headless) error {
 		plan.PublisherPermission.RequestPath, plan.PublisherPermission.ResponsePath,
 	} {
 		if other != "" && pathsOverlap(root, other) {
-			return errors.New("Endpoint snapshot storage overlaps another declared path")
+			return errors.New("endpoint snapshot storage overlaps another declared path")
 		}
 	}
 	return nil
