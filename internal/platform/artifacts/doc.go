@@ -5,5 +5,7 @@
 // (protected_storage_linux.go) and the output publication floor remain genuine
 // Linux mechanisms. Directory custody is also used by native Source and
 // platform input composition. Its file checks grant no domain authority. The
-// caller chooses the artifact set, purpose and signing policy.
+// caller chooses the artifact set, purpose and signing policy. ReadBoundedFile
+// closes its descriptor before returning detached bytes. ObservedInputs retains
+// the original descriptor and bytes until Close joins all admitted checks.
 package artifacts
