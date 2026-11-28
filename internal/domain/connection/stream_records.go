@@ -196,13 +196,7 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 				return errIntegrity
 			}
 			var err error
-			record, ticket, err = stream.transfer.BeginRecordWrite()
-			if ticket == nil && err == nil && stream.segment != nil {
-				segmentTicket, err = stream.segment.beginWrite(stream.transfer)
-				if segmentTicket != nil {
-					record = wire.Record{Continuation: &segmentTicket.record}
-				}
-			}
+			record, ticket, segmentTicket, err = stream.beginRecordWriteLocked()
 			if ticket == nil && segmentTicket == nil && err == nil {
 				changed = stream.changeLocked()
 			}
@@ -268,6 +262,23 @@ func (stream *Stream) writeRecords(records *attachmentRecords) {
 			return
 		}
 	}
+}
+
+// beginRecordWriteLocked announces the sealed send end before draining bytes.
+// The peer stops admitting new input but still receives Data through that end.
+// Boundary proofs remain unavailable until both ledgers have drained.
+func (stream *Stream) beginRecordWriteLocked() (wire.Record, *transfer.RecordWrite, *segmentControlWrite, error) {
+	if stream.segment != nil {
+		control, err := stream.segment.beginWrite(stream.transfer)
+		if err != nil {
+			return wire.Record{}, nil, nil, err
+		}
+		if control != nil {
+			return wire.Record{Continuation: &control.record}, nil, control, nil
+		}
+	}
+	record, ticket, err := stream.transfer.BeginRecordWrite()
+	return record, ticket, nil, err
 }
 
 // Matching replay and repeated ACKs cannot renew the progress anchor. Only

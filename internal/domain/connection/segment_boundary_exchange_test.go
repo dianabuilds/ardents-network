@@ -146,3 +146,28 @@ func TestSegmentBoundaryCompletesOnlyAfterCurrentPhysicalConfirmation(t *testing
 		t.Fatal("segment retirement did not seal only segment effects")
 	}
 }
+
+func TestSegmentDrainIsAnnouncedAheadOfQueuedData(t *testing.T) {
+	stream := &Stream{transfer: segmentFlow(t)}
+	var err error
+	stream.segment, err = newSegmentBoundaryExchange(wire.RoleInitiator, wire.SegmentBoundary{Next: 1}, [32]byte{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stream.transfer.Write([]byte("queued")); err != nil {
+		t.Fatal(err)
+	}
+	stream.segment.freeze(stream.transfer)
+	record, bytes, control, err := stream.beginRecordWriteLocked()
+	if err != nil || bytes != nil || control == nil || record.Continuation == nil ||
+		record.Continuation.Kind != wire.DrainSegment || record.Continuation.DrainOffset != 6 {
+		t.Fatalf("queued bytes delayed the sealed drain notice: %+v, %v", record, err)
+	}
+	if err := stream.segment.finishWrite(control, 1, nil); err != nil {
+		t.Fatal(err)
+	}
+	record, bytes, control, err = stream.beginRecordWriteLocked()
+	if err != nil || bytes == nil || control != nil || record.Data == nil || string(record.Data.Payload) != "queued" {
+		t.Fatalf("the drain notice displaced admitted bytes: %+v, %v", record, err)
+	}
+}

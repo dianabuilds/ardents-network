@@ -1740,6 +1740,7 @@
           "internal/domain/connection.Stream.terminalTailCompleteLocked",
           "internal/domain/connection.Stream.waitChange",
           "internal/domain/connection.Stream.watchLifetime",
+          "internal/domain/connection.Stream.beginRecordWriteLocked",
           "internal/domain/connection.Stream.writeRecords",
           "internal/domain/connection.attachmentIO.Read",
           "internal/domain/connection.attachmentIO.Write",
