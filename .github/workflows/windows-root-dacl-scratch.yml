@@ -21,15 +21,18 @@ jobs:
           $env:GOTOOLCHAIN = 'local'
           $volume = Get-Volume -DriveLetter ([System.IO.Path]::GetPathRoot($env:TEMP).Substring(0, 1))
           if ($volume.FileSystem -ne 'NTFS') { throw 'Native test requires NTFS' }
-          $source = Join-Path $env:RUNNER_TEMP 'owner-root-baseline.go'
-          $testSource = Join-Path $env:RUNNER_TEMP 'owner-root-baseline-test.go'
-          git show c759189ec:internal/durablefile/owner_root_windows.go | Set-Content -Encoding utf8 $source
-          git show c759189ec:internal/durablefile/owner_root_windows_test.go | Set-Content -Encoding utf8 $testSource
-          $overlay = @{ Replace = @{
-            (Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows.go') = $source
-            (Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows_test.go') = $testSource
-          }} | ConvertTo-Json
-          $overlayPath = Join-Path $env:RUNNER_TEMP 'baseline-overlay.json'
+          $original = Join-Path $env:GITHUB_WORKSPACE 'internal/durablefile/owner_root_windows.go'
+          $source = Join-Path $env:RUNNER_TEMP 'owner-root-diagnostic.go'
+          $text = [IO.File]::ReadAllText($original)
+          $needle = @'
+	if err := checkWindowsFileOwner(handle, owner); err != nil {
+		return errors.Join(errors.New(refusal.RootDACL), err)
+	}
+'@
+          if (-not $text.Contains($needle)) { throw 'owner-check control not found' }
+          [IO.File]::WriteAllText($source, $text.Replace($needle, ''))
+          $overlay = @{ Replace = @{ $original = $source }} | ConvertTo-Json
+          $overlayPath = Join-Path $env:RUNNER_TEMP 'diagnostic-overlay.json'
           [IO.File]::WriteAllText($overlayPath, $overlay)
-          go test -overlay $overlayPath -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRootGrantsOnlyOwner$' -count=1 -v -timeout=8m
+          go test -overlay $overlayPath -race ./internal/durablefile -run '^TestEnforceOwnerOnlyRoot(RefusesExternalHardLink|DoesNotPropagateToExistingDirectory|RefusesRedirectedEntry)$' -count=1 -v -timeout=8m
           exit $LASTEXITCODE
