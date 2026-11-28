@@ -24,6 +24,8 @@ type PairMessage struct {
 	Nonce      string
 	Network    *SignedNetwork
 	Body       []byte
+	Stream     *JourneyStream      `json:",omitempty"`
+	Proof      *JourneyStreamProof `json:",omitempty"`
 	Link       string
 	Failure    string
 	Original   [3]string

@@ -87,7 +87,7 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | internal/domain/release/infrastructure/signing | internal/domain/release/infrastructure/signing/internal/keyset | `release_key_command_linux.go`, `release_key_receipt_unix.go`, `release_key_receipt_unix_test.go` |
 | internal/domain/release/infrastructure/signing/internal/keyset | internal/platform/artifacts | `prepare_linux.go` |
 | internal/domain/admission/issuance | internal/platform/artifacts | `artifact_export_unix.go`, `result_declaration.go` |
-| internal/domain/connection | internal/application/endpointstream | `stream.go`, `stream_retirement.go`, `stream_handoff_test.go` |
+| internal/domain/connection | internal/application/endpointstream | `stream.go`, `stream_retirement.go`, `stream_handoff_test.go`, `transfer_stream.go` |
 | internal/domain/connection | internal/domain/route/transport | `reader_authentication.go` |
 | internal/domain/custody/command | internal/domain/admission | `admission_permission_client_linux_test.go` |
 | internal/domain/custody/command | internal/domain/custody | `admission_authority.go`, `admission_permission_client_linux_test.go`, `command.go`, `command_test.go`, `private_permission_windows_test.go`, `purge_record.go`, `recovery_bundle.go`, `service_authority.go`, `terminal_secret.go`, `verify_record.go` |
@@ -104,6 +104,7 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | internal/domain/endpoint/launch | internal/platform/artifacts | `platform_delivery_linux.go`, `platform_pin_linux_test.go`, `platform_staging_linux.go` |
 | internal/domain/endpoint/plan | internal/pathcheck | `platform_launch.go` |
 | internal/domain/endpoint/publisher | internal/application/endpointstream | `byte_stream_unix.go` |
+| internal/domain/endpoint/publisher | internal/domain/connection | `byte_stream_unix.go` owns the original Application transfer and requests each fresh admitted Publisher segment |
 | internal/domain/endpoint/unit | internal/pathcheck | `platform_rendering.go` |
 | internal/domain/execution/runtime | internal/application/endpointstream | `hostile_snapshot_installed_linux_test.go`, `document_publisher_handoff.go`, `document_publisher_linux.go`, `document_reader_handoff.go`, `document_reader_linux.go`, `stream_contract.go`, `stream_contract_test.go` |
 | internal/domain/execution/runtime | internal/application/streamqualification | `stream_qualification_installed_linux_test.go`, `stream_qualification_linux.go`, `stream_qualification_other.go` |

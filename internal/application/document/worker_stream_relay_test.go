@@ -126,15 +126,15 @@ func TestByteStreamFailureDoesNotExposeUnderlyingDiagnostic(t *testing.T) {
 // Both endpoints run independent workers and share only an unbuffered byte
 // channel with directional EOF. Exercise the exact first installed failure
 // geometry without Route or native worker launch prerequisites.
-func TestByteStreamWorkerPairCrossesFrameBoundaries(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+func TestByteStreamWorkerPairCrossesSegmentSize(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	leftIn, rightOut := io.Pipe()
 	rightIn, leftOut := io.Pipe()
 	links := [2]pipeRelayPort{{leftIn, leftOut}, {rightIn, rightOut}}
 	payloads := [2][]byte{
-		bytes.Repeat([]byte{0, 255, 128, 7}, 8192),
-		bytes.Repeat([]byte{129, 0, 254, 3, 5}, 5000),
+		bytes.Repeat([]byte{0, 255, 128, 7}, (1<<20)+8192),
+		bytes.Repeat([]byte{129, 0, 254, 3, 5}, 900000),
 	}
 	results := make(chan error, 2)
 	workers := make(chan error, 2)

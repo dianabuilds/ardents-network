@@ -24,6 +24,32 @@ type continuationClaim struct {
 	accepted [32]byte
 }
 
+func (previous *Stream) publisherContinuation(ctx context.Context) (*continuationClaim, error) {
+	if previous == nil || previous.self != previous {
+		return nil, errContinuationRefused
+	}
+	select {
+	case <-previous.watcherDone:
+	default:
+		return nil, errContinuationRefused
+	}
+	if previous.JoinedCleanup() != nil || previous.closeErr != nil || previous.segmentBoundary == nil {
+		return nil, errContinuationRefused
+	}
+	previous.mu.Lock()
+	defer previous.mu.Unlock()
+	if previous.pendingPublisher != nil {
+		return previous.pendingPublisher, nil
+	}
+	boundary := previous.segmentBoundary
+	claim, err := newContinuationClaim(ctx, previous, boundary.boundary, boundary.ticket)
+	if err != nil {
+		return nil, err
+	}
+	previous.pendingPublisher = claim
+	return claim, nil
+}
+
 func newContinuationClaim(ctx context.Context, previous *Stream, boundary wire.SegmentBoundary, ticket [32]byte) (*continuationClaim, error) {
 	if ctx == nil || ctx.Err() != nil || previous == nil || previous.self != previous ||
 		previous.owner == nil || previous.owner.role != wire.RolePublisher || previous.owner.logical == [32]byte{} ||

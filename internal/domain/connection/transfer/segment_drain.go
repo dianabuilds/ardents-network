@@ -12,6 +12,12 @@ type SegmentPositions struct {
 	SentEOF, ReceivedEOF bool
 }
 
+// SegmentSendRemaining is the remaining byte budget of this segment's local
+// direction. The surrounding Stream uses it before copying a bounded frame.
+func (s *State) SegmentSendRemaining() uint64 {
+	return s.send.limit - s.send.end
+}
+
 // FreezeSegment stops newly admitted sends without ending the Application
 // direction. Previously accepted sends and incoming bytes still drain.
 // The Stream serializes this operation with all ordinary ledger transitions.

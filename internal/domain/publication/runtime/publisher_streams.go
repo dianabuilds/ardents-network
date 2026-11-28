@@ -15,7 +15,17 @@ import (
 // NextStream consumes one initial authentication and retains its original
 // Source/Responder replacement scope before handing the stream to Execution.
 // Publication retains physical retirement even after the Application completes.
-func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.StreamContract) (_ *connection.Stream, result error) {
+func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.StreamContract) (*connection.Stream, error) {
+	return p.nextStream(ctx, contract, false, nil)
+}
+
+// NextSegment authenticates a new independent opening for the original
+// publication, then admits exactly the specified confirmed transfer boundary.
+func (p *Publisher) NextSegment(ctx context.Context, contract executionruntime.StreamContract, previous *connection.Stream) (*connection.Stream, error) {
+	return p.nextStream(ctx, contract, true, previous)
+}
+
+func (p *Publisher) nextStream(ctx context.Context, contract executionruntime.StreamContract, segmented bool, previous *connection.Stream) (_ *connection.Stream, result error) {
 	if p == nil || p.self != p || ctx == nil {
 		return nil, errors.New("publisher stream caller is absent")
 	}
@@ -31,7 +41,12 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 	if err != nil {
 		return nil, err
 	}
-	stream, err := owner.OpenPublisherStream(contract, p.sourceScope, p.responderScope)
+	var stream *connection.Stream
+	if segmented {
+		stream, err = owner.OpenPublisherSegment(ctx, contract, p.sourceScope, p.responderScope, previous)
+	} else {
+		stream, err = owner.OpenPublisherStream(contract, p.sourceScope, p.responderScope)
+	}
 	if err != nil {
 		cleanup := owner.Close()
 		p.config.Operation.RetainCleanup(cleanup)

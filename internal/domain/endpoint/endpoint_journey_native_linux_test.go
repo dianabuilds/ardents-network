@@ -8,7 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
+	"github.com/dianabuilds/ardents-network/internal/domain/admission"
 	"github.com/dianabuilds/ardents-network/internal/domain/publication"
 	"github.com/dianabuilds/ardents-network/internal/domain/route/transport"
+	endpointfixture "github.com/dianabuilds/ardents-network/tests/e2e/endpoint"
 )
 
 // This native qualification proves the two-Endpoint platform-led document journey
@@ -417,6 +419,19 @@ const (
 // privacy qualification. The transitional guarded-start/ACK/recovery
 // orchestration is neither exercised nor retired (ADR-0125 D6).
 func TestNativeEndpointCrossHostJourney(t *testing.T) {
+	runNativeEndpointCrossHostJourney(t, nil)
+}
+
+func TestNativeInstalledEndpointByteStreamContinuation(t *testing.T) {
+	bytesPerDirection := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)
+	streams := [2]endpointfixture.JourneyStream{
+		{Bytes: bytesPerDirection, Seed: 1},
+		{Bytes: bytesPerDirection, Seed: 2, BytesPerSecond: 512 << 10},
+	}
+	runNativeEndpointCrossHostJourney(t, &streams)
+}
+
+func runNativeEndpointCrossHostJourney(t *testing.T, streams *[2]endpointfixture.JourneyStream) {
 	if os.Geteuid() != 0 {
 		t.Fatal("cross-host journey qualification requires a root driver on the controller host")
 	}
@@ -643,6 +658,43 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		if declared[0][j] == "" || declared[1][j] == "" || declared[0][j] == declared[1][j] {
 			t.Fatal("participants share a declared principal")
 		}
+	}
+	if streams != nil {
+		published := exchange(0, endpointfixture.PairMessage{Operation: "stream-publish", Stream: &streams[0]})
+		if published.Link == "" || published.Original != identities[0] {
+			t.Fatal("installed stream publisher supplied no Link for its original invocation")
+		}
+		started := time.Now()
+		read := exchange(1, endpointfixture.PairMessage{Operation: "stream-connect", Link: published.Link, Stream: &streams[1]})
+		publisher := exchange(0, endpointfixture.PairMessage{Operation: "stream-result"})
+		for i, result := range []endpointfixture.PairMessage{read, publisher} {
+			if result.Failure != "" || result.Original != identities[1-i] {
+				t.Fatalf("installed stream direction %d failed or changed invocation: %s", i, result.Failure)
+			}
+			expected := endpointfixture.NewJourneyStreamOutput()
+			if _, err := io.Copy(expected, streams[i].Reader()); err != nil {
+				t.Fatal(err)
+			}
+			if result.Proof == nil || *result.Proof != expected.Proof() || len(result.Body) != 0 {
+				t.Fatalf("installed stream direction %d differs: observed %+v, expected %+v", i, result.Proof, expected.Proof())
+			}
+		}
+		if duration := time.Since(started); duration <= 60*time.Second {
+			t.Fatalf("installed stream completed within the old Reader window: %s", duration)
+		}
+		for i := range peers {
+			exchange(i, endpointfixture.PairMessage{Operation: "finish"})
+			_ = peers[i].Close()
+			peers[i] = nil
+			waitErr := commands[i].Wait()
+			joined[i] = true
+			t.Log(outputs[i].String())
+			if waitErr != nil {
+				t.Fatal("installed stream participant did not join", waitErr)
+			}
+		}
+		t.Logf("two real admitted host managers exchanged %d bytes in each direction", streams[0].Bytes)
+		return
 	}
 	publishStarted := time.Now()
 	published := exchange(0, endpointfixture.PairMessage{Operation: "publish", Body: body})

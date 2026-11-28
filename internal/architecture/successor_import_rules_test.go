@@ -231,7 +231,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/domain/connection/reader_replacement.go", "internal/domain/connection/publisher_replacement.go",
 			"internal/domain/connection/stream_replacement.go", "internal/domain/connection/publisher_replacement_test.go",
 			"internal/domain/connection/segment_boundary_exchange.go", "internal/domain/connection/segment_boundary_exchange_test.go",
-			"internal/domain/connection/transfer/segment_drain_test.go":
+			"internal/domain/connection/transfer/segment_drain_test.go", "internal/domain/connection/transfer_stream.go":
 			return true
 		default:
 			return false
@@ -632,7 +632,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/execution/runtime/stream_qualification_linux.go" || source == "internal/domain/execution/runtime/stream_qualification_other.go" || source == "internal/domain/execution/runtime/stream_qualification_installed_linux_test.go") && dependency == modulePath+"/internal/application/streamqualification" {
 		return true
 	}
-	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
+	if (source == "internal/domain/connection/stream.go" || source == "internal/domain/connection/stream_retirement.go" || source == "internal/domain/connection/stream_handoff_test.go" || source == "internal/domain/connection/transfer_stream.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
 	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/endpointstream" {

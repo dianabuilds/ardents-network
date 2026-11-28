@@ -22,7 +22,16 @@ type setupPeer interface {
 // openAuthorizedAttachment ties setup cancellation to the local peer. An early
 // byte or disconnect refuses setup before accepting Application input.
 func (server *server) openAuthorizedAttachment(local setupPeer, request endpointstream.Request, deadline time.Time) (endpointstream.Stream, context.CancelFunc, error) {
-	ctx, cancel := context.WithDeadline(server.ctx, deadline)
+	if !time.Now().Before(deadline) {
+		return nil, nil, context.DeadlineExceeded
+	}
+	ctx, cancelWithCause := context.WithCancelCause(server.ctx)
+	cancel := func() { cancelWithCause(context.Canceled) }
+	setupDone := make(chan struct{})
+	setupTimer := time.AfterFunc(time.Until(deadline), func() {
+		cancelWithCause(context.DeadlineExceeded)
+		close(setupDone)
+	})
 	var mu sync.Mutex
 	finished := false
 	monitorDone := make(chan struct{})
@@ -39,6 +48,11 @@ func (server *server) openAuthorizedAttachment(local setupPeer, request endpoint
 		}
 	}()
 	stream, openErr := server.owner.Open(ctx, request)
+	if !setupTimer.Stop() {
+		<-setupDone
+	} else if !time.Now().Before(deadline) {
+		cancelWithCause(context.DeadlineExceeded)
+	}
 	mu.Lock()
 	finished = true
 	mu.Unlock()
@@ -48,12 +62,13 @@ func (server *server) openAuthorizedAttachment(local setupPeer, request endpoint
 	}
 	<-monitorDone
 	if openErr != nil || stream == nil || ctx.Err() != nil {
-		contextErr := ctx.Err()
+		contextErr := context.Cause(ctx)
 		cancel()
 		setupErr := errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
 		return nil, nil, server.closeRefusedAttachment(stream, setupErr)
 	}
-	if err := local.SetReadDeadline(deadline); err != nil {
+	transferDeadline, _ := ctx.Deadline()
+	if err := local.SetReadDeadline(transferDeadline); err != nil {
 		cancel()
 		return nil, nil, server.closeRefusedAttachment(stream, err)
 	}

@@ -2,6 +2,7 @@ package connection
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"time"
 
@@ -34,6 +35,35 @@ func (route *publisherRecoveryRoute) check(owner *AuthenticatedAttachment) error
 // starting record actors. Publication must separately route private replacement
 // openings to this exact stream; this constructor grants no incoming acceptance.
 func (owner *AuthenticatedAttachment) OpenPublisherStream(contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope) (*Stream, error) {
+	return owner.openPublisherStream(contract, source, responder, nil, nil)
+}
+
+// OpenPublisherSegment admits a first segment or the exact next transition
+// under the original live publication. Its independently admitted Attachment
+// must authenticate the pending Resume before either record actor starts.
+func (owner *AuthenticatedAttachment) OpenPublisherSegment(ctx context.Context, contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope, previous *Stream) (*Stream, error) {
+	if ctx == nil || ctx.Err() != nil {
+		return nil, errContinuationRefused
+	}
+	if previous != nil {
+		claim, err := previous.publisherContinuation(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return owner.openPublisherStream(contract, source, responder, nil, &segmentResume{publisher: claim})
+	}
+	var ticket [32]byte
+	if _, err := rand.Read(ticket[:]); err != nil {
+		return nil, err
+	}
+	segment, err := newSegmentBoundaryExchange(wire.RolePublisher, wire.SegmentBoundary{Next: 1}, ticket)
+	if err != nil {
+		return nil, err
+	}
+	return owner.openPublisherStream(contract, source, responder, segment, nil)
+}
+
+func (owner *AuthenticatedAttachment) openPublisherStream(contract executionruntime.StreamContract, source *prefix.SourceScope, responder *prefix.ResponderScope, segment *segmentBoundaryExchange, resume *segmentResume) (*Stream, error) {
 	route := &publisherRecoveryRoute{source: source, responder: responder}
 	if err := route.check(owner); err != nil {
 		return nil, err
@@ -47,7 +77,7 @@ func (owner *AuthenticatedAttachment) OpenPublisherStream(contract executionrunt
 	if err := responder.Commit(func(checkOriginal func() error) error { return checkOriginal() }); err != nil {
 		return nil, err
 	}
-	return owner.openStream(contract, route, nil)
+	return owner.openStreamWithSegment(contract, route, nil, segment, resume)
 }
 
 // The physical handle is acquired only after Connection reserves its finite

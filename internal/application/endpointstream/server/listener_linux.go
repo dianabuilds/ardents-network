@@ -102,6 +102,10 @@ func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 		return
 	}
 	defer cancel()
+	if err := local.SetWriteDeadline(time.Time{}); err != nil {
+		server.retainCleanupFailure(application.Close())
+		return
+	}
 	server.retainCleanupFailure(ServeStream(server.ctx, local, application, true))
 }
 

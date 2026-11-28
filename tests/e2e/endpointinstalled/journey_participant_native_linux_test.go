@@ -74,6 +74,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 		var publisherProcess *exec.Cmd
 		var publisherOutput, publisherDiagnostic bytes.Buffer
 		var publisherDone chan error
+		var publisherStream *endpointfixture.JourneyStreamOutput
 		defer func() {
 			if publisherProcess != nil {
 				_ = publisherProcess.Process.Kill()
@@ -126,6 +127,11 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				process := exec.CommandContext(t.Context(), os.Getenv("ARDENTS_PREBUILT_NEXT"), "stream", "publish", socket)
 				process.Stdin = bytes.NewReader(command.Body)
 				process.Stdout, process.Stderr = &publisherOutput, &publisherDiagnostic
+				if command.Stream != nil {
+					publisherStream = endpointfixture.NewJourneyStreamOutput()
+					process.Stdin = command.Stream.PacedReader(t.Context())
+					process.Stdout = publisherStream
+				}
 				if err := process.Start(); err != nil {
 					t.Fatal(err)
 				}
@@ -158,7 +164,18 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				process.Stdin = bytes.NewReader(command.Body)
 				var diagnostic bytes.Buffer
 				process.Stderr = &diagnostic
-				output, err := process.Output()
+
+				var output []byte
+				var err error
+				if command.Stream == nil {
+					output, err = process.Output()
+				} else {
+					stream := endpointfixture.NewJourneyStreamOutput()
+					process.Stdin, process.Stdout = command.Stream.PacedReader(t.Context()), stream
+					err = process.Run()
+					proof := stream.Proof()
+					response.Proof = &proof
+				}
 				if err != nil {
 					endpointfixture.DumpJourneyJournal(t)
 					response.Failure = fmt.Sprintf("stream connect: %v: %s", err, &diagnostic)
@@ -178,7 +195,13 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 				} else {
 					response.Original = endpointfixture.StartupIdentity(t, t.Context())
 				}
-				response.Body = publisherOutput.Bytes()
+
+				if publisherStream == nil {
+					response.Body = publisherOutput.Bytes()
+				} else {
+					proof := publisherStream.Proof()
+					response.Proof = &proof
+				}
 			case "withdraw":
 				if role != "publisher" {
 					t.Fatal("reader received withdrawal fixture command")

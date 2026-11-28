@@ -19,40 +19,42 @@ import (
 // Recovery source composition and replacement are additional admission work,
 // not permission to expose an incompletely composed ordinary Service path.
 type Stream struct {
-	self              *Stream
-	owner             *AuthenticatedAttachment
-	contract          executionruntime.StreamContract
-	ctx               context.Context
-	cancel            context.CancelFunc
-	mu                sync.Mutex
-	changed           chan struct{} // Stream.mu owns notification replacement.
-	writeMu           sync.Mutex
-	transfer          *transfer.State
-	segment           *segmentBoundaryExchange
-	segmentBoundary   *retiredSegmentBoundary
-	key               [32]byte
-	failure           error
-	closing           bool
-	settled           bool
-	outcome           chan endpointstream.Outcome
-	records           *attachmentRecords
-	publisherRoute    *publisherRecoveryRoute
-	initiatorRoute    *InitiatorSource
-	recipientRevision uint64
-	recoveryUsers     sync.WaitGroup
-	joined            chan struct{}
-	settledDone       chan struct{}
-	watcherDone       chan struct{}
-	stop              sync.Once
-	closeErr          error
-	cleanupErr        error
-	lastProgress      time.Time
-	recovery          *transfer.RecoveryEpisode
-	publisherProposal *PublisherReplacement
-	initiatorProposal *initiatorReplacement
-	prepareUsers      sync.WaitGroup
-	recoveryCleanup   error
-	recoveryLoss      error // First retired Attachment work failure, not logical permission.
+	self                      *Stream
+	owner                     *AuthenticatedAttachment
+	contract                  executionruntime.StreamContract
+	ctx                       context.Context
+	cancel                    context.CancelFunc
+	mu                        sync.Mutex
+	changed                   chan struct{} // Stream.mu owns notification replacement.
+	writeMu                   sync.Mutex
+	transfer                  *transfer.State
+	segment                   *segmentBoundaryExchange
+	segmentBoundary           *retiredSegmentBoundary
+	readerContinuationClaimed bool
+	pendingPublisher          *continuationClaim
+	key                       [32]byte
+	failure                   error
+	closing                   bool
+	settled                   bool
+	outcome                   chan endpointstream.Outcome
+	records                   *attachmentRecords
+	publisherRoute            *publisherRecoveryRoute
+	initiatorRoute            *InitiatorSource
+	recipientRevision         uint64
+	recoveryUsers             sync.WaitGroup
+	joined                    chan struct{}
+	settledDone               chan struct{}
+	watcherDone               chan struct{}
+	stop                      sync.Once
+	closeErr                  error
+	cleanupErr                error
+	lastProgress              time.Time
+	recovery                  *transfer.RecoveryEpisode
+	publisherProposal         *PublisherReplacement
+	initiatorProposal         *initiatorReplacement
+	prepareUsers              sync.WaitGroup
+	recoveryCleanup           error
+	recoveryLoss              error // First retired Attachment work failure, not logical permission.
 }
 
 // OpenStream consumes the exact completed initial authentication once and
@@ -141,6 +143,9 @@ func (owner *AuthenticatedAttachment) openStreamWithSegment(contract executionru
 				return errors.Join(errIntegrity, err)
 			}
 			initiatorRoute.stream = stream
+			// The live segment retains only absolute positions and its own
+			// current ticket, never a chain of retired Connections.
+			initiatorRoute.previous = nil
 			initiatorRoute.mu.Unlock()
 		}
 		owner.consumed = true

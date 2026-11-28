@@ -1512,6 +1512,12 @@ The wire decoder only recognizes the fixed representation. The ordinary
 Data/Acknowledgement/Terminal parser refuses these controls. An older peer also
 refuses an unknown kind. The draft emits no new control until a phase-aware
 owner actively selects it. Compatibility, the authority check and the cutover
-are qualified with the actual endpoints. Ticket and boundary fields remain
+are qualified with the actual endpoints. The bidirectional Application transfer retains the same worker reservation
+across confirmed segments. Its finite worker credit bounds queued bytes and
+its Connection contract bounds each segment. The initial Reader setup has
+one absolute 60-second deadline. The accepted local attachment retains
+explicit caller cancellation and the original parent lifetime; each new
+Connection still requires finite network authority and physical admission.
+Ticket and boundary fields remain
 inside Service TLS and outside Route-visible fields and diagnostics. Timing
 and byte-volume correlation remain possible across successive admissions.

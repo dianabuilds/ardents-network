@@ -29,7 +29,7 @@ func beginRead(ctx context.Context, local *executionruntime.Owner, principal [32
 	var worker *executionruntime.Invocation
 	var err error
 	worker, err = local.LaunchByteStreamReader(ctx, principal)
-	send, receive := endpointstream.ByteStreamDirectionalLimit, endpointstream.ByteStreamDirectionalLimit
+	send, receive := endpointstream.ByteStreamSegmentDirectionalLimit, endpointstream.ByteStreamSegmentDirectionalLimit
 	if err != nil {
 		return nil, err
 	}
@@ -60,11 +60,10 @@ func (read *readerOperation) close() error {
 // preparedRead owns the Source and its exact operation/worker retirement. It is
 // published only after setup; concurrent result cancellation then shares Close.
 type preparedRead struct {
-	read        *readerOperation
-	service     *connection.Stream
-	closeSource func() error
-	once        sync.Once
-	result      error
+	read    *readerOperation
+	service *connection.Transfer
+	once    sync.Once
+	result  error
 }
 
 func (read *readerOperation) prepare(plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared *funding.Parents) (_ *preparedRead, result error) {
@@ -74,25 +73,42 @@ func (read *readerOperation) prepare(plan funding.Plan, authority funding.Author
 			result = errors.Join(result, pending.close())
 		}
 	}()
-	source, closeSource, err := openSource(read.operation, plan, authority, holder, target, shared)
+	open := func(ctx context.Context, previous *connection.Stream) (*connection.Stream, func() error, error) {
+		var continuation *connection.ReaderContinuation
+		if previous != nil {
+			var err error
+			continuation, err = previous.ClaimReaderContinuation(read.operation)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+		source, closeSource, err := openSource(ctx, read.operation, plan, authority, holder, target, shared, continuation)
+		if err != nil {
+			return nil, nil, err
+		}
+		stop := context.AfterFunc(ctx, func() { _ = closeSource() })
+		segment, err := source.OpenSegment(read.contract)
+		stop()
+		if err != nil {
+			return nil, nil, errors.Join(err, closeSource())
+		}
+		return segment, closeSource, nil
+	}
+	first, closeSource, err := open(read.operation.Context(), nil)
 	if err != nil {
 		return nil, err
 	}
-	pending.closeSource = closeSource
-	pending.service, err = source.OpenStream(read.contract)
+	pending.service, err = connection.OpenTransfer(read.operation.Context(), first, closeSource, open)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, closeSource())
 	}
 	return pending, nil
 }
 
 func (pending *preparedRead) close() error {
 	pending.once.Do(func() {
-		if pending.closeSource != nil {
-			pending.result = pending.closeSource()
-		} else if pending.service != nil {
+		if pending.service != nil {
 			pending.result = pending.service.Close()
-			pending.read.operation.RetainCleanup(pending.service.JoinedCleanup())
 		}
 		pending.result = errors.Join(pending.result, pending.read.close())
 	})

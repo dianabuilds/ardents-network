@@ -24,7 +24,7 @@ func TestDetachedOperationCannotBindWorkloadByteContract(t *testing.T) {
 }
 
 func TestByteStreamUsesTheFixedSymmetricContract(t *testing.T) {
-	limit := endpointstream.ByteStreamDirectionalLimit
+	limit := endpointstream.ByteStreamSegmentDirectionalLimit
 	for _, test := range []struct {
 		send, receive uint64
 		allowed       bool
