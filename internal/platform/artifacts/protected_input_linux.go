@@ -63,7 +63,7 @@ func OpenProtectedInput(ctx context.Context, path string, maximum int64, private
 	if err != nil || !ProtectedFileMode(input.info, private) || input.info.Size() < 1 || input.info.Size() > maximum {
 		return input, errors.Join(ErrInput, err)
 	}
-	input.raw, err = io.ReadAll(io.LimitReader(input.file, maximum+1))
+	input.raw, err = io.ReadAll(io.LimitReader(input.file, boundedReadLimit(maximum)))
 	if err != nil || int64(len(input.raw)) > maximum {
 		return input, errors.Join(ErrInput, err)
 	}

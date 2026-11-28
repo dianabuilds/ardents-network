@@ -28,7 +28,7 @@ func ReadRetainedFile(file *os.File, maximum int64, admit func(os.FileMode, uint
 	if !ok || stat.Nlink != 1 || !admit(info.Mode(), stat.Uid) {
 		return nil, nil, ErrInput
 	}
-	raw, err := io.ReadAll(io.LimitReader(file, maximum+1))
+	raw, err := io.ReadAll(io.LimitReader(file, boundedReadLimit(maximum)))
 	if afterRead != nil {
 		afterRead(file)
 	}
