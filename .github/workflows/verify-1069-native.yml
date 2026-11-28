@@ -8,14 +8,19 @@ permissions:
 
 jobs:
   installed-pair:
+    strategy:
+      fail-fast: false
+      matrix:
+        workload: [bidirectional, published-binary-file]
     runs-on: ubuntu-24.04
     timeout-minutes: 32
     env:
-      CANDIDATE: d9d60e866fdb596f3238f4b2935428f8eadf544a
+      WORKLOAD: ${{ matrix.workload }}
+      CANDIDATE: bc6d90de703dbaa9017e3d919be5810f11ad2ff2
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          fetch-depth: 0
+          ref: bc6d90de703dbaa9017e3d919be5810f11ad2ff2
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -23,20 +28,17 @@ jobs:
           cache: false
       - name: Prepare the admitted Ubuntu manager
         run: |
-          git merge-base --is-ancestor "$CANDIDATE" HEAD
-          git diff --exit-code "$CANDIDATE" HEAD -- . ':!.github/workflows/verify-1069-native.yml' ':!internal/domain/endpoint/endpoint_journey_native_linux_test.go' ':!internal/domain/connection/segment_boundary_exchange.go' ':!internal/domain/connection/stream_retirement.go' ':!internal/domain/connection/transfer_stream.go' ':!internal/domain/connection/stream_records.go' ':!internal/domain/connection/stream_io.go' ':!internal/domain/connection/transfer/segment_drain.go' ':!internal/domain/connection/transfer/segment_drain_test.go' ':!internal/platform/systemd/reference_transport_linux.go' ':!internal/domain/endpoint/reader/operation_unix.go' ':!internal/domain/connection/transfer/record_write.go' ':!internal/domain/connection/transfer/record_write_test.go' ':!internal/domain/connection/transfer/stream_state.go' ':!internal/domain/connection/transfer/replacement.go' ':!internal/domain/endpoint/launch/startup_inspection_linux.go' ':!internal/domain/route/prefix/responder_scope.go' ':!internal/domain/connection/publisher_route.go' ':!internal/domain/connection/authenticated_attachment.go'
-          git diff --name-only "$CANDIDATE" HEAD
+          test "$(git rev-parse HEAD)" = "$CANDIDATE"
+          test -z "$(git status --porcelain)"
           test "$(cat /proc/1/comm)" = systemd
           test "$(systemd-detect-virt --container)" = none
           sudo -n apt-get update
           sudo -n apt-get install --no-install-recommends -y debootstrap systemd-container
           go mod download
           mkdir -p "$RUNNER_TEMP/ardents-build"
-      - name: Exercise native authentication and verified frame boundaries
+      - name: Exercise unmodified Ubuntu artifacts
         run: |
           sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build" \
-            ARDENTS_INSTALLATION_NATIVE_ROOT="$(mktemp -d)" GOTOOLCHAIN=local go test -tags installation_native ./internal/platform/systemd \
-            -run '^TestInstallationNative(Reference|StartupInterruption)' -count=1 -v
-      - name: Exercise the installed TCP/TLS pair
-        run: |
-          sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build"             "GOTOOLCHAIN=local" "GOFLAGS=-buildvcs=false" go test -tags endpoint_pair_native,document_worker_installed             ./internal/domain/endpoint -run '^TestNativeEndpointSegmentedInstalledPair$/^bidirectional$' -count=1 -timeout=25m -v
+            "GOTOOLCHAIN=local" GOFLAGS=-buildvcs=false \
+            go test -tags endpoint_pair_native,document_worker_installed ./internal/domain/endpoint \
+            -run "^TestNativeEndpointSegmentedInstalledPair$/^$WORKLOAD$" -count=1 -timeout=25m -v
