@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"

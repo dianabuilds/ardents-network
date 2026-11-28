@@ -26,7 +26,7 @@ func (source *observedSnapshotSource) ReadAt(body []byte, offset int64) (int, er
 }
 
 func TestPublisherSnapshotSourceStreamsIndependentBoundedReads(t *testing.T) {
-	for _, size := range []int{0, 160<<10 + 1} {
+	for _, size := range []int{0, 160<<10 + 1, document.MaximumBytes + 17} {
 		body := bytes.Repeat([]byte{0x80, 0xff, 0x00, 0x4d}, (size+3)/4)[:size]
 		source := &observedSnapshotSource{Reader: bytes.NewReader(body)}
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)

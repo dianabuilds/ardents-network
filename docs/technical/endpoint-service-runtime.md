@@ -286,8 +286,9 @@ admission input. After Target-Link parsing and Network binding, Endpoint
 activates and consumes the Connection capability before it reads current State, touches Entry
 or private reachability, acquires a closed token, opens Route, or
 sends Introduction. The authenticated Service Instance authenticates the Connection before admitting payload. The stream allows
-up to 4 MiB per direction, supports independent directional EOF, and reports
-success only after authenticated terminal completion and joined cleanup.
+up to 4 MiB per direction in each Service Connection. A transfer can
+continue over successively admitted Connections, preserves directional EOF
+and reports success after authenticated terminal completion and joined cleanup.
 Administration separately authorizes the Publisher's local attachment. A
 byte-stream publication serves one exchange through the original confined job.
 Endpoint verifies an explicit worker completion receipt on its local
@@ -307,8 +308,9 @@ anonymous file before acknowledging receipt readiness. The file remains private
 through validation. The Publication retains the read-only source and its
 reservation until its worker and stream borrowers join. Initialization of a
 file-backed Publisher sends no snapshot payload. The original attachment
-supplies credit-bounded blocks for each admitted stream. File publication
-still enforces 4 MiB until Service continuation is available.
+supplies credit-bounded blocks for each admitted stream. A configured private
+staging directory and quota admit file size before publication. The in-memory
+compatibility adapter retains its existing bounded input.
 The document Publisher accepts `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by
@@ -334,13 +336,13 @@ result. Raw errors stay local; bounded refusal and cancellation precedence
 remain unchanged. Endpoint `readResult.Close` cancels and joins its Service/
 worker work before returning its retained result.
 
-AAI4 Reader setup and its single exchange share one absolute 60-second bound
-from socket acceptance. Request input remains limited to 15 seconds from that
-same acceptance; completing input does not renew the operation deadline. Setup
-and stream reads/writes retain the original bound. The trusted document Reader
-bounds its caller from before dialing through the exchange to 60 seconds;
-earlier cancellation still applies. Bootstrap remains bounded to 10 seconds,
-and new recovery remains forbidden in the final five seconds of the original
+AAI4 Reader setup has an absolute 60-second bound from socket acceptance.
+Request input remains limited to 15 seconds from that same acceptance.
+The accepted transfer retains the original local caller lifetime. Each Service
+Connection receives at most a fresh 60-second window, limited by current
+authority and its own Route and original Recovery boundaries. Bootstrap remains
+bounded to 10 seconds, and new recovery remains forbidden in the final five
+seconds of the original
 Work Safety interval. No additional batch, retry or authority cache is granted.
 
 Under [ADR-0121](../adr/0121-bound-installed-connection-setup.md), each
@@ -705,7 +707,7 @@ deadline grants no extension of the earlier local cutoff; it is not itself an
 integrity failure while both original bounds remain live.
 
 Trusted worker composition also supplies one checked directional byte contract
-before the job can receive a Service stream. Every ordinary Application composition admits 4 MiB in each direction. The separate fixed qualification composition retains 64 MiB in each
+before the job can receive a Service stream. Every ordinary Application composition admits 4 MiB in each direction per Service Connection. The separate fixed qualification composition retains 64 MiB in each
 direction. Reader and Publisher derive their opposite directions from that one
 contract. The native Service stream therefore neither imports document
 policy nor inspects qualification job input, and recovery continues the same

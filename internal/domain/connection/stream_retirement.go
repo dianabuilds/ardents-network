@@ -56,21 +56,48 @@ func (stream *Stream) settleLocked() {
 
 func (stream *Stream) watchLifetime() {
 	defer close(stream.watcherDone)
-	select {
-	case <-stream.ctx.Done():
-	case <-stream.settledDone:
-		remaining := time.Until(time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
-		if remaining > 0 {
-			timer := time.NewTimer(remaining)
-			select {
-			case <-stream.ctx.Done():
-			case <-timer.C:
-			}
-			timer.Stop()
-		}
-		stream.sealRetirement()
+	var boundaryDeadline <-chan time.Time
+	if stream.segment != nil {
+		// Leave the original Route its final physical confirmation and join
+		// interval before the segment's immutable deadline.
+		cut := time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0).Add(-5 * time.Second)
+		timer := time.NewTimer(time.Until(cut))
+		defer timer.Stop()
+		boundaryDeadline = timer.C
 	}
-	stream.retire()
+	for {
+		select {
+		case <-stream.ctx.Done():
+			stream.retire()
+			return
+		case <-boundaryDeadline:
+			boundaryDeadline = nil
+			_ = stream.commit(func() error {
+				if stream.settled || stream.segment.draining {
+					return nil
+				}
+				progress := stream.transfer.ReplayOffsets()
+				if progress.SendEnd != 0 || progress.ReceiveNext != 0 {
+					stream.segment.freeze(stream.transfer)
+					stream.signalLocked()
+				}
+				return nil
+			})
+		case <-stream.settledDone:
+			remaining := time.Until(time.Unix(stream.owner.identity.NoNewRecoveryAfter, 0))
+			if remaining > 0 {
+				timer := time.NewTimer(remaining)
+				select {
+				case <-stream.ctx.Done():
+				case <-timer.C:
+				}
+				timer.Stop()
+			}
+			stream.sealRetirement()
+			stream.retire()
+			return
+		}
+	}
 }
 
 // sealRetirement denies late record effects before deliberate interruption.

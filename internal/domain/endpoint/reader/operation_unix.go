@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
 	"github.com/dianabuilds/ardents-network/internal/domain/admission/stock"
@@ -82,7 +83,12 @@ func (read *readerOperation) prepare(plan funding.Plan, authority funding.Author
 				return nil, nil, err
 			}
 		}
-		source, closeSource, err := openSource(ctx, read.operation, plan, authority, holder, target, shared, continuation)
+		segmentPlan := plan
+		end := time.Now().Add(endpointstream.ReaderTimeout).UTC().Truncate(time.Second)
+		if end.Before(segmentPlan.Deadline) {
+			segmentPlan.Deadline = end
+		}
+		source, closeSource, err := openSource(ctx, read.operation, segmentPlan, authority, holder, target, shared, continuation)
 		if err != nil {
 			return nil, nil, err
 		}
