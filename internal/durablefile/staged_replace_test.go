@@ -19,7 +19,7 @@ func TestWriteExclusiveCreatesThenRefusesExisting(t *testing.T) {
 	}
 }
 
-func TestReplaceFileReplacesDurablyAndCleansStaging(t *testing.T) {
+func TestReplaceFileReplacesAndCleansStaging(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "current"), []byte("old\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -38,6 +38,31 @@ func TestReplaceFileReplacesDurablyAndCleansStaging(t *testing.T) {
 		if entry.Name() != "current" {
 			t.Fatalf("staging residue left behind: %s", entry.Name())
 		}
+	}
+}
+
+func TestReplaceFileCleansStagingWhenRenameFails(t *testing.T) {
+	root := t.TempDir()
+	destination := filepath.Join(root, "current")
+	if err := os.Mkdir(destination, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	sentinel := filepath.Join(destination, "sentinel")
+	if err := os.WriteFile(sentinel, []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := ReplaceFile(root, ".stage-", "current", []byte("replacement")); err == nil {
+		t.Fatal("replacement of a directory succeeded")
+	}
+	if raw, err := os.ReadFile(sentinel); err != nil || string(raw) != "original" {
+		t.Fatalf("original destination contents = %q, %v", raw, err)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "current" || !entries[0].IsDir() {
+		t.Fatalf("unexpected entries after failed replacement: %v", entries)
 	}
 }
 

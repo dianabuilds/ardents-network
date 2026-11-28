@@ -1,6 +1,6 @@
 //go:build linux
 
-package document_test
+package localread_test
 
 import (
 	"os"

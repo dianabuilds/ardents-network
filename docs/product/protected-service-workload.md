@@ -16,7 +16,14 @@ boundary and release claim limits.
 
 A participant uses an explicit Target Link to reach a Service. Every file,
 including text, uses the same bidirectional byte stream. Endpoint selects the
-protected Route. File publication serves an immutable bounded snapshot.
+protected Route. File publication serves an immutable snapshot.
+
+[ADR-0135](../adr/0135-continue-byte-transfers-across-admitted-connections.md)
+removes the fixed total-size ceiling from the product contract. One user
+transfer may span independently admitted Service Connections and reports one
+authenticated result. The current implementation still applies the 4 MiB
+bounds described below. Publication and transfer retain storage reservations,
+bounded buffers, backpressure and authority checks.
 
 The first delivery is a closed test network with explicitly provisioned Nodes,
 State authority, time witness, issuers and finite resource permissions.

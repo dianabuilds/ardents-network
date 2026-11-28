@@ -54,6 +54,39 @@ func successorImportAllowed(source, dependency string) bool {
 		return offlineOperatorImportAllowed(source, dependency)
 	}
 	local, localImport := strings.CutPrefix(dependency, modulePath+"/")
+	const localSnapshot = "internal/application/localsnapshot"
+	if local == localSnapshot {
+		return source == "internal/application/administration/local_document_publication.go" ||
+			source == "internal/domain/endpoint/publisher/snapshot_unix.go"
+	}
+	if path.Dir(source) == localSnapshot {
+		if source == localSnapshot+"/read_unix.go" || source == localSnapshot+"/read_unix_test.go" {
+			return allowedStandardImport(dependency) || local == "internal/durablefile" || local == "internal/application/document"
+		}
+		return allowedStandardImport(dependency)
+	}
+	const localRead = "internal/application/document/localread"
+	if local == localRead {
+		return source == "cmd/ardents-next/document_command.go" || path.Dir(source) == localRead && strings.HasSuffix(source, "_test.go")
+	}
+	if path.Dir(source) == localRead {
+		if allowedStandardImport(dependency) {
+			return true
+		}
+		switch path.Base(source) {
+		case "read.go":
+			return local == "internal/application/document" || local == "internal/application/endpointstream" || local == "internal/application/endpointstream/client" || local == "internal/application/endpointstream/targetlink"
+		case "plain_text.go", "plain_text_test.go":
+			return local == "internal/application/document"
+		case "command_linux_test.go", "command_process_linux_test.go":
+			return local == "internal/application/document" || local == "internal/application/endpointstream"
+		case "socket_linux_test.go":
+			return local == "internal/application/endpointstream" || local == "internal/application/endpointstream/server"
+		case "failure.go", "failure_test.go", "failure_linux_test.go", "peer_linux_test.go", "output_cleanup_linux_test.go":
+			return local == "internal/application/endpointstream"
+		}
+		return false
+	}
 	const applicationConsole = "internal/application/console"
 	if local == applicationConsole {
 		switch source {
@@ -67,13 +100,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	const targetLink = "internal/application/endpointstream/targetlink"
 	if local == targetLink {
-		switch source {
-		case "internal/application/document/presentation.go",
-			"internal/application/endpointstream/client/console_exchange.go":
-			return true
-		default:
-			return false
-		}
+		return source == "internal/application/endpointstream/client/console_exchange.go"
 	}
 	if local == "internal/application/endpointstream" && path.Dir(source) == targetLink {
 		return source == "internal/application/endpointstream/targetlink/input.go" || source == "internal/application/endpointstream/targetlink/input_test.go"
@@ -82,7 +109,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if local == endpointClient {
 		switch source {
 		case "cmd/ardents-next/stream_command.go",
-			"internal/application/document/presentation.go",
 			"internal/application/document/reader_connection_aai3_linux_test.go",
 			"internal/application/endpointstream/server/cleanup_linux_test.go",
 			"internal/application/endpointstream/server/lifecycle_linux_test.go",
@@ -115,7 +141,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if local == endpointServer {
 		switch source {
 		case "internal/application/administration/byte_stream_linux.go",
-			"internal/application/document/document_reader_socket_linux_test.go",
 			"internal/application/document/reader_connection_aai3_linux_test.go",
 			"internal/application/endpointstream/server/lifecycle_linux_test.go",
 			"internal/application/endpointstream/server/binary_conformance_linux_test.go",
@@ -385,11 +410,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/custody/vault_lock_windows.go" || source == "internal/domain/custody/vault_lock_windows_test.go" || source == "internal/domain/custody/durability_windows.go" || source == "internal/domain/custody/private_permission_windows.go" || source == "internal/domain/custody/private_permission_windows_test.go" || source == "internal/domain/custody/command/private_permission_windows_test.go") && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
-	// The Application document snapshot import composes only the shared
-	// Unix-family inspection mechanism, no Network or Route authority (#850).
-	if (source == "internal/application/document/snapshot_file_unix.go" || source == "internal/application/document/snapshot_file_unix_test.go") && dependency == modulePath+"/internal/durablefile" {
-		return true
-	}
 	// Exact owner edges for the command responsibility transfer.
 	if localImport {
 		switch source {
@@ -572,7 +592,7 @@ func successorImportAllowed(source, dependency string) bool {
 		case "cmd/ardents-next/stream_command.go":
 			return dependency == modulePath+"/internal/application/endpointstream/client"
 		case "cmd/ardents-next/document_command.go":
-			return dependency == modulePath+"/internal/application/console" || dependency == modulePath+"/internal/application/document"
+			return dependency == modulePath+"/internal/application/console"
 		}
 	}
 	if source == "internal/domain/endpoint/endpoint_journey_native_linux_test.go" || source == "internal/domain/endpoint/document_command_installed_linux_test.go" {
@@ -624,9 +644,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/domain/endpoint/connection_response_loss_linux_test.go" || source == "internal/domain/endpoint/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/endpointstream" {
 		return true
 	}
-	if source == "internal/domain/endpoint/publisher/snapshot_unix.go" && dependency == modulePath+"/internal/application/document" {
-		return true
-	}
+
 	if (owner == "internal/domain/admission/issuance" || owner == "internal/domain/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}

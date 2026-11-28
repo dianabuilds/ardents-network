@@ -97,3 +97,4 @@ Create a new ADR only for a consequential, hard-to-reverse accepted trade-off.
 - [ADR-0132 — Admit protected bidirectional Application streams](0132-admit-protected-bidirectional-application-streams.md) introduced the byte-stream interface. ADR-0134 supersedes its separate document-profile preservation.
 
 - [ADR-0134 — Use one Application byte stream](0134-use-one-application-byte-stream.md) selects the same raw stream for every file and removes the separate document protocol.
+- [ADR-0135 — Continue byte transfers across admitted connections](0135-continue-byte-transfers-across-admitted-connections.md) keeps one locally authorized transfer across independently admitted finite Service Connections.

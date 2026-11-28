@@ -1,6 +1,6 @@
 //go:build linux || darwin
 
-package document
+package localsnapshot
 
 import (
 	"bytes"
@@ -12,17 +12,18 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/application/document"
 	"github.com/dianabuilds/ardents-network/internal/durablefile"
 )
 
 var errSnapshotFile = errors.New("document snapshot input is unavailable or unstable")
 
-// ReadSnapshotFile imports one explicitly selected local file in the trusted
+// Read imports one explicitly selected local file in the trusted
 // owner's process. Every path component is opened without following symlinks.
 // Only a bounded regular file is read, and its identity, size and change
 // timestamps must remain stable. The returned copy is caller-owned and must be
 // cleared after transfer. No path or filesystem handle goes to the worker.
-func ReadSnapshotFile(ctx context.Context, path string) (body []byte, resultErr error) {
+func Read(ctx context.Context, path string) (body []byte, resultErr error) {
 	if ctx == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" {
 		return nil, errSnapshotFile
 	}
@@ -76,7 +77,7 @@ func openSnapshotFile(path string) (*os.File, error) {
 
 func readStableSnapshot(ctx context.Context, file *os.File) ([]byte, error) {
 	before, err := file.Stat()
-	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > MaximumBytes {
+	if err != nil || !before.Mode().IsRegular() || before.Size() < 0 || before.Size() > document.MaximumBytes {
 		return nil, errSnapshotFile
 	}
 	body := make([]byte, int(before.Size()))

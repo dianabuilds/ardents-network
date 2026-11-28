@@ -229,12 +229,24 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	if !product[connection+"/client"] {
 		t.Error("./cmd/ardents-next does not use the selected local Application stream client")
 	}
-	worker := listedDependencies(t, root, "./internal/application/document/worker")
-	if worker[administration] || worker[ardentsModulePath+"/internal/domain/endpoint"] {
-		t.Error("the fixed text worker reaches trusted administration or Endpoint composition")
-	}
 	if !listedDependencies(t, root, "./cmd/ardents-next")[administration] {
 		t.Error("./cmd/ardents-next does not use the shared Application Administration Module")
+	}
+
+	// The installed worker receives bytes only. Check its transitive imports on
+	// every supported host, including builds with the unavailable worker entry.
+	for _, target := range []string{"linux", "darwin", "windows"} {
+		t.Run("worker/"+target, func(t *testing.T) {
+			t.Setenv("GOOS", target)
+			t.Setenv("GOARCH", "amd64")
+			t.Setenv("CGO_ENABLED", "0")
+			worker := listedDependencies(t, root, "./internal/application/document/worker")
+			for _, trusted := range []string{administration, ardentsModulePath + "/internal/domain/endpoint", ardentsModulePath + "/internal/application/localsnapshot", ardentsModulePath + "/internal/application/document/localread"} {
+				if worker[trusted] {
+					t.Errorf("worker reaches trusted package %s", trusted)
+				}
+			}
+		})
 	}
 
 	// Inspect the installed server closure even when the test runs on macOS or Windows.

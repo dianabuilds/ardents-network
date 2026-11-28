@@ -12,6 +12,7 @@ github.com/dianabuilds/ardents-network/cmd/ardents-next
 github.com/dianabuilds/ardents-network/internal/domain/admission
 github.com/dianabuilds/ardents-network/internal/domain/admission/console
 
+github.com/dianabuilds/ardents-network/internal/application/document/localread
 github.com/dianabuilds/ardents-network/internal/application/document/worker
 github.com/dianabuilds/ardents-network/tests/qualification/worker-lifecycle/stream-worker
 github.com/dianabuilds/ardents-network/internal/application/console
@@ -19,6 +20,7 @@ github.com/dianabuilds/ardents-network/internal/application/endpointstream
 github.com/dianabuilds/ardents-network/internal/application/endpointstream/client
 github.com/dianabuilds/ardents-network/internal/application/endpointstream/targetlink
 github.com/dianabuilds/ardents-network/internal/application/document
+github.com/dianabuilds/ardents-network/internal/application/localsnapshot
 github.com/dianabuilds/ardents-network/internal/application/streamqualification
 github.com/dianabuilds/ardents-network/tests/epochfixture/network
 github.com/dianabuilds/ardents-network/tests/releasefixture
