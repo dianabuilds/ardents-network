@@ -106,16 +106,19 @@ func publishedQuicGoZip(t *testing.T) string {
 	}
 
 	// The download runs in a scratch module without a go.sum entry, so Go would
-	// ask the checksum database and cache the answer under GOPATH. GOPATH can be
-	// read-only here (the Linux stand runs as an unprivileged user), and this
-	// test verifies the archive against the pinned sum itself.
-	scratch, gopath := t.TempDir(), t.TempDir()
+	// ask the checksum database and cache the answer under GOPATH, which can be
+	// read-only (the Linux stand runs as an unprivileged user). This test
+	// verifies the archive against the pinned sum itself, so that lookup is
+	// skipped for the one module. The module itself goes to the regular module
+	// cache, never to a temporary directory: extracted module files are
+	// read-only and would defeat the cleanup of a temporary GOPATH.
+	scratch := t.TempDir()
 	if err := os.WriteFile(filepath.Join(scratch, "go.mod"), []byte("module quic-go-source\n\ngo 1.21\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command("go", "mod", "download", "-json", quicGoModule+"@"+quicGoVersion)
 	command.Dir = scratch
-	command.Env = append(externalEnvironment(os.Environ()), "GOWORK=off", "GOPATH="+gopath, "GOFLAGS=-mod=mod", "GONOSUMDB="+quicGoModule)
+	command.Env = append(externalEnvironment(os.Environ()), "GOWORK=off", "GOFLAGS=-mod=mod", "GONOSUMDB="+quicGoModule)
 	output, err := command.Output()
 	if err != nil {
 		var exit *exec.ExitError
