@@ -1,6 +1,6 @@
 //go:build linux
 
-package state
+package preparation
 
 import (
 	"context"
@@ -13,20 +13,21 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
 
-// ErrSourcePreparationPrincipal identifies refusal before opening any input.
-var ErrSourcePreparationPrincipal = errors.New("source State preparation requires the fixed service principal")
+// ErrPrincipal identifies refusal before opening any input.
+var ErrPrincipal = errors.New("source State preparation requires the fixed service principal")
 
-// PrepareSourceStateFiles initializes signed State and empty participation as
+// PrepareState initializes signed State and empty participation as
 // the fixed service principal. Original files and both directories are held
 // through the State and participation operations and checked before closure.
-func PrepareSourceStateFiles(ctx context.Context, planPath, bundlePath string) error {
+func PrepareState(ctx context.Context, planPath, bundlePath string) error {
 	if err := process.RequireFixedServicePrincipal(); err != nil {
-		return errors.Join(ErrSourcePreparationPrincipal, err)
+		return errors.Join(ErrPrincipal, err)
 	}
 	return prepareSourceStateFiles(ctx, planPath, bundlePath)
 }
@@ -48,7 +49,7 @@ func prepareSourceStateFiles(ctx context.Context, planPath, bundlePath string) (
 }
 
 type sourceStatePreparation struct {
-	config        Config
+	config        state.Config
 	participation string
 	bundle        source.Bundle
 }
@@ -74,7 +75,7 @@ func readSourceStateInputs(originals *artifacts.Inputs, planPath, bundlePath str
 	if err != nil || plan.ProcessProfile != processguard.SourceProfile {
 		return result, errors.Join(errSourcePreparation, err)
 	}
-	result.config, err = SourcePreparationConfig(plan)
+	result.config, err = StateConfig(plan)
 	if err != nil {
 		return result, err
 	}

@@ -96,9 +96,9 @@
 //     node_duty_repair_linux.go (source_repair_linux_test.go,
 //     introduction_repair_native_linux_test.go,
 //     node_duty_repair_linux_test.go)
-//   - source preparation (linux): source_preparation_linux.go,
-//     source_state_files_linux.go (source_state_files_linux_test.go,
-//     source_state_files_native_linux_test.go)
+//
+// Initial Source preparation is composed by network/source/preparation;
+// State retains signed history acceptance and durable ownership.
 //
 // Fixture and export helpers carry no behavior of their own: fixture_test.go,
 // fixture_encoding_test.go, fixture_commitment_test.go, durable_test.go,

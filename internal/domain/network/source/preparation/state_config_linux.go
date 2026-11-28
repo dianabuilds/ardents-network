@@ -1,4 +1,4 @@
-package state
+package preparation
 
 import (
 	"context"
@@ -11,27 +11,28 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/pathcheck"
 )
 
 var errSourcePreparation = errors.New("invalid initial Source State preparation")
 
-// SourcePreparationConfig projects independently selected public pins and
+// StateConfig projects independently selected public pins and
 // independent paths. State authenticates the Epoch separately.
-func SourcePreparationConfig(plan servingdeclaration.ServingDeclaration) (Config, error) {
+func StateConfig(plan servingdeclaration.ServingDeclaration) (state.Config, error) {
 	n := plan.Network
 	if n == nil || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} ||
 		n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
-		return Config{}, errSourcePreparation
+		return state.Config{}, errSourcePreparation
 	}
 	paths := []string{n.Root, n.ClockObservationFile, plan.ParticipationRoot}
 	for i, path := range paths {
 		if path == "/" || len(path) > 4096 || !pathcheck.IsCleanAbsolute(path) || strings.ContainsRune(path, 0) {
-			return Config{}, errSourcePreparation
+			return state.Config{}, errSourcePreparation
 		}
 		for _, previous := range paths[:i] {
 			if path == previous || strings.HasPrefix(path, previous+"/") || strings.HasPrefix(previous, path+"/") {
-				return Config{}, errSourcePreparation
+				return state.Config{}, errSourcePreparation
 			}
 		}
 	}
@@ -39,11 +40,11 @@ func SourcePreparationConfig(plan servingdeclaration.ServingDeclaration) (Config
 	for _, public := range n.Authorities {
 		id := sha256.Sum256(public[:])
 		if public == [32]byte{} || pins[id] != nil {
-			return Config{}, errSourcePreparation
+			return state.Config{}, errSourcePreparation
 		}
 		pins[id] = append(ed25519.PublicKey(nil), public[:]...)
 	}
-	return Config{
+	return state.Config{
 		Root: n.Root, NetworkID: n.NetworkID, Authorities: pins, Threshold: n.Threshold,
 		ClosedProfileAuthority: append(ed25519.PublicKey(nil), n.ProfileAuthority[:]...),
 		AcceptedProfile:        epoch.ProfileClosedRoute, Clock: time.Now, ClockObservationFile: n.ClockObservationFile,
@@ -57,12 +58,12 @@ func (preparation sourceStatePreparation) prepare(ctx context.Context, check fun
 	if err := check(); err != nil {
 		return err
 	}
-	owner, err := OpenFresh(config)
+	owner, err := state.OpenFresh(config)
 	if err != nil {
 		return err
 	}
 	defer func() { result = errors.Join(result, owner.Close(), check()) }()
-	if _, err := owner.Current(); !errors.Is(err, ErrNoCurrentGeneration) {
+	if _, err := owner.Current(); !errors.Is(err, state.ErrNoCurrentGeneration) {
 		return errors.Join(errSourcePreparation, err)
 	}
 	if _, err := owner.AcceptEpoch(ctx, preparation.bundle.Epoch, preparation.bundle.Inputs, preparation.bundle.Materials); err != nil {

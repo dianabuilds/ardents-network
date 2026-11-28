@@ -1,4 +1,4 @@
-package state
+package preparation
 
 import (
 	"bytes"
@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -99,11 +100,11 @@ func TestSourceInitialPreparationCreatesBothRetainedHistories(t *testing.T) {
 	if !reflect.DeepEqual(stateBefore, sourceHistoryBytes(t, plan.Network.Root)) || !reflect.DeepEqual(rolesBefore, sourceHistoryBytes(t, plan.ParticipationRoot)) {
 		t.Fatal("repeat changed retained state")
 	}
-	config, err := SourcePreparationConfig(plan)
+	config, err := StateConfig(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	owner, err := OpenRetained(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		t.Fatal("prepared State cannot reopen", err)
 	}
@@ -197,11 +198,11 @@ func TestSourceInitialPreparationRetainsAcceptedStateOnInterruption(t *testing.T
 			if !reflect.DeepEqual(beforeState, sourceHistoryBytes(t, plan.Network.Root)) || !reflect.DeepEqual(beforeRoles, sourceHistoryBytes(t, plan.ParticipationRoot)) {
 				t.Fatal("retry changed original partial preparation")
 			}
-			config, err := SourcePreparationConfig(plan)
+			config, err := StateConfig(plan)
 			if err != nil {
 				t.Fatal(err)
 			}
-			owner, err := OpenRetained(config)
+			owner, err := state.OpenRetained(config)
 			if err != nil {
 				t.Fatal("accepted State erased", err)
 			}
@@ -272,12 +273,12 @@ func TestSourceInitialPreparationDoesNotRecreateLostParticipation(t *testing.T) 
 	}
 }
 
-func TestSourcePreparationConfigHasNoServingOrAcquisition(t *testing.T) {
+func TestStateConfigHasNoServingOrAcquisition(t *testing.T) {
 	plan := servingdeclaration.ServingDeclaration{ProcessProfile: "ardents-source-process-v1", ParticipationRoot: "/var/lib/source-participation",
 		Network: &servingdeclaration.ServingNetwork{Root: "/var/lib/source-state", NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}},
 			Threshold: 1, ProfileAuthority: [32]byte{2}, ClockObservationFile: "/var/lib/source-clock"},
 		Address: "127.0.0.1:4000", Certificate: "/unopened/certificate", PrivateKey: "/unopened/private-key", ClientRoot: "/unopened/ca", ClientPins: [][32]byte{{3}}}
-	config, err := SourcePreparationConfig(plan)
+	config, err := StateConfig(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +296,7 @@ func TestSourcePreparationConfigHasNoServingOrAcquisition(t *testing.T) {
 		network := *plan.Network
 		changed.Network = &network
 		changed.ParticipationRoot = root
-		if _, err := SourcePreparationConfig(changed); err == nil {
+		if _, err := StateConfig(changed); err == nil {
 			t.Fatal("overlapping roots accepted", root)
 		}
 	}

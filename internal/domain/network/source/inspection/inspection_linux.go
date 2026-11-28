@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/source/preparation"
 	"github.com/dianabuilds/ardents-network/internal/domain/network/source/servingdeclaration"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state"
 	"github.com/dianabuilds/ardents-network/internal/platform/artifacts"
 	"github.com/dianabuilds/ardents-network/internal/platform/processguard"
 )
@@ -68,7 +68,7 @@ func InspectLatest(ctx context.Context, request Request) (response source.Messag
 	if plan.ProcessProfile != processguard.SourceProfile {
 		return response, artifacts.ErrInput
 	}
-	config, err := state.SourcePreparationConfig(plan)
+	config, err := preparation.StateConfig(plan)
 	if err != nil {
 		return response, err
 	}
