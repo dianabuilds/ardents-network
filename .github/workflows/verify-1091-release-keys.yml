@@ -1,0 +1,55 @@
+name: Verify Release key ceremony on ext4
+on:
+  push:
+    branches: [codex/verify-1091-release-keys]
+permissions:
+  contents: read
+jobs:
+  release-keys:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version: '1.27.4'
+      - name: Verify candidate source
+        run: git diff --exit-code 0e8d26ebb9a58d12b2ec9736bacadc7645d9b91f HEAD -- . ':(exclude).github/workflows/verify-1091-release-keys.yml'
+      - name: Build the original command
+        run: go build -trimpath -buildvcs=false -o "$RUNNER_TEMP/ardents-next" ./cmd/ardents-next
+      - name: Check original key publication and interruption
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          root="$(sudo mktemp -d /root/ardents-1091.XXXXXX)"
+          cleanup() {
+            status=$?
+            trap - EXIT
+            set +e
+            if sudo mountpoint -q "$root/fs"; then
+              sudo umount "$root/fs" || status=1
+            fi
+            if sudo mountpoint -q "$root/fs"; then
+              echo 'ext4 test mount still active; preserving it' >&2
+              status=1
+            else
+              sudo rm -rf "$root" || status=1
+            fi
+            exit "$status"
+          }
+          trap cleanup EXIT
+          sudo mkdir "$root/fs"
+          sudo truncate -s 512M "$root/ext4.img"
+          sudo mkfs.ext4 -q -F "$root/ext4.img"
+          sudo mount -o loop "$root/ext4.img" "$root/fs"
+          test "$(sudo findmnt -n -o FSTYPE -T "$root/fs")" = ext4
+          sudo mkdir "$root/fs/test-tmp"
+          sudo chmod 0700 "$root/fs/test-tmp"
+          sudo install -m 0555 "$RUNNER_TEMP/ardents-next" "$root/ardents-next"
+          pin="$(sha256sum "$RUNNER_TEMP/ardents-next" | cut -d' ' -f1)"
+          sudo sha256sum "$root/ardents-next"
+          mkdir -p "$RUNNER_TEMP/ardents-go-build" "$RUNNER_TEMP/ardents-go-cache" "$RUNNER_TEMP/ardents-go-mod"
+          sudo env PATH="$PATH" HOME="$RUNNER_TEMP" GOCACHE="$RUNNER_TEMP/ardents-go-cache" GOMODCACHE="$RUNNER_TEMP/ardents-go-mod" GOTMPDIR="$RUNNER_TEMP/ardents-go-build" TMPDIR="$root/fs/test-tmp" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM="$root/ardents-next" ARDENTS_INFRASTRUCTURE_RELEASE_PROGRAM_SHA256="$pin" go test -race -tags network_signing_native ./internal/domain/release/infrastructure/signing -run '^Test(ReleaseKeySetNativeInterruptedCustody|ControlReleaseKeyReceiptsNative)$' -count=1 -v -timeout=5m
