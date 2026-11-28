@@ -30,7 +30,7 @@ MODULES = {
 }
 EXCEEDED = "return-path budget exceeded"
 EVIDENCE = re.compile(
-    r"server accepted|client wrote|server sent \d+ bytes|server packets while|"
+    r"server accepted|client wrote|server sent \d+ bytes|first server datagram|"
     r"through validated rebinding|^--- |^\s+--- |return-path budget exceeded|"
     r"did not become quiet|is not the original mapping|still peers|did not close|did not return"
 )
@@ -114,7 +114,7 @@ def main():
     parser.add_argument("--case", help="one subtest name, for example repeated-32-byte-packets")
     args = parser.parse_args()
     flags = ["-race"] if args.race else []
-    pattern = "/".join(part for part in ["^TestReturnPathBudget", args.backend, args.case] if part) + "$"
+    pattern = "/".join([("^TestReturnPathBudget"), args.backend or "[^/]+", args.case or ".+"]) + "$"
     if args.command == "candidate":
         with tempfile.TemporaryDirectory(prefix="ardents-r172-") as tmp:
             raise SystemExit(candidate(Path(tmp)))

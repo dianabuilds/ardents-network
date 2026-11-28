@@ -120,18 +120,22 @@ type relay struct {
 	socket  [2]*net.UDPConn
 	readers sync.WaitGroup
 
-	mu         sync.Mutex
-	active     int
-	holding    bool
-	held       [][]byte
-	toServer   [2]int
-	fromServer [2][]int
-	last       time.Time
-	log        []string
-	deadline   *deadline
-	incoming   chan []byte
-	closed     chan struct{}
-	closeOnce  sync.Once
+	mu            sync.Mutex
+	active        int
+	holding       bool
+	held          [][]byte
+	toServer      [2]int
+	toServerSizes [2][]int
+	fromServer    [2][]int
+	// the payload the client had sent from each mapping when the server's
+	// first datagram arrived there
+	receivedBeforeReply [2]int
+	last                time.Time
+	log                 []string
+	deadline            *deadline
+	incoming            chan []byte
+	closed              chan struct{}
+	closeOnce           sync.Once
 }
 
 func newRelay(t *testing.T, server *net.UDPAddr) *relay {
@@ -169,6 +173,9 @@ func (r *relay) receive(mapping int) {
 		}
 		data := slices.Clone(buffer[:n])
 		r.mu.Lock()
+		if len(r.fromServer[mapping]) == 0 {
+			r.receivedBeforeReply[mapping] = r.toServer[mapping]
+		}
 		r.fromServer[mapping] = append(r.fromServer[mapping], int(n))
 		r.record("server->client", mapping, int(n))
 		r.mu.Unlock()
@@ -201,6 +208,7 @@ func (r *relay) WriteTo(p []byte, _ net.Addr) (int, error) {
 	}
 	n, err := r.socket[r.active].WriteToUDP(p, r.server)
 	r.toServer[r.active] += n
+	r.toServerSizes[r.active] = append(r.toServerSizes[r.active], n)
 	r.record("client->server", r.active, n)
 	return n, err
 }
@@ -298,6 +306,7 @@ func (r *relay) release(t *testing.T, index int) int {
 		t.Fatal(err)
 	}
 	r.toServer[r.active] += n
+	r.toServerSizes[r.active] = append(r.toServerSizes[r.active], n)
 	r.record("client->server (released)", r.active, n)
 	r.held[index] = nil
 	return n
@@ -327,6 +336,7 @@ func (r *relay) resume(t *testing.T) {
 			t.Fatal(err)
 		}
 		r.toServer[r.active] += n
+		r.toServerSizes[r.active] = append(r.toServerSizes[r.active], n)
 		r.record("client->server (resumed)", r.active, n)
 		r.held[i] = nil
 	}
@@ -339,6 +349,25 @@ type report struct {
 	sent, received int
 	datagrams      []int
 	original       int
+}
+
+// firstReply is the server's first datagram to the rebound mapping and the
+// payload the client had sent there when it arrived.
+func (r *relay) firstReply() (reply, received int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.fromServer[reboundMapping]) == 0 {
+		return 0, 0
+	}
+	return r.fromServer[reboundMapping][0], r.receivedBeforeReply[reboundMapping]
+}
+
+// clientDatagrams lists the sizes of the datagrams the client sent from the
+// rebound mapping.
+func (r *relay) clientDatagrams() []int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return slices.Clone(r.toServerSizes[reboundMapping])
 }
 
 func (r *relay) report() report {
@@ -505,14 +534,17 @@ type session struct {
 	echoes      chan struct{}
 }
 
-func startSession(t *testing.T, backend string) *session {
+// startSession opens one session. A direct role client presents no
+// certificate; a Node client presents one and checks the server's key. With a
+// keep-alive period, both endpoints send a PING whenever they are idle.
+func startSession(t *testing.T, backend string, direct bool, keepAlive time.Duration) *session {
 	t.Helper()
 	serverCertificate, serverKey := credential(t)
 	clientCertificate, clientKey := credential(t)
 	s := &session{t: t, serverTrace: &packetTrace{}, clientTrace: &packetTrace{}, echoes: make(chan struct{})}
 	s.ctx, s.cancel = context.WithTimeout(t.Context(), 90*time.Second)
 	configuration := func(trace *packetTrace) *quic.Config {
-		return &quic.Config{Versions: []quic.Version{quic.Version1}, MaxIdleTimeout: 15 * time.Second, DisablePathMTUDiscovery: true,
+		return &quic.Config{Versions: []quic.Version{quic.Version1}, MaxIdleTimeout: 15 * time.Second, DisablePathMTUDiscovery: true, KeepAlivePeriod: keepAlive,
 			Tracer: func(context.Context, bool, quic.ConnectionID) qlogwriter.Trace { return trace }}
 	}
 	serverSocket := listenUDP(t)
@@ -533,7 +565,12 @@ func startSession(t *testing.T, backend string) *session {
 		t.Logf("relay events:\n%s\nserver packets:\n%s\nclient packets:\n%s", strings.Join(s.nat.events(), "\n"), strings.Join(s.serverTrace.lines(), "\n"), strings.Join(s.clientTrace.lines(), "\n"))
 	})
 	s.client = &quic.Transport{Conn: s.nat}
-	out, err := s.client.Dial(s.ctx, listener.Addr(), transport.NodeClientTLS(clientCertificate, serverKey), configuration(s.clientTrace))
+	clientTLS := transport.NodeClientTLS(clientCertificate, serverKey)
+	kind, want := "Node", transport.ClosedSharedNode
+	if direct {
+		clientTLS, kind, want = transport.RoleClientTLS(serverKey), "direct role", transport.ClosedSharedDirect
+	}
+	out, err := s.client.Dial(s.ctx, listener.Addr(), clientTLS, configuration(s.clientTrace))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -543,10 +580,10 @@ func startSession(t *testing.T, backend string) *session {
 	}
 	s.in, s.out = in, out
 	principal, err := transport.ClassifySharedTLS(in.ConnectionState().TLS, func(key [32]byte) bool { return key == clientKey })
-	if err != nil || principal.Kind != transport.ClosedSharedNode || principal.NodeKey != clientKey {
-		t.Fatalf("Node principal was not authenticated: %+v %v", principal, err)
+	if err != nil || principal.Kind != want || (kind == "Node" && principal.NodeKey != clientKey) {
+		t.Fatalf("the %s principal was not authenticated: %+v %v", kind, principal, err)
 	}
-	t.Logf("server accepted a Node connection: TLS %x, ALPN %q, negotiated QUIC %s", in.ConnectionState().TLS.Version, in.ConnectionState().TLS.NegotiatedProtocol, in.ConnectionState().Version)
+	t.Logf("server accepted a %s connection: TLS %x, ALPN %q, negotiated QUIC %s", kind, in.ConnectionState().TLS.Version, in.ConnectionState().TLS.NegotiatedProtocol, in.ConnectionState().Version)
 	go func() {
 		defer close(s.echoes)
 		for {
@@ -611,6 +648,21 @@ func (r *relay) mappingName(addr net.Addr) string {
 	return "unknown"
 }
 
+// checkFirstReply compares the server's first datagram to the rebound mapping
+// with the payload the client had sent there when it arrived. The address is
+// unvalidated until the client answers a challenge, so the limit applies.
+func (s *session) checkFirstReply() {
+	s.t.Helper()
+	reply, received := s.nat.firstReply()
+	s.t.Logf("first server datagram to the rebound address: %d bytes after the client sent %d there", reply, received)
+	if received == 0 || reply == 0 {
+		s.t.Fatal("return-path exchange is empty")
+	}
+	if limit := received * amplificationLimit; reply > limit {
+		s.t.Fatalf("return-path budget exceeded: first datagram of %d bytes to the unvalidated rebound address after receiving %d (limit %d)", reply, received, limit)
+	}
+}
+
 // awaitServerDatagram waits until the server sent at least count datagrams to
 // the rebound mapping.
 func (s *session) awaitServerDatagram(count int) {
@@ -649,7 +701,9 @@ func TestReturnPathBudget(t *testing.T) {
 		t.Run(backend, func(t *testing.T) {
 			t.Run("withheld-replies/repeated-32-byte-packets", func(t *testing.T) { withheldReplies(t, backend, 4, 32) })
 			t.Run("withheld-replies/larger-packet-allows-1200", func(t *testing.T) { withheldReplies(t, backend, 1, 404) })
-			t.Run("ordinary-rebinding", func(t *testing.T) { ordinaryRebinding(t, backend) })
+			t.Run("ordinary-rebinding", func(t *testing.T) { ordinaryRebinding(t, backend, false) })
+			t.Run("direct-role-rebinding", func(t *testing.T) { ordinaryRebinding(t, backend, true) })
+			t.Run("idle-keepalive-rebinding", func(t *testing.T) { idleKeepaliveRebinding(t, backend) })
 		})
 	}
 }
@@ -658,7 +712,7 @@ func TestReturnPathBudget(t *testing.T) {
 // rebound mapping and withholds everything the client writes afterwards.
 func withheldReplies(t *testing.T, backend string, datagrams, packetSize int) {
 	t.Helper()
-	s := startSession(t, backend)
+	s := startSession(t, backend, false, 0)
 	defer s.close()
 	s.nat.rebindAndHold()
 	for i := range datagrams {
@@ -706,22 +760,39 @@ func withheldReplies(t *testing.T, backend string, datagrams, packetSize int) {
 // ordinaryRebinding is a NAT that moves the client and keeps forwarding. The
 // first packet from the new address is a genuine 32-byte client packet, the
 // client then answers path validation, and the server moves.
-func ordinaryRebinding(t *testing.T, backend string) {
+func ordinaryRebinding(t *testing.T, backend string, direct bool) {
 	t.Helper()
-	s := startSession(t, backend)
+	s := startSession(t, backend, direct, 0)
 	defer s.close()
 	s.nat.rebind()
 	writeStream(s.ctx, t, s.out, bytes.Repeat([]byte{1}, 32-plainStreamPacketBase))
 	s.awaitServerDatagram(1)
-	first := s.nat.report().datagrams[0]
-	t.Logf("first server datagram to the rebound address after a 32-byte packet: %d bytes", first)
-	if limit := 32 * amplificationLimit; first > limit {
-		t.Fatalf("return-path budget exceeded for an ordinary rebinding: first datagram of %d bytes to the unvalidated rebound address (limit %d)", first, limit)
-	}
+	s.checkFirstReply()
 	s.awaitSwitch()
 	exchange(s.ctx, t, s.out, []byte("after-rebinding"))
 	if early := s.serverTrace.expandedBeforeResponse(); len(early) > 0 {
 		t.Fatalf("server sent expanded probes before it received a PATH_RESPONSE: %v", early)
 	}
+	t.Logf("server datagrams to the rebound address through validated rebinding: %v", s.nat.report().datagrams)
+}
+
+// idleKeepaliveRebinding moves an idle client that keeps its connection alive
+// with one PING per second, as the retired Ardents QUIC configuration did. Its
+// first packet from the new address is that PING, not an application request.
+func idleKeepaliveRebinding(t *testing.T, backend string) {
+	t.Helper()
+	s := startSession(t, backend, false, time.Second)
+	defer s.close()
+	s.nat.rebind()
+	s.awaitServerDatagram(1)
+	s.checkFirstReply()
+	time.Sleep(observation / 2)
+	checkBudget(t, s.nat, "after the first keep-alive from the rebound mapping")
+	t.Logf("client datagrams from the rebound mapping: %v", s.nat.clientDatagrams())
+	if early := s.serverTrace.expandedBeforeResponse(); len(early) > 0 {
+		t.Fatalf("server sent expanded probes before it received a PATH_RESPONSE: %v", early)
+	}
+	s.awaitSwitch()
+	exchange(s.ctx, t, s.out, []byte("after-rebinding"))
 	t.Logf("server datagrams to the rebound address through validated rebinding: %v", s.nat.report().datagrams)
 }

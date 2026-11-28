@@ -37,12 +37,18 @@ datagrams at both NAT sockets and counts complete UDP payload bytes.
 - **E3, padding is not removed.** A separate session delivers one packet of
   about 400 bytes. The limit then exceeds 1200, so the server must send one
   datagram of at least 1200 bytes and no more than the limit.
-- **E4, validation and padding control.** A separate session moves the client
-  and keeps forwarding. Its first packet from the new address is again 32
-  bytes. The first reply must be within 96 bytes, the server may send 1200
-  bytes only after it receives a PATH_RESPONSE, it must move to the rebound
-  mapping, and the application exchange must continue there.
-- **E5, both writers.** E1–E4 hold with the server's native UDP writer and
+- **E4, validation.** A separate session moves the client and keeps
+  forwarding. Its first packet from the new address is again 32 bytes. The
+  first reply must be within three times the payload the client had sent
+  there when it arrived, the server may send 1200 bytes only after it
+  receives a PATH_RESPONSE, it must move to the rebound mapping, and the
+  application exchange must continue there. This runs for a Node client with
+  a certificate and for a certificate-free direct role client.
+- **E5, idle keep-alive.** The retired Ardents QUIC configuration sent a PING
+  every second on an idle connection. With that period, the first packet from
+  the new address is a keep-alive PING of 25 bytes. The first reply must be
+  within 75 bytes.
+- **E6, both writers.** E1–E5 hold with the server's native UDP writer and
   with a wrapper that selects its generic PacketConn writer.
 
 The same source runs against the pinned official releases. A control is
