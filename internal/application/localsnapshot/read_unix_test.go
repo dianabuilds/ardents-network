@@ -5,10 +5,12 @@ package localsnapshot
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -135,7 +137,8 @@ func TestSnapshotFileRejectsChangingInputEvenWithRestoredSizeAndMtime(t *testing
 	if before.Size() != after.Size() || before.ModTime() != after.ModTime() {
 		t.Fatal("mutation positive control failed")
 	}
-	if err := verifySnapshotFile(t.Context(), file, before, body); err == nil {
+	digest := sha256.Sum256(body)
+	if err := verifySnapshotFile(t.Context(), file, before, digest[:]); err == nil {
 		t.Fatal("same-size rewritten input with restored mtime accepted")
 	}
 }
@@ -155,12 +158,30 @@ func TestVerificationRejectsDifferentBytesWithMatchingMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verification starts at EOF after the first read. Supply different bytes
-	// of the same length while both metadata observations see the same file.
-	if _, err := file.Seek(0, io.SeekEnd); err != nil {
+	// Both metadata observations see the same file. Use an independently
+	// computed digest for different bytes of the same length.
+	firstDigest := sha256.Sum256([]byte("first"))
+	if err := verifySnapshotFile(t.Context(), file, original, firstDigest[:]); !errors.Is(err, errSnapshotFile) {
+		t.Fatalf("second pass with different bytes = %v, want refusal", err)
+	}
+}
+
+func TestSnapshotPassCopiesBeyondCurrentPublicationLimit(t *testing.T) {
+	body := bytes.Repeat([]byte{0x00, 0x80, 0xff}, document.MaximumBytes/3+1)
+	want := sha256.Sum256(body)
+	output := sha256.New()
+	if err := copySnapshotPass(t.Context(), bytes.NewReader(body), output, int64(len(body))); err != nil {
 		t.Fatal(err)
 	}
-	if err := verifySnapshotFile(t.Context(), file, original, []byte("first")); !errors.Is(err, errSnapshotFile) {
-		t.Fatalf("second pass with different bytes = %v, want refusal", err)
+	if !bytes.Equal(output.Sum(nil), want[:]) {
+		t.Fatal("snapshot pass altered the binary input")
+	}
+}
+
+func TestSnapshotPassRejectsShortAndSurplusInput(t *testing.T) {
+	for _, input := range []string{"short", "surplus"} {
+		if err := copySnapshotPass(t.Context(), strings.NewReader(input), io.Discard, 6); !errors.Is(err, errSnapshotFile) {
+			t.Fatalf("snapshot pass for %q = %v, want refusal", input, err)
+		}
 	}
 }
