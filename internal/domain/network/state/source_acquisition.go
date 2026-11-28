@@ -8,6 +8,54 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/domain/network/state/internal/distribution"
 )
 
+// checkSourceExposureCapacity refuses a changed plan before its first contact
+// could grow the durable history beyond the decoder's fixed bound. A validated
+// Source plan contains two distinct exposure identities.
+func (s *State) checkSourceExposureCapacity() error {
+	return sourceExposureCapacity(s.distribution, s.config.sourceInfo.Exposures)
+}
+
+func (s *State) beginLatestAttempt(index int) (bool, byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if index < 0 || index > 1 {
+		return false, 0, errors.New("LATEST source attempt is outside the active cycle")
+	}
+	state, contact, outcome, err := proposeLatestAttempt(s.distribution, index, s.config.sourceInfo.Exposures[index])
+	if err != nil {
+		return false, 0, err
+	}
+	if state.Sequence != s.distribution.Sequence {
+		if err := s.commitDistribution(state); err != nil {
+			return false, 0, err
+		}
+	}
+	return contact, outcome, nil
+}
+
+func (s *State) beginDigestAttempt(source int, digest [32]byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if source < 0 || source > 1 {
+		return errors.New("by-digest source attempt is not available")
+	}
+	state, err := proposeDigestAttempt(s.distribution, source, digest, s.config.sourceInfo.Exposures[source])
+	if err != nil {
+		return err
+	}
+	return s.commitDistribution(state)
+}
+
+func (s *State) finishDigestAttempt(source int, responseCompleted bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	state, err := proposeDigestCompletion(s.distribution, source, responseCompleted)
+	if err != nil {
+		return err
+	}
+	return s.commitDistribution(state)
+}
+
 // Acquisition and Epoch/profile floors share this application's commit. These
 // translations publish no independent authority and retain the journal bytes.
 func acquisitionHistory(state distribution.Record) (networkdomain.Acquisition, error) {
@@ -99,4 +147,20 @@ func proposeSourceCycle(state distribution.Record, now time.Time, seed [32]byte)
 		}
 	}
 	return state, expired, nil
+}
+
+// finishWaveState translates a Network transition into the same copied journal.
+// No outcome becomes visible until the application commits it.
+func finishWaveState(state *distribution.Record, now time.Time, outcomes [4]byte) error {
+	history, err := acquisitionHistory(*state)
+	if err != nil {
+		return err
+	}
+	next, err := history.Finish(now, outcomes)
+	if err != nil {
+		return err
+	}
+	applyAcquisition(state, next)
+	state.Sequence++
+	return nil
 }

@@ -113,7 +113,7 @@ edges. For example, `endpoint/funding` uses the command-wide permission, while
 | internal/domain/network/closedprofile | internal/domain/admission/issuerprofile | `profile.go` |
 | internal/domain/network/duty | internal/domain/network | `participation_policy.go` |
 | internal/domain/network/epoch | internal/domain/network | `assignment.go`, `candidate_evaluation.go` |
-| internal/domain/network/state | internal/domain/network | `acquisition_history.go`, `clock_observation.go`, `closed_profile_accept.go`, `closed_profile_role_join_test.go`, `closed_runtime_view_test.go`, `epoch_history.go`, `membership.go`, `runtime_observation.go`, `runtime_witness.go` |
+| internal/domain/network/state | internal/domain/network | `source_acquisition.go`, `clock_observation.go`, `closed_profile_accept.go`, `closed_profile_role_join_test.go`, `closed_runtime_view_test.go`, `epoch_history.go`, `membership.go`, `runtime_observation.go`, `runtime_witness.go` |
 | internal/domain/network/state | internal/domain/network/state/stoppedunit | `node_duty_repair_linux.go`, `source_repair_linux.go` |
 | internal/domain/network/state | internal/platform/cgroup | `node_duty_roles_linux.go`, `source_repair_linux.go` |
 | internal/domain/network/state | internal/platform/process | `source_repair_linux.go` |

@@ -387,7 +387,7 @@ absence of a new observation cannot erase an already recorded outcome. A wave
 with no valid observation enters backoff instead of clearing failure history.
 The domain itself refuses a new cycle before its durable retry time.
 
-The State adapter translates this value through `acquisition_history.go` into
+The State adapter translates this value through `source_acquisition.go` into
 the existing distribution journal. Its sequence, Epoch/profile facts and time
 floors retain one ordered commit boundary. Source transport supplies bytes;
 the application draws randomness, commits before contact and retains local

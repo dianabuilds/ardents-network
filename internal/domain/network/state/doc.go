@@ -57,11 +57,11 @@
 //     closed_profile_liveness_test.go, closed_profile_role_join_test.go,
 //     golden_test.go, decision_pointer_equivalence_test.go); the pointer
 //     equivalence also covers the completeSourceWave path of source_wave.go
-//   - acquisition and wave: refresh.go, source_wave.go, source_wave_state.go,
-//     attempts.go, outcomes.go, acquisition_history.go (refresh_test.go,
+//   - acquisition and wave: refresh.go, source_acquisition.go, source_wave.go,
+//     source_outcomes.go (refresh_test.go,
 //     refresh_cycle_test.go, refresh_resume_test.go, fallback_test.go,
 //     materialization_index_test.go, source_bootstrap_test.go,
-//     acquisition_closure_test.go, outcomes_test.go, source_wave_guard_test.go,
+//     acquisition_closure_test.go, source_outcomes_test.go, source_wave_guard_test.go,
 //     source_wave_guard_failure_test.go, pending_completion_time_test.go)
 //   - distribution commit and recovery: distribution_commit.go,
 //     distribution_recovery.go
