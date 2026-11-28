@@ -11,16 +11,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        workload: [published-binary-file]
+        workload: [bidirectional, published-binary-file]
     runs-on: ubuntu-24.04
     timeout-minutes: 32
     env:
       WORKLOAD: ${{ matrix.workload }}
-      CANDIDATE: f917c05b430da07350392ce4780e633eb9cda31f
+      CANDIDATE: 557f9f4183f57c130162f3a5923a1e9be6ee214d
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          ref: f917c05b430da07350392ce4780e633eb9cda31f
+          ref: 557f9f4183f57c130162f3a5923a1e9be6ee214d
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
@@ -36,43 +36,7 @@ jobs:
           sudo -n apt-get install --no-install-recommends -y debootstrap systemd-container
           go mod download
           mkdir -p "$RUNNER_TEMP/ardents-build"
-      - name: Attach numeric failure provenance to the exact candidate
-        run: |
-          python3 - <<'PYDIAG'
-          from pathlib import Path
-          p = Path("internal/domain/publication/runtime/publisher.go")
-          s = p.read_text().replace('"errors"', '"errors"\n "fmt"\n "os"\n stdruntime "runtime"\n "strings"')
-          s = s.replace('return p.publish(ctx, true)', '''
-              start := time.Now()
-              result, err := p.publish(ctx, true)
-              var flags uint64
-              if err != nil {
-                  for i, label := range []string{"deadline", "registration", "recipient", "issuance", "stock", "predecessor", "Source", "window", "expired", "active", "closed", "already", "refused", "admission"} {
-                      if strings.Contains(err.Error(), label) { flags |= 1 << i }
-                  }
-              }
-              fmt.Fprintf(os.Stderr, "qualification refresh ms=%d elapsed=%s success=%t flags=%d\\n", start.UnixMilli(), time.Since(start), err == nil, flags)
-              return result, err
-          ''')
-          s = s.replace('func (p *Publisher) stop() {', '''
-          func (p *Publisher) stop() {
-              pc, _, line, _ := stdruntime.Caller(1)
-              name := ""
-              if original := stdruntime.FuncForPC(pc); original != nil { name = original.Name() }
-              fmt.Fprintf(os.Stderr, "qualification stop ms=%d package-func=%s line=%d\\n", time.Now().UnixMilli(), name, line)
-          ''')
-          p.write_text(s)
-          p = Path("internal/domain/connection/stream_replacement.go")
-          s = p.read_text().replace('"errors"', '"errors"\n "fmt"\n "io"\n "os"')
-          s = s.replace('records.recoveryCause = cause', '''
-              fmt.Fprintf(os.Stderr, "qualification recovery role=%d ms=%d eof=%t truncated=%t\\n", stream.owner.role, time.Now().UnixMilli(), errors.Is(cause, io.EOF), errors.Is(cause, io.ErrUnexpectedEOF))
-              records.recoveryCause = cause
-          ''')
-          p.write_text(s)
-          PYDIAG
-          gofmt -w internal/domain/publication/runtime/publisher.go internal/domain/connection/stream_replacement.go
-          git diff --check
-      - name: Diagnose the full-window published-binary-file failure
+      - name: Exercise unmodified Ubuntu artifacts
         run: |
           sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build" \
             "GOTOOLCHAIN=local" GOFLAGS=-buildvcs=false \
