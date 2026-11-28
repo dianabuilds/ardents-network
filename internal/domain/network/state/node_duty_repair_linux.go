@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/retiredservice"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/stoppedunit"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
@@ -180,10 +180,10 @@ func checkNodeDutyRepairQuiescence(ctx context.Context, native nodeDutyRepairNat
 	if err != nil {
 		return err
 	}
-	if !retiredservice.NodeStopped(unit, service, writableRoots, native.role.name) {
+	if !stoppedunit.NodeStopped(unit, service, writableRoots, native.role.name) {
 		return native.role.unavailable
 	}
-	if !retiredservice.NodeDeclaration(service, declaration, native.role.name) {
+	if !stoppedunit.NodeDeclaration(service, declaration, native.role.name) {
 		return native.role.unavailable
 	}
 	// Per-unit cgroup only: the shared ardents-node account forbids an account-wide

@@ -1,4 +1,4 @@
-package retiredservice
+package stoppedunit
 
 import (
 	"encoding/json"
@@ -8,8 +8,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd/observation"
 )
 
-// NodeDeclaration checks the retained declaration bound to a Node role.
-func NodeDeclaration(service observation.Properties, declaration string, role string) bool {
+// SourceDeclaration checks the loaded Source declaration.
+func SourceDeclaration(service observation.Properties, declaration string) bool {
 	value := service["ExecStartEx"]
 	var rows [][]json.RawMessage
 	if value.Type != "a(sasasttttuii)" || observation.Decode(value.Data, &rows) != nil || len(rows) != 1 || len(rows[0]) != 10 {
@@ -20,16 +20,15 @@ func NodeDeclaration(service observation.Properties, declaration string, role st
 	if observation.Decode(rows[0][0], &program) != nil || observation.Decode(rows[0][1], &args) != nil || observation.Decode(rows[0][2], &flags) != nil {
 		return false
 	}
-	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 5 || args[0] != program || args[1] != "node" || args[2] != role || args[3] != "--retained-config" || args[4] != declaration {
+	if !strings.HasPrefix(program, "/usr/lib/ardents/") || filepath.Clean(program) != program || len(args) != 4 || args[0] != program || args[1] != "source" || args[2] != "serve-retained" || args[3] != declaration {
 		return false
 	}
 	return len(flags) == 1 && flags[0] == "no-env-expand"
 }
 
-// NodeStopped checks the fixed stopped unit and its retained writable roots.
-func NodeStopped(unit, service observation.Properties, writableRoots []string, role string) bool {
-	unitName := "ardents-" + role + ".service"
-	for name, value := range map[string]string{"Id": unitName, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + unitName} {
+// SourceStopped checks the fixed stopped Source and its retained roots.
+func SourceStopped(unit, service observation.Properties, stateRoot, participation string) bool {
+	for name, value := range map[string]string{"Id": "ardents-source.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-source.service"} {
 		if !observation.Matches(unit, name, "s", value) {
 			return false
 		}
@@ -41,7 +40,7 @@ func NodeStopped(unit, service observation.Properties, writableRoots []string, r
 	if !observation.Matches(unit, "DropInPaths", "as", []string{}) || !observation.Matches(unit, "TriggeredBy", "as", []string{}) {
 		return false
 	}
-	for name, value := range map[string]string{"User": "ardents-node", "Group": "ardents-node", "KillMode": "control-group", "Restart": "no", "ProtectSystem": "strict"} {
+	for name, value := range map[string]string{"User": "ardents-source", "Group": "ardents-source", "KillMode": "control-group", "Restart": "no", "ProtectSystem": "strict"} {
 		if !observation.Matches(service, name, "s", value) {
 			return false
 		}
@@ -61,10 +60,10 @@ func NodeStopped(unit, service observation.Properties, writableRoots []string, r
 			return false
 		}
 	}
-	if !observation.Matches(service, "ReadWritePaths", "as", writableRoots) {
+	if !observation.Matches(service, "ReadWritePaths", "as", []string{stateRoot, participation}) {
 		return false
 	}
-	if !observation.Matches(service, "ControlGroup", "s", "") && !observation.Matches(service, "ControlGroup", "s", "/system.slice/"+unitName) {
+	if !observation.Matches(service, "ControlGroup", "s", "") && !observation.Matches(service, "ControlGroup", "s", "/system.slice/ardents-source.service") {
 		return false
 	}
 	return true

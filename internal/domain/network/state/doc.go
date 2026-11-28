@@ -92,7 +92,7 @@
 //     join_repair_test.go, descriptor_repair_test.go,
 //     node_duty_repair_test.go)
 //   - repair adapters (linux): source_repair_linux.go, node_duty_roles_linux.go,
-//     retiredservice/ (pure stopped-unit and declaration checks),
+//     stoppedunit/ (pure stopped-unit and declaration checks),
 //     node_duty_repair_linux.go (source_repair_linux_test.go,
 //     introduction_repair_native_linux_test.go,
 //     node_duty_repair_linux_test.go)

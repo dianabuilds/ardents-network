@@ -532,7 +532,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/domain/release/infrastructure/launch/verify_linux_test.go" && dependency == modulePath+"/internal/platform/processguard" {
 		return true
 	}
-	if dependency == modulePath+"/internal/domain/network/state/retiredservice" {
+	if dependency == modulePath+"/internal/domain/network/state/stoppedunit" {
 		return source == "internal/domain/network/state/source_repair_linux.go" ||
 			source == "internal/domain/network/state/node_duty_repair_linux.go"
 	}

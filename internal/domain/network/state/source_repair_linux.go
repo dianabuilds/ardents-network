@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/domain/network/state/retiredservice"
+	"github.com/dianabuilds/ardents-network/internal/domain/network/state/stoppedunit"
 	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/platform/process"
 	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
@@ -129,10 +129,10 @@ func checkSourceRepairQuiescence(ctx context.Context, original *systemd.SourceRu
 	if err != nil {
 		return err
 	}
-	if !retiredservice.SourceStopped(facts.Unit, facts.Service, cfg.root, cfg.localRoles) {
+	if !stoppedunit.SourceStopped(facts.Unit, facts.Service, cfg.root, cfg.localRoles) {
 		return ErrSourceRepairUnavailable
 	}
-	if !retiredservice.SourceDeclaration(facts.Service, declaration) {
+	if !stoppedunit.SourceDeclaration(facts.Service, declaration) {
 		return ErrSourceRepairUnavailable
 	}
 	if err := cgroup.CheckSourceRecoveryQuiescent(ctx); err != nil {

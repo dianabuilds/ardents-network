@@ -36,7 +36,7 @@ var successorPackageImports = map[string][]string{
 	"internal/domain/network/source/servingdeclaration":   {},
 	"internal/domain/network/state":                       {"canonicaldigest", "domain/network/closedprofile", "domain/network/duty", "domain/network/epoch", "domain/network/source", "domain/network/source/servingdeclaration", "domain/network/state/durable", "pathcheck"},
 	"internal/domain/network/state/internal/distribution": {"domain/network/canonicalcursor"},
-	"internal/domain/network/state/retiredservice":        {},
+	"internal/domain/network/state/stoppedunit":           {},
 	"internal/domain/network/state/durable":               {"durablefile", "pathcheck"},
 	"internal/domain/admission":                           {"domain/admission/issuerprofile"},
 	"internal/domain/admission/issuerprofile":             {},

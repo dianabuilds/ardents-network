@@ -1,4 +1,4 @@
-package retiredservice
+package stoppedunit
 
 import (
 	"encoding/json"
