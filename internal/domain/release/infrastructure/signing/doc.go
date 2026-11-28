@@ -14,8 +14,10 @@
 //     shared artifactio private-key parser's caller-input retention used by
 //     the key commands)
 //   - release_key_command_linux.go runs the selected ceremony and renders its
-//     public inventory through release_key_receipt_unix.go. internal/keyset
-//     owns original protected file publication, joins and erasure. The Linux
+//     public inventory through release_key_receipt_unix.go.
+//     release_key_birth_linux.go owns original protected file publication,
+//     joins and erasure (release_key_birth_linux_test.go and
+//     release_key_birth_native_linux_test.go). The Linux
 //     command tests check each receipt against the actual published files.
 //   - Forwarding/JOIN/Descriptor initial and forward Release signing with
 //     predecessor authentication: node_release_linux.go,

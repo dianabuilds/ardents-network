@@ -223,7 +223,7 @@ contract has distinct Source, Forwarding, JOIN and Descriptor pair owners in
 `release/infrastructure`. Native installation and each role lifecycle retain
 separate owners and acceptance scopes; existing Endpoint targets remain unchanged.
 The original Source, Forwarding, JOIN and Descriptor ceremonies publish five
-fresh private files through the protected keyset owner. The command renders the
+fresh private files through the protected key publication operation. The command renders the
 ordered public inventory after native publication and close. Signing separately
 admits the original key directory, purpose and independently verified targets.
 Descriptor initial admission requires its own independently pinned running Node
