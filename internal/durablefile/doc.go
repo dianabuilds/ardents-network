@@ -17,7 +17,7 @@
 //   - exclusive creation and staged replacement: exclusive_write.go,
 //     staged_replace.go (staged_replace_test.go)
 //   - generation pruning and watermark floor: generation_cleanup.go,
-//     watermark.go (watermark_test.go)
+//     watermark.go (staged_replace_test.go, watermark_test.go)
 //   - owned-root inspection: root_inspect.go (root_inspect_test.go)
 //   - directory sync and root lease: directory_sync_unix.go,
 //     directory_sync_windows.go, lease_unix.go (lease_unix_test.go)
