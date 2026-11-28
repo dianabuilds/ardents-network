@@ -1,7 +1,9 @@
 package connection
 
 import (
+	"fmt"
 	"math"
+	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/transfer"
 	"github.com/dianabuilds/ardents-network/internal/domain/connection/wire"
@@ -44,6 +46,9 @@ func newSegmentBoundaryExchange(role wire.Role, base wire.SegmentBoundary, ticke
 }
 
 func (exchange *segmentBoundaryExchange) freeze(flow *transfer.State) {
+	if !exchange.draining {
+		fmt.Fprintf(os.Stderr, "qualification phase role=%d start-drain\n", exchange.role)
+	}
 	exchange.draining = true
 	exchange.localEnd = flow.FreezeSegment()
 }
@@ -62,6 +67,7 @@ func (exchange *segmentBoundaryExchange) observeGeneration(generation uint64) er
 }
 
 func (exchange *segmentBoundaryExchange) receive(flow *transfer.State, record wire.Continuation) error {
+	fmt.Fprintf(os.Stderr, "qualification phase role=%d receive=%d\n", exchange.role, record.Kind)
 	if record.AttachmentGeneration != flow.Generation() {
 		return errIntegrity
 	}
@@ -187,6 +193,7 @@ func (exchange *segmentBoundaryExchange) finishWrite(ticket *segmentControlWrite
 		return errIntegrity
 	}
 	exchange.active = nil
+	fmt.Fprintf(os.Stderr, "qualification phase role=%d finish=%d success=%t\n", exchange.role, ticket.record.Kind, physicalErr == nil)
 	if physicalErr == nil {
 		exchange.sent[ticket.record.Kind] = true
 	}

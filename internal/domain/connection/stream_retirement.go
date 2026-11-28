@@ -3,6 +3,7 @@ package connection
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -249,6 +250,7 @@ func (stream *Stream) readerSegmentBoundaryLocked(records *attachmentRecords) *r
 }
 
 func (stream *Stream) retireSegmentLocked(boundary *retiredSegmentBoundary) {
+	fmt.Fprintf(os.Stderr, "qualification phase role=%d retire-boundary\n", stream.owner.role)
 	stream.segmentBoundary = boundary
 	stream.sealRetirementLocked()
 }

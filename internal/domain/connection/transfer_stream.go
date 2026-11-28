@@ -3,7 +3,9 @@ package connection
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/application/endpointstream"
@@ -78,7 +80,9 @@ func (owner *Transfer) run(current *Stream, release func() error, open SegmentOp
 		}
 		previous := current
 		continuation, cancel := context.WithTimeout(owner.ctx, endpointstream.ReaderTimeout)
+		fmt.Fprintf(os.Stderr, "qualification phase role=%d fresh-open-start\n", original.role)
 		current, release, result = open(continuation, previous)
+		fmt.Fprintf(os.Stderr, "qualification phase role=%d fresh-open-success=%t\n", original.role, result == nil)
 		if err := continuation.Err(); err != nil {
 			result = errors.Join(result, err)
 		}

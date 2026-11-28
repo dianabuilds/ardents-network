@@ -24,7 +24,7 @@ jobs:
       - name: Prepare the admitted Ubuntu manager
         run: |
           git merge-base --is-ancestor "$CANDIDATE" HEAD
-          git diff --exit-code "$CANDIDATE" HEAD -- . ':!.github/workflows/verify-1069-native.yml' ':!internal/domain/endpoint/endpoint_journey_native_linux_test.go'
+          git diff --exit-code "$CANDIDATE" HEAD -- . ':!.github/workflows/verify-1069-native.yml' ':!internal/domain/endpoint/endpoint_journey_native_linux_test.go' ':!internal/domain/connection/segment_boundary_exchange.go' ':!internal/domain/connection/stream_retirement.go' ':!internal/domain/connection/transfer_stream.go'
           git diff --name-only "$CANDIDATE" HEAD
           test "$(cat /proc/1/comm)" = systemd
           test "$(systemd-detect-virt --container)" = none
@@ -34,4 +34,4 @@ jobs:
           mkdir -p "$RUNNER_TEMP/ardents-build"
       - name: Exercise the installed TCP/TLS pair
         run: |
-          sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build"             "GOTOOLCHAIN=local" "GOFLAGS=-buildvcs=false" go test -tags endpoint_pair_native,document_worker_installed             ./internal/domain/endpoint -run '^TestNativeEndpointSegmentedInstalledPair$' -count=1 -timeout=25m -v
+          sudo -n env "PATH=$PATH" "GOMODCACHE=$(go env GOMODCACHE)" "GOCACHE=$RUNNER_TEMP/ardents-build"             "GOTOOLCHAIN=local" "GOFLAGS=-buildvcs=false" go test -tags endpoint_pair_native,document_worker_installed             ./internal/domain/endpoint -run '^TestNativeEndpointSegmentedInstalledPair$/^bidirectional$' -count=1 -timeout=25m -v

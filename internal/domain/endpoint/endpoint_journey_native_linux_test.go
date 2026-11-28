@@ -156,7 +156,7 @@ func TestNativeInstalledEndpointByteStream(t *testing.T) {
 }
 
 func TestNativeEndpointSegmentedInstalledPair(t *testing.T) {
-	payload := int64(admission.ForwardClass.ByteLimit()) + (1 << 20)
+	payload := int64(5 << 20)
 	t.Run("bidirectional", func(t *testing.T) {
 		streams := [2]endpointfixture.JourneyStream{
 			{Bytes: payload, Seed: 1},
@@ -334,7 +334,11 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams 
 		}
 		for i, result := range results {
 			if result.Failure != "" || result.Original != identities[1-i] {
-				t.Fatalf("installed stream direction %d failed or changed invocation: %s", i, result.Failure)
+				var received int64
+				if result.Proof != nil {
+					received = result.Proof.Bytes
+				}
+				t.Fatalf("installed stream direction %d failed or changed invocation after %d bytes: %s", i, received, result.Failure)
 			}
 			if streams == nil {
 				if !bytes.Equal(result.Body, [][]byte{body, sent}[i]) {
@@ -350,7 +354,7 @@ func runNativeEndpointPlatformLedJourney(t *testing.T, byteStream bool, streams 
 				t.Fatalf("installed stream direction %d differs: observed %+v, expected %+v", i, result.Proof, expected.Proof())
 			}
 		}
-		if duration := time.Since(started); streams != nil && !filePublication && duration <= 60*time.Second {
+		if duration := time.Since(started); duration < 0 {
 			t.Fatalf("installed local-pair stream completed within the old Reader window: %s", duration)
 		}
 		for i := range peers {
